@@ -21,7 +21,6 @@ import com.aerospike.client.BatchRecord;
 
 /**
  * Asynchronous result notifications for multi-record transaction (MRT) commits.
- * TODO: Think about simplifying this listener.
  */
 public interface TranCommitListener {
 	/**
@@ -30,25 +29,11 @@ public interface TranCommitListener {
 	void onSuccess();
 
 	/**
-	 * This method is called when the records are verified, but the one or more records in the
-	 * commit step fails.
+	 * This method is called when the commit fails.
+	 *
+	 * @param verifyRecords     record verify responses for each record read in the MRT
+	 * @param rollRecords       record roll forward or backward responses for each record written in the MRT
+	 * @param ae                exception indicating which part of the commit process failed
 	 */
-	void onCommitFailure(BatchRecord[] records, AerospikeException ae);
-
-	/**
-	 * This method is called when one or more records in the verify step fails. If this method is called,
-	 * the client will attempt to abort the MRT. If the abort succeeds, {@link #onAbort()} is called.
-	 * If the abort fails, {@link #onAbortFailure(BatchRecord[], AerospikeException)} is called.
-	 */
-	void onVerifyFailure(BatchRecord[] records, AerospikeException ae);
-
-	/**
-	 * This method is called when the record verification step fails and the abort (rollback) succeeds.
-	 */
-	void onAbort();
-
-	/**
-	 * This method is called when one or more records in the abort step fails.
-	 */
-	void onAbortFailure(BatchRecord[] records, AerospikeException ae);
+	void onFailure(BatchRecord[] verifyRecords, BatchRecord[] rollRecords, AerospikeException ae);
 }

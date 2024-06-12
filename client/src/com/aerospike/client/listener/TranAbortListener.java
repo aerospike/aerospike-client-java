@@ -30,6 +30,9 @@ public interface TranAbortListener {
 
 	/**
 	 * This method is called when the abort fails.
+	 *
+	 * @param records   record roll backward responses for each record written in the MRT
+	 * @param ae        exception indicating which part of the abort process failed
 	 */
 	void onFailure(BatchRecord[] records, AerospikeException ae);
 }

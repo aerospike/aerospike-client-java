@@ -398,27 +398,12 @@ public class TestAsyncTran extends TestAsync {
 
 		public void run(Listener listener) {
 			TranCommitListener tcl = new TranCommitListener() {
-				private AerospikeException verifyException;
-
 				public void onSuccess() {
 					listener.onSuccess();
 				}
 
-				public void onCommitFailure(BatchRecord[] records, AerospikeException ae) {
+				public void onFailure(BatchRecord[] verifyRecords, BatchRecord[] rollRecords, AerospikeException ae) {
 					listener.onFailure(ae);
-				}
-
-				public void onVerifyFailure(BatchRecord[] records, AerospikeException ae) {
-					verifyException = ae;
-				}
-
-				public void onAbort() {
-					listener.onFailure(verifyException);
-				}
-
-				public void onAbortFailure(BatchRecord[] records, AerospikeException ae) {
-					verifyException.addSuppressed(ae);
-					listener.onFailure(verifyException);
 				}
 			};
 

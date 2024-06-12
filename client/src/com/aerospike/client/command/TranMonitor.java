@@ -36,11 +36,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-public final class TranExecutor {
+public final class TranMonitor {
 	private static final ListPolicy OrderedListPolicy = new ListPolicy(ListOrder.ORDERED,
 		ListWriteFlags.ADD_UNIQUE | ListWriteFlags.NO_FAIL | ListWriteFlags.PARTIAL);
 
-	public static void addWrite(Cluster cluster, WritePolicy policy, Key cmdKey) {
+	public static void addKey(Cluster cluster, WritePolicy policy, Key cmdKey) {
 		Tran tran = policy.tran;
 
 		if (tran.getWrites().contains(cmdKey)) {
@@ -50,15 +50,11 @@ public final class TranExecutor {
 
 		tran.setNamespace(cmdKey.namespace);
 
-		Operation[] ops = new Operation[] {
-			Operation.put(new Bin("id", tran.getId())),
-			ListOperation.append(OrderedListPolicy, "keyds", Value.get(cmdKey.digest))
-		};
-
+		Operation[] ops = getTranOps(tran, cmdKey);
 		addWriteKeys(cluster, tran, policy, ops);
 	}
 
-	public static void addWrites(Cluster cluster, BatchPolicy policy, Key[] keys) {
+	public static void addKeys(Cluster cluster, BatchPolicy policy, Key[] keys) {
 		Tran tran = policy.tran;
 		ArrayList<Value> list = new ArrayList<>(keys.length);
 
@@ -67,10 +63,11 @@ public final class TranExecutor {
 			list.add(Value.get(key.digest));
 		}
 
-		addBatchWrites(cluster, tran, policy, list);
+		Operation[] ops = getTranOps(tran, list);
+		addWriteKeys(cluster, tran, policy, ops);
 	}
 
-	public static void addWrites(Cluster cluster, BatchPolicy policy, List<BatchRecord> records) {
+	public static void addKeys(Cluster cluster, BatchPolicy policy, List<BatchRecord> records) {
 		Tran tran = policy.tran;
 		ArrayList<Value> list = new ArrayList<>(records.size());
 
@@ -82,21 +79,33 @@ public final class TranExecutor {
 			}
 		}
 
-		addBatchWrites(cluster, tran, policy, list);
+		Operation[] ops = getTranOps(tran, list);
+		addWriteKeys(cluster, tran, policy, ops);
 	}
 
-	private static void addBatchWrites(Cluster cluster, Tran tran, Policy policy, ArrayList<Value> list) {
-		Operation[] ops = new Operation[] {
+	public static Operation[] getTranOps(Tran tran, Key cmdKey) {
+		return new Operation[]{
+			Operation.put(new Bin("id", tran.getId())),
+			ListOperation.append(OrderedListPolicy, "keyds", Value.get(cmdKey.digest))
+		};
+	}
+
+	public static Operation[] getTranOps(Tran tran, ArrayList<Value> list) {
+		return new Operation[] {
 			Operation.put(new Bin("id", tran.getId())),
 			ListOperation.appendItems(OrderedListPolicy, "keyds", list)
 		};
-
-		addWriteKeys(cluster, tran, policy, ops);
 	}
 
 	private static void addWriteKeys(Cluster cluster, Tran tran, Policy policy, Operation[] ops) {
 		Key tranKey = getTranMonitorKey(tran);
+		WritePolicy wp = copyTimeoutPolicy(policy);
+		OperateArgs args = new OperateArgs(wp, null, null, ops);
+		OperateCommandWrite cmd = new OperateCommandWrite(cluster, tranKey, args);
+		cmd.execute();
+	}
 
+	public static WritePolicy copyTimeoutPolicy(Policy policy) {
 		// Inherit timeout related fields from the original command's policy.
 		WritePolicy wp = new WritePolicy();
 		wp.respondAllOps = true;
@@ -106,10 +115,7 @@ public final class TranExecutor {
 		wp.timeoutDelay = policy.timeoutDelay;
 		wp.maxRetries = policy.maxRetries;
 		wp.sleepBetweenRetries = policy.sleepBetweenRetries;
-
-		OperateArgs args = new OperateArgs(wp, null, null, ops);
-		OperateCommandWrite cmd = new OperateCommandWrite(cluster, tranKey, args);
-		cmd.execute();
+		return wp;
 	}
 
 	public static void commit(Cluster cluster, Tran tran, BatchPolicy verifyPolicy, BatchPolicy rollPolicy) {
