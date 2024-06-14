@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -24,25 +24,25 @@ package com.aerospike.client.policy;
 public enum ReadModeSC {
 	/**
 	 * Ensures this client will only see an increasing sequence of record versions.
-	 * Server only reads from master.  This is the default.
+	 * Client only reads from master. This is the default.
 	 */
 	SESSION,
 
 	/**
-	 * Ensures ALL clients will only see an increasing sequence of record versions.
-	 * Server only reads from master.
+	 * Ensures all clients will only see an increasing sequence of record versions.
+	 * Client only reads from master.
 	 */
 	LINEARIZE,
 
 	/**
-	 * Server may read from master or any full (non-migrating) replica.
+	 * Client may read from master or any full (non-migrating) replica.
 	 * Increasing sequence of record versions is not guaranteed.
 	 */
 	ALLOW_REPLICA,
 
 	/**
-	 * Server may read from master or any full (non-migrating) replica or from unavailable
-	 * partitions.  Increasing sequence of record versions is not guaranteed.
+	 * Client may read from master or any full (non-migrating) replica or from unavailable
+	 * partitions. Increasing sequence of record versions is not guaranteed.
 	 */
 	ALLOW_UNAVAILABLE
 }
