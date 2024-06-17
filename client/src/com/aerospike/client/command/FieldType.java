@@ -23,7 +23,8 @@ public final class FieldType {
 	public static final int RECORD_VERSION = 3;
 	public static final int DIGEST_RIPE = 4;
 	public static final int MRT_TRID = 5;
-	public final static int TRAN_ID = 7;	// user supplied transaction id, which is simply passed back
+	public final static int MRT_DEADLINE = 6;
+	public final static int QUERY_ID = 7;
 	public final static int SOCKET_TIMEOUT = 9;
 	public final static int RECORDS_PER_SECOND = 10;
 	public final static int PID_ARRAY = 11;

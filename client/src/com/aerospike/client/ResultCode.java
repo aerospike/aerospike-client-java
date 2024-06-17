@@ -249,6 +249,11 @@ public final class ResultCode {
 	public static final int MRT_CONFLICT = 30;
 
 	/**
+	 * MRT deadline reached without a successful commit or abort.
+	 */
+	public static final int MRT_EXPIRED = 31;
+
+	/**
 	 * There are no more records left for query.
 	 */
 	public static final int QUERY_END = 50;
@@ -604,6 +609,9 @@ public final class ResultCode {
 
 		case MRT_CONFLICT:
 			return "MRT read verify failed";
+
+		case MRT_EXPIRED:
+			return "MRT expired";
 
 		case QUERY_END:
 			return "Query end";

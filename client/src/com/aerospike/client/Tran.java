@@ -22,13 +22,14 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Multi-record transaction.
+ * Multi-record transaction (MRT).
  */
 public final class Tran {
 	private final long id;
 	private String namespace;
 	private final ConcurrentHashMap<Key,Long> reads;
 	private final Set<Key> writes;
+	private int deadline;
 
 	/**
 	 * Create transaction with given transaction id.
@@ -131,6 +132,20 @@ public final class Tran {
 	 */
 	public Set<Key> getWrites() {
 		return writes;
+	}
+
+	/**
+	 * Get MRT deadline.
+	 */
+	public int getDeadline() {
+		return deadline;
+	}
+
+	/**
+	 * Set MRT deadline. For internal use only.
+	 */
+	public void setDeadline(int deadline) {
+		this.deadline = deadline;
 	}
 
 	/**

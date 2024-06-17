@@ -156,31 +156,11 @@ public final class RecordParser {
 	}
 
 	private void parseFields(Tran tran, Key key, boolean hasWrite) {
-		if (tran != null) {
-			Long version = parseVersion();
-
-			if (hasWrite) {
-				tran.handleWrite(key, version, resultCode);
-			}
-			else {
-				tran.handleRead(key, version);
-			}
-		}
-		else {
+		if (tran == null) {
 			skipFields();
+			return;
 		}
-	}
 
-	private void skipFields() {
-		// There can be fields in the response (setname etc).
-		// But for now, ignore them. Expose them to the API if needed in the future.
-		for (int i = 0; i < fieldCount; i++) {
-			int fieldlen = Buffer.bytesToInt(dataBuffer, dataOffset);
-			dataOffset += 4 + fieldlen;
-		}
-	}
-
-	private Long parseVersion() {
 		Long version = null;
 
 		for (int i = 0; i < fieldCount; i++) {
@@ -198,9 +178,28 @@ public final class RecordParser {
 					throw new AerospikeException("Record version field has invalid size: " + size);
 				}
 			}
+			else if (type == FieldType.MRT_DEADLINE) {
+				int deadline = Buffer.bytesToInt(dataBuffer, dataOffset);
+				tran.setDeadline(deadline);
+			}
 			dataOffset += size;
 		}
-		return version;
+
+		if (hasWrite) {
+			tran.handleWrite(key, version, resultCode);
+		}
+		else {
+			tran.handleRead(key, version);
+		}
+	}
+
+	private void skipFields() {
+		// There can be fields in the response (setname etc).
+		// But for now, ignore them. Expose them to the API if needed in the future.
+		for (int i = 0; i < fieldCount; i++) {
+			int fieldlen = Buffer.bytesToInt(dataBuffer, dataOffset);
+			dataOffset += 4 + fieldlen;
+		}
 	}
 
 	public Record parseRecord(boolean isOperation)  {
