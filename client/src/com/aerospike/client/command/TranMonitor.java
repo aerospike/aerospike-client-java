@@ -106,9 +106,9 @@ public final class TranMonitor {
 	}
 
 	public static WritePolicy copyTimeoutPolicy(Policy policy) {
-		// Inherit timeout related fields from the original command's policy.
+		// Inherit some fields from the original command's policy.
 		WritePolicy wp = new WritePolicy();
-		wp.respondAllOps = true;
+		wp.tran = policy.tran;
 		wp.connectTimeout = policy.connectTimeout;
 		wp.socketTimeout = policy.socketTimeout;
 		wp.totalTimeout = policy.totalTimeout;
@@ -116,6 +116,7 @@ public final class TranMonitor {
 		wp.maxRetries = policy.maxRetries;
 		wp.sleepBetweenRetries = policy.sleepBetweenRetries;
 		wp.compress = policy.compress;
+		wp.respondAllOps = true;
 		return wp;
 	}
 
