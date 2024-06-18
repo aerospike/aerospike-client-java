@@ -41,7 +41,7 @@ public final class RecordParser {
 	/**
 	 * Sync record parser.
 	 */
-	public RecordParser(Connection conn, byte[] buffer, Tran tran, Key key, boolean hasWrite) throws IOException {
+	public RecordParser(Connection conn, byte[] buffer) throws IOException {
 		// Read header.
 		conn.readFully(buffer, 8, Command.STATE_READ_HEADER);
 
@@ -128,13 +128,12 @@ public final class RecordParser {
 		offset += 2;
 		dataOffset = offset;
 		dataBuffer = buffer;
-		parseFields(tran, key, hasWrite);
 	}
 
 	/**
 	 * Async record parser.
 	 */
-	public RecordParser(Tran tran, Key key, byte[] buffer, int offset, int receiveSize, boolean hasWrite) {
+	public RecordParser(byte[] buffer, int offset, int receiveSize) {
 		if (receiveSize < Command.MSG_REMAINING_HEADER_SIZE) {
 			throw new AerospikeException.Parse("Invalid receive size: " + receiveSize);
 		}
@@ -152,10 +151,9 @@ public final class RecordParser {
 		offset += 2;
 		dataOffset = offset;
 		dataBuffer = buffer;
-		parseFields(tran, key, hasWrite);
 	}
 
-	private void parseFields(Tran tran, Key key, boolean hasWrite) {
+	public void parseFields(Tran tran, Key key, boolean hasWrite) {
 		if (tran == null) {
 			skipFields();
 			return;
@@ -178,18 +176,29 @@ public final class RecordParser {
 					throw new AerospikeException("Record version field has invalid size: " + size);
 				}
 			}
-			else if (type == FieldType.MRT_DEADLINE) {
-				int deadline = Buffer.bytesToInt(dataBuffer, dataOffset);
-				tran.setDeadline(deadline);
-			}
 			dataOffset += size;
 		}
 
 		if (hasWrite) {
 			tran.handleWrite(key, version, resultCode);
-		}
-		else {
+		} else {
 			tran.handleRead(key, version);
+		}
+	}
+
+	public void parseTranDeadline(Tran tran) {
+		for (int i = 0; i < fieldCount; i++) {
+			int len = Buffer.bytesToInt(dataBuffer, dataOffset);
+			dataOffset += 4;
+
+			int type = dataBuffer[dataOffset++];
+			int size = len - 1;
+
+			if (type == FieldType.MRT_DEADLINE) {
+				int deadline = Buffer.bytesToInt(dataBuffer, dataOffset);
+				tran.setDeadline(deadline);
+			}
+			dataOffset += size;
 		}
 	}
 

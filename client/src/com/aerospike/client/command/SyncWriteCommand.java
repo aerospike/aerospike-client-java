@@ -61,7 +61,8 @@ public abstract class SyncWriteCommand extends SyncCommand {
 	}
 
 	protected int parseHeader(Connection conn) throws IOException {
-		RecordParser rp = new RecordParser(conn, dataBuffer, policy.tran, key, true);
+		RecordParser rp = new RecordParser(conn, dataBuffer);
+		rp.parseFields(policy.tran, key, true);
 
 		if (rp.opCount > 0) {
 			throw new AerospikeException("Unexpected write response opCount: " + rp.opCount + ',' + rp.resultCode);

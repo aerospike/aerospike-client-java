@@ -191,7 +191,7 @@ public abstract class AsyncTranExecutor {
 
 		// Add write key(s) to MRT monitor.
 		OperateArgs args = new OperateArgs(wp, null, null, ops);
-		AsyncOperateWrite tranCommand = new AsyncOperateWrite(cluster, tranListener, tranKey, args);
+		AsyncTranAddKeys tranCommand = new AsyncTranAddKeys(cluster, tranListener, tranKey, args);
 		eventLoop.execute(cluster, tranCommand);
 	}
 

@@ -18,49 +18,33 @@ package com.aerospike.client.async;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
-import com.aerospike.client.Record;
 import com.aerospike.client.ResultCode;
 import com.aerospike.client.cluster.Cluster;
+import com.aerospike.client.command.OperateArgs;
 import com.aerospike.client.command.RecordParser;
 import com.aerospike.client.listener.RecordListener;
-import com.aerospike.client.policy.Policy;
 
-public final class AsyncReadHeader extends AsyncReadBase {
+public final class AsyncTranAddKeys extends AsyncWriteBase {
 	private final RecordListener listener;
-	private Record record;
+	private final OperateArgs args;
 
-	public AsyncReadHeader(Cluster cluster, RecordListener listener, Policy policy, Key key) {
-		super(cluster, policy, key);
+	public AsyncTranAddKeys(Cluster cluster, RecordListener listener, Key key, OperateArgs args) {
+		super(cluster, args.writePolicy, key);
 		this.listener = listener;
+		this.args = args;
 	}
 
 	@Override
 	protected void writeBuffer() {
-		setReadHeader(policy, key);
+		setTranAddKeys(args.writePolicy, key, args);
 	}
 
 	@Override
 	protected boolean parseResult() {
 		RecordParser rp = new RecordParser(dataBuffer, dataOffset, receiveSize);
-		rp.parseFields(policy.tran, key, false);
-
-		if (rp.opCount > 0) {
-			throw new AerospikeException("Unexpected read header opCount: " + rp.opCount + ',' + rp.resultCode);
-		}
+		rp.parseTranDeadline(policy.tran);
 
 		if (rp.resultCode == ResultCode.OK) {
-			record = new Record(null, rp.generation, rp.expiration);
-			return true;
-		}
-
-		if (rp.resultCode == ResultCode.KEY_NOT_FOUND_ERROR) {
-			return true;
-		}
-
-		if (rp.resultCode == ResultCode.FILTERED_OUT) {
-			if (policy.failOnFilteredOut) {
-				throw new AerospikeException(rp.resultCode);
-			}
 			return true;
 		}
 
@@ -70,7 +54,7 @@ public final class AsyncReadHeader extends AsyncReadBase {
 	@Override
 	protected void onSuccess() {
 		if (listener != null) {
-			listener.onSuccess(key, record);
+			listener.onSuccess(key, null);
 		}
 	}
 

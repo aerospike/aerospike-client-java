@@ -151,6 +151,35 @@ public class Command {
 	// Multi-record Transactions
 	//--------------------------------------------------
 
+	public final void setTranAddKeys(WritePolicy policy, Key key, OperateArgs args) {
+		begin();
+		int fieldCount = estimateKeySize(key);
+
+		dataOffset += args.size;
+		sizeBuffer();
+
+		dataBuffer[8]  = MSG_REMAINING_HEADER_SIZE; // Message header length.
+		dataBuffer[9]  = (byte)args.readAttr;
+		dataBuffer[10] = (byte)args.writeAttr;
+		dataBuffer[11] = (byte)0;
+		dataBuffer[12] = 0;
+		dataBuffer[13] = 0;
+		Buffer.intToBytes(0, dataBuffer, 14);
+		Buffer.intToBytes(0, dataBuffer, 18);
+		Buffer.intToBytes(serverTimeout, dataBuffer, 22);
+		Buffer.shortToBytes(fieldCount, dataBuffer, 26);
+		Buffer.shortToBytes(args.operations.length, dataBuffer, 28);
+		dataOffset = MSG_TOTAL_HEADER_SIZE;
+
+		writeKey(key);
+
+		for (Operation operation : args.operations) {
+			writeOperation(operation);
+		}
+		end();
+		compress(policy);
+	}
+
 	public final void setTranVerify(Key key, long ver) {
 		begin();
 		int fieldCount = estimateKeySize(key);
@@ -165,11 +194,8 @@ public class Command {
 		dataBuffer[10] = (byte)0;
 		dataBuffer[11] = (byte)Command.INFO3_SC_READ_TYPE;
 		dataBuffer[12] = (byte)Command.INFO4_MRT_VERIFY_READ;
-
-		for (int i = 13; i < 18; i++) {
-			dataBuffer[i] = 0;
-		}
-
+		dataBuffer[13] = 0;
+		Buffer.intToBytes(0, dataBuffer, 14);
 		Buffer.intToBytes(0, dataBuffer, 18);
 		Buffer.intToBytes(serverTimeout, dataBuffer, 22);
 		Buffer.shortToBytes(fieldCount, dataBuffer, 26);

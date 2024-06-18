@@ -1040,7 +1040,8 @@ public final class AsyncBatchSingle {
 
 		@Override
 		protected boolean parseResult() {
-			RecordParser rp = new RecordParser(policy.tran, key, dataBuffer, dataOffset, receiveSize, hasWrite);
+			RecordParser rp = new RecordParser(dataBuffer, dataOffset, receiveSize);
+			rp.parseFields(policy.tran, key, hasWrite);
 			parseResult(rp);
 			return true;
 		}

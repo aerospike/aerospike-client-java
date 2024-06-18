@@ -101,7 +101,7 @@ public final class TranMonitor {
 		Key tranKey = getTranMonitorKey(tran);
 		WritePolicy wp = copyTimeoutPolicy(policy);
 		OperateArgs args = new OperateArgs(wp, null, null, ops);
-		OperateCommandWrite cmd = new OperateCommandWrite(cluster, tranKey, args);
+		TranAddKeys cmd = new TranAddKeys(cluster, tranKey, args);
 		cmd.execute();
 	}
 
@@ -115,6 +115,7 @@ public final class TranMonitor {
 		wp.timeoutDelay = policy.timeoutDelay;
 		wp.maxRetries = policy.maxRetries;
 		wp.sleepBetweenRetries = policy.sleepBetweenRetries;
+		wp.compress = policy.compress;
 		return wp;
 	}
 

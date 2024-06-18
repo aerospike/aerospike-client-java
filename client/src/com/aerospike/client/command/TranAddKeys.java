@@ -16,73 +16,35 @@
  */
 package com.aerospike.client.command;
 
-import java.io.IOException;
-
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
-import com.aerospike.client.Record;
 import com.aerospike.client.ResultCode;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.Connection;
-import com.aerospike.client.policy.Policy;
+import java.io.IOException;
 
-public class ReadCommand extends SyncReadCommand {
-	private final String[] binNames;
-	private final boolean isOperation;
-	private Record record;
+public final class TranAddKeys extends SyncWriteCommand {
+	private final OperateArgs args;
 
-	public ReadCommand(Cluster cluster, Policy policy, Key key) {
-		super(cluster, policy, key);
-		this.binNames = null;
-		this.isOperation = false;
-	}
-
-	public ReadCommand(Cluster cluster, Policy policy, Key key, String[] binNames) {
-		super(cluster, policy, key);
-		this.binNames = binNames;
-		this.isOperation = false;
-	}
-
-	public ReadCommand(Cluster cluster, Policy policy, Key key, boolean isOperation) {
-		super(cluster, policy, key);
-		this.binNames = null;
-		this.isOperation = isOperation;
+	public TranAddKeys(Cluster cluster, Key key, OperateArgs args) {
+		super(cluster, args.writePolicy, key);
+		this.args = args;
 	}
 
 	@Override
 	protected void writeBuffer() {
-		setRead(policy, key, binNames);
+		setTranAddKeys(args.writePolicy, key, args);
 	}
 
 	@Override
 	protected void parseResult(Connection conn) throws IOException {
 		RecordParser rp = new RecordParser(conn, dataBuffer);
-		rp.parseFields(policy.tran, key, false);
+		rp.parseTranDeadline(policy.tran);
 
 		if (rp.resultCode == ResultCode.OK) {
-			this.record = rp.parseRecord(isOperation);
-			return;
-		}
-
-		if (rp.opCount > 0) {
-			throw new AerospikeException("Unexpected read opCount on error: " + rp.opCount + ',' + rp.resultCode);
-		}
-
-		if (rp.resultCode == ResultCode.KEY_NOT_FOUND_ERROR) {
-			return;
-		}
-
-		if (rp.resultCode == ResultCode.FILTERED_OUT) {
-			if (policy.failOnFilteredOut) {
-				throw new AerospikeException(rp.resultCode);
-			}
 			return;
 		}
 
 		throw new AerospikeException(rp.resultCode);
-	}
-
-	public Record getRecord() {
-		return record;
 	}
 }

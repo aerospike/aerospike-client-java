@@ -39,7 +39,8 @@ public final class ExistsCommand extends SyncReadCommand {
 
 	@Override
 	protected void parseResult(Connection conn) throws IOException {
-		RecordParser rp = new RecordParser(conn, dataBuffer, policy.tran, key, false);
+		RecordParser rp = new RecordParser(conn, dataBuffer);
+		rp.parseFields(policy.tran, key, false);
 
 		if (rp.opCount > 0) {
 			throw new AerospikeException("Unexpected exists opCount: " + rp.opCount + ',' + rp.resultCode);

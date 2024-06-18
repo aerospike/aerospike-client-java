@@ -91,7 +91,8 @@ public final class BatchSingle {
 
 		@Override
 		protected void parseResult(Connection conn) throws IOException {
-			RecordParser rp = new RecordParser(conn, dataBuffer, policy.tran, key, false);
+			RecordParser rp = new RecordParser(conn, dataBuffer);
+			rp.parseFields(policy.tran, key, false);
 
 			if (rp.resultCode == ResultCode.OK) {
 				records[index] = rp.parseRecord(isOperation);
@@ -160,7 +161,8 @@ public final class BatchSingle {
 
 		@Override
 		protected void parseResult(Connection conn) throws IOException {
-			RecordParser rp = new RecordParser(conn, dataBuffer, policy.tran, key, false);
+			RecordParser rp = new RecordParser(conn, dataBuffer);
+			rp.parseFields(policy.tran, key, false);
 
 			if (rp.resultCode == ResultCode.OK) {
 				record.setRecord(rp.parseRecord(true));
@@ -235,7 +237,8 @@ public final class BatchSingle {
 
 		@Override
 		protected void parseResult(Connection conn) throws IOException {
-			RecordParser rp = new RecordParser(conn, dataBuffer, policy.tran, key, record.hasWrite);
+			RecordParser rp = new RecordParser(conn, dataBuffer);
+			rp.parseFields(policy.tran, key, record.hasWrite);
 
 			if (rp.resultCode == ResultCode.OK) {
 				record.setRecord(rp.parseRecord(true));
@@ -336,7 +339,8 @@ public final class BatchSingle {
 
 		@Override
 		protected void parseResult(Connection conn) throws IOException {
-			RecordParser rp = new RecordParser(conn, dataBuffer, policy.tran, key, true);
+			RecordParser rp = new RecordParser(conn, dataBuffer);
+			rp.parseFields(policy.tran, key, true);
 
 			if (rp.resultCode == ResultCode.OK) {
 				record.setRecord(rp.parseRecord(false));

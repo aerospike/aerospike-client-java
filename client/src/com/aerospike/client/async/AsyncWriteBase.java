@@ -60,7 +60,8 @@ public abstract class AsyncWriteBase extends AsyncCommand {
 	}
 
 	protected int parseHeader() {
-		RecordParser rp = new RecordParser(policy.tran, key, dataBuffer, dataOffset, receiveSize, true);
+		RecordParser rp = new RecordParser(dataBuffer, dataOffset, receiveSize);
+		rp.parseFields(policy.tran, key, true);
 
 		if (rp.opCount > 0) {
 			throw new AerospikeException("Unexpected write response opCount: " + rp.opCount + ',' + rp.resultCode);
