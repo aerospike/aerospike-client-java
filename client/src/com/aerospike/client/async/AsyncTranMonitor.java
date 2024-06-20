@@ -199,8 +199,7 @@ public final class AsyncTranMonitor {
 				}
 			};
 
-			Bin[] bins = new Bin[]{new Bin("fwd", true)};
-			AsyncWrite command = new AsyncWrite(cluster, writeListener, writePolicy, tranKey, bins, Operation.Type.WRITE);
+			AsyncTranWillRoll command = new AsyncTranWillRoll(cluster, writeListener, writePolicy, tranKey);
 			eventLoop.execute(cluster, command);
 		}
 		catch (Throwable t) {

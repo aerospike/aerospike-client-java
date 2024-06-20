@@ -224,8 +224,7 @@ public final class TranMonitor {
 
 	private static void willRollForward(Cluster cluster, WritePolicy writePolicy, Key tranKey) {
 		// Tell MRT monitor that a roll-forward will commence.
-		Bin[] bins = new Bin[] {new Bin("fwd", true)};
-		WriteCommand cmd = new WriteCommand(cluster, writePolicy, tranKey, bins, Operation.Type.WRITE);
+		TranWillRoll cmd = new TranWillRoll(cluster, writePolicy, tranKey);
 		cmd.execute();
 	}
 
