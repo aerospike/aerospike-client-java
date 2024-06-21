@@ -89,6 +89,36 @@ public class TestTran extends TestSync {
 	}
 
 	@Test
+	public void tranWriteConflict() {
+		Key key = new Key(args.namespace, args.set, "mrtkey21");
+
+		Tran tran1 = client.tranBegin();
+		Tran tran2 = client.tranBegin();
+
+		WritePolicy wp1 = client.copyWritePolicyDefault();
+		WritePolicy wp2 = client.copyWritePolicyDefault();
+		wp1.tran = tran1;
+		wp2.tran = tran2;
+
+		client.put(wp1, key, new Bin(binName, "val1"));
+
+		try {
+			client.put(wp2, key, new Bin(binName, "val2"));
+		}
+		catch (AerospikeException ae) {
+			if (ae.getResultCode() != ResultCode.MRT_BLOCKED) {
+				throw ae;
+			}
+		}
+
+		client.tranCommit(tran1);
+		client.tranCommit(tran2);
+
+		Record record = client.get(null, key);
+		assertBinEqual(key, record, binName, "val1");
+	}
+
+	@Test
 	public void tranWriteBlock() {
 		Key key = new Key(args.namespace, args.set, "mrtkey3");
 
