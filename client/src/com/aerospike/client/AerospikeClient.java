@@ -2483,7 +2483,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 
 		if (args.hasWrite) {
 			AsyncOperateWrite command = new AsyncOperateWrite(cluster, listener, key, args);
-			AsyncTranExecutor.execute(eventLoop, cluster, policy, command);
+			AsyncTranExecutor.execute(eventLoop, cluster, args.writePolicy, command);
 		}
 		else {
 			AsyncOperateRead command = new AsyncOperateRead(cluster, listener, key, args);

@@ -203,8 +203,8 @@ public class TestAsync extends TestBase {
 		return true;
 	}
 
-	public void setError(Exception e) {
-		monitor.setError(e);
+	public void setError(Throwable t) {
+		monitor.setError(t);
 	}
 
 	public void waitTillComplete() {
