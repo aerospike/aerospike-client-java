@@ -16,7 +16,6 @@
  */
 package com.aerospike.client.async;
 
-import java.util.ArrayList;
 import java.util.List;
 
 import com.aerospike.client.AerospikeClient;

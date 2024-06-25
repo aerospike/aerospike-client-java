@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -16,6 +16,9 @@
  */
 package com.aerospike.client.metrics;
 
+/**
+ * Latency group type.
+ */
 public enum LatencyType {
 	CONN,
 	WRITE,

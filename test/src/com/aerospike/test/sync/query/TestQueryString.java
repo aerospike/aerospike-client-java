@@ -28,7 +28,6 @@ import com.aerospike.client.Bin;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
 import com.aerospike.client.ResultCode;
-import com.aerospike.client.policy.Policy;
 import com.aerospike.client.query.Filter;
 import com.aerospike.client.query.IndexType;
 import com.aerospike.client.query.RecordSet;
@@ -75,6 +74,35 @@ public class TestQueryString extends TestSync {
 		stmt.setNamespace(args.namespace);
 		stmt.setSetName(args.set);
 		stmt.setBinNames(binName);
+		stmt.setFilter(Filter.equal(binName, filter));
+
+		RecordSet rs = client.query(null, stmt);
+
+		try {
+			int count = 0;
+
+			while (rs.next()) {
+				Record record = rs.getRecord();
+				String result = record.getString(binName);
+				assertEquals(filter, result);
+				count++;
+			}
+
+			assertNotEquals(0, count);
+		}
+		finally {
+			rs.close();
+		}
+	}
+
+	@Test
+	public void queryStringEmptyBinName() {
+		String filter = valuePrefix + 3;
+
+		Statement stmt = new Statement();
+		stmt.setNamespace(args.namespace);
+		stmt.setSetName(args.set);
+		stmt.setBinNames(new String[] {});
 		stmt.setFilter(Filter.equal(binName, filter));
 
 		RecordSet rs = client.query(null, stmt);

@@ -241,7 +241,17 @@ public class Command {
 		end();
 	}
 
-	private final void setRead(Policy policy, Key key) {
+	public final void setRead(Policy policy, Key key, String[] binNames) {
+		int readAttr = Command.INFO1_READ;
+		int opCount = 0;
+
+		if (binNames != null && binNames.length > 0) {
+			opCount = binNames.length;
+		}
+		else {
+			readAttr |= Command.INFO1_GET_ALL;
+		}
+
 		begin();
 		int fieldCount = estimateKeySize(policy, key);
 
@@ -249,45 +259,27 @@ public class Command {
 			dataOffset += policy.filterExp.size();
 			fieldCount++;
 		}
+
+		if (opCount != 0) {
+			for (String binName : binNames) {
+				estimateOperationSize(binName);
+			}
+		}
+
 		sizeBuffer();
-		writeHeaderRead(policy, serverTimeout, Command.INFO1_READ | Command.INFO1_GET_ALL, 0, 0, fieldCount, 0);
+		writeHeaderRead(policy, serverTimeout, readAttr, 0, 0, fieldCount, opCount);
 		writeKey(policy, key);
 
 		if (policy.filterExp != null) {
 			policy.filterExp.write(this);
 		}
-		end();
-	}
 
-	public final void setRead(Policy policy, Key key, String[] binNames) {
-		if (binNames != null) {
-			begin();
-			int fieldCount = estimateKeySize(policy, key);
-
-			if (policy.filterExp != null) {
-				dataOffset += policy.filterExp.size();
-				fieldCount++;
-			}
-
-			for (String binName : binNames) {
-				estimateOperationSize(binName);
-			}
-			sizeBuffer();
-			writeHeaderRead(policy, serverTimeout, Command.INFO1_READ, 0, 0, fieldCount, binNames.length);
-			writeKey(policy, key);
-
-			if (policy.filterExp != null) {
-				policy.filterExp.write(this);
-			}
-
+		if (opCount != 0) {
 			for (String binName : binNames) {
 				writeOperation(binName, Operation.Type.READ);
 			}
-			end();
 		}
-		else {
-			setRead(policy, key);
-		}
+		end();
 	}
 
 	public final void setRead(Policy policy, BatchRead br) {
@@ -851,7 +843,13 @@ public class Command {
 						}
 
 						if (br.binNames != null) {
-							writeBatchBinNames(key, br.binNames, attr, attr.filterExp);
+							if (br.binNames.length > 0) {
+								writeBatchBinNames(key, br.binNames, attr, attr.filterExp);
+							}
+							else {
+								attr.adjustRead(true);
+								writeBatchRead(key, attr, attr.filterExp, 0);
+							}
 						}
 						else if (br.ops != null) {
 							attr.adjustRead(br.ops);
@@ -1330,9 +1328,8 @@ public class Command {
 		}
 
 		// Clusters that support partition queries also support not sending partition done messages.
-		int infoAttr = cluster.hasPartitionQuery? Command.INFO3_PARTITION_DONE : 0;
 		int operationCount = (binNames == null)? 0 : binNames.length;
-		writeHeaderRead(policy, totalTimeout, readAttr, 0, infoAttr, fieldCount, operationCount);
+		writeHeaderRead(policy, totalTimeout, readAttr, 0, Command.INFO3_PARTITION_DONE, fieldCount, operationCount);
 
 		if (namespace != null) {
 			writeField(namespace, FieldType.NAMESPACE);
@@ -1582,7 +1579,7 @@ public class Command {
 				writeAttr |= Command.INFO2_RELAX_AP_LONG_QUERY;
 			}
 
-			int infoAttr = isNew? Command.INFO3_PARTITION_DONE : 0;
+			int infoAttr = (isNew || filter == null)? Command.INFO3_PARTITION_DONE : 0;
 
 			writeHeaderRead(policy, totalTimeout, readAttr, writeAttr, infoAttr, fieldCount, operationCount);
 		}
