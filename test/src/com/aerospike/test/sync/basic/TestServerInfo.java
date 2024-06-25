@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -17,9 +17,11 @@
 package com.aerospike.test.sync.basic;
 
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertEquals;
 
 import java.util.Map;
 
+import com.aerospike.client.ResultCode;
 import org.junit.Test;
 
 import com.aerospike.client.Info;
@@ -75,5 +77,34 @@ public class TestServerInfo extends TestSync {
 		for (String value : values) {
 			assertNotNull(value);
 		}
+	}
+
+	@Test
+	public void errorResponse() {
+		Info.Error error;
+
+		error = new Info.Error("FaIL:201:index not found");
+		assertEquals(error.code, 201);
+		assertEquals(error.message, "index not found");
+
+		error = new Info.Error("ERRor:201:index not found");
+		assertEquals(error.code, 201);
+		assertEquals(error.message, "index not found");
+
+		error = new Info.Error("error::index not found ");
+		assertEquals(error.code, ResultCode.CLIENT_ERROR);
+		assertEquals(error.message, "index not found");
+
+		error = new Info.Error("error: index not found ");
+		assertEquals(error.code, ResultCode.CLIENT_ERROR);
+		assertEquals(error.message, "index not found");
+
+		error = new Info.Error("error:99");
+		assertEquals(error.code, 99);
+		assertEquals(error.message, "error:99");
+
+		error = new Info.Error("generic message");
+		assertEquals(error.code, ResultCode.CLIENT_ERROR);
+		assertEquals(error.message, "generic message");
 	}
 }

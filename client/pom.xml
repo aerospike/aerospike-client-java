@@ -6,7 +6,7 @@
   <parent>
     <groupId>com.aerospike</groupId>
     <artifactId>aerospike-parent</artifactId>
-    <version>8.1.0</version>
+    <version>8.1.2</version>
   </parent>
   <artifactId>aerospike-client-jdk8</artifactId>
   <packaging>jar</packaging>
@@ -125,6 +125,7 @@
             <include>com/aerospike/client/listener/*</include>
             <include>com/aerospike/client/command/ParticleType.java</include>
             <include>com/aerospike/client/exp/*</include>
+            <include>com/aerospike/client/metrics/*</include>
             <include>com/aerospike/client/operation/*</include>
             <include>com/aerospike/client/policy/*</include>
             <include>com/aerospike/client/task/*</include>

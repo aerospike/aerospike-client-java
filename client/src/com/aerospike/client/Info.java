@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -304,6 +304,32 @@ public class Info {
 		throws AerospikeException {
 		Info info = new Info(conn);
 		return info.parseMultiResponse();
+	}
+
+	//-------------------------------------------------------
+	// Parse Methods
+	//-------------------------------------------------------
+
+	/**
+	 * Parse info response string and return the result code for info commands
+	 * that only return OK or an error string. Info commands that return other
+	 * data are not handled by this method.
+	 */
+	public static int parseResultCode(String response) {
+		if (response.regionMatches(true, 0, "OK", 0, 2)) {
+			return ResultCode.OK;
+		}
+
+		Info.Error error = new Info.Error(response);
+
+		if (error.code >= 0) {
+			// Server errors return error code.
+			return error.code;
+		}
+		else {
+			// Client errors result in a exception.
+			throw new AerospikeException(error.code, "Unrecognized info response: " + response);
+		}
 	}
 
 	//-------------------------------------------------------
@@ -818,6 +844,63 @@ public class Info {
 			}
 			byte[] bytes = Crypto.decodeBase64(buffer, valueBegin, len);
 			return Buffer.utf8ToString(bytes, 0, bytes.length);
+		}
+	}
+
+	/**
+	 * Info command error response.
+	 */
+	public static class Error {
+		public final int code;
+		public final String message;
+
+		/**
+		 * Parse info command response into code and message.
+		 * If the response is not a recognized error format, the code is set to
+		 * {@link ResultCode#CLIENT_ERROR} and the message is set to the full
+		 * response string.
+		 */
+		public Error(String response) {
+			// Error format: ERROR|FAIL[:<code>][:<message>]
+			int rc = ResultCode.CLIENT_ERROR;
+			String msg = response;
+
+			try {
+				String[] list = response.split(":");
+				String s = list[0];
+
+				if (s.regionMatches(true, 0, "FAIL", 0, 4) ||
+					s.regionMatches(true, 0, "ERROR", 0, 5)) {
+
+					if (list.length >= 3) {
+						msg = list[2].trim();
+						s = list[1].trim();
+
+						if (! s.isEmpty()) {
+							rc = Integer.parseInt(s);
+						}
+					}
+					else if (list.length == 2) {
+						s = list[1].trim();
+
+						if (! s.isEmpty()) {
+							try {
+								rc = Integer.parseInt(s);
+							}
+							catch (Throwable t) {
+								// Some error strings omit the code and just have a message.
+								msg = s;
+							}
+						}
+					}
+				}
+			}
+			catch (Throwable t) {
+			}
+			finally {
+				this.code = rc;
+				this.message = msg;
+			}
 		}
 	}
 }

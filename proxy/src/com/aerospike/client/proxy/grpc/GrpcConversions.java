@@ -106,6 +106,7 @@ public class GrpcConversions {
 		return scanPolicyBuilder.build();
 	}
 
+	@SuppressWarnings("deprecation")
 	public static Kvs.QueryPolicy toGrpc(QueryPolicy queryPolicy) {
 		// Base policy fields.
 		Kvs.QueryPolicy.Builder queryPolicyBuilder = Kvs.QueryPolicy.newBuilder();

@@ -69,7 +69,7 @@ public final class MetricsPolicy {
 
 	/**
 	 * Power of 2 multiple between each range bucket in latency histograms starting at column 3. The bucket units
-	 * are in milliseconds. The first 2 buckets are "<=1ms" and ">1ms". Examples:
+	 * are in milliseconds. The first 2 buckets are "&lt;=1ms" and "&gt;1ms". Examples:
 	 * <pre>{@code
 	 * // latencyColumns=7 latencyShift=1
 	 * <=1ms >1ms >2ms >4ms >8ms >16ms >32ms

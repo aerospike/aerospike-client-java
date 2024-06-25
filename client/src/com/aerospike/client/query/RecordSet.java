@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -131,6 +131,13 @@ public class RecordSet implements Iterable<KeyRecord>, Closeable {
 		return record.record;
 	}
 
+	/**
+	 * Get key and record.
+	 */
+	public KeyRecord getKeyRecord() {
+		return record;
+	}
+
 	//-------------------------------------------------------
 	// Methods for internal use only.
 	//-------------------------------------------------------
@@ -206,7 +213,7 @@ public class RecordSet implements Iterable<KeyRecord>, Closeable {
 
 		@Override
 		public KeyRecord next() {
-			KeyRecord kr = recordSet.record;
+			KeyRecord kr = recordSet.getKeyRecord();
 			more = recordSet.next();
 			return kr;
 		}

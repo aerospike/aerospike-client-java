@@ -96,8 +96,8 @@ public class Main implements Log.Callback {
 		}
 	}
 
-	private Arguments args = new Arguments();
-	private Host[] hosts;
+	private final Arguments args = new Arguments();
+	private final Host[] hosts;
 	private EventLoopType eventLoopType = EventLoopType.DIRECT_NIO;
 	private int port = 3000;
 	private long nKeys;
@@ -112,8 +112,8 @@ public class Main implements Log.Callback {
 	private String filepath;
 
 	private EventLoops eventLoops;
-	private ClientPolicy clientPolicy = new ClientPolicy();
-	private CounterStore counters = new CounterStore();
+	private final ClientPolicy clientPolicy = new ClientPolicy();
+	private final CounterStore counters = new CounterStore();
 
 	public Main(String[] commandLineArgs) throws Exception {
 		boolean hasTxns = false;
@@ -221,6 +221,11 @@ public class Main implements Log.Callback {
 			"  0: Default to namespace expiration time\n" +
 			" >0: Actual given expiration time"
 			);
+		options.addOption("rt", "readTouchTtlPercent", true,
+			"Read touch TTL percent is expressed as a percentage of the TTL (or expiration) sent on the most\n" +
+			"recent write such that a read within this interval of the record’s end of life will generate a touch.\n" +
+			"Range: 0 - 100"
+		);
 		options.addOption("g", "throughput", true,
 			"Set a target transactions per second for the client. The client should not exceed this " +
 			"average throughput."
@@ -392,6 +397,14 @@ public class Main implements Log.Callback {
 			args.writePolicy.expiration = Integer.parseInt(line.getOptionValue("e"));
 			if (args.writePolicy.expiration < -1) {
 				throw new Exception("Invalid expiration: " + args.writePolicy.expiration + " It should be >= -1");
+			}
+		}
+
+		if (line.hasOption("readTouchTtlPercent")) {
+			args.readPolicy.readTouchTtlPercent = Integer.parseInt(line.getOptionValue("readTouchTtlPercent"));
+			if (args.readPolicy.readTouchTtlPercent < 0 || args.readPolicy.readTouchTtlPercent > 100) {
+				throw new Exception("Invalid readTouchTtlPercent: " + args.readPolicy.readTouchTtlPercent +
+					" Range: 0 - 100");
 			}
 		}
 
@@ -1053,19 +1066,21 @@ public class Main implements Log.Callback {
 		if (args.workload != Workload.INITIALIZE) {
 			System.out.println("read policy:");
 			System.out.println(
-					"    connectTimeout: " + args.readPolicy.connectTimeout
-					+ ", socketTimeout: " + args.readPolicy.socketTimeout
-					+ ", totalTimeout: " + args.readPolicy.totalTimeout
-					+ ", timeoutDelay: " + args.readPolicy.timeoutDelay
-					+ ", maxRetries: " + args.readPolicy.maxRetries
-					+ ", sleepBetweenRetries: " + args.readPolicy.sleepBetweenRetries
-					);
+				"    connectTimeout: " + args.readPolicy.connectTimeout
+				+ ", socketTimeout: " + args.readPolicy.socketTimeout
+				+ ", totalTimeout: " + args.readPolicy.totalTimeout
+				+ ", timeoutDelay: " + args.readPolicy.timeoutDelay
+				+ ", maxRetries: " + args.readPolicy.maxRetries
+				+ ", sleepBetweenRetries: " + args.readPolicy.sleepBetweenRetries
+				);
 
 			System.out.println(
-					"    readModeAP: " + args.readPolicy.readModeAP
-					+ ", readModeSC: " + args.readPolicy.readModeSC
-					+ ", replica: " + args.readPolicy.replica
-					+ ", reportNotFound: " + args.reportNotFound);
+				"    readModeAP: " + args.readPolicy.readModeAP
+				+ ", readModeSC: " + args.readPolicy.readModeSC
+				+ ", replica: " + args.readPolicy.replica
+				+ ", readTouchTtlPercent: " + args.readPolicy.readTouchTtlPercent
+				+ ", reportNotFound: " + args.reportNotFound
+				);
 		}
 
 		System.out.println("write policy:");
@@ -1078,7 +1093,10 @@ public class Main implements Log.Callback {
 			+ ", sleepBetweenRetries: " + args.writePolicy.sleepBetweenRetries
 			);
 
-		System.out.println("    commitLevel: " + args.writePolicy.commitLevel);
+		System.out.println(
+			"    commitLevel: " + args.writePolicy.commitLevel
+			+ ", expiration: " + args.writePolicy.expiration
+		);
 
 		if (args.batchSize > 1) {
 			System.out.println("batch size: " + args.batchSize
@@ -1100,25 +1118,25 @@ public class Main implements Log.Callback {
 			System.out.print("bin[" + binCount + "]: ");
 
 			switch (spec.type) {
-			case INTEGER:
-				System.out.println("integer");
-				break;
+				case INTEGER:
+					System.out.println("integer");
+					break;
 
-			case STRING:
-				System.out.println("string[" + spec.size + "]");
-				break;
+				case STRING:
+					System.out.println("string[" + spec.size + "]");
+					break;
 
-			case BYTES:
-				System.out.println("byte[" + spec.size + "]");
-				break;
+				case BYTES:
+					System.out.println("byte[" + spec.size + "]");
+					break;
 
-			case RANDOM:
-				System.out.println("random[" + (spec.size * 8) + "]");
-				break;
+				case RANDOM:
+					System.out.println("random[" + (spec.size * 8) + "]");
+					break;
 
-			case TIMESTAMP:
-				System.out.println("timestamp");
-				break;
+				case TIMESTAMP:
+					System.out.println("timestamp");
+					break;
 			}
 			binCount++;
 		}
@@ -1143,7 +1161,7 @@ public class Main implements Log.Callback {
 		String syntax = Main.class.getName() + " [<options>]";
 		formatter.printHelp(pw, 100, syntax, "options:", options, 0, 2, null);
 
-		System.out.println(sw.toString());
+		System.out.println(sw);
 	}
 
 	private static String getLatencyUsage(String latencyString) {

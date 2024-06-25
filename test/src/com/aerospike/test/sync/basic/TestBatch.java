@@ -145,6 +145,30 @@ public class TestBatch extends TestSync {
 	}
 
 	@Test
+	public void batchReadsEmptyBinNames() {
+		Key[] keys = new Key[Size];
+		for (int i = 0; i < Size; i++) {
+			keys[i] = new Key(args.namespace, args.set, KeyPrefix + (i + 1));
+		}
+
+		String[] binNames = new String[] {};
+		Record[] records = client.get(null, keys, binNames);
+		assertEquals(Size, records.length);
+
+		for (int i = 0; i < records.length; i++) {
+			Key key = keys[i];
+			Record record = records[i];
+
+			if (i != 5) {
+				assertBinEqual(key, record, BinName, ValuePrefix + (i + 1));
+			}
+			else {
+				assertBinEqual(key, record, BinName, i + 1);
+			}
+		}
+	}
+
+	@Test
 	public void batchReadHeaders () {
 		Key[] keys = new Key[Size];
 		for (int i = 0; i < Size; i++) {
@@ -168,7 +192,7 @@ public class TestBatch extends TestSync {
 	}
 
 	@Test
-	public void batchReadComplex () {
+	public void batchReadComplex() {
 		// Batch allows multiple namespaces in one call, but example test environment may only have one namespace.
 
 		// bin * 8
@@ -179,7 +203,7 @@ public class TestBatch extends TestSync {
 		List<BatchRead> records = new ArrayList<BatchRead>();
 		records.add(new BatchRead(new Key(args.namespace, args.set, KeyPrefix + 1), bins));
 		records.add(new BatchRead(new Key(args.namespace, args.set, KeyPrefix + 2), true));
-		records.add(new BatchRead(new Key(args.namespace, args.set, KeyPrefix + 3), true));
+		records.add(new BatchRead(new Key(args.namespace, args.set, KeyPrefix + 3), new String[] {}));
 		records.add(new BatchRead(new Key(args.namespace, args.set, KeyPrefix + 4), false));
 		records.add(new BatchRead(new Key(args.namespace, args.set, KeyPrefix + 5), true));
 		records.add(new BatchRead(new Key(args.namespace, args.set, KeyPrefix + 6), ops));

@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -34,7 +34,7 @@ public class RecordSequenceRecordSet extends RecordSet implements RecordSequence
 	private final long taskId;
 	private volatile boolean valid = true;
 	private final BlockingQueue<KeyRecord> queue;
-	private volatile KeyRecord record;
+	protected volatile KeyRecord record;
 	private volatile AerospikeException exception;
 
 	public RecordSequenceRecordSet(long taskId, int capacity) {
@@ -112,6 +112,11 @@ public class RecordSequenceRecordSet extends RecordSet implements RecordSequence
 	@Override
 	public Key getKey() {
 		return record.key;
+	}
+
+	@Override
+	public KeyRecord getKeyRecord() {
+		return record;
 	}
 
 	@Override

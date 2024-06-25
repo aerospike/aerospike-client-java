@@ -296,7 +296,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		this.infoPolicyDefault = policy.infoPolicyDefault;
 		this.operatePolicyReadDefault = new WritePolicy(this.readPolicyDefault);
 
-		cluster = new Cluster(policy, hosts);
+		cluster = new Cluster(this, policy, hosts);
 	}
 
 	//-------------------------------------------------------
@@ -339,44 +339,144 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	// Default Policies
 	//-------------------------------------------------------
 
+	/**
+	 * Return read policy default. Use when the policy will not be modified.
+	 */
 	public final Policy getReadPolicyDefault() {
 		return readPolicyDefault;
 	}
 
+	/**
+	 * Copy read policy default. Use when the policy will be modified for use in a specific transaction.
+	 */
+	public final Policy copyReadPolicyDefault() {
+		return new Policy(readPolicyDefault);
+	}
+
+	/**
+	 * Return write policy default. Use when the policy will not be modified.
+	 */
 	public final WritePolicy getWritePolicyDefault() {
 		return writePolicyDefault;
 	}
 
+	/**
+	 * Copy write policy default. Use when the policy will be modified for use in a specific transaction.
+	 */
+	public final WritePolicy copyWritePolicyDefault() {
+		return new WritePolicy(writePolicyDefault);
+	}
+
+	/**
+	 * Return scan policy default. Use when the policy will not be modified.
+	 */
 	public final ScanPolicy getScanPolicyDefault() {
 		return scanPolicyDefault;
 	}
 
+	/**
+	 * Copy scan policy default. Use when the policy will be modified for use in a specific transaction.
+	 */
+	public final ScanPolicy copyScanPolicyDefault() {
+		return new ScanPolicy(scanPolicyDefault);
+	}
+
+	/**
+	 * Return query policy default. Use when the policy will not be modified.
+	 */
 	public final QueryPolicy getQueryPolicyDefault() {
 		return queryPolicyDefault;
 	}
 
+	/**
+	 * Copy query policy default. Use when the policy will be modified for use in a specific transaction.
+	 */
+	public final QueryPolicy copyQueryPolicyDefault() {
+		return new QueryPolicy(queryPolicyDefault);
+	}
+
+	/**
+	 * Return batch header read policy default. Use when the policy will not be modified.
+	 */
 	public final BatchPolicy getBatchPolicyDefault() {
 		return batchPolicyDefault;
 	}
 
+	/**
+	 * Copy batch header read policy default. Use when the policy will be modified for use in a specific transaction.
+	 */
+	public final BatchPolicy copyBatchPolicyDefault() {
+		return new BatchPolicy(batchPolicyDefault);
+	}
+
+	/**
+	 * Return batch header write policy default. Use when the policy will not be modified.
+	 */
 	public final BatchPolicy getBatchParentPolicyWriteDefault() {
 		return batchParentPolicyWriteDefault;
 	}
 
+	/**
+	 * Copy batch header write policy default. Use when the policy will be modified for use in a specific transaction.
+	 */
+	public final BatchPolicy copyBatchParentPolicyWriteDefault() {
+		return new BatchPolicy(batchParentPolicyWriteDefault);
+	}
+
+	/**
+	 * Return batch detail write policy default. Use when the policy will not be modified.
+	 */
 	public final BatchWritePolicy getBatchWritePolicyDefault() {
 		return batchWritePolicyDefault;
 	}
 
+	/**
+	 * Copy batch detail write policy default. Use when the policy will be modified for use in a specific transaction.
+	 */
+	public final BatchWritePolicy copyBatchWritePolicyDefault() {
+		return new BatchWritePolicy(batchWritePolicyDefault);
+	}
+
+	/**
+	 * Return batch detail delete policy default. Use when the policy will not be modified.
+	 */
 	public final BatchDeletePolicy getBatchDeletePolicyDefault() {
 		return batchDeletePolicyDefault;
 	}
 
+	/**
+	 * Copy batch detail delete policy default. Use when the policy will be modified for use in a specific transaction.
+	 */
+	public final BatchDeletePolicy copyBatchDeletePolicyDefault() {
+		return new BatchDeletePolicy(batchDeletePolicyDefault);
+	}
+
+	/**
+	 * Return batch detail UDF policy default. Use when the policy will not be modified.
+	 */
 	public final BatchUDFPolicy getBatchUDFPolicyDefault() {
 		return batchUDFPolicyDefault;
 	}
 
+	/**
+	 * Copy batch detail UDF policy default. Use when the policy will be modified for use in a specific transaction.
+	 */
+	public final BatchUDFPolicy copyBatchUDFPolicyDefault() {
+		return new BatchUDFPolicy(batchUDFPolicyDefault);
+	}
+
+	/**
+	 * Return info command policy default. Use when the policy will not be modified.
+	 */
 	public final InfoPolicy getInfoPolicyDefault() {
 		return infoPolicyDefault;
+	}
+
+	/**
+	 * Copy info command policy default. Use when the policy will be modified for use in a specific transaction.
+	 */
+	public final InfoPolicy copyInfoPolicyDefault() {
+		return new InfoPolicy(infoPolicyDefault);
 	}
 
 	//-------------------------------------------------------
@@ -1686,6 +1786,9 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			policy = batchPolicyDefault;
 		}
 
+		int readAttr = (binNames == null || binNames.length == 0)?
+			Command.INFO1_READ | Command.INFO1_GET_ALL : Command.INFO1_READ;
+
 		Record[] records = new Record[keys.length];
 
 		try {
@@ -1702,7 +1805,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 				}
 				else {
 					commands[count++] = new Batch.GetArrayCommand(
-						cluster, bn, policy, keys, binNames, null, records, Command.INFO1_READ, false, status);
+						cluster, bn, policy, keys, binNames, null, records, readAttr, false, status);
 				}
 			}
 			BatchExecutor.execute(cluster, policy, commands, status);
@@ -1744,6 +1847,9 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			policy = batchPolicyDefault;
 		}
 
+		int readAttr = (binNames == null || binNames.length == 0)?
+			Command.INFO1_READ | Command.INFO1_GET_ALL : Command.INFO1_READ;
+
 		Record[] records = new Record[keys.length];
 		AsyncBatchExecutor.GetArray executor = new AsyncBatchExecutor.GetArray(
 			eventLoop, cluster, listener, keys, records);
@@ -1759,7 +1865,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			}
 			else {
 				commands[count++] = new AsyncBatch.GetArrayCommand(
-					executor, bn, policy, keys, binNames, null, records, Command.INFO1_READ, false);
+					executor, bn, policy, keys, binNames, null, records, readAttr, false);
 			}
 		}
 		executor.execute(commands);
@@ -1796,6 +1902,9 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			policy = batchPolicyDefault;
 		}
 
+		int readAttr = (binNames == null || binNames.length == 0)?
+			Command.INFO1_READ | Command.INFO1_GET_ALL : Command.INFO1_READ;
+
 		AsyncBatchExecutor.GetSequence executor = new AsyncBatchExecutor.GetSequence(eventLoop, cluster, listener);
 		List<BatchNode> bns = BatchNodeList.generate(cluster, policy, keys, null, false, executor);
 		AsyncCommand[] commands = new AsyncCommand[bns.size()];
@@ -1809,7 +1918,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			}
 			else {
 				commands[count++] = new AsyncBatch.GetSequenceCommand(
-					executor, bn, policy, keys, binNames, null, listener, Command.INFO1_READ, false);
+					executor, bn, policy, keys, binNames, null, listener, readAttr, false);
 			}
 		}
 		executor.execute(commands);
@@ -2228,13 +2337,9 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 					case BATCH_WRITE: {
 						BatchWrite bw = (BatchWrite)record;
 						BatchAttr attr = new BatchAttr();
+						BatchWritePolicy bwp = (bw.policy != null)? bw.policy : this.batchWritePolicyDefault;
 
-						if (bw.policy != null) {
-							attr.setWrite(bw.policy);
-						}
-						else {
-							attr.setWrite(policy);
-						}
+						attr.setWrite(bwp);
 						attr.adjustWrite(bw.ops);
 						attr.setOpSize(bw.ops);
 						commands[count++] = new BatchSingle.OperateBatchRecord(
@@ -2245,13 +2350,9 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 					case BATCH_UDF: {
 						BatchUDF bu = (BatchUDF)record;
 						BatchAttr attr = new BatchAttr();
+						BatchUDFPolicy bup = (bu.policy != null)? bu.policy : this.batchUDFPolicyDefault;
 
-						if (bu.policy != null) {
-							attr.setUDF(bu.policy);
-						}
-						else {
-							attr.setUDF(policy);
-						}
+						attr.setUDF(bup);
 						commands[count++] = new BatchSingle.UDF(
 							cluster, policy, bu.packageName, bu.functionName, bu.functionArgs, attr, record, status,
 							bn.node);
@@ -2261,13 +2362,9 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 					case BATCH_DELETE: {
 						BatchDelete bd = (BatchDelete)record;
 						BatchAttr attr = new BatchAttr();
+						BatchDeletePolicy bdp = (bd.policy != null)? bd.policy : this.batchDeletePolicyDefault;
 
-						if (bd.policy != null) {
-							attr.setDelete(bd.policy);
-						}
-						else {
-							attr.setDelete(policy);
-						}
+						attr.setDelete(bdp);
 						commands[count++] = new BatchSingle.Delete(cluster, policy, attr, record, status, bn.node);
 						break;
 					}
@@ -2345,13 +2442,9 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 					case BATCH_WRITE: {
 						BatchWrite bw = (BatchWrite)record;
 						BatchAttr attr = new BatchAttr();
+						BatchWritePolicy bwp = (bw.policy != null)? bw.policy : this.batchWritePolicyDefault;
 
-						if (bw.policy != null) {
-							attr.setWrite(bw.policy);
-						}
-						else {
-							attr.setWrite(policy);
-						}
+						attr.setWrite(bwp);
 						attr.adjustWrite(bw.ops);
 						attr.setOpSize(bw.ops);
 						commands[count++] = new AsyncBatchSingle.Write(executor, cluster, policy, attr, bw, bn.node);
@@ -2361,13 +2454,9 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 					case BATCH_UDF: {
 						BatchUDF bu = (BatchUDF)record;
 						BatchAttr attr = new BatchAttr();
+						BatchUDFPolicy bup = (bu.policy != null)? bu.policy : this.batchUDFPolicyDefault;
 
-						if (bu.policy != null) {
-							attr.setUDF(bu.policy);
-						}
-						else {
-							attr.setUDF(policy);
-						}
+						attr.setUDF(bup);
 						commands[count++] = new AsyncBatchSingle.UDF(executor, cluster, policy, attr, bu, bn.node);
 						break;
 					}
@@ -2375,13 +2464,9 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 					case BATCH_DELETE: {
 						BatchDelete bd = (BatchDelete)record;
 						BatchAttr attr = new BatchAttr();
+						BatchDeletePolicy bdp = (bd.policy != null)? bd.policy : this.batchDeletePolicyDefault;
 
-						if (bd.policy != null) {
-							attr.setDelete(bd.policy);
-						}
-						else {
-							attr.setDelete(policy);
-						}
+						attr.setDelete(bdp);
 						commands[count++] = new AsyncBatchSingle.Delete(executor, cluster, policy, attr, record,
 							bn.node);
 						break;
@@ -2460,13 +2545,9 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 					case BATCH_WRITE: {
 						BatchWrite bw = (BatchWrite)record;
 						BatchAttr attr = new BatchAttr();
+						BatchWritePolicy bwp = (bw.policy != null)? bw.policy : this.batchWritePolicyDefault;
 
-						if (bw.policy != null) {
-							attr.setWrite(bw.policy);
-						}
-						else {
-							attr.setWrite(policy);
-						}
+						attr.setWrite(bwp);
 						attr.adjustWrite(bw.ops);
 						attr.setOpSize(bw.ops);
 						commands[count++] = new AsyncBatchSingle.WriteSequence(
@@ -2477,13 +2558,9 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 					case BATCH_UDF: {
 						BatchUDF bu = (BatchUDF)record;
 						BatchAttr attr = new BatchAttr();
+						BatchUDFPolicy bup = (bu.policy != null)? bu.policy : this.batchUDFPolicyDefault;
 
-						if (bu.policy != null) {
-							attr.setUDF(bu.policy);
-						}
-						else {
-							attr.setUDF(policy);
-						}
+						attr.setUDF(bup);
 						commands[count++] = new AsyncBatchSingle.UDFSequence(
 							executor, cluster, policy, attr, bu, bn.node, listener, i);
 						break;
@@ -2492,13 +2569,9 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 					case BATCH_DELETE: {
 						BatchDelete bd = (BatchDelete)record;
 						BatchAttr attr = new BatchAttr();
+						BatchDeletePolicy bdp = (bd.policy != null)? bd.policy : this.batchDeletePolicyDefault;
 
-						if (bd.policy != null) {
-							attr.setDelete(bd.policy);
-						}
-						else {
-							attr.setDelete(policy);
-						}
+						attr.setDelete(bdp);
 						commands[count++] = new AsyncBatchSingle.DeleteSequence(
 							executor, cluster, policy, attr, bd, bn.node, listener, i);
 						break;
@@ -4397,21 +4470,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	}
 
 	private static int parseIndexErrorCode(String response) {
-		int code = 0;
-
-		try {
-			String[] list = response.split(":");
-
-			if (list.length >= 2 && list[0].equals("FAIL")) {
-				code = Integer.parseInt(list[1]);
-			}
-		}
-		catch (Throwable e) {
-		}
-
-		if (code == 0) {
-			code = ResultCode.SERVER_ERROR;
-		}
-		return code;
+		Info.Error error = new Info.Error(response);
+		return (error.code == 0)? ResultCode.SERVER_ERROR : error.code;
 	}
 }
