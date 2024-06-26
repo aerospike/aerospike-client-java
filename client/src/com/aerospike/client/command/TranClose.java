@@ -14,57 +14,38 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.aerospike.client.async;
+package com.aerospike.client.command;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
 import com.aerospike.client.ResultCode;
 import com.aerospike.client.Tran;
 import com.aerospike.client.cluster.Cluster;
-import com.aerospike.client.listener.WriteListener;
+import com.aerospike.client.cluster.Connection;
 import com.aerospike.client.policy.WritePolicy;
+import java.io.IOException;
 
-public final class AsyncTranWillRoll extends AsyncWriteBase {
+public final class TranClose extends SyncWriteCommand {
 	private final Tran tran;
-	private final WriteListener listener;
 
-	public AsyncTranWillRoll(
-		Cluster cluster,
-		Tran tran,
-		WriteListener listener,
-		WritePolicy writePolicy,
-		Key key
-	) {
+	public TranClose(Cluster cluster, Tran tran, WritePolicy writePolicy, Key key) {
 		super(cluster, writePolicy, key);
 		this.tran = tran;
-		this.listener = listener;
 	}
 
 	@Override
 	protected void writeBuffer() {
-		setTranWillRoll(tran, key);
+		setTranClose(tran, key);
 	}
 
 	@Override
-	protected boolean parseResult() {
-		int resultCode = parseHeader();
+	protected void parseResult(Connection conn) throws IOException {
+		int resultCode = parseHeader(conn);
 
-		// BIN_EXISTS_ERROR is considered a success because it means a previous attempt already
-		// succeeded in notifying the server that the MRT will be rolled forward.
-		if (resultCode == ResultCode.OK || resultCode == ResultCode.BIN_EXISTS_ERROR) {
-			return true;
+		if (resultCode == ResultCode.OK || resultCode == ResultCode.KEY_NOT_FOUND_ERROR) {
+			return;
 		}
 
 		throw new AerospikeException(resultCode);
-	}
-
-	@Override
-	protected void onSuccess() {
-		listener.onSuccess(key);
-	}
-
-	@Override
-	protected void onFailure(AerospikeException e) {
-		listener.onFailure(e);
 	}
 }

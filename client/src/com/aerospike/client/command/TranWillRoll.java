@@ -17,24 +17,25 @@
 package com.aerospike.client.command;
 
 import com.aerospike.client.AerospikeException;
-import com.aerospike.client.Bin;
 import com.aerospike.client.Key;
-import com.aerospike.client.Operation;
 import com.aerospike.client.ResultCode;
+import com.aerospike.client.Tran;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.Connection;
 import com.aerospike.client.policy.WritePolicy;
 import java.io.IOException;
 
 public final class TranWillRoll extends SyncWriteCommand {
-	public TranWillRoll(Cluster cluster, WritePolicy writePolicy, Key key) {
+	private final Tran tran;
+
+	public TranWillRoll(Cluster cluster, Tran tran, WritePolicy writePolicy, Key key) {
 		super(cluster, writePolicy, key);
+		this.tran = tran;
 	}
 
 	@Override
 	protected void writeBuffer() {
-		Bin[] bins = new Bin[] {new Bin("fwd", true)};
-		setWrite(writePolicy, Operation.Type.WRITE, key, bins);
+		setTranWillRoll(tran, key);
 	}
 
 	@Override

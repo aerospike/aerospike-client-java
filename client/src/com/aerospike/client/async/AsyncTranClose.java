@@ -21,17 +21,17 @@ import com.aerospike.client.Key;
 import com.aerospike.client.ResultCode;
 import com.aerospike.client.Tran;
 import com.aerospike.client.cluster.Cluster;
-import com.aerospike.client.listener.WriteListener;
+import com.aerospike.client.listener.DeleteListener;
 import com.aerospike.client.policy.WritePolicy;
 
-public final class AsyncTranWillRoll extends AsyncWriteBase {
+public final class AsyncTranClose extends AsyncWriteBase {
 	private final Tran tran;
-	private final WriteListener listener;
+	private final DeleteListener listener;
 
-	public AsyncTranWillRoll(
+	public AsyncTranClose(
 		Cluster cluster,
 		Tran tran,
-		WriteListener listener,
+		DeleteListener listener,
 		WritePolicy writePolicy,
 		Key key
 	) {
@@ -42,16 +42,14 @@ public final class AsyncTranWillRoll extends AsyncWriteBase {
 
 	@Override
 	protected void writeBuffer() {
-		setTranWillRoll(tran, key);
+		setTranClose(tran, key);
 	}
 
 	@Override
 	protected boolean parseResult() {
 		int resultCode = parseHeader();
 
-		// BIN_EXISTS_ERROR is considered a success because it means a previous attempt already
-		// succeeded in notifying the server that the MRT will be rolled forward.
-		if (resultCode == ResultCode.OK || resultCode == ResultCode.BIN_EXISTS_ERROR) {
+		if (resultCode == ResultCode.OK || resultCode == ResultCode.KEY_NOT_FOUND_ERROR) {
 			return true;
 		}
 
@@ -60,7 +58,7 @@ public final class AsyncTranWillRoll extends AsyncWriteBase {
 
 	@Override
 	protected void onSuccess() {
-		listener.onSuccess(key);
+		listener.onSuccess(key, true);
 	}
 
 	@Override

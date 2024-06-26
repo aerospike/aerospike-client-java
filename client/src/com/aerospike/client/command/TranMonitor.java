@@ -137,7 +137,7 @@ public final class TranMonitor {
 		}
 
 		// Tell MRT monitor that a roll-forward will commence.
-		willRollForward(cluster, writePolicy, tranKey);
+		willRollForward(cluster, tran, writePolicy, tranKey);
 
 		// Roll-forward writes in batch.
 		roll(cluster, tran, rollPolicy, Command.INFO4_MRT_ROLL_FORWARD);
@@ -191,11 +191,11 @@ public final class TranMonitor {
 				if (bn.offsetsSize == 1) {
 					int i = bn.offsets[0];
 					commands[count++] = new BatchSingle.TranVerify(
-						cluster, verifyPolicy, versions[i], records[i], status, bn.node);
+						cluster, verifyPolicy, tran, versions[i], records[i], status, bn.node);
 				}
 				else {
 					commands[count++] = new Batch.TranVerify(
-						cluster, bn, verifyPolicy, keys, versions, records, status);
+						cluster, bn, verifyPolicy, tran, keys, versions, records, status);
 				}
 			}
 
@@ -222,9 +222,9 @@ public final class TranMonitor {
 		}
 	}
 
-	private static void willRollForward(Cluster cluster, WritePolicy writePolicy, Key tranKey) {
+	private static void willRollForward(Cluster cluster, Tran tran, WritePolicy writePolicy, Key tranKey) {
 		// Tell MRT monitor that a roll-forward will commence.
-		TranWillRoll cmd = new TranWillRoll(cluster, writePolicy, tranKey);
+		TranWillRoll cmd = new TranWillRoll(cluster, tran, writePolicy, tranKey);
 		cmd.execute();
 	}
 
@@ -287,7 +287,7 @@ public final class TranMonitor {
 
 	private static void close(Cluster cluster, Tran tran, WritePolicy writePolicy, Key tranKey) {
 		// Delete MRT monitor on server.
-		DeleteCommand cmd = new DeleteCommand(cluster, writePolicy, tranKey);
+		TranClose cmd = new TranClose(cluster, tran, writePolicy, tranKey);
 		cmd.execute();
 
 		// Reset MRT on client.

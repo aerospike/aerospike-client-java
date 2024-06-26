@@ -27,6 +27,7 @@ import com.aerospike.client.Log;
 import com.aerospike.client.Operation;
 import com.aerospike.client.Record;
 import com.aerospike.client.ResultCode;
+import com.aerospike.client.Tran;
 import com.aerospike.client.command.BatchAttr;
 import com.aerospike.client.command.BatchNode;
 import com.aerospike.client.command.BatchNodeList;
@@ -921,6 +922,7 @@ public final class AsyncBatch {
 	//-------------------------------------------------------
 
 	public static final class TranVerify extends AsyncBatchCommand {
+		private final Tran tran;
 		private final Key[] keys;
 		private final Long[] versions;
 		private final BatchRecord[] records;
@@ -929,11 +931,13 @@ public final class AsyncBatch {
 			AsyncBatchExecutor parent,
 			BatchNode batch,
 			BatchPolicy batchPolicy,
+			Tran tran,
 			Key[] keys,
 			Long[] versions,
 			BatchRecord[] records
 		) {
 			super(parent, batch, batchPolicy, false);
+			this.tran = tran;
 			this.keys = keys;
 			this.versions = versions;
 			this.records = records;
@@ -941,7 +945,7 @@ public final class AsyncBatch {
 
 		@Override
 		protected void writeBuffer() {
-			setBatchTranVerify(batchPolicy, keys, versions, batch);
+			setBatchTranVerify(batchPolicy, tran, keys, versions, batch);
 		}
 
 		@Override
@@ -961,7 +965,7 @@ public final class AsyncBatch {
 
 		@Override
 		protected AsyncBatchCommand createCommand(BatchNode batchNode) {
-			return new TranVerify(parent, batchNode, batchPolicy, keys, versions, records);
+			return new TranVerify(parent, batchNode, batchPolicy, tran, keys, versions, records);
 		}
 
 		@Override

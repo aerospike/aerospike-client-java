@@ -26,6 +26,7 @@ import com.aerospike.client.Log;
 import com.aerospike.client.Operation;
 import com.aerospike.client.Record;
 import com.aerospike.client.ResultCode;
+import com.aerospike.client.Tran;
 import com.aerospike.client.async.AsyncBatchExecutor.BatchRecordSequence;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.Node;
@@ -923,6 +924,7 @@ public final class AsyncBatchSingle {
 	//-------------------------------------------------------
 
 	public static class TranVerify extends AsyncBaseCommand {
+		private final Tran tran;
 		private final long version;
 		private final BatchRecord record;
 
@@ -930,18 +932,20 @@ public final class AsyncBatchSingle {
 			AsyncBatchExecutor executor,
 			Cluster cluster,
 			BatchPolicy policy,
+			Tran tran,
 			long version,
 			BatchRecord record,
 			Node node
 		) {
 			super(executor, cluster, policy, record.key, node, false);
+			this.tran = tran;
 			this.version = version;
 			this.record = record;
 		}
 
 		@Override
 		protected void writeBuffer() {
-			setTranVerify(record.key, version);
+			setTranVerify(tran, record.key, version);
 		}
 
 		@Override

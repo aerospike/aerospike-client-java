@@ -28,6 +28,7 @@ import com.aerospike.client.Key;
 import com.aerospike.client.Operation;
 import com.aerospike.client.Record;
 import com.aerospike.client.ResultCode;
+import com.aerospike.client.Tran;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.metrics.LatencyType;
 import com.aerospike.client.policy.BatchPolicy;
@@ -475,6 +476,7 @@ public final class Batch {
 	//-------------------------------------------------------
 
 	public static final class TranVerify extends BatchCommand {
+		private final Tran tran;
 		private final Key[] keys;
 		private final Long[] versions;
 		private final BatchRecord[] records;
@@ -483,12 +485,14 @@ public final class Batch {
 			Cluster cluster,
 			BatchNode batch,
 			BatchPolicy batchPolicy,
+			Tran tran,
 			Key[] keys,
 			Long[] versions,
 			BatchRecord[] records,
 			BatchStatus status
 		) {
 			super(cluster, batch, batchPolicy, status, false);
+			this.tran = tran;
 			this.keys = keys;
 			this.versions = versions;
 			this.records = records;
@@ -501,7 +505,7 @@ public final class Batch {
 
 		@Override
 		protected void writeBuffer() {
-			setBatchTranVerify(batchPolicy, keys, versions, batch);
+			setBatchTranVerify(batchPolicy, tran, keys, versions, batch);
 		}
 
 		@Override
@@ -522,7 +526,7 @@ public final class Batch {
 
 		@Override
 		protected BatchCommand createCommand(BatchNode batchNode) {
-			return new TranVerify(cluster, batchNode, batchPolicy, keys, versions, records, status);
+			return new TranVerify(cluster, batchNode, batchPolicy, tran, keys, versions, records, status);
 		}
 
 		@Override

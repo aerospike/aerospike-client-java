@@ -174,11 +174,11 @@ public final class AsyncTranMonitor {
 			if (bn.offsetsSize == 1) {
 				int i = bn.offsets[0];
 				commands[count++] = new AsyncBatchSingle.TranVerify(
-					executor, cluster, verifyPolicy, versions[i], records[i], bn.node);
+					executor, cluster, verifyPolicy, tran, versions[i], records[i], bn.node);
 			}
 			else {
 				commands[count++] = new AsyncBatch.TranVerify(
-					executor, bn, verifyPolicy, keys, versions, records);
+					executor, bn, verifyPolicy, tran, keys, versions, records);
 			}
 		}
 		executor.execute(commands);
@@ -199,7 +199,7 @@ public final class AsyncTranMonitor {
 				}
 			};
 
-			AsyncTranWillRoll command = new AsyncTranWillRoll(cluster, writeListener, writePolicy, tranKey);
+			AsyncTranWillRoll command = new AsyncTranWillRoll(cluster, tran, writeListener, writePolicy, tranKey);
 			eventLoop.execute(cluster, command);
 		}
 		catch (Throwable t) {
@@ -333,7 +333,7 @@ public final class AsyncTranMonitor {
 				}
 			};
 
-			AsyncDelete command = new AsyncDelete(cluster, deleteListener, writePolicy, tranKey);
+			AsyncTranClose command = new AsyncTranClose(cluster, tran, deleteListener, writePolicy, tranKey);
 			eventLoop.execute(cluster, command);
 		}
 		catch (Throwable t) {
