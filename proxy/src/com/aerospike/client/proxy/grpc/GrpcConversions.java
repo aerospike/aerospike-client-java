@@ -20,11 +20,7 @@ import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Operation;
 import com.aerospike.client.ResultCode;
 import com.aerospike.client.Value;
-import com.aerospike.client.policy.Policy;
-import com.aerospike.client.policy.QueryDuration;
-import com.aerospike.client.policy.QueryPolicy;
-import com.aerospike.client.policy.ScanPolicy;
-import com.aerospike.client.policy.WritePolicy;
+import com.aerospike.client.policy.*;
 import com.aerospike.client.query.Filter;
 import com.aerospike.client.query.PartitionFilter;
 import com.aerospike.client.query.PartitionStatus;
@@ -137,6 +133,12 @@ public class GrpcConversions {
 		// TODO: Proxy client protobuf query policy type need to support QueryDuration enum.
 		queryPolicyBuilder.setShortQuery(queryPolicy.shortQuery || queryPolicy.expectedDuration == QueryDuration.SHORT);
 		return queryPolicyBuilder.build();
+	}
+
+	public static Kvs.InfoPolicy toGrpc(InfoPolicy infoPolicy){
+		Kvs.InfoPolicy.Builder infoPolicyBuilder = Kvs.InfoPolicy.newBuilder();
+		infoPolicyBuilder.setTimeout(infoPolicy.timeout);
+		return infoPolicyBuilder.build();
 	}
 
 	/**

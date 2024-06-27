@@ -16,18 +16,16 @@
  */
 package com.aerospike.client.proxy;
 
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.zip.DataFormatException;
 import java.util.zip.Inflater;
 
+import com.aerospike.client.*;
+import com.aerospike.client.Record;
 import org.luaj.vm2.LuaValue;
 
-import com.aerospike.client.AerospikeException;
-import com.aerospike.client.Key;
-import com.aerospike.client.Record;
-import com.aerospike.client.ResultCode;
-import com.aerospike.client.Value;
 import com.aerospike.client.command.Buffer;
 import com.aerospike.client.command.Command;
 import com.aerospike.client.command.Command.OpResults;
@@ -171,6 +169,15 @@ public final class Parser {
 		}
 		return new Key(namespace, digest, setName, userKey);
 	}
+
+	public Map<String, String> parseInfoResult(){
+		HashMap<String, String> responses;
+		Info info = new Info(buffer, receiveSize);
+		responses = info.parseMultiResponse();
+		return responses;
+	}
+
+
 
 	public Record parseRecord(boolean isOperation) {
 		Map<String, Object> bins = new LinkedHashMap<>();
