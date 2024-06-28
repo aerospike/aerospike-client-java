@@ -21,6 +21,10 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 
 import com.aerospike.test.sync.TestSync;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.function.Consumer;
+import java.util.function.Supplier;
 import org.junit.Test;
 import org.junit.BeforeClass;
 
@@ -468,5 +472,134 @@ public class TestTran extends TestSync {
 			int received = rec.getInt(binName);
 			assertEquals(expected, received);
 		}
+	}
+
+	@Test
+	public void monitorTests() {
+		// This test prevents having sleep delays in many tests.
+
+		List<Supplier<Tran>> beginners =
+			List.of(
+					() -> beginWriteAfterDeadline(),
+					() -> beginCommitAfterDeadline(),
+					() -> beginAbortAfterDeadline()
+					);
+		List<Consumer<Tran>> enders =
+			List.of(
+					(t) -> endWriteAfterDeadline(t),
+					(t) -> endCommitAfterDeadline(t),
+					(t) -> endAbortAfterDeadline(t)
+					);
+		List<Tran> trans = new ArrayList<Tran>();
+
+		for (var beginner : beginners) {
+			trans.add(beginner.get());
+		}
+
+		try {
+			Thread.sleep(60 * 1000);
+		}
+		catch (InterruptedException ie) {
+		}
+
+		for (var ender : enders) {
+			ender.accept(trans.remove(0));
+		}
+	}
+
+	private Tran beginWriteAfterDeadline() {
+		Key key = new Key(args.namespace, args.set, "monkey1");
+
+		client.put(null, key, new Bin(binName, "val1"));
+
+		Tran tran = client.tranBegin();
+		WritePolicy wp = client.copyWritePolicyDefault();
+		wp.tran = tran;
+		client.put(wp, key, new Bin(binName, "val2"));
+
+		return tran;
+	}
+
+	private void endWriteAfterDeadline(Tran tran) {
+		Key key = new Key(args.namespace, args.set, "monkey1");
+		WritePolicy wp = client.copyWritePolicyDefault();
+		wp.tran = tran;
+
+		try {
+			client.put(wp, key, new Bin(binName, "val3"));
+		}
+		catch (AerospikeException ae) {
+			if (ae.getResultCode() != ResultCode.MRT_EXPIRED) {
+				throw ae;
+			}
+		}
+	}
+
+	private Tran beginCommitAfterDeadline() {
+		Key key = new Key(args.namespace, args.set, "monkey2");
+
+		client.put(null, key, new Bin(binName, "val1"));
+
+		Tran tran = client.tranBegin();
+		WritePolicy wp = client.copyWritePolicyDefault();
+		wp.tran = tran;
+
+		client.put(wp, key, new Bin(binName, "val2"));
+
+		return tran;
+	}
+
+	private void endCommitAfterDeadline(Tran tran) {
+		Key key = new Key(args.namespace, args.set, "monkey2");
+
+		try {
+			client.tranCommit(tran);
+		}
+		catch (AerospikeException ae) {
+			if (ae.getResultCode() != ResultCode.MRT_EXPIRED) {
+				throw ae;
+			}
+		}
+
+		Record record = client.get(null, key);
+		assertBinEqual(key, record, binName, "val1");
+	}
+
+	private Tran beginAbortAfterDeadline() {
+		Key key = new Key(args.namespace, args.set, "monkey3");
+
+		client.put(null, key, new Bin(binName, "val1"));
+
+		Tran tran = client.tranBegin();
+		WritePolicy wp = client.copyWritePolicyDefault();
+		wp.tran = tran;
+		client.put(wp, key, new Bin(binName, "val2"));
+
+		return tran;
+	}
+
+	private void endAbortAfterDeadline(Tran tran) {
+		Key key = new Key(args.namespace, args.set, "monkey3");
+
+		try {
+			client.tranAbort(tran);
+		}
+		catch (AerospikeException.BatchRecordArray ae) {
+			for (BatchRecord br : ae.records) {
+				// FIXME - may remove this is server changes response to "OK"
+				//         when attempting to roll records after deadline.
+				if (br.resultCode != ResultCode.MRT_EXPIRED) {
+					throw ae;
+				}
+			}
+		}
+		catch (AerospikeException ae) {
+			if (ae.getResultCode() != ResultCode.MRT_EXPIRED) {
+				throw ae;
+			}
+		}
+
+		Record record = client.get(null, key);
+		assertBinEqual(key, record, binName, "val1");
 	}
 }
