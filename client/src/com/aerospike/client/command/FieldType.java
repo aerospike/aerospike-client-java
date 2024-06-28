@@ -22,7 +22,7 @@ public final class FieldType {
 	public static final int KEY = 2;
 	public static final int RECORD_VERSION = 3;
 	public static final int DIGEST_RIPE = 4;
-	public static final int MRT_TRID = 5;
+	public static final int MRT_ID = 5;
 	public final static int MRT_DEADLINE = 6;
 	public final static int QUERY_ID = 7;
 	public final static int SOCKET_TIMEOUT = 9;

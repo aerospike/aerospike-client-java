@@ -195,7 +195,7 @@ public final class RecordParser {
 			int size = len - 1;
 
 			if (type == FieldType.MRT_DEADLINE) {
-				int deadline = Buffer.bytesToInt(dataBuffer, dataOffset);
+				int deadline = Buffer.littleBytesToInt(dataBuffer, dataOffset);
 				tran.setDeadline(deadline);
 			}
 			dataOffset += size;

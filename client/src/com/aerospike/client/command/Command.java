@@ -196,7 +196,7 @@ public class Command {
 		writeKey(key);
 
 		if (tran.getDeadline() != 0) {
-			writeField(tran.getDeadline(), FieldType.MRT_DEADLINE);
+			writeFieldLE(tran.getDeadline(), FieldType.MRT_DEADLINE);
 		}
 
 		writeFieldVersion(ver);
@@ -307,7 +307,7 @@ public class Command {
 				writeBatchFields(key, fieldCount, 0);
 
 				if (tran.getDeadline() != 0) {
-					writeField(tran.getDeadline(), FieldType.MRT_DEADLINE);
+					writeFieldLE(tran.getDeadline(), FieldType.MRT_DEADLINE);
 				}
 
 				if (ver != null) {
@@ -493,7 +493,7 @@ public class Command {
 		writeKey(key);
 
 		if (tran.getDeadline() != 0) {
-			writeField(tran.getDeadline(), FieldType.MRT_DEADLINE);
+			writeFieldLE(tran.getDeadline(), FieldType.MRT_DEADLINE);
 		}
 	}
 
@@ -1710,14 +1710,14 @@ public class Command {
 		writeBatchFields(key, fieldCount, opCount);
 
 		if (tran != null) {
-			writeField(tran.getId(), FieldType.MRT_TRID);
+			writeFieldLE(tran.getId(), FieldType.MRT_ID);
 
 			if (ver != null) {
 				writeFieldVersion(ver);
 			}
 
 			if (tran.getDeadline() != 0) {
-				writeField(tran.getDeadline(), FieldType.MRT_DEADLINE);
+				writeFieldLE(tran.getDeadline(), FieldType.MRT_DEADLINE);
 			}
 		}
 
@@ -2669,14 +2669,14 @@ public class Command {
 
 	private void writeTran(Tran tran) {
 		if (tran != null) {
-			writeField(tran.getId(), FieldType.MRT_TRID);
+			writeFieldLE(tran.getId(), FieldType.MRT_ID);
 
 			if (version != null) {
 				writeFieldVersion(version);
 			}
 
 			if (tran.getDeadline() != 0) {
-				writeField(tran.getDeadline(), FieldType.MRT_DEADLINE);
+				writeFieldLE(tran.getDeadline(), FieldType.MRT_DEADLINE);
 			}
 		}
 	}
@@ -2687,7 +2687,7 @@ public class Command {
 		dataOffset += 7;
 	}
 
-	private final void writeField(Value value, int type) {
+	private void writeField(Value value, int type) {
 		int offset = dataOffset + FIELD_HEADER_SIZE;
 		dataBuffer[offset++] = (byte)value.getType();
 		int len = value.write(dataBuffer, offset) + 1;
@@ -2695,31 +2695,43 @@ public class Command {
 		dataOffset += len;
 	}
 
-	private final void writeField(String str, int type) {
+	private void writeField(String str, int type) {
 		int len = Buffer.stringToUtf8(str, dataBuffer, dataOffset + FIELD_HEADER_SIZE);
 		writeFieldHeader(len, type);
 		dataOffset += len;
 	}
 
-	private final void writeField(byte[] bytes, int type) {
+	private void writeField(byte[] bytes, int type) {
 		System.arraycopy(bytes, 0, dataBuffer, dataOffset + FIELD_HEADER_SIZE, bytes.length);
 		writeFieldHeader(bytes.length, type);
 		dataOffset += bytes.length;
 	}
 
-	private final void writeField(int val, int type) {
+	private void writeField(int val, int type) {
 		writeFieldHeader(4, type);
 		Buffer.intToBytes(val, dataBuffer, dataOffset);
 		dataOffset += 4;
 	}
 
-	private final void writeField(long val, int type) {
+	private void writeFieldLE(int val, int type) {
+		writeFieldHeader(4, type);
+		Buffer.intToLittleBytes(val, dataBuffer, dataOffset);
+		dataOffset += 4;
+	}
+
+	private void writeField(long val, int type) {
 		writeFieldHeader(8, type);
 		Buffer.longToBytes(val, dataBuffer, dataOffset);
 		dataOffset += 8;
 	}
 
-	private final void writeFieldHeader(int size, int type) {
+	private void writeFieldLE(long val, int type) {
+		writeFieldHeader(8, type);
+		Buffer.longToLittleBytes(val, dataBuffer, dataOffset);
+		dataOffset += 8;
+	}
+
+	private void writeFieldHeader(int size, int type) {
 		Buffer.intToBytes(size+1, dataBuffer, dataOffset);
 		dataOffset += 4;
 		dataBuffer[dataOffset++] = (byte)type;
