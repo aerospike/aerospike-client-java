@@ -175,6 +175,10 @@ public class Command {
 			fieldCount++;
 		}
 
+		// MRT ID field.
+		dataOffset += 8 + FIELD_HEADER_SIZE;
+		fieldCount++;
+
 		// Version field.
 		dataOffset += 7 + FIELD_HEADER_SIZE;
 		fieldCount++;
@@ -199,6 +203,7 @@ public class Command {
 			writeFieldLE(tran.getDeadline(), FieldType.MRT_DEADLINE);
 		}
 
+		writeField(tran.getId(), FieldType.MRT_ID);
 		writeFieldVersion(ver);
 		end();
 	}
@@ -251,6 +256,9 @@ public class Command {
 					dataOffset += 4 + FIELD_HEADER_SIZE;
 				}
 
+				// MRT ID field.
+				dataOffset += 8 + FIELD_HEADER_SIZE;
+
 				if (ver != null) {
 					dataOffset += 7 + FIELD_HEADER_SIZE;
 				}
@@ -300,6 +308,9 @@ public class Command {
 					fieldCount++;
 				}
 
+				// MRT ID field.
+				fieldCount++;
+
 				if (ver != null) {
 					fieldCount++;
 				}
@@ -309,6 +320,8 @@ public class Command {
 				if (tran.getDeadline() != 0) {
 					writeFieldLE(tran.getDeadline(), FieldType.MRT_DEADLINE);
 				}
+
+				writeField(tran.getId(), FieldType.MRT_ID);
 
 				if (ver != null) {
 					writeFieldVersion(ver);
