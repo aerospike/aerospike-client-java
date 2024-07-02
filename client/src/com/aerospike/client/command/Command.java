@@ -473,7 +473,8 @@ public class Command {
 	public void setTranClose(Tran tran, Key key) {
 		begin();
 		int fieldCount = sizeTranMonitor(tran, key);
-		writeTranMonitor(tran, key, 0, Command.INFO2_WRITE | Command.INFO2_DELETE, fieldCount, 0);
+		writeTranMonitor(tran, key, 0, Command.INFO2_WRITE | Command.INFO2_DELETE | Command.INFO2_DURABLE_DELETE,
+			fieldCount, 0);
 		end();
 	}
 

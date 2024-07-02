@@ -129,10 +129,6 @@ public final class TranMonitor {
 		Set<Key> keySet = tran.getWrites();
 
 		if (keySet.isEmpty()) {
-			// There is nothing to roll-forward. Remove MRT monitor if it exists.
-			if (tran.getNamespace() != null) {
-				close(cluster, tran, writePolicy, tranKey);
-			}
 			return;
 		}
 
@@ -147,10 +143,17 @@ public final class TranMonitor {
 	}
 
 	public static void abort(Cluster cluster, Tran tran, BatchPolicy rollPolicy) {
+		Set<Key> keySet = tran.getWrites();
+
+		if (keySet.isEmpty()) {
+			return;
+		}
+
 		roll(cluster, tran, rollPolicy, Command.INFO4_MRT_ROLL_BACK);
 
 		WritePolicy writePolicy = new WritePolicy(rollPolicy);
 		Key tranKey = getTranMonitorKey(tran);
+
 		close(cluster, tran, writePolicy, tranKey);
 	}
 
