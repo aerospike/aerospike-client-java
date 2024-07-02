@@ -53,8 +53,6 @@ public abstract class AsyncTranExecutor {
 			return;
 		}
 
-		tran.setNamespace(cmdKey.namespace);
-
 		// Add key to MRT monitor and then run original command.
 		Operation[] ops = TranMonitor.getTranOps(tran, cmdKey);
 		AsyncTranExecutor.Single ate = new AsyncTranExecutor.Single(eventLoop, cluster, command);
@@ -74,15 +72,7 @@ public abstract class AsyncTranExecutor {
 		}
 
 		// Add write keys to MRT monitor and then run original command.
-		Tran tran = policy.tran;
-		ArrayList<Value> list = new ArrayList<>(keys.length);
-
-		for (Key key : keys) {
-			tran.setNamespace(key.namespace);
-			list.add(Value.get(key.digest));
-		}
-
-		Operation[] ops = TranMonitor.getTranOps(tran, list);
+		Operation[] ops = TranMonitor.getTranOps(policy.tran, keys);
 		AsyncTranExecutor.Batch ate = new AsyncTranExecutor.Batch(executor, commands);
 		ate.execute(policy, ops);
 	}
@@ -100,18 +90,7 @@ public abstract class AsyncTranExecutor {
 		}
 
 		// Add write keys to MRT monitor and then run original command.
-		Tran tran = policy.tran;
-		ArrayList<Value> list = new ArrayList<>(records.size());
-
-		for (BatchRecord br : records) {
-			if (br.hasWrite) {
-				Key key = br.key;
-				tran.setNamespace(key.namespace);
-				list.add(Value.get(key.digest));
-			}
-		}
-
-		Operation[] ops = TranMonitor.getTranOps(tran, list);
+		Operation[] ops = TranMonitor.getTranOps(policy.tran, records);
 		AsyncTranExecutor.Batch ate = new AsyncTranExecutor.Batch(executor, commands);
 		ate.execute(policy, ops);
 	}
