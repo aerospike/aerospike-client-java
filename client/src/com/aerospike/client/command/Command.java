@@ -155,9 +155,9 @@ public class Command {
 		Tran tran = policy.tran;
 
 		begin();
-		int fieldCount = sizeTranMonitor(tran, key);
+		int fieldCount = estimateKeySize(key);
 		dataOffset += args.size;
-		writeTranMonitor(tran, key, args.readAttr, args.writeAttr, fieldCount, args.operations.length);
+		writeTranMonitor(key, args.readAttr, args.writeAttr, fieldCount, args.operations.length);
 
 		for (Operation operation : args.operations) {
 			writeOperation(operation);
@@ -169,11 +169,6 @@ public class Command {
 	public final void setTranVerify(Tran tran, Key key, long ver) {
 		begin();
 		int fieldCount = estimateKeySize(key);
-
-		if (tran.getDeadline() != 0) {
-			dataOffset += 4 + FIELD_HEADER_SIZE;
-			fieldCount++;
-		}
 
 		// Version field.
 		dataOffset += 7 + FIELD_HEADER_SIZE;
@@ -194,11 +189,6 @@ public class Command {
 		dataOffset = MSG_TOTAL_HEADER_SIZE;
 
 		writeKey(key);
-
-		if (tran.getDeadline() != 0) {
-			writeFieldLE(tran.getDeadline(), FieldType.MRT_DEADLINE);
-		}
-
 		writeFieldVersion(ver);
 		end();
 	}
@@ -247,10 +237,6 @@ public class Command {
 				dataOffset += Buffer.estimateSizeUtf8(key.namespace) + FIELD_HEADER_SIZE;
 				dataOffset += Buffer.estimateSizeUtf8(key.setName) + FIELD_HEADER_SIZE;
 
-				if (tran.getDeadline() != 0) {
-					dataOffset += 4 + FIELD_HEADER_SIZE;
-				}
-
 				if (ver != null) {
 					dataOffset += 7 + FIELD_HEADER_SIZE;
 				}
@@ -296,19 +282,11 @@ public class Command {
 
 				int fieldCount = 0;
 
-				if (tran.getDeadline() != 0) {
-					fieldCount++;
-				}
-
 				if (ver != null) {
 					fieldCount++;
 				}
 
 				writeBatchFields(key, fieldCount, 0);
-
-				if (tran.getDeadline() != 0) {
-					writeFieldLE(tran.getDeadline(), FieldType.MRT_DEADLINE);
-				}
 
 				if (ver != null) {
 					writeFieldVersion(ver);
@@ -328,9 +306,9 @@ public class Command {
 		Bin bin = new Bin("fwd", true);
 
 		begin();
-		int fieldCount = sizeTranMonitor(tran, key);
+		int fieldCount = estimateKeySize(key);
 		estimateOperationSize(bin);
-		writeTranMonitor(tran, key, 0, Command.INFO2_WRITE, fieldCount, 1);
+		writeTranMonitor(key, 0, Command.INFO2_WRITE, fieldCount, 1);
 		writeOperation(bin, Operation.Type.WRITE);
 		end();
 	}
@@ -339,7 +317,7 @@ public class Command {
 		begin();
 		int fieldCount = estimateKeySize(key);
 
-		fieldCount += sizeTran(key, tran);
+		fieldCount += sizeTran(key, tran, false);
 
 		sizeBuffer();
 		dataBuffer[8]  = MSG_REMAINING_HEADER_SIZE;
@@ -356,7 +334,7 @@ public class Command {
 		dataOffset = MSG_TOTAL_HEADER_SIZE;
 
 		writeKey(key);
-		writeTran(tran);
+		writeTran(tran, false);
 		end();
 	}
 
@@ -459,23 +437,13 @@ public class Command {
 
 	public void setTranClose(Tran tran, Key key) {
 		begin();
-		int fieldCount = sizeTranMonitor(tran, key);
-		writeTranMonitor(tran, key, 0, Command.INFO2_WRITE | Command.INFO2_DELETE | Command.INFO2_DURABLE_DELETE,
+		int fieldCount = estimateKeySize(key);
+		writeTranMonitor(key, 0, Command.INFO2_WRITE | Command.INFO2_DELETE | Command.INFO2_DURABLE_DELETE,
 			fieldCount, 0);
 		end();
 	}
 
-	private int sizeTranMonitor(Tran tran, Key key) {
-		int fieldCount = estimateKeySize(key);
-
-		if (tran.getDeadline() != 0) {
-			dataOffset += 4 + FIELD_HEADER_SIZE;
-			fieldCount++;
-		}
-		return fieldCount;
-	}
-
-	private void writeTranMonitor(Tran tran, Key key, int readAttr, int writeAttr, int fieldCount, int opCount) {
+	private void writeTranMonitor(Key key, int readAttr, int writeAttr, int fieldCount, int opCount) {
 		sizeBuffer();
 
 		dataBuffer[8]  = MSG_REMAINING_HEADER_SIZE;
@@ -492,10 +460,6 @@ public class Command {
 		dataOffset = MSG_TOTAL_HEADER_SIZE;
 
 		writeKey(key);
-
-		if (tran.getDeadline() != 0) {
-			writeFieldLE(tran.getDeadline(), FieldType.MRT_DEADLINE);
-		}
 	}
 
 	//--------------------------------------------------
@@ -504,7 +468,7 @@ public class Command {
 
 	public final void setWrite(WritePolicy policy, Operation.Type operation, Key key, Bin[] bins) {
 		begin();
-		int fieldCount = estimateKeySize(policy, key);
+		int fieldCount = estimateKeySize(policy, key, true);
 
 		if (policy.filterExp != null) {
 			dataOffset += policy.filterExp.size();
@@ -516,7 +480,7 @@ public class Command {
 		}
 		sizeBuffer();
 		writeHeaderWrite(policy, Command.INFO2_WRITE, fieldCount, bins.length);
-		writeKey(policy, key);
+		writeKey(policy, key, true);
 
 		if (policy.filterExp != null) {
 			policy.filterExp.write(this);
@@ -531,7 +495,7 @@ public class Command {
 
 	public void setDelete(WritePolicy policy, Key key) {
 		begin();
-		int fieldCount = estimateKeySize(policy, key);
+		int fieldCount = estimateKeySize(policy, key, true);
 
 		if (policy.filterExp != null) {
 			dataOffset += policy.filterExp.size();
@@ -539,7 +503,7 @@ public class Command {
 		}
 		sizeBuffer();
 		writeHeaderWrite(policy, Command.INFO2_WRITE | Command.INFO2_DELETE, fieldCount, 0);
-		writeKey(policy, key);
+		writeKey(policy, key, true);
 
 		if (policy.filterExp != null) {
 			policy.filterExp.write(this);
@@ -558,7 +522,7 @@ public class Command {
 
 	public final void setTouch(WritePolicy policy, Key key) {
 		begin();
-		int fieldCount = estimateKeySize(policy, key);
+		int fieldCount = estimateKeySize(policy, key, true);
 
 		if (policy.filterExp != null) {
 			dataOffset += policy.filterExp.size();
@@ -567,7 +531,7 @@ public class Command {
 		estimateOperationSize();
 		sizeBuffer();
 		writeHeaderWrite(policy, Command.INFO2_WRITE, fieldCount, 1);
-		writeKey(policy, key);
+		writeKey(policy, key, true);
 
 		if (policy.filterExp != null) {
 			policy.filterExp.write(this);
@@ -582,7 +546,7 @@ public class Command {
 
 	public final void setExists(Policy policy, Key key) {
 		begin();
-		int fieldCount = estimateKeySize(policy, key);
+		int fieldCount = estimateKeySize(policy, key, false);
 
 		if (policy.filterExp != null) {
 			dataOffset += policy.filterExp.size();
@@ -590,7 +554,7 @@ public class Command {
 		}
 		sizeBuffer();
 		writeHeaderReadHeader(policy, Command.INFO1_READ | Command.INFO1_NOBINDATA, fieldCount, 0);
-		writeKey(policy, key);
+		writeKey(policy, key, false);
 
 		if (policy.filterExp != null) {
 			policy.filterExp.write(this);
@@ -610,7 +574,7 @@ public class Command {
 		}
 
 		begin();
-		int fieldCount = estimateKeySize(policy, key);
+		int fieldCount = estimateKeySize(policy, key, false);
 
 		if (policy.filterExp != null) {
 			dataOffset += policy.filterExp.size();
@@ -625,7 +589,7 @@ public class Command {
 
 		sizeBuffer();
 		writeHeaderRead(policy, serverTimeout, readAttr, 0, 0, fieldCount, opCount);
-		writeKey(policy, key);
+		writeKey(policy, key, false);
 
 		if (policy.filterExp != null) {
 			policy.filterExp.write(this);
@@ -724,7 +688,7 @@ public class Command {
 
 	public final void setReadHeader(Policy policy, Key key) {
 		begin();
-		int fieldCount = estimateKeySize(policy, key);
+		int fieldCount = estimateKeySize(policy, key, false);
 
 		if (policy.filterExp != null) {
 			dataOffset += policy.filterExp.size();
@@ -732,7 +696,7 @@ public class Command {
 		}
 		sizeBuffer();
 		writeHeaderReadHeader(policy, Command.INFO1_READ | Command.INFO1_NOBINDATA, fieldCount, 0);
-		writeKey(policy, key);
+		writeKey(policy, key, false);
 
 		if (policy.filterExp != null) {
 			policy.filterExp.write(this);
@@ -746,7 +710,7 @@ public class Command {
 
 	public final void setOperate(WritePolicy policy, Key key, OperateArgs args) {
 		begin();
-		int fieldCount = estimateKeySize(policy, key);
+		int fieldCount = estimateKeySize(policy, key, args.hasWrite);
 
 		if (policy.filterExp != null) {
 			dataOffset += policy.filterExp.size();
@@ -756,7 +720,7 @@ public class Command {
 		sizeBuffer();
 
 		writeHeaderReadWrite(policy, args, fieldCount);
-		writeKey(policy, key);
+		writeKey(policy, key, args.hasWrite);
 
 		if (policy.filterExp != null) {
 			policy.filterExp.write(this);
@@ -791,7 +755,7 @@ public class Command {
 
 	public final void setUdf(WritePolicy policy, Key key, String packageName, String functionName, Value[] args) {
 		begin();
-		int fieldCount = estimateKeySize(policy, key);
+		int fieldCount = estimateKeySize(policy, key, true);
 
 		if (policy.filterExp != null) {
 			dataOffset += policy.filterExp.size();
@@ -803,7 +767,7 @@ public class Command {
 
 		sizeBuffer();
 		writeHeaderWrite(policy, Command.INFO2_WRITE, fieldCount, 0);
-		writeKey(policy, key);
+		writeKey(policy, key, true);
 
 		if (policy.filterExp != null) {
 			policy.filterExp.write(this);
@@ -1695,7 +1659,7 @@ public class Command {
 				fieldCount++;
 			}
 
-			if (tran.getDeadline() != 0) {
+			if (attr.hasWrite && tran.getDeadline() != 0) {
 				fieldCount++;
 			}
 		}
@@ -1717,7 +1681,7 @@ public class Command {
 				writeFieldVersion(ver);
 			}
 
-			if (tran.getDeadline() != 0) {
+			if (attr.hasWrite && tran.getDeadline() != 0) {
 				writeFieldLE(tran.getDeadline(), FieldType.MRT_DEADLINE);
 			}
 		}
@@ -2188,7 +2152,7 @@ public class Command {
 	//--------------------------------------------------
 
 	private final int estimateKeyAttrSize(Policy policy, Key key, BatchAttr attr, Expression filterExp) {
-		int fieldCount = estimateKeySize(policy, key);
+		int fieldCount = estimateKeySize(policy, key, attr.hasWrite);
 
 		if (filterExp != null) {
 			dataOffset += filterExp.size();
@@ -2197,10 +2161,10 @@ public class Command {
 		return fieldCount;
 	}
 
-	private int estimateKeySize(Policy policy, Key key) {
+	private int estimateKeySize(Policy policy, Key key, boolean sendDeadline) {
 		int fieldCount = estimateKeySize(key);
 
-		fieldCount += sizeTran(key, policy.tran);
+		fieldCount += sizeTran(key, policy.tran, sendDeadline);
 
 		if (policy.sendKey) {
 			dataOffset += key.userKey.estimateSize() + FIELD_HEADER_SIZE + 1;
@@ -2540,16 +2504,16 @@ public class Command {
 		Buffer.shortToBytes(operationCount, dataBuffer, 28);
 		dataOffset = MSG_TOTAL_HEADER_SIZE;
 
-		writeKey(policy, key);
+		writeKey(policy, key, attr.hasWrite);
 
 		if (filterExp != null) {
 			filterExp.write(this);
 		}
 	}
 
-	private void writeKey(Policy policy, Key key) {
+	private void writeKey(Policy policy, Key key, boolean sendDeadline) {
 		writeKey(key);
-		writeTran(policy.tran);
+		writeTran(policy.tran, sendDeadline);
 
 		if (policy.sendKey) {
 			writeField(key.userKey, FieldType.KEY);
@@ -2646,7 +2610,7 @@ public class Command {
 		dataBuffer[dataOffset++] = 0;
 	}
 
-	private int sizeTran(Key key, Tran tran) {
+	private int sizeTran(Key key, Tran tran, boolean sendDeadline) {
 		int fieldCount = 0;
 
 		if (tran != null) {
@@ -2660,7 +2624,7 @@ public class Command {
 				fieldCount++;
 			}
 
-			if (tran.getDeadline() != 0) {
+			if (sendDeadline && tran.getDeadline() != 0) {
 				dataOffset += 4 + FIELD_HEADER_SIZE;
 				fieldCount++;
 			}
@@ -2668,7 +2632,7 @@ public class Command {
 		return fieldCount;
 	}
 
-	private void writeTran(Tran tran) {
+	private void writeTran(Tran tran, boolean sendDeadline) {
 		if (tran != null) {
 			writeFieldLE(tran.getId(), FieldType.MRT_ID);
 
@@ -2676,7 +2640,7 @@ public class Command {
 				writeFieldVersion(version);
 			}
 
-			if (tran.getDeadline() != 0) {
+			if (sendDeadline && tran.getDeadline() != 0) {
 				writeFieldLE(tran.getDeadline(), FieldType.MRT_DEADLINE);
 			}
 		}

@@ -708,6 +708,12 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * @throws AerospikeException	if event loop registration fails
 	 */
 	public final void tranAbort(EventLoop eventLoop, TranAbortListener listener, Tran tran) {
+		if (tran.getWrites().isEmpty()) {
+			// There is nothing to abort.
+			listener.onSuccess();
+			return;
+		}
+
 		if (eventLoop == null) {
 			eventLoop = cluster.eventLoops.next();
 		}
