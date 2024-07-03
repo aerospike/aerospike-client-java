@@ -48,27 +48,48 @@ public final class TranMonitor {
 			return;
 		}
 
-		tran.setNamespace(cmdKey.namespace);
-
 		Operation[] ops = getTranOps(tran, cmdKey);
-		addWriteKeys(cluster, tran, policy, ops);
+		addWriteKeys(cluster, policy, ops);
 	}
 
 	public static void addKeys(Cluster cluster, BatchPolicy policy, Key[] keys) {
-		Tran tran = policy.tran;
+		Operation[] ops = getTranOps(policy.tran, keys);
+		addWriteKeys(cluster, policy, ops);
+	}
+
+	public static void addKeys(Cluster cluster, BatchPolicy policy, List<BatchRecord> records) {
+		Operation[] ops = getTranOps(policy.tran, records);
+		addWriteKeys(cluster, policy, ops);
+	}
+
+	public static Operation[] getTranOps(Tran tran, Key cmdKey) {
+		tran.setNamespace(cmdKey.namespace);
+
+		if (tran.getDeadline() == 0) {
+			// No existing monitor record.
+			return new Operation[] {
+				Operation.put(new Bin("id", tran.getId())),
+				ListOperation.append(OrderedListPolicy, "keyds", Value.get(cmdKey.digest))
+			};
+		}
+		else {
+			return new Operation[] {
+				ListOperation.append(OrderedListPolicy, "keyds", Value.get(cmdKey.digest))
+			};
+		}
+	}
+
+	public static Operation[] getTranOps(Tran tran, Key[] keys) {
 		ArrayList<Value> list = new ArrayList<>(keys.length);
 
 		for (Key key : keys) {
 			tran.setNamespace(key.namespace);
 			list.add(Value.get(key.digest));
 		}
-
-		Operation[] ops = getTranOps(tran, list);
-		addWriteKeys(cluster, tran, policy, ops);
+		return getTranOps(tran, list);
 	}
 
-	public static void addKeys(Cluster cluster, BatchPolicy policy, List<BatchRecord> records) {
-		Tran tran = policy.tran;
+	public static Operation[] getTranOps(Tran tran, List<BatchRecord> records) {
 		ArrayList<Value> list = new ArrayList<>(records.size());
 
 		for (BatchRecord br : records) {
@@ -78,27 +99,26 @@ public final class TranMonitor {
 				list.add(Value.get(key.digest));
 			}
 		}
-
-		Operation[] ops = getTranOps(tran, list);
-		addWriteKeys(cluster, tran, policy, ops);
+		return getTranOps(tran, list);
 	}
 
-	public static Operation[] getTranOps(Tran tran, Key cmdKey) {
-		return new Operation[]{
-			Operation.put(new Bin("id", tran.getId())),
-			ListOperation.append(OrderedListPolicy, "keyds", Value.get(cmdKey.digest))
-		};
+	private static Operation[] getTranOps(Tran tran, ArrayList<Value> list) {
+		if (tran.getDeadline() == 0) {
+			// No existing monitor record.
+			return new Operation[] {
+				Operation.put(new Bin("id", tran.getId())),
+				ListOperation.appendItems(OrderedListPolicy, "keyds", list)
+			};
+		}
+		else {
+			return new Operation[] {
+				ListOperation.appendItems(OrderedListPolicy, "keyds", list)
+			};
+		}
 	}
 
-	public static Operation[] getTranOps(Tran tran, ArrayList<Value> list) {
-		return new Operation[] {
-			Operation.put(new Bin("id", tran.getId())),
-			ListOperation.appendItems(OrderedListPolicy, "keyds", list)
-		};
-	}
-
-	private static void addWriteKeys(Cluster cluster, Tran tran, Policy policy, Operation[] ops) {
-		Key tranKey = getTranMonitorKey(tran);
+	private static void addWriteKeys(Cluster cluster, Policy policy, Operation[] ops) {
+		Key tranKey = getTranMonitorKey(policy.tran);
 		WritePolicy wp = copyTimeoutPolicy(policy);
 		OperateArgs args = new OperateArgs(wp, null, null, ops);
 		TranAddKeys cmd = new TranAddKeys(cluster, tranKey, args);

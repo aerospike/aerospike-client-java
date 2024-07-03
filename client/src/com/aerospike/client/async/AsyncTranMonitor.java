@@ -91,13 +91,8 @@ public final class AsyncTranMonitor {
 					Set<Key> keySet = tran.getWrites();
 
 					if (keySet.isEmpty()) {
-						// There is nothing to roll-forward. Remove MRT monitor if it exists.
-						if (tran.getNamespace() != null) {
-							close(true);
-						}
-						else {
-							notifySuccess();
-						}
+						// There is nothing to roll-forward.
+						notifySuccess();
 						return;
 					}
 
