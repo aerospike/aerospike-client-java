@@ -27,6 +27,7 @@ import com.aerospike.client.proxy.grpc.GrpcCallExecutor;
 import com.aerospike.client.proxy.grpc.GrpcConversions;
 import com.aerospike.client.proxy.grpc.GrpcStreamingCall;
 import com.aerospike.client.util.Util;
+import com.aerospike.proxy.client.InfoGrpc;
 import com.aerospike.proxy.client.Kvs;
 import com.google.protobuf.ByteString;
 
@@ -57,7 +58,7 @@ public abstract class CommandProxy {
 		this.numExpectedResponses = numExpectedResponses;
 	}
 
-	final void execute() {
+	void execute() {
 		if (policy.totalTimeout > 0) {
 			deadlineNanos = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(policy.totalTimeout);
 			sendTimeoutMillis = (policy.socketTimeout > 0 && policy.socketTimeout < policy.totalTimeout)?
