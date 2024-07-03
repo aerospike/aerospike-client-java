@@ -100,7 +100,6 @@ public class InfoCommandProxy extends SingleCommandProxy {
 
     }
 
-    @Override
     void onFailure(Throwable t) {
         AerospikeException ae;
 

@@ -18,6 +18,7 @@ package com.aerospike.examples;
 
 import java.io.IOException;
 import java.net.ConnectException;
+import java.util.Map;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Bin;
@@ -25,8 +26,10 @@ import com.aerospike.client.IAerospikeClient;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
 import com.aerospike.client.async.EventLoop;
+import com.aerospike.client.listener.InfoListener;
 import com.aerospike.client.listener.RecordListener;
 import com.aerospike.client.listener.WriteListener;
+import com.aerospike.client.policy.InfoPolicy;
 
 public class AsyncPutGet extends AsyncExample {
 	/**
@@ -34,11 +37,34 @@ public class AsyncPutGet extends AsyncExample {
 	 */
 	@Override
 	public void runExample(IAerospikeClient client, EventLoop eventLoop) {
+        InfoListener listener = new InfoListener() {
+            @Override
+            public void onSuccess(Map<String, String> map) {
+                System.out.println("Success");
+                for (String cmd: map.keySet()){
+                    System.out.println("Command: "+cmd+" Output: "+map.get(cmd));
+                }
+            }
+            @Override
+            public void onFailure(AerospikeException e) {
+                System.err.println("Info command failed: " + e.getMessage());
+            }
+        };
+
+        String[] commands = new String[] { "build" };
+
+        InfoPolicy infoPolicy = new InfoPolicy();
+        infoPolicy.setTimeout(5000);
+
+        System.out.println("Call async info");
+        client.info(eventLoop, listener, infoPolicy, null, commands);
+		/*
 		Key key = new Key(params.namespace, params.set, "putgetkey");
 		Bin bin = new Bin("putgetbin", "value");
 
 		runPutGetInline(client, eventLoop, key, bin);
 		runPutGetWithRetry(client, eventLoop, key, bin);
+		*/
 	}
 
 	// Inline asynchronous put/get calls.
