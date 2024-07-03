@@ -63,12 +63,10 @@ public final class TranMonitor {
 	}
 
 	public static Operation[] getTranOps(Tran tran, Key cmdKey) {
-		boolean first = tran.getNamespace() == null;
-
 		tran.setNamespace(cmdKey.namespace);
 
-		if (first) {
-			// This is the first operation for the given tran (MRT).
+		if (tran.getDeadline() == 0) {
+			// No existing monitor record.
 			return new Operation[] {
 				Operation.put(new Bin("id", tran.getId())),
 				ListOperation.append(OrderedListPolicy, "keyds", Value.get(cmdKey.digest))
@@ -83,18 +81,16 @@ public final class TranMonitor {
 
 	public static Operation[] getTranOps(Tran tran, Key[] keys) {
 		ArrayList<Value> list = new ArrayList<>(keys.length);
-		boolean first = tran.getNamespace() == null;
 
 		for (Key key : keys) {
 			tran.setNamespace(key.namespace);
 			list.add(Value.get(key.digest));
 		}
-		return getTranOps(tran, list, first);
+		return getTranOps(tran, list);
 	}
 
 	public static Operation[] getTranOps(Tran tran, List<BatchRecord> records) {
 		ArrayList<Value> list = new ArrayList<>(records.size());
-		boolean first = tran.getNamespace() == null;
 
 		for (BatchRecord br : records) {
 			if (br.hasWrite) {
@@ -103,11 +99,12 @@ public final class TranMonitor {
 				list.add(Value.get(key.digest));
 			}
 		}
-		return getTranOps(tran, list, first);
+		return getTranOps(tran, list);
 	}
 
-	private static Operation[] getTranOps(Tran tran, ArrayList<Value> list, boolean first) {
-		if (first) {
+	private static Operation[] getTranOps(Tran tran, ArrayList<Value> list) {
+		if (tran.getDeadline() == 0) {
+			// No existing monitor record.
 			return new Operation[] {
 				Operation.put(new Bin("id", tran.getId())),
 				ListOperation.appendItems(OrderedListPolicy, "keyds", list)
