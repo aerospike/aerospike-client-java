@@ -148,33 +148,33 @@ public final class TranMonitor {
 		Key tranKey = getTranMonitorKey(tran);
 		Set<Key> keySet = tran.getWrites();
 
-		if (keySet.isEmpty()) {
-			return;
+		if (! keySet.isEmpty()) {
+			// Tell MRT monitor that a roll-forward will commence.
+			willRollForward(cluster, tran, writePolicy, tranKey);
+
+			// Roll-forward writes in batch.
+			roll(cluster, tran, rollPolicy, Command.INFO4_MRT_ROLL_FORWARD);
 		}
 
-		// Tell MRT monitor that a roll-forward will commence.
-		willRollForward(cluster, tran, writePolicy, tranKey);
-
-		// Roll-forward writes in batch.
-		roll(cluster, tran, rollPolicy, Command.INFO4_MRT_ROLL_FORWARD);
-
-		// Remove MRT monitor.
-		close(cluster, tran, writePolicy, tranKey);
+		if (tran.getDeadline() != 0) {
+			// Remove MRT monitor.
+			close(cluster, tran, writePolicy, tranKey);
+		}
 	}
 
 	public static void abort(Cluster cluster, Tran tran, BatchPolicy rollPolicy) {
 		Set<Key> keySet = tran.getWrites();
 
-		if (keySet.isEmpty()) {
-			return;
+		if (! keySet.isEmpty()) {
+			roll(cluster, tran, rollPolicy, Command.INFO4_MRT_ROLL_BACK);
 		}
 
-		roll(cluster, tran, rollPolicy, Command.INFO4_MRT_ROLL_BACK);
+		if (tran.getDeadline() != 0) {
+			WritePolicy writePolicy = new WritePolicy(rollPolicy);
+			Key tranKey = getTranMonitorKey(tran);
 
-		WritePolicy writePolicy = new WritePolicy(rollPolicy);
-		Key tranKey = getTranMonitorKey(tran);
-
-		close(cluster, tran, writePolicy, tranKey);
+			close(cluster, tran, writePolicy, tranKey);
+		}
 	}
 
 	public static Key getTranMonitorKey(Tran tran) {
@@ -231,6 +231,13 @@ public final class TranMonitor {
 			// Read verification failed. Abort transaction.
 			try {
 				roll(cluster, tran, rollPolicy, Command.INFO4_MRT_ROLL_BACK);
+
+				if (tran.getDeadline() != 0) {
+					WritePolicy writePolicy = new WritePolicy(rollPolicy);
+					Key tranKey = getTranMonitorKey(tran);
+
+					close(cluster, tran, writePolicy, tranKey);
+				}
 			}
 			catch (Throwable e2) {
 				// Throw combination of tranAbort and original exception.
