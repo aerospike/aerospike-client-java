@@ -22,28 +22,30 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Suite;
 
 import com.aerospike.client.Host;
+import com.aerospike.client.Info;
+import com.aerospike.client.cluster.Node;
 import com.aerospike.client.IAerospikeClient;
 import com.aerospike.client.Log;
-import com.aerospike.client.async.EventLoop;
-import com.aerospike.client.async.EventLoopType;
-import com.aerospike.client.async.EventLoops;
-import com.aerospike.client.async.EventPolicy;
-import com.aerospike.client.async.NettyEventLoops;
-import com.aerospike.client.async.NioEventLoops;
+// import com.aerospike.client.async.EventLoop;
+// import com.aerospike.client.async.EventLoopType;
+// import com.aerospike.client.async.EventLoops;
+// import com.aerospike.client.async.EventPolicy;
+// import com.aerospike.client.async.NettyEventLoops;
+// import com.aerospike.client.async.NioEventLoops;
 import com.aerospike.client.policy.ClientPolicy;
 import com.aerospike.client.proxy.AerospikeClientFactory;
-import com.aerospike.test.async.TestAsyncTran;
+// import com.aerospike.test.async.TestAsyncTran;
 
 import com.aerospike.test.sync.basic.TestTran;
 
 import com.aerospike.test.util.Args;
 
-import io.netty.channel.EventLoopGroup;
-import io.netty.channel.epoll.Epoll;
-import io.netty.channel.epoll.EpollEventLoopGroup;
-import io.netty.channel.kqueue.KQueueEventLoopGroup;
-import io.netty.channel.nio.NioEventLoopGroup;
-import io.netty.incubator.channel.uring.IOUringEventLoopGroup;
+// import io.netty.channel.EventLoopGroup;
+// import io.netty.channel.epoll.Epoll;
+// import io.netty.channel.epoll.EpollEventLoopGroup;
+// import io.netty.channel.kqueue.KQueueEventLoopGroup;
+// import io.netty.channel.nio.NioEventLoopGroup;
+// import io.netty.incubator.channel.uring.IOUringEventLoopGroup;
 
 @RunWith(Suite.class)
 @Suite.SuiteClasses({
@@ -53,7 +55,7 @@ public class SuiteMRT {
 	public static IAerospikeClient client = null;
 
 	@BeforeClass
-	public static void init() {
+	public static void init() throws InterruptedException {
 		Log.setCallback(null);
 
 		System.out.println("Begin AerospikeClient");
@@ -65,6 +67,28 @@ public class SuiteMRT {
 		Host[] hosts = Host.parseHosts(args.host, args.port);
 
 		client = AerospikeClientFactory.getClient(policy, args.useProxyClient, hosts);
+
+
+        Info.request(null, client.getNodes()[0], "set-config:context=namespace;id=test;strong-consistency-allow-expunge=true");
+        System.out.println("Connected Client to DB!");
+        // Set Roster to observed_nodes & recluster
+        String inf = Info.request(null, client.getNodes()[0], "roster");
+        System.out.println("CURRENT ROSTER:");
+        System.out.println(inf);
+        int prefix_end = inf.lastIndexOf('=');
+        String observed = inf.substring(prefix_end + 1);
+        System.out.println(observed);
+        inf = Info.request(client.getNodes()[0], "roster-set:namespace=test;nodes=" + observed);
+        System.out.println("Roster-set? - " + inf);
+        for (Node node : client.getNodes() ) {
+            inf = Info.request(node, "recluster");
+            System.out.println(node.getName() + "-" + inf);
+        }
+        Thread.sleep(5000);
+        inf = Info.request(client.getNodes()[0], "roster");
+        System.out.println("NEW ROSTER:");
+        System.out.println(inf);
+
 
 		try {
 			args.setServerSpecific(client);
