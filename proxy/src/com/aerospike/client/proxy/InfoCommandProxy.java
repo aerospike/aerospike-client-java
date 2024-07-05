@@ -1,7 +1,6 @@
 package com.aerospike.client.proxy;
 
 import com.aerospike.client.AerospikeException;
-import com.aerospike.client.Log;
 import com.aerospike.client.ResultCode;
 import com.aerospike.client.command.Command;
 import com.aerospike.client.listener.InfoListener;
@@ -9,15 +8,14 @@ import com.aerospike.client.policy.InfoPolicy;
 import com.aerospike.client.policy.Policy;
 import com.aerospike.client.proxy.grpc.GrpcCallExecutor;
 import com.aerospike.client.proxy.grpc.GrpcConversions;
-import com.aerospike.client.proxy.grpc.GrpcStreamingCall;
-import com.aerospike.proxy.client.AboutGrpc;
 import com.aerospike.proxy.client.Kvs;
 import com.aerospike.proxy.client.InfoGrpc;
 import io.grpc.*;
-import io.grpc.stub.StreamObserver;
 
+import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class InfoCommandProxy extends SingleCommandProxy {
 
@@ -25,7 +23,6 @@ public class InfoCommandProxy extends SingleCommandProxy {
     private final String[] commands;
     private final InfoPolicy infoPolicy;
     private final GrpcCallExecutor executor;
-    private final MethodDescriptor<Kvs.AerospikeRequestPayload, Kvs.AerospikeResponsePayload> methodDescriptor;
     final Policy policy;
 
     public InfoCommandProxy(GrpcCallExecutor executor, InfoListener listener, InfoPolicy policy, String... commands) {
@@ -34,7 +31,6 @@ public class InfoCommandProxy extends SingleCommandProxy {
         this.infoPolicy = policy;
         this.listener = listener;
         this.commands = commands;
-        this.methodDescriptor = InfoGrpc.getInfoMethod();
         this.policy = createPolicy(policy);
     }
 
@@ -134,17 +130,51 @@ public class InfoCommandProxy extends SingleCommandProxy {
     }
 
     @Override
-    void parseResult(Parser parser) {
-        int resultCode = parser.parseResultCode();
-        if (resultCode != ResultCode.OK) {
-            throw new AerospikeException(resultCode);
-        }
-        Map<String, String> infoCommandResponse = parser.parseInfoResult();
+    void onResponse(Kvs.AerospikeResponsePayload response){
+        String infoResponse = String.valueOf(response.getPayload());
+        Map<String, String> infoCommandResponse = createInfoMap(infoResponse);
         try {
             listener.onSuccess(infoCommandResponse);
         }
         catch (Throwable t) {
             logOnSuccessError(t);
         }
+    }
+
+    public static Map<String, String> createInfoMap(String byteStringRepresentation) {
+        Map<String, String> infoMap = new HashMap<>();
+
+        String contents = getContents(byteStringRepresentation);
+
+        if (contents != null && !contents.isEmpty()) {
+            String[] commands = contents.split("\\\\n");
+
+            for (String command : commands) {
+                String[] keyValue = command.split("\\\\t", 2);
+
+                if (keyValue.length == 2) {
+                    infoMap.put(keyValue[0], keyValue[1]);
+                }
+            }
+        }
+        return infoMap;
+    }
+
+    public static String getContents(String byteStringRepresentation) {
+        String regex = "contents=\"(.*?)\"";
+
+        Pattern pattern = Pattern.compile(regex);
+        Matcher matcher = pattern.matcher(byteStringRepresentation);
+
+        if (matcher.find()) {
+            return matcher.group(1);
+        }
+
+        return null;
+    }
+
+    @Override
+    void parseResult(Parser parser) {
+
     }
 }
