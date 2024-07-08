@@ -90,13 +90,13 @@ public final class AsyncTranMonitor {
 				if (status) {
 					Set<Key> keySet = tran.getWrites();
 
-					if (keySet.isEmpty()) {
-						// There is nothing to roll-forward.
-						notifySuccess();
-						return;
+					if (! keySet.isEmpty()) {
+						willRollForward();
 					}
-
-					willRollForward();
+					else {
+						// There is nothing to roll-forward.
+						close(true);
+					}
 				}
 				else {
 					rollBack();
@@ -308,6 +308,17 @@ public final class AsyncTranMonitor {
 	}
 
 	private void close(boolean verified) {
+		if (tran.getDeadline() == 0) {
+			// There is no MRT monitor to remove.
+			if (verified) {
+				notifySuccess();
+			}
+			else {
+				// Record verification failed and MRT was aborted.
+				notifyFailure(new AerospikeException(ResultCode.TRAN_FAILED, VerifyFail));
+			}
+		}
+
 		try {
 			DeleteListener deleteListener = new DeleteListener() {
 				@Override
