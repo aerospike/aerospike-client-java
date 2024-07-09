@@ -17,7 +17,6 @@
 package com.aerospike.client.listener;
 
 import com.aerospike.client.AerospikeException;
-import com.aerospike.client.BatchRecord;
 
 /**
  * Asynchronous result notifications for multi-record transaction (MRT) commits.
@@ -30,10 +29,6 @@ public interface TranCommitListener {
 
 	/**
 	 * This method is called when the commit fails.
-	 *
-	 * @param verifyRecords     record verify responses for each record read in the MRT
-	 * @param rollRecords       record roll forward or backward responses for each record written in the MRT
-	 * @param ae                exception indicating which part of the commit process failed
 	 */
-	void onFailure(BatchRecord[] verifyRecords, BatchRecord[] rollRecords, AerospikeException ae);
+	void onFailure(AerospikeException.TranCommit ae);
 }
