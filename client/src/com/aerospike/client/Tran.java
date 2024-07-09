@@ -153,6 +153,7 @@ public final class Tran {
 	 */
 	public void close() {
 		namespace = null;
+		deadline = 0;
 		reads.clear();
 		writes.clear();
 	}
