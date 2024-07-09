@@ -649,9 +649,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * Requires server version 8.0+
 	 *
 	 * @param tran			multi-record transaction
-	 * @throws AerospikeException	if commit fails
+	 * @throws AerospikeException.TranCommit	if commit fails
 	 */
-	public final void tranCommit(Tran tran) {
+	public final void tranCommit(Tran tran)
+		throws AerospikeException.TranCommit {
 		TranMonitor tm = new TranMonitor(cluster, tran);
 		tm.commit(tranVerifyPolicyDefault, tranRollPolicyDefault);
 	}
@@ -672,7 +673,8 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * @param tran			multi-record transaction
 	 * @throws AerospikeException	if event loop registration fails
 	 */
-	public final void tranCommit(EventLoop eventLoop, TranCommitListener listener, Tran tran) {
+	public final void tranCommit(EventLoop eventLoop, TranCommitListener listener, Tran tran)
+		throws AerospikeException {
 		if (eventLoop == null) {
 			eventLoop = cluster.eventLoops.next();
 		}
@@ -689,9 +691,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * Requires server version 8.0+
 	 *
 	 * @param tran			multi-record transaction
-	 * @throws AerospikeException	if abort fails
+	 * @throws AerospikeException.TranAbort	if abort fails
 	 */
-	public final void tranAbort(Tran tran) {
+	public final void tranAbort(Tran tran)
+		throws AerospikeException.TranAbort {
 		TranMonitor tm = new TranMonitor(cluster, tran);
 		tm.abort(tranRollPolicyDefault);
 	}
@@ -710,7 +713,8 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * @param tran			multi-record transaction
 	 * @throws AerospikeException	if event loop registration fails
 	 */
-	public final void tranAbort(EventLoop eventLoop, TranAbortListener listener, Tran tran) {
+	public final void tranAbort(EventLoop eventLoop, TranAbortListener listener, Tran tran)
+		throws AerospikeException {
 		if (tran.getWrites().isEmpty()) {
 			// There is nothing to abort.
 			listener.onSuccess();

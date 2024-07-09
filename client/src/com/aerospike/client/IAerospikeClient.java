@@ -285,9 +285,10 @@ public interface IAerospikeClient extends Closeable {
 	 * Requires server version 8.0+
 	 *
 	 * @param tran			multi-record transaction
-	 * @throws AerospikeException	if commit fails
+	 * @throws AerospikeException.TranCommit	if commit fails
 	 */
-	void tranCommit(Tran tran);
+	void tranCommit(Tran tran)
+		throws AerospikeException.TranCommit;
 
 	/**
 	 * Asynchronously attempt to commit the given multi-record transaction. First, the expected
@@ -305,7 +306,8 @@ public interface IAerospikeClient extends Closeable {
 	 * @param tran			multi-record transaction
 	 * @throws AerospikeException	if event loop registration fails
 	 */
-	void tranCommit(EventLoop eventLoop, TranCommitListener listener, Tran tran);
+	void tranCommit(EventLoop eventLoop, TranCommitListener listener, Tran tran)
+		throws AerospikeException;
 
 	/**
 	 * Abort and rollback the given multi-record transaction.
@@ -313,9 +315,10 @@ public interface IAerospikeClient extends Closeable {
 	 * Requires server version 8.0+
 	 *
 	 * @param tran			multi-record transaction
-	 * @throws AerospikeException	if abort fails
+	 * @throws AerospikeException.TranAbort	if abort fails
 	 */
-	void tranAbort(Tran tran);
+	void tranAbort(Tran tran)
+		throws AerospikeException.TranAbort;
 
 	/**
 	 * Asynchronously abort and rollback the given multi-record transaction.
@@ -331,7 +334,8 @@ public interface IAerospikeClient extends Closeable {
 	 * @param tran			multi-record transaction
 	 * @throws AerospikeException	if event loop registration fails
 	 */
-	void tranAbort(EventLoop eventLoop, TranAbortListener listener, Tran tran);
+	void tranAbort(EventLoop eventLoop, TranAbortListener listener, Tran tran)
+		throws AerospikeException;
 
 	//-------------------------------------------------------
 	// Write Record Operations
