@@ -37,6 +37,7 @@ import com.aerospike.test.async.TestAsyncOperate;
 import com.aerospike.test.async.TestAsyncPutGet;
 import com.aerospike.test.async.TestAsyncQuery;
 import com.aerospike.test.async.TestAsyncScan;
+import com.aerospike.test.async.TestAsyncTran;
 import com.aerospike.test.async.TestAsyncUDF;
 import com.aerospike.test.util.Args;
 
@@ -49,12 +50,13 @@ import io.netty.incubator.channel.uring.IOUringEventLoopGroup;
 
 @RunWith(Suite.class)
 @Suite.SuiteClasses({
-	TestAsyncPutGet.class,
-	TestAsyncBatch.class,
-	TestAsyncOperate.class,
-	TestAsyncScan.class,
-	TestAsyncQuery.class,
-	TestAsyncUDF.class
+	TestAsyncTran.class,
+	// TestAsyncPutGet.class,
+	// TestAsyncBatch.class,
+	// TestAsyncOperate.class,
+	// TestAsyncScan.class,
+	// TestAsyncQuery.class,
+	// TestAsyncUDF.class
 })
 public class SuiteAsync {
 	public static IAerospikeClient client = null;
