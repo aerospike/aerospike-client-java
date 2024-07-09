@@ -49,8 +49,8 @@ import com.aerospike.test.util.Args;
 
 @RunWith(Suite.class)
 @Suite.SuiteClasses({
-	TestTran.class
 	SuiteAsync.class,
+	TestTran.class
 })
 public class SuiteMRT {
 	public static IAerospikeClient client = null;
