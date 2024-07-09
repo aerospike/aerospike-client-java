@@ -50,7 +50,7 @@ import io.netty.incubator.channel.uring.IOUringEventLoopGroup;
 
 @RunWith(Suite.class)
 @Suite.SuiteClasses({
-	TestAsyncTran.class,
+	TestAsyncTran.class
 	// TestAsyncPutGet.class,
 	// TestAsyncBatch.class,
 	// TestAsyncOperate.class,

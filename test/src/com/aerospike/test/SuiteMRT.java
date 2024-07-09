@@ -49,7 +49,7 @@ import com.aerospike.test.util.Args;
 
 @RunWith(Suite.class)
 @Suite.SuiteClasses({
-	SuiteAsync.class,
+	// SuiteAsync.class,
 	TestTran.class
 })
 public class SuiteMRT {
