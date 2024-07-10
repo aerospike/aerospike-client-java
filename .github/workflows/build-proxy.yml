@@ -8,7 +8,7 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
     - name: Checkout Java client
       uses: actions/checkout@v2
@@ -21,5 +21,14 @@ jobs:
     - name: Build Java client
       run: mvn install
 
-    - name: Upload to JFrog
-      run: mvn deploy
+    - name: Run Aerospike server
+      run: docker run -d --name aerospike-server -p 3000:3000 aerospike/aerospike-server
+
+    - name: Run Aerospike Proxy
+      run: docker run -d --name aerospike-proxy-4000 -p 4000:4000 aerospike.jfrog.io/docker/aerospike/aerospike-proxy-private:<tag>
+
+    - name: Run tests
+      run: mvn test -Dtest=com.aerospike.proxy.tests.ProxyTests
+
+    # - name: Upload to JFrog
+    #   run: mvn deploy
