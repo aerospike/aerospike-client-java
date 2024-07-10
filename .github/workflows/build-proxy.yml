@@ -1,6 +1,7 @@
 name: Build and upload proxy client to JFrog
 
 on:
+  pull_request:
   push:
     branches:
       - stage
