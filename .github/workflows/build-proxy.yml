@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
     - name: Checkout Java client
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
 
     - name: Set up settings.xml for Maven
       uses: s4u/maven-settings-action@v2.8.0
