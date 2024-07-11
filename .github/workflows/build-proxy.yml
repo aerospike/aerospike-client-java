@@ -33,7 +33,7 @@ jobs:
       run: docker pull --all-tags aerospike.jfrog.io/docker/aerospike-proxy-private
 
     - name: Get the latest tag for proxy server
-      run: echo LATEST_TAG=$(docker images aerospike.jfrog.io/docker/aerospike/aerospike-proxy-private --format json | jq -r '.Tag' | head -n 1) >> $GITHUB_ENV
+      run: echo LATEST_TAG=$(docker images aerospike.jfrog.io/docker/aerospike-proxy-private --format json | jq -r '.Tag' | head -n 1) >> $GITHUB_ENV
       # Enables pipefail
       shell: bash
 
