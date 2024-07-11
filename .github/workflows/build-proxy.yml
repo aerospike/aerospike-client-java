@@ -54,7 +54,7 @@ jobs:
       run: sleep 3
 
     - name: Run tests
-      run: mvn test -Dtest=com.aerospike.proxy.tests.ProxyTests
+      run: mvn test -Dtest=com.aerospike.proxy.tests.ProxyTests -DfailIfNoTests=false
 
     # TODO: For debugging. Remove later
     - if: ${{ always() }}
