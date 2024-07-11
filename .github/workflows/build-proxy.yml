@@ -46,8 +46,11 @@ jobs:
     - name: Run tests
       run: mvn test -Dtest=com.aerospike.proxy.tests.ProxyTests
 
-    - run: docker logs aerospike
-    - run: docker logs aerospike-proxy
+    # TODO: For debugging. Remove later
+    - if: ${{ always() }}
+      run: docker logs aerospike
+    - if: ${{ always() }}
+      run: docker logs aerospike-proxy
 
     # - name: Upload to JFrog
     #   run: mvn deploy
