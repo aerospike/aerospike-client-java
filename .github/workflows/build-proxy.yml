@@ -38,7 +38,7 @@ jobs:
       shell: bash
 
     - name: Get CPU architecture for Docker image
-      run: echo IMAGE_ARCH=$(docker image inspect --format json aerospike.jfrog.io/docker/aerospike/aerospike-proxy-private:${{ env.LATEST_TAG }} | | jq -r ".[0].Architecture") >> $GITHUB_ENV
+      run: echo IMAGE_ARCH=$(docker image inspect --format json aerospike.jfrog.io/docker/aerospike/aerospike-proxy-private:${{ env.LATEST_TAG }} | jq -r ".[0].Architecture") >> $GITHUB_ENV
       shell: bash
 
     - name: If needed, use QEMU to emulate ARM
