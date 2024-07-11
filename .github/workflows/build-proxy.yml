@@ -48,6 +48,8 @@ jobs:
 
     # TODO: For debugging. Remove later
     - if: ${{ always() }}
+      run: docker container ps -a
+    - if: ${{ always() }}
       run: docker logs aerospike
     - if: ${{ always() }}
       run: docker logs aerospike-proxy
