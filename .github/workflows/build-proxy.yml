@@ -32,13 +32,12 @@ jobs:
     - name: Get all tags for proxy server Docker image
       run: docker pull --all-tags ${{ vars.JFROG_PROXY_SERVER_DOCKER_REPO }}
 
+    # If we try to emulate aarch64 and run a proxy server Docker image designed for aarch64, the log file won't exist in the container
+    # i.e there won't be any output in `docker logs` for the proxy server.
+    # so we can't tell if the proxy server is running or not
     - name: Get the latest tag for proxy server for this CPU platform
       run: echo LATEST_TAG=$(docker images --filter label="architecture=$(uname -m)" ${{ vars.JFROG_PROXY_SERVER_DOCKER_REPO }} --format json | jq -r '.Tag' | head -n 1) >> $GITHUB_ENV
       # Enables pipefail
-      shell: bash
-
-    - name: Get CPU architecture for Docker image
-      run: echo IMAGE_ARCH=$(docker image inspect --format json ${{ vars.JFROG_PROXY_SERVER_DOCKER_REPO }}:${{ env.LATEST_TAG }} | jq -r ".[0].Architecture") >> $GITHUB_ENV
       shell: bash
 
     - name: Run Aerospike Proxy on latest tag
