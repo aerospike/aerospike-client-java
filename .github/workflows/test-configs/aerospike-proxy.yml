@@ -1,32 +1,34 @@
 # Change the configuration for your use case.
 service:
-    # The proxy's listening ports, TLS and network interfaces.
-    ports:
-      4000: { }
-    # The proxy's management API listening ports, TLS and network interfaces.
-    manage:
-      4040: { }
-  # Target Aerospike cluster and embedded client configuration.
-  aerospike:
-    seeds:
-      - localhost:
-          port: 3000
-    # Policy overrides for incoming transactions
-    policy-overrides:
-      batch-policy:
-        total-timeout: 30_000
-  #
-  # Only if security should be enabled.
-  #
-  security:
-    credentials-store:
-      type: file
-      credentials-file: samples/credentials.yml
-    auth-token:
-      private-key: samples/tls/private_key.pem
-      public-key: samples/tls/public_key.pem
-  # The logging properties.
-  logging:
-    format: json
-    file: /var/log/aerospike-proxy/aerospike-proxy.log
-    enable-console-logging: true
+  # The proxy's listening ports, TLS and network interfaces.
+  ports:
+    4000: { }
+  # The proxy's management API listening ports, TLS and network interfaces.
+  manage:
+    4040: { }
+
+# Target Aerospike cluster and embedded client configuration.
+aerospike:
+  seeds:
+    - localhost:
+        port: 3000
+  # Policy overrides for incoming transactions
+  policy-overrides:
+    batch-policy:
+      total-timeout: 30_000
+#
+# Only if security should be enabled.
+#
+security:
+  credentials-store:
+    type: file
+    credentials-file: samples/credentials.yml
+  auth-token:
+    private-key: samples/tls/private_key.pem
+    public-key: samples/tls/public_key.pem
+
+# The logging properties.
+logging:
+  format: json
+  file: /var/log/aerospike-proxy/aerospike-proxy.log
+  enable-console-logging: true
