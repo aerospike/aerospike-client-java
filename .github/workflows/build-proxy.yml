@@ -27,15 +27,15 @@ jobs:
     # TODO: change to use "latest" tag
 
     - name: Get all tags for proxy server Docker image
-      run: docker pull --all-tags aerospike.jfrog.io/docker/aerospike/aerospike-proxy-private
+      run: docker pull --all-tags ${{ vars.JFROG_PROXY_SERVER_DOCKER_REPO }}
 
     - name: Get the latest tag for proxy server
-      run: echo LATEST_TAG=$(docker images aerospike.jfrog.io/docker/aerospike/aerospike-proxy-private --format json | jq -r '.Tag' | head -n 1) >> $GITHUB_ENV
+      run: echo LATEST_TAG=$(docker images ${{ vars.JFROG_PROXY_SERVER_DOCKER_REPO }} --format json | jq -r '.Tag' | head -n 1) >> $GITHUB_ENV
       # Enables pipefail
       shell: bash
 
     - name: Get CPU architecture for Docker image
-      run: echo IMAGE_ARCH=$(docker image inspect --format json aerospike.jfrog.io/docker/aerospike/aerospike-proxy-private:${{ env.LATEST_TAG }} | jq -r ".[0].Architecture") >> $GITHUB_ENV
+      run: echo IMAGE_ARCH=$(docker image inspect --format json ${{ vars.JFROG_PROXY_SERVER_DOCKER_REPO }}:${{ env.LATEST_TAG }} | jq -r ".[0].Architecture") >> $GITHUB_ENV
       shell: bash
 
     - name: If needed, use QEMU to emulate ARM
@@ -45,7 +45,7 @@ jobs:
         platforms: arm64
 
     - name: Run Aerospike Proxy on latest tag
-      run: docker run -d --name aerospike-proxy -p 4000:4000 aerospike.jfrog.io/docker/aerospike/aerospike-proxy-private:${{ env.LATEST_TAG }}
+      run: docker run -d --name aerospike-proxy -p 4000:4000 ${{ vars.JFROG_PROXY_SERVER_DOCKER_REPO }}:${{ env.LATEST_TAG }}
 
     - name: Run Aerospike server
       run: docker run -d --name aerospike -p 3000:3000 aerospike/aerospike-server
