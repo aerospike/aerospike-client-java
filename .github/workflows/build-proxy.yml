@@ -49,7 +49,7 @@ jobs:
       run: sleep 3
 
     - name: Run tests
-      run: mvn test -Dtest=com.aerospike.test.SuiteAll -DfailIfNoTests=false
+      run: mvn test -Dtest=com.aerospike.test.SuiteAll -DfailIfNoTests=false -DskipTests=false
 
     # TODO: For debugging. Remove later
     - if: ${{ always() }}
