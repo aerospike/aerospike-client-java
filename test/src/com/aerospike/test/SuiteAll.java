@@ -22,7 +22,7 @@ import org.junit.runners.Suite;
 @RunWith(Suite.class)
 @Suite.SuiteClasses({
 	SuiteSync.class,
-	SuiteAsync.class
+	SuiteAsync.class,
 	SuiteProxy.class
 })
 public class SuiteAll {
