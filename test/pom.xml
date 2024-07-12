@@ -14,7 +14,7 @@
   <name>aerospike-client-test</name>
 
   <properties>
-    <skipTests>true</skipTests>
+    <!-- <skipTests>true</skipTests> -->
     <runSuite>**/SuiteAll.class</runSuite>
   </properties>
 
