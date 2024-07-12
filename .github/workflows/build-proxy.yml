@@ -63,8 +63,9 @@ jobs:
       run: docker container ps -a
     - if: ${{ always() }}
       run: docker logs aerospike
+    # TODO: docker logs prints nothing. Not sure why this happens
     - if: ${{ always() }}
-      run: docker logs aerospike-proxy
+      run: docker exec aerospike-proxy cat /var/log/aerospike-proxy/aerospike-proxy.log
 
     - name: Upload to JFrog
       run: mvn deploy
