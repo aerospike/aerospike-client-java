@@ -19,13 +19,13 @@ aerospike:
 #
 # Only if security should be enabled.
 #
-security:
-  credentials-store:
-    type: file
-    credentials-file: samples/credentials.yml
-  auth-token:
-    private-key: samples/tls/private_key.pem
-    public-key: samples/tls/public_key.pem
+# security:
+#   credentials-store:
+#     type: file
+#     credentials-file: samples/credentials.yml
+#   auth-token:
+#     private-key: samples/tls/private_key.pem
+#     public-key: samples/tls/public_key.pem
 
 # The logging properties.
 logging:

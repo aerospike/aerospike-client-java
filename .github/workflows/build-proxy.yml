@@ -66,5 +66,16 @@ jobs:
     - if: ${{ always() }}
       run: docker logs aerospike-proxy
 
-    # - name: Upload to JFrog
-    #   run: mvn deploy
+    - name: Upload to JFrog
+      run: mvn deploy
+
+    # TODO: create release bundle
+    # Based on https://github.com/citrusleaf/devops/blob/master/jfrog/vector/deploy-to-jfrog.sh
+
+    - uses: jfrog/setup-jfrog-cli@v4
+      with:
+        JF_URL: ${{ vars.JF_URL }}
+        JF_ACCESS_TOKEN: ${{ secrets.JF_ACCESS_TOKEN }}
+
+    - name: Create release bundle from JFrog build
+      run: jf release-bundle-create aerospike-java-proxy-client 
