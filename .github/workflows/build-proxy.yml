@@ -32,20 +32,14 @@ jobs:
     - name: Get all tags for proxy server Docker image
       run: docker pull --all-tags ${{ vars.JFROG_PROXY_SERVER_DOCKER_REPO }}
 
-    - name: Get the latest tag for proxy server
-      run: echo LATEST_TAG=$(docker images ${{ vars.JFROG_PROXY_SERVER_DOCKER_REPO }} --format json | jq -r '.Tag' | head -n 1) >> $GITHUB_ENV
+    - name: Get the latest tag for proxy server for this CPU platform
+      run: echo LATEST_TAG=$(docker images --filter label="architecture=$(uname -m)" ${{ vars.JFROG_PROXY_SERVER_DOCKER_REPO }} --format json | jq -r '.Tag' | head -n 1) >> $GITHUB_ENV
       # Enables pipefail
       shell: bash
 
     - name: Get CPU architecture for Docker image
       run: echo IMAGE_ARCH=$(docker image inspect --format json ${{ vars.JFROG_PROXY_SERVER_DOCKER_REPO }}:${{ env.LATEST_TAG }} | jq -r ".[0].Architecture") >> $GITHUB_ENV
       shell: bash
-
-    - name: If needed, use QEMU to emulate ARM
-      if: ${{ env.IMAGE_ARCH == 'arm64' }}
-      uses: docker/setup-qemu-action@v3
-      with:
-        platforms: arm64
 
     - name: Run Aerospike Proxy on latest tag
       # TODO: not sure why aerospike-proxy.yml couldn't be included in Docker image...
@@ -67,16 +61,16 @@ jobs:
     - if: ${{ always() }}
       run: docker exec aerospike-proxy cat /var/log/aerospike-proxy/aerospike-proxy.log
 
-    - name: Upload to JFrog
-      run: mvn deploy
+    # - name: Upload to JFrog
+    #   run: mvn deploy
 
     # TODO: create release bundle
     # Based on https://github.com/citrusleaf/devops/blob/master/jfrog/vector/deploy-to-jfrog.sh
 
-    - uses: jfrog/setup-jfrog-cli@v4
-      with:
-        JF_URL: ${{ vars.JF_URL }}
-        JF_ACCESS_TOKEN: ${{ secrets.JF_ACCESS_TOKEN }}
+    # - uses: jfrog/setup-jfrog-cli@v4
+    #   with:
+    #     JF_URL: ${{ vars.JF_URL }}
+    #     JF_ACCESS_TOKEN: ${{ secrets.JF_ACCESS_TOKEN }}
 
-    - name: Create release bundle from JFrog build
-      run: jf release-bundle-create aerospike-java-proxy-client 
+    # - name: Create release bundle from JFrog build
+    #   run: jf release-bundle-create aerospike-java-proxy-client 
