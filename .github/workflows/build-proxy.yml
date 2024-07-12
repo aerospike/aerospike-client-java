@@ -45,7 +45,9 @@ jobs:
         platforms: arm64
 
     - name: Run Aerospike Proxy on latest tag
-      run: docker run -d --name aerospike-proxy -p 4000:4000 ${{ vars.JFROG_PROXY_SERVER_DOCKER_REPO }}:${{ env.LATEST_TAG }}
+      # TODO: not sure why aerospike-proxy.yml couldn't be included in Docker image...
+      run: docker run -d --name aerospike-proxy -p 4000:4000 -v aerospike-proxy.yml:/etc/aerospike-proxy/aerospike-proxy.yml ${{ vars.JFROG_PROXY_SERVER_DOCKER_REPO }}:${{ env.LATEST_TAG }}
+      working-directory: .github/workflows/test-configs
 
     - name: Run Aerospike server
       run: docker run -d --name aerospike -p 3000:3000 aerospike/aerospike-server
