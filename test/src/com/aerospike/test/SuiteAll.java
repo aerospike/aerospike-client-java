@@ -23,6 +23,7 @@ import org.junit.runners.Suite;
 @Suite.SuiteClasses({
 	SuiteSync.class,
 	SuiteAsync.class
+	SuiteProxy.class
 })
 public class SuiteAll {
 }
