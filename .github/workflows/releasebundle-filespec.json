@@ -1,0 +1,7 @@
+{
+  "files": [
+    {
+      "pattern": "~/.m2/repository/**/*.jar"
+    }
+  ]
+}
