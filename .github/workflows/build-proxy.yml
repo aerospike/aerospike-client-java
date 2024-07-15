@@ -71,6 +71,8 @@ jobs:
         JF_URL: ${{ vars.JF_URL }}
         JF_ACCESS_TOKEN: ${{ secrets.JF_ACCESS_TOKEN }}
 
+    - run: sudo apt install -y libxml-xpath-perl
+
     - name: Get Java proxy client version
       id: get-proxy-client-version
       # TODO: find a way to do this via java ecosystem instead of using generic cli tools
