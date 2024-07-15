@@ -180,9 +180,9 @@ public final class RecordParser {
 		}
 
 		if (hasWrite) {
-			tran.handleWrite(key, version, resultCode);
+			tran.onWrite(key, version, resultCode);
 		} else {
-			tran.handleRead(key, version);
+			tran.onRead(key, version);
 		}
 	}
 
