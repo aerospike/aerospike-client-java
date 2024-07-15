@@ -60,16 +60,26 @@ jobs:
     - if: ${{ always() }}
       run: docker exec aerospike-proxy cat /var/log/aerospike-proxy/aerospike-proxy.log
 
-    # - name: Upload to JFrog
-    #   run: mvn deploy
+    - name: Upload to JFrog
+      run: mvn deploy
 
     # TODO: create release bundle
     # Based on https://github.com/citrusleaf/devops/blob/master/jfrog/vector/deploy-to-jfrog.sh
 
-    # - uses: jfrog/setup-jfrog-cli@v4
-    #   with:
-    #     JF_URL: ${{ vars.JF_URL }}
-    #     JF_ACCESS_TOKEN: ${{ secrets.JF_ACCESS_TOKEN }}
+    - uses: jfrog/setup-jfrog-cli@v4
+      with:
+        JF_URL: ${{ vars.JF_URL }}
+        JF_ACCESS_TOKEN: ${{ secrets.JF_ACCESS_TOKEN }}
 
-    # - name: Create release bundle from JFrog build
-    #   run: jf release-bundle-create aerospike-java-proxy-client 
+    - name: Get Java proxy client version
+      id: get-proxy-client-version
+      # TODO: find a way to do this via java ecosystem instead of using generic cli tools
+      run: echo version=$(xpath -q -e "//project/version/text()" pom.xml) >> $GITHUB_OUTPUT
+
+    - name: Create release bundle from JFrog build
+      run: jf release-bundle-create --project=clients --signing-key=aerospike --sync --spec=./releasebundle-filespec.json aerospike-java-proxy-client ${{ steps.get-proxy-client-version.outputs.version }}
+      working-directory: .github/workflows
+
+    - name: Promote release bundle to DEV stage
+      run: jf release-bundle-promote --project=clients --signing-key=aerospike --sync aerospike-java-proxy-client ${{ steps.get-proxy-client-version.outputs.version }} DEV
+      working-directory: .github/workflows
