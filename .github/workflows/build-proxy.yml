@@ -79,9 +79,10 @@ jobs:
       run: echo version=$(xpath -q -e "//project/version/text()" pom.xml) >> $GITHUB_OUTPUT
 
     - name: Create release bundle from JFrog build
-      run: jf release-bundle-create --project=clients --signing-key=aerospike --sync --spec=./releasebundle-filespec.json aerospike-java-proxy-client ${{ steps.get-proxy-client-version.outputs.version }}
+      # Platform URL required for lifecycle commands (e.g release bundle management)
+      run: jf release-bundle-create --url ${{ vars.JF_URL }} --project=clients --signing-key=aerospike --sync --spec=./releasebundle-filespec.json aerospike-java-proxy-client ${{ steps.get-proxy-client-version.outputs.version }}
       working-directory: .github/workflows
 
     - name: Promote release bundle to DEV stage
-      run: jf release-bundle-promote --project=clients --signing-key=aerospike --sync aerospike-java-proxy-client ${{ steps.get-proxy-client-version.outputs.version }} DEV
+      run: jf release-bundle-promote --url ${{ vars.JF_URL }} --project=clients --signing-key=aerospike --sync aerospike-java-proxy-client ${{ steps.get-proxy-client-version.outputs.version }} DEV
       working-directory: .github/workflows
