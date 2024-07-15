@@ -9,6 +9,8 @@ on:
 
 jobs:
   build:
+    env:
+      JFROG_URL: https://aerospike.jfrog.io
     runs-on: ubuntu-22.04
     steps:
     - name: Checkout Java client
@@ -68,7 +70,7 @@ jobs:
 
     - uses: jfrog/setup-jfrog-cli@v4
       with:
-        JF_URL: ${{ vars.JF_URL }}
+        JF_URL: ${{ env.JFROG_URL }}
         JF_ACCESS_TOKEN: ${{ secrets.JF_ACCESS_TOKEN }}
 
     - run: sudo apt install -y libxml-xpath-perl
@@ -80,9 +82,9 @@ jobs:
 
     - name: Create release bundle from JFrog build
       # Platform URL required for lifecycle commands (e.g release bundle management)
-      run: jf release-bundle-create --url "${{ vars.JF_URL }}" --project=clients --signing-key=aerospike --sync --spec=./releasebundle-filespec.json aerospike-java-proxy-client ${{ steps.get-proxy-client-version.outputs.version }}
+      run: jf release-bundle-create --url "${{ env.JFROG_URL }}" --project=clients --signing-key=aerospike --sync --spec=./releasebundle-filespec.json aerospike-java-proxy-client ${{ steps.get-proxy-client-version.outputs.version }}
       working-directory: .github/workflows
 
     - name: Promote release bundle to DEV stage
-      run: jf release-bundle-promote --url "${{ vars.JF_URL }}" --project=clients --signing-key=aerospike --sync aerospike-java-proxy-client ${{ steps.get-proxy-client-version.outputs.version }} DEV
+      run: jf release-bundle-promote --url "${{ env.JFROG_URL }}" --project=clients --signing-key=aerospike --sync aerospike-java-proxy-client ${{ steps.get-proxy-client-version.outputs.version }} DEV
       working-directory: .github/workflows
