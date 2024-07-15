@@ -170,4 +170,16 @@
   </repositories>
   -->
 
+  <distributionManagement>
+      <repository>
+          <id>central</id>
+          <name>aerospike-artifactory-primary-0-releases</name>
+          <url>https://aerospike.jfrog.io/artifactory/clients-maven-dev-local</url>
+      </repository>
+      <snapshotRepository>
+          <id>snapshots</id>
+          <name>aerospike-artifactory-primary-0-snapshots</name>
+          <url>https://aerospike.jfrog.io/artifactory/clients-maven-dev-local</url>
+      </snapshotRepository>
+  </distributionManagement>
 </project>
