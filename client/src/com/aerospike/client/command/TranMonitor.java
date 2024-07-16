@@ -20,6 +20,7 @@ import com.aerospike.client.AerospikeException;
 import com.aerospike.client.BatchRecord;
 import com.aerospike.client.Key;
 import com.aerospike.client.Tran;
+import com.aerospike.client.TranError;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.policy.BatchPolicy;
 import com.aerospike.client.policy.WritePolicy;
@@ -28,14 +29,6 @@ import java.util.Map;
 import java.util.Set;
 
 public final class TranMonitor {
-	public static final String VerifyFail = "MRT verify failed. Transaction aborted.";
-	public static final String VerifyAbortFail = "MRT verify and abort failed";
-	public static final String VerifyCloseFail = "MRT verify and close failed";
-	public static final String CloseFail = "MRT close failed";
-	public static final String WillCommitFail = "MRT will commit failed";
-	public static final String CommitFail = "MRT commit failed";
-	public static final String AbortFail = "MRT abort failed";
-
 	private final Cluster cluster;
 	private final Tran tran;
 	private BatchRecord[] verifyRecords;
@@ -59,7 +52,7 @@ public final class TranMonitor {
 			catch (Throwable t2) {
 				// Throw combination of verify and roll exceptions.
 				t.addSuppressed(t2);
-				throw new AerospikeException.TranCommit(VerifyAbortFail, verifyRecords, rollRecords, t);
+				throw new AerospikeException.TranCommit(TranError.VERIFY_AND_ABORT_FAIL, verifyRecords, rollRecords, t);
 			}
 
 			if (tran.getDeadline() != 0) {
@@ -71,12 +64,12 @@ public final class TranMonitor {
 				catch (Throwable t3) {
 					// Throw combination of verify and close exceptions.
 					t.addSuppressed(t3);
-					throw new AerospikeException.TranCommit(VerifyCloseFail, verifyRecords, rollRecords, t);
+					throw new AerospikeException.TranCommit(TranError.VERIFY_AND_CLOSE_FAIL, verifyRecords, rollRecords, t);
 				}
 			}
 
 			// Throw original exception when abort succeeds.
-			throw new AerospikeException.TranCommit(VerifyFail, verifyRecords, rollRecords, t);
+			throw new AerospikeException.TranCommit(TranError.VERIFY_FAIL, verifyRecords, rollRecords, t);
 		}
 
 		WritePolicy writePolicy = new WritePolicy(rollPolicy);
@@ -89,7 +82,7 @@ public final class TranMonitor {
 				willRollForward(writePolicy, tranKey);
 			}
 			catch (Throwable t) {
-				throw new AerospikeException.TranCommit(WillCommitFail, verifyRecords, rollRecords, t);
+				throw new AerospikeException.TranCommit(TranError.WILL_COMMIT_FAIL, verifyRecords, rollRecords, t);
 			}
 
 			// Roll-forward writes in batch.
@@ -97,7 +90,7 @@ public final class TranMonitor {
 				roll(rollPolicy, Command.INFO4_MRT_ROLL_FORWARD);
 			}
 			catch (Throwable t) {
-				throw new AerospikeException.TranCommit(CommitFail, verifyRecords, rollRecords, t);
+				throw new AerospikeException.TranCommit(TranError.COMMIT_FAIL, verifyRecords, rollRecords, t);
 			}
 		}
 
@@ -107,7 +100,7 @@ public final class TranMonitor {
 				close(writePolicy, tranKey);
 			}
 			catch (Throwable t) {
-				throw new AerospikeException.TranCommit(CloseFail, verifyRecords, rollRecords, t);
+				throw new AerospikeException.TranCommit(TranError.CLOSE_FAIL, verifyRecords, rollRecords, t);
 			}
 		}
 	}
@@ -120,7 +113,7 @@ public final class TranMonitor {
 				roll(rollPolicy, Command.INFO4_MRT_ROLL_BACK);
 			}
 			catch (Throwable t) {
-				throw new AerospikeException.TranAbort(AbortFail, rollRecords, t);
+				throw new AerospikeException.TranAbort(TranError.ABORT_FAIL, rollRecords, t);
 			}
 		}
 
@@ -131,7 +124,7 @@ public final class TranMonitor {
 				close(writePolicy, tranKey);
 			}
 			catch (Throwable t) {
-				throw new AerospikeException.TranAbort(CloseFail, rollRecords, t);
+				throw new AerospikeException.TranAbort(TranError.CLOSE_FAIL, rollRecords, t);
 			}
 		}
 	}

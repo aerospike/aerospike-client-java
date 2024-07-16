@@ -502,6 +502,11 @@ public class AerospikeException extends RuntimeException {
 		private static final long serialVersionUID = 1L;
 
 		/**
+		 * Error status of the attempted commit.
+		 */
+		public final TranError error;
+
+		/**
 		 * Verify result for each read key in the MRT. May be null if failure occurred before verify.
 		 */
 		public final BatchRecord[] verifyRecords;
@@ -512,21 +517,23 @@ public class AerospikeException extends RuntimeException {
 		 */
 		public final BatchRecord[] rollRecords;
 
-		public TranCommit(String message, BatchRecord[] verifyRecords, BatchRecord[] rollRecords) {
-			super(ResultCode.TRAN_FAILED, message);
+		public TranCommit(TranError error, BatchRecord[] verifyRecords, BatchRecord[] rollRecords) {
+			super(ResultCode.TRAN_FAILED, error.str);
+			this.error = error;
 			this.verifyRecords = verifyRecords;
 			this.rollRecords = rollRecords;
 		}
 
-		public TranCommit(String message, BatchRecord[] verifyRecords, BatchRecord[] rollRecords, Throwable cause) {
-			super(ResultCode.TRAN_FAILED, message, cause);
+		public TranCommit(TranError error, BatchRecord[] verifyRecords, BatchRecord[] rollRecords, Throwable cause) {
+			super(ResultCode.TRAN_FAILED, error.str, cause);
+			this.error = error;
 			this.verifyRecords = verifyRecords;
 			this.rollRecords = rollRecords;
 		}
 
 		@Override
 		public String getMessage() {
-			String msg = super.toString();
+			String msg = super.getMessage();
 			StringBuilder sb = new StringBuilder(1024);
 			recordsToString(sb, "verify errors:", verifyRecords);
 			recordsToString(sb, "roll errors:", rollRecords);
@@ -541,23 +548,31 @@ public class AerospikeException extends RuntimeException {
 		private static final long serialVersionUID = 1L;
 
 		/**
+		 * Error status of the attempted abort. Error will be {@link TranError#ABORT_FAIL}
+		 * or {@link TranError#CLOSE_FAIL}.
+		 */
+		public final TranError error;
+
+		/**
 		 * Roll backward result for each write key in the MRT. May be null if failure occurred before roll backward.
 		 */
 		public final BatchRecord[] rollRecords;
 
-		public TranAbort(String message, BatchRecord[] rollRecords) {
-			super(ResultCode.TRAN_FAILED, message);
+		public TranAbort(TranError error, BatchRecord[] rollRecords) {
+			super(ResultCode.TRAN_FAILED, error.str);
+			this.error = error;
 			this.rollRecords = rollRecords;
 		}
 
-		public TranAbort(String message, BatchRecord[] rollRecords, Throwable cause) {
-			super(ResultCode.TRAN_FAILED, message, cause);
+		public TranAbort(TranError error, BatchRecord[] rollRecords, Throwable cause) {
+			super(ResultCode.TRAN_FAILED, error.str, cause);
+			this.error = error;
 			this.rollRecords = rollRecords;
 		}
 
 		@Override
 		public String getMessage() {
-			String msg = super.toString();
+			String msg = super.getMessage();
 			StringBuilder sb = new StringBuilder(1024);
 			recordsToString(sb, "roll errors:", rollRecords);
 			return msg + sb.toString();
