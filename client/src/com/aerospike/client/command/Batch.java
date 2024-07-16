@@ -657,7 +657,7 @@ public final class Batch {
 		protected final void parseFieldsRead(Key key) {
 			if (policy.tran != null) {
 				Long version = parseVersion(fieldCount);
-				policy.tran.handleRead(key, version);
+				policy.tran.onRead(key, version);
 			}
 			else {
 				skipKey(fieldCount);
@@ -669,10 +669,10 @@ public final class Batch {
 				Long version = parseVersion(fieldCount);
 
 				if (br.hasWrite) {
-					policy.tran.handleWrite(br.key, version, resultCode);
+					policy.tran.onWrite(br.key, version, resultCode);
 				}
 				else {
-					policy.tran.handleRead(br.key, version);
+					policy.tran.onRead(br.key, version);
 				}
 			}
 			else {

@@ -24,16 +24,14 @@ import com.aerospike.client.Operation;
 import com.aerospike.client.Record;
 import com.aerospike.client.ResultCode;
 import com.aerospike.client.Tran;
-import com.aerospike.client.Value;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.command.OperateArgs;
-import com.aerospike.client.command.TranMonitor;
+import com.aerospike.client.command.TranExecutor;
 import com.aerospike.client.listener.RecordListener;
 import com.aerospike.client.policy.BatchPolicy;
 import com.aerospike.client.policy.Policy;
 import com.aerospike.client.policy.WritePolicy;
 import com.aerospike.client.util.Util;
-import java.util.ArrayList;
 import java.util.List;
 
 public abstract class AsyncTranExecutor {
@@ -54,7 +52,7 @@ public abstract class AsyncTranExecutor {
 		}
 
 		// Add key to MRT monitor and then run original command.
-		Operation[] ops = TranMonitor.getTranOps(tran, cmdKey);
+		Operation[] ops = TranExecutor.getTranOps(tran, cmdKey);
 		AsyncTranExecutor.Single ate = new AsyncTranExecutor.Single(eventLoop, cluster, command);
 		ate.execute(policy, ops);
 	}
@@ -72,7 +70,7 @@ public abstract class AsyncTranExecutor {
 		}
 
 		// Add write keys to MRT monitor and then run original command.
-		Operation[] ops = TranMonitor.getTranOps(policy.tran, keys);
+		Operation[] ops = TranExecutor.getTranOps(policy.tran, keys);
 		AsyncTranExecutor.Batch ate = new AsyncTranExecutor.Batch(executor, commands);
 		ate.execute(policy, ops);
 	}
@@ -90,7 +88,7 @@ public abstract class AsyncTranExecutor {
 		}
 
 		// Add write keys to MRT monitor and then run original command.
-		Operation[] ops = TranMonitor.getTranOps(policy.tran, records);
+		Operation[] ops = TranExecutor.getTranOps(policy.tran, records);
 		AsyncTranExecutor.Batch ate = new AsyncTranExecutor.Batch(executor, commands);
 		ate.execute(policy, ops);
 	}
@@ -144,8 +142,8 @@ public abstract class AsyncTranExecutor {
 	}
 
 	void execute(Policy policy, Operation[] ops) {
-		Key tranKey = TranMonitor.getTranMonitorKey(policy.tran);
-		WritePolicy wp = TranMonitor.copyTimeoutPolicy(policy);
+		Key tranKey = TranExecutor.getTranMonitorKey(policy.tran);
+		WritePolicy wp = TranExecutor.copyTimeoutPolicy(policy);
 
 		RecordListener tranListener = new RecordListener() {
 			@Override

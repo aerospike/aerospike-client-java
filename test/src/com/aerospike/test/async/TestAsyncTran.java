@@ -402,7 +402,7 @@ public class TestAsyncTran extends TestAsync {
 					listener.onSuccess();
 				}
 
-				public void onFailure(BatchRecord[] verifyRecords, BatchRecord[] rollRecords, AerospikeException ae) {
+				public void onFailure(AerospikeException.TranCommit ae) {
 					listener.onFailure(ae);
 				}
 			};
@@ -424,7 +424,7 @@ public class TestAsyncTran extends TestAsync {
 					listener.onSuccess();
 				}
 
-				public void onFailure(BatchRecord[] records, AerospikeException ae) {
+				public void onFailure(AerospikeException.TranAbort ae) {
 					listener.onFailure(ae);
 				}
 			};

@@ -22,7 +22,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Multi-record transaction (MRT).
+ * Multi-record transaction (MRT). Each command in the MRT must use the same namespace.
  */
 public final class Tran {
 	private final long id;
@@ -32,19 +32,7 @@ public final class Tran {
 	private int deadline;
 
 	/**
-	 * Create transaction with given transaction id.
-	 */
-	public Tran(long id) {
-		if (id == 0) {
-			throw new AerospikeException(ResultCode.PARAMETER_ERROR, "MRT id must be non-zero");
-		}
-		this.id = id;
-		reads = new ConcurrentHashMap<>();
-		writes = ConcurrentHashMap.newKeySet();
-	}
-
-	/**
-	 * Create transaction and assign transaction id at random.
+	 * Create transaction and assign random transaction id.
 	 */
 	public Tran() {
 		// An id of zero is considered invalid. Create random numbers
@@ -56,6 +44,18 @@ public final class Tran {
 			v = r.nextLong();
 		}
 		id = v;
+		reads = new ConcurrentHashMap<>();
+		writes = ConcurrentHashMap.newKeySet();
+	}
+
+	/**
+	 * Create transaction with given transaction id.
+	 */
+	public Tran(long id) {
+		if (id == 0) {
+			throw new AerospikeException(ResultCode.PARAMETER_ERROR, "MRT id must be non-zero");
+		}
+		this.id = id;
 		reads = new ConcurrentHashMap<>();
 		writes = ConcurrentHashMap.newKeySet();
 	}
@@ -91,7 +91,7 @@ public final class Tran {
 	/**
 	 * Process the results of a record read. For internal use only.
 	 */
-	public void handleRead(Key key, Long version) {
+	public void onRead(Key key, Long version) {
 		if (version != null) {
 			setNamespace(key.namespace);
 			reads.put(key, version);
@@ -115,7 +115,8 @@ public final class Tran {
 	/**
 	 * Process the results of a record write. For internal use only.
 	 */
-	public void handleWrite(Key key, Long version, int resultCode) {
+	public void onWrite(Key key, Long version, int resultCode) {
+		// TODO: Should key.namespace be verified here?
 		if (version != null) {
 			reads.put(key, version);
 		}
@@ -153,6 +154,7 @@ public final class Tran {
 	 */
 	public void close() {
 		namespace = null;
+		deadline = 0;
 		reads.clear();
 		writes.clear();
 	}

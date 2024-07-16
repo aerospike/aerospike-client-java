@@ -494,4 +494,106 @@ public class AerospikeException extends RuntimeException {
 			super(resultCode);
 		}
 	}
+
+	/**
+	 * Exception thrown when {@link AerospikeClient#tranCommit(com.aerospike.client.Tran)} fails.
+	 */
+	public static final class TranCommit extends AerospikeException {
+		private static final long serialVersionUID = 1L;
+
+		/**
+		 * Verify result for each read key in the MRT. May be null if failure occurred before verify.
+		 */
+		public final BatchRecord[] verifyRecords;
+
+		/**
+		 * Roll forward/backward result for each write key in the MRT. May be null if failure occurred before
+		 * roll forward/backward.
+		 */
+		public final BatchRecord[] rollRecords;
+
+		public TranCommit(String message, BatchRecord[] verifyRecords, BatchRecord[] rollRecords) {
+			super(ResultCode.TRAN_FAILED, message);
+			this.verifyRecords = verifyRecords;
+			this.rollRecords = rollRecords;
+		}
+
+		public TranCommit(String message, BatchRecord[] verifyRecords, BatchRecord[] rollRecords, Throwable cause) {
+			super(ResultCode.TRAN_FAILED, message, cause);
+			this.verifyRecords = verifyRecords;
+			this.rollRecords = rollRecords;
+		}
+
+		@Override
+		public String getMessage() {
+			String msg = super.toString();
+			StringBuilder sb = new StringBuilder(1024);
+			recordsToString(sb, "verify errors:", verifyRecords);
+			recordsToString(sb, "roll errors:", rollRecords);
+			return msg + sb.toString();
+		}
+	}
+
+	/**
+	 * Exception thrown when {@link AerospikeClient#tranAbort(com.aerospike.client.Tran)} fails.
+	 */
+	public static final class TranAbort extends AerospikeException {
+		private static final long serialVersionUID = 1L;
+
+		/**
+		 * Roll backward result for each write key in the MRT. May be null if failure occurred before roll backward.
+		 */
+		public final BatchRecord[] rollRecords;
+
+		public TranAbort(String message, BatchRecord[] rollRecords) {
+			super(ResultCode.TRAN_FAILED, message);
+			this.rollRecords = rollRecords;
+		}
+
+		public TranAbort(String message, BatchRecord[] rollRecords, Throwable cause) {
+			super(ResultCode.TRAN_FAILED, message, cause);
+			this.rollRecords = rollRecords;
+		}
+
+		@Override
+		public String getMessage() {
+			String msg = super.toString();
+			StringBuilder sb = new StringBuilder(1024);
+			recordsToString(sb, "roll errors:", rollRecords);
+			return msg + sb.toString();
+		}
+	}
+
+	private static void recordsToString(StringBuilder sb, String title, BatchRecord[] records) {
+		if (records == null) {
+			return;
+		}
+
+		int count = 0;
+
+		for (BatchRecord br : records) {
+			// Only show results with an error response.
+			if (!(br.resultCode == ResultCode.OK || br.resultCode == ResultCode.NO_RESPONSE)) {
+				// Only show first 3 errors.
+				if (count >= 3) {
+					sb.append(System.lineSeparator());
+					sb.append("...");
+					break;
+				}
+
+				if (count == 0) {
+					sb.append(System.lineSeparator());
+					sb.append(title);
+				}
+
+				sb.append(System.lineSeparator());
+				sb.append(br.key);
+				sb.append(',');
+				sb.append(br.resultCode);
+				sb.append(',');
+				sb.append(br.inDoubt);
+				count++;
+			}
+		}
+	}
 }

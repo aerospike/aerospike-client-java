@@ -18,17 +18,15 @@ package com.aerospike.client.async;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.BatchRecord;
-import com.aerospike.client.Bin;
 import com.aerospike.client.Key;
 import com.aerospike.client.Log;
-import com.aerospike.client.Operation;
-import com.aerospike.client.ResultCode;
 import com.aerospike.client.Tran;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.command.BatchAttr;
 import com.aerospike.client.command.BatchNode;
 import com.aerospike.client.command.BatchNodeList;
 import com.aerospike.client.command.Command;
+import com.aerospike.client.command.TranExecutor;
 import com.aerospike.client.command.TranMonitor;
 import com.aerospike.client.listener.BatchRecordArrayListener;
 import com.aerospike.client.listener.DeleteListener;
@@ -43,13 +41,6 @@ import java.util.Map;
 import java.util.Set;
 
 public final class AsyncTranMonitor {
-	private static final String VerifyFail = "MRT verify failed. Transaction aborted.";
-	private static final String VerifyAbortFail = "MRT verify and abort failed";
-	private static final String VerifyCloseFail = "MRT verify and close failed";
-	private static final String CloseFail = "MRT close failed";
-	private static final String WillCommitFail = "MRT will commit failed";
-	private static final String CommitFail = "MRT commit failed";
-
 	private final Cluster cluster;
 	private final EventLoop eventLoop;
 	private final BatchPolicy verifyPolicy;
@@ -76,7 +67,7 @@ public final class AsyncTranMonitor {
 		this.rollPolicy = rollPolicy;
 		this.writePolicy = new WritePolicy(rollPolicy);
 		this.tran = tran;
-		this.tranKey = TranMonitor.getTranMonitorKey(tran);
+		this.tranKey = TranExecutor.getTranMonitorKey(tran);
 	}
 
 	public void commit(TranCommitListener listener) {
@@ -121,13 +112,19 @@ public final class AsyncTranMonitor {
 			@Override
 			public void onSuccess(BatchRecord[] records, boolean status) {
 				rollRecords = records;
-				close(true);
+
+				if (status) {
+					close(true);
+				}
+				else {
+					notifyFailure(TranMonitor.AbortFail, null);
+				}
 			}
 
 			@Override
 			public void onFailure(BatchRecord[] records, AerospikeException ae) {
 				rollRecords = records;
-				notifyFailure(new AerospikeException(ResultCode.TRAN_FAILED, "MRT abort failed", ae));
+				notifyFailure(TranMonitor.AbortFail, ae);
 			}
 		};
 
@@ -190,7 +187,7 @@ public final class AsyncTranMonitor {
 
 				@Override
 				public void onFailure(AerospikeException ae) {
-					notifyFailure(new AerospikeException(ResultCode.TRAN_FAILED, WillCommitFail, ae));
+					notifyFailure(TranMonitor.WillCommitFail, ae);
 				}
 			};
 
@@ -198,7 +195,7 @@ public final class AsyncTranMonitor {
 			eventLoop.execute(cluster, command);
 		}
 		catch (Throwable t) {
-			notifyFailure(new AerospikeException(ResultCode.TRAN_FAILED, WillCommitFail, t));
+			notifyFailure(TranMonitor.WillCommitFail, t);
 		}
 	}
 
@@ -213,21 +210,21 @@ public final class AsyncTranMonitor {
 						close(true);
 					}
 					else {
-						notifyFailure(new AerospikeException(ResultCode.TRAN_FAILED, CommitFail));
+						notifyFailure(TranMonitor.CommitFail, null);
 					}
 				}
 
 				@Override
 				public void onFailure(BatchRecord[] records, AerospikeException ae) {
 					rollRecords = records;
-					notifyFailure(new AerospikeException(ResultCode.TRAN_FAILED, CommitFail, ae));
+					notifyFailure(TranMonitor.CommitFail, ae);
 				}
 			};
 
 			roll(rollListener, Command.INFO4_MRT_ROLL_FORWARD);
 		}
 		catch (Throwable t) {
-			notifyFailure(new AerospikeException(ResultCode.TRAN_FAILED, CommitFail, t));
+			notifyFailure(TranMonitor.CommitFail, t);
 		}
 	}
 
@@ -242,21 +239,21 @@ public final class AsyncTranMonitor {
 						close(false);
 					}
 					else {
-						notifyFailure(new AerospikeException(ResultCode.TRAN_FAILED, VerifyAbortFail));
+						notifyFailure(TranMonitor.VerifyAbortFail, null);
 					}
 				}
 
 				@Override
 				public void onFailure(BatchRecord[] records, AerospikeException ae) {
 					rollRecords = records;
-					notifyFailure(new AerospikeException(ResultCode.TRAN_FAILED, VerifyAbortFail, ae));
+					notifyFailure(TranMonitor.VerifyAbortFail, ae);
 				}
 			};
 
 			roll(rollListener, Command.INFO4_MRT_ROLL_BACK);
 		}
 		catch (Throwable t) {
-			notifyFailure(new AerospikeException(ResultCode.TRAN_FAILED, VerifyAbortFail, t));
+			notifyFailure(TranMonitor.VerifyAbortFail, t);
 		}
 	}
 
@@ -315,7 +312,7 @@ public final class AsyncTranMonitor {
 			}
 			else {
 				// Record verification failed and MRT was aborted.
-				notifyFailure(new AerospikeException(ResultCode.TRAN_FAILED, VerifyFail));
+				notifyFailure(TranMonitor.VerifyFail, null);
 			}
 		}
 
@@ -328,14 +325,14 @@ public final class AsyncTranMonitor {
 					}
 					else {
 						// Record verification failed and MRT was aborted.
-						notifyFailure(new AerospikeException(ResultCode.TRAN_FAILED, VerifyFail));
+						notifyFailure(TranMonitor.VerifyFail, null);
 					}
 				}
 
 				@Override
 				public void onFailure(AerospikeException ae) {
-					String msg = verified?  CloseFail : VerifyCloseFail;
-					notifyFailure(new AerospikeException(ResultCode.TRAN_FAILED, msg, ae));
+					String msg = verified?  TranMonitor.CloseFail : TranMonitor.VerifyCloseFail;
+					notifyFailure(msg, ae);
 				}
 			};
 
@@ -343,8 +340,8 @@ public final class AsyncTranMonitor {
 			eventLoop.execute(cluster, command);
 		}
 		catch (Throwable t) {
-			String msg = verified?  CloseFail : VerifyCloseFail;
-			notifyFailure(new AerospikeException(ResultCode.TRAN_FAILED, msg, t));
+			String msg = verified?  TranMonitor.CloseFail : TranMonitor.VerifyCloseFail;
+			notifyFailure(msg, t);
 		}
 	}
 
@@ -364,21 +361,25 @@ public final class AsyncTranMonitor {
 		}
 	}
 
-	private void notifyFailure(AerospikeException ae) {
+	private void notifyFailure(String message, Throwable cause) {
 		try {
 			if (commitListener != null) {
+				AerospikeException.TranCommit aet = (cause == null) ?
+					new AerospikeException.TranCommit(message, verifyRecords, rollRecords) :
+					new AerospikeException.TranCommit(message, verifyRecords, rollRecords, cause);
+
 				if (verifyException != null) {
-					ae.addSuppressed(verifyException);
+					aet.addSuppressed(verifyException);
 				}
 
-				if (rollRecords == null) {
-					rollRecords = new BatchRecord[0];
-				}
-
-				commitListener.onFailure(verifyRecords, rollRecords, ae);
+				commitListener.onFailure(aet);
 			}
 			else {
-				abortListener.onFailure(rollRecords, ae);
+				AerospikeException.TranAbort aet = (cause == null) ?
+					new AerospikeException.TranAbort(message, rollRecords) :
+					new AerospikeException.TranAbort(message, rollRecords, cause);
+
+				abortListener.onFailure(aet);
 			}
 		}
 		catch (Throwable t) {
