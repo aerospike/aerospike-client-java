@@ -34,8 +34,8 @@ import com.aerospike.client.listener.DeleteListener;
 import com.aerospike.client.listener.ExecuteListener;
 import com.aerospike.client.listener.RecordArrayListener;
 import com.aerospike.client.listener.RecordListener;
-import com.aerospike.client.listener.TranAbortListener;
-import com.aerospike.client.listener.TranCommitListener;
+import com.aerospike.client.listener.AbortListener;
+import com.aerospike.client.listener.CommitListener;
 import com.aerospike.client.listener.WriteListener;
 import com.aerospike.client.policy.BatchPolicy;
 import com.aerospike.client.policy.Policy;
@@ -397,17 +397,17 @@ public class TestAsyncTran extends TestAsync {
 		}
 
 		public void run(Listener listener) {
-			TranCommitListener tcl = new TranCommitListener() {
+			CommitListener tcl = new CommitListener() {
 				public void onSuccess() {
 					listener.onSuccess();
 				}
 
-				public void onFailure(AerospikeException.TranCommit ae) {
+				public void onFailure(AerospikeException.Commit ae) {
 					listener.onFailure(ae);
 				}
 			};
 
-			client.tranCommit(eventLoop, tcl, tran);
+			client.commit(eventLoop, tcl, tran);
 		}
 	}
 
@@ -419,17 +419,17 @@ public class TestAsyncTran extends TestAsync {
 		}
 
 		public void run(Listener listener) {
-			TranAbortListener tal = new TranAbortListener() {
+			AbortListener tal = new AbortListener() {
 				public void onSuccess() {
 					listener.onSuccess();
 				}
 
-				public void onFailure(AerospikeException.TranAbort ae) {
+				public void onFailure(AerospikeException.Abort ae) {
 					listener.onFailure(ae);
 				}
 			};
 
-			client.tranAbort(eventLoop, tal, tran);
+			client.abort(eventLoop, tal, tran);
 		}
 	}
 

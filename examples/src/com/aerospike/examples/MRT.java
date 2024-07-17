@@ -38,7 +38,7 @@ public class MRT extends Example {
 	}
 
 	private void tranReadWrite(IAerospikeClient client, Parameters params) {
-		Tran tran = client.tranBegin();
+		Tran tran = new Tran();
 		System.out.println("Begin tran: " + tran.getId());
 
 		try {
@@ -64,11 +64,11 @@ public class MRT extends Example {
 		}
 		catch (Throwable t) {
 			// Abort and rollback MRT (multi-record transaction) if any errors occur.
-			client.tranAbort(tran);
+			client.abort(tran);
 			throw t;
 		}
 
 		System.out.println("Commit tran: " + tran.getId());
-		client.tranCommit(tran);
+		client.commit(tran);
 	}
 }

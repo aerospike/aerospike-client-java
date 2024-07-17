@@ -26,38 +26,51 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public final class Tran {
 	private final long id;
-	private String namespace;
 	private final ConcurrentHashMap<Key,Long> reads;
 	private final Set<Key> writes;
+	private String namespace;
 	private int deadline;
+	private boolean rollAttempted;
 
 	/**
-	 * Create transaction and assign random transaction id.
+	 * Create MRT, assign random transaction id and initialize reads/writes hashmaps with default capacities.
 	 */
 	public Tran() {
-		// An id of zero is considered invalid. Create random numbers
-		// in a loop until non-zero is returned.
-		Random r = new Random();
-		long v = r.nextLong();
-
-		while (v == 0) {
-			v = r.nextLong();
-		}
-		id = v;
+		id = createId();
 		reads = new ConcurrentHashMap<>();
 		writes = ConcurrentHashMap.newKeySet();
 	}
 
 	/**
-	 * Create transaction with given transaction id.
+	 * Create MRT, assign random transaction id and initialize reads/writes hashmaps with given capacities.
+	 *
+	 * @param readsCapacity     expected number of record reads in the MRT. Minimum value is 16.
+	 * @param writesCapacity    expected number of record writes in the MRT. Minimum value is 16.
 	 */
-	public Tran(long id) {
-		if (id == 0) {
-			throw new AerospikeException(ResultCode.PARAMETER_ERROR, "MRT id must be non-zero");
+	public Tran(int readsCapacity, int writesCapacity) {
+		if (readsCapacity < 16) {
+			throw new AerospikeException(ResultCode.PARAMETER_ERROR, "readsCapacity must be >= 16");
 		}
-		this.id = id;
-		reads = new ConcurrentHashMap<>();
-		writes = ConcurrentHashMap.newKeySet();
+
+		if (writesCapacity < 16) {
+			throw new AerospikeException(ResultCode.PARAMETER_ERROR, "writesCapacity must be >= 16");
+		}
+
+		id = createId();
+		reads = new ConcurrentHashMap<>(readsCapacity);
+		writes = ConcurrentHashMap.newKeySet(writesCapacity);
+	}
+
+	private static long createId() {
+		// An id of zero is considered invalid. Create random numbers
+		// in a loop until non-zero is returned.
+		Random r = new Random();
+		long id = r.nextLong();
+
+		while (id == 0) {
+			id = r.nextLong();
+		}
+		return id;
 	}
 
 	/**
@@ -65,6 +78,57 @@ public final class Tran {
 	 */
 	public long getId() {
 		return id;
+	}
+
+	/**
+	 * Process the results of a record read. For internal use only.
+	 */
+	public void onRead(Key key, Long version) {
+		// Read commands do not call setNamespace() prior to sending the command,
+		// so call setNamespace() here when receiving the response.
+		setNamespace(key.namespace);
+
+		if (version != null) {
+			reads.put(key, version);
+		}
+	}
+
+	/**
+	 * Get record version for a given key.
+	 */
+	public Long getReadVersion(Key key) {
+		return reads.get(key);
+	}
+
+	/**
+	 * Get all read keys and their versions.
+	 */
+	public Set<Map.Entry<Key,Long>> getReads() {
+		return reads.entrySet();
+	}
+
+	/**
+	 * Process the results of a record write. For internal use only.
+	 */
+	public void onWrite(Key key, Long version, int resultCode) {
+		// Write commands call setNamespace() prior to sending the command, so there is
+		// no need to call it here when receiving the response.
+		if (version != null) {
+			reads.put(key, version);
+		}
+		else {
+			if (resultCode == ResultCode.OK) {
+				reads.remove(key);
+				writes.add(key);
+			}
+		}
+	}
+
+	/**
+	 * Get all write keys and their versions.
+	 */
+	public Set<Key> getWrites() {
+		return writes;
 	}
 
 	/**
@@ -89,53 +153,6 @@ public final class Tran {
 	}
 
 	/**
-	 * Process the results of a record read. For internal use only.
-	 */
-	public void onRead(Key key, Long version) {
-		if (version != null) {
-			setNamespace(key.namespace);
-			reads.put(key, version);
-		}
-	}
-
-	/**
-	 * Get record version for a given key.
-	 */
-	public Long getReadVersion(Key key) {
-		return reads.get(key);
-	}
-
-	/**
-	 * Get all read keys and their versions.
-	 */
-	public Set<Map.Entry<Key,Long>> getReads() {
-		return reads.entrySet();
-	}
-
-	/**
-	 * Process the results of a record write. For internal use only.
-	 */
-	public void onWrite(Key key, Long version, int resultCode) {
-		// TODO: Should key.namespace be verified here?
-		if (version != null) {
-			reads.put(key, version);
-		}
-		else {
-			if (resultCode == ResultCode.OK) {
-				reads.remove(key);
-				writes.add(key);
-			}
-		}
-	}
-
-	/**
-	 * Get all write keys and their versions.
-	 */
-	public Set<Key> getWrites() {
-		return writes;
-	}
-
-	/**
 	 * Get MRT deadline.
 	 */
 	public int getDeadline() {
@@ -147,6 +164,18 @@ public final class Tran {
 	 */
 	public void setDeadline(int deadline) {
 		this.deadline = deadline;
+	}
+
+	/**
+	 * Verify that commit/abort is only attempted once.
+	 */
+	public void setRollAttempted() {
+		// Verify that commit or abort is only attempted once.
+		if (rollAttempted) {
+			throw new AerospikeException(ResultCode.PARAMETER_ERROR,
+				"commit() or abort() may only be called once for a given MRT");
+		}
+		rollAttempted = true;
 	}
 
 	/**

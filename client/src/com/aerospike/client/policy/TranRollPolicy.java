@@ -16,13 +16,9 @@
  */
 package com.aerospike.client.policy;
 
-import com.aerospike.client.Tran;
-
 /**
- * Multi-record transaction (MRT) policy fields used to batch roll forward/backward records in
- * {@link com.aerospike.client.AerospikeClient#tranCommit(Tran)} and
- * {@link com.aerospike.client.AerospikeClient#tranAbort(Tran)}.
- * Used a placeholder for now as there are no additional fields beyond BatchPolicy.
+ * Multi-record transaction (MRT) policy fields used to batch roll forward/backward records on
+ * commit or abort. Used a placeholder for now as there are no additional fields beyond BatchPolicy.
  */
 public class TranRollPolicy extends BatchPolicy {
 	/**

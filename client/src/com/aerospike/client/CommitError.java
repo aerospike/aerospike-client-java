@@ -19,18 +19,17 @@ package com.aerospike.client;
 /**
  * Multi-record transaction (MRT) error status.
  */
-public enum TranError {
-	VERIFY_FAIL("MRT verify failed. Transaction aborted."),
-	VERIFY_AND_ABORT_FAIL("MRT verify and abort failed"),
-	VERIFY_AND_CLOSE_FAIL("MRT verify and close failed"),
-	WILL_COMMIT_FAIL("MRT will commit failed"),
-	COMMIT_FAIL("MRT commit failed"),
-	ABORT_FAIL("MRT abort failed"),
-	CLOSE_FAIL("MRT close failed");
+public enum CommitError {
+	VERIFY_FAIL("MRT verify failed. MRT aborted."),
+	VERIFY_FAIL_CLOSE_ABANDONED("MRT verify failed. MRT aborted. MRT client close abandoned. Server will eventually close the MRT."),
+	VERIFY_FAIL_ABORT_ABANDONED("MRT verify failed. MRT client abort abandoned. Server will eventually abort the MRT."),
+	MARK_ROLL_FORWARD_ABANDONED("MRT client mark roll forward abandoned. Server will eventually abort the MRT."),
+	ROLL_FORWARD_ABANDONED("MRT client roll forward abandoned. Server will eventually commit the MRT."),
+	CLOSE_ABANDONED("MRT has been rolled forward, but MRT client close was abandoned. Server will eventually close the MRT.");
 
 	public final String str;
 
-	TranError(String str) {
+	CommitError(String str) {
 		this.str = str;
 	}
 }

@@ -59,13 +59,13 @@ public class TestTran extends TestSync {
 
 		client.put(null, key, new Bin(binName, "val1"));
 
-		Tran tran = client.tranBegin();
+		Tran tran = new Tran();
 
 		WritePolicy wp = client.copyWritePolicyDefault();
 		wp.tran = tran;
 		client.put(wp, key, new Bin(binName, "val2"));
 
-		client.tranCommit(tran);
+		client.commit(tran);
 
 		Record record = client.get(null, key);
 		assertBinEqual(key, record, binName, "val2");
@@ -75,14 +75,14 @@ public class TestTran extends TestSync {
 	public void tranWriteTwice() {
 		Key key = new Key(args.namespace, args.set, "mrtkey2");
 
-		Tran tran = client.tranBegin();
+		Tran tran = new Tran();
 
 		WritePolicy wp = client.copyWritePolicyDefault();
 		wp.tran = tran;
 		client.put(wp, key, new Bin(binName, "val1"));
 		client.put(wp, key, new Bin(binName, "val2"));
 
-		client.tranCommit(tran);
+		client.commit(tran);
 
 		Record record = client.get(null, key);
 		assertBinEqual(key, record, binName, "val2");
@@ -92,8 +92,8 @@ public class TestTran extends TestSync {
 	public void tranWriteConflict() {
 		Key key = new Key(args.namespace, args.set, "mrtkey21");
 
-		Tran tran1 = client.tranBegin();
-		Tran tran2 = client.tranBegin();
+		Tran tran1 = new Tran();
+		Tran tran2 = new Tran();
 
 		WritePolicy wp1 = client.copyWritePolicyDefault();
 		WritePolicy wp2 = client.copyWritePolicyDefault();
@@ -111,8 +111,8 @@ public class TestTran extends TestSync {
 			}
 		}
 
-		client.tranCommit(tran1);
-		client.tranCommit(tran2);
+		client.commit(tran1);
+		client.commit(tran2);
 
 		Record record = client.get(null, key);
 		assertBinEqual(key, record, binName, "val1");
@@ -124,7 +124,7 @@ public class TestTran extends TestSync {
 
 		client.put(null, key, new Bin(binName, "val1"));
 
-		Tran tran = client.tranBegin();
+		Tran tran = new Tran();
 
 		WritePolicy wp = client.copyWritePolicyDefault();
 		wp.tran = tran;
@@ -141,7 +141,7 @@ public class TestTran extends TestSync {
 			}
 		}
 
-		client.tranCommit(tran);
+		client.commit(tran);
 	}
 
 	@Test
@@ -150,7 +150,7 @@ public class TestTran extends TestSync {
 
 		client.put(null, key, new Bin(binName, "val1"));
 
-		Tran tran = client.tranBegin();
+		Tran tran = new Tran();
 
 		WritePolicy wp = client.copyWritePolicyDefault();
 		wp.tran = tran;
@@ -159,7 +159,7 @@ public class TestTran extends TestSync {
 		Record record = client.get(null, key);
 		assertBinEqual(key, record, binName, "val1");
 
-		client.tranCommit(tran);
+		client.commit(tran);
 
 		record = client.get(null, key);
 		assertBinEqual(key, record, binName, "val2");
@@ -171,7 +171,7 @@ public class TestTran extends TestSync {
 
 		client.put(null, key, new Bin(binName, "val1"));
 
-		Tran tran = client.tranBegin();
+		Tran tran = new Tran();
 
 		WritePolicy wp = client.copyWritePolicyDefault();
 		wp.tran = tran;
@@ -182,7 +182,7 @@ public class TestTran extends TestSync {
 		Record record = client.get(p, key);
 		assertBinEqual(key, record, binName, "val2");
 
-		client.tranAbort(tran);
+		client.abort(tran);
 
 		record = client.get(null, key);
 		assertBinEqual(key, record, binName, "val1");
@@ -194,14 +194,14 @@ public class TestTran extends TestSync {
 
 		client.put(null, key, new Bin(binName, "val1"));
 
-		Tran tran = client.tranBegin();
+		Tran tran = new Tran();
 
 		WritePolicy wp = client.copyWritePolicyDefault();
 		wp.tran = tran;
 		wp.durableDelete = true;
 		client.delete(wp, key);
 
-		client.tranCommit(tran);
+		client.commit(tran);
 
 		Record record = client.get(null, key);
 		assertNull(record);
@@ -213,14 +213,14 @@ public class TestTran extends TestSync {
 
 		client.put(null, key, new Bin(binName, "val1"));
 
-		Tran tran = client.tranBegin();
+		Tran tran = new Tran();
 
 		WritePolicy wp = client.copyWritePolicyDefault();
 		wp.tran = tran;
 		wp.durableDelete = true;
 		client.delete(wp, key);
 
-		client.tranAbort(tran);
+		client.abort(tran);
 
 		Record record = client.get(null, key);
 		assertBinEqual(key, record, binName, "val1");
@@ -230,7 +230,7 @@ public class TestTran extends TestSync {
 	public void tranDeleteTwice() {
 		Key key = new Key(args.namespace, args.set, "mrtkey8");
 
-		Tran tran = client.tranBegin();
+		Tran tran = new Tran();
 
 		client.put(null, key, new Bin(binName, "val1"));
 
@@ -240,7 +240,7 @@ public class TestTran extends TestSync {
 		client.delete(wp, key);
 		client.delete(wp, key);
 
-		client.tranCommit(tran);
+		client.commit(tran);
 
 		Record record = client.get(null, key);
 		assertNull(record);
@@ -252,13 +252,13 @@ public class TestTran extends TestSync {
 
 		client.put(null, key, new Bin(binName, "val1"));
 
-		Tran tran = client.tranBegin();
+		Tran tran = new Tran();
 
 		WritePolicy wp = client.copyWritePolicyDefault();
 		wp.tran = tran;
 		client.touch(wp, key);
 
-		client.tranCommit(tran);
+		client.commit(tran);
 
 		Record record = client.get(null, key);
 		assertBinEqual(key, record, binName, "val1");
@@ -270,13 +270,13 @@ public class TestTran extends TestSync {
 
 		client.put(null, key, new Bin(binName, "val1"));
 
-		Tran tran = client.tranBegin();
+		Tran tran = new Tran();
 
 		WritePolicy wp = client.copyWritePolicyDefault();
 		wp.tran = tran;
 		client.touch(wp, key);
 
-		client.tranAbort(tran);
+		client.abort(tran);
 
 		Record record = client.get(null, key);
 		assertBinEqual(key, record, binName, "val1");
@@ -288,7 +288,7 @@ public class TestTran extends TestSync {
 
 		client.put(null, key, new Bin(binName, "val1"), new Bin("bin2", "bal1"));
 
-		Tran tran = client.tranBegin();
+		Tran tran = new Tran();
 
 		WritePolicy wp = client.copyWritePolicyDefault();
 		wp.tran = tran;
@@ -298,7 +298,7 @@ public class TestTran extends TestSync {
 		);
 		assertBinEqual(key, record, "bin2", "bal1");
 
-		client.tranCommit(tran);
+		client.commit(tran);
 
 		record = client.get(null, key);
 		assertBinEqual(key, record, binName, "val2");
@@ -310,7 +310,7 @@ public class TestTran extends TestSync {
 
 		client.put(null, key, new Bin(binName, "val1"), new Bin("bin2", "bal1"));
 
-		Tran tran = client.tranBegin();
+		Tran tran = new Tran();
 
 		WritePolicy wp = client.copyWritePolicyDefault();
 		wp.tran = tran;
@@ -320,7 +320,7 @@ public class TestTran extends TestSync {
 		);
 		assertBinEqual(key, record, "bin2", "bal1");
 
-		client.tranAbort(tran);
+		client.abort(tran);
 
 		record = client.get(null, key);
 		assertBinEqual(key, record, binName, "val1");
@@ -332,13 +332,13 @@ public class TestTran extends TestSync {
 
 		client.put(null, key, new Bin(binName, "val1"));
 
-		Tran tran = client.tranBegin();
+		Tran tran = new Tran();
 
 		WritePolicy wp = client.copyWritePolicyDefault();
 		wp.tran = tran;
 		client.execute(wp, key, "record_example", "writeBin", Value.get(binName), Value.get("val2"));
 
-		client.tranCommit(tran);
+		client.commit(tran);
 
 		Record record = client.get(null, key);
 		assertBinEqual(key, record, binName, "val2");
@@ -350,13 +350,13 @@ public class TestTran extends TestSync {
 
 		client.put(null, key, new Bin(binName, "val1"));
 
-		Tran tran = client.tranBegin();
+		Tran tran = new Tran();
 
 		WritePolicy wp = client.copyWritePolicyDefault();
 		wp.tran = tran;
 		client.execute(wp, key, "record_example", "writeBin", Value.get(binName), Value.get("val2"));
 
-		client.tranAbort(tran);
+		client.abort(tran);
 
 		Record record = client.get(null, key);
 		assertBinEqual(key, record, binName, "val1");
@@ -377,7 +377,7 @@ public class TestTran extends TestSync {
 		Record[] recs = client.get(null, keys);
 		assertBatchEqual(keys, recs, 1);
 
-		Tran tran = client.tranBegin();
+		Tran tran = new Tran();
 
 		bin = new Bin(binName, 2);
 
@@ -404,7 +404,7 @@ public class TestTran extends TestSync {
 			throw new AerospikeException(sb.toString());
 		}
 
-		client.tranCommit(tran);
+		client.commit(tran);
 
 		recs = client.get(null, keys);
 		assertBatchEqual(keys, recs, 2);
@@ -425,7 +425,7 @@ public class TestTran extends TestSync {
 		Record[] recs = client.get(null, keys);
 		assertBatchEqual(keys, recs, 1);
 
-		Tran tran = client.tranBegin();
+		Tran tran = new Tran();
 
 		bin = new Bin(binName, 2);
 
@@ -452,7 +452,7 @@ public class TestTran extends TestSync {
 			throw new AerospikeException(sb.toString());
 		}
 
-		client.tranAbort(tran);
+		client.abort(tran);
 
 		recs = client.get(null, keys);
 		assertBatchEqual(keys, recs, 1);

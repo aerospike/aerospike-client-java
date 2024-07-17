@@ -302,7 +302,7 @@ public class Command {
 		compress(policy);
 	}
 
-	public final void setTranWillRoll(Tran tran, Key key) {
+	public final void setTranMarkRollForward(Tran tran, Key key) {
 		Bin bin = new Bin("fwd", true);
 
 		begin();
