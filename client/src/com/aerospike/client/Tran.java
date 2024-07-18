@@ -167,10 +167,9 @@ public final class Tran {
 	}
 
 	/**
-	 * Verify that commit/abort is only attempted once.
+	 * Verify that commit/abort is only attempted once. For internal use only.
 	 */
 	public void setRollAttempted() {
-		// Verify that commit or abort is only attempted once.
 		if (rollAttempted) {
 			throw new AerospikeException(ResultCode.PARAMETER_ERROR,
 				"commit() or abort() may only be called once for a given MRT");
@@ -179,9 +178,9 @@ public final class Tran {
 	}
 
 	/**
-	 * Close transaction. Remove all tracked keys.
+	 * Clear MRT. Remove all tracked keys.
 	 */
-	public void close() {
+	public void clear() {
 		namespace = null;
 		deadline = 0;
 		reads.clear();

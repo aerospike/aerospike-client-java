@@ -123,7 +123,7 @@ public final class TranMonitor {
 	}
 
 	public static Key getTranMonitorKey(Tran tran) {
-		return new Key(tran.getNamespace(), "AE", tran.getId());
+		return new Key(tran.getNamespace(), "<ERO~MRT", tran.getId());
 	}
 
 	public static WritePolicy copyTimeoutPolicy(Policy policy) {

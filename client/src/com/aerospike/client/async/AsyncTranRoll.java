@@ -376,7 +376,7 @@ public final class AsyncTranRoll {
 	}
 
 	private void notifyCommitSuccess() {
-		tran.close();
+		tran.clear();
 
 		try {
 			commitListener.onSuccess();
@@ -404,7 +404,7 @@ public final class AsyncTranRoll {
 	}
 
 	private void notifyAbortSuccess() {
-		tran.close();
+		tran.clear();
 
 		try {
 			abortListener.onSuccess();
