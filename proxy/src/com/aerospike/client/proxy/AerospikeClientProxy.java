@@ -71,8 +71,8 @@ import com.aerospike.client.listener.InfoListener;
 import com.aerospike.client.listener.RecordArrayListener;
 import com.aerospike.client.listener.RecordListener;
 import com.aerospike.client.listener.RecordSequenceListener;
-import com.aerospike.client.listener.TranAbortListener;
-import com.aerospike.client.listener.TranCommitListener;
+import com.aerospike.client.listener.AbortListener;
+import com.aerospike.client.listener.CommitListener;
 import com.aerospike.client.listener.WriteListener;
 import com.aerospike.client.metrics.MetricsPolicy;
 import com.aerospike.client.policy.AdminPolicy;
@@ -579,13 +579,6 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 	//-------------------------------------------------------
 
 	/**
-	 * Create a new multi-record transaction.
-	 */
-	public final Tran tranBegin() {
-		return null;
-	}
-
-	/**
 	 * Attempt to commit the given multi-record transaction. First, the expected record versions are
 	 * sent to the server nodes for verification. If all nodes return success, the transaction is
 	 * committed. Otherwise, the transaction is aborted.
@@ -593,9 +586,10 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 	 * Requires server version 8.0+
 	 *
 	 * @param tran			multi-record transaction
-	 * @throws AerospikeException	if commit fails
+	 * @throws AerospikeException.Commit    if commit fails
 	 */
-	public final void tranCommit(Tran tran) {
+	public final void commit(Tran tran)
+		throws AerospikeException.Commit {
 	}
 
 	/**
@@ -614,7 +608,8 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 	 * @param tran			multi-record transaction
 	 * @throws AerospikeException	if event loop registration fails
 	 */
-	public final void tranCommit(EventLoop eventLoop, TranCommitListener listener, Tran tran) {
+	public final void commit(EventLoop eventLoop, CommitListener listener, Tran tran)
+		throws AerospikeException {
 	}
 
 	/**
@@ -623,9 +618,10 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 	 * Requires server version 8.0+
 	 *
 	 * @param tran			multi-record transaction
-	 * @throws AerospikeException	if abort fails
+	 * @throws AerospikeException.Abort    if abort fails
 	 */
-	public final void tranAbort(Tran tran) {
+	public final void abort(Tran tran)
+		throws AerospikeException.Abort {
 	}
 
 	/**
@@ -642,7 +638,8 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 	 * @param tran			multi-record transaction
 	 * @throws AerospikeException	if event loop registration fails
 	 */
-	public final void tranAbort(EventLoop eventLoop, TranAbortListener listener, Tran tran) {
+	public final void abort(EventLoop eventLoop, AbortListener listener, Tran tran)
+		throws AerospikeException {
 	}
 
 	//-------------------------------------------------------

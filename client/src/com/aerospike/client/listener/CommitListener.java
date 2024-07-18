@@ -14,28 +14,21 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.aerospike.client.policy;
+package com.aerospike.client.listener;
+
+import com.aerospike.client.AerospikeException;
 
 /**
- * Multi-record transaction (MRT) policy fields used to batch verify record versions on commit.
- * Used a placeholder for now as there are no additional fields beyond BatchPolicy.
+ * Asynchronous result notifications for multi-record transaction (MRT) commits.
  */
-public class TranVerifyPolicy extends BatchPolicy {
+public interface CommitListener {
 	/**
-	 * Copy policy from another policy.
+	 * This method is called when the records are verified and the commit succeeds.
 	 */
-	public TranVerifyPolicy(TranVerifyPolicy other) {
-		super(other);
-	}
+	void onSuccess();
 
 	/**
-	 * Default constructor.
+	 * This method is called when the commit fails.
 	 */
-	public TranVerifyPolicy() {
-		readModeSC = ReadModeSC.LINEARIZE;
-		replica = Replica.MASTER;
-		maxRetries = 5;
-		totalTimeout = 10000;
-		sleepBetweenRetries = 1000;
-	}
+	void onFailure(AerospikeException.Commit ae);
 }

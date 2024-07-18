@@ -25,17 +25,17 @@ import com.aerospike.client.cluster.Connection;
 import com.aerospike.client.policy.WritePolicy;
 import java.io.IOException;
 
-public final class TranWillRoll extends SyncWriteCommand {
+public final class TranMarkRollForward extends SyncWriteCommand {
 	private final Tran tran;
 
-	public TranWillRoll(Cluster cluster, Tran tran, WritePolicy writePolicy, Key key) {
+	public TranMarkRollForward(Cluster cluster, Tran tran, WritePolicy writePolicy, Key key) {
 		super(cluster, writePolicy, key);
 		this.tran = tran;
 	}
 
 	@Override
 	protected void writeBuffer() {
-		setTranWillRoll(tran, key);
+		setTranMarkRollForward(tran, key);
 	}
 
 	@Override

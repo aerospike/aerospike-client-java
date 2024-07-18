@@ -14,21 +14,18 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.aerospike.client.listener;
-
-import com.aerospike.client.AerospikeException;
+package com.aerospike.client;
 
 /**
- * Asynchronous result notifications for multi-record transaction (MRT) commits.
+ * Multi-record transaction (MRT) abort error status.
  */
-public interface TranCommitListener {
-	/**
-	 * This method is called when the records are verified and the commit succeeds.
-	 */
-	void onSuccess();
+public enum AbortError {
+	ROLL_BACK_ABANDONED("MRT client roll back abandoned. Server will eventually abort the MRT."),
+	CLOSE_ABANDONED("MRT has been rolled back, but MRT client close was abandoned. Server will eventually close the MRT.");
 
-	/**
-	 * This method is called when the commit fails.
-	 */
-	void onFailure(AerospikeException.TranCommit ae);
+	public final String str;
+
+	AbortError(String str) {
+		this.str = str;
+	}
 }

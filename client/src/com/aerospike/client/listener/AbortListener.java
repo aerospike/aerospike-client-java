@@ -21,7 +21,7 @@ import com.aerospike.client.AerospikeException;
 /**
  * Asynchronous result notifications for multi-record transaction (MRT) aborts.
  */
-public interface TranAbortListener {
+public interface AbortListener {
 	/**
 	 * This method is called when the abort succeeds.
 	 */
@@ -30,5 +30,5 @@ public interface TranAbortListener {
 	/**
 	 * This method is called when the abort fails.
 	 */
-	void onFailure(AerospikeException.TranAbort ae);
+	void onFailure(AerospikeException.Abort ae);
 }

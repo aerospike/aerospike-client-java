@@ -24,11 +24,11 @@ import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.listener.WriteListener;
 import com.aerospike.client.policy.WritePolicy;
 
-public final class AsyncTranWillRoll extends AsyncWriteBase {
+public final class AsyncTranMarkRollForward extends AsyncWriteBase {
 	private final Tran tran;
 	private final WriteListener listener;
 
-	public AsyncTranWillRoll(
+	public AsyncTranMarkRollForward(
 		Cluster cluster,
 		Tran tran,
 		WriteListener listener,
@@ -42,7 +42,7 @@ public final class AsyncTranWillRoll extends AsyncWriteBase {
 
 	@Override
 	protected void writeBuffer() {
-		setTranWillRoll(tran, key);
+		setTranMarkRollForward(tran, key);
 	}
 
 	@Override
