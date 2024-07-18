@@ -49,11 +49,11 @@ public final class Tran {
 	 */
 	public Tran(int readsCapacity, int writesCapacity) {
 		if (readsCapacity < 16) {
-			throw new AerospikeException(ResultCode.PARAMETER_ERROR, "readsCapacity must be >= 16");
+			readsCapacity = 16;
 		}
 
 		if (writesCapacity < 16) {
-			throw new AerospikeException(ResultCode.PARAMETER_ERROR, "writesCapacity must be >= 16");
+			writesCapacity = 16;
 		}
 
 		id = createId();
