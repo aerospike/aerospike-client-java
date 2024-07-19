@@ -147,8 +147,8 @@ public final class Tran {
 			namespace = ns;
 		}
 		else if (! namespace.equals(ns)) {
-			throw new AerospikeException("Namespace must be the same for all commands in the MRT. Original: " +
-				namespace + " New: " + ns);
+			throw new AerospikeException("Namespace must be the same for all commands in the MRT. orig: " +
+				namespace + " new: " + ns);
 		}
 	}
 

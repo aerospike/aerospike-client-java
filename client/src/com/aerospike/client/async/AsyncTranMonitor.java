@@ -89,6 +89,13 @@ public abstract class AsyncTranMonitor {
 
 		// Add write keys to MRT monitor and then run original command.
 		Operation[] ops = TranMonitor.getTranOps(policy.tran, records);
+
+		if (ops == null) {
+			// Readonly batch does not need to add key digests. Run original command.
+			executor.execute(commands);
+			return;
+		}
+
 		AsyncTranMonitor.Batch ate = new AsyncTranMonitor.Batch(executor, commands);
 		ate.execute(policy, ops);
 	}

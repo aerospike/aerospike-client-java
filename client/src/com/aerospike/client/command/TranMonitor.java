@@ -37,6 +37,9 @@ public final class TranMonitor {
 	private static final ListPolicy OrderedListPolicy = new ListPolicy(ListOrder.ORDERED,
 		ListWriteFlags.ADD_UNIQUE | ListWriteFlags.NO_FAIL | ListWriteFlags.PARTIAL);
 
+	private static final String BinNameId = "id";
+	private static final String BinNameDigests = "keyds";
+
 	public static void addKey(Cluster cluster, WritePolicy policy, Key cmdKey) {
 		Tran tran = policy.tran;
 
@@ -56,7 +59,10 @@ public final class TranMonitor {
 
 	public static void addKeys(Cluster cluster, BatchPolicy policy, List<BatchRecord> records) {
 		Operation[] ops = getTranOps(policy.tran, records);
-		addWriteKeys(cluster, policy, ops);
+
+		if (ops != null) {
+			addWriteKeys(cluster, policy, ops);
+		}
 	}
 
 	public static Operation[] getTranOps(Tran tran, Key cmdKey) {
@@ -65,13 +71,13 @@ public final class TranMonitor {
 		if (tran.getDeadline() == 0) {
 			// No existing monitor record.
 			return new Operation[] {
-				Operation.put(new Bin("id", tran.getId())),
-				ListOperation.append(OrderedListPolicy, "keyds", Value.get(cmdKey.digest))
+				Operation.put(new Bin(BinNameId, tran.getId())),
+				ListOperation.append(OrderedListPolicy, BinNameDigests, Value.get(cmdKey.digest))
 			};
 		}
 		else {
 			return new Operation[] {
-				ListOperation.append(OrderedListPolicy, "keyds", Value.get(cmdKey.digest))
+				ListOperation.append(OrderedListPolicy, BinNameDigests, Value.get(cmdKey.digest))
 			};
 		}
 	}
@@ -96,6 +102,11 @@ public final class TranMonitor {
 				list.add(Value.get(key.digest));
 			}
 		}
+
+		if (list.size() == 0) {
+			// Readonly batch does not need to add key digests.
+			return null;
+		}
 		return getTranOps(tran, list);
 	}
 
@@ -103,13 +114,13 @@ public final class TranMonitor {
 		if (tran.getDeadline() == 0) {
 			// No existing monitor record.
 			return new Operation[] {
-				Operation.put(new Bin("id", tran.getId())),
-				ListOperation.appendItems(OrderedListPolicy, "keyds", list)
+				Operation.put(new Bin(BinNameId, tran.getId())),
+				ListOperation.appendItems(OrderedListPolicy, BinNameDigests, list)
 			};
 		}
 		else {
 			return new Operation[] {
-				ListOperation.appendItems(OrderedListPolicy, "keyds", list)
+				ListOperation.appendItems(OrderedListPolicy, BinNameDigests, list)
 			};
 		}
 	}
