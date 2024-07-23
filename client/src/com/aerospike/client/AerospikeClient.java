@@ -748,6 +748,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			TranMonitor.addKey(cluster, policy, key);
 		}
 
+		Log.debug("About to execute WriteCmd w/ mrt deadline >" + policy.tran.getDeadline());
 		WriteCommand command = new WriteCommand(cluster, policy, key, bins, Operation.Type.WRITE);
 		command.execute();
 	}

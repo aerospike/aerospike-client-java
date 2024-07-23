@@ -52,7 +52,7 @@ public final class TranMonitor {
 		}
 
 		Operation[] ops = getTranOps(tran, cmdKey);
-		addWriteKeys(cluster, policy, ops);
+		addWriteKeys(cluster, policy, ops);   // Policy should have ns by this point
 	}
 
 	public static void addKeys(Cluster cluster, BatchPolicy policy, Key[] keys) {

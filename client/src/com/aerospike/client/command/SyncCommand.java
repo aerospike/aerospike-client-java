@@ -48,6 +48,7 @@ public abstract class SyncCommand extends Command {
 		super(policy.socketTimeout, policy.totalTimeout, policy.maxRetries);
 		this.cluster = cluster;
 		this.policy = policy;
+		System.out.println("Instantiated SyncCommand object w/ policy.tran.deadline=" + policy.tran.getDeadline());
 	}
 
 	/**
@@ -63,6 +64,7 @@ public abstract class SyncCommand extends Command {
 		if (totalTimeout > 0) {
 			deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(totalTimeout);
 		}
+		System.out.println("Executing SyncCommand object w/ policy.tran.deadline=" + this.policy.tran.getDeadline());
 		executeCommand();
 	}
 
@@ -103,9 +105,12 @@ public abstract class SyncCommand extends Command {
 					// Set command buffer.
 					writeBuffer();
 
+					System.out.println("Sending RAW:= { " + dataBuffer + " }" );
 					// Send command.
 					conn.write(dataBuffer, dataOffset);
 					commandSentCounter++;
+					
+					System.out.println("about to parse result.. ");
 
 					// Parse results.
 					parseResult(conn);
