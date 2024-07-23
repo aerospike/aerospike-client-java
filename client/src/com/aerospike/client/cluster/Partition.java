@@ -21,6 +21,7 @@ import java.util.concurrent.atomic.AtomicReferenceArray;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
+import com.aerospike.client.AerospikeException.InvalidNamespace;
 import com.aerospike.client.command.Buffer;
 import com.aerospike.client.policy.Policy;
 import com.aerospike.client.policy.Replica;
@@ -32,8 +33,11 @@ public final class Partition {
 		// Must copy hashmap reference for copy on write semantics to work.
 		HashMap<String,Partitions> map = cluster.partitionMap;
 		Partitions partitions = map.get(key.namespace);
+		
+		System.out.println("In Partition.write() with ns=" + key.namespace);
 
 		if (partitions == null) {
+			System.out.println("partitions=null, raising InvalidNamespace exception!");
 			throw new AerospikeException.InvalidNamespace(key.namespace, map.size());
 		}
 
