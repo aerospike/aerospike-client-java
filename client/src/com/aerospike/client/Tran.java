@@ -49,11 +49,11 @@ public final class Tran {
 	 */
 	public Tran(int readsCapacity, int writesCapacity) {
 		if (readsCapacity < 16) {
-			throw new AerospikeException(ResultCode.PARAMETER_ERROR, "readsCapacity must be >= 16");
+			readsCapacity = 16;
 		}
 
 		if (writesCapacity < 16) {
-			throw new AerospikeException(ResultCode.PARAMETER_ERROR, "writesCapacity must be >= 16");
+			writesCapacity = 16;
 		}
 
 		id = createId();
@@ -147,8 +147,8 @@ public final class Tran {
 			namespace = ns;
 		}
 		else if (! namespace.equals(ns)) {
-			throw new AerospikeException("Namespace must be the same for all commands in the MRT. Original: " +
-				namespace + " New: " + ns);
+			throw new AerospikeException("Namespace must be the same for all commands in the MRT. orig: " +
+				namespace + " new: " + ns);
 		}
 	}
 
@@ -167,10 +167,9 @@ public final class Tran {
 	}
 
 	/**
-	 * Verify that commit/abort is only attempted once.
+	 * Verify that commit/abort is only attempted once. For internal use only.
 	 */
 	public void setRollAttempted() {
-		// Verify that commit or abort is only attempted once.
 		if (rollAttempted) {
 			throw new AerospikeException(ResultCode.PARAMETER_ERROR,
 				"commit() or abort() may only be called once for a given MRT");
@@ -179,9 +178,9 @@ public final class Tran {
 	}
 
 	/**
-	 * Close transaction. Remove all tracked keys.
+	 * Clear MRT. Remove all tracked keys.
 	 */
-	public void close() {
+	public void clear() {
 		namespace = null;
 		deadline = 0;
 		reads.clear();

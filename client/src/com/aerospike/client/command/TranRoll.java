@@ -243,6 +243,6 @@ public final class TranRoll {
 		cmd.execute();
 
 		// Reset MRT on client.
-		tran.close();
+		tran.clear();
 	}
 }
