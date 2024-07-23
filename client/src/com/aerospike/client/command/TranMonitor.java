@@ -42,6 +42,7 @@ public final class TranMonitor {
 
 	public static void addKey(Cluster cluster, WritePolicy policy, Key cmdKey) {
 		Tran tran = policy.tran;
+		tran.setNamespace(cmdKey.namespace);
 		System.out.println("In TranMonitor.addKey() with cmdKey.ns=" + cmdKey.namespace);
 		System.out.println("In TranMonitor.addKey() with policy.tran.ns=" + policy.tran.getNamespace());
 		System.out.println("In TranMonitor.addKey() with tran.ns=" + tran.getNamespace());
