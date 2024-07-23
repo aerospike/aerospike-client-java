@@ -42,7 +42,7 @@ public final class TranMonitor {
 
 	public static void addKey(Cluster cluster, WritePolicy policy, Key cmdKey) {
 		Tran tran = policy.tran;
-
+		System.out.println("In TranMonitor.addKey() with key.ns=" + cmdKey.namespace);
 		if (tran.getWrites().contains(cmdKey)) {
 			// Transaction monitor already contains this key.
 			return;
@@ -129,6 +129,7 @@ public final class TranMonitor {
 		Key tranKey = getTranMonitorKey(policy.tran);
 		WritePolicy wp = copyTimeoutPolicy(policy);
 		OperateArgs args = new OperateArgs(wp, null, null, ops);
+		System.out.println("in TranMonitor.addWriteKeys, calling TranAddKeys ctor w/ ns=" + tranKey.namespace);
 		TranAddKeys cmd = new TranAddKeys(cluster, tranKey, args);
 		cmd.execute();
 	}

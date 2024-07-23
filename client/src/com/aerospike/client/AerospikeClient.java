@@ -744,6 +744,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		}
 
 		if (policy.tran != null) {
+			System.out.println("NS: " + key.namespace);
 			TranMonitor.addKey(cluster, policy, key);
 		}
 
