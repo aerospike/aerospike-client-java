@@ -48,7 +48,6 @@ public abstract class SyncCommand extends Command {
 		super(policy.socketTimeout, policy.totalTimeout, policy.maxRetries);
 		this.cluster = cluster;
 		this.policy = policy;
-		System.out.println("Instantiated SyncCommand object w/ policy.tran.deadline=" + policy.tran.getDeadline());
 	}
 
 	/**
