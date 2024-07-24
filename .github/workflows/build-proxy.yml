@@ -73,6 +73,7 @@ jobs:
         JF_URL: ${{ env.JFROG_URL }}
         JF_USER: ${{ secrets.JFROG_USERNAME }}
         JF_PASSWORD: ${{ secrets.JFROG_MAVEN_TOKEN }}
+        JF_PROJECT: "clients"
 
     - run: sudo apt install -y libxml-xpath-perl
 
@@ -88,9 +89,9 @@ jobs:
 
     - name: Create release bundle from JFrog build
       # Platform URL required for lifecycle commands (e.g release bundle management)
-      run: jf release-bundle-create --project=clients --signing-key=aerospike --sync --spec=./releasebundle-filespec.json aerospike-java-proxy-client ${{ steps.get-proxy-client-version.outputs.version }}
+      run: jf release-bundle-create --signing-key=aerospike --sync --spec=./releasebundle-filespec.json aerospike-java-proxy-client ${{ steps.get-proxy-client-version.outputs.version }}
       working-directory: .github/workflows
 
     - name: Promote release bundle to DEV stage
-      run: jf release-bundle-promote --project=clients --signing-key=aerospike --sync aerospike-java-proxy-client ${{ steps.get-proxy-client-version.outputs.version }} DEV
+      run: jf release-bundle-promote --signing-key=aerospike --sync aerospike-java-proxy-client ${{ steps.get-proxy-client-version.outputs.version }} DEV
       working-directory: .github/workflows
