@@ -71,7 +71,8 @@ jobs:
     - uses: jfrog/setup-jfrog-cli@v4
       env:
         JF_URL: ${{ env.JFROG_URL }}
-        JF_ACCESS_TOKEN: ${{ secrets.JF_ACCESS_TOKEN }}
+        JF_USER: ${{ secrets.JFROG_USERNAME }}
+        JF_PASSWORD: ${{ secrets.JFROG_MAVEN_TOKEN }}
 
     - run: sudo apt install -y libxml-xpath-perl
 
