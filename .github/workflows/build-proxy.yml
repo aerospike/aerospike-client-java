@@ -81,7 +81,7 @@ jobs:
     # mvn deploy only uploads to JFrog but doesn't create a JFrog build
     # TODO: run number doesn't increment when rerunning a workflow run
     - name: Create JFrog build from uploaded artifacts
-      run: jf rt build-publish ${{ steps.get-proxy-client-version.outputs.version }} ${{ github.run_number }}
+      run: jf rt build-publish
 
     - name: Create release bundle from JFrog build
       # Platform URL required for lifecycle commands (e.g release bundle management)
