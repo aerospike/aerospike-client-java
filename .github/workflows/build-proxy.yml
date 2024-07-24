@@ -54,10 +54,10 @@ jobs:
         JF_PASSWORD: ${{ secrets.JFROG_MAVEN_TOKEN }}
         JF_PROJECT: "clients"
 
-    - run: jf mvn-config 
+    - run: jf mvn-config
 
     - name: Run Maven workflow
-      run: jf mvn install -Dtest=com.aerospike.test.SuiteAll -DfailIfNoTests=false -DskipTests=false
+      run: jf mvn deploy -Dtest=com.aerospike.test.SuiteAll -DfailIfNoTests=false -DskipTests=false
 
     # TODO: For debugging. Remove later
     - if: ${{ always() }}
