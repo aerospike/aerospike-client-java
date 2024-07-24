@@ -64,7 +64,6 @@ public abstract class SyncCommand extends Command {
 		if (totalTimeout > 0) {
 			deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(totalTimeout);
 		}
-		System.out.println("Executing SyncCommand object w/ policy.tran.deadline=" + this.policy.tran.getDeadline());
 		executeCommand();
 	}
 
@@ -105,7 +104,6 @@ public abstract class SyncCommand extends Command {
 					// Set command buffer.
 					writeBuffer();
 
-					System.out.println("Sending RAW:= { " + dataBuffer + " }" );
 					// Send command.
 					conn.write(dataBuffer, dataOffset);
 					commandSentCounter++;
