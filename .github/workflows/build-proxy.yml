@@ -54,7 +54,7 @@ jobs:
         JF_PASSWORD: ${{ secrets.JFROG_MAVEN_TOKEN }}
         JF_PROJECT: "clients"
 
-    - run: jf mvn-config --repo-deploy-releases https://aerospike.jfrog.io/artifactory/clients-maven-dev-local --repo-deploy-snapshots https://aerospike.jfrog.io/artifactory/clients-maven-dev-local
+    - run: jf mvn-config --repo-deploy-releases clients-maven-dev-local --repo-deploy-snapshots clients-maven-dev-local
 
     - name: Run Maven workflow
       run: jf mvn deploy -Dtest=com.aerospike.test.SuiteAll -DfailIfNoTests=false -DskipTests=false
