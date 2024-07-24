@@ -36,7 +36,7 @@ public abstract class SyncWriteCommand extends SyncCommand {
 		this.writePolicy = writePolicy;
 		this.key = key;
 		System.out.println("in SyncWriteCommand ctor, key.ns=" + key.namespace);
-		System.out.println("in SyncWriteCommand ctor, wp.tran.ns=" + writePolicy.tran.getNamespace());
+		// System.out.println("in SyncWriteCommand ctor, wp.tran.ns=" + writePolicy.tran.getNamespace());
 		this.partition = Partition.write(cluster, writePolicy, key);
 		cluster.addTran();
 	}
