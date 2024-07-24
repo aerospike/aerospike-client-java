@@ -86,6 +86,8 @@ jobs:
 
     - name: Create file spec for release bundle
       run: cat releasebundle-filespec.json | jq '.files[0].pattern = "clients-maven-dev-local/com/aerospike/*/${{ steps.get-proxy-client-version.outputs.version }}/*"' | sponge releasebundle-filespec.json
+      working-directory: .github/workflows
+      shell: bash
 
     - name: Create release bundle from JFrog build
       # Platform URL required for lifecycle commands (e.g release bundle management)
