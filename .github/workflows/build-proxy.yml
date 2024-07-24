@@ -54,7 +54,7 @@ jobs:
         JF_PASSWORD: ${{ secrets.JFROG_MAVEN_TOKEN }}
         JF_PROJECT: "clients"
 
-    - run: jf mvn-config
+    - run: jf mvn-config --repo-deploy-releases https://aerospike.jfrog.io/artifactory/clients-maven-dev-local --repo-deploy-snapshots https://aerospike.jfrog.io/artifactory/clients-maven-dev-local
 
     - name: Run Maven workflow
       run: jf mvn deploy -Dtest=com.aerospike.test.SuiteAll -DfailIfNoTests=false -DskipTests=false
@@ -79,7 +79,6 @@ jobs:
       run: echo version=$(xpath -q -e "//project/version/text()" pom.xml) >> $GITHUB_OUTPUT
 
     # mvn deploy only uploads to JFrog but doesn't create a JFrog build
-    # TODO: run number doesn't increment when rerunning a workflow run
     - name: Create JFrog build from uploaded artifacts
       run: jf rt build-publish
 

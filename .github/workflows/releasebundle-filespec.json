@@ -1,7 +1,7 @@
 {
   "files": [
     {
-      "pattern": "~/.m2/repository/**/*.jar"
+      "pattern": "clients-maven-dev-local/"
     }
   ]
 }
