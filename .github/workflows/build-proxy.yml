@@ -82,6 +82,8 @@ jobs:
     - name: Create JFrog build from uploaded artifacts
       run: jf rt build-publish
 
+    - run: sudo apt install -y moreutils
+
     - name: Create file spec for release bundle
       run: cat releasebundle-filespec.json | jq '.files[0].pattern = "clients-maven-dev-local/com/aerospike/*/${{ steps.get-proxy-client-version.outputs.version }}/*"' | sponge releasebundle-filespec.json
 
