@@ -744,7 +744,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		}
 
 		if (policy.tran != null) {
-			System.out.println("in client.put() ns=" + key.namespace);
+			System.out.println(Thread.currentThread().threadId() + " - in client.put() ns=" + key.namespace);
 			TranMonitor.addKey(cluster, policy, key);
 		}
 

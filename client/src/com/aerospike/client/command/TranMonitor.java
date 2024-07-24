@@ -33,6 +33,8 @@ import com.aerospike.client.policy.WritePolicy;
 import java.util.ArrayList;
 import java.util.List;
 
+import java.util.concurrent.*;
+
 public final class TranMonitor {
 	private static final ListPolicy OrderedListPolicy = new ListPolicy(ListOrder.ORDERED,
 		ListWriteFlags.ADD_UNIQUE | ListWriteFlags.NO_FAIL | ListWriteFlags.PARTIAL);
@@ -43,9 +45,9 @@ public final class TranMonitor {
 	public static void addKey(Cluster cluster, WritePolicy policy, Key cmdKey) {
 		policy.tran.setNamespace(cmdKey.namespace);
 		Tran tran = policy.tran;
-		System.out.println("In TranMonitor.addKey() with cmdKey.ns=" + cmdKey.namespace);
-		System.out.println("In TranMonitor.addKey() with policy.tran.ns=" + policy.tran.getNamespace());
-		System.out.println("In TranMonitor.addKey() with tran.ns=" + tran.getNamespace());
+		System.out.println(Thread.currentThread().threadId() + " - In TranMonitor.addKey() with cmdKey.ns=" + cmdKey.namespace);
+		System.out.println(Thread.currentThread().threadId() + " - In TranMonitor.addKey() with policy.tran.ns=" + policy.tran.getNamespace());
+		System.out.println(Thread.currentThread().threadId() + " - In TranMonitor.addKey() with tran.ns=" + tran.getNamespace());
 		if (tran.getWrites().contains(cmdKey)) {
 			// Transaction monitor already contains this key.
 			return;
@@ -132,8 +134,8 @@ public final class TranMonitor {
 		Key tranKey = getTranMonitorKey(policy.tran);
 		WritePolicy wp = copyTimeoutPolicy(policy);
 		OperateArgs args = new OperateArgs(wp, null, null, ops);
-		System.out.println("in TranMonitor.addWriteKeys, calling TranAddKeys ctor w/ policy.tran.ns=" + policy.tran.getNamespace());
-		System.out.println("in TranMonitor.addWriteKeys, calling TranAddKeys ctor w/ trankey.ns=" + tranKey.namespace);
+		System.out.println(Thread.currentThread().threadId() + " - in TranMonitor.addWriteKeys, calling TranAddKeys ctor w/ policy.tran.ns=" + policy.tran.getNamespace());
+		System.out.println(Thread.currentThread().threadId() + " - in TranMonitor.addWriteKeys, calling TranAddKeys ctor w/ trankey.ns=" + tranKey.namespace);
 		TranAddKeys cmd = new TranAddKeys(cluster, tranKey, args);
 		cmd.execute();
 	}
