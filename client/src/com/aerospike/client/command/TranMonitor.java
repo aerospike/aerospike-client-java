@@ -33,7 +33,7 @@ import com.aerospike.client.policy.WritePolicy;
 import java.util.ArrayList;
 import java.util.List;
 
-import java.util.concurrent.*;
+// import java.util.concurrent.*;
 
 public final class TranMonitor {
 	private static final ListPolicy OrderedListPolicy = new ListPolicy(ListOrder.ORDERED,

@@ -34,10 +34,10 @@ public final class Partition {
 		HashMap<String,Partitions> map = cluster.partitionMap;
 		Partitions partitions = map.get(key.namespace);
 		
-		System.out.println("In Partition.write() with ns=" + key.namespace);
+		// System.out.println("In Partition.write() with ns=" + key.namespace);
 
 		if (partitions == null) {
-			System.out.println("partitions=null, raising InvalidNamespace exception!");
+			// System.out.println("partitions=null, raising InvalidNamespace exception!");
 			throw new AerospikeException.InvalidNamespace(key.namespace, map.size());
 		}
 
