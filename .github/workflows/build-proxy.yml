@@ -21,9 +21,6 @@ jobs:
       with:
         servers: '[{"id": "snapshots", "username": "${{ secrets.JFROG_USERNAME }}", "password": "${{ secrets.JFROG_MAVEN_TOKEN }}"}]'
 
-    - name: Build Java client
-      run: mvn install
-
     - name: Run Aerospike server
       run: docker run -d --name aerospike -p 3000:3000 aerospike/aerospike-server
 
@@ -50,8 +47,15 @@ jobs:
     - name: Wait for native and proxy server to start
       run: sleep 3
 
-    - name: Run tests
-      run: mvn test -Dtest=com.aerospike.test.SuiteAll -DfailIfNoTests=false -DskipTests=false
+    - uses: jfrog/setup-jfrog-cli@v4
+      env:
+        JF_URL: ${{ env.JFROG_URL }}
+        JF_USER: ${{ secrets.JFROG_USERNAME }}
+        JF_PASSWORD: ${{ secrets.JFROG_MAVEN_TOKEN }}
+        JF_PROJECT: "clients"
+
+    - name: Run Maven workflow
+      run: jf rt mvn install -Dtest=com.aerospike.test.SuiteAll -DfailIfNoTests=false -DskipTests=false
 
     # TODO: For debugging. Remove later
     - if: ${{ always() }}
@@ -62,18 +66,8 @@ jobs:
     - if: ${{ always() }}
       run: docker exec aerospike-proxy cat /var/log/aerospike-proxy/aerospike-proxy.log
 
-    - name: Upload to JFrog
-      run: mvn deploy
-
     # TODO: create release bundle
     # Based on https://github.com/citrusleaf/devops/blob/master/jfrog/vector/deploy-to-jfrog.sh
-
-    - uses: jfrog/setup-jfrog-cli@v4
-      env:
-        JF_URL: ${{ env.JFROG_URL }}
-        JF_USER: ${{ secrets.JFROG_USERNAME }}
-        JF_PASSWORD: ${{ secrets.JFROG_MAVEN_TOKEN }}
-        JF_PROJECT: "clients"
 
     - run: sudo apt install -y libxml-xpath-perl
 
