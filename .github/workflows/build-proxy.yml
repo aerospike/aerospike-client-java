@@ -81,6 +81,11 @@ jobs:
       # TODO: find a way to do this via java ecosystem instead of using generic cli tools
       run: echo version=$(xpath -q -e "//project/version/text()" pom.xml) >> $GITHUB_OUTPUT
 
+    # mvn deploy only uploads to JFrog but doesn't create a JFrog build
+    # TODO: run number doesn't increment when rerunning a workflow run
+    - name: Create JFrog build from uploaded artifacts
+      run: jf rt build-publish ${{ steps.get-proxy-client-version.outputs.version }} ${{ github.run_number }}
+
     - name: Create release bundle from JFrog build
       # Platform URL required for lifecycle commands (e.g release bundle management)
       run: jf release-bundle-create --project=clients --signing-key=aerospike --sync --spec=./releasebundle-filespec.json aerospike-java-proxy-client ${{ steps.get-proxy-client-version.outputs.version }}
