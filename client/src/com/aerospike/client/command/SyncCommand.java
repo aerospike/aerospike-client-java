@@ -107,7 +107,7 @@ public abstract class SyncCommand extends Command {
 					conn.write(dataBuffer, dataOffset);
 					commandSentCounter++;
 					
-					System.out.println(Thread.currentThread().threadId() + " - about to parse result.. ");
+					// System.out.println(Thread.currentThread().threadId() + " - about to parse result.. ");
 
 					// Parse results.
 					parseResult(conn);

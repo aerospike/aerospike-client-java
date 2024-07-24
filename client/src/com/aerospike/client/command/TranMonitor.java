@@ -46,8 +46,14 @@ public final class TranMonitor {
 		policy.tran.setNamespace(cmdKey.namespace);
 		Tran tran = policy.tran;
 		System.out.println(Thread.currentThread().threadId() + " - In TranMonitor.addKey() with cmdKey.ns=" + cmdKey.namespace);
-		System.out.println(Thread.currentThread().threadId() + " - In TranMonitor.addKey() with policy.tran.ns=" + policy.tran.getNamespace());
-		System.out.println(Thread.currentThread().threadId() + " - In TranMonitor.addKey() with tran.ns=" + tran.getNamespace());
+		System.out.println(Thread.currentThread().threadId() 
+							+ " - In TranMonitor.addKey() with policy.tran.ns=" 
+							+ policy.tran.getNamespace()
+							+ " -- deadline=" + policy.tran.getDeadline());
+		System.out.println(Thread.currentThread().threadId() 
+							+ " - In TranMonitor.addKey() with tran.ns=" 
+							+ tran.getNamespace()
+							+ " -- deadline=" + tran.getDeadline());
 		if (tran.getWrites().contains(cmdKey)) {
 			// Transaction monitor already contains this key.
 			return;
@@ -134,8 +140,16 @@ public final class TranMonitor {
 		Key tranKey = getTranMonitorKey(policy.tran);
 		WritePolicy wp = copyTimeoutPolicy(policy);
 		OperateArgs args = new OperateArgs(wp, null, null, ops);
-		System.out.println(Thread.currentThread().threadId() + " - in TranMonitor.addWriteKeys, calling TranAddKeys ctor w/ policy.tran.ns=" + policy.tran.getNamespace());
-		System.out.println(Thread.currentThread().threadId() + " - in TranMonitor.addWriteKeys, calling TranAddKeys ctor w/ trankey.ns=" + tranKey.namespace);
+		System.out.println(Thread.currentThread().threadId() 
+							+ " - in TranMonitor.addWriteKeys, calling TranAddKeys ctor w/ policy.tran.ns=" 
+							+ policy.tran.getNamespace()
+							+ " -- deadline=" + policy.tran.getDeadline());
+		System.out.println(Thread.currentThread().threadId() 
+							+ " - in TranMonitor.addWriteKeys, calling TranAddKeys ctor w/ wp.tran.ns=" 
+							+ wp.tran.getNamespace()
+							+ " -- deadline=" + wp.tran.getDeadline());
+		System.out.println(Thread.currentThread().threadId() 
+							+ " - in TranMonitor.addWriteKeys, calling TranAddKeys ctor w/ tranKey.ns=" + tranKey.namespace);
 		TranAddKeys cmd = new TranAddKeys(cluster, tranKey, args);
 		cmd.execute();
 	}
