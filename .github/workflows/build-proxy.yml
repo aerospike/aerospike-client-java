@@ -64,7 +64,7 @@ jobs:
       run: echo version=$(xpath -q -e "//project/version/text()" pom.xml) >> $GITHUB_OUTPUT
 
     - name: Run Maven workflow
-      run: jf mvn deploy -Dtest=com.aerospike.test.SuiteAll -DfailIfNoTests=false -DskipTests=false --build-name=${{ steps.get-proxy-client-version.outputs.version }}
+      run: jf mvn deploy -Dtest=com.aerospike.test.SuiteAll -DfailIfNoTests=false -DskipTests=false --build-name=${{ steps.get-proxy-client-version.outputs.version }} --build-number=${{ github.run_number }}
 
     - run: cat target/build-info.json
 
