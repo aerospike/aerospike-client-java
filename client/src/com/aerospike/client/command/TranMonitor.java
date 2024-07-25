@@ -43,7 +43,7 @@ public final class TranMonitor {
 	private static final String BinNameDigests = "keyds";
 
 	public static void addKey(Cluster cluster, WritePolicy policy, Key cmdKey) {
-		policy.tran.setNamespace(cmdKey.namespace);
+		// policy.tran.setNamespace(cmdKey.namespace);
 		Tran tran = policy.tran;
 		System.out.println(Thread.currentThread().threadId() + " - In TranMonitor.addKey() with cmdKey.ns=" + cmdKey.namespace);
 		System.out.println(Thread.currentThread().threadId() 
