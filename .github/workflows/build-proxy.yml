@@ -87,9 +87,12 @@ jobs:
     - run: sudo apt install -y moreutils
 
     - name: Create file spec for release bundle
-      run: cat releasebundle-filespec.json | jq '.files[0].build = "${{ steps.get-proxy-client-version.outputs.version }}/${{ github.run_number }}"' | jq '.files[0].pattern = "clients-maven-dev-local/**/*"' | sponge releasebundle-filespec.json
+      run: cat releasebundle-filespec.json | jq '.files[0].pattern = "clients-maven-dev-local/**/*"' | jq '.files[0].build = "${{ steps.get-proxy-client-version.outputs.version }}/${{ github.run_number }}"' | sponge releasebundle-filespec.json
       working-directory: .github/workflows
       shell: bash
+
+    - run: cat releasebundle-filespec.json
+      working-directory: .github/workflows
 
     - name: Create release bundle from JFrog build
       # Platform URL required for lifecycle commands (e.g release bundle management)
