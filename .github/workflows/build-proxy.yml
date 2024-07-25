@@ -56,8 +56,15 @@ jobs:
 
     - run: jf mvn-config --repo-deploy-releases clients-maven-dev-local --repo-deploy-snapshots clients-maven-dev-local
 
+    - run: sudo apt install -y libxml-xpath-perl
+
+    - name: Get Java proxy client version
+      id: get-proxy-client-version
+      # TODO: find a way to do this via java ecosystem instead of using generic cli tools
+      run: echo version=$(xpath -q -e "//project/version/text()" pom.xml) >> $GITHUB_OUTPUT
+
     - name: Run Maven workflow
-      run: jf mvn deploy -Dtest=com.aerospike.test.SuiteAll -DfailIfNoTests=false -DskipTests=false
+      run: jf mvn deploy -Dtest=com.aerospike.test.SuiteAll -DfailIfNoTests=false -DskipTests=false --build-name=${{ steps.get-proxy-client-version.outputs.version }}
 
     - run: cat target/build-info.json
 
@@ -73,13 +80,6 @@ jobs:
     # TODO: create release bundle
     # Based on https://github.com/citrusleaf/devops/blob/master/jfrog/vector/deploy-to-jfrog.sh
 
-    - run: sudo apt install -y libxml-xpath-perl
-
-    - name: Get Java proxy client version
-      id: get-proxy-client-version
-      # TODO: find a way to do this via java ecosystem instead of using generic cli tools
-      run: echo version=$(xpath -q -e "//project/version/text()" pom.xml) >> $GITHUB_OUTPUT
-
     # mvn deploy only uploads to JFrog but doesn't create a JFrog build
     - name: Create JFrog build from uploaded artifacts
       run: jf rt build-publish
@@ -87,7 +87,7 @@ jobs:
     - run: sudo apt install -y moreutils
 
     - name: Create file spec for release bundle
-      run: cat releasebundle-filespec.json | jq '.files[0].build = "${{ github.workflow }}"' | sponge releasebundle-filespec.json
+      run: cat releasebundle-filespec.json | jq '.files[0].build = "${{ steps.get-proxy-client-version.outputs.version }}/LATEST"' | sponge releasebundle-filespec.json
       working-directory: .github/workflows
       shell: bash
 
