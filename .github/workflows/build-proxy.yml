@@ -82,7 +82,7 @@ jobs:
 
     # mvn deploy only uploads to JFrog but doesn't create a JFrog build
     - name: Create JFrog build from uploaded artifacts
-      run: jf rt build-publish --build-name=${{ steps.get-proxy-client-version.outputs.version }} --build-number=${{ github.run_number }}
+      run: jf rt build-publish ${{ steps.get-proxy-client-version.outputs.version }} ${{ github.run_number }}
 
     - run: sudo apt install -y moreutils
 
