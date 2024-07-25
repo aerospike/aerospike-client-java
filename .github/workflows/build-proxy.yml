@@ -87,7 +87,7 @@ jobs:
     - run: sudo apt install -y moreutils
 
     - name: Create file spec for release bundle
-      run: cat releasebundle-filespec.json | jq '.files[0].build = "${{ steps.get-proxy-client-version.outputs.version }}/LATEST"' | sponge releasebundle-filespec.json
+      run: cat releasebundle-filespec.json | jq '.files[0].build = "${{ steps.get-proxy-client-version.outputs.version }}/${{ github.run_number }}"' | sponge releasebundle-filespec.json
       working-directory: .github/workflows
       shell: bash
 
