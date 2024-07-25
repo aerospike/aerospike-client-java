@@ -59,6 +59,8 @@ jobs:
     - name: Run Maven workflow
       run: jf mvn deploy -Dtest=com.aerospike.test.SuiteAll -DfailIfNoTests=false -DskipTests=false
 
+    - run: cat target/build-info.json
+
     # TODO: For debugging. Remove later
     - if: ${{ always() }}
       run: docker container ps -a
