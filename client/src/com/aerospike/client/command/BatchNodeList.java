@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2024 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -69,14 +69,9 @@ public final class BatchNodeList {
 			Key key = keys[i];
 
 			try {
-				Node node;
-
-				if (hasWrite) {
-					node = Partition.getNodeBatchWrite(cluster, key, replica, null, 0);
-				}
-				else {
-					node = Partition.getNodeBatchRead(cluster, key, replica, replicaSC, null, 0, 0);
-				}
+				Node node = hasWrite ?
+					Partition.getNodeBatchWrite(cluster, key, replica, null, 0) :
+					Partition.getNodeBatchRead(cluster, key, replica, replicaSC, null, 0, 0);
 
 				BatchNode batchNode = findBatchNode(batchNodes, node);
 
@@ -357,14 +352,9 @@ public final class BatchNodeList {
 			try {
 				b.prepare();
 
-				Node node;
-
-				if (b.hasWrite) {
-					node = Partition.getNodeBatchWrite(cluster, b.key, replica, null, 0);
-				}
-				else {
-					node = Partition.getNodeBatchRead(cluster, b.key, replica, replicaSC, null, 0, 0);
-				}
+				Node node = b.hasWrite ?
+					Partition.getNodeBatchWrite(cluster, b.key, replica, null, 0) :
+					Partition.getNodeBatchRead(cluster, b.key, replica, replicaSC, null, 0, 0);
 
 				BatchNode batchNode = findBatchNode(batchNodes, node);
 
