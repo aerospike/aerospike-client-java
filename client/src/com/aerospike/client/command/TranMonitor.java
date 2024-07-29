@@ -96,10 +96,10 @@ public final class TranMonitor {
 		ArrayList<Value> list = new ArrayList<>(records.size());
 
 		for (BatchRecord br : records) {
+			tran.setNamespace(br.key.namespace);
+
 			if (br.hasWrite) {
-				Key key = br.key;
-				tran.setNamespace(key.namespace);
-				list.add(Value.get(key.digest));
+				list.add(Value.get(br.key.digest));
 			}
 		}
 
