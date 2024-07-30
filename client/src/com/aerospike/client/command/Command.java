@@ -152,8 +152,6 @@ public class Command {
 	//--------------------------------------------------
 
 	public final void setTranAddKeys(WritePolicy policy, Key key, OperateArgs args) {
-		Tran tran = policy.tran;
-
 		begin();
 		int fieldCount = estimateKeySize(key);
 		dataOffset += args.size;
