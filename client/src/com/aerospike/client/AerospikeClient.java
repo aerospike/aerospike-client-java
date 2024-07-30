@@ -1340,6 +1340,11 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		if (policy == null) {
 			policy = readPolicyDefault;
 		}
+
+		if (policy.tran != null) {
+			policy.tran.setNamespace(key.namespace);
+		}
+
 		ExistsCommand command = new ExistsCommand(cluster, policy, key);
 		command.execute();
 		return command.exists();
@@ -1368,6 +1373,11 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		if (policy == null) {
 			policy = readPolicyDefault;
 		}
+
+		if (policy.tran != null) {
+			policy.tran.setNamespace(key.namespace);
+		}
+
 		AsyncExists command = new AsyncExists(cluster, listener, policy, key);
 		eventLoop.execute(cluster, command);
 	}
@@ -1389,6 +1399,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 
 		if (policy == null) {
 			policy = batchPolicyDefault;
+		}
+
+		if (policy.tran != null) {
+			policy.tran.setNamespace(keys);
 		}
 
 		boolean[] existsArray = new boolean[keys.length];
@@ -1447,6 +1461,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			policy = batchPolicyDefault;
 		}
 
+		if (policy.tran != null) {
+			policy.tran.setNamespace(keys);
+		}
+
 		boolean[] existsArray = new boolean[keys.length];
 		AsyncBatchExecutor.ExistsArray executor = new AsyncBatchExecutor.ExistsArray(
 			eventLoop, cluster, listener, keys, existsArray);
@@ -1497,6 +1515,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			policy = batchPolicyDefault;
 		}
 
+		if (policy.tran != null) {
+			policy.tran.setNamespace(keys);
+		}
+
 		AsyncBatchExecutor.ExistsSequence executor = new AsyncBatchExecutor.ExistsSequence(
 			eventLoop, cluster, listener);
 		List<BatchNode> bns = BatchNodeList.generate(cluster, policy, keys, null, false, executor);
@@ -1535,6 +1557,11 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		if (policy == null) {
 			policy = readPolicyDefault;
 		}
+
+		if (policy.tran != null) {
+			policy.tran.setNamespace(key.namespace);
+		}
+
 		ReadCommand command = new ReadCommand(cluster, policy, key);
 		command.execute();
 		return command.getRecord();
@@ -1563,6 +1590,11 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		if (policy == null) {
 			policy = readPolicyDefault;
 		}
+
+		if (policy.tran != null) {
+			policy.tran.setNamespace(key.namespace);
+		}
+
 		AsyncRead command = new AsyncRead(cluster, listener, policy, key, null);
 		eventLoop.execute(cluster, command);
 	}
@@ -1582,6 +1614,11 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		if (policy == null) {
 			policy = readPolicyDefault;
 		}
+
+		if (policy.tran != null) {
+			policy.tran.setNamespace(key.namespace);
+		}
+
 		ReadCommand command = new ReadCommand(cluster, policy, key, binNames);
 		command.execute();
 		return command.getRecord();
@@ -1611,6 +1648,11 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		if (policy == null) {
 			policy = readPolicyDefault;
 		}
+
+		if (policy.tran != null) {
+			policy.tran.setNamespace(key.namespace);
+		}
+
 		AsyncRead command = new AsyncRead(cluster, listener, policy, key, binNames);
 		eventLoop.execute(cluster, command);
 	}
@@ -1629,6 +1671,11 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		if (policy == null) {
 			policy = readPolicyDefault;
 		}
+
+		if (policy.tran != null) {
+			policy.tran.setNamespace(key.namespace);
+		}
+
 		ReadHeaderCommand command = new ReadHeaderCommand(cluster, policy, key);
 		command.execute();
 		return command.getRecord();
@@ -1657,6 +1704,11 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		if (policy == null) {
 			policy = readPolicyDefault;
 		}
+
+		if (policy.tran != null) {
+			policy.tran.setNamespace(key.namespace);
+		}
+
 		AsyncReadHeader command = new AsyncReadHeader(cluster, listener, policy, key);
 		eventLoop.execute(cluster, command);
 	}
@@ -1685,6 +1737,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 
 		if (policy == null) {
 			policy = batchPolicyDefault;
+		}
+
+		if (policy.tran != null) {
+			policy.tran.setNamespace(records);
 		}
 
 		BatchStatus status = new BatchStatus(true);
@@ -1737,6 +1793,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			policy = batchPolicyDefault;
 		}
 
+		if (policy.tran != null) {
+			policy.tran.setNamespace(records);
+		}
+
 		AsyncBatchExecutor.ReadList executor = new AsyncBatchExecutor.ReadList(eventLoop, cluster, listener, records);
 		List<BatchNode> bns = BatchNodeList.generate(cluster, policy, records, executor);
 		AsyncCommand[] commands = new AsyncCommand[bns.size()];
@@ -1786,6 +1846,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			policy = batchPolicyDefault;
 		}
 
+		if (policy.tran != null) {
+			policy.tran.setNamespace(records);
+		}
+
 		AsyncBatchExecutor.ReadSequence executor = new AsyncBatchExecutor.ReadSequence(eventLoop, cluster, listener);
 		List<BatchNode> bns = BatchNodeList.generate(cluster, policy, records, executor);
 		AsyncCommand[] commands = new AsyncCommand[bns.size()];
@@ -1823,6 +1887,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 
 		if (policy == null) {
 			policy = batchPolicyDefault;
+		}
+
+		if (policy.tran != null) {
+			policy.tran.setNamespace(keys);
 		}
 
 		Record[] records = new Record[keys.length];
@@ -1883,6 +1951,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			policy = batchPolicyDefault;
 		}
 
+		if (policy.tran != null) {
+			policy.tran.setNamespace(keys);
+		}
+
 		Record[] records = new Record[keys.length];
 		AsyncBatchExecutor.GetArray executor = new AsyncBatchExecutor.GetArray(
 			eventLoop, cluster, listener, keys, records);
@@ -1934,6 +2006,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			policy = batchPolicyDefault;
 		}
 
+		if (policy.tran != null) {
+			policy.tran.setNamespace(keys);
+		}
+
 		AsyncBatchExecutor.GetSequence executor = new AsyncBatchExecutor.GetSequence(eventLoop, cluster, listener);
 		List<BatchNode> bns = BatchNodeList.generate(cluster, policy, keys, null, false, executor);
 		AsyncCommand[] commands = new AsyncCommand[bns.size()];
@@ -1973,6 +2049,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 
 		if (policy == null) {
 			policy = batchPolicyDefault;
+		}
+
+		if (policy.tran != null) {
+			policy.tran.setNamespace(keys);
 		}
 
 		int readAttr = (binNames == null || binNames.length == 0)?
@@ -2036,6 +2116,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			policy = batchPolicyDefault;
 		}
 
+		if (policy.tran != null) {
+			policy.tran.setNamespace(keys);
+		}
+
 		int readAttr = (binNames == null || binNames.length == 0)?
 			Command.INFO1_READ | Command.INFO1_GET_ALL : Command.INFO1_READ;
 
@@ -2091,6 +2175,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			policy = batchPolicyDefault;
 		}
 
+		if (policy.tran != null) {
+			policy.tran.setNamespace(keys);
+		}
+
 		int readAttr = (binNames == null || binNames.length == 0)?
 			Command.INFO1_READ | Command.INFO1_GET_ALL : Command.INFO1_READ;
 
@@ -2132,6 +2220,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 
 		if (policy == null) {
 			policy = batchPolicyDefault;
+		}
+
+		if (policy.tran != null) {
+			policy.tran.setNamespace(keys);
 		}
 
 		Record[] records = new Record[keys.length];
@@ -2192,6 +2284,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			policy = batchPolicyDefault;
 		}
 
+		if (policy.tran != null) {
+			policy.tran.setNamespace(keys);
+		}
+
 		Record[] records = new Record[keys.length];
 		AsyncBatchExecutor.GetArray executor = new AsyncBatchExecutor.GetArray(
 			eventLoop, cluster, listener, keys, records);
@@ -2244,6 +2340,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			policy = batchPolicyDefault;
 		}
 
+		if (policy.tran != null) {
+			policy.tran.setNamespace(keys);
+		}
+
 		AsyncBatchExecutor.GetSequence executor = new AsyncBatchExecutor.GetSequence(eventLoop, cluster, listener);
 		List<BatchNode> bns = BatchNodeList.generate(cluster, policy, keys, null, false, executor);
 		AsyncCommand[] commands = new AsyncCommand[bns.size()];
@@ -2281,6 +2381,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 
 		if (policy == null) {
 			policy = batchPolicyDefault;
+		}
+
+		if (policy.tran != null) {
+			policy.tran.setNamespace(keys);
 		}
 
 		Record[] records = new Record[keys.length];
@@ -2341,6 +2445,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			policy = batchPolicyDefault;
 		}
 
+		if (policy.tran != null) {
+			policy.tran.setNamespace(keys);
+		}
+
 		Record[] records = new Record[keys.length];
 		AsyncBatchExecutor.GetArray executor = new AsyncBatchExecutor.GetArray(
 			eventLoop, cluster, listener, keys, records);
@@ -2391,6 +2499,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 
 		if (policy == null) {
 			policy = batchPolicyDefault;
+		}
+
+		if (policy.tran != null) {
+			policy.tran.setNamespace(keys);
 		}
 
 		AsyncBatchExecutor.GetSequence executor = new AsyncBatchExecutor.GetSequence(eventLoop, cluster, listener);
@@ -2451,6 +2563,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			return command.getRecord();
 		}
 		else {
+			if (policy.tran != null) {
+				policy.tran.setNamespace(key.namespace);
+			}
+
 			OperateCommandRead command = new OperateCommandRead(cluster, key, args);
 			command.execute();
 			return command.getRecord();
@@ -2493,6 +2609,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			AsyncTranMonitor.execute(eventLoop, cluster, args.writePolicy, command);
 		}
 		else {
+			if (policy.tran != null) {
+				policy.tran.setNamespace(key.namespace);
+			}
+
 			AsyncOperateRead command = new AsyncOperateRead(cluster, listener, key, args);
 			eventLoop.execute(cluster, command);
 		}

@@ -16,6 +16,7 @@
  */
 package com.aerospike.client;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
@@ -84,10 +85,6 @@ public final class Tran {
 	 * Process the results of a record read. For internal use only.
 	 */
 	public void onRead(Key key, Long version) {
-		// Read commands do not call setNamespace() prior to sending the command,
-		// so call setNamespace() here when receiving the response.
-		setNamespace(key.namespace);
-
 		if (version != null) {
 			reads.put(key, version);
 		}
@@ -111,8 +108,6 @@ public final class Tran {
 	 * Process the results of a record write. For internal use only.
 	 */
 	public void onWrite(Key key, Long version, int resultCode) {
-		// Write commands call setNamespace() prior to sending the command, so there is
-		// no need to call it here when receiving the response.
 		if (version != null) {
 			reads.put(key, version);
 		}
@@ -149,6 +144,26 @@ public final class Tran {
 		else if (! namespace.equals(ns)) {
 			throw new AerospikeException("Namespace must be the same for all commands in the MRT. orig: " +
 				namespace + " new: " + ns);
+		}
+	}
+
+	/**
+	 * Set MRT namespaces for each key only if doesn't already exist.
+	 * If namespace already exists, verify new namespace is the same.
+	 */
+	public void setNamespace(Key[] keys) {
+		for (Key key : keys) {
+			setNamespace(key.namespace);
+		}
+	}
+
+	/**
+	 * Set MRT namespaces for each key only if doesn't already exist.
+	 * If namespace already exists, verify new namespace is the same.
+	 */
+	public void setNamespace(List<BatchRead> records) {
+		for (BatchRead br : records) {
+			setNamespace(br.key.namespace);
 		}
 	}
 
