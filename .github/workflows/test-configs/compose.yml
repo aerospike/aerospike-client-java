@@ -1,0 +1,9 @@
+services:
+  native-server:
+    image: aerospike/aerospike-server
+    ports:
+      - "3000:3000"
+  proxy-server:
+    image: aerospike-proxy
+    ports:
+      - "4000:4000"
