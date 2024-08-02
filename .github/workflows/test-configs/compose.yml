@@ -4,6 +4,8 @@ services:
     ports:
       - "3000:3000"
   proxy-server:
+    depends_on:
+      native-server
     image: aerospike-proxy
     ports:
       - "4000:4000"
