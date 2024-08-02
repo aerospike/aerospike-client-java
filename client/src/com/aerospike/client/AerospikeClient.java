@@ -197,25 +197,25 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	public final BatchDeletePolicy batchDeletePolicyDefault;
 
 	/**
-	 * Default user defined function policy used in batch UDF excecute commands.
+	 * Default user defined function policy used in batch UDF execute commands.
 	 */
 	public final BatchUDFPolicy batchUDFPolicyDefault;
-
-	/**
-	 * Default multi-record transactions (MRT) policy when verifying record versions in a batch on a commit.
-	 */
-	public final BatchPolicy tranVerifyPolicyDefault;
-
-	/**
-	 * Default multi-record transactions (MRT) policy when rolling the transaction records forward (commit)
-	 * or back (abort) in a batch.
-	 */
-	public final BatchPolicy tranRollPolicyDefault;
 
 	/**
 	 * Default info policy that is used when info command policy is null.
 	 */
 	public final InfoPolicy infoPolicyDefault;
+
+	/**
+	 * Default multi-record transactions (MRT) policy when verifying record versions in a batch on a commit.
+	 */
+	public final TranVerifyPolicy tranVerifyPolicyDefault;
+
+	/**
+	 * Default multi-record transactions (MRT) policy when rolling the transaction records forward (commit)
+	 * or back (abort) in a batch.
+	 */
+	public final TranRollPolicy tranRollPolicyDefault;
 
 	private final WritePolicy operatePolicyReadDefault;
 
@@ -314,9 +314,9 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		this.batchWritePolicyDefault = policy.batchWritePolicyDefault;
 		this.batchDeletePolicyDefault = policy.batchDeletePolicyDefault;
 		this.batchUDFPolicyDefault = policy.batchUDFPolicyDefault;
+		this.infoPolicyDefault = policy.infoPolicyDefault;
 		this.tranVerifyPolicyDefault = policy.tranVerifyPolicyDefault;
 		this.tranRollPolicyDefault = policy.tranRollPolicyDefault;
-		this.infoPolicyDefault = policy.infoPolicyDefault;
 		this.operatePolicyReadDefault = new WritePolicy(this.readPolicyDefault);
 
 		cluster = new Cluster(this, policy, hosts);
@@ -340,9 +340,9 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			this.batchWritePolicyDefault = policy.batchWritePolicyDefault;
 			this.batchDeletePolicyDefault = policy.batchDeletePolicyDefault;
 			this.batchUDFPolicyDefault = policy.batchUDFPolicyDefault;
+			this.infoPolicyDefault = policy.infoPolicyDefault;
 			this.tranVerifyPolicyDefault = policy.tranVerifyPolicyDefault;
 			this.tranRollPolicyDefault = policy.tranRollPolicyDefault;
-			this.infoPolicyDefault = policy.infoPolicyDefault;
 			this.operatePolicyReadDefault = new WritePolicy(this.readPolicyDefault);
 		}
 		else {
@@ -355,9 +355,9 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			this.batchWritePolicyDefault = new BatchWritePolicy();
 			this.batchDeletePolicyDefault = new BatchDeletePolicy();
 			this.batchUDFPolicyDefault = new BatchUDFPolicy();
+			this.infoPolicyDefault = new InfoPolicy();
 			this.tranVerifyPolicyDefault = new TranVerifyPolicy();
 			this.tranRollPolicyDefault = new TranRollPolicy();
-			this.infoPolicyDefault = new InfoPolicy();
 			this.operatePolicyReadDefault = new WritePolicy(this.readPolicyDefault);
 		}
 	}
@@ -367,171 +367,171 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	//-------------------------------------------------------
 
 	/**
-	 * Return read policy default. Use when the policy will not be modified.
+	 * Copy read policy default to avoid problems if this shared instance is later modified.
 	 */
 	public final Policy getReadPolicyDefault() {
-		return readPolicyDefault;
+		return new Policy(readPolicyDefault);
 	}
 
 	/**
-	 * Copy read policy default. Use when the policy will be modified for use in a specific transaction.
+	 * Copy read policy default.
 	 */
 	public final Policy copyReadPolicyDefault() {
 		return new Policy(readPolicyDefault);
 	}
 
 	/**
-	 * Return write policy default. Use when the policy will not be modified.
+	 * Copy write policy default to avoid problems if this shared instance is later modified.
 	 */
 	public final WritePolicy getWritePolicyDefault() {
-		return writePolicyDefault;
+		return new WritePolicy(writePolicyDefault);
 	}
 
 	/**
-	 * Copy write policy default. Use when the policy will be modified for use in a specific transaction.
+	 * Copy write policy default.
 	 */
 	public final WritePolicy copyWritePolicyDefault() {
 		return new WritePolicy(writePolicyDefault);
 	}
 
 	/**
-	 * Return scan policy default. Use when the policy will not be modified.
+	 * Copy scan policy default to avoid problems if this shared instance is later modified.
 	 */
 	public final ScanPolicy getScanPolicyDefault() {
-		return scanPolicyDefault;
+		return new ScanPolicy(scanPolicyDefault);
 	}
 
 	/**
-	 * Copy scan policy default. Use when the policy will be modified for use in a specific transaction.
+	 * Copy scan policy default.
 	 */
 	public final ScanPolicy copyScanPolicyDefault() {
 		return new ScanPolicy(scanPolicyDefault);
 	}
 
 	/**
-	 * Return query policy default. Use when the policy will not be modified.
+	 * Copy query policy default to avoid problems if this shared instance is later modified.
 	 */
 	public final QueryPolicy getQueryPolicyDefault() {
-		return queryPolicyDefault;
+		return new QueryPolicy(queryPolicyDefault);
 	}
 
 	/**
-	 * Copy query policy default. Use when the policy will be modified for use in a specific transaction.
+	 * Copy query policy default.
 	 */
 	public final QueryPolicy copyQueryPolicyDefault() {
 		return new QueryPolicy(queryPolicyDefault);
 	}
 
 	/**
-	 * Return batch header read policy default. Use when the policy will not be modified.
+	 * Copy batch header read policy default to avoid problems if this shared instance is later modified.
 	 */
 	public final BatchPolicy getBatchPolicyDefault() {
-		return batchPolicyDefault;
+		return new BatchPolicy(batchPolicyDefault);
 	}
 
 	/**
-	 * Copy batch header read policy default. Use when the policy will be modified for use in a specific transaction.
+	 * Copy batch header read policy default.
 	 */
 	public final BatchPolicy copyBatchPolicyDefault() {
 		return new BatchPolicy(batchPolicyDefault);
 	}
 
 	/**
-	 * Return batch header write policy default. Use when the policy will not be modified.
+	 * Copy batch header write policy default to avoid problems if this shared instance is later modified.
 	 */
 	public final BatchPolicy getBatchParentPolicyWriteDefault() {
-		return batchParentPolicyWriteDefault;
+		return new BatchPolicy(batchParentPolicyWriteDefault);
 	}
 
 	/**
-	 * Copy batch header write policy default. Use when the policy will be modified for use in a specific transaction.
+	 * Copy batch header write policy default.
 	 */
 	public final BatchPolicy copyBatchParentPolicyWriteDefault() {
 		return new BatchPolicy(batchParentPolicyWriteDefault);
 	}
 
 	/**
-	 * Return batch detail write policy default. Use when the policy will not be modified.
+	 * Copy batch detail write policy default to avoid problems if this shared instance is later modified.
 	 */
 	public final BatchWritePolicy getBatchWritePolicyDefault() {
-		return batchWritePolicyDefault;
+		return new BatchWritePolicy(batchWritePolicyDefault);
 	}
 
 	/**
-	 * Copy batch detail write policy default. Use when the policy will be modified for use in a specific transaction.
+	 * Copy batch detail write policy default.
 	 */
 	public final BatchWritePolicy copyBatchWritePolicyDefault() {
 		return new BatchWritePolicy(batchWritePolicyDefault);
 	}
 
 	/**
-	 * Return batch detail delete policy default. Use when the policy will not be modified.
+	 * Copy batch detail delete policy default to avoid problems if this shared instance is later modified.
 	 */
 	public final BatchDeletePolicy getBatchDeletePolicyDefault() {
-		return batchDeletePolicyDefault;
+		return new BatchDeletePolicy(batchDeletePolicyDefault);
 	}
 
 	/**
-	 * Copy batch detail delete policy default. Use when the policy will be modified for use in a specific transaction.
+	 * Copy batch detail delete policy default.
 	 */
 	public final BatchDeletePolicy copyBatchDeletePolicyDefault() {
 		return new BatchDeletePolicy(batchDeletePolicyDefault);
 	}
 
 	/**
-	 * Return batch detail UDF policy default. Use when the policy will not be modified.
+	 * Copy batch detail UDF policy default to avoid problems if this shared instance is later modified.
 	 */
 	public final BatchUDFPolicy getBatchUDFPolicyDefault() {
-		return batchUDFPolicyDefault;
+		return new BatchUDFPolicy(batchUDFPolicyDefault);
 	}
 
 	/**
-	 * Copy batch detail UDF policy default. Use when the policy will be modified for use in a specific transaction.
+	 * Copy batch detail UDF policy default.
 	 */
 	public final BatchUDFPolicy copyBatchUDFPolicyDefault() {
 		return new BatchUDFPolicy(batchUDFPolicyDefault);
 	}
 
 	/**
-	 * Return MRT record version verify policy default. Use when the policy will not be modified.
-	 */
-	public final BatchPolicy getTranVerifyPolicyDefault() {
-		return tranVerifyPolicyDefault;
-	}
-
-	/**
-	 * Copy MRT record version verify policy default. Use when the policy will be modified for use in a specific transaction.
-	 */
-	public final BatchPolicy copyTranVerifyPolicyDefault() {
-		return new BatchPolicy(tranVerifyPolicyDefault);
-	}
-
-	/**
-	 * Return MRT roll forward/back policy default. Use when the policy will not be modified.
-	 */
-	public final BatchPolicy getTranRollPolicyDefault() {
-		return tranRollPolicyDefault;
-	}
-
-	/**
-	 * Copy MRT roll forward/back policy default. Use when the policy will be modified for use in a specific transaction.
-	 */
-	public final BatchPolicy copyTranRollPolicyDefault() {
-		return new BatchPolicy(tranRollPolicyDefault);
-	}
-
-	/**
-	 * Return info command policy default. Use when the policy will not be modified.
+	 * Copy info command policy default to avoid problems if this shared instance is later modified.
 	 */
 	public final InfoPolicy getInfoPolicyDefault() {
-		return infoPolicyDefault;
+		return new InfoPolicy(infoPolicyDefault);
 	}
 
 	/**
-	 * Copy info command policy default. Use when the policy will be modified for use in a specific transaction.
+	 * Copy info command policy default.
 	 */
 	public final InfoPolicy copyInfoPolicyDefault() {
 		return new InfoPolicy(infoPolicyDefault);
+	}
+
+	/**
+	 * Copy MRT record version verify policy default to avoid problems if this shared instance is later modified.
+	 */
+	public final TranVerifyPolicy getTranVerifyPolicyDefault() {
+		return new TranVerifyPolicy(tranVerifyPolicyDefault);
+	}
+
+	/**
+	 * Copy MRT record version verify policy default.
+	 */
+	public final TranVerifyPolicy copyTranVerifyPolicyDefault() {
+		return new TranVerifyPolicy(tranVerifyPolicyDefault);
+	}
+
+	/**
+	 * Copy MRT roll forward/back policy default to avoid problems if this shared instance is later modified.
+	 */
+	public final TranRollPolicy getTranRollPolicyDefault() {
+		return new TranRollPolicy(tranRollPolicyDefault);
+	}
+
+	/**
+	 * Copy MRT roll forward/back policy default.
+	 */
+	public final TranRollPolicy copyTranRollPolicyDefault() {
+		return new TranRollPolicy(tranRollPolicyDefault);
 	}
 
 	//-------------------------------------------------------

@@ -58,6 +58,8 @@ import com.aerospike.client.policy.InfoPolicy;
 import com.aerospike.client.policy.Policy;
 import com.aerospike.client.policy.QueryPolicy;
 import com.aerospike.client.policy.ScanPolicy;
+import com.aerospike.client.policy.TranRollPolicy;
+import com.aerospike.client.policy.TranVerifyPolicy;
 import com.aerospike.client.policy.WritePolicy;
 import com.aerospike.client.query.IndexCollectionType;
 import com.aerospike.client.query.IndexType;
@@ -80,124 +82,124 @@ public interface IAerospikeClient extends Closeable {
 	//-------------------------------------------------------
 
 	/**
-	 * Return read policy default. Use when the policy will not be modified.
+	 * Copy read policy default to avoid problems if this shared instance is later modified.
 	 */
 	public Policy getReadPolicyDefault();
 
 	/**
-	 * Copy read policy default. Use when the policy will be modified for use in a specific transaction.
+	 * Copy read policy default.
 	 */
 	public Policy copyReadPolicyDefault();
 
 	/**
-	 * Return write policy default. Use when the policy will not be modified.
+	 * Copy write policy default to avoid problems if this shared instance is later modified.
 	 */
 	public WritePolicy getWritePolicyDefault();
 
 	/**
-	 * Copy write policy default. Use when the policy will be modified for use in a specific transaction.
+	 * Copy write policy default.
 	 */
 	public WritePolicy copyWritePolicyDefault();
 
 	/**
-	 * Return scan policy default. Use when the policy will not be modified.
+	 * Copy scan policy default to avoid problems if this shared instance is later modified.
 	 */
 	public ScanPolicy getScanPolicyDefault();
 
 	/**
-	 * Copy scan policy default. Use when the policy will be modified for use in a specific transaction.
+	 * Copy scan policy default.
 	 */
 	public ScanPolicy copyScanPolicyDefault();
 
 	/**
-	 * Return query policy default. Use when the policy will not be modified.
+	 * Copy query policy default to avoid problems if this shared instance is later modified.
 	 */
 	public QueryPolicy getQueryPolicyDefault();
 
 	/**
-	 * Copy query policy default. Use when the policy will be modified for use in a specific transaction.
+	 * Copy query policy default.
 	 */
 	public QueryPolicy copyQueryPolicyDefault();
 
 	/**
-	 * Return batch header read policy default. Use when the policy will not be modified.
+	 * Copy batch header read policy default to avoid problems if this shared instance is later modified.
 	 */
 	public BatchPolicy getBatchPolicyDefault();
 
 	/**
-	 * Copy batch header read policy default. Use when the policy will be modified for use in a specific transaction.
+	 * Copy batch header read policy default.
 	 */
 	public BatchPolicy copyBatchPolicyDefault();
 
 	/**
-	 * Return batch header write policy default. Use when the policy will not be modified.
+	 * Copy batch header write policy default to avoid problems if this shared instance is later modified.
 	 */
 	public BatchPolicy getBatchParentPolicyWriteDefault();
 
 	/**
-	 * Copy batch header write policy default. Use when the policy will be modified for use in a specific transaction.
+	 * Copy batch header write policy default.
 	 */
 	public BatchPolicy copyBatchParentPolicyWriteDefault();
 
 	/**
-	 * Return batch detail write policy default. Use when the policy will not be modified.
+	 * Copy batch detail write policy default to avoid problems if this shared instance is later modified.
 	 */
 	public BatchWritePolicy getBatchWritePolicyDefault();
 
 	/**
-	 * Copy batch detail write policy default. Use when the policy will be modified for use in a specific transaction.
+	 * Copy batch detail write policy default.
 	 */
 	public BatchWritePolicy copyBatchWritePolicyDefault();
 
 	/**
-	 * Return batch detail delete policy default. Use when the policy will not be modified.
+	 * Copy batch detail delete policy default to avoid problems if this shared instance is later modified.
 	 */
 	public BatchDeletePolicy getBatchDeletePolicyDefault();
 
 	/**
-	 * Copy batch detail delete policy default. Use when the policy will be modified for use in a specific transaction.
+	 * Copy batch detail delete policy default.
 	 */
 	public BatchDeletePolicy copyBatchDeletePolicyDefault();
 
 	/**
-	 * Return batch detail UDF policy default. Use when the policy will not be modified.
+	 * Copy batch detail UDF policy default to avoid problems if this shared instance is later modified.
 	 */
 	public BatchUDFPolicy getBatchUDFPolicyDefault();
 
 	/**
-	 * Copy batch detail UDF policy default. Use when the policy will be modified for use in a specific transaction.
+	 * Copy batch detail UDF policy default.
 	 */
 	public BatchUDFPolicy copyBatchUDFPolicyDefault();
 
 	/**
-	 * Return MRT record version verify policy default. Use when the policy will not be modified.
-	 */
-	public BatchPolicy getTranVerifyPolicyDefault();
-
-	/**
-	 * Copy MRT record version verify policy default. Use when the policy will be modified for use in a specific transaction.
-	 */
-	public BatchPolicy copyTranVerifyPolicyDefault();
-
-	/**
-	 * Return MRT roll forward/back policy default. Use when the policy will not be modified.
-	 */
-	public BatchPolicy getTranRollPolicyDefault();
-
-	/**
-	 * Copy MRT roll forward/back policy default. Use when the policy will be modified for use in a specific transaction.
-	 */
-	public BatchPolicy copyTranRollPolicyDefault();
-
-	/**
-	 * Return info command policy default. Use when the policy will not be modified.
+	 * Copy info command policy default to avoid problems if this shared instance is later modified.
 	 */
 	public InfoPolicy getInfoPolicyDefault();
 
 	/**
-	 * Copy info command policy default. Use when the policy will be modified for use in a specific transaction.
+	 * Copy info command policy default.
 	 */
 	public InfoPolicy copyInfoPolicyDefault();
+
+	/**
+	 * Copy MRT record version verify policy default to avoid problems if this shared instance is later modified.
+	 */
+	public TranVerifyPolicy getTranVerifyPolicyDefault();
+
+	/**
+	 * Copy MRT record version verify policy default.
+	 */
+	public TranVerifyPolicy copyTranVerifyPolicyDefault();
+
+	/**
+	 * Copy MRT roll forward/back policy default to avoid problems if this shared instance is later modified.
+	 */
+	public TranRollPolicy getTranRollPolicyDefault();
+
+	/**
+	 * Copy MRT roll forward/back policy default.
+	 */
+	public TranRollPolicy copyTranRollPolicyDefault();
 
 	//-------------------------------------------------------
 	// Cluster Connection Management
