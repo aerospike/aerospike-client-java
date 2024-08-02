@@ -271,15 +271,18 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	public AerospikeClient(ClientPolicy policy, Host... hosts)
 		throws AerospikeException {
 
-		// Disable log subscribe requirement to avoid a breaking change in a minor release.
-		// TODO: Reintroduce requirement in the next major client release.
-		/*
 		if (! Log.isSet()) {
 			throw new AerospikeException(
 				"Log.setCallback() or Log.setCallbackStandard() must be called." + System.lineSeparator() +
 				"See https://developer.aerospike.com/client/java/usage/logging for details.");
 		}
-		*/
+
+		// Set log level to DEBUG for this debug build.
+		if (! Log.debugEnabled()) {
+			Log.setLevel(Log.Level.DEBUG);
+		}
+
+		Log.info("AerospikeClient version: " + getClientVersion());
 
 		if (policy == null) {
 			policy = new ClientPolicy();
@@ -333,6 +336,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			this.infoPolicyDefault = new InfoPolicy();
 			this.operatePolicyReadDefault = new WritePolicy(this.readPolicyDefault);
 		}
+	}
+
+	public final String getClientVersion() {
+		return "8.1.1.1";
 	}
 
 	//-------------------------------------------------------

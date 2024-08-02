@@ -212,6 +212,7 @@ public final class NodeValidator {
 			commands.add("node");
 			commands.add("partition-generation");
 			commands.add("features");
+			commands.add("version");
 
 			boolean validateCluster = cluster.validateClusterName();
 
@@ -247,6 +248,9 @@ public final class NodeValidator {
 			validateNode(map);
 			validatePartitionGeneration(map);
 			setFeatures(map);
+
+			String ver = map.get("version");
+			Log.info("Server " + name + ' ' + socketAddress + " version: " + ver);
 
 			if (validateCluster) {
 				validateClusterName(cluster, map);
