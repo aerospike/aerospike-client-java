@@ -9,8 +9,6 @@ on:
 
 jobs:
   build:
-    env:
-      JFROG_URL: https://aerospike.jfrog.io
     runs-on: ubuntu-22.04
     steps:
     - name: Checkout Java client
@@ -49,7 +47,7 @@ jobs:
 
     - uses: jfrog/setup-jfrog-cli@v4
       env:
-        JF_URL: ${{ env.JFROG_URL }}
+        JF_URL: "https://aerospike.jfrog.io"
         JF_USER: ${{ secrets.JFROG_USERNAME }}
         JF_PASSWORD: ${{ secrets.JFROG_MAVEN_TOKEN }}
         JF_PROJECT: "clients"
