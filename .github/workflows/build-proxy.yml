@@ -39,7 +39,7 @@ jobs:
 
     - name: Run Aerospike Proxy on latest tag
       # TODO: not sure why aerospike-proxy.yml couldn't be included in Docker image...
-      run: docker run -d --name aerospike-proxy -p 4000:4000 --network=host -v ./aerospike-proxy.yml:/etc/aerospike-proxy/aerospike-proxy.yml ${{ vars.JFROG_PROXY_SERVER_DOCKER_REPO }}:${{ env.LATEST_TAG }}
+      run: docker run -d --name aerospike-proxy -p 4000:4000 --network=host ${{ vars.JFROG_PROXY_SERVER_DOCKER_REPO }}:${{ env.LATEST_TAG }}
       working-directory: .github/workflows/test-configs
 
     - name: Wait for native and proxy server to start
