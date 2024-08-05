@@ -44,8 +44,8 @@ jobs:
     - run: docker compose up
       working-directory: .github/workflows/test-configs
 
-    - name: Wait for native and proxy server to start
-      run: sleep 3
+    # - name: Wait for native and proxy server to start
+    #   run: sleep 3
 
     - uses: jfrog/setup-jfrog-cli@v4
       env:
@@ -69,13 +69,13 @@ jobs:
     - run: cat target/build-info.json
 
     # TODO: For debugging. Remove later
-    - if: ${{ always() }}
-      run: docker container ps -a
-    - if: ${{ always() }}
-      run: docker logs aerospike
-    # TODO: docker logs prints nothing. Not sure why this happens
-    - if: ${{ always() }}
-      run: docker exec aerospike-proxy cat /var/log/aerospike-proxy/aerospike-proxy.log
+    # - if: ${{ always() }}
+    #   run: docker container ps -a
+    # - if: ${{ always() }}
+    #   run: docker logs aerospike
+    # # TODO: docker logs prints nothing. Not sure why this happens
+    # - if: ${{ always() }}
+    #   run: docker exec aerospike-proxy cat /var/log/aerospike-proxy/aerospike-proxy.log
 
     # TODO: create release bundle
     # Based on https://github.com/citrusleaf/devops/blob/master/jfrog/vector/deploy-to-jfrog.sh

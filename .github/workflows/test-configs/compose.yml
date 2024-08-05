@@ -6,8 +6,6 @@ services:
   proxy-server:
     depends_on:
       - native-server
-    dockerfile_inline: |
-      FROM aerospike-proxy
-      RUN yq -i e 'del(.security)' /etc/aerospike-proxy/aerospike-proxy.yml
+    build: ./
     ports:
       - "4000:4000"
