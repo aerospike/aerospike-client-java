@@ -7,6 +7,7 @@ services:
   proxy-server:
     depends_on:
       - native-server
+    # dockerfile_inline doesn't work for some reason, even though it's documented.
     build: ./
     ports:
       - "4000:4000"
