@@ -69,8 +69,8 @@ jobs:
     - run: cat target/build-info.json
 
     # TODO: For debugging. Remove later
-    # - if: ${{ always() }}
-    #   run: docker container ps -a
+    - if: ${{ always() }}
+      run: docker container ps -a
     # - if: ${{ always() }}
     #   run: docker logs aerospike
     # # TODO: docker logs prints nothing. Not sure why this happens
