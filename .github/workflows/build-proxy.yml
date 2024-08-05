@@ -41,7 +41,7 @@ jobs:
 
     - run: docker compose version
 
-    - run: docker compose up
+    - run: docker compose up -d
       working-directory: .github/workflows/test-configs
 
     # - name: Wait for native and proxy server to start
