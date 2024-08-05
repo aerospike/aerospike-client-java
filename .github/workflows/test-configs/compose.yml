@@ -2,6 +2,7 @@ services:
   native-server:
     image: aerospike/aerospike-server
     ports:
+      # TODO: maybe not necessary since we don't access it directly
       - "3000:3000"
   proxy-server:
     depends_on:
