@@ -5,7 +5,7 @@ services:
       - "3000:3000"
   proxy-server:
     depends_on:
-      native-server
+      - native-server
     dockerfile_inline: |
       FROM aerospike-proxy
       RUN yq -i e 'del(.security)' /etc/aerospike-proxy/aerospike-proxy.yml
