@@ -25,7 +25,8 @@ import java.util.Objects;
  */
 public class Policy {
 	/**
-	 * Multi-record transaction identifier.
+	 * Multi-record transaction identifier (MRT). If this field is populated, the corresponding
+	 * command will be included in the MRT. This field is ignored for scan/query.
 	 * <p>
 	 * Default: null
 	 */
