@@ -25,7 +25,7 @@ import java.util.zip.Inflater;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
-import com.aerospike.client.Tran;
+import com.aerospike.client.Txn;
 import com.aerospike.client.cluster.Connection;
 import com.aerospike.client.command.Command.OpResults;
 
@@ -153,7 +153,7 @@ public final class RecordParser {
 		dataBuffer = buffer;
 	}
 
-	public void parseFields(Tran tran, Key key, boolean hasWrite) {
+	public void parseFields(Txn tran, Key key, boolean hasWrite) {
 		if (tran == null) {
 			skipFields();
 			return;
@@ -186,7 +186,7 @@ public final class RecordParser {
 		}
 	}
 
-	public void parseTranDeadline(Tran tran) {
+	public void parseTranDeadline(Txn tran) {
 		for (int i = 0; i < fieldCount; i++) {
 			int len = Buffer.bytesToInt(dataBuffer, dataOffset);
 			dataOffset += 4;

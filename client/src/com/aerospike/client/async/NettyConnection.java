@@ -39,7 +39,7 @@ public final class NettyConnection extends AsyncConnection {
 	}
 
 	/**
-	 * Validate connection in a transaction.
+	 * Validate connection in a command.
 	 */
 	@Override
 	public boolean isValid(ByteBuffer notUsed) {

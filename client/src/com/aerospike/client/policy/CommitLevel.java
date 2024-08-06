@@ -17,7 +17,7 @@
 package com.aerospike.client.policy;
 
 /**
- * Desired consistency guarantee when committing a transaction on the server.
+ * Desired consistency guarantee when committing a command on the server.
  */
 public enum CommitLevel {
 	/**

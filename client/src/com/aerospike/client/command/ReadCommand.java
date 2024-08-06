@@ -57,7 +57,7 @@ public class ReadCommand extends SyncReadCommand {
 	@Override
 	protected void parseResult(Connection conn) throws IOException {
 		RecordParser rp = new RecordParser(conn, dataBuffer);
-		rp.parseFields(policy.tran, key, false);
+		rp.parseFields(policy.txn, key, false);
 
 		if (rp.resultCode == ResultCode.OK) {
 			this.record = rp.parseRecord(isOperation);

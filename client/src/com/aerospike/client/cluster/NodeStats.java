@@ -36,14 +36,14 @@ public final class NodeStats {
 	public ConnectionStats async;
 
 	/**
-	 * Transaction error count since node was initialized. If the error is retryable, multiple errors per
-	 * transaction may occur.
+	 * Command error count since node was initialized. If the error is retryable, multiple errors per
+	 * command may occur.
 	 */
 	public final long errorCount;
 
 	/**
-	 * Transaction timeout count since node was initialized. If the timeout is retryable (ie socketTimeout),
-	 * multiple timeouts per transaction may occur.
+	 * Command timeout count since node was initialized. If the timeout is retryable (ie socketTimeout),
+	 * multiple timeouts per command may occur.
 	 */
 	public final long timeoutCount;
 

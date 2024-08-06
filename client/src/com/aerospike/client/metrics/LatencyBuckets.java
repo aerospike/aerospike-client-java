@@ -19,7 +19,7 @@ package com.aerospike.client.metrics;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
- * Latency buckets for a transaction group (See {@link com.aerospike.client.metrics.LatencyType}).
+ * Latency buckets for a command group (See {@link com.aerospike.client.metrics.LatencyType}).
  * Latency bucket counts are cumulative and not reset on each metrics snapshot interval.
  */
 public final class LatencyBuckets {

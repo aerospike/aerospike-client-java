@@ -105,7 +105,7 @@ public final class NettyRecover implements TimerTask {
 	public final void timeout() {
 		//System.out.println("" + tranId + " timeout expired. close connection");
 
-		// Transaction has been delayed long enough.
+		// Command has been delayed long enough.
 		// User has already been notified.
 		// timeoutTask has already been removed, so avoid cancel.
 		abort(false);

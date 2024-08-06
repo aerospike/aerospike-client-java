@@ -25,7 +25,7 @@ import com.aerospike.client.Key;
 import com.aerospike.client.Operation;
 import com.aerospike.client.Record;
 import com.aerospike.client.ResultCode;
-import com.aerospike.client.Tran;
+import com.aerospike.client.Txn;
 import com.aerospike.client.Value;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.Connection;
@@ -93,7 +93,7 @@ public final class BatchSingle {
 		@Override
 		protected void parseResult(Connection conn) throws IOException {
 			RecordParser rp = new RecordParser(conn, dataBuffer);
-			rp.parseFields(policy.tran, key, false);
+			rp.parseFields(policy.txn, key, false);
 
 			if (rp.resultCode == ResultCode.OK) {
 				records[index] = rp.parseRecord(isOperation);
@@ -163,7 +163,7 @@ public final class BatchSingle {
 		@Override
 		protected void parseResult(Connection conn) throws IOException {
 			RecordParser rp = new RecordParser(conn, dataBuffer);
-			rp.parseFields(policy.tran, key, false);
+			rp.parseFields(policy.txn, key, false);
 
 			if (rp.resultCode == ResultCode.OK) {
 				record.setRecord(rp.parseRecord(true));
@@ -239,7 +239,7 @@ public final class BatchSingle {
 		@Override
 		protected void parseResult(Connection conn) throws IOException {
 			RecordParser rp = new RecordParser(conn, dataBuffer);
-			rp.parseFields(policy.tran, key, record.hasWrite);
+			rp.parseFields(policy.txn, key, record.hasWrite);
 
 			if (rp.resultCode == ResultCode.OK) {
 				record.setRecord(rp.parseRecord(true));
@@ -341,7 +341,7 @@ public final class BatchSingle {
 		@Override
 		protected void parseResult(Connection conn) throws IOException {
 			RecordParser rp = new RecordParser(conn, dataBuffer);
-			rp.parseFields(policy.tran, key, true);
+			rp.parseFields(policy.txn, key, true);
 
 			if (rp.resultCode == ResultCode.OK) {
 				record.setRecord(rp.parseRecord(false));
@@ -376,29 +376,29 @@ public final class BatchSingle {
 	// MRT
 	//-------------------------------------------------------
 
-	public static final class TranVerify extends BaseCommand {
-		private final Tran tran;
+	public static final class TxnVerify extends BaseCommand {
+		private final Txn txn;
 		private final long version;
 		private final BatchRecord record;
 
-		public TranVerify(
+		public TxnVerify(
 			Cluster cluster,
 			BatchPolicy policy,
-			Tran tran,
+			Txn txn,
 			long version,
 			BatchRecord record,
 			BatchStatus status,
 			Node node
 		) {
 			super(cluster, policy, status, record.key, node, false);
-			this.tran = tran;
+			this.txn = txn;
 			this.version = version;
 			this.record = record;
 		}
 
 		@Override
 		protected void writeBuffer() {
-			setTranVerify(tran, record.key, version);
+			setTxnVerify(txn, record.key, version);
 		}
 
 		@Override
@@ -418,11 +418,11 @@ public final class BatchSingle {
 		}
 	}
 
-	public static final class TranRoll extends BaseCommand {
+	public static final class TxnRoll extends BaseCommand {
 		private final BatchRecord record;
 		private final int attr;
 
-		public TranRoll(
+		public TxnRoll(
 			Cluster cluster,
 			BatchPolicy policy,
 			BatchRecord record,
@@ -437,7 +437,7 @@ public final class BatchSingle {
 
 		@Override
 		protected void writeBuffer() {
-			setTranRoll(record.key, policy.tran, attr);
+			setTxnRoll(record.key, policy.txn, attr);
 		}
 
 		@Override

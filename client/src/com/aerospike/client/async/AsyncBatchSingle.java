@@ -26,7 +26,7 @@ import com.aerospike.client.Log;
 import com.aerospike.client.Operation;
 import com.aerospike.client.Record;
 import com.aerospike.client.ResultCode;
-import com.aerospike.client.Tran;
+import com.aerospike.client.Txn;
 import com.aerospike.client.async.AsyncBatchExecutor.BatchRecordSequence;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.Node;
@@ -923,29 +923,29 @@ public final class AsyncBatchSingle {
 	// MRT
 	//-------------------------------------------------------
 
-	public static class TranVerify extends AsyncBaseCommand {
-		private final Tran tran;
+	public static class TxnVerify extends AsyncBaseCommand {
+		private final Txn txn;
 		private final long version;
 		private final BatchRecord record;
 
-		public TranVerify(
+		public TxnVerify(
 			AsyncBatchExecutor executor,
 			Cluster cluster,
 			BatchPolicy policy,
-			Tran tran,
+			Txn txn,
 			long version,
 			BatchRecord record,
 			Node node
 		) {
 			super(executor, cluster, policy, record.key, node, false);
-			this.tran = tran;
+			this.txn = txn;
 			this.version = version;
 			this.record = record;
 		}
 
 		@Override
 		protected void writeBuffer() {
-			setTranVerify(tran, record.key, version);
+			setTxnVerify(txn, record.key, version);
 		}
 
 		@Override
@@ -960,11 +960,11 @@ public final class AsyncBatchSingle {
 		}
 	}
 
-	public static class TranRoll extends AsyncBaseCommand {
+	public static class TxnRoll extends AsyncBaseCommand {
 		private final BatchRecord record;
 		private final int attr;
 
-		public TranRoll(
+		public TxnRoll(
 			AsyncBatchExecutor executor,
 			Cluster cluster,
 			BatchPolicy policy,
@@ -979,7 +979,7 @@ public final class AsyncBatchSingle {
 
 		@Override
 		protected void writeBuffer() {
-			setTranRoll(record.key, policy.tran, attr);
+			setTxnRoll(record.key, policy.txn, attr);
 		}
 
 		@Override
@@ -1045,7 +1045,7 @@ public final class AsyncBatchSingle {
 		@Override
 		protected boolean parseResult() {
 			RecordParser rp = new RecordParser(dataBuffer, dataOffset, receiveSize);
-			rp.parseFields(policy.tran, key, hasWrite);
+			rp.parseFields(policy.txn, key, hasWrite);
 			parseResult(rp);
 			return true;
 		}

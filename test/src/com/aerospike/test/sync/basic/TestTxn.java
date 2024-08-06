@@ -38,15 +38,15 @@ import com.aerospike.client.policy.BatchPolicy;
 import com.aerospike.client.policy.Policy;
 import com.aerospike.client.policy.WritePolicy;
 import com.aerospike.client.task.RegisterTask;
-import com.aerospike.client.Tran;
+import com.aerospike.client.Txn;
 
-public class TestTran extends TestSync {
+public class TestTxn extends TestSync {
 	public static final String binName = "bin";
 
 	@BeforeClass
 	public static void register() {
 		if (args.useProxyClient) {
-			System.out.println("Skip TestTran.register");
+			System.out.println("Skip TestTxn.register");
 			return;
 		}
 		RegisterTask task = client.register(null, TestUDF.class.getClassLoader(), "udf/record_example.lua", "record_example.lua", Language.LUA);
@@ -54,51 +54,51 @@ public class TestTran extends TestSync {
 	}
 
 	@Test
-	public void tranWrite() {
+	public void txnWrite() {
 		Key key = new Key(args.namespace, args.set, "mrtkey1");
 
 		client.put(null, key, new Bin(binName, "val1"));
 
-		Tran tran = new Tran();
+		Txn txn = new Txn();
 
 		WritePolicy wp = client.copyWritePolicyDefault();
-		wp.tran = tran;
+		wp.txn = txn;
 		client.put(wp, key, new Bin(binName, "val2"));
 
-		client.commit(tran);
+		client.commit(txn);
 
 		Record record = client.get(null, key);
 		assertBinEqual(key, record, binName, "val2");
 	}
 
 	@Test
-	public void tranWriteTwice() {
+	public void txnWriteTwice() {
 		Key key = new Key(args.namespace, args.set, "mrtkey2");
 
-		Tran tran = new Tran();
+		Txn txn = new Txn();
 
 		WritePolicy wp = client.copyWritePolicyDefault();
-		wp.tran = tran;
+		wp.txn = txn;
 		client.put(wp, key, new Bin(binName, "val1"));
 		client.put(wp, key, new Bin(binName, "val2"));
 
-		client.commit(tran);
+		client.commit(txn);
 
 		Record record = client.get(null, key);
 		assertBinEqual(key, record, binName, "val2");
 	}
 
 	@Test
-	public void tranWriteConflict() {
+	public void txnWriteConflict() {
 		Key key = new Key(args.namespace, args.set, "mrtkey21");
 
-		Tran tran1 = new Tran();
-		Tran tran2 = new Tran();
+		Txn txn1 = new Txn();
+		Txn txn2 = new Txn();
 
 		WritePolicy wp1 = client.copyWritePolicyDefault();
 		WritePolicy wp2 = client.copyWritePolicyDefault();
-		wp1.tran = tran1;
-		wp2.tran = tran2;
+		wp1.txn = txn1;
+		wp2.txn = txn2;
 
 		client.put(wp1, key, new Bin(binName, "val1"));
 
@@ -111,23 +111,23 @@ public class TestTran extends TestSync {
 			}
 		}
 
-		client.commit(tran1);
-		client.commit(tran2);
+		client.commit(txn1);
+		client.commit(txn2);
 
 		Record record = client.get(null, key);
 		assertBinEqual(key, record, binName, "val1");
 	}
 
 	@Test
-	public void tranWriteBlock() {
+	public void txnWriteBlock() {
 		Key key = new Key(args.namespace, args.set, "mrtkey3");
 
 		client.put(null, key, new Bin(binName, "val1"));
 
-		Tran tran = new Tran();
+		Txn txn = new Txn();
 
 		WritePolicy wp = client.copyWritePolicyDefault();
-		wp.tran = tran;
+		wp.txn = txn;
 		client.put(wp, key, new Bin(binName, "val2"));
 
 		try {
@@ -141,229 +141,229 @@ public class TestTran extends TestSync {
 			}
 		}
 
-		client.commit(tran);
+		client.commit(txn);
 	}
 
 	@Test
-	public void tranWriteRead() {
+	public void txnWriteRead() {
 		Key key = new Key(args.namespace, args.set, "mrtkey4");
 
 		client.put(null, key, new Bin(binName, "val1"));
 
-		Tran tran = new Tran();
+		Txn txn = new Txn();
 
 		WritePolicy wp = client.copyWritePolicyDefault();
-		wp.tran = tran;
+		wp.txn = txn;
 		client.put(wp, key, new Bin(binName, "val2"));
 
 		Record record = client.get(null, key);
 		assertBinEqual(key, record, binName, "val1");
 
-		client.commit(tran);
+		client.commit(txn);
 
 		record = client.get(null, key);
 		assertBinEqual(key, record, binName, "val2");
 	}
 
 	@Test
-	public void tranWriteAbort() {
+	public void txnWriteAbort() {
 		Key key = new Key(args.namespace, args.set, "mrtkey5");
 
 		client.put(null, key, new Bin(binName, "val1"));
 
-		Tran tran = new Tran();
+		Txn txn = new Txn();
 
 		WritePolicy wp = client.copyWritePolicyDefault();
-		wp.tran = tran;
+		wp.txn = txn;
 		client.put(wp, key, new Bin(binName, "val2"));
 
 		Policy p = client.copyReadPolicyDefault();
-		p.tran = tran;
+		p.txn = txn;
 		Record record = client.get(p, key);
 		assertBinEqual(key, record, binName, "val2");
 
-		client.abort(tran);
+		client.abort(txn);
 
 		record = client.get(null, key);
 		assertBinEqual(key, record, binName, "val1");
 	}
 
 	@Test
-	public void tranDelete() {
+	public void txnDelete() {
 		Key key = new Key(args.namespace, args.set, "mrtkey6");
 
 		client.put(null, key, new Bin(binName, "val1"));
 
-		Tran tran = new Tran();
+		Txn txn = new Txn();
 
 		WritePolicy wp = client.copyWritePolicyDefault();
-		wp.tran = tran;
+		wp.txn = txn;
 		wp.durableDelete = true;
 		client.delete(wp, key);
 
-		client.commit(tran);
+		client.commit(txn);
 
 		Record record = client.get(null, key);
 		assertNull(record);
 	}
 
 	@Test
-	public void tranDeleteAbort() {
+	public void txnDeleteAbort() {
 		Key key = new Key(args.namespace, args.set, "mrtkey7");
 
 		client.put(null, key, new Bin(binName, "val1"));
 
-		Tran tran = new Tran();
+		Txn txn = new Txn();
 
 		WritePolicy wp = client.copyWritePolicyDefault();
-		wp.tran = tran;
+		wp.txn = txn;
 		wp.durableDelete = true;
 		client.delete(wp, key);
 
-		client.abort(tran);
+		client.abort(txn);
 
 		Record record = client.get(null, key);
 		assertBinEqual(key, record, binName, "val1");
 	}
 
 	@Test
-	public void tranDeleteTwice() {
+	public void txnDeleteTwice() {
 		Key key = new Key(args.namespace, args.set, "mrtkey8");
 
-		Tran tran = new Tran();
+		Txn txn = new Txn();
 
 		client.put(null, key, new Bin(binName, "val1"));
 
 		WritePolicy wp = client.copyWritePolicyDefault();
-		wp.tran = tran;
+		wp.txn = txn;
 		wp.durableDelete = true;
 		client.delete(wp, key);
 		client.delete(wp, key);
 
-		client.commit(tran);
+		client.commit(txn);
 
 		Record record = client.get(null, key);
 		assertNull(record);
 	}
 
 	@Test
-	public void tranTouch() {
+	public void txnTouch() {
 		Key key = new Key(args.namespace, args.set, "mrtkey9");
 
 		client.put(null, key, new Bin(binName, "val1"));
 
-		Tran tran = new Tran();
+		Txn txn = new Txn();
 
 		WritePolicy wp = client.copyWritePolicyDefault();
-		wp.tran = tran;
+		wp.txn = txn;
 		client.touch(wp, key);
 
-		client.commit(tran);
+		client.commit(txn);
 
 		Record record = client.get(null, key);
 		assertBinEqual(key, record, binName, "val1");
 	}
 
 	@Test
-	public void tranTouchAbort() {
+	public void txnTouchAbort() {
 		Key key = new Key(args.namespace, args.set, "mrtkey10");
 
 		client.put(null, key, new Bin(binName, "val1"));
 
-		Tran tran = new Tran();
+		Txn txn = new Txn();
 
 		WritePolicy wp = client.copyWritePolicyDefault();
-		wp.tran = tran;
+		wp.txn = txn;
 		client.touch(wp, key);
 
-		client.abort(tran);
+		client.abort(txn);
 
 		Record record = client.get(null, key);
 		assertBinEqual(key, record, binName, "val1");
 	}
 
 	@Test
-	public void tranOperateWrite() {
+	public void txnOperateWrite() {
 		Key key = new Key(args.namespace, args.set, "mrtkey11");
 
 		client.put(null, key, new Bin(binName, "val1"), new Bin("bin2", "bal1"));
 
-		Tran tran = new Tran();
+		Txn txn = new Txn();
 
 		WritePolicy wp = client.copyWritePolicyDefault();
-		wp.tran = tran;
+		wp.txn = txn;
 		Record record = client.operate(wp, key,
 			Operation.put(new Bin(binName, "val2")),
 			Operation.get("bin2")
 		);
 		assertBinEqual(key, record, "bin2", "bal1");
 
-		client.commit(tran);
+		client.commit(txn);
 
 		record = client.get(null, key);
 		assertBinEqual(key, record, binName, "val2");
 	}
 
 	@Test
-	public void tranOperateWriteAbort() {
+	public void txnOperateWriteAbort() {
 		Key key = new Key(args.namespace, args.set, "mrtkey12");
 
 		client.put(null, key, new Bin(binName, "val1"), new Bin("bin2", "bal1"));
 
-		Tran tran = new Tran();
+		Txn txn = new Txn();
 
 		WritePolicy wp = client.copyWritePolicyDefault();
-		wp.tran = tran;
+		wp.txn = txn;
 		Record record = client.operate(wp, key,
 			Operation.put(new Bin(binName, "val2")),
 			Operation.get("bin2")
 		);
 		assertBinEqual(key, record, "bin2", "bal1");
 
-		client.abort(tran);
+		client.abort(txn);
 
 		record = client.get(null, key);
 		assertBinEqual(key, record, binName, "val1");
 	}
 
 	@Test
-	public void tranUDF() {
+	public void txnUDF() {
 		Key key = new Key(args.namespace, args.set, "mrtkey13");
 
 		client.put(null, key, new Bin(binName, "val1"));
 
-		Tran tran = new Tran();
+		Txn txn = new Txn();
 
 		WritePolicy wp = client.copyWritePolicyDefault();
-		wp.tran = tran;
+		wp.txn = txn;
 		client.execute(wp, key, "record_example", "writeBin", Value.get(binName), Value.get("val2"));
 
-		client.commit(tran);
+		client.commit(txn);
 
 		Record record = client.get(null, key);
 		assertBinEqual(key, record, binName, "val2");
 	}
 
 	@Test
-	public void tranUDFAbort() {
+	public void txnUDFAbort() {
 		Key key = new Key(args.namespace, args.set, "mrtkey14");
 
 		client.put(null, key, new Bin(binName, "val1"));
 
-		Tran tran = new Tran();
+		Txn txn = new Txn();
 
 		WritePolicy wp = client.copyWritePolicyDefault();
-		wp.tran = tran;
+		wp.txn = txn;
 		client.execute(wp, key, "record_example", "writeBin", Value.get(binName), Value.get("val2"));
 
-		client.abort(tran);
+		client.abort(txn);
 
 		Record record = client.get(null, key);
 		assertBinEqual(key, record, binName, "val1");
 	}
 
 	@Test
-	public void tranBatch() {
+	public void txnBatch() {
 		Key[] keys = new Key[10];
 		Bin bin = new Bin(binName, 1);
 
@@ -377,12 +377,12 @@ public class TestTran extends TestSync {
 		Record[] recs = client.get(null, keys);
 		assertBatchEqual(keys, recs, 1);
 
-		Tran tran = new Tran();
+		Txn txn = new Txn();
 
 		bin = new Bin(binName, 2);
 
 		BatchPolicy bp = BatchPolicy.WriteDefault();
-		bp.tran = tran;
+		bp.txn = txn;
 
 		BatchResults bresults = client.operate(bp, null, keys, Operation.put(bin));
 
@@ -404,14 +404,14 @@ public class TestTran extends TestSync {
 			throw new AerospikeException(sb.toString());
 		}
 
-		client.commit(tran);
+		client.commit(txn);
 
 		recs = client.get(null, keys);
 		assertBatchEqual(keys, recs, 2);
 	}
 
 	@Test
-	public void tranBatchAbort() {
+	public void txnBatchAbort() {
 		Key[] keys = new Key[10];
 		Bin bin = new Bin(binName, 1);
 
@@ -425,12 +425,12 @@ public class TestTran extends TestSync {
 		Record[] recs = client.get(null, keys);
 		assertBatchEqual(keys, recs, 1);
 
-		Tran tran = new Tran();
+		Txn txn = new Txn();
 
 		bin = new Bin(binName, 2);
 
 		BatchPolicy bp = BatchPolicy.WriteDefault();
-		bp.tran = tran;
+		bp.txn = txn;
 
 		BatchResults bresults = client.operate(bp, null, keys, Operation.put(bin));
 
@@ -452,7 +452,7 @@ public class TestTran extends TestSync {
 			throw new AerospikeException(sb.toString());
 		}
 
-		client.abort(tran);
+		client.abort(txn);
 
 		recs = client.get(null, keys);
 		assertBatchEqual(keys, recs, 1);

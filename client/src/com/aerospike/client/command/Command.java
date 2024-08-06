@@ -54,7 +54,7 @@ import com.aerospike.client.query.IndexCollectionType;
 import com.aerospike.client.query.PartitionStatus;
 import com.aerospike.client.query.PartitionTracker.NodePartitions;
 import com.aerospike.client.query.Statement;
-import com.aerospike.client.Tran;
+import com.aerospike.client.Txn;
 import com.aerospike.client.util.Packer;
 
 public class Command {
@@ -71,7 +71,7 @@ public class Command {
 	public static final int INFO2_DELETE			= (1 << 1); // Fling a record into the belly of Moloch.
 	public static final int INFO2_GENERATION		= (1 << 2); // Update if expected generation == old.
 	public static final int INFO2_GENERATION_GT		= (1 << 3); // Update if new generation >= old, good for restore.
-	public static final int INFO2_DURABLE_DELETE	= (1 << 4); // Transaction resulting in record deletion leaves tombstone (Enterprise only).
+	public static final int INFO2_DURABLE_DELETE	= (1 << 4); // Command resulting in record deletion leaves tombstone (Enterprise only).
 	public static final int INFO2_CREATE_ONLY		= (1 << 5); // Create only. Fail if record already exists.
 	public static final int INFO2_RELAX_AP_LONG_QUERY = (1 << 6); // Treat as long query, but relax read consistency.
 	public static final int INFO2_RESPOND_ALL_OPS	= (1 << 7); // Return a result for every operation.
@@ -151,11 +151,11 @@ public class Command {
 	// Multi-record Transactions
 	//--------------------------------------------------
 
-	public final void setTranAddKeys(WritePolicy policy, Key key, OperateArgs args) {
+	public final void setTxnAddKeys(WritePolicy policy, Key key, OperateArgs args) {
 		begin();
 		int fieldCount = estimateKeySize(key);
 		dataOffset += args.size;
-		writeTranMonitor(key, args.readAttr, args.writeAttr, fieldCount, args.operations.length);
+		writeTxnMonitor(key, args.readAttr, args.writeAttr, fieldCount, args.operations.length);
 
 		for (Operation operation : args.operations) {
 			writeOperation(operation);
@@ -164,7 +164,7 @@ public class Command {
 		compress(policy);
 	}
 
-	public final void setTranVerify(Tran tran, Key key, long ver) {
+	public final void setTxnVerify(Txn txn, Key key, long ver) {
 		begin();
 		int fieldCount = estimateKeySize(key);
 
@@ -191,20 +191,20 @@ public class Command {
 		end();
 	}
 
-	public final void setBatchTranVerify(
+	public final void setBatchTxnVerify(
 		BatchPolicy policy,
-		Tran tran,
+		Txn txn,
 		Key[] keys,
 		Long[] versions,
 		BatchNode batch
 	) {
 		final BatchOffsetsNative offsets = new BatchOffsetsNative(batch);
-		setBatchTranVerify(policy, tran, keys, versions, offsets);
+		setBatchTxnVerify(policy, txn, keys, versions, offsets);
 	}
 
-	public final void setBatchTranVerify(
+	public final void setBatchTxnVerify(
 		BatchPolicy policy,
-		Tran tran,
+		Txn txn,
 		Key[] keys,
 		Long[] versions,
 		BatchOffsets offsets
@@ -300,29 +300,29 @@ public class Command {
 		compress(policy);
 	}
 
-	public final void setTranMarkRollForward(Tran tran, Key key) {
+	public final void setTxnMarkRollForward(Txn txn, Key key) {
 		Bin bin = new Bin("fwd", true);
 
 		begin();
 		int fieldCount = estimateKeySize(key);
 		estimateOperationSize(bin);
-		writeTranMonitor(key, 0, Command.INFO2_WRITE, fieldCount, 1);
+		writeTxnMonitor(key, 0, Command.INFO2_WRITE, fieldCount, 1);
 		writeOperation(bin, Operation.Type.WRITE);
 		end();
 	}
 
-	public final void setTranRoll(Key key, Tran tran, int tranAttr) {
+	public final void setTxnRoll(Key key, Txn txn, int txnAttr) {
 		begin();
 		int fieldCount = estimateKeySize(key);
 
-		fieldCount += sizeTran(key, tran, false);
+		fieldCount += sizeTxn(key, txn, false);
 
 		sizeBuffer();
 		dataBuffer[8]  = MSG_REMAINING_HEADER_SIZE;
 		dataBuffer[9]  = (byte)0;
 		dataBuffer[10] = (byte)Command.INFO2_WRITE | Command.INFO2_DURABLE_DELETE;
 		dataBuffer[11] = (byte)0;
-		dataBuffer[12] = (byte)tranAttr;
+		dataBuffer[12] = (byte)txnAttr;
 		dataBuffer[13] = 0; // clear the result code
 		Buffer.intToBytes(0, dataBuffer, 14);
 		Buffer.intToBytes(0, dataBuffer, 18);
@@ -332,21 +332,21 @@ public class Command {
 		dataOffset = MSG_TOTAL_HEADER_SIZE;
 
 		writeKey(key);
-		writeTran(tran, false);
+		writeTxn(txn, false);
 		end();
 	}
 
-	public final void setBatchTranRoll(
+	public final void setBatchTxnRoll(
 		BatchPolicy policy,
 		Key[] keys,
 		BatchNode batch,
 		BatchAttr attr
 	) {
 		final BatchOffsetsNative offsets = new BatchOffsetsNative(batch);
-		setBatchTranRoll(policy, keys, attr, offsets);
+		setBatchTxnRoll(policy, keys, attr, offsets);
 	}
 
-	public final void setBatchTranRoll(
+	public final void setBatchTxnRoll(
 		BatchPolicy policy,
 		Key[] keys,
 		BatchAttr attr,
@@ -356,13 +356,13 @@ public class Command {
 		begin();
 		int fieldCount = 1;
 		int max = offsets.size();
-		Tran tran = policy.tran;
+		Txn txn = policy.txn;
 		Long[] versions = new Long[max];
 
 		for (int i = 0; i < max; i++) {
 			int offset = offsets.get(i);
 			Key key = keys[offset];
-			versions[i] = tran.getReadVersion(key);
+			versions[i] = txn.getReadVersion(key);
 		}
 
 		// Batch field
@@ -386,7 +386,7 @@ public class Command {
 				dataOffset += 13; // header(4) + ttl(4) + fieldCount(2) + opCount(2) = 13
 				dataOffset += Buffer.estimateSizeUtf8(key.namespace) + FIELD_HEADER_SIZE;
 				dataOffset += Buffer.estimateSizeUtf8(key.setName) + FIELD_HEADER_SIZE;
-				sizeTranBatch(tran, ver);
+				sizeTxnBatch(txn, ver);
 				dataOffset += 2; // gen(2) = 2
 				prev = key;
 			}
@@ -422,7 +422,7 @@ public class Command {
 			}
 			else {
 				// Write full message.
-				writeBatchWrite(key, tran, ver, attr, null, 0, 0);
+				writeBatchWrite(key, txn, ver, attr, null, 0, 0);
 				prev = key;
 			}
 		}
@@ -433,15 +433,15 @@ public class Command {
 		compress(policy);
 	}
 
-	public void setTranClose(Tran tran, Key key) {
+	public void setTxnClose(Txn txn, Key key) {
 		begin();
 		int fieldCount = estimateKeySize(key);
-		writeTranMonitor(key, 0, Command.INFO2_WRITE | Command.INFO2_DELETE | Command.INFO2_DURABLE_DELETE,
+		writeTxnMonitor(key, 0, Command.INFO2_WRITE | Command.INFO2_DELETE | Command.INFO2_DURABLE_DELETE,
 			fieldCount, 0);
 		end();
 	}
 
-	private void writeTranMonitor(Key key, int readAttr, int writeAttr, int fieldCount, int opCount) {
+	private void writeTxnMonitor(Key key, int readAttr, int writeAttr, int fieldCount, int opCount) {
 		sizeBuffer();
 
 		dataBuffer[8]  = MSG_REMAINING_HEADER_SIZE;
@@ -1077,16 +1077,16 @@ public class Command {
 	) {
 		begin();
 		int max = offsets.size();
-		Tran tran = policy.tran;
+		Txn txn = policy.txn;
 		Long[] versions = null;
 
-		if (tran != null) {
+		if (txn != null) {
 			versions = new Long[max];
 
 			for (int i = 0; i < max; i++) {
 				int offset = offsets.get(i);
 				BatchRecord record = records.get(offset);
-				versions[i] = tran.getReadVersion(record.key);
+				versions[i] = txn.getReadVersion(record.key);
 			}
 		}
 
@@ -1118,7 +1118,7 @@ public class Command {
 				dataOffset += 13;
 				dataOffset += Buffer.estimateSizeUtf8(key.namespace) + FIELD_HEADER_SIZE;
 				dataOffset += Buffer.estimateSizeUtf8(key.setName) + FIELD_HEADER_SIZE;
-				sizeTranBatch(tran, ver);
+				sizeTxnBatch(txn, ver);
 				dataOffset += record.size(policy);
 				prev = record;
 			}
@@ -1173,20 +1173,20 @@ public class Command {
 
 						if (br.binNames != null) {
 							if (br.binNames.length > 0) {
-								writeBatchBinNames(key, tran, ver, br.binNames, attr, attr.filterExp);
+								writeBatchBinNames(key, txn, ver, br.binNames, attr, attr.filterExp);
 							}
 							else {
 								attr.adjustRead(true);
-								writeBatchRead(key, tran, ver, attr, attr.filterExp, 0);
+								writeBatchRead(key, txn, ver, attr, attr.filterExp, 0);
 							}
 						}
 						else if (br.ops != null) {
 							attr.adjustRead(br.ops);
-							writeBatchOperations(key, tran, ver, br.ops, attr, attr.filterExp);
+							writeBatchOperations(key, txn, ver, br.ops, attr, attr.filterExp);
 						}
 						else {
 							attr.adjustRead(br.readAllBins);
-							writeBatchRead(key, tran, ver, attr, attr.filterExp, 0);
+							writeBatchRead(key, txn, ver, attr, attr.filterExp, 0);
 						}
 						break;
 					}
@@ -1197,7 +1197,7 @@ public class Command {
 
 						attr.setWrite(bwp);
 						attr.adjustWrite(bw.ops);
-						writeBatchOperations(key, tran, ver, bw.ops, attr, attr.filterExp);
+						writeBatchOperations(key, txn, ver, bw.ops, attr, attr.filterExp);
 						break;
 					}
 
@@ -1206,7 +1206,7 @@ public class Command {
 						BatchUDFPolicy bup = (bu.policy != null)? bu.policy : udfPolicy;
 
 						attr.setUDF(bup);
-						writeBatchWrite(key, tran, ver, attr, attr.filterExp, 3, 0);
+						writeBatchWrite(key, txn, ver, attr, attr.filterExp, 3, 0);
 						writeField(bu.packageName, FieldType.UDF_PACKAGE_NAME);
 						writeField(bu.functionName, FieldType.UDF_FUNCTION);
 						writeField(bu.argBytes, FieldType.UDF_ARGLIST);
@@ -1218,7 +1218,7 @@ public class Command {
 						BatchDeletePolicy bdp = (bd.policy != null)? bd.policy : deletePolicy;
 
 						attr.setDelete(bdp);
-						writeBatchWrite(key, tran, ver, attr, attr.filterExp, 0, 0);
+						writeBatchWrite(key, txn, ver, attr, attr.filterExp, 0, 0);
 						break;
 					}
 				}
@@ -1255,16 +1255,16 @@ public class Command {
 		// Estimate buffer size.
 		begin();
 		int max = offsets.size();
-		Tran tran = policy.tran;
+		Txn txn = policy.txn;
 		Long[] versions = null;
 
-		if (tran != null) {
+		if (txn != null) {
 			versions = new Long[max];
 
 			for (int i = 0; i < max; i++) {
 				int offset = offsets.get(i);
 				Key key = keys[offset];
-				versions[i] = tran.getReadVersion(key);
+				versions[i] = txn.getReadVersion(key);
 			}
 		}
 
@@ -1296,7 +1296,7 @@ public class Command {
 				dataOffset += 13; // header(5) + ttl(4) + fieldCount(2) + opCount(2) = 13
 				dataOffset += Buffer.estimateSizeUtf8(key.namespace) + FIELD_HEADER_SIZE;
 				dataOffset += Buffer.estimateSizeUtf8(key.setName) + FIELD_HEADER_SIZE;
-				sizeTranBatch(tran, ver);
+				sizeTxnBatch(txn, ver);
 
 				if (attr.sendKey) {
 					dataOffset += key.userKey.estimateSize() + FIELD_HEADER_SIZE + 1;
@@ -1360,16 +1360,16 @@ public class Command {
 			else {
 				// Write full message.
 				if (binNames != null) {
-					writeBatchBinNames(key, tran, ver, binNames, attr, null);
+					writeBatchBinNames(key, txn, ver, binNames, attr, null);
 				}
 				else if (ops != null) {
-					writeBatchOperations(key, tran, ver, ops, attr, null);
+					writeBatchOperations(key, txn, ver, ops, attr, null);
 				}
 				else if ((attr.writeAttr & Command.INFO2_DELETE) != 0) {
-					writeBatchWrite(key, tran, ver, attr, null, 0, 0);
+					writeBatchWrite(key, txn, ver, attr, null, 0, 0);
 				}
 				else {
-					writeBatchRead(key, tran, ver, attr, null, 0);
+					writeBatchRead(key, txn, ver, attr, null, 0);
 				}
 				prev = key;
 			}
@@ -1406,16 +1406,16 @@ public class Command {
 		// Estimate buffer size.
 		begin();
 		int max = offsets.size();
-		Tran tran = policy.tran;
+		Txn txn = policy.txn;
 		Long[] versions = null;
 
-		if (tran != null) {
+		if (txn != null) {
 			versions = new Long[max];
 
 			for (int i = 0; i < max; i++) {
 				int offset = offsets.get(i);
 				Key key = keys[offset];
-				versions[i] = tran.getReadVersion(key);
+				versions[i] = txn.getReadVersion(key);
 			}
 		}
 
@@ -1447,7 +1447,7 @@ public class Command {
 				dataOffset += 13; // header(4) + ttl(4) + fieldCount(2) + opCount(2) = 13
 				dataOffset += Buffer.estimateSizeUtf8(key.namespace) + FIELD_HEADER_SIZE;
 				dataOffset += Buffer.estimateSizeUtf8(key.setName) + FIELD_HEADER_SIZE;
-				sizeTranBatch(tran, ver);
+				sizeTxnBatch(txn, ver);
 
 				if (attr.sendKey) {
 					dataOffset += key.userKey.estimateSize() + FIELD_HEADER_SIZE + 1;
@@ -1492,7 +1492,7 @@ public class Command {
 			}
 			else {
 				// Write full message.
-				writeBatchWrite(key, tran, ver, attr, null, 3, 0);
+				writeBatchWrite(key, txn, ver, attr, null, 3, 0);
 				writeField(packageName, FieldType.UDF_PACKAGE_NAME);
 				writeField(functionName, FieldType.UDF_FUNCTION);
 				writeField(argBytes, FieldType.UDF_ARGLIST);
@@ -1552,15 +1552,15 @@ public class Command {
 		return flags;
 	}
 
-	private void sizeTranBatch(Tran tran, Long ver) {
-		if (tran != null) {
+	private void sizeTxnBatch(Txn txn, Long ver) {
+		if (txn != null) {
 			dataOffset += 8 + FIELD_HEADER_SIZE;
 
 			if (ver != null) {
 				dataOffset += 7 + FIELD_HEADER_SIZE;
 			}
 
-			if (tran.getDeadline() != 0) {
+			if (txn.getDeadline() != 0) {
 				dataOffset += 4 + FIELD_HEADER_SIZE;
 			}
 		}
@@ -1588,20 +1588,20 @@ public class Command {
 		dataOffset = MSG_TOTAL_HEADER_SIZE;
 	}
 
-	private void writeBatchBinNames(Key key, Tran tran, Long ver, String[] binNames, BatchAttr attr, Expression filter) {
-		writeBatchRead(key, tran, ver, attr, filter, binNames.length);
+	private void writeBatchBinNames(Key key, Txn txn, Long ver, String[] binNames, BatchAttr attr, Expression filter) {
+		writeBatchRead(key, txn, ver, attr, filter, binNames.length);
 
 		for (String binName : binNames) {
 			writeOperation(binName, Operation.Type.READ);
 		}
 	}
 
-	private void writeBatchOperations(Key key, Tran tran, Long ver, Operation[] ops, BatchAttr attr, Expression filter) {
+	private void writeBatchOperations(Key key, Txn txn, Long ver, Operation[] ops, BatchAttr attr, Expression filter) {
 		if (attr.hasWrite) {
-			writeBatchWrite(key, tran, ver, attr, filter, 0, ops.length);
+			writeBatchWrite(key, txn, ver, attr, filter, 0, ops.length);
 		}
 		else {
-			writeBatchRead(key, tran, ver, attr, filter, ops.length);
+			writeBatchRead(key, txn, ver, attr, filter, ops.length);
 		}
 
 		for (Operation op : ops) {
@@ -1609,20 +1609,20 @@ public class Command {
 		}
 	}
 
-	private void writeBatchRead(Key key, Tran tran, Long ver, BatchAttr attr, Expression filter, int opCount) {
+	private void writeBatchRead(Key key, Txn txn, Long ver, BatchAttr attr, Expression filter, int opCount) {
 		dataBuffer[dataOffset++] = (byte)(BATCH_MSG_INFO | BATCH_MSG_INFO4 | BATCH_MSG_TTL);
 		dataBuffer[dataOffset++] = (byte)attr.readAttr;
 		dataBuffer[dataOffset++] = (byte)attr.writeAttr;
 		dataBuffer[dataOffset++] = (byte)attr.infoAttr;
-		dataBuffer[dataOffset++] = (byte)attr.tranAttr;
+		dataBuffer[dataOffset++] = (byte)attr.txnAttr;
 		Buffer.intToBytes(attr.expiration, dataBuffer, dataOffset);
 		dataOffset += 4;
-		writeBatchFields(key, tran, ver, attr, filter, 0, opCount);
+		writeBatchFields(key, txn, ver, attr, filter, 0, opCount);
 	}
 
 	private void writeBatchWrite(
 		Key key,
-		Tran tran,
+		Txn txn,
 		Long ver,
 		BatchAttr attr,
 		Expression filter,
@@ -1633,31 +1633,31 @@ public class Command {
 		dataBuffer[dataOffset++] = (byte)attr.readAttr;
 		dataBuffer[dataOffset++] = (byte)attr.writeAttr;
 		dataBuffer[dataOffset++] = (byte)attr.infoAttr;
-		dataBuffer[dataOffset++] = (byte)attr.tranAttr;
+		dataBuffer[dataOffset++] = (byte)attr.txnAttr;
 		Buffer.shortToBytes(attr.generation, dataBuffer, dataOffset);
 		dataOffset += 2;
 		Buffer.intToBytes(attr.expiration, dataBuffer, dataOffset);
 		dataOffset += 4;
-		writeBatchFields(key, tran, ver, attr, filter, fieldCount, opCount);
+		writeBatchFields(key, txn, ver, attr, filter, fieldCount, opCount);
 	}
 
 	private void writeBatchFields(
 		Key key,
-		Tran tran,
+		Txn txn,
 		Long ver,
 		BatchAttr attr,
 		Expression filter,
 		int fieldCount,
 		int opCount
 	) {
-		if (tran != null) {
+		if (txn != null) {
 			fieldCount++;
 
 			if (ver != null) {
 				fieldCount++;
 			}
 
-			if (attr.hasWrite && tran.getDeadline() != 0) {
+			if (attr.hasWrite && txn.getDeadline() != 0) {
 				fieldCount++;
 			}
 		}
@@ -1672,15 +1672,15 @@ public class Command {
 
 		writeBatchFields(key, fieldCount, opCount);
 
-		if (tran != null) {
-			writeFieldLE(tran.getId(), FieldType.MRT_ID);
+		if (txn != null) {
+			writeFieldLE(txn.getId(), FieldType.MRT_ID);
 
 			if (ver != null) {
 				writeFieldVersion(ver);
 			}
 
-			if (attr.hasWrite && tran.getDeadline() != 0) {
-				writeFieldLE(tran.getDeadline(), FieldType.MRT_DEADLINE);
+			if (attr.hasWrite && txn.getDeadline() != 0) {
+				writeFieldLE(txn.getDeadline(), FieldType.MRT_DEADLINE);
 			}
 		}
 
@@ -2162,7 +2162,7 @@ public class Command {
 	private int estimateKeySize(Policy policy, Key key, boolean sendDeadline) {
 		int fieldCount = estimateKeySize(key);
 
-		fieldCount += sizeTran(key, policy.tran, sendDeadline);
+		fieldCount += sizeTxn(key, policy.txn, sendDeadline);
 
 		if (policy.sendKey) {
 			dataOffset += key.userKey.estimateSize() + FIELD_HEADER_SIZE + 1;
@@ -2511,7 +2511,7 @@ public class Command {
 
 	private void writeKey(Policy policy, Key key, boolean sendDeadline) {
 		writeKey(key);
-		writeTran(policy.tran, sendDeadline);
+		writeTxn(policy.txn, sendDeadline);
 
 		if (policy.sendKey) {
 			writeField(key.userKey, FieldType.KEY);
@@ -2608,21 +2608,21 @@ public class Command {
 		dataBuffer[dataOffset++] = 0;
 	}
 
-	private int sizeTran(Key key, Tran tran, boolean sendDeadline) {
+	private int sizeTxn(Key key, Txn txn, boolean sendDeadline) {
 		int fieldCount = 0;
 
-		if (tran != null) {
+		if (txn != null) {
 			dataOffset += 8 + FIELD_HEADER_SIZE;
 			fieldCount++;
 
-			version = tran.getReadVersion(key);
+			version = txn.getReadVersion(key);
 
 			if (version != null) {
 				dataOffset += 7 + FIELD_HEADER_SIZE;
 				fieldCount++;
 			}
 
-			if (sendDeadline && tran.getDeadline() != 0) {
+			if (sendDeadline && txn.getDeadline() != 0) {
 				dataOffset += 4 + FIELD_HEADER_SIZE;
 				fieldCount++;
 			}
@@ -2630,16 +2630,16 @@ public class Command {
 		return fieldCount;
 	}
 
-	private void writeTran(Tran tran, boolean sendDeadline) {
-		if (tran != null) {
-			writeFieldLE(tran.getId(), FieldType.MRT_ID);
+	private void writeTxn(Txn txn, boolean sendDeadline) {
+		if (txn != null) {
+			writeFieldLE(txn.getId(), FieldType.MRT_ID);
 
 			if (version != null) {
 				writeFieldVersion(version);
 			}
 
-			if (sendDeadline && tran.getDeadline() != 0) {
-				writeFieldLE(tran.getDeadline(), FieldType.MRT_DEADLINE);
+			if (sendDeadline && txn.getDeadline() != 0) {
+				writeFieldLE(txn.getDeadline(), FieldType.MRT_DEADLINE);
 			}
 		}
 	}

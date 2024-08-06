@@ -20,12 +20,12 @@ import com.aerospike.client.Bin;
 import com.aerospike.client.IAerospikeClient;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
-import com.aerospike.client.Tran;
+import com.aerospike.client.Txn;
 import com.aerospike.client.policy.Policy;
 import com.aerospike.client.policy.WritePolicy;
 
-public class MRT extends Example {
-	public MRT(Console console) {
+public class Transaction extends Example {
+	public Transaction(Console console) {
 		super(console);
 	}
 
@@ -38,12 +38,12 @@ public class MRT extends Example {
 	}
 
 	private void tranReadWrite(IAerospikeClient client, Parameters params) {
-		Tran tran = new Tran();
-		System.out.println("Begin tran: " + tran.getId());
+		Txn txn = new Txn();
+		System.out.println("Begin tran: " + txn.getId());
 
 		try {
 			WritePolicy wp = client.copyWritePolicyDefault();
-			wp.tran = tran;
+			wp.txn = txn;
 
 			Key key1 = new Key(params.namespace, params.set, 1);
 			client.put(wp, key1, new Bin("a", "val1"));
@@ -52,23 +52,23 @@ public class MRT extends Example {
 			client.put(wp, key2, new Bin("b", "val2"));
 
 			Policy p = client.copyReadPolicyDefault();
-			p.tran = tran;
+			p.txn = txn;
 
 			Key key3 = new Key(params.namespace, params.set, 3);
 			Record rec = client.get(p, key3);
 
 			WritePolicy dp = client.copyWritePolicyDefault();
-			dp.tran = tran;
+			dp.txn = txn;
 			dp.durableDelete = true;  // Required when running delete in a MRT.
 			client.delete(dp, key3);
 		}
 		catch (Throwable t) {
 			// Abort and rollback MRT (multi-record transaction) if any errors occur.
-			client.abort(tran);
+			client.abort(txn);
 			throw t;
 		}
 
-		System.out.println("Commit tran: " + tran.getId());
-		client.commit(tran);
+		System.out.println("Commit tran: " + txn.getId());
+		client.commit(txn);
 	}
 }

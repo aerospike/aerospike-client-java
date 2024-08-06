@@ -35,7 +35,7 @@ public abstract class AsyncWriteBase extends AsyncCommand {
 		this.writePolicy = writePolicy;
 		this.key = key;
 		this.partition = Partition.write(cluster, writePolicy, key);
-		cluster.addTran();
+		cluster.addCommandCount();
 	}
 
 	@Override
@@ -61,7 +61,7 @@ public abstract class AsyncWriteBase extends AsyncCommand {
 
 	protected int parseHeader() {
 		RecordParser rp = new RecordParser(dataBuffer, dataOffset, receiveSize);
-		rp.parseFields(policy.tran, key, true);
+		rp.parseFields(policy.txn, key, true);
 
 		if (rp.opCount > 0) {
 			throw new AerospikeException("Unexpected write response opCount: " + rp.opCount + ',' + rp.resultCode);

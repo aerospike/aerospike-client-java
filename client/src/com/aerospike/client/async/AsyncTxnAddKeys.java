@@ -14,60 +14,54 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.aerospike.client.command;
-
-import java.io.IOException;
+package com.aerospike.client.async;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
 import com.aerospike.client.ResultCode;
 import com.aerospike.client.cluster.Cluster;
-import com.aerospike.client.cluster.Connection;
-import com.aerospike.client.policy.Policy;
+import com.aerospike.client.command.OperateArgs;
+import com.aerospike.client.command.RecordParser;
+import com.aerospike.client.listener.RecordListener;
 
-public final class ExistsCommand extends SyncReadCommand {
-	private boolean exists;
+public final class AsyncTxnAddKeys extends AsyncWriteBase {
+	private final RecordListener listener;
+	private final OperateArgs args;
 
-	public ExistsCommand(Cluster cluster, Policy policy, Key key) {
-		super(cluster, policy, key);
+	public AsyncTxnAddKeys(Cluster cluster, RecordListener listener, Key key, OperateArgs args) {
+		super(cluster, args.writePolicy, key);
+		this.listener = listener;
+		this.args = args;
 	}
 
 	@Override
 	protected void writeBuffer() {
-		setExists(policy, key);
+		setTxnAddKeys(args.writePolicy, key, args);
 	}
 
 	@Override
-	protected void parseResult(Connection conn) throws IOException {
-		RecordParser rp = new RecordParser(conn, dataBuffer);
-		rp.parseFields(policy.txn, key, false);
-
-		if (rp.opCount > 0) {
-			throw new AerospikeException("Unexpected exists opCount: " + rp.opCount + ',' + rp.resultCode);
-		}
+	protected boolean parseResult() {
+		RecordParser rp = new RecordParser(dataBuffer, dataOffset, receiveSize);
+		rp.parseTranDeadline(policy.txn);
 
 		if (rp.resultCode == ResultCode.OK) {
-			exists = true;
-			return;
-		}
-
-		if (rp.resultCode == ResultCode.KEY_NOT_FOUND_ERROR) {
-			exists = false;
-			return;
-		}
-
-		if (rp.resultCode == ResultCode.FILTERED_OUT) {
-			if (policy.failOnFilteredOut) {
-				throw new AerospikeException(rp.resultCode);
-			}
-			exists = true;
-			return;
+			return true;
 		}
 
 		throw new AerospikeException(rp.resultCode);
 	}
 
-	public boolean exists() {
-		return exists;
+	@Override
+	protected void onSuccess() {
+		if (listener != null) {
+			listener.onSuccess(key, null);
+		}
+	}
+
+	@Override
+	protected void onFailure(AerospikeException e) {
+		if (listener != null) {
+			listener.onFailure(e);
+		}
 	}
 }

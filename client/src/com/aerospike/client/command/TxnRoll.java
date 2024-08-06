@@ -20,7 +20,7 @@ import com.aerospike.client.AbortError;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.BatchRecord;
 import com.aerospike.client.Key;
-import com.aerospike.client.Tran;
+import com.aerospike.client.Txn;
 import com.aerospike.client.CommitError;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.policy.BatchPolicy;
@@ -29,15 +29,15 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-public final class TranRoll {
+public final class TxnRoll {
 	private final Cluster cluster;
-	private final Tran tran;
+	private final Txn txn;
 	private BatchRecord[] verifyRecords;
 	private BatchRecord[] rollRecords;
 
-	public TranRoll(Cluster cluster, Tran tran) {
+	public TxnRoll(Cluster cluster, Txn txn) {
 		this.cluster = cluster;
-		this.tran = tran;
+		this.txn = txn;
 	}
 
 	public void commit(BatchPolicy verifyPolicy, BatchPolicy rollPolicy) {
@@ -56,11 +56,11 @@ public final class TranRoll {
 				throw new AerospikeException.Commit(CommitError.VERIFY_FAIL_ABORT_ABANDONED, verifyRecords, rollRecords, t);
 			}
 
-			if (tran.getDeadline() != 0) {
+			if (txn.getDeadline() != 0) {
 				try {
 					WritePolicy writePolicy = new WritePolicy(rollPolicy);
-					Key tranKey = TranMonitor.getTranMonitorKey(tran);
-					close(writePolicy, tranKey);
+					Key txnKey = TxnMonitor.getTxnMonitorKey(txn);
+					close(writePolicy, txnKey);
 				}
 				catch (Throwable t3) {
 					// Throw combination of verify and close exceptions.
@@ -74,13 +74,13 @@ public final class TranRoll {
 		}
 
 		WritePolicy writePolicy = new WritePolicy(rollPolicy);
-		Key tranKey = TranMonitor.getTranMonitorKey(tran);
-		Set<Key> keySet = tran.getWrites();
+		Key txnKey = TxnMonitor.getTxnMonitorKey(txn);
+		Set<Key> keySet = txn.getWrites();
 
 		if (!keySet.isEmpty()) {
 			// Tell MRT monitor that a roll-forward will commence.
 			try {
-				markRollForward(writePolicy, tranKey);
+				markRollForward(writePolicy, txnKey);
 			}
 			catch (Throwable t) {
 				throw new AerospikeException.Commit(CommitError.MARK_ROLL_FORWARD_ABANDONED, verifyRecords, rollRecords, t);
@@ -95,10 +95,10 @@ public final class TranRoll {
 			}
 		}
 
-		if (tran.getDeadline() != 0) {
+		if (txn.getDeadline() != 0) {
 			// Remove MRT monitor.
 			try {
-				close(writePolicy, tranKey);
+				close(writePolicy, txnKey);
 			}
 			catch (Throwable t) {
 				throw new AerospikeException.Commit(CommitError.CLOSE_ABANDONED, verifyRecords, rollRecords, t);
@@ -107,7 +107,7 @@ public final class TranRoll {
 	}
 
 	public void abort(BatchPolicy rollPolicy) {
-		Set<Key> keySet = tran.getWrites();
+		Set<Key> keySet = txn.getWrites();
 
 		if (! keySet.isEmpty()) {
 			try {
@@ -118,11 +118,11 @@ public final class TranRoll {
 			}
 		}
 
-		if (tran.getDeadline() != 0) {
+		if (txn.getDeadline() != 0) {
 			try {
 				WritePolicy writePolicy = new WritePolicy(rollPolicy);
-				Key tranKey = TranMonitor.getTranMonitorKey(tran);
-				close(writePolicy, tranKey);
+				Key txnKey = TxnMonitor.getTxnMonitorKey(txn);
+				close(writePolicy, txnKey);
 			}
 			catch (Throwable t) {
 				throw new AerospikeException.Abort(AbortError.CLOSE_ABANDONED, rollRecords, t);
@@ -132,7 +132,7 @@ public final class TranRoll {
 
 	private void verify(BatchPolicy verifyPolicy) {
 		// Validate record versions in a batch.
-		Set<Map.Entry<Key, Long>> reads = tran.getReads();
+		Set<Map.Entry<Key, Long>> reads = txn.getReads();
 		int max = reads.size();
 
 		if (max == 0) {
@@ -163,12 +163,12 @@ public final class TranRoll {
 		for (BatchNode bn : bns) {
 			if (bn.offsetsSize == 1) {
 				int i = bn.offsets[0];
-				commands[count++] = new BatchSingle.TranVerify(
-					cluster, verifyPolicy, tran, versions[i], records[i], status, bn.node);
+				commands[count++] = new BatchSingle.TxnVerify(
+					cluster, verifyPolicy, txn, versions[i], records[i], status, bn.node);
 			}
 			else {
-				commands[count++] = new Batch.TranVerify(
-					cluster, bn, verifyPolicy, tran, keys, versions, records, status);
+				commands[count++] = new Batch.TxnVerify(
+					cluster, bn, verifyPolicy, txn, keys, versions, records, status);
 			}
 		}
 
@@ -179,14 +179,14 @@ public final class TranRoll {
 		}
 	}
 
-	private void markRollForward(WritePolicy writePolicy, Key tranKey) {
+	private void markRollForward(WritePolicy writePolicy, Key txnKey) {
 		// Tell MRT monitor that a roll-forward will commence.
-		TranMarkRollForward cmd = new TranMarkRollForward(cluster, tran, writePolicy, tranKey);
+		TxnMarkRollForward cmd = new TxnMarkRollForward(cluster, txn, writePolicy, txnKey);
 		cmd.execute();
 	}
 
-	private void roll(BatchPolicy rollPolicy, int tranAttr) {
-		Set<Key> keySet = tran.getWrites();
+	private void roll(BatchPolicy rollPolicy, int txnAttr) {
+		Set<Key> keySet = txn.getWrites();
 
 		if (keySet.isEmpty()) {
 			return;
@@ -201,48 +201,48 @@ public final class TranRoll {
 
 		this.rollRecords = records;
 
-		// Copy tran roll policy because it needs to be modified.
+		// Copy transaction roll policy because it needs to be modified.
 		BatchPolicy batchPolicy = new BatchPolicy(rollPolicy);
 
 		BatchAttr attr = new BatchAttr();
-		attr.setTran(tranAttr);
+		attr.setTxn(txnAttr);
 
 		BatchStatus status = new BatchStatus(true);
 
-		// generate() requires a null tran instance.
+		// generate() requires a null transaction instance.
 		List<BatchNode> bns = BatchNodeList.generate(cluster, batchPolicy, keys, records, true, status);
 		IBatchCommand[] commands = new IBatchCommand[bns.size()];
 
-		// Batch roll forward requires the tran instance.
-		batchPolicy.tran = tran;
+		// Batch roll forward requires the transaction instance.
+		batchPolicy.txn = txn;
 
 		int count = 0;
 
 		for (BatchNode bn : bns) {
 			if (bn.offsetsSize == 1) {
 				int i = bn.offsets[0];
-				commands[count++] = new BatchSingle.TranRoll(
-					cluster, batchPolicy, records[i], status, bn.node, tranAttr);
+				commands[count++] = new BatchSingle.TxnRoll(
+					cluster, batchPolicy, records[i], status, bn.node, txnAttr);
 			}
 			else {
-				commands[count++] = new Batch.TranRoll(
+				commands[count++] = new Batch.TxnRoll(
 					cluster, bn, batchPolicy, keys, records, attr, status);
 			}
 		}
 		BatchExecutor.execute(cluster, batchPolicy, commands, status);
 
 		if (!status.getStatus()) {
-			String rollString = tranAttr == Command.INFO4_MRT_ROLL_FORWARD? "commit" : "abort";
+			String rollString = txnAttr == Command.INFO4_MRT_ROLL_FORWARD? "commit" : "abort";
 			throw new RuntimeException("Failed to " + rollString + " one or more records");
 		}
 	}
 
-	private void close(WritePolicy writePolicy, Key tranKey) {
+	private void close(WritePolicy writePolicy, Key txnKey) {
 		// Delete MRT monitor on server.
-		TranClose cmd = new TranClose(cluster, tran, writePolicy, tranKey);
+		TxnClose cmd = new TxnClose(cluster, txn, writePolicy, txnKey);
 		cmd.execute();
 
 		// Reset MRT on client.
-		tran.clear();
+		txn.clear();
 	}
 }

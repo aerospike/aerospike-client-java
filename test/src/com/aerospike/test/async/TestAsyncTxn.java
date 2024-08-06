@@ -27,7 +27,7 @@ import com.aerospike.client.Language;
 import com.aerospike.client.Operation;
 import com.aerospike.client.Record;
 import com.aerospike.client.ResultCode;
-import com.aerospike.client.Tran;
+import com.aerospike.client.Txn;
 import com.aerospike.client.Value;
 import com.aerospike.client.listener.BatchRecordArrayListener;
 import com.aerospike.client.listener.DeleteListener;
@@ -43,13 +43,13 @@ import com.aerospike.client.policy.WritePolicy;
 import com.aerospike.client.task.RegisterTask;
 import com.aerospike.test.sync.basic.TestUDF;
 
-public class TestAsyncTran extends TestAsync {
+public class TestAsyncTxn extends TestAsync {
 	public static final String binName = "bin";
 
 	@BeforeClass
 	public static void register() {
 		if (args.useProxyClient) {
-			System.out.println("Skip TestTran.register");
+			System.out.println("Skip TestTxn.register");
 			return;
 		}
 		RegisterTask task = client.register(null, TestUDF.class.getClassLoader(), "udf/record_example.lua", "record_example.lua", Language.LUA);
@@ -57,14 +57,14 @@ public class TestAsyncTran extends TestAsync {
 	}
 
 	@Test
-	public void asyncTranWrite() {
-		Key key = new Key(args.namespace, args.set, "asyncTranWrite");
-		Tran tran = new Tran();
+	public void asyncTxnWrite() {
+		Key key = new Key(args.namespace, args.set, "asyncTxnWrite");
+		Txn txn = new Txn();
 
 		Runner[] cmds = new Runner[] {
 			new Put(null, key, "val1"),
-			new Put(tran, key, "val2"),
-			new Commit(tran),
+			new Put(txn, key, "val2"),
+			new Commit(txn),
 			new GetExpect(null, key, "val2")
 		};
 
@@ -72,14 +72,14 @@ public class TestAsyncTran extends TestAsync {
 	}
 
 	@Test
-	public void asyncTranWriteTwice() {
-		Key key = new Key(args.namespace, args.set, "asyncTranWriteTwice");
-		Tran tran = new Tran();
+	public void asyncTxnWriteTwice() {
+		Key key = new Key(args.namespace, args.set, "asyncTxnWriteTwice");
+		Txn txn = new Txn();
 
 		Runner[] cmds = new Runner[] {
-			new Put(tran, key, "val1"),
-			new Put(tran, key, "val2"),
-			new Commit(tran),
+			new Put(txn, key, "val1"),
+			new Put(txn, key, "val2"),
+			new Commit(txn),
 			new GetExpect(null, key, "val2")
 		};
 
@@ -87,15 +87,15 @@ public class TestAsyncTran extends TestAsync {
 	}
 
 	@Test
-	public void asyncTranWriteBlock() {
-		Key key = new Key(args.namespace, args.set, "asyncTranWriteBlock");
-		Tran tran = new Tran();
+	public void asyncTxnWriteBlock() {
+		Key key = new Key(args.namespace, args.set, "asyncTxnWriteBlock");
+		Txn txn = new Txn();
 
 		Runner[] cmds = new Runner[] {
 			new Put(null, key, "val1"),
-			new Put(tran, key, "val2"),
+			new Put(txn, key, "val2"),
 			new Put(null, key, "val3"), // Should be blocked
-			new Commit(tran),
+			new Commit(txn),
 		};
 
 		try {
@@ -110,15 +110,15 @@ public class TestAsyncTran extends TestAsync {
 	}
 
 	@Test
-	public void asyncTranWriteRead() {
-		Key key = new Key(args.namespace, args.set, "asyncTranWriteRead");
-		Tran tran = new Tran();
+	public void asyncTxnWriteRead() {
+		Key key = new Key(args.namespace, args.set, "asyncTxnWriteRead");
+		Txn txn = new Txn();
 
 		Runner[] cmds = new Runner[] {
 			new Put(null, key, "val1"),
-			new Put(tran, key, "val2"),
+			new Put(txn, key, "val2"),
 			new GetExpect(null, key, "val1"),
-			new Commit(tran),
+			new Commit(txn),
 			new GetExpect(null, key, "val2")
 		};
 
@@ -126,15 +126,15 @@ public class TestAsyncTran extends TestAsync {
 	}
 
 	@Test
-	public void asyncTranWriteAbort() {
-		Key key = new Key(args.namespace, args.set, "asyncTranWriteAbort");
-		Tran tran = new Tran();
+	public void asyncTxnWriteAbort() {
+		Key key = new Key(args.namespace, args.set, "asyncTxnWriteAbort");
+		Txn txn = new Txn();
 
 		Runner[] cmds = new Runner[] {
 			new Put(null, key, "val1"),
-			new Put(tran, key, "val2"),
-			new GetExpect(tran, key, "val2"),
-			new Abort(tran),
+			new Put(txn, key, "val2"),
+			new GetExpect(txn, key, "val2"),
+			new Abort(txn),
 			new GetExpect(null, key, "val1")
 		};
 
@@ -142,14 +142,14 @@ public class TestAsyncTran extends TestAsync {
 	}
 
 	@Test
-	public void asyncTranDelete() {
-		Key key = new Key(args.namespace, args.set, "asyncTranDelete");
-		Tran tran = new Tran();
+	public void asyncTxnDelete() {
+		Key key = new Key(args.namespace, args.set, "asyncTxnDelete");
+		Txn txn = new Txn();
 
 		Runner[] cmds = new Runner[] {
 			new Put(null, key, "val1"),
-			new Delete(tran, key),
-			new Commit(tran),
+			new Delete(txn, key),
+			new Commit(txn),
 			new GetExpect(null, key, null)
 		};
 
@@ -157,14 +157,14 @@ public class TestAsyncTran extends TestAsync {
 	}
 
 	@Test
-	public void asyncTranDeleteAbort() {
-		Key key = new Key(args.namespace, args.set, "asyncTranDeleteAbort");
-		Tran tran = new Tran();
+	public void asyncTxnDeleteAbort() {
+		Key key = new Key(args.namespace, args.set, "asyncTxnDeleteAbort");
+		Txn txn = new Txn();
 
 		Runner[] cmds = new Runner[] {
 			new Put(null, key, "val1"),
-			new Delete(tran, key),
-			new Abort(tran),
+			new Delete(txn, key),
+			new Abort(txn),
 			new GetExpect(null, key, "val1")
 		};
 
@@ -172,15 +172,15 @@ public class TestAsyncTran extends TestAsync {
 	}
 
 	@Test
-	public void asyncTranDeleteTwice() {
-		Key key = new Key(args.namespace, args.set, "asyncTranDeleteTwice");
-		Tran tran = new Tran();
+	public void asyncTxnDeleteTwice() {
+		Key key = new Key(args.namespace, args.set, "asyncTxnDeleteTwice");
+		Txn txn = new Txn();
 
 		Runner[] cmds = new Runner[] {
 			new Put(null, key, "val1"),
-			new Delete(tran, key),
-			new Delete(tran, key),
-			new Commit(tran),
+			new Delete(txn, key),
+			new Delete(txn, key),
+			new Commit(txn),
 			new GetExpect(null, key, null)
 		};
 
@@ -188,14 +188,14 @@ public class TestAsyncTran extends TestAsync {
 	}
 
 	@Test
-	public void asyncTranTouch() {
-		Key key = new Key(args.namespace, args.set, "asyncTranTouch");
-		Tran tran = new Tran();
+	public void asyncTxnTouch() {
+		Key key = new Key(args.namespace, args.set, "asyncTxnTouch");
+		Txn txn = new Txn();
 
 		Runner[] cmds = new Runner[] {
 			new Put(null, key, "val1"),
-			new Touch(tran, key),
-			new Commit(tran),
+			new Touch(txn, key),
+			new Commit(txn),
 			new GetExpect(null, key, "val1")
 		};
 
@@ -203,14 +203,14 @@ public class TestAsyncTran extends TestAsync {
 	}
 
 	@Test
-	public void asyncTranTouchAbort() {
-		Key key = new Key(args.namespace, args.set, "asyncTranTouchAbort");
-		Tran tran = new Tran();
+	public void asyncTxnTouchAbort() {
+		Key key = new Key(args.namespace, args.set, "asyncTxnTouchAbort");
+		Txn txn = new Txn();
 
 		Runner[] cmds = new Runner[] {
 			new Put(null, key, "val1"),
-			new Touch(tran, key),
-			new Abort(tran),
+			new Touch(txn, key),
+			new Abort(txn),
 			new GetExpect(null, key, "val1")
 		};
 
@@ -218,19 +218,19 @@ public class TestAsyncTran extends TestAsync {
 	}
 
 	@Test
-	public void asyncTranOperateWrite() {
-		Key key = new Key(args.namespace, args.set, "asyncTranOperateWrite3");
-		Tran tran = new Tran();
+	public void asyncTxnOperateWrite() {
+		Key key = new Key(args.namespace, args.set, "asyncTxnOperateWrite3");
+		Txn txn = new Txn();
 		Bin bin2 = new Bin("bin2", "bal1");
 
 		Runner[] cmds = new Runner[] {
 			new Put(null, key, new Bin(binName, "val1"), bin2),
-			new OperateExpect(tran, key,
+			new OperateExpect(txn, key,
 				bin2,
 				Operation.put(new Bin(binName, "val2")),
 				Operation.get(bin2.name)
 			),
-			new Commit(tran),
+			new Commit(txn),
 			new GetExpect(null, key, "val2")
 		};
 
@@ -238,19 +238,19 @@ public class TestAsyncTran extends TestAsync {
 	}
 
 	@Test
-	public void asyncTranOperateWriteAbort() {
-		Key key = new Key(args.namespace, args.set, "asyncTranOperateWriteAbort");
-		Tran tran = new Tran();
+	public void asyncTxnOperateWriteAbort() {
+		Key key = new Key(args.namespace, args.set, "asyncTxnOperateWriteAbort");
+		Txn txn = new Txn();
 		Bin bin2 = new Bin("bin2", "bal1");
 
 		Runner[] cmds = new Runner[] {
 			new Put(null, key, new Bin(binName, "val1"), bin2),
-			new OperateExpect(tran, key,
+			new OperateExpect(txn, key,
 				bin2,
 				Operation.put(new Bin(binName, "val2")),
 				Operation.get(bin2.name)
 			),
-			new Abort(tran),
+			new Abort(txn),
 			new GetExpect(null, key, "val1")
 		};
 
@@ -258,15 +258,15 @@ public class TestAsyncTran extends TestAsync {
 	}
 
 	@Test
-	public void asyncTranUDF() {
-		Key key = new Key(args.namespace, args.set, "asyncTranUDF");
-		Tran tran = new Tran();
+	public void asyncTxnUDF() {
+		Key key = new Key(args.namespace, args.set, "asyncTxnUDF");
+		Txn txn = new Txn();
 		Bin bin2 = new Bin("bin2", "bal1");
 
 		Runner[] cmds = new Runner[] {
 			new Put(null, key, new Bin(binName, "val1"), bin2),
-			new UDF(tran, key, "record_example", "writeBin", Value.get(binName), Value.get("val2")),
-			new Commit(tran),
+			new UDF(txn, key, "record_example", "writeBin", Value.get(binName), Value.get("val2")),
+			new Commit(txn),
 			new GetExpect(null, key, "val2")
 		};
 
@@ -274,15 +274,15 @@ public class TestAsyncTran extends TestAsync {
 	}
 
 	@Test
-	public void asyncTranUDFAbort() {
-		Key key = new Key(args.namespace, args.set, "asyncTranUDFAbort");
-		Tran tran = new Tran();
+	public void asyncTxnUDFAbort() {
+		Key key = new Key(args.namespace, args.set, "asyncTxnUDFAbort");
+		Txn txn = new Txn();
 		Bin bin2 = new Bin("bin2", "bal1");
 
 		Runner[] cmds = new Runner[] {
 			new Put(null, key, new Bin(binName, "val1"), bin2),
-			new UDF(tran, key, "record_example", "writeBin", Value.get(binName), Value.get("val2")),
-			new Abort(tran),
+			new UDF(txn, key, "record_example", "writeBin", Value.get(binName), Value.get("val2")),
+			new Abort(txn),
 			new GetExpect(null, key, "val1")
 		};
 
@@ -290,23 +290,23 @@ public class TestAsyncTran extends TestAsync {
 	}
 
 	@Test
-	public void asyncTranBatch() {
+	public void asyncTxnBatch() {
 		Key[] keys = new Key[10];
 		Bin bin = new Bin(binName, 1);
 
 		for (int i = 0; i < keys.length; i++) {
-			Key key = new Key(args.namespace, args.set, "asyncTranBatch" + i);
+			Key key = new Key(args.namespace, args.set, "asyncTxnBatch" + i);
 			keys[i] = key;
 			client.put(null, key, bin);
 		}
 
-		Tran tran = new Tran();
+		Txn txn = new Txn();
 		bin = new Bin(binName, 2);
 
 		Runner[] cmds = new Runner[] {
 			new BatchGetExpect(null, keys, 1),
-			new BatchOperate(tran, keys, Operation.put(bin)),
-			new Commit(tran),
+			new BatchOperate(txn, keys, Operation.put(bin)),
+			new Commit(txn),
 			new BatchGetExpect(null, keys, 2),
 		};
 
@@ -314,23 +314,23 @@ public class TestAsyncTran extends TestAsync {
 	}
 
 	@Test
-	public void asyncTranBatchAbort() {
+	public void asyncTxnBatchAbort() {
 		Key[] keys = new Key[10];
 		Bin bin = new Bin(binName, 1);
 
 		for (int i = 0; i < keys.length; i++) {
-			Key key = new Key(args.namespace, args.set, "asyncTranBatch" + i);
+			Key key = new Key(args.namespace, args.set, "asyncTxnBatch" + i);
 			keys[i] = key;
 			client.put(null, key, bin);
 		}
 
-		Tran tran = new Tran();
+		Txn txn = new Txn();
 		bin = new Bin(binName, 2);
 
 		Runner[] cmds = new Runner[] {
 			new BatchGetExpect(null, keys, 1),
-			new BatchOperate(tran, keys, Operation.put(bin)),
-			new Abort(tran),
+			new BatchOperate(txn, keys, Operation.put(bin)),
+			new Abort(txn),
 			new BatchGetExpect(null, keys, 1),
 		};
 
@@ -390,10 +390,10 @@ public class TestAsyncTran extends TestAsync {
 	}
 
 	private class Commit implements Runner {
-		private final Tran tran;
+		private final Txn txn;
 
-		private Commit(Tran tran) {
-			this.tran = tran;
+		private Commit(Txn txn) {
+			this.txn = txn;
 		}
 
 		public void run(Listener listener) {
@@ -407,15 +407,15 @@ public class TestAsyncTran extends TestAsync {
 				}
 			};
 
-			client.commit(eventLoop, tcl, tran);
+			client.commit(eventLoop, tcl, txn);
 		}
 	}
 
 	private class Abort implements Runner {
-		private final Tran tran;
+		private final Txn txn;
 
-		private Abort(Tran tran) {
-			this.tran = tran;
+		private Abort(Txn txn) {
+			this.txn = txn;
 		}
 
 		public void run(Listener listener) {
@@ -429,23 +429,23 @@ public class TestAsyncTran extends TestAsync {
 				}
 			};
 
-			client.abort(eventLoop, tal, tran);
+			client.abort(eventLoop, tal, txn);
 		}
 	}
 
 	private class Put implements Runner {
-		private final Tran tran;
+		private final Txn txn;
 		private final Key key;
 		private final Bin[] bins;
 
-		private Put(Tran tran, Key key, String val) {
-			this.tran = tran;
+		private Put(Txn txn, Key key, String val) {
+			this.txn = txn;
 			this.key = key;
 			this.bins = new Bin[] {new Bin(binName, val)};
 		}
 
-		private Put(Tran tran, Key key, Bin... bins) {
-			this.tran = tran;
+		private Put(Txn txn, Key key, Bin... bins) {
+			this.txn = txn;
 			this.key = key;
 			this.bins = bins;
 		}
@@ -463,21 +463,21 @@ public class TestAsyncTran extends TestAsync {
 
 			WritePolicy wp = null;
 
-			if (tran != null) {
+			if (txn != null) {
 				wp = client.copyWritePolicyDefault();
-				wp.tran = tran;
+				wp.txn = txn;
 			}
 			client.put(eventLoop, wl, wp, key, bins);
 		}
 	}
 
 	private class GetExpect implements Runner {
-		private final Tran tran;
+		private final Txn txn;
 		private final Key key;
 		private final String expect;
 
-		private GetExpect(Tran tran, Key key, String expect) {
-			this.tran = tran;
+		private GetExpect(Txn txn, Key key, String expect) {
+			this.txn = txn;
 			this.key = key;
 			this.expect = expect;
 		}
@@ -510,22 +510,22 @@ public class TestAsyncTran extends TestAsync {
 
 			Policy p = null;
 
-			if (tran != null) {
+			if (txn != null) {
 				p = client.copyReadPolicyDefault();
-				p.tran = tran;
+				p.txn = txn;
 			}
 			client.get(eventLoop, rl, p, key);
 		}
 	}
 
 	private class OperateExpect implements Runner {
-		private final Tran tran;
+		private final Txn txn;
 		private final Key key;
 		private final Operation[] ops;
 		private final Bin expect;
 
-		private OperateExpect(Tran tran, Key key, Bin expect, Operation... ops) {
-			this.tran = tran;
+		private OperateExpect(Txn txn, Key key, Bin expect, Operation... ops) {
+			this.txn = txn;
 			this.key = key;
 			this.expect = expect;
 			this.ops = ops;
@@ -559,29 +559,29 @@ public class TestAsyncTran extends TestAsync {
 
 			WritePolicy wp = null;
 
-			if (tran != null) {
+			if (txn != null) {
 				wp = client.copyWritePolicyDefault();
-				wp.tran = tran;
+				wp.txn = txn;
 			}
 			client.operate(eventLoop, rl, wp, key, ops);
 		}
 	}
 
 	private class UDF implements Runner {
-		private final Tran tran;
+		private final Txn txn;
 		private final Key key;
 		private final String packageName;
 		private final String functionName;
 		private final Value[] functionArgs;
 
 		private UDF(
-			Tran tran,
+			Txn txn,
 			Key key,
 			String packageName,
 			String functionName,
 			Value... functionArgs
 		) {
-			this.tran = tran;
+			this.txn = txn;
 			this.key = key;
 			this.packageName = packageName;
 			this.functionName = functionName;
@@ -601,21 +601,21 @@ public class TestAsyncTran extends TestAsync {
 
 			WritePolicy wp = null;
 
-			if (tran != null) {
+			if (txn != null) {
 				wp = client.copyWritePolicyDefault();
-				wp.tran = tran;
+				wp.txn = txn;
 			}
 			client.execute(eventLoop, el, wp, key,  packageName, functionName, functionArgs);
 		}
 	}
 
 	private class BatchGetExpect implements Runner {
-		private final Tran tran;
+		private final Txn txn;
 		private final Key[] keys;
 		private final int expected;
 
-		private BatchGetExpect(Tran tran, Key[] keys, int expected) {
-			this.tran = tran;
+		private BatchGetExpect(Txn txn, Key[] keys, int expected) {
+			this.txn = txn;
 			this.keys = keys;
 			this.expected = expected;
 		}
@@ -638,21 +638,21 @@ public class TestAsyncTran extends TestAsync {
 
 			BatchPolicy bp = null;
 
-			if (tran != null) {
+			if (txn != null) {
 				bp = client.copyBatchPolicyDefault();
-				bp.tran = tran;
+				bp.txn = txn;
 			}
 			client.get(eventLoop, ral, bp, keys);
 		}
 	}
 
 	private class BatchOperate implements Runner {
-		private final Tran tran;
+		private final Txn txn;
 		private final Key[] keys;
 		private final Operation[] ops;
 
-		private BatchOperate(Tran tran, Key[] keys, Operation... ops) {
-			this.tran = tran;
+		private BatchOperate(Txn txn, Key[] keys, Operation... ops) {
+			this.txn = txn;
 			this.keys = keys;
 			this.ops = ops;
 		}
@@ -689,20 +689,20 @@ public class TestAsyncTran extends TestAsync {
 
 			BatchPolicy bp = null;
 
-			if (tran != null) {
+			if (txn != null) {
 				bp = client.copyBatchParentPolicyWriteDefault();
-				bp.tran = tran;
+				bp.txn = txn;
 			}
 			client.operate(eventLoop, bral, bp, null, keys, ops);
 		}
 	}
 
 	private class Touch implements Runner {
-		private final Tran tran;
+		private final Txn txn;
 		private final Key key;
 
-		private Touch(Tran tran, Key key) {
-			this.tran = tran;
+		private Touch(Txn txn, Key key) {
+			this.txn = txn;
 			this.key = key;
 		}
 
@@ -719,20 +719,20 @@ public class TestAsyncTran extends TestAsync {
 
 			WritePolicy wp = null;
 
-			if (tran != null) {
+			if (txn != null) {
 				wp = client.copyWritePolicyDefault();
-				wp.tran = tran;
+				wp.txn = txn;
 			}
 			client.touch(eventLoop, wl, wp, key);
 		}
 	}
 
 	private class Delete implements Runner {
-		private final Tran tran;
+		private final Txn txn;
 		private final Key key;
 
-		private Delete(Tran tran, Key key) {
-			this.tran = tran;
+		private Delete(Txn txn, Key key) {
+			this.txn = txn;
 			this.key = key;
 		}
 
@@ -749,9 +749,9 @@ public class TestAsyncTran extends TestAsync {
 
 			WritePolicy wp = null;
 
-			if (tran != null) {
+			if (txn != null) {
 				wp = client.copyWritePolicyDefault();
-				wp.tran = tran;
+				wp.txn = txn;
 				wp.durableDelete = true;
 			}
 			client.delete(eventLoop, dl, wp, key);

@@ -150,14 +150,14 @@ public class AerospikeException extends RuntimeException {
 	}
 
 	/**
-	 * Get transaction policy.  Will be null for non-transaction exceptions.
+	 * Get command policy.  Will be null for non-command exceptions.
 	 */
 	public final Policy getPolicy() {
 		return policy;
 	}
 
 	/**
-	 * Set transaction policy.
+	 * Set command policy.
 	 */
 	public final void setPolicy(Policy policy) {
 		this.policy = policy;
@@ -199,14 +199,14 @@ public class AerospikeException extends RuntimeException {
 	}
 
 	/**
-	 * Is it possible that write transaction may have completed.
+	 * Is it possible that write command may have completed.
 	 */
 	public final boolean getInDoubt() {
 		return inDoubt;
 	}
 
 	/**
-	 * Set whether it is possible that the write transaction may have completed
+	 * Set whether it is possible that the write command may have completed
 	 * even though this exception was generated.  This may be the case when a
 	 * client error occurs (like timeout) after the command was sent to the server.
 	 */

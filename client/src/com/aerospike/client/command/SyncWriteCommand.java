@@ -36,7 +36,7 @@ public abstract class SyncWriteCommand extends SyncCommand {
 		this.writePolicy = writePolicy;
 		this.key = key;
 		this.partition = Partition.write(cluster, writePolicy, key);
-		cluster.addTran();
+		cluster.addCommandCount();
 	}
 
 	@Override
@@ -62,7 +62,7 @@ public abstract class SyncWriteCommand extends SyncCommand {
 
 	protected int parseHeader(Connection conn) throws IOException {
 		RecordParser rp = new RecordParser(conn, dataBuffer);
-		rp.parseFields(policy.tran, key, true);
+		rp.parseFields(policy.txn, key, true);
 
 		if (rp.opCount > 0) {
 			throw new AerospikeException("Unexpected write response opCount: " + rp.opCount + ',' + rp.resultCode);

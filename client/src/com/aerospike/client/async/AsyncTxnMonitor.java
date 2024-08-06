@@ -23,10 +23,10 @@ import com.aerospike.client.Log;
 import com.aerospike.client.Operation;
 import com.aerospike.client.Record;
 import com.aerospike.client.ResultCode;
-import com.aerospike.client.Tran;
+import com.aerospike.client.Txn;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.command.OperateArgs;
-import com.aerospike.client.command.TranMonitor;
+import com.aerospike.client.command.TxnMonitor;
 import com.aerospike.client.listener.RecordListener;
 import com.aerospike.client.policy.BatchPolicy;
 import com.aerospike.client.policy.Policy;
@@ -34,26 +34,26 @@ import com.aerospike.client.policy.WritePolicy;
 import com.aerospike.client.util.Util;
 import java.util.List;
 
-public abstract class AsyncTranMonitor {
+public abstract class AsyncTxnMonitor {
 	public static void execute(EventLoop eventLoop, Cluster cluster, WritePolicy policy, AsyncWriteBase command) {
-		if (policy.tran == null) {
+		if (policy.txn == null) {
 			// Command is not run under a MRT monitor. Run original command.
 			eventLoop.execute(cluster, command);
 			return;
 		}
 
-		Tran tran = policy.tran;
+		Txn txn = policy.txn;
 		Key cmdKey = command.key;
 
-		if (tran.getWrites().contains(cmdKey)) {
+		if (txn.getWrites().contains(cmdKey)) {
 			// MRT monitor already contains this key. Run original command.
 			eventLoop.execute(cluster, command);
 			return;
 		}
 
 		// Add key to MRT monitor and then run original command.
-		Operation[] ops = TranMonitor.getTranOps(tran, cmdKey);
-		AsyncTranMonitor.Single ate = new AsyncTranMonitor.Single(eventLoop, cluster, command);
+		Operation[] ops = TxnMonitor.getTranOps(txn, cmdKey);
+		AsyncTxnMonitor.Single ate = new AsyncTxnMonitor.Single(eventLoop, cluster, command);
 		ate.execute(policy, ops);
 	}
 
@@ -63,15 +63,15 @@ public abstract class AsyncTranMonitor {
 		AsyncCommand[] commands,
 		Key[] keys
 	) {
-		if (policy.tran == null) {
+		if (policy.txn == null) {
 			// Command is not run under a MRT monitor. Run original command.
 			executor.execute(commands);
 			return;
 		}
 
 		// Add write keys to MRT monitor and then run original command.
-		Operation[] ops = TranMonitor.getTranOps(policy.tran, keys);
-		AsyncTranMonitor.Batch ate = new AsyncTranMonitor.Batch(executor, commands);
+		Operation[] ops = TxnMonitor.getTranOps(policy.txn, keys);
+		AsyncTxnMonitor.Batch ate = new AsyncTxnMonitor.Batch(executor, commands);
 		ate.execute(policy, ops);
 	}
 
@@ -81,14 +81,14 @@ public abstract class AsyncTranMonitor {
 		AsyncCommand[] commands,
 		List<BatchRecord> records
 	) {
-		if (policy.tran == null) {
+		if (policy.txn == null) {
 			// Command is not run under a MRT monitor. Run original command.
 			executor.execute(commands);
 			return;
 		}
 
 		// Add write keys to MRT monitor and then run original command.
-		Operation[] ops = TranMonitor.getTranOps(policy.tran, records);
+		Operation[] ops = TxnMonitor.getTranOps(policy.txn, records);
 
 		if (ops == null) {
 			// Readonly batch does not need to add key digests. Run original command.
@@ -96,11 +96,11 @@ public abstract class AsyncTranMonitor {
 			return;
 		}
 
-		AsyncTranMonitor.Batch ate = new AsyncTranMonitor.Batch(executor, commands);
+		AsyncTxnMonitor.Batch ate = new AsyncTxnMonitor.Batch(executor, commands);
 		ate.execute(policy, ops);
 	}
 
-	private static class Single extends AsyncTranMonitor {
+	private static class Single extends AsyncTxnMonitor {
 		private final AsyncWriteBase command;
 
 		private Single(EventLoop eventLoop, Cluster cluster, AsyncWriteBase command) {
@@ -119,7 +119,7 @@ public abstract class AsyncTranMonitor {
 		}
 	}
 
-	private static class Batch extends AsyncTranMonitor {
+	private static class Batch extends AsyncTxnMonitor {
 		private final AsyncBatchExecutor executor;
 		private final AsyncCommand[] commands;
 
@@ -143,14 +143,14 @@ public abstract class AsyncTranMonitor {
 	final EventLoop eventLoop;
 	final Cluster cluster;
 
-	private AsyncTranMonitor(EventLoop eventLoop, Cluster cluster) {
+	private AsyncTxnMonitor(EventLoop eventLoop, Cluster cluster) {
 		this.eventLoop = eventLoop;
 		this.cluster = cluster;
 	}
 
 	void execute(Policy policy, Operation[] ops) {
-		Key tranKey = TranMonitor.getTranMonitorKey(policy.tran);
-		WritePolicy wp = TranMonitor.copyTimeoutPolicy(policy);
+		Key tranKey = TxnMonitor.getTxnMonitorKey(policy.txn);
+		WritePolicy wp = TxnMonitor.copyTimeoutPolicy(policy);
 
 		RecordListener tranListener = new RecordListener() {
 			@Override
@@ -175,7 +175,7 @@ public abstract class AsyncTranMonitor {
 
 		// Add write key(s) to MRT monitor.
 		OperateArgs args = new OperateArgs(wp, null, null, ops);
-		AsyncTranAddKeys tranCommand = new AsyncTranAddKeys(cluster, tranListener, tranKey, args);
+		AsyncTxnAddKeys tranCommand = new AsyncTxnAddKeys(cluster, tranListener, tranKey, args);
 		eventLoop.execute(cluster, tranCommand);
 	}
 

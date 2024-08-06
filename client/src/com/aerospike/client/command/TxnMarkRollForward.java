@@ -14,57 +14,40 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.aerospike.client.async;
+package com.aerospike.client.command;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
 import com.aerospike.client.ResultCode;
-import com.aerospike.client.Tran;
+import com.aerospike.client.Txn;
 import com.aerospike.client.cluster.Cluster;
-import com.aerospike.client.listener.WriteListener;
+import com.aerospike.client.cluster.Connection;
 import com.aerospike.client.policy.WritePolicy;
+import java.io.IOException;
 
-public final class AsyncTranMarkRollForward extends AsyncWriteBase {
-	private final Tran tran;
-	private final WriteListener listener;
+public final class TxnMarkRollForward extends SyncWriteCommand {
+	private final Txn txn;
 
-	public AsyncTranMarkRollForward(
-		Cluster cluster,
-		Tran tran,
-		WriteListener listener,
-		WritePolicy writePolicy,
-		Key key
-	) {
+	public TxnMarkRollForward(Cluster cluster, Txn tran, WritePolicy writePolicy, Key key) {
 		super(cluster, writePolicy, key);
-		this.tran = tran;
-		this.listener = listener;
+		this.txn = tran;
 	}
 
 	@Override
 	protected void writeBuffer() {
-		setTranMarkRollForward(tran, key);
+		setTxnMarkRollForward(txn, key);
 	}
 
 	@Override
-	protected boolean parseResult() {
-		int resultCode = parseHeader();
+	protected void parseResult(Connection conn) throws IOException {
+		int resultCode = parseHeader(conn);
 
 		// BIN_EXISTS_ERROR is considered a success because it means a previous attempt already
 		// succeeded in notifying the server that the MRT will be rolled forward.
 		if (resultCode == ResultCode.OK || resultCode == ResultCode.BIN_EXISTS_ERROR) {
-			return true;
+			return;
 		}
 
 		throw new AerospikeException(resultCode);
-	}
-
-	@Override
-	protected void onSuccess() {
-		listener.onSuccess(key);
-	}
-
-	@Override
-	protected void onFailure(AerospikeException e) {
-		listener.onFailure(e);
 	}
 }

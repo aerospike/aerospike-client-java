@@ -17,11 +17,11 @@
 package com.aerospike.client.policy;
 
 import com.aerospike.client.exp.Expression;
-import com.aerospike.client.Tran;
+import com.aerospike.client.Txn;
 import java.util.Objects;
 
 /**
- * Transaction policy attributes used in all database commands.
+ * Command policy attributes used in all database commands.
  */
 public class Policy {
 	/**
@@ -30,7 +30,7 @@ public class Policy {
 	 * <p>
 	 * Default: null
 	 */
-	public Tran tran;
+	public Txn txn;
 
 	/**
 	 * Read policy for AP (availability) namespaces.
@@ -56,7 +56,7 @@ public class Policy {
 
 	/**
 	 * Optional expression filter. If filterExp exists and evaluates to false, the
-	 * transaction is ignored.
+	 * command is ignored.
 	 * <p>
 	 * Default: null
 	 * <p>
@@ -93,7 +93,7 @@ public class Policy {
 	 * <p>
 	 * If socketTimeout is non-zero and the socket has been idle for at least socketTimeout,
 	 * both maxRetries and totalTimeout are checked.  If maxRetries and totalTimeout are not
-	 * exceeded, the transaction is retried.
+	 * exceeded, the command is retried.
 	 * <p>
 	 * For synchronous methods, socketTimeout is the socket timeout (SO_TIMEOUT).
 	 * For asynchronous methods, the socketTimeout is implemented using a HashedWheelTimer.
@@ -103,14 +103,14 @@ public class Policy {
 	public int socketTimeout = 30000;
 
 	/**
-	 * Total transaction timeout in milliseconds.
+	 * Total command timeout in milliseconds.
 	 * <p>
 	 * The totalTimeout is tracked on the client and sent to the server along with
-	 * the transaction in the wire protocol.  The client will most likely timeout
-	 * first, but the server also has the capability to timeout the transaction.
+	 * the command in the wire protocol.  The client will most likely timeout
+	 * first, but the server also has the capability to timeout the command.
 	 * <p>
-	 * If totalTimeout is not zero and totalTimeout is reached before the transaction
-	 * completes, the transaction will abort with
+	 * If totalTimeout is not zero and totalTimeout is reached before the command
+	 * completes, the command will abort with
 	 * {@link com.aerospike.client.AerospikeException.Timeout}.
 	 * <p>
 	 * If totalTimeout is zero, there will be no total time limit.
@@ -123,11 +123,11 @@ public class Policy {
 
 	/**
 	 * Delay milliseconds after socket read timeout in an attempt to recover the socket
-	 * in the background.  Processing continues on the original transaction and the user
-	 * is still notified at the original transaction timeout.
+	 * in the background.  Processing continues on the original command and the user
+	 * is still notified at the original command timeout.
 	 * <p>
-	 * When a transaction is stopped prematurely, the socket must be drained of all incoming
-	 * data or closed to prevent unread socket data from corrupting the next transaction
+	 * When a command is stopped prematurely, the socket must be drained of all incoming
+	 * data or closed to prevent unread socket data from corrupting the next command
 	 * that would use that socket.
 	 * <p>
 	 * If a socket read timeout occurs and timeoutDelay is greater than zero, the socket
@@ -144,7 +144,7 @@ public class Policy {
 	 * can be avoided on these cloud providers.
 	 * <p>
 	 * The disadvantage of enabling timeoutDelay is that extra memory/processing is required
-	 * to drain sockets and additional connections may still be needed for transaction retries.
+	 * to drain sockets and additional connections may still be needed for command retries.
 	 * <p>
 	 * If timeoutDelay were to be enabled, 3000ms would be a reasonable value.
 	 * <p>
@@ -153,15 +153,15 @@ public class Policy {
 	public int timeoutDelay;
 
 	/**
-	 * Maximum number of retries before aborting the current transaction.
+	 * Maximum number of retries before aborting the current command.
 	 * The initial attempt is not counted as a retry.
 	 * <p>
-	 * If maxRetries is exceeded, the transaction will abort with
+	 * If maxRetries is exceeded, the command will abort with
 	 * {@link com.aerospike.client.AerospikeException.Timeout}.
 	 * <p>
 	 * WARNING: Database writes that are not idempotent (such as add())
 	 * should not be retried because the write operation may be performed
-	 * multiple times if the client timed out previous transaction attempts.
+	 * multiple times if the client timed out previous command attempts.
 	 * It's important to use a distinct WritePolicy for non-idempotent
 	 * writes which sets maxRetries = 0;
 	 * <p>
@@ -245,7 +245,7 @@ public class Policy {
 
 	/**
 	 * Throw exception if {@link #filterExp} is defined and that filter evaluates
-	 * to false (transaction ignored).  The {@link com.aerospike.client.AerospikeException}
+	 * to false (command ignored).  The {@link com.aerospike.client.AerospikeException}
 	 * will contain result code {@link com.aerospike.client.ResultCode#FILTERED_OUT}.
 	 * <p>
 	 * This field is not applicable to batch, scan or query commands.
@@ -258,7 +258,7 @@ public class Policy {
 	 * Copy policy from another policy.
 	 */
 	public Policy(Policy other) {
-		this.tran = other.tran;
+		this.txn = other.txn;
 		this.readModeAP = other.readModeAP;
 		this.readModeSC = other.readModeSC;
 		this.replica = other.replica;
@@ -306,8 +306,8 @@ public class Policy {
 
 	// Include setters to facilitate Spring's ConfigurationProperties.
 
-	public void setTran(Tran tran) {
-		this.tran = tran;
+	public void setTxn(Txn txn) {
+		this.txn = txn;
 	}
 
 	public void setReadModeAP(ReadModeAP readModeAP) {
@@ -371,11 +371,11 @@ public class Policy {
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
 		Policy policy = (Policy) o;
-		return connectTimeout == policy.connectTimeout && socketTimeout == policy.socketTimeout && totalTimeout == policy.totalTimeout && timeoutDelay == policy.timeoutDelay && maxRetries == policy.maxRetries && sleepBetweenRetries == policy.sleepBetweenRetries && readTouchTtlPercent == policy.readTouchTtlPercent && sendKey == policy.sendKey && compress == policy.compress && failOnFilteredOut == policy.failOnFilteredOut && Objects.equals(tran, policy.tran) && readModeAP == policy.readModeAP && readModeSC == policy.readModeSC && replica == policy.replica && Objects.equals(filterExp, policy.filterExp);
+		return connectTimeout == policy.connectTimeout && socketTimeout == policy.socketTimeout && totalTimeout == policy.totalTimeout && timeoutDelay == policy.timeoutDelay && maxRetries == policy.maxRetries && sleepBetweenRetries == policy.sleepBetweenRetries && readTouchTtlPercent == policy.readTouchTtlPercent && sendKey == policy.sendKey && compress == policy.compress && failOnFilteredOut == policy.failOnFilteredOut && Objects.equals(txn, policy.txn) && readModeAP == policy.readModeAP && readModeSC == policy.readModeSC && replica == policy.replica && Objects.equals(filterExp, policy.filterExp);
 	}
 
 	@Override
 	public int hashCode() {
-		return Objects.hash(tran, readModeAP, readModeSC, replica, filterExp, connectTimeout, socketTimeout, totalTimeout, timeoutDelay, maxRetries, sleepBetweenRetries, readTouchTtlPercent, sendKey, compress, failOnFilteredOut);
+		return Objects.hash(txn, readModeAP, readModeSC, replica, filterExp, connectTimeout, socketTimeout, totalTimeout, timeoutDelay, maxRetries, sleepBetweenRetries, readTouchTtlPercent, sendKey, compress, failOnFilteredOut);
 	}
 }

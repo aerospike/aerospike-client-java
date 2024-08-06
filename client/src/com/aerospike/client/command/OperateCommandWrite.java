@@ -41,7 +41,7 @@ public final class OperateCommandWrite extends SyncWriteCommand {
 	@Override
 	protected void parseResult(Connection conn) throws IOException {
 		RecordParser rp = new RecordParser(conn, dataBuffer);
-		rp.parseFields(policy.tran, key, true);
+		rp.parseFields(policy.txn, key, true);
 
 		if (rp.resultCode == ResultCode.OK) {
 			record = rp.parseRecord(true);

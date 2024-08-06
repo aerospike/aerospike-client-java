@@ -49,7 +49,7 @@ import com.aerospike.test.sync.basic.TestReplace;
 import com.aerospike.test.sync.basic.TestScan;
 import com.aerospike.test.sync.basic.TestServerInfo;
 import com.aerospike.test.sync.basic.TestTouch;
-import com.aerospike.test.sync.basic.TestTran;
+import com.aerospike.test.sync.basic.TestTxn;
 import com.aerospike.test.sync.basic.TestUDF;
 import com.aerospike.test.sync.query.TestIndex;
 import com.aerospike.test.sync.query.TestQueryAverage;
@@ -93,7 +93,7 @@ import com.aerospike.test.util.Args;
 	TestScan.class,
 	TestServerInfo.class,
 	TestTouch.class,
-	TestTran.class,
+	TestTxn.class,
 	TestUDF.class,
 	TestIndex.class,
 	TestQueryAverage.class,
