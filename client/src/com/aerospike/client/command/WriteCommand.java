@@ -69,24 +69,20 @@ public final class WriteCommand extends SyncCommand {
 
 	@Override
 	protected void parseResult(Connection conn) throws IOException {
-		// Read header.
-		conn.readFully(dataBuffer, Command.MSG_TOTAL_HEADER_SIZE, Command.STATE_READ_HEADER);
-		conn.updateLastUsed();
+		RecordParser rp = new RecordParser(conn, dataBuffer);
 
-		int resultCode = dataBuffer[13] & 0xFF;
-
-		if (resultCode == 0) {
+		if (rp.resultCode == 0) {
 			return;
 		}
 
-		if (resultCode == ResultCode.FILTERED_OUT) {
+		if (rp.resultCode == ResultCode.FILTERED_OUT) {
 			if (writePolicy.failOnFilteredOut) {
-				throw new AerospikeException(resultCode);
+				throw new AerospikeException(rp.resultCode);
 			}
 			return;
 		}
 
-		throw new AerospikeException(resultCode);
+		throw new AerospikeException(rp.resultCode);
 	}
 
 	@Override

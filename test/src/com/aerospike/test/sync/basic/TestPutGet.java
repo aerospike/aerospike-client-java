@@ -45,7 +45,8 @@ public class TestPutGet extends TestSync {
 
 	@Test
 	public void getHeader() {
-		Key key = new Key(args.namespace, args.set, "putgetkey");
+		Key key = new Key(args.namespace, args.set, "getHeader");
+		client.put(null, key, new Bin("mybin", "myvalue"));
 
 		Record record = client.getHeader(null, key);
 		assertRecordFound(key, record);
