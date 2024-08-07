@@ -67,10 +67,6 @@ public final class ExecuteCommand extends SyncWriteCommand {
 			return;
 		}
 
-		if (rp.opCount > 0) {
-			throw new AerospikeException("Unexpected UDF opCount on error: " + rp.opCount + ',' + rp.resultCode);
-		}
-
 		if (rp.resultCode == ResultCode.FILTERED_OUT) {
 			if (policy.failOnFilteredOut) {
 				throw new AerospikeException(rp.resultCode);

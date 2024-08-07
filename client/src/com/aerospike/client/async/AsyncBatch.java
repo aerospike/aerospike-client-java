@@ -312,10 +312,6 @@ public final class AsyncBatch {
 
 		@Override
 		protected void parseRow() {
-			if (opCount > 0) {
-				throw new AerospikeException.Parse("Received bins that were not requested!");
-			}
-
 			parseFieldsRead(keys[batchIndex]);
 			existsArray[batchIndex] = resultCode == 0;
 		}
@@ -364,10 +360,6 @@ public final class AsyncBatch {
 
 		@Override
 		protected void parseRow() {
-			if (opCount > 0) {
-				throw new AerospikeException.Parse("Received bins that were not requested!");
-			}
-
 			Key keyOrig = keys[batchIndex];
 			parseFieldsRead(keyOrig);
 			listener.onExists(keyOrig, resultCode == 0);

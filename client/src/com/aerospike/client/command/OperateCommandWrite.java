@@ -48,10 +48,6 @@ public final class OperateCommandWrite extends SyncWriteCommand {
 			return;
 		}
 
-		if (rp.opCount > 0) {
-			throw new AerospikeException("Unexpected operate opCount on error: " + rp.opCount + ',' + rp.resultCode);
-		}
-
 		if (rp.resultCode == ResultCode.FILTERED_OUT) {
 			if (policy.failOnFilteredOut) {
 				throw new AerospikeException(rp.resultCode);

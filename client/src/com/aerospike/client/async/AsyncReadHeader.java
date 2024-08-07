@@ -44,10 +44,6 @@ public final class AsyncReadHeader extends AsyncReadBase {
 		RecordParser rp = new RecordParser(dataBuffer, dataOffset, receiveSize);
 		rp.parseFields(policy.txn, key, false);
 
-		if (rp.opCount > 0) {
-			throw new AerospikeException("Unexpected read header opCount: " + rp.opCount + ',' + rp.resultCode);
-		}
-
 		if (rp.resultCode == ResultCode.OK) {
 			record = new Record(null, rp.generation, rp.expiration);
 			return true;

@@ -189,11 +189,6 @@ public final class Batch {
 		@Override
 		protected boolean parseRow() {
 			parseFieldsRead(keys[batchIndex]);
-
-			if (opCount > 0) {
-				throw new AerospikeException.Parse("Received bins that were not requested!");
-			}
-
 			existsArray[batchIndex] = resultCode == 0;
 			return true;
 		}

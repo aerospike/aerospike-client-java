@@ -347,10 +347,6 @@ public final class AsyncBatchSingle {
 
 		@Override
 		protected void parseResult(RecordParser rp) {
-			if (rp.opCount > 0) {
-				throw new AerospikeException.Parse("Received bins that were not requested!");
-			}
-
 			try {
 				listener.onExists(key, rp.resultCode == 0);
 			}
@@ -385,10 +381,6 @@ public final class AsyncBatchSingle {
 
 		@Override
 		protected void parseResult(RecordParser rp) {
-			if (rp.opCount > 0) {
-				throw new AerospikeException.Parse("Received bins that were not requested!");
-			}
-
 			existsArray[index] = rp.resultCode == 0;
 		}
 	}
@@ -949,7 +941,9 @@ public final class AsyncBatchSingle {
 		}
 
 		@Override
-		protected void parseResult(RecordParser rp) {
+		protected boolean parseResult() {
+			RecordParser rp = new RecordParser(dataBuffer, dataOffset, receiveSize);
+
 			if (rp.resultCode == ResultCode.OK) {
 				record.resultCode = rp.resultCode;
 			}
@@ -957,6 +951,11 @@ public final class AsyncBatchSingle {
 				record.setError(rp.resultCode, false);
 				executor.setRowError();
 			}
+			return true;
+		}
+
+		@Override
+		protected void parseResult(RecordParser rp) {
 		}
 	}
 
@@ -983,7 +982,9 @@ public final class AsyncBatchSingle {
 		}
 
 		@Override
-		protected void parseResult(RecordParser rp) {
+		protected boolean parseResult() {
+			RecordParser rp = new RecordParser(dataBuffer, dataOffset, receiveSize);
+
 			if (rp.resultCode == ResultCode.OK) {
 				record.resultCode = rp.resultCode;
 			}
@@ -991,6 +992,11 @@ public final class AsyncBatchSingle {
 				record.setError(rp.resultCode, Command.batchInDoubt(true, commandSentCounter));
 				executor.setRowError();
 			}
+			return true;
+		}
+
+		@Override
+		protected void parseResult(RecordParser rp) {
 		}
 	}
 

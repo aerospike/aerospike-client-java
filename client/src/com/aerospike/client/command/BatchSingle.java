@@ -128,15 +128,11 @@ public final class BatchSingle {
 
 		@Override
 		protected void parseResult(Connection conn) throws IOException {
-			conn.readFully(dataBuffer, Command.MSG_TOTAL_HEADER_SIZE, Command.STATE_READ_HEADER);
-			conn.updateLastUsed();
+			RecordParser rp = new RecordParser(conn, dataBuffer);
+			rp.parseFields(policy.txn, key, false);
 
-			int resultCode = dataBuffer[13] & 0xFF;
-
-			if (resultCode == 0) {
-				int generation = Buffer.bytesToInt(dataBuffer, 14);
-				int expiration = Buffer.bytesToInt(dataBuffer, 18);
-				records[index] = new Record(null, generation, expiration);
+			if (rp.resultCode == 0) {
+				records[index] = new Record(null, rp.generation, rp.expiration);
 			}
 		}
 	}
@@ -202,12 +198,9 @@ public final class BatchSingle {
 
 		@Override
 		protected void parseResult(Connection conn) throws IOException {
-			// Read header.
-			conn.readFully(dataBuffer, Command.MSG_TOTAL_HEADER_SIZE, Command.STATE_READ_HEADER);
-			conn.updateLastUsed();
-
-			int resultCode = dataBuffer[13] & 0xFF;
-			existsArray[index] = resultCode == 0;
+			RecordParser rp = new RecordParser(conn, dataBuffer);
+			rp.parseFields(policy.txn, key, false);
+			existsArray[index] = rp.resultCode == 0;
 		}
 	}
 
@@ -282,19 +275,14 @@ public final class BatchSingle {
 
 		@Override
 		protected void parseResult(Connection conn) throws IOException {
-			// Read header.
-			conn.readFully(dataBuffer, Command.MSG_TOTAL_HEADER_SIZE, Command.STATE_READ_HEADER);
-			conn.updateLastUsed();
+			RecordParser rp = new RecordParser(conn, dataBuffer);
+			rp.parseFields(policy.txn, key, true);
 
-			int resultCode = dataBuffer[13] & 0xFF;
-			int generation = Buffer.bytesToInt(dataBuffer, 14);
-			int expiration = Buffer.bytesToInt(dataBuffer, 18);
-
-			if (resultCode == ResultCode.OK || resultCode == ResultCode.KEY_NOT_FOUND_ERROR) {
-				record.setRecord(new Record(null, generation, expiration));
+			if (rp.resultCode == ResultCode.OK || rp.resultCode == ResultCode.KEY_NOT_FOUND_ERROR) {
+				record.setRecord(new Record(null, rp.generation, rp.expiration));
 			}
 			else {
-				record.setError(resultCode, Command.batchInDoubt(true, commandSentCounter));
+				record.setError(rp.resultCode, Command.batchInDoubt(true, commandSentCounter));
 				status.setRowError();
 			}
 		}
@@ -403,16 +391,13 @@ public final class BatchSingle {
 
 		@Override
 		protected void parseResult(Connection conn) throws IOException {
-			conn.readFully(dataBuffer, Command.MSG_TOTAL_HEADER_SIZE, Command.STATE_READ_HEADER);
-			conn.updateLastUsed();
+			RecordParser rp = new RecordParser(conn, dataBuffer);
 
-			int resultCode = dataBuffer[13] & 0xFF;
-
-			if (resultCode == ResultCode.OK) {
-				record.resultCode = resultCode;
+			if (rp.resultCode == ResultCode.OK) {
+				record.resultCode = rp.resultCode;
 			}
 			else {
-				record.setError(resultCode, false);
+				record.setError(rp.resultCode, false);
 				status.setRowError();
 			}
 		}
@@ -442,16 +427,13 @@ public final class BatchSingle {
 
 		@Override
 		protected void parseResult(Connection conn) throws IOException {
-			conn.readFully(dataBuffer, Command.MSG_TOTAL_HEADER_SIZE, Command.STATE_READ_HEADER);
-			conn.updateLastUsed();
+			RecordParser rp = new RecordParser(conn, dataBuffer);
 
-			int resultCode = dataBuffer[13] & 0xFF;
-
-			if (resultCode == ResultCode.OK) {
-				record.resultCode = resultCode;
+			if (rp.resultCode == ResultCode.OK) {
+				record.resultCode = rp.resultCode;
 			}
 			else {
-				record.setError(resultCode, Command.batchInDoubt(true, commandSentCounter));
+				record.setError(rp.resultCode, Command.batchInDoubt(true, commandSentCounter));
 				status.setRowError();
 			}
 		}
