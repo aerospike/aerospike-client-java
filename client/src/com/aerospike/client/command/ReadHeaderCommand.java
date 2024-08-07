@@ -58,31 +58,25 @@ public class ReadHeaderCommand extends SyncCommand {
 
 	@Override
 	protected void parseResult(Connection conn) throws IOException {
-		// Read header.
-		conn.readFully(dataBuffer, Command.MSG_TOTAL_HEADER_SIZE, Command.STATE_READ_HEADER);
-		conn.updateLastUsed();
+		RecordParser rp = new RecordParser(conn, dataBuffer);
 
-		int resultCode = dataBuffer[13] & 0xFF;
-
-		if (resultCode == 0) {
-			int generation = Buffer.bytesToInt(dataBuffer, 14);
-			int expiration = Buffer.bytesToInt(dataBuffer, 18);
-			record = new Record(null, generation, expiration);
+		if (rp.resultCode == 0) {
+			record = new Record(null, rp.generation, rp.expiration);
 			return;
 		}
 
-		if (resultCode == ResultCode.KEY_NOT_FOUND_ERROR) {
+		if (rp.resultCode == ResultCode.KEY_NOT_FOUND_ERROR) {
 			return;
 		}
 
-		if (resultCode == ResultCode.FILTERED_OUT) {
+		if (rp.resultCode == ResultCode.FILTERED_OUT) {
 			if (policy.failOnFilteredOut) {
-				throw new AerospikeException(resultCode);
+				throw new AerospikeException(rp.resultCode);
 			}
 			return;
 		}
 
-		throw new AerospikeException(resultCode);
+		throw new AerospikeException(rp.resultCode);
 	}
 
 	@Override
