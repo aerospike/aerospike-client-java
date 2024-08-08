@@ -16,8 +16,10 @@
  */
 package com.aerospike.examples;
 
+import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.GregorianCalendar;
+import java.util.HashMap;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Bin;
@@ -26,6 +28,10 @@ import com.aerospike.client.Key;
 import com.aerospike.client.Record;
 import com.aerospike.client.ResultCode;
 import com.aerospike.client.exp.Exp;
+import com.aerospike.client.exp.ListExp;
+import com.aerospike.client.exp.MapExp;
+import com.aerospike.client.cdt.ListReturnType;
+import com.aerospike.client.cdt.MapReturnType;
 import com.aerospike.client.policy.Policy;
 import com.aerospike.client.policy.QueryPolicy;
 import com.aerospike.client.query.Filter;
@@ -58,6 +64,7 @@ public class QueryExp extends Example {
 		runQuery1(client, params, binName);
 		runQuery2(client, params, binName);
 		runQuery3(client, params, binName);
+		runQuery4(client, params, binName);
 
 		//client.dropIndex(params.policy, params.namespace, params.set, indexName);
 	}
@@ -93,6 +100,23 @@ public class QueryExp extends Example {
 	) throws Exception {
 		console.info("Write " + size + " records.");
 
+		byte[] blob = new byte[] {3, 52, 125};
+		ArrayList<Object> inner = new ArrayList<Object>();
+		inner.add("string2");
+		inner.add(5);
+
+		HashMap<Object,Object> innerMap = new HashMap<Object,Object>();
+		innerMap.put("a", 1);
+		innerMap.put(2, "string3");
+		innerMap.put(3, blob);
+		innerMap.put("list", inner);
+
+		ArrayList<Object> list = new ArrayList<Object>();
+		list.add("string1");
+		list.add(8);
+		list.add(inner);
+		list.add(innerMap);
+
 		for (int i = 1; i <= size; i++) {
 			Key key = new Key(params.namespace, params.set, i);
 			Bin bin1 = new Bin(binName, i);
@@ -108,7 +132,10 @@ public class QueryExp extends Example {
 			else {
 				bin3 = new Bin("bin3", "pre-" + i + "-suf");
 			}
-			client.put(params.writePolicy, key, bin1, bin2, bin3);
+
+			Bin bin4 = new Bin("bin4", list);
+
+			client.put(params.writePolicy, key, bin1, bin2, bin3, bin4);
 		}
 	}
 
@@ -209,6 +236,40 @@ public class QueryExp extends Example {
 		QueryPolicy policy = client.copyQueryPolicyDefault();
 		policy.filterExp = Exp.build(
 			Exp.regexCompare("prefix.*suffix", RegexFlag.ICASE | RegexFlag.NEWLINE, Exp.stringBin("bin3")));
+
+		RecordSet rs = client.query(policy, stmt);
+
+		try {
+			while (rs.next()) {
+				Record record = rs.getRecord();
+				console.info("Record: " + record.toString());
+			}
+		}
+		finally {
+			rs.close();
+		}
+	}
+	private void runQuery4(
+			IAerospikeClient client,
+			Parameters params,
+			String binName
+	) throws Exception {
+
+		int begin = 20;
+		int end = 30;
+
+		console.info("Query Predicate: bin4 map key 2 at list index 3 contains regex str.*3");
+
+		Statement stmt = new Statement();
+		stmt.setNamespace(params.namespace);
+		stmt.setSetName(params.set);
+		stmt.setFilter(Filter.range(binName, begin, end));
+
+		QueryPolicy policy = client.copyQueryPolicyDefault();
+		policy.filterExp = Exp.build(
+				Exp.regexCompare("str.*3", RegexFlag.ICASE | RegexFlag.NEWLINE,
+						MapExp.getByKey(MapReturnType.VALUE, Exp.Type.STRING, Exp.val(2),
+						ListExp.getByIndex(ListReturnType.VALUE, Exp.Type.MAP, Exp.val(3), Exp.listBin("bin4")))));
 
 		RecordSet rs = client.query(policy, stmt);
 
