@@ -9,43 +9,44 @@ on:
 
 jobs:
   build:
+    env:
+      JFROG_RELEASE_BUNDLE_NAME: aerospike-java-proxy-client
     runs-on: ubuntu-22.04
     steps:
     - name: Checkout Java client
       uses: actions/checkout@v4
 
-    - name: Set up settings.xml for Maven
-      uses: s4u/maven-settings-action@v2.8.0
-      with:
-        servers: '[{"id": "snapshots", "username": "${{ secrets.JFROG_USERNAME }}", "password": "${{ secrets.JFROG_MAVEN_TOKEN }}"}]'
+    # mvn deploy
+    # - name: Set up settings.xml for Maven
+    #   uses: s4u/maven-settings-action@v2.8.0
+    #   with:
+    #     servers: '[{"id": "snapshots", "username": "${{ secrets.JFROG_USERNAME }}", "password": "${{ secrets.JFROG_MAVEN_TOKEN }}"}]'
 
     - run: docker login aerospike.jfrog.io --username ${{ secrets.JFROG_USERNAME }} --password ${{ secrets.JFROG_DOCKER_TOKEN }}
 
     # TODO: change to use "latest" tag
 
-    # - name: Get all tags for proxy server Docker image
-    #   run: docker pull --all-tags ${{ vars.JFROG_PROXY_SERVER_DOCKER_REPO }}
+    - name: Get all tags for proxy server Docker image
+      run: docker pull --all-tags ${{ vars.JFROG_PROXY_SERVER_DOCKER_REPO }}
 
-    # # If we try to emulate aarch64 and run a proxy server Docker image designed for aarch64, the log file won't exist in the container
-    # # i.e there won't be any output in `docker logs` for the proxy server.
-    # # so we can't tell if the proxy server is running or not
-    # - name: Get the latest tag for proxy server for this CPU platform
-    #   run: echo LATEST_TAG=$(docker images --filter label="architecture=$(uname -m)" ${{ vars.JFROG_PROXY_SERVER_DOCKER_REPO }} --format json | jq -r '.Tag' | head -n 1) >> $GITHUB_ENV
-    #   # Enables pipefail
-    #   shell: bash
+    # If we try to emulate aarch64 and run a proxy server Docker image designed for aarch64, the log file won't exist in the container
+    # i.e there won't be any output in `docker logs` for the proxy server.
+    # so we can't tell if the proxy server is running or not
+    - name: Get the latest tag for proxy server for this CPU platform
+      run: echo LATEST_TAG=$(docker images --filter label="architecture=$(uname -m)" ${{ vars.JFROG_PROXY_SERVER_DOCKER_REPO }} --format json | jq -r '.Tag' | head -n 1) >> $GITHUB_ENV
+      # Enables pipefail
+      shell: bash
 
-    # - name: Run Aerospike Proxy on latest tag
-    #   # TODO: not sure why aerospike-proxy.yml couldn't be included in Docker image...
-    #   run: docker run -d --name aerospike-proxy -p 4000:4000 --network=host ${{ vars.JFROG_PROXY_SERVER_DOCKER_REPO }}:${{ env.LATEST_TAG }}
-    #   working-directory: .github/workflows/test-configs
+    - name: Run Aerospike Proxy on latest tag
+      # TODO: not sure why aerospike-proxy.yml couldn't be included in Docker image...
+      run: docker run -d --name aerospike-proxy -p 4000:4000 --network=host ${{ vars.JFROG_PROXY_SERVER_DOCKER_REPO }}:${{ env.LATEST_TAG }}
+      working-directory: .github/workflows/test-configs
 
-    - run: docker compose version
-
+    # TODO: pass in fetched tag to compose.yml
     - run: docker compose up -d
       working-directory: .github/workflows/test-configs
 
-    # - name: Wait for native and proxy server to start
-    #   run: sleep 3
+    # We assume that the proxy server is ready once we run the tests
 
     - uses: jfrog/setup-jfrog-cli@v4
       env:
@@ -54,8 +55,11 @@ jobs:
         JF_PASSWORD: ${{ secrets.JFROG_MAVEN_TOKEN }}
         JF_PROJECT: "clients"
 
+    # This associates the Maven credentials with the repos in the Java client's pom.xml
     - run: jf mvn-config --repo-deploy-releases clients-maven-dev-local --repo-deploy-snapshots clients-maven-dev-local
 
+    # There can be a Maven plugin to get the proxy client version
+    # But this also works, too
     - run: sudo apt install -y libxml-xpath-perl
 
     - name: Get Java proxy client version
@@ -66,36 +70,41 @@ jobs:
     - name: Run Maven workflow
       run: jf mvn deploy -Dtest=com.aerospike.test.SuiteAll -DfailIfNoTests=false -DskipTests=false --build-name=${{ steps.get-proxy-client-version.outputs.version }} --build-number=${{ github.run_number }}
 
+    # For debugging the build info that was just collected by jf
+    # Build info was not published to JFrog yet. This will be done in a later step
     - run: cat target/build-info.json
-
-    # TODO: For debugging. Remove later
+    # For debugging why the proxy server failed to start
     - if: ${{ always() }}
       run: docker container ps -a
-    # - if: ${{ always() }}
-    #   run: docker logs aerospike
-    # # TODO: docker logs prints nothing. Not sure why this happens
-    # - if: ${{ always() }}
-    #   run: docker exec aerospike-proxy cat /var/log/aerospike-proxy/aerospike-proxy.log
+    # Prints logs for native server
+    - if: ${{ always() }}
+      run: docker logs aerospike
+    # TODO: Sometimes, docker logs for the proxy server prints nothing. Not sure why this happens
+    - if: ${{ always() }}
+      run: docker exec aerospike-proxy cat /var/log/aerospike-proxy/aerospike-proxy.log
 
-    # TODO: create release bundle
     # Based on https://github.com/citrusleaf/devops/blob/master/jfrog/vector/deploy-to-jfrog.sh
 
-    # mvn deploy only uploads to JFrog but doesn't create a JFrog build
-    - name: Create JFrog build from uploaded artifacts
+    - name: Publish JFrog build info from uploaded artifacts
       run: jf rt build-publish ${{ steps.get-proxy-client-version.outputs.version }} ${{ github.run_number }}
 
+    # Required to run sponge
     - run: sudo apt install -y moreutils
 
+    # .files.project is not documented in JFrog but it's used to specify the JFrog project to upload this release bundle to
     - name: Create file spec for release bundle
       run: cat releasebundle-filespec.json | jq '.files[0].build = "${{ steps.get-proxy-client-version.outputs.version }}/${{ github.run_number }}"' | sponge releasebundle-filespec.json
       working-directory: .github/workflows
       shell: bash
 
     - name: Create release bundle from JFrog build
-      # Platform URL required for lifecycle commands (e.g release bundle management)
-      run: jf release-bundle-create --signing-key=aerospike --sync --spec=./releasebundle-filespec.json aerospike-java-proxy-client ${{ steps.get-proxy-client-version.outputs.version }}
+      # Not the same name as in proxy/pom.xml
+      # But that name doesn't specify the language,
+      # and there can be multiple languages that implement the proxy client in the future that need to be uploaded to JFrog
+      # Signing key only signs release bundle and not the artifacts associated with it
+      run: jf release-bundle-create --signing-key=aerospike --sync --spec=./releasebundle-filespec.json ${{ env.JFROG_RELEASE_BUNDLE_NAME }} ${{ steps.get-proxy-client-version.outputs.version }}
       working-directory: .github/workflows
 
     - name: Promote release bundle to DEV stage
-      run: jf release-bundle-promote --signing-key=aerospike --sync aerospike-java-proxy-client ${{ steps.get-proxy-client-version.outputs.version }} DEV
+      run: jf release-bundle-promote --signing-key=aerospike --sync ${{ env.JFROG_RELEASE_BUNDLE_NAME }} ${{ steps.get-proxy-client-version.outputs.version }} DEV
       working-directory: .github/workflows
