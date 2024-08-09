@@ -271,8 +271,9 @@ public interface IAerospikeClient extends Closeable {
 	 * <p>
 	 * Requires server version 8.0+
 	 *
-	 * @param txn			multi-record transaction
-	 * @throws AerospikeException.Commit    if verify commit fails
+	 * @param txn	multi-record transaction
+	 * @return		status of the commit on success
+	 * @throws AerospikeException.Commit	if verify commit fails
 	 */
 	CommitStatus commit(Txn txn)
 		throws AerospikeException.Commit;
@@ -301,7 +302,8 @@ public interface IAerospikeClient extends Closeable {
 	 * <p>
 	 * Requires server version 8.0+
 	 *
-	 * @param txn			multi-record transaction
+	 * @param txn	multi-record transaction
+	 * @return		status of the abort
 	 */
 	AbortStatus abort(Txn txn);
 

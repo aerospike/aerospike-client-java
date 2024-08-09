@@ -626,8 +626,9 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * <p>
 	 * Requires server version 8.0+
 	 *
-	 * @param txn			multi-record transaction
-	 * @throws AerospikeException.Commit    if verify commit fails
+	 * @param txn	multi-record transaction
+	 * @return		status of the commit on success
+	 * @throws AerospikeException.Commit	if verify commit fails
 	 */
 	public final CommitStatus commit(Txn txn)
 		throws AerospikeException.Commit {
@@ -676,7 +677,8 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * <p>
 	 * Requires server version 8.0+
 	 *
-	 * @param txn			multi-record transaction
+	 * @param txn	multi-record transaction
+	 * @return		status of the abort
 	 */
 	public final AbortStatus abort(Txn txn) {
 		if (! txn.setRollAttempted()) {

@@ -383,7 +383,7 @@ public class Command {
 			}
 			else {
 				// Write full header and namespace/set/bin names.
-				dataOffset += 13; // header(4) + ttl(4) + fieldCount(2) + opCount(2) = 13
+				dataOffset += 12; // header(4) + ttl(4) + fieldCount(2) + opCount(2) = 12
 				dataOffset += Buffer.estimateSizeUtf8(key.namespace) + FIELD_HEADER_SIZE;
 				dataOffset += Buffer.estimateSizeUtf8(key.setName) + FIELD_HEADER_SIZE;
 				sizeTxnBatch(txn, ver);
@@ -1115,7 +1115,7 @@ public class Command {
 			}
 			else {
 				// Estimate full header, namespace and bin names.
-				dataOffset += 13;
+				dataOffset += 12;
 				dataOffset += Buffer.estimateSizeUtf8(key.namespace) + FIELD_HEADER_SIZE;
 				dataOffset += Buffer.estimateSizeUtf8(key.setName) + FIELD_HEADER_SIZE;
 				sizeTxnBatch(txn, ver);
@@ -1293,7 +1293,7 @@ public class Command {
 			}
 			else {
 				// Write full header and namespace/set/bin names.
-				dataOffset += 13; // header(5) + ttl(4) + fieldCount(2) + opCount(2) = 13
+				dataOffset += 12; // header(4) + ttl(4) + fieldCount(2) + opCount(2) = 12
 				dataOffset += Buffer.estimateSizeUtf8(key.namespace) + FIELD_HEADER_SIZE;
 				dataOffset += Buffer.estimateSizeUtf8(key.setName) + FIELD_HEADER_SIZE;
 				sizeTxnBatch(txn, ver);
@@ -1444,7 +1444,7 @@ public class Command {
 			}
 			else {
 				// Write full header and namespace/set/bin names.
-				dataOffset += 13; // header(4) + ttl(4) + fieldCount(2) + opCount(2) = 13
+				dataOffset += 12; // header(4) + ttl(4) + fieldCount(2) + opCount(2) = 12
 				dataOffset += Buffer.estimateSizeUtf8(key.namespace) + FIELD_HEADER_SIZE;
 				dataOffset += Buffer.estimateSizeUtf8(key.setName) + FIELD_HEADER_SIZE;
 				sizeTxnBatch(txn, ver);
@@ -1554,6 +1554,7 @@ public class Command {
 
 	private void sizeTxnBatch(Txn txn, Long ver) {
 		if (txn != null) {
+			dataOffset++; // Add info4 byte for MRT.
 			dataOffset += 8 + FIELD_HEADER_SIZE;
 
 			if (ver != null) {
@@ -1610,14 +1611,25 @@ public class Command {
 	}
 
 	private void writeBatchRead(Key key, Txn txn, Long ver, BatchAttr attr, Expression filter, int opCount) {
-		dataBuffer[dataOffset++] = (byte)(BATCH_MSG_INFO | BATCH_MSG_INFO4 | BATCH_MSG_TTL);
-		dataBuffer[dataOffset++] = (byte)attr.readAttr;
-		dataBuffer[dataOffset++] = (byte)attr.writeAttr;
-		dataBuffer[dataOffset++] = (byte)attr.infoAttr;
-		dataBuffer[dataOffset++] = (byte)attr.txnAttr;
-		Buffer.intToBytes(attr.expiration, dataBuffer, dataOffset);
-		dataOffset += 4;
-		writeBatchFields(key, txn, ver, attr, filter, 0, opCount);
+		if (txn != null) {
+			dataBuffer[dataOffset++] = (byte)(BATCH_MSG_INFO | BATCH_MSG_INFO4 | BATCH_MSG_TTL);
+			dataBuffer[dataOffset++] = (byte)attr.readAttr;
+			dataBuffer[dataOffset++] = (byte)attr.writeAttr;
+			dataBuffer[dataOffset++] = (byte)attr.infoAttr;
+			dataBuffer[dataOffset++] = (byte)attr.txnAttr;
+			Buffer.intToBytes(attr.expiration, dataBuffer, dataOffset);
+			dataOffset += 4;
+			writeBatchFieldsTxn(key, txn, ver, attr, filter, 0, opCount);
+		}
+		else {
+			dataBuffer[dataOffset++] = (byte)(BATCH_MSG_INFO | BATCH_MSG_TTL);
+			dataBuffer[dataOffset++] = (byte)attr.readAttr;
+			dataBuffer[dataOffset++] = (byte)attr.writeAttr;
+			dataBuffer[dataOffset++] = (byte)attr.infoAttr;
+			Buffer.intToBytes(attr.expiration, dataBuffer, dataOffset);
+			dataOffset += 4;
+			writeBatchFieldsReg(key, attr, filter, 0, opCount);				
+		}
 	}
 
 	private void writeBatchWrite(
@@ -1629,19 +1641,32 @@ public class Command {
 		int fieldCount,
 		int opCount
 	) {
-		dataBuffer[dataOffset++] = (byte)(BATCH_MSG_INFO | BATCH_MSG_INFO4 | BATCH_MSG_GEN | BATCH_MSG_TTL);
-		dataBuffer[dataOffset++] = (byte)attr.readAttr;
-		dataBuffer[dataOffset++] = (byte)attr.writeAttr;
-		dataBuffer[dataOffset++] = (byte)attr.infoAttr;
-		dataBuffer[dataOffset++] = (byte)attr.txnAttr;
-		Buffer.shortToBytes(attr.generation, dataBuffer, dataOffset);
-		dataOffset += 2;
-		Buffer.intToBytes(attr.expiration, dataBuffer, dataOffset);
-		dataOffset += 4;
-		writeBatchFields(key, txn, ver, attr, filter, fieldCount, opCount);
+		if (txn != null) {
+			dataBuffer[dataOffset++] = (byte)(BATCH_MSG_INFO | BATCH_MSG_INFO4 | BATCH_MSG_GEN | BATCH_MSG_TTL);
+			dataBuffer[dataOffset++] = (byte)attr.readAttr;
+			dataBuffer[dataOffset++] = (byte)attr.writeAttr;
+			dataBuffer[dataOffset++] = (byte)attr.infoAttr;
+			dataBuffer[dataOffset++] = (byte)attr.txnAttr;
+			Buffer.shortToBytes(attr.generation, dataBuffer, dataOffset);
+			dataOffset += 2;
+			Buffer.intToBytes(attr.expiration, dataBuffer, dataOffset);
+			dataOffset += 4;
+			writeBatchFieldsTxn(key, txn, ver, attr, filter, fieldCount, opCount);
+		}
+		else {
+			dataBuffer[dataOffset++] = (byte)(BATCH_MSG_INFO | BATCH_MSG_GEN | BATCH_MSG_TTL);
+			dataBuffer[dataOffset++] = (byte)attr.readAttr;
+			dataBuffer[dataOffset++] = (byte)attr.writeAttr;
+			dataBuffer[dataOffset++] = (byte)attr.infoAttr;
+			Buffer.shortToBytes(attr.generation, dataBuffer, dataOffset);
+			dataOffset += 2;
+			Buffer.intToBytes(attr.expiration, dataBuffer, dataOffset);
+			dataOffset += 4;
+			writeBatchFieldsReg(key, attr, filter, fieldCount, opCount);			
+		}
 	}
 
-	private void writeBatchFields(
+	private void writeBatchFieldsTxn(
 		Key key,
 		Txn txn,
 		Long ver,
@@ -1650,16 +1675,14 @@ public class Command {
 		int fieldCount,
 		int opCount
 	) {
-		if (txn != null) {
+		fieldCount++;
+
+		if (ver != null) {
 			fieldCount++;
+		}
 
-			if (ver != null) {
-				fieldCount++;
-			}
-
-			if (attr.hasWrite && txn.getDeadline() != 0) {
-				fieldCount++;
-			}
+		if (attr.hasWrite && txn.getDeadline() != 0) {
+			fieldCount++;
 		}
 
 		if (filter != null) {
@@ -1672,16 +1695,14 @@ public class Command {
 
 		writeBatchFields(key, fieldCount, opCount);
 
-		if (txn != null) {
-			writeFieldLE(txn.getId(), FieldType.MRT_ID);
+		writeFieldLE(txn.getId(), FieldType.MRT_ID);
 
-			if (ver != null) {
-				writeFieldVersion(ver);
-			}
+		if (ver != null) {
+			writeFieldVersion(ver);
+		}
 
-			if (attr.hasWrite && txn.getDeadline() != 0) {
-				writeFieldLE(txn.getDeadline(), FieldType.MRT_DEADLINE);
-			}
+		if (attr.hasWrite && txn.getDeadline() != 0) {
+			writeFieldLE(txn.getDeadline(), FieldType.MRT_DEADLINE);
 		}
 
 		if (filter != null) {
@@ -1693,6 +1714,32 @@ public class Command {
 		}
 	}
 
+	private void writeBatchFieldsReg(
+		Key key,
+		BatchAttr attr,
+		Expression filter,
+		int fieldCount,
+		int opCount
+	) {
+		if (filter != null) {
+			fieldCount++;
+		}
+
+		if (attr.sendKey) {
+			fieldCount++;
+		}
+
+		writeBatchFields(key, fieldCount, opCount);
+
+		if (filter != null) {
+			filter.write(this);
+		}
+
+		if (attr.sendKey) {
+			writeField(key.userKey, FieldType.KEY);
+		}		
+	}
+	
 	private void writeBatchFields(Key key, int fieldCount, int opCount) {
 		fieldCount += 2;
 		Buffer.shortToBytes(fieldCount, dataBuffer, dataOffset);
