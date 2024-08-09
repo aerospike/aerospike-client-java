@@ -1,4 +1,5 @@
-FROM aerospike.jfrog.io/docker/aerospike/aerospike-proxy-private:1.1.0
+ARG PROXY_SERVER_TAG
+FROM "aerospike.jfrog.io/docker/aerospike/aerospike-proxy-private:$PROXY_SERVER_TAG"
 # Default user "aerospike" doesn't have root permissions
 USER root
 RUN wget https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -O /usr/bin/yq

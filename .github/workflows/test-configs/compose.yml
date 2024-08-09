@@ -9,5 +9,7 @@ services:
       - native-server
     # dockerfile_inline doesn't work for some reason, even though it's documented.
     build: ./
+      args:
+        - PROXY_SERVER_TAG
     ports:
       - "4000:4000"
