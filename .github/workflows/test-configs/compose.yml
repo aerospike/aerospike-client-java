@@ -8,7 +8,8 @@ services:
     depends_on:
       - native-server
     # dockerfile_inline doesn't work for some reason, even though it's documented.
-    build: ./
+    # So we have to supply the Dockerfile as a separate file
+    build:
       args:
         - PROXY_SERVER_TAG
     ports:
