@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.Properties;
 import java.util.concurrent.*;
 
+import com.aerospike.client.AbortStatus;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.BatchDelete;
 import com.aerospike.client.BatchRead;
@@ -31,6 +32,7 @@ import com.aerospike.client.BatchResults;
 import com.aerospike.client.BatchUDF;
 import com.aerospike.client.BatchWrite;
 import com.aerospike.client.Bin;
+import com.aerospike.client.CommitStatus;
 import com.aerospike.client.Host;
 import com.aerospike.client.IAerospikeClient;
 import com.aerospike.client.Key;
@@ -44,6 +46,7 @@ import com.aerospike.client.Value;
 import com.aerospike.client.admin.Privilege;
 import com.aerospike.client.admin.Role;
 import com.aerospike.client.admin.User;
+import com.aerospike.client.async.AsyncTxnRoll;
 import com.aerospike.client.async.EventLoop;
 import com.aerospike.client.async.NettyEventLoop;
 import com.aerospike.client.async.NettyEventLoops;
@@ -54,6 +57,7 @@ import com.aerospike.client.cluster.Node;
 import com.aerospike.client.command.BatchAttr;
 import com.aerospike.client.command.Command;
 import com.aerospike.client.command.OperateArgs;
+import com.aerospike.client.command.TxnRoll;
 import com.aerospike.client.exp.Expression;
 import com.aerospike.client.listener.BatchListListener;
 import com.aerospike.client.listener.BatchOperateListListener;
@@ -572,11 +576,13 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 	 * <p>
 	 * Requires server version 8.0+
 	 *
-	 * @param txn			multi-record transaction
-	 * @throws AerospikeException.Commit    if commit fails
+	 * @param txn	multi-record transaction
+	 * @return		status of the commit on success
+	 * @throws AerospikeException.Commit	if verify commit fails
 	 */
-	public final void commit(Txn txn)
+	public final CommitStatus commit(Txn txn)
 		throws AerospikeException.Commit {
+		return CommitStatus.OK;
 	}
 
 	/**
@@ -604,11 +610,11 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 	 * <p>
 	 * Requires server version 8.0+
 	 *
-	 * @param txn			multi-record transaction
-	 * @throws AerospikeException.Abort    if abort fails
+	 * @param txn	multi-record transaction
+	 * @return		status of the abort
 	 */
-	public final void abort(Txn txn)
-		throws AerospikeException.Abort {
+	public final AbortStatus abort(Txn txn) {
+		return AbortStatus.OK;
 	}
 
 	/**
