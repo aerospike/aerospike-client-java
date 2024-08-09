@@ -73,12 +73,11 @@ jobs:
     # For debugging why the proxy server failed to start
     - if: ${{ always() }}
       run: docker container ps -a
-    # Prints logs for native server
+    # Prints logs for native server and proxy server
     - if: ${{ always() }}
-      run: docker logs aerospike
-    # TODO: Sometimes, docker logs for the proxy server prints nothing. Not sure why this happens
+      run: docker logs test-configs-proxy-server-1
     - if: ${{ always() }}
-      run: docker exec aerospike-proxy cat /var/log/aerospike-proxy/aerospike-proxy.log
+      run: docker logs test-configs-native-server-1
 
     # Based on https://github.com/citrusleaf/devops/blob/master/jfrog/vector/deploy-to-jfrog.sh
 
