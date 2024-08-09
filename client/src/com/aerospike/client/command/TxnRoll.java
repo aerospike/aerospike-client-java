@@ -16,12 +16,13 @@
  */
 package com.aerospike.client.command;
 
-import com.aerospike.client.AbortError;
+import com.aerospike.client.AbortStatus;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.BatchRecord;
 import com.aerospike.client.Key;
 import com.aerospike.client.Txn;
 import com.aerospike.client.CommitError;
+import com.aerospike.client.CommitStatus;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.policy.BatchPolicy;
 import com.aerospike.client.policy.WritePolicy;
@@ -40,7 +41,7 @@ public final class TxnRoll {
 		this.txn = txn;
 	}
 
-	public void commit(BatchPolicy verifyPolicy, BatchPolicy rollPolicy) {
+	public CommitStatus commit(BatchPolicy verifyPolicy, BatchPolicy rollPolicy) {
 		try {
 			// Verify read versions in batch.
 			verify(verifyPolicy);
@@ -53,7 +54,7 @@ public final class TxnRoll {
 			catch (Throwable t2) {
 				// Throw combination of verify and roll exceptions.
 				t.addSuppressed(t2);
-				throw new AerospikeException.Commit(CommitError.VERIFY_FAIL_ABORT_ABANDONED, verifyRecords, rollRecords, t);
+				throw onCommitError(CommitError.VERIFY_FAIL_ABORT_ABANDONED, t, false);
 			}
 
 			if (txn.getDeadline() != 0) {
@@ -65,12 +66,12 @@ public final class TxnRoll {
 				catch (Throwable t3) {
 					// Throw combination of verify and close exceptions.
 					t.addSuppressed(t3);
-					throw new AerospikeException.Commit(CommitError.VERIFY_FAIL_CLOSE_ABANDONED, verifyRecords, rollRecords, t);
+					throw onCommitError(CommitError.VERIFY_FAIL_CLOSE_ABANDONED, t, false);
 				}
 			}
 
 			// Throw original exception when abort succeeds.
-			throw new AerospikeException.Commit(CommitError.VERIFY_FAIL, verifyRecords, rollRecords, t);
+			throw onCommitError(CommitError.VERIFY_FAIL, t, false);
 		}
 
 		WritePolicy writePolicy = new WritePolicy(rollPolicy);
@@ -83,7 +84,7 @@ public final class TxnRoll {
 				markRollForward(writePolicy, txnKey);
 			}
 			catch (Throwable t) {
-				throw new AerospikeException.Commit(CommitError.MARK_ROLL_FORWARD_ABANDONED, verifyRecords, rollRecords, t);
+				throw onCommitError(CommitError.MARK_ROLL_FORWARD_ABANDONED, t, true);
 			}
 
 			// Roll-forward writes in batch.
@@ -91,7 +92,7 @@ public final class TxnRoll {
 				roll(rollPolicy, Command.INFO4_MRT_ROLL_FORWARD);
 			}
 			catch (Throwable t) {
-				throw new AerospikeException.Commit(CommitError.ROLL_FORWARD_ABANDONED, verifyRecords, rollRecords, t);
+				return CommitStatus.ROLL_FORWARD_ABANDONED;
 			}
 		}
 
@@ -101,12 +102,29 @@ public final class TxnRoll {
 				close(writePolicy, txnKey);
 			}
 			catch (Throwable t) {
-				throw new AerospikeException.Commit(CommitError.CLOSE_ABANDONED, verifyRecords, rollRecords, t);
+				return CommitStatus.CLOSE_ABANDONED;
 			}
 		}
+		return CommitStatus.OK;
+	}
+	
+	private AerospikeException.Commit onCommitError(CommitError error, Throwable cause, boolean setInDoubt) {
+		AerospikeException.Commit aec = new AerospikeException.Commit(error, verifyRecords, rollRecords, cause);
+		
+		if (cause instanceof AerospikeException) {
+			AerospikeException src = (AerospikeException)cause;
+			aec.setNode(src.getNode());
+			aec.setPolicy(src.getPolicy());
+			aec.setIteration(src.getIteration());
+			
+			if (setInDoubt) {
+				aec.setInDoubt(src.getInDoubt());
+			}
+		}
+		return aec;
 	}
 
-	public void abort(BatchPolicy rollPolicy) {
+	public AbortStatus abort(BatchPolicy rollPolicy) {
 		Set<Key> keySet = txn.getWrites();
 
 		if (! keySet.isEmpty()) {
@@ -114,7 +132,7 @@ public final class TxnRoll {
 				roll(rollPolicy, Command.INFO4_MRT_ROLL_BACK);
 			}
 			catch (Throwable t) {
-				throw new AerospikeException.Abort(AbortError.ROLL_BACK_ABANDONED, rollRecords, t);
+				return AbortStatus.ROLL_BACK_ABANDONED;
 			}
 		}
 
@@ -125,9 +143,10 @@ public final class TxnRoll {
 				close(writePolicy, txnKey);
 			}
 			catch (Throwable t) {
-				throw new AerospikeException.Abort(AbortError.CLOSE_ABANDONED, rollRecords, t);
+				return AbortStatus.CLOSE_ABANDONED;
 			}
 		}
+		return AbortStatus.OK;
 	}
 
 	private void verify(BatchPolicy verifyPolicy) {

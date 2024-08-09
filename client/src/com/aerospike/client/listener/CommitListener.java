@@ -17,15 +17,16 @@
 package com.aerospike.client.listener;
 
 import com.aerospike.client.AerospikeException;
+import com.aerospike.client.CommitStatus;
 
 /**
  * Asynchronous result notifications for multi-record transaction (MRT) commits.
  */
 public interface CommitListener {
 	/**
-	 * This method is called when the records are verified and the commit succeeds.
+	 * This method is called when the records are verified and the commit succeeded or will succeed.
 	 */
-	void onSuccess();
+	void onSuccess(CommitStatus status);
 
 	/**
 	 * This method is called when the commit fails.

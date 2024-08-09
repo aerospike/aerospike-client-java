@@ -16,7 +16,6 @@
  */
 package com.aerospike.client.async;
 
-import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.Node;

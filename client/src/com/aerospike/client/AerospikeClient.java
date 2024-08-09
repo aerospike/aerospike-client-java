@@ -627,14 +627,16 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * Requires server version 8.0+
 	 *
 	 * @param txn			multi-record transaction
-	 * @throws AerospikeException.Commit    if commit fails
+	 * @throws AerospikeException.Commit    if verify commit fails
 	 */
-	public final void commit(Txn txn)
+	public final CommitStatus commit(Txn txn)
 		throws AerospikeException.Commit {
-		txn.setRollAttempted();
+		if (! txn.setRollAttempted()) {
+			return CommitStatus.ALREADY_ATTEMPTED;
+		}
 
 		TxnRoll tr = new TxnRoll(cluster, txn);
-		tr.commit(txnVerifyPolicyDefault, txnRollPolicyDefault);
+		return tr.commit(txnVerifyPolicyDefault, txnRollPolicyDefault);
 	}
 
 	/**
@@ -655,7 +657,9 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 */
 	public final void commit(EventLoop eventLoop, CommitListener listener, Txn txn)
 		throws AerospikeException {
-		txn.setRollAttempted();
+		if (! txn.setRollAttempted()) {
+			listener.onSuccess(CommitStatus.ALREADY_ATTEMPTED);
+		}
 
 		if (eventLoop == null) {
 			eventLoop = cluster.eventLoops.next();
@@ -673,14 +677,14 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * Requires server version 8.0+
 	 *
 	 * @param txn			multi-record transaction
-	 * @throws AerospikeException.Abort    if abort fails
 	 */
-	public final void abort(Txn txn)
-		throws AerospikeException.Abort {
-		txn.setRollAttempted();
-
+	public final AbortStatus abort(Txn txn) {
+		if (! txn.setRollAttempted()) {
+			return AbortStatus.ALREADY_ATTEMPTED;
+		}
+		
 		TxnRoll tr = new TxnRoll(cluster, txn);
-		tr.abort(txnRollPolicyDefault);
+		return tr.abort(txnRollPolicyDefault);
 	}
 
 	/**
@@ -699,8 +703,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 */
 	public final void abort(EventLoop eventLoop, AbortListener listener, Txn txn)
 		throws AerospikeException {
-		txn.setRollAttempted();
-
+		if (! txn.setRollAttempted()) {
+			listener.onSuccess(AbortStatus.ALREADY_ATTEMPTED);
+		}
+		
 		if (eventLoop == null) {
 			eventLoop = cluster.eventLoops.next();
 		}

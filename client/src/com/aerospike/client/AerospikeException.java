@@ -541,43 +541,6 @@ public class AerospikeException extends RuntimeException {
 		}
 	}
 
-	/**
-	 * Exception thrown when {@link AerospikeClient#abort(com.aerospike.client.Tran)} fails.
-	 */
-	public static final class Abort extends AerospikeException {
-		private static final long serialVersionUID = 1L;
-
-		/**
-		 * Error status of the attempted abort.
-		 */
-		public final AbortError error;
-
-		/**
-		 * Roll backward result for each write key in the MRT. May be null if failure occurred before roll backward.
-		 */
-		public final BatchRecord[] rollRecords;
-
-		public Abort(AbortError error, BatchRecord[] rollRecords) {
-			super(ResultCode.TRAN_FAILED, error.str);
-			this.error = error;
-			this.rollRecords = rollRecords;
-		}
-
-		public Abort(AbortError error, BatchRecord[] rollRecords, Throwable cause) {
-			super(ResultCode.TRAN_FAILED, error.str, cause);
-			this.error = error;
-			this.rollRecords = rollRecords;
-		}
-
-		@Override
-		public String getMessage() {
-			String msg = super.getMessage();
-			StringBuilder sb = new StringBuilder(1024);
-			recordsToString(sb, "roll errors:", rollRecords);
-			return msg + sb.toString();
-		}
-	}
-
 	private static void recordsToString(StringBuilder sb, String title, BatchRecord[] records) {
 		if (records == null) {
 			return;

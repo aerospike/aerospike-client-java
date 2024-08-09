@@ -120,6 +120,14 @@ public final class Txn {
 	}
 
 	/**
+	 * Add key to write hash when write command is in doubt (usually caused by timeout).
+	 */
+	public void onWriteInDoubt(Key key) {
+		reads.remove(key);
+		writes.add(key);
+	}
+
+	/**
 	 * Get all write keys and their versions.
 	 */
 	public Set<Key> getWrites() {
@@ -184,12 +192,12 @@ public final class Txn {
 	/**
 	 * Verify that commit/abort is only attempted once. For internal use only.
 	 */
-	public void setRollAttempted() {
+	public boolean setRollAttempted() {
 		if (rollAttempted) {
-			throw new AerospikeException(ResultCode.PARAMETER_ERROR,
-				"commit() or abort() may only be called once for a given MRT");
+			return false;
 		}
 		rollAttempted = true;
+		return true;
 	}
 
 	/**

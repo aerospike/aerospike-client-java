@@ -16,13 +16,14 @@
  */
 package com.aerospike.client.async;
 
-import com.aerospike.client.AbortError;
+import com.aerospike.client.AbortStatus;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.BatchRecord;
 import com.aerospike.client.Key;
 import com.aerospike.client.Log;
 import com.aerospike.client.Txn;
 import com.aerospike.client.CommitError;
+import com.aerospike.client.CommitStatus;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.command.BatchAttr;
 import com.aerospike.client.command.BatchNode;
@@ -118,14 +119,14 @@ public final class AsyncTxnRoll {
 					closeOnAbort();
 				}
 				else {
-					notifyAbortFailure(AbortError.ROLL_BACK_ABANDONED, null);
+					notifyAbortSuccess(AbortStatus.ROLL_BACK_ABANDONED);
 				}
 			}
 
 			@Override
 			public void onFailure(BatchRecord[] records, AerospikeException ae) {
 				rollRecords = records;
-				notifyAbortFailure(AbortError.ROLL_BACK_ABANDONED, ae);
+				notifyAbortSuccess(AbortStatus.ROLL_BACK_ABANDONED);
 			}
 		};
 
@@ -188,7 +189,7 @@ public final class AsyncTxnRoll {
 
 				@Override
 				public void onFailure(AerospikeException ae) {
-					notifyCommitFailure(CommitError.MARK_ROLL_FORWARD_ABANDONED, ae);
+					notifyCommitFailure(CommitError.MARK_ROLL_FORWARD_ABANDONED, ae, true);
 				}
 			};
 
@@ -196,7 +197,7 @@ public final class AsyncTxnRoll {
 			eventLoop.execute(cluster, command);
 		}
 		catch (Throwable t) {
-			notifyCommitFailure(CommitError.MARK_ROLL_FORWARD_ABANDONED, t);
+			notifyCommitFailure(CommitError.MARK_ROLL_FORWARD_ABANDONED, t, false);
 		}
 	}
 
@@ -211,21 +212,21 @@ public final class AsyncTxnRoll {
 						closeOnCommit(true);
 					}
 					else {
-						notifyCommitFailure(CommitError.ROLL_FORWARD_ABANDONED, null);
+						notifyCommitSuccess(CommitStatus.ROLL_FORWARD_ABANDONED);
 					}
 				}
 
 				@Override
 				public void onFailure(BatchRecord[] records, AerospikeException ae) {
 					rollRecords = records;
-					notifyCommitFailure(CommitError.ROLL_FORWARD_ABANDONED, ae);
+					notifyCommitSuccess(CommitStatus.ROLL_FORWARD_ABANDONED);
 				}
 			};
 
 			roll(rollListener, Command.INFO4_MRT_ROLL_FORWARD);
 		}
 		catch (Throwable t) {
-			notifyCommitFailure(CommitError.ROLL_FORWARD_ABANDONED, t);
+			notifyCommitSuccess(CommitStatus.ROLL_FORWARD_ABANDONED);
 		}
 	}
 
@@ -240,21 +241,21 @@ public final class AsyncTxnRoll {
 						closeOnCommit(false);
 					}
 					else {
-						notifyCommitFailure(CommitError.VERIFY_FAIL_ABORT_ABANDONED, null);
+						notifyCommitFailure(CommitError.VERIFY_FAIL_ABORT_ABANDONED, null, false);
 					}
 				}
 
 				@Override
 				public void onFailure(BatchRecord[] records, AerospikeException ae) {
 					rollRecords = records;
-					notifyCommitFailure(CommitError.VERIFY_FAIL_ABORT_ABANDONED, ae);
+					notifyCommitFailure(CommitError.VERIFY_FAIL_ABORT_ABANDONED, ae, false);
 				}
 			};
 
 			roll(rollListener, Command.INFO4_MRT_ROLL_BACK);
 		}
 		catch (Throwable t) {
-			notifyCommitFailure(CommitError.VERIFY_FAIL_ABORT_ABANDONED, t);
+			notifyCommitFailure(CommitError.VERIFY_FAIL_ABORT_ABANDONED, t, false);
 		}
 	}
 
@@ -309,11 +310,11 @@ public final class AsyncTxnRoll {
 		if (txn.getDeadline() == 0) {
 			// There is no MRT monitor to remove.
 			if (verified) {
-				notifyCommitSuccess();
+				notifyCommitSuccess(CommitStatus.OK);
 			}
 			else {
 				// Record verification failed and MRT was aborted.
-				notifyCommitFailure(CommitError.VERIFY_FAIL, null);
+				notifyCommitFailure(CommitError.VERIFY_FAIL, null, false);
 			}
 			return;
 		}
@@ -323,18 +324,23 @@ public final class AsyncTxnRoll {
 				@Override
 				public void onSuccess(Key key, boolean existed) {
 					if (verified) {
-						notifyCommitSuccess();
+						notifyCommitSuccess(CommitStatus.OK);
 					}
 					else {
 						// Record verification failed and MRT was aborted.
-						notifyCommitFailure(CommitError.VERIFY_FAIL, null);
+						notifyCommitFailure(CommitError.VERIFY_FAIL, null, false);
 					}
 				}
 
 				@Override
 				public void onFailure(AerospikeException ae) {
-					CommitError error = verified?  CommitError.CLOSE_ABANDONED : CommitError.VERIFY_FAIL_CLOSE_ABANDONED;
-					notifyCommitFailure(error, ae);
+					if (verified) {
+						notifyCommitSuccess(CommitStatus.CLOSE_ABANDONED);
+					}
+					else {
+						notifyCommitFailure(CommitError.VERIFY_FAIL_CLOSE_ABANDONED, ae, false);
+						
+					}
 				}
 			};
 
@@ -342,15 +348,19 @@ public final class AsyncTxnRoll {
 			eventLoop.execute(cluster, command);
 		}
 		catch (Throwable t) {
-			CommitError error = verified?  CommitError.CLOSE_ABANDONED : CommitError.VERIFY_FAIL_CLOSE_ABANDONED;
-			notifyCommitFailure(error, t);
+			if (verified) {
+				notifyCommitSuccess(CommitStatus.CLOSE_ABANDONED);
+			}
+			else {
+				notifyCommitFailure(CommitError.VERIFY_FAIL_CLOSE_ABANDONED, t, false);
+			}
 		}
 	}
 
 	private void closeOnAbort() {
 		if (txn.getDeadline() == 0) {
 			// There is no MRT monitor record to remove.
-			notifyAbortSuccess();
+			notifyAbortSuccess(AbortStatus.OK);
 			return;
 		}
 
@@ -358,12 +368,12 @@ public final class AsyncTxnRoll {
 			DeleteListener deleteListener = new DeleteListener() {
 				@Override
 				public void onSuccess(Key key, boolean existed) {
-					notifyAbortSuccess();
+					notifyAbortSuccess(AbortStatus.OK);
 				}
 
 				@Override
 				public void onFailure(AerospikeException ae) {
-					notifyAbortFailure(AbortError.CLOSE_ABANDONED, ae);
+					notifyAbortSuccess(AbortStatus.CLOSE_ABANDONED);
 				}
 			};
 
@@ -371,59 +381,57 @@ public final class AsyncTxnRoll {
 			eventLoop.execute(cluster, command);
 		}
 		catch (Throwable t) {
-			notifyAbortFailure(AbortError.CLOSE_ABANDONED, t);
+			notifyAbortSuccess(AbortStatus.CLOSE_ABANDONED);
 		}
 	}
 
-	private void notifyCommitSuccess() {
+	private void notifyCommitSuccess(CommitStatus status) {
 		txn.clear();
 
 		try {
-			commitListener.onSuccess();
+			commitListener.onSuccess(status);
 		}
 		catch (Throwable t) {
 			Log.error("CommitListener onSuccess() failed: " + Util.getStackTrace(t));
 		}
 	}
 
-	private void notifyCommitFailure(CommitError error, Throwable cause) {
+	private void notifyCommitFailure(CommitError error, Throwable cause, boolean setInDoubt) {
 		try {
-			AerospikeException.Commit aet = (cause == null) ?
+			AerospikeException.Commit aec = (cause == null) ?
 				new AerospikeException.Commit(error, verifyRecords, rollRecords) :
 				new AerospikeException.Commit(error, verifyRecords, rollRecords, cause);
 
 			if (verifyException != null) {
-				aet.addSuppressed(verifyException);
+				aec.addSuppressed(verifyException);
 			}
 
-			commitListener.onFailure(aet);
+			if (cause instanceof AerospikeException) {
+				AerospikeException src = (AerospikeException)cause;
+				aec.setNode(src.getNode());
+				aec.setPolicy(src.getPolicy());
+				aec.setIteration(src.getIteration());
+				
+				if (setInDoubt) {
+					aec.setInDoubt(src.getInDoubt());
+				}
+			}
+
+			commitListener.onFailure(aec);
 		}
 		catch (Throwable t) {
 			Log.error("CommitListener onFailure() failed: " + Util.getStackTrace(t));
 		}
 	}
 
-	private void notifyAbortSuccess() {
+	private void notifyAbortSuccess(AbortStatus status) {
 		txn.clear();
 
 		try {
-			abortListener.onSuccess();
+			abortListener.onSuccess(status);
 		}
 		catch (Throwable t) {
 			Log.error("AbortListener onSuccess() failed: " + Util.getStackTrace(t));
-		}
-	}
-
-	private void notifyAbortFailure(AbortError error, Throwable cause) {
-		try {
-			AerospikeException.Abort aet = (cause == null) ?
-				new AerospikeException.Abort(error, rollRecords) :
-				new AerospikeException.Abort(error, rollRecords, cause);
-
-			abortListener.onFailure(aet);
-		}
-		catch (Throwable t) {
-			Log.error("AbortListener onFailure() failed: " + Util.getStackTrace(t));
 		}
 	}
 }
