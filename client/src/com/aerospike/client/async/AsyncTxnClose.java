@@ -19,30 +19,30 @@ package com.aerospike.client.async;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
 import com.aerospike.client.ResultCode;
-import com.aerospike.client.Tran;
+import com.aerospike.client.Txn;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.listener.DeleteListener;
 import com.aerospike.client.policy.WritePolicy;
 
-public final class AsyncTranClose extends AsyncWriteBase {
-	private final Tran tran;
+public final class AsyncTxnClose extends AsyncWriteBase {
+	private final Txn txn;
 	private final DeleteListener listener;
 
-	public AsyncTranClose(
+	public AsyncTxnClose(
 		Cluster cluster,
-		Tran tran,
+		Txn txn,
 		DeleteListener listener,
 		WritePolicy writePolicy,
 		Key key
 	) {
 		super(cluster, writePolicy, key);
-		this.tran = tran;
+		this.txn = txn;
 		this.listener = listener;
 	}
 
 	@Override
 	protected void writeBuffer() {
-		setTranClose(tran, key);
+		setTxnClose(txn, key);
 	}
 
 	@Override

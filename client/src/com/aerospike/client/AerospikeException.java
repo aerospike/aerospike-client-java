@@ -150,14 +150,14 @@ public class AerospikeException extends RuntimeException {
 	}
 
 	/**
-	 * Get transaction policy.  Will be null for non-transaction exceptions.
+	 * Get command policy.  Will be null for non-command exceptions.
 	 */
 	public final Policy getPolicy() {
 		return policy;
 	}
 
 	/**
-	 * Set transaction policy.
+	 * Set command policy.
 	 */
 	public final void setPolicy(Policy policy) {
 		this.policy = policy;
@@ -199,14 +199,14 @@ public class AerospikeException extends RuntimeException {
 	}
 
 	/**
-	 * Is it possible that write transaction may have completed.
+	 * Is it possible that write command may have completed.
 	 */
 	public final boolean getInDoubt() {
 		return inDoubt;
 	}
 
 	/**
-	 * Set whether it is possible that the write transaction may have completed
+	 * Set whether it is possible that the write command may have completed
 	 * even though this exception was generated.  This may be the case when a
 	 * client error occurs (like timeout) after the command was sent to the server.
 	 */
@@ -536,43 +536,6 @@ public class AerospikeException extends RuntimeException {
 			String msg = super.getMessage();
 			StringBuilder sb = new StringBuilder(1024);
 			recordsToString(sb, "verify errors:", verifyRecords);
-			recordsToString(sb, "roll errors:", rollRecords);
-			return msg + sb.toString();
-		}
-	}
-
-	/**
-	 * Exception thrown when {@link AerospikeClient#abort(com.aerospike.client.Tran)} fails.
-	 */
-	public static final class Abort extends AerospikeException {
-		private static final long serialVersionUID = 1L;
-
-		/**
-		 * Error status of the attempted abort.
-		 */
-		public final AbortError error;
-
-		/**
-		 * Roll backward result for each write key in the MRT. May be null if failure occurred before roll backward.
-		 */
-		public final BatchRecord[] rollRecords;
-
-		public Abort(AbortError error, BatchRecord[] rollRecords) {
-			super(ResultCode.TRAN_FAILED, error.str);
-			this.error = error;
-			this.rollRecords = rollRecords;
-		}
-
-		public Abort(AbortError error, BatchRecord[] rollRecords, Throwable cause) {
-			super(ResultCode.TRAN_FAILED, error.str, cause);
-			this.error = error;
-			this.rollRecords = rollRecords;
-		}
-
-		@Override
-		public String getMessage() {
-			String msg = super.getMessage();
-			StringBuilder sb = new StringBuilder(1024);
 			recordsToString(sb, "roll errors:", rollRecords);
 			return msg + sb.toString();
 		}

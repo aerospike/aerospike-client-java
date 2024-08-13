@@ -16,19 +16,20 @@
  */
 package com.aerospike.client.async;
 
-import com.aerospike.client.AbortError;
+import com.aerospike.client.AbortStatus;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.BatchRecord;
 import com.aerospike.client.Key;
 import com.aerospike.client.Log;
-import com.aerospike.client.Tran;
+import com.aerospike.client.Txn;
 import com.aerospike.client.CommitError;
+import com.aerospike.client.CommitStatus;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.command.BatchAttr;
 import com.aerospike.client.command.BatchNode;
 import com.aerospike.client.command.BatchNodeList;
 import com.aerospike.client.command.Command;
-import com.aerospike.client.command.TranMonitor;
+import com.aerospike.client.command.TxnMonitor;
 import com.aerospike.client.listener.BatchRecordArrayListener;
 import com.aerospike.client.listener.DeleteListener;
 import com.aerospike.client.listener.AbortListener;
@@ -41,13 +42,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-public final class AsyncTranRoll {
+public final class AsyncTxnRoll {
 	private final Cluster cluster;
 	private final EventLoop eventLoop;
 	private final BatchPolicy verifyPolicy;
 	private final BatchPolicy rollPolicy;
 	private final WritePolicy writePolicy;
-	private final Tran tran;
+	private final Txn txn;
 	private final Key tranKey;
 	private CommitListener commitListener;
 	private AbortListener abortListener;
@@ -55,20 +56,20 @@ public final class AsyncTranRoll {
 	private BatchRecord[] rollRecords;
 	private AerospikeException verifyException;
 
-	public AsyncTranRoll(
+	public AsyncTxnRoll(
 		Cluster cluster,
 		EventLoop eventLoop,
 		BatchPolicy verifyPolicy,
 		BatchPolicy rollPolicy,
-		Tran tran
+		Txn txn
 	) {
 		this.cluster = cluster;
 		this.eventLoop = eventLoop;
 		this.verifyPolicy = verifyPolicy;
 		this.rollPolicy = rollPolicy;
 		this.writePolicy = new WritePolicy(rollPolicy);
-		this.tran = tran;
-		this.tranKey = TranMonitor.getTranMonitorKey(tran);
+		this.txn = txn;
+		this.tranKey = TxnMonitor.getTxnMonitorKey(txn);
 	}
 
 	public void commit(CommitListener listener) {
@@ -80,7 +81,7 @@ public final class AsyncTranRoll {
 				verifyRecords = records;
 
 				if (status) {
-					Set<Key> keySet = tran.getWrites();
+					Set<Key> keySet = txn.getWrites();
 
 					if (! keySet.isEmpty()) {
 						markRollForward();
@@ -118,14 +119,14 @@ public final class AsyncTranRoll {
 					closeOnAbort();
 				}
 				else {
-					notifyAbortFailure(AbortError.ROLL_BACK_ABANDONED, null);
+					notifyAbortSuccess(AbortStatus.ROLL_BACK_ABANDONED);
 				}
 			}
 
 			@Override
 			public void onFailure(BatchRecord[] records, AerospikeException ae) {
 				rollRecords = records;
-				notifyAbortFailure(AbortError.ROLL_BACK_ABANDONED, ae);
+				notifyAbortSuccess(AbortStatus.ROLL_BACK_ABANDONED);
 			}
 		};
 
@@ -134,7 +135,7 @@ public final class AsyncTranRoll {
 
 	private void verify(BatchRecordArrayListener verifyListener) {
 		// Validate record versions in a batch.
-		Set<Map.Entry<Key,Long>> reads = tran.getReads();
+		Set<Map.Entry<Key,Long>> reads = txn.getReads();
 		int max = reads.size();
 
 		if (max == 0) {
@@ -166,12 +167,12 @@ public final class AsyncTranRoll {
 		for (BatchNode bn : bns) {
 			if (bn.offsetsSize == 1) {
 				int i = bn.offsets[0];
-				commands[count++] = new AsyncBatchSingle.TranVerify(
-					executor, cluster, verifyPolicy, tran, versions[i], records[i], bn.node);
+				commands[count++] = new AsyncBatchSingle.TxnVerify(
+					executor, cluster, verifyPolicy, txn, versions[i], records[i], bn.node);
 			}
 			else {
-				commands[count++] = new AsyncBatch.TranVerify(
-					executor, bn, verifyPolicy, tran, keys, versions, records);
+				commands[count++] = new AsyncBatch.TxnVerify(
+					executor, bn, verifyPolicy, txn, keys, versions, records);
 			}
 		}
 		executor.execute(commands);
@@ -188,15 +189,15 @@ public final class AsyncTranRoll {
 
 				@Override
 				public void onFailure(AerospikeException ae) {
-					notifyCommitFailure(CommitError.MARK_ROLL_FORWARD_ABANDONED, ae);
+					notifyCommitFailure(CommitError.MARK_ROLL_FORWARD_ABANDONED, ae, true);
 				}
 			};
 
-			AsyncTranMarkRollForward command = new AsyncTranMarkRollForward(cluster, tran, writeListener, writePolicy, tranKey);
+			AsyncTxnMarkRollForward command = new AsyncTxnMarkRollForward(cluster, txn, writeListener, writePolicy, tranKey);
 			eventLoop.execute(cluster, command);
 		}
 		catch (Throwable t) {
-			notifyCommitFailure(CommitError.MARK_ROLL_FORWARD_ABANDONED, t);
+			notifyCommitFailure(CommitError.MARK_ROLL_FORWARD_ABANDONED, t, false);
 		}
 	}
 
@@ -211,21 +212,21 @@ public final class AsyncTranRoll {
 						closeOnCommit(true);
 					}
 					else {
-						notifyCommitFailure(CommitError.ROLL_FORWARD_ABANDONED, null);
+						notifyCommitSuccess(CommitStatus.ROLL_FORWARD_ABANDONED);
 					}
 				}
 
 				@Override
 				public void onFailure(BatchRecord[] records, AerospikeException ae) {
 					rollRecords = records;
-					notifyCommitFailure(CommitError.ROLL_FORWARD_ABANDONED, ae);
+					notifyCommitSuccess(CommitStatus.ROLL_FORWARD_ABANDONED);
 				}
 			};
 
 			roll(rollListener, Command.INFO4_MRT_ROLL_FORWARD);
 		}
 		catch (Throwable t) {
-			notifyCommitFailure(CommitError.ROLL_FORWARD_ABANDONED, t);
+			notifyCommitSuccess(CommitStatus.ROLL_FORWARD_ABANDONED);
 		}
 	}
 
@@ -240,26 +241,26 @@ public final class AsyncTranRoll {
 						closeOnCommit(false);
 					}
 					else {
-						notifyCommitFailure(CommitError.VERIFY_FAIL_ABORT_ABANDONED, null);
+						notifyCommitFailure(CommitError.VERIFY_FAIL_ABORT_ABANDONED, null, false);
 					}
 				}
 
 				@Override
 				public void onFailure(BatchRecord[] records, AerospikeException ae) {
 					rollRecords = records;
-					notifyCommitFailure(CommitError.VERIFY_FAIL_ABORT_ABANDONED, ae);
+					notifyCommitFailure(CommitError.VERIFY_FAIL_ABORT_ABANDONED, ae, false);
 				}
 			};
 
 			roll(rollListener, Command.INFO4_MRT_ROLL_BACK);
 		}
 		catch (Throwable t) {
-			notifyCommitFailure(CommitError.VERIFY_FAIL_ABORT_ABANDONED, t);
+			notifyCommitFailure(CommitError.VERIFY_FAIL_ABORT_ABANDONED, t, false);
 		}
 	}
 
-	private void roll(BatchRecordArrayListener rollListener, int tranAttr) {
-		Set<Key> keySet = tran.getWrites();
+	private void roll(BatchRecordArrayListener rollListener, int txnAttr) {
+		Set<Key> keySet = txn.getWrites();
 
 		if (keySet.isEmpty()) {
 			rollListener.onSuccess(new BatchRecord[0], true);
@@ -273,32 +274,32 @@ public final class AsyncTranRoll {
 			records[i] = new BatchRecord(keys[i], true);
 		}
 
-		// Copy tran roll policy because it needs to be modified.
+		// Copy transaction roll policy because it needs to be modified.
 		BatchPolicy batchPolicy = new BatchPolicy(rollPolicy);
 
 		BatchAttr attr = new BatchAttr();
-		attr.setTran(tranAttr);
+		attr.setTxn(txnAttr);
 
 		AsyncBatchExecutor.BatchRecordArray executor = new AsyncBatchExecutor.BatchRecordArray(
 			eventLoop, cluster, rollListener, records);
 
-		// generate() requires a null tran instance.
+		// generate() requires a null transaction instance.
 		List<BatchNode> bns = BatchNodeList.generate(cluster, batchPolicy, keys, records, true, executor);
 		AsyncCommand[] commands = new AsyncCommand[bns.size()];
 
-		// Batch roll forward requires the tran instance.
-		batchPolicy.tran = tran;
+		// Batch roll forward requires the transaction instance.
+		batchPolicy.txn = txn;
 
 		int count = 0;
 
 		for (BatchNode bn : bns) {
 			if (bn.offsetsSize == 1) {
 				int i = bn.offsets[0];
-				commands[count++] = new AsyncBatchSingle.TranRoll(
-					executor, cluster, batchPolicy, records[i], bn.node, tranAttr);
+				commands[count++] = new AsyncBatchSingle.TxnRoll(
+					executor, cluster, batchPolicy, records[i], bn.node, txnAttr);
 			}
 			else {
-				commands[count++] = new AsyncBatch.TranRoll(
+				commands[count++] = new AsyncBatch.TxnRoll(
 					executor, bn, batchPolicy, keys, records, attr);
 			}
 		}
@@ -306,14 +307,14 @@ public final class AsyncTranRoll {
 	}
 
 	private void closeOnCommit(boolean verified) {
-		if (tran.getDeadline() == 0) {
+		if (txn.getDeadline() == 0) {
 			// There is no MRT monitor to remove.
 			if (verified) {
-				notifyCommitSuccess();
+				notifyCommitSuccess(CommitStatus.OK);
 			}
 			else {
 				// Record verification failed and MRT was aborted.
-				notifyCommitFailure(CommitError.VERIFY_FAIL, null);
+				notifyCommitFailure(CommitError.VERIFY_FAIL, null, false);
 			}
 			return;
 		}
@@ -323,34 +324,43 @@ public final class AsyncTranRoll {
 				@Override
 				public void onSuccess(Key key, boolean existed) {
 					if (verified) {
-						notifyCommitSuccess();
+						notifyCommitSuccess(CommitStatus.OK);
 					}
 					else {
 						// Record verification failed and MRT was aborted.
-						notifyCommitFailure(CommitError.VERIFY_FAIL, null);
+						notifyCommitFailure(CommitError.VERIFY_FAIL, null, false);
 					}
 				}
 
 				@Override
 				public void onFailure(AerospikeException ae) {
-					CommitError error = verified?  CommitError.CLOSE_ABANDONED : CommitError.VERIFY_FAIL_CLOSE_ABANDONED;
-					notifyCommitFailure(error, ae);
+					if (verified) {
+						notifyCommitSuccess(CommitStatus.CLOSE_ABANDONED);
+					}
+					else {
+						notifyCommitFailure(CommitError.VERIFY_FAIL_CLOSE_ABANDONED, ae, false);
+						
+					}
 				}
 			};
 
-			AsyncTranClose command = new AsyncTranClose(cluster, tran, deleteListener, writePolicy, tranKey);
+			AsyncTxnClose command = new AsyncTxnClose(cluster, txn, deleteListener, writePolicy, tranKey);
 			eventLoop.execute(cluster, command);
 		}
 		catch (Throwable t) {
-			CommitError error = verified?  CommitError.CLOSE_ABANDONED : CommitError.VERIFY_FAIL_CLOSE_ABANDONED;
-			notifyCommitFailure(error, t);
+			if (verified) {
+				notifyCommitSuccess(CommitStatus.CLOSE_ABANDONED);
+			}
+			else {
+				notifyCommitFailure(CommitError.VERIFY_FAIL_CLOSE_ABANDONED, t, false);
+			}
 		}
 	}
 
 	private void closeOnAbort() {
-		if (tran.getDeadline() == 0) {
+		if (txn.getDeadline() == 0) {
 			// There is no MRT monitor record to remove.
-			notifyAbortSuccess();
+			notifyAbortSuccess(AbortStatus.OK);
 			return;
 		}
 
@@ -358,72 +368,70 @@ public final class AsyncTranRoll {
 			DeleteListener deleteListener = new DeleteListener() {
 				@Override
 				public void onSuccess(Key key, boolean existed) {
-					notifyAbortSuccess();
+					notifyAbortSuccess(AbortStatus.OK);
 				}
 
 				@Override
 				public void onFailure(AerospikeException ae) {
-					notifyAbortFailure(AbortError.CLOSE_ABANDONED, ae);
+					notifyAbortSuccess(AbortStatus.CLOSE_ABANDONED);
 				}
 			};
 
-			AsyncTranClose command = new AsyncTranClose(cluster, tran, deleteListener, writePolicy, tranKey);
+			AsyncTxnClose command = new AsyncTxnClose(cluster, txn, deleteListener, writePolicy, tranKey);
 			eventLoop.execute(cluster, command);
 		}
 		catch (Throwable t) {
-			notifyAbortFailure(AbortError.CLOSE_ABANDONED, t);
+			notifyAbortSuccess(AbortStatus.CLOSE_ABANDONED);
 		}
 	}
 
-	private void notifyCommitSuccess() {
-		tran.clear();
+	private void notifyCommitSuccess(CommitStatus status) {
+		txn.clear();
 
 		try {
-			commitListener.onSuccess();
+			commitListener.onSuccess(status);
 		}
 		catch (Throwable t) {
 			Log.error("CommitListener onSuccess() failed: " + Util.getStackTrace(t));
 		}
 	}
 
-	private void notifyCommitFailure(CommitError error, Throwable cause) {
+	private void notifyCommitFailure(CommitError error, Throwable cause, boolean setInDoubt) {
 		try {
-			AerospikeException.Commit aet = (cause == null) ?
+			AerospikeException.Commit aec = (cause == null) ?
 				new AerospikeException.Commit(error, verifyRecords, rollRecords) :
 				new AerospikeException.Commit(error, verifyRecords, rollRecords, cause);
 
 			if (verifyException != null) {
-				aet.addSuppressed(verifyException);
+				aec.addSuppressed(verifyException);
 			}
 
-			commitListener.onFailure(aet);
+			if (cause instanceof AerospikeException) {
+				AerospikeException src = (AerospikeException)cause;
+				aec.setNode(src.getNode());
+				aec.setPolicy(src.getPolicy());
+				aec.setIteration(src.getIteration());
+				
+				if (setInDoubt) {
+					aec.setInDoubt(src.getInDoubt());
+				}
+			}
+
+			commitListener.onFailure(aec);
 		}
 		catch (Throwable t) {
 			Log.error("CommitListener onFailure() failed: " + Util.getStackTrace(t));
 		}
 	}
 
-	private void notifyAbortSuccess() {
-		tran.clear();
+	private void notifyAbortSuccess(AbortStatus status) {
+		txn.clear();
 
 		try {
-			abortListener.onSuccess();
+			abortListener.onSuccess(status);
 		}
 		catch (Throwable t) {
 			Log.error("AbortListener onSuccess() failed: " + Util.getStackTrace(t));
-		}
-	}
-
-	private void notifyAbortFailure(AbortError error, Throwable cause) {
-		try {
-			AerospikeException.Abort aet = (cause == null) ?
-				new AerospikeException.Abort(error, rollRecords) :
-				new AerospikeException.Abort(error, rollRecords, cause);
-
-			abortListener.onFailure(aet);
-		}
-		catch (Throwable t) {
-			Log.error("AbortListener onFailure() failed: " + Util.getStackTrace(t));
 		}
 	}
 }

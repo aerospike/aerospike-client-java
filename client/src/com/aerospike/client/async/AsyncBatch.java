@@ -27,7 +27,7 @@ import com.aerospike.client.Log;
 import com.aerospike.client.Operation;
 import com.aerospike.client.Record;
 import com.aerospike.client.ResultCode;
-import com.aerospike.client.Tran;
+import com.aerospike.client.Txn;
 import com.aerospike.client.command.BatchAttr;
 import com.aerospike.client.command.BatchNode;
 import com.aerospike.client.command.BatchNodeList;
@@ -312,10 +312,6 @@ public final class AsyncBatch {
 
 		@Override
 		protected void parseRow() {
-			if (opCount > 0) {
-				throw new AerospikeException.Parse("Received bins that were not requested!");
-			}
-
 			parseFieldsRead(keys[batchIndex]);
 			existsArray[batchIndex] = resultCode == 0;
 		}
@@ -364,10 +360,6 @@ public final class AsyncBatch {
 
 		@Override
 		protected void parseRow() {
-			if (opCount > 0) {
-				throw new AerospikeException.Parse("Received bins that were not requested!");
-			}
-
 			Key keyOrig = keys[batchIndex];
 			parseFieldsRead(keyOrig);
 			listener.onExists(keyOrig, resultCode == 0);
@@ -455,6 +447,10 @@ public final class AsyncBatch {
 
 				if (record.resultCode == ResultCode.NO_RESPONSE) {
 					record.inDoubt = record.hasWrite;
+					
+					if (record.inDoubt && policy.txn != null) {
+						policy.txn.onWriteInDoubt(record.key);
+					}
 				}
 			}
 		}
@@ -546,6 +542,10 @@ public final class AsyncBatch {
 					// Set inDoubt, but do not call onRecord() because user already has access to full
 					// BatchRecord list and can examine each record for inDoubt when the exception occurs.
 					record.inDoubt = record.hasWrite;
+					
+					if (record.inDoubt && policy.txn != null) {
+						policy.txn.onWriteInDoubt(record.key);
+					}
 				}
 			}
 		}
@@ -622,7 +622,11 @@ public final class AsyncBatch {
 				BatchRecord record = records[index];
 
 				if (record.resultCode == ResultCode.NO_RESPONSE) {
-					record.inDoubt = inDoubt;
+					record.inDoubt = true;
+					
+					if (policy.txn != null) {
+						policy.txn.onWriteInDoubt(record.key);
+					}
 				}
 			}
 		}
@@ -704,6 +708,11 @@ public final class AsyncBatch {
 					Key key = keys[index];
 					BatchRecord record = new BatchRecord(key, null, ResultCode.NO_RESPONSE, attr.hasWrite && inDoubt, attr.hasWrite);
 					sent[index] = true;
+					
+					if (record.inDoubt && policy.txn != null) {
+						policy.txn.onWriteInDoubt(key);
+					}
+					
 					AsyncBatch.onRecord(listener, record, index);
 				}
 			}
@@ -801,7 +810,11 @@ public final class AsyncBatch {
 				BatchRecord record = records[index];
 
 				if (record.resultCode == ResultCode.NO_RESPONSE) {
-					record.inDoubt = inDoubt;
+					record.inDoubt = true;
+					
+					if (policy.txn != null) {
+						policy.txn.onWriteInDoubt(record.key);
+					}
 				}
 			}
 		}
@@ -901,6 +914,10 @@ public final class AsyncBatch {
 					Key key = keys[index];
 					BatchRecord record = new BatchRecord(key, null, ResultCode.NO_RESPONSE, attr.hasWrite && inDoubt, attr.hasWrite);
 					sent[index] = true;
+					
+					if (record.inDoubt && policy.txn != null) {
+						policy.txn.onWriteInDoubt(record.key);
+					}
 					AsyncBatch.onRecord(listener, record, index);
 				}
 			}
@@ -921,23 +938,23 @@ public final class AsyncBatch {
 	// MRT
 	//-------------------------------------------------------
 
-	public static final class TranVerify extends AsyncBatchCommand {
-		private final Tran tran;
+	public static final class TxnVerify extends AsyncBatchCommand {
+		private final Txn txn;
 		private final Key[] keys;
 		private final Long[] versions;
 		private final BatchRecord[] records;
 
-		public TranVerify(
+		public TxnVerify(
 			AsyncBatchExecutor parent,
 			BatchNode batch,
 			BatchPolicy batchPolicy,
-			Tran tran,
+			Txn txn,
 			Key[] keys,
 			Long[] versions,
 			BatchRecord[] records
 		) {
 			super(parent, batch, batchPolicy, false);
-			this.tran = tran;
+			this.txn = txn;
 			this.keys = keys;
 			this.versions = versions;
 			this.records = records;
@@ -945,7 +962,7 @@ public final class AsyncBatch {
 
 		@Override
 		protected void writeBuffer() {
-			setBatchTranVerify(batchPolicy, tran, keys, versions, batch);
+			setBatchTxnVerify(batchPolicy, txn, keys, versions, batch);
 		}
 
 		@Override
@@ -965,7 +982,7 @@ public final class AsyncBatch {
 
 		@Override
 		protected AsyncBatchCommand createCommand(BatchNode batchNode) {
-			return new TranVerify(parent, batchNode, batchPolicy, tran, keys, versions, records);
+			return new TxnVerify(parent, batchNode, batchPolicy, txn, keys, versions, records);
 		}
 
 		@Override
@@ -974,12 +991,12 @@ public final class AsyncBatch {
 		}
 	}
 
-	public static final class TranRoll extends AsyncBatchCommand {
+	public static final class TxnRoll extends AsyncBatchCommand {
 		private final Key[] keys;
 		private final BatchRecord[] records;
 		private final BatchAttr attr;
 
-		public TranRoll(
+		public TxnRoll(
 			AsyncBatchExecutor parent,
 			BatchNode batch,
 			BatchPolicy batchPolicy,
@@ -995,7 +1012,7 @@ public final class AsyncBatch {
 
 		@Override
 		protected void writeBuffer() {
-			setBatchTranRoll(batchPolicy, keys, batch, attr);
+			setBatchTxnRoll(batchPolicy, keys, batch, attr);
 		}
 
 		@Override
@@ -1015,7 +1032,7 @@ public final class AsyncBatch {
 
 		@Override
 		protected AsyncBatchCommand createCommand(BatchNode batchNode) {
-			return new TranRoll(parent, batchNode, batchPolicy, keys, records, attr);
+			return new TxnRoll(parent, batchNode, batchPolicy, keys, records, attr);
 		}
 
 		@Override
@@ -1053,9 +1070,9 @@ public final class AsyncBatch {
 		}
 
 		final void parseFieldsRead(Key key) {
-			if (policy.tran != null) {
+			if (policy.txn != null) {
 				Long version = parseVersion(fieldCount);
-				policy.tran.onRead(key, version);
+				policy.txn.onRead(key, version);
 			}
 			else {
 				skipKey(fieldCount);
@@ -1063,14 +1080,14 @@ public final class AsyncBatch {
 		}
 
 		final void parseFields(Key key, boolean hasWrite) {
-			if (policy.tran != null) {
+			if (policy.txn != null) {
 				Long version = parseVersion(fieldCount);
 
 				if (hasWrite) {
-					policy.tran.onWrite(key, version, resultCode);
+					policy.txn.onWrite(key, version, resultCode);
 				}
 				else {
-					policy.tran.onRead(key, version);
+					policy.txn.onRead(key, version);
 				}
 			}
 			else {

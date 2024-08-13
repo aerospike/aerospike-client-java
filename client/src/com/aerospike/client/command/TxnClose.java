@@ -19,23 +19,23 @@ package com.aerospike.client.command;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
 import com.aerospike.client.ResultCode;
-import com.aerospike.client.Tran;
+import com.aerospike.client.Txn;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.Connection;
 import com.aerospike.client.policy.WritePolicy;
 import java.io.IOException;
 
-public final class TranClose extends SyncWriteCommand {
-	private final Tran tran;
+public final class TxnClose extends SyncWriteCommand {
+	private final Txn txn;
 
-	public TranClose(Cluster cluster, Tran tran, WritePolicy writePolicy, Key key) {
+	public TxnClose(Cluster cluster, Txn txn, WritePolicy writePolicy, Key key) {
 		super(cluster, writePolicy, key);
-		this.tran = tran;
+		this.txn = txn;
 	}
 
 	@Override
 	protected void writeBuffer() {
-		setTranClose(tran, key);
+		setTxnClose(txn, key);
 	}
 
 	@Override

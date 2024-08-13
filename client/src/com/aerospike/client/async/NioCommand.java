@@ -524,7 +524,7 @@ public final class NioCommand implements INioCommand, Runnable, TimerTask {
 		if (resultCode != 0 && resultCode != ResultCode.SECURITY_NOT_ENABLED) {
 			// Authentication failed. Session token probably expired.
 			// Signal tend thread to perform node login, so future
-			// transactions do not fail.
+			// commands do not fail.
 			node.signalLogin();
 
 			// This is a rare event because the client tracks session
@@ -935,11 +935,7 @@ public final class NioCommand implements INioCommand, Runnable, TimerTask {
 	}
 
 	private final void retry(AerospikeException ae, long deadline) {
-		ae.setNode(node);
-		ae.setPolicy(command.policy);
-		ae.setIteration(iteration);
-		ae.setInDoubt(command.isWrite(), command.commandSentCounter);
-		command.addSubException(ae);
+		command.onRetryException(node, iteration, ae);
 
 		if (! command.prepareRetry(ae.getResultCode() != ResultCode.SERVER_NOT_AVAILABLE)) {
 			// Batch may be retried in separate commands.
@@ -976,15 +972,10 @@ public final class NioCommand implements INioCommand, Runnable, TimerTask {
 
 	private final void notifyFailure(AerospikeException ae) {
 		try {
-			ae.setNode(node);
-			ae.setPolicy(command.policy);
-			ae.setIteration(iteration);
-			ae.setInDoubt(command.isWrite(), command.commandSentCounter);
-			ae.setSubExceptions(command.subExceptions);
-			command.onFailure(ae);
+			command.onFinalException(node, iteration, ae);
 		}
 		catch (Throwable e) {
-			Log.error("onFailure() error: " + Util.getErrorMessage(e));
+			Log.error("onFinalException() error: " + Util.getErrorMessage(e));
 		}
 	}
 

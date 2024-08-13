@@ -48,22 +48,22 @@ public final class Role {
 	public static final String SIndexAdmin = "sindex-admin";
 
 	/**
-	 * Allow read transactions.
+	 * Allow read commands.
 	 */
 	public static final String Read = "read";
 
 	/**
-	 * Allow read and write transactions.
+	 * Allow read and write commands.
 	 */
 	public static final String ReadWrite = "read-write";
 
 	/**
-	 * Allow read and write transactions within user defined functions.
+	 * Allow read and write commands within user defined functions.
 	 */
 	public static final String ReadWriteUdf = "read-write-udf";
 
 	/**
-	 * Allow write transactions.
+	 * Allow write commands.
 	 */
 	public static final String Write = "write";
 

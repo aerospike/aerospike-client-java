@@ -25,7 +25,7 @@ import java.util.concurrent.ConcurrentHashMap;
 /**
  * Multi-record transaction (MRT). Each command in the MRT must use the same namespace.
  */
-public final class Tran {
+public final class Txn {
 	private final long id;
 	private final ConcurrentHashMap<Key,Long> reads;
 	private final Set<Key> writes;
@@ -36,7 +36,7 @@ public final class Tran {
 	/**
 	 * Create MRT, assign random transaction id and initialize reads/writes hashmaps with default capacities.
 	 */
-	public Tran() {
+	public Txn() {
 		id = createId();
 		reads = new ConcurrentHashMap<>();
 		writes = ConcurrentHashMap.newKeySet();
@@ -48,7 +48,7 @@ public final class Tran {
 	 * @param readsCapacity     expected number of record reads in the MRT. Minimum value is 16.
 	 * @param writesCapacity    expected number of record writes in the MRT. Minimum value is 16.
 	 */
-	public Tran(int readsCapacity, int writesCapacity) {
+	public Txn(int readsCapacity, int writesCapacity) {
 		if (readsCapacity < 16) {
 			readsCapacity = 16;
 		}
@@ -120,6 +120,14 @@ public final class Tran {
 	}
 
 	/**
+	 * Add key to write hash when write command is in doubt (usually caused by timeout).
+	 */
+	public void onWriteInDoubt(Key key) {
+		reads.remove(key);
+		writes.add(key);
+	}
+
+	/**
 	 * Get all write keys and their versions.
 	 */
 	public Set<Key> getWrites() {
@@ -184,12 +192,12 @@ public final class Tran {
 	/**
 	 * Verify that commit/abort is only attempted once. For internal use only.
 	 */
-	public void setRollAttempted() {
+	public boolean setRollAttempted() {
 		if (rollAttempted) {
-			throw new AerospikeException(ResultCode.PARAMETER_ERROR,
-				"commit() or abort() may only be called once for a given MRT");
+			return false;
 		}
 		rollAttempted = true;
+		return true;
 	}
 
 	/**

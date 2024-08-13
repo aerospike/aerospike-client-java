@@ -16,19 +16,14 @@
  */
 package com.aerospike.client.listener;
 
-import com.aerospike.client.AerospikeException;
+import com.aerospike.client.AbortStatus;
 
 /**
  * Asynchronous result notifications for multi-record transaction (MRT) aborts.
  */
 public interface AbortListener {
 	/**
-	 * This method is called when the abort succeeds.
+	 * This method is called when the abort succeeded or will succeed.
 	 */
-	void onSuccess();
-
-	/**
-	 * This method is called when the abort fails.
-	 */
-	void onFailure(AerospikeException.Abort ae);
+	void onSuccess(AbortStatus status);
 }

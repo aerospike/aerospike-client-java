@@ -19,49 +19,52 @@ package com.aerospike.client.async;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
 import com.aerospike.client.ResultCode;
+import com.aerospike.client.Txn;
 import com.aerospike.client.cluster.Cluster;
-import com.aerospike.client.command.OperateArgs;
-import com.aerospike.client.command.RecordParser;
-import com.aerospike.client.listener.RecordListener;
+import com.aerospike.client.listener.WriteListener;
+import com.aerospike.client.policy.WritePolicy;
 
-public final class AsyncTranAddKeys extends AsyncWriteBase {
-	private final RecordListener listener;
-	private final OperateArgs args;
+public final class AsyncTxnMarkRollForward extends AsyncWriteBase {
+	private final Txn txn;
+	private final WriteListener listener;
 
-	public AsyncTranAddKeys(Cluster cluster, RecordListener listener, Key key, OperateArgs args) {
-		super(cluster, args.writePolicy, key);
+	public AsyncTxnMarkRollForward(
+		Cluster cluster,
+		Txn txn,
+		WriteListener listener,
+		WritePolicy writePolicy,
+		Key key
+	) {
+		super(cluster, writePolicy, key);
+		this.txn = txn;
 		this.listener = listener;
-		this.args = args;
 	}
 
 	@Override
 	protected void writeBuffer() {
-		setTranAddKeys(args.writePolicy, key, args);
+		setTxnMarkRollForward(txn, key);
 	}
 
 	@Override
 	protected boolean parseResult() {
-		RecordParser rp = new RecordParser(dataBuffer, dataOffset, receiveSize);
-		rp.parseTranDeadline(policy.tran);
+		int resultCode = parseHeader();
 
-		if (rp.resultCode == ResultCode.OK) {
+		// BIN_EXISTS_ERROR is considered a success because it means a previous attempt already
+		// succeeded in notifying the server that the MRT will be rolled forward.
+		if (resultCode == ResultCode.OK || resultCode == ResultCode.BIN_EXISTS_ERROR) {
 			return true;
 		}
 
-		throw new AerospikeException(rp.resultCode);
+		throw new AerospikeException(resultCode);
 	}
 
 	@Override
 	protected void onSuccess() {
-		if (listener != null) {
-			listener.onSuccess(key, null);
-		}
+		listener.onSuccess(key);
 	}
 
 	@Override
 	protected void onFailure(AerospikeException e) {
-		if (listener != null) {
-			listener.onFailure(e);
-		}
+		listener.onFailure(e);
 	}
 }

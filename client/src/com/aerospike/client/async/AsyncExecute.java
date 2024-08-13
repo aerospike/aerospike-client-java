@@ -59,7 +59,7 @@ public final class AsyncExecute extends AsyncWriteBase {
 	@Override
 	protected boolean parseResult() {
 		RecordParser rp = new RecordParser(dataBuffer, dataOffset, receiveSize);
-		rp.parseFields(policy.tran, key, true);
+		rp.parseFields(policy.txn, key, true);
 
 		if (rp.resultCode == ResultCode.OK) {
 			record = rp.parseRecord(false);
@@ -70,10 +70,6 @@ public final class AsyncExecute extends AsyncWriteBase {
 			record = rp.parseRecord(false);
 			handleUdfError(rp.resultCode);
 			return true;
-		}
-
-		if (rp.opCount > 0) {
-			throw new AerospikeException("Unexpected UDF opCount on error: " + rp.opCount + ',' + rp.resultCode);
 		}
 
 		if (rp.resultCode == ResultCode.FILTERED_OUT) {

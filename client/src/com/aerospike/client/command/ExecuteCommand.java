@@ -54,7 +54,7 @@ public final class ExecuteCommand extends SyncWriteCommand {
 	@Override
 	protected void parseResult(Connection conn) throws IOException {
 		RecordParser rp = new RecordParser(conn, dataBuffer);
-		rp.parseFields(policy.tran, key, true);
+		rp.parseFields(policy.txn, key, true);
 
 		if (rp.resultCode == ResultCode.OK) {
 			record = rp.parseRecord(false);
@@ -65,10 +65,6 @@ public final class ExecuteCommand extends SyncWriteCommand {
 			record = rp.parseRecord(false);
 			handleUdfError(rp.resultCode);
 			return;
-		}
-
-		if (rp.opCount > 0) {
-			throw new AerospikeException("Unexpected UDF opCount on error: " + rp.opCount + ',' + rp.resultCode);
 		}
 
 		if (rp.resultCode == ResultCode.FILTERED_OUT) {

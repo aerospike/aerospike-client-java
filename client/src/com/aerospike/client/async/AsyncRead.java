@@ -53,15 +53,11 @@ public class AsyncRead extends AsyncReadBase {
 	@Override
 	protected final boolean parseResult() {
 		RecordParser rp = new RecordParser(dataBuffer, dataOffset, receiveSize);
-		rp.parseFields(policy.tran, key, false);
+		rp.parseFields(policy.txn, key, false);
 
 		if (rp.resultCode == ResultCode.OK) {
 			this.record = rp.parseRecord(isOperation);
 			return true;
-		}
-
-		if (rp.opCount > 0) {
-			throw new AerospikeException("Unexpected read opCount on error: " + rp.opCount + ',' + rp.resultCode);
 		}
 
 		if (rp.resultCode == ResultCode.KEY_NOT_FOUND_ERROR) {

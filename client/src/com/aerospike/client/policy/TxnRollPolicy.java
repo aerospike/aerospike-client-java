@@ -17,22 +17,21 @@
 package com.aerospike.client.policy;
 
 /**
- * Multi-record transaction (MRT) policy fields used to batch verify record versions on commit.
- * Used a placeholder for now as there are no additional fields beyond BatchPolicy.
+ * Multi-record transaction (MRT) policy fields used to batch roll forward/backward records on
+ * commit or abort. Used a placeholder for now as there are no additional fields beyond BatchPolicy.
  */
-public class TranVerifyPolicy extends BatchPolicy {
+public class TxnRollPolicy extends BatchPolicy {
 	/**
 	 * Copy policy from another policy.
 	 */
-	public TranVerifyPolicy(TranVerifyPolicy other) {
+	public TxnRollPolicy(TxnRollPolicy other) {
 		super(other);
 	}
 
 	/**
 	 * Default constructor.
 	 */
-	public TranVerifyPolicy() {
-		readModeSC = ReadModeSC.LINEARIZE;
+	public TxnRollPolicy() {
 		replica = Replica.MASTER;
 		maxRetries = 5;
 		totalTimeout = 10000;

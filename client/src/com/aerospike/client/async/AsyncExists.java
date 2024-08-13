@@ -41,11 +41,7 @@ public final class AsyncExists extends AsyncReadBase {
 	@Override
 	protected boolean parseResult() {
 		RecordParser rp = new RecordParser(dataBuffer, dataOffset, receiveSize);
-		rp.parseFields(policy.tran, key, false);
-
-		if (rp.opCount > 0) {
-			throw new AerospikeException("Unexpected exists opCount: " + rp.opCount + ',' + rp.resultCode);
-		}
+		rp.parseFields(policy.txn, key, false);
 
 		if (rp.resultCode == ResultCode.OK) {
 			exists = true;

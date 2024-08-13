@@ -20,7 +20,7 @@ import com.aerospike.client.BatchRecord;
 import com.aerospike.client.Bin;
 import com.aerospike.client.Key;
 import com.aerospike.client.Operation;
-import com.aerospike.client.Tran;
+import com.aerospike.client.Txn;
 import com.aerospike.client.Value;
 import com.aerospike.client.cdt.ListOperation;
 import com.aerospike.client.cdt.ListOrder;
@@ -33,7 +33,7 @@ import com.aerospike.client.policy.WritePolicy;
 import java.util.ArrayList;
 import java.util.List;
 
-public final class TranMonitor {
+public final class TxnMonitor {
 	private static final ListPolicy OrderedListPolicy = new ListPolicy(ListOrder.ORDERED,
 		ListWriteFlags.ADD_UNIQUE | ListWriteFlags.NO_FAIL | ListWriteFlags.PARTIAL);
 
@@ -41,37 +41,37 @@ public final class TranMonitor {
 	private static final String BinNameDigests = "keyds";
 
 	public static void addKey(Cluster cluster, WritePolicy policy, Key cmdKey) {
-		Tran tran = policy.tran;
+		Txn txn = policy.txn;
 
-		if (tran.getWrites().contains(cmdKey)) {
+		if (txn.getWrites().contains(cmdKey)) {
 			// Transaction monitor already contains this key.
 			return;
 		}
 
-		Operation[] ops = getTranOps(tran, cmdKey);
+		Operation[] ops = getTranOps(txn, cmdKey);
 		addWriteKeys(cluster, policy, ops);
 	}
 
 	public static void addKeys(Cluster cluster, BatchPolicy policy, Key[] keys) {
-		Operation[] ops = getTranOps(policy.tran, keys);
+		Operation[] ops = getTranOps(policy.txn, keys);
 		addWriteKeys(cluster, policy, ops);
 	}
 
 	public static void addKeys(Cluster cluster, BatchPolicy policy, List<BatchRecord> records) {
-		Operation[] ops = getTranOps(policy.tran, records);
+		Operation[] ops = getTranOps(policy.txn, records);
 
 		if (ops != null) {
 			addWriteKeys(cluster, policy, ops);
 		}
 	}
 
-	public static Operation[] getTranOps(Tran tran, Key cmdKey) {
-		tran.setNamespace(cmdKey.namespace);
+	public static Operation[] getTranOps(Txn txn, Key cmdKey) {
+		txn.setNamespace(cmdKey.namespace);
 
-		if (tran.getDeadline() == 0) {
+		if (txn.getDeadline() == 0) {
 			// No existing monitor record.
 			return new Operation[] {
-				Operation.put(new Bin(BinNameId, tran.getId())),
+				Operation.put(new Bin(BinNameId, txn.getId())),
 				ListOperation.append(OrderedListPolicy, BinNameDigests, Value.get(cmdKey.digest))
 			};
 		}
@@ -82,21 +82,21 @@ public final class TranMonitor {
 		}
 	}
 
-	public static Operation[] getTranOps(Tran tran, Key[] keys) {
+	public static Operation[] getTranOps(Txn txn, Key[] keys) {
 		ArrayList<Value> list = new ArrayList<>(keys.length);
 
 		for (Key key : keys) {
-			tran.setNamespace(key.namespace);
+			txn.setNamespace(key.namespace);
 			list.add(Value.get(key.digest));
 		}
-		return getTranOps(tran, list);
+		return getTranOps(txn, list);
 	}
 
-	public static Operation[] getTranOps(Tran tran, List<BatchRecord> records) {
+	public static Operation[] getTranOps(Txn txn, List<BatchRecord> records) {
 		ArrayList<Value> list = new ArrayList<>(records.size());
 
 		for (BatchRecord br : records) {
-			tran.setNamespace(br.key.namespace);
+			txn.setNamespace(br.key.namespace);
 
 			if (br.hasWrite) {
 				list.add(Value.get(br.key.digest));
@@ -107,14 +107,14 @@ public final class TranMonitor {
 			// Readonly batch does not need to add key digests.
 			return null;
 		}
-		return getTranOps(tran, list);
+		return getTranOps(txn, list);
 	}
 
-	private static Operation[] getTranOps(Tran tran, ArrayList<Value> list) {
-		if (tran.getDeadline() == 0) {
+	private static Operation[] getTranOps(Txn txn, ArrayList<Value> list) {
+		if (txn.getDeadline() == 0) {
 			// No existing monitor record.
 			return new Operation[] {
-				Operation.put(new Bin(BinNameId, tran.getId())),
+				Operation.put(new Bin(BinNameId, txn.getId())),
 				ListOperation.appendItems(OrderedListPolicy, BinNameDigests, list)
 			};
 		}
@@ -126,21 +126,21 @@ public final class TranMonitor {
 	}
 
 	private static void addWriteKeys(Cluster cluster, Policy policy, Operation[] ops) {
-		Key tranKey = getTranMonitorKey(policy.tran);
+		Key txnKey = getTxnMonitorKey(policy.txn);
 		WritePolicy wp = copyTimeoutPolicy(policy);
 		OperateArgs args = new OperateArgs(wp, null, null, ops);
-		TranAddKeys cmd = new TranAddKeys(cluster, tranKey, args);
+		TxnAddKeys cmd = new TxnAddKeys(cluster, txnKey, args);
 		cmd.execute();
 	}
 
-	public static Key getTranMonitorKey(Tran tran) {
-		return new Key(tran.getNamespace(), "<ERO~MRT", tran.getId());
+	public static Key getTxnMonitorKey(Txn txn) {
+		return new Key(txn.getNamespace(), "<ERO~MRT", txn.getId());
 	}
 
 	public static WritePolicy copyTimeoutPolicy(Policy policy) {
 		// Inherit some fields from the original command's policy.
 		WritePolicy wp = new WritePolicy();
-		wp.tran = policy.tran;
+		wp.txn = policy.txn;
 		wp.connectTimeout = policy.connectTimeout;
 		wp.socketTimeout = policy.socketTimeout;
 		wp.totalTimeout = policy.totalTimeout;

@@ -342,10 +342,6 @@ public class BatchProxy {
 
 		@Override
 		void parse(Parser parser, int resultCode) {
-			if (parser.opCount > 0) {
-				throw new AerospikeException.Parse("Received bins that were not requested!");
-			}
-
 			if (resultCode == 0) {
 				existsArray[parser.batchIndex] = true;
 			}
@@ -394,9 +390,6 @@ public class BatchProxy {
 
 		@Override
 		void parse(Parser parser, int resultCode) {
-			if (parser.opCount > 0) {
-				throw new AerospikeException.Parse("Received bins that were not requested!");
-			}
 			listener.onExists(keys[parser.batchIndex], resultCode == 0);
 		}
 

@@ -229,7 +229,7 @@ public final class ResultCode {
 	public static final int OP_NOT_APPLICABLE = 26;
 
 	/**
-	 * The transaction was not performed because the filter was false.
+	 * The command was not performed because the filter was false.
 	 */
 	public static final int FILTERED_OUT = 27;
 
@@ -599,10 +599,10 @@ public final class ResultCode {
 			return "Operation not applicable";
 
 		case FILTERED_OUT:
-			return "Transaction filtered out";
+			return "Command filtered out";
 
 		case LOST_CONFLICT:
-			return "Transaction failed due to conflict with XDR";
+			return "Command failed due to conflict with XDR";
 
 		case MRT_BLOCKED:
 			return "MRT record blocked by a different transaction";

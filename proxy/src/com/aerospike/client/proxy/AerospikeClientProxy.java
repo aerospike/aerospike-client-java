@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.Properties;
 import java.util.concurrent.*;
 
+import com.aerospike.client.AbortStatus;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.BatchDelete;
 import com.aerospike.client.BatchRead;
@@ -31,6 +32,7 @@ import com.aerospike.client.BatchResults;
 import com.aerospike.client.BatchUDF;
 import com.aerospike.client.BatchWrite;
 import com.aerospike.client.Bin;
+import com.aerospike.client.CommitStatus;
 import com.aerospike.client.Host;
 import com.aerospike.client.IAerospikeClient;
 import com.aerospike.client.Key;
@@ -44,6 +46,7 @@ import com.aerospike.client.Value;
 import com.aerospike.client.admin.Privilege;
 import com.aerospike.client.admin.Role;
 import com.aerospike.client.admin.User;
+import com.aerospike.client.async.AsyncTxnRoll;
 import com.aerospike.client.async.EventLoop;
 import com.aerospike.client.async.NettyEventLoop;
 import com.aerospike.client.async.NettyEventLoops;
@@ -54,6 +57,7 @@ import com.aerospike.client.cluster.Node;
 import com.aerospike.client.command.BatchAttr;
 import com.aerospike.client.command.Command;
 import com.aerospike.client.command.OperateArgs;
+import com.aerospike.client.command.TxnRoll;
 import com.aerospike.client.exp.Expression;
 import com.aerospike.client.listener.BatchListListener;
 import com.aerospike.client.listener.BatchOperateListListener;
@@ -85,8 +89,8 @@ import com.aerospike.client.policy.InfoPolicy;
 import com.aerospike.client.policy.Policy;
 import com.aerospike.client.policy.QueryPolicy;
 import com.aerospike.client.policy.ScanPolicy;
-import com.aerospike.client.policy.TranRollPolicy;
-import com.aerospike.client.policy.TranVerifyPolicy;
+import com.aerospike.client.policy.TxnRollPolicy;
+import com.aerospike.client.policy.TxnVerifyPolicy;
 import com.aerospike.client.policy.WritePolicy;
 import com.aerospike.client.proxy.BatchProxy.BatchListListenerSync;
 import com.aerospike.client.proxy.auth.AuthTokenManager;
@@ -104,7 +108,7 @@ import com.aerospike.client.query.Statement;
 import com.aerospike.client.task.ExecuteTask;
 import com.aerospike.client.task.IndexTask;
 import com.aerospike.client.task.RegisterTask;
-import com.aerospike.client.Tran;
+import com.aerospike.client.Txn;
 import com.aerospike.client.util.Packer;
 import com.aerospike.client.util.Util;
 
@@ -209,15 +213,15 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 	public final InfoPolicy infoPolicyDefault;
 
 	/**
-	 * Default multi-record transactions (MRT) policy when verifying record versions in a batch on a commit.
+	 * Default multi-record transaction (MRT) policy when verifying record versions in a batch on a commit.
 	 */
-	public final TranVerifyPolicy tranVerifyPolicyDefault;
+	public final TxnVerifyPolicy txnVerifyPolicyDefault;
 
 	/**
-	 * Default multi-record transactions (MRT) policy when rolling the transaction records forward (commit)
+	 * Default multi-record transaction (MRT) policy when rolling the transaction records forward (commit)
 	 * or back (abort) in a batch.
 	 */
-	public final TranRollPolicy tranRollPolicyDefault;
+	public final TxnRollPolicy txnRollPolicyDefault;
 
 	private final WritePolicy operatePolicyReadDefault;
 	private final AuthTokenManager authTokenManager;
@@ -258,8 +262,8 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 		this.batchDeletePolicyDefault = policy.batchDeletePolicyDefault;
 		this.batchUDFPolicyDefault = policy.batchUDFPolicyDefault;
 		this.infoPolicyDefault = policy.infoPolicyDefault;
-		this.tranVerifyPolicyDefault = policy.tranVerifyPolicyDefault;
-		this.tranRollPolicyDefault = policy.tranRollPolicyDefault;
+		this.txnVerifyPolicyDefault = policy.txnVerifyPolicyDefault;
+		this.txnRollPolicyDefault = policy.txnRollPolicyDefault;
 		this.operatePolicyReadDefault = new WritePolicy(this.readPolicyDefault);
 
 		GrpcChannelProvider channelProvider = new GrpcChannelProvider();
@@ -452,31 +456,17 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 	}
 
 	/**
-	 * Copy MRT record version verify policy default to avoid problems if this shared instance is later modified.
-	 */
-	public final TranVerifyPolicy getTranVerifyPolicyDefault() {
-		return new TranVerifyPolicy(tranVerifyPolicyDefault);
-	}
-
-	/**
 	 * Copy MRT record version verify policy default.
 	 */
-	public final TranVerifyPolicy copyTranVerifyPolicyDefault() {
-		return new TranVerifyPolicy(tranVerifyPolicyDefault);
-	}
-
-	/**
-	 * Copy MRT roll forward/back policy default to avoid problems if this shared instance is later modified.
-	 */
-	public final TranRollPolicy getTranRollPolicyDefault() {
-		return new TranRollPolicy(tranRollPolicyDefault);
+	public final TxnVerifyPolicy copyTxnVerifyPolicyDefault() {
+		return new TxnVerifyPolicy(txnVerifyPolicyDefault);
 	}
 
 	/**
 	 * Copy MRT roll forward/back policy default.
 	 */
-	public final TranRollPolicy copyTranRollPolicyDefault() {
-		return new TranRollPolicy(tranRollPolicyDefault);
+	public final TxnRollPolicy copyTxnRollPolicyDefault() {
+		return new TxnRollPolicy(txnRollPolicyDefault);
 	}
 
 	//-------------------------------------------------------
@@ -586,11 +576,13 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 	 * <p>
 	 * Requires server version 8.0+
 	 *
-	 * @param tran			multi-record transaction
-	 * @throws AerospikeException.Commit    if commit fails
+	 * @param txn	multi-record transaction
+	 * @return		status of the commit on success
+	 * @throws AerospikeException.Commit	if verify commit fails
 	 */
-	public final void commit(Tran tran)
+	public final CommitStatus commit(Txn txn)
 		throws AerospikeException.Commit {
+		return CommitStatus.OK;
 	}
 
 	/**
@@ -606,10 +598,10 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 	 * @param eventLoop		event loop that will process the command. If NULL, the event
 	 * 						loop will be chosen by round-robin.
 	 * @param listener		where to send results
-	 * @param tran			multi-record transaction
+	 * @param txn			multi-record transaction
 	 * @throws AerospikeException	if event loop registration fails
 	 */
-	public final void commit(EventLoop eventLoop, CommitListener listener, Tran tran)
+	public final void commit(EventLoop eventLoop, CommitListener listener, Txn txn)
 		throws AerospikeException {
 	}
 
@@ -618,11 +610,11 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 	 * <p>
 	 * Requires server version 8.0+
 	 *
-	 * @param tran			multi-record transaction
-	 * @throws AerospikeException.Abort    if abort fails
+	 * @param txn	multi-record transaction
+	 * @return		status of the abort
 	 */
-	public final void abort(Tran tran)
-		throws AerospikeException.Abort {
+	public final AbortStatus abort(Txn txn) {
+		return AbortStatus.OK;
 	}
 
 	/**
@@ -636,10 +628,10 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 	 * @param eventLoop		event loop that will process the command. If NULL, the event
 	 * 						loop will be chosen by round-robin.
 	 * @param listener		where to send results
-	 * @param tran			multi-record transaction
+	 * @param txn			multi-record transaction
 	 * @throws AerospikeException	if event loop registration fails
 	 */
-	public final void abort(EventLoop eventLoop, AbortListener listener, Tran tran)
+	public final void abort(EventLoop eventLoop, AbortListener listener, Txn txn)
 		throws AerospikeException {
 	}
 
@@ -2058,7 +2050,7 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 	 * @param functionName			user defined function
 	 * @param functionArgs			arguments passed in to user defined function
 	 * @return						return value of user defined function
-	 * @throws AerospikeException	if transaction fails
+	 * @throws AerospikeException	if command fails
 	 */
 	@Override
 	public Object execute(WritePolicy policy, Key key, String packageName, String functionName, Value... functionArgs) {

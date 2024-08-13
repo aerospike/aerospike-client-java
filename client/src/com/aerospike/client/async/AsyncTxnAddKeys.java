@@ -18,19 +18,17 @@ package com.aerospike.client.async;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
-import com.aerospike.client.Record;
 import com.aerospike.client.ResultCode;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.command.OperateArgs;
 import com.aerospike.client.command.RecordParser;
 import com.aerospike.client.listener.RecordListener;
 
-public final class AsyncOperateWrite extends AsyncWriteBase {
+public final class AsyncTxnAddKeys extends AsyncWriteBase {
 	private final RecordListener listener;
 	private final OperateArgs args;
-	private Record record;
 
-	public AsyncOperateWrite(Cluster cluster, RecordListener listener, Key key, OperateArgs args) {
+	public AsyncTxnAddKeys(Cluster cluster, RecordListener listener, Key key, OperateArgs args) {
 		super(cluster, args.writePolicy, key);
 		this.listener = listener;
 		this.args = args;
@@ -38,23 +36,15 @@ public final class AsyncOperateWrite extends AsyncWriteBase {
 
 	@Override
 	protected void writeBuffer() {
-		setOperate(args.writePolicy, key, args);
+		setTxnAddKeys(args.writePolicy, key, args);
 	}
 
 	@Override
 	protected boolean parseResult() {
 		RecordParser rp = new RecordParser(dataBuffer, dataOffset, receiveSize);
-		rp.parseFields(policy.txn, key, true);
+		rp.parseTranDeadline(policy.txn);
 
 		if (rp.resultCode == ResultCode.OK) {
-			record = rp.parseRecord(true);
-			return true;
-		}
-
-		if (rp.resultCode == ResultCode.FILTERED_OUT) {
-			if (policy.failOnFilteredOut) {
-				throw new AerospikeException(rp.resultCode);
-			}
 			return true;
 		}
 
@@ -64,7 +54,7 @@ public final class AsyncOperateWrite extends AsyncWriteBase {
 	@Override
 	protected void onSuccess() {
 		if (listener != null) {
-			listener.onSuccess(key, record);
+			listener.onSuccess(key, null);
 		}
 	}
 

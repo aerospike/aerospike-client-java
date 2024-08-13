@@ -23,23 +23,23 @@ import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.Connection;
 import java.io.IOException;
 
-public final class TranAddKeys extends SyncWriteCommand {
+public final class TxnAddKeys extends SyncWriteCommand {
 	private final OperateArgs args;
 
-	public TranAddKeys(Cluster cluster, Key key, OperateArgs args) {
+	public TxnAddKeys(Cluster cluster, Key key, OperateArgs args) {
 		super(cluster, args.writePolicy, key);
 		this.args = args;
 	}
 
 	@Override
 	protected void writeBuffer() {
-		setTranAddKeys(args.writePolicy, key, args);
+		setTxnAddKeys(args.writePolicy, key, args);
 	}
 
 	@Override
 	protected void parseResult(Connection conn) throws IOException {
 		RecordParser rp = new RecordParser(conn, dataBuffer);
-		rp.parseTranDeadline(policy.tran);
+		rp.parseTranDeadline(policy.txn);
 
 		if (rp.resultCode == ResultCode.OK) {
 			return;

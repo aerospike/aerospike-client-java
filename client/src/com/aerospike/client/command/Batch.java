@@ -28,7 +28,7 @@ import com.aerospike.client.Key;
 import com.aerospike.client.Operation;
 import com.aerospike.client.Record;
 import com.aerospike.client.ResultCode;
-import com.aerospike.client.Tran;
+import com.aerospike.client.Txn;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.metrics.LatencyType;
 import com.aerospike.client.policy.BatchPolicy;
@@ -189,11 +189,6 @@ public final class Batch {
 		@Override
 		protected boolean parseRow() {
 			parseFieldsRead(keys[batchIndex]);
-
-			if (opCount > 0) {
-				throw new AerospikeException.Parse("Received bins that were not requested!");
-			}
-
 			existsArray[batchIndex] = resultCode == 0;
 			return true;
 		}
@@ -278,6 +273,10 @@ public final class Batch {
 
 				if (record.resultCode == ResultCode.NO_RESPONSE) {
 					record.inDoubt = record.hasWrite;
+					
+					if (record.inDoubt && policy.txn != null) {
+						policy.txn.onWriteInDoubt(record.key);
+					}
 				}
 			}
 		}
@@ -357,6 +356,10 @@ public final class Batch {
 
 				if (record.resultCode == ResultCode.NO_RESPONSE) {
 					record.inDoubt = true;
+					
+					if (policy.txn != null) {
+						policy.txn.onWriteInDoubt(record.key);
+					}
 				}
 			}
 		}
@@ -456,6 +459,10 @@ public final class Batch {
 
 				if (record.resultCode == ResultCode.NO_RESPONSE) {
 					record.inDoubt = true;
+					
+					if (policy.txn != null) {
+						policy.txn.onWriteInDoubt(record.key);
+					}
 				}
 			}
 		}
@@ -475,24 +482,24 @@ public final class Batch {
 	// MRT
 	//-------------------------------------------------------
 
-	public static final class TranVerify extends BatchCommand {
-		private final Tran tran;
+	public static final class TxnVerify extends BatchCommand {
+		private final Txn txn;
 		private final Key[] keys;
 		private final Long[] versions;
 		private final BatchRecord[] records;
 
-		public TranVerify(
+		public TxnVerify(
 			Cluster cluster,
 			BatchNode batch,
 			BatchPolicy batchPolicy,
-			Tran tran,
+			Txn txn,
 			Key[] keys,
 			Long[] versions,
 			BatchRecord[] records,
 			BatchStatus status
 		) {
 			super(cluster, batch, batchPolicy, status, false);
-			this.tran = tran;
+			this.txn = txn;
 			this.keys = keys;
 			this.versions = versions;
 			this.records = records;
@@ -505,7 +512,7 @@ public final class Batch {
 
 		@Override
 		protected void writeBuffer() {
-			setBatchTranVerify(batchPolicy, tran, keys, versions, batch);
+			setBatchTxnVerify(batchPolicy, txn, keys, versions, batch);
 		}
 
 		@Override
@@ -526,7 +533,7 @@ public final class Batch {
 
 		@Override
 		protected BatchCommand createCommand(BatchNode batchNode) {
-			return new TranVerify(cluster, batchNode, batchPolicy, tran, keys, versions, records, status);
+			return new TxnVerify(cluster, batchNode, batchPolicy, txn, keys, versions, records, status);
 		}
 
 		@Override
@@ -535,12 +542,12 @@ public final class Batch {
 		}
 	}
 
-	public static final class TranRoll extends BatchCommand {
+	public static final class TxnRoll extends BatchCommand {
 		private final Key[] keys;
 		private final BatchRecord[] records;
 		private final BatchAttr attr;
 
-		public TranRoll(
+		public TxnRoll(
 			Cluster cluster,
 			BatchNode batch,
 			BatchPolicy batchPolicy,
@@ -562,7 +569,7 @@ public final class Batch {
 
 		@Override
 		protected void writeBuffer() {
-			setBatchTranRoll(batchPolicy, keys, batch, attr);
+			setBatchTxnRoll(batchPolicy, keys, batch, attr);
 		}
 
 		@Override
@@ -598,7 +605,7 @@ public final class Batch {
 
 		@Override
 		protected BatchCommand createCommand(BatchNode batchNode) {
-			return new TranRoll(cluster, batchNode, batchPolicy, keys, records, attr, status);
+			return new TxnRoll(cluster, batchNode, batchPolicy, keys, records, attr, status);
 		}
 
 		@Override
@@ -655,9 +662,9 @@ public final class Batch {
 		}
 
 		protected final void parseFieldsRead(Key key) {
-			if (policy.tran != null) {
+			if (policy.txn != null) {
 				Long version = parseVersion(fieldCount);
-				policy.tran.onRead(key, version);
+				policy.txn.onRead(key, version);
 			}
 			else {
 				skipKey(fieldCount);
@@ -665,14 +672,14 @@ public final class Batch {
 		}
 
 		protected final void parseFields(BatchRecord br) {
-			if (policy.tran != null) {
+			if (policy.txn != null) {
 				Long version = parseVersion(fieldCount);
 
 				if (br.hasWrite) {
-					policy.tran.onWrite(br.key, version, resultCode);
+					policy.txn.onWrite(br.key, version, resultCode);
 				}
 				else {
-					policy.tran.onRead(br.key, version);
+					policy.txn.onRead(br.key, version);
 				}
 			}
 			else {

@@ -58,8 +58,8 @@ import com.aerospike.client.policy.InfoPolicy;
 import com.aerospike.client.policy.Policy;
 import com.aerospike.client.policy.QueryPolicy;
 import com.aerospike.client.policy.ScanPolicy;
-import com.aerospike.client.policy.TranRollPolicy;
-import com.aerospike.client.policy.TranVerifyPolicy;
+import com.aerospike.client.policy.TxnRollPolicy;
+import com.aerospike.client.policy.TxnVerifyPolicy;
 import com.aerospike.client.policy.WritePolicy;
 import com.aerospike.client.query.IndexCollectionType;
 import com.aerospike.client.query.IndexType;
@@ -182,24 +182,14 @@ public interface IAerospikeClient extends Closeable {
 	public InfoPolicy copyInfoPolicyDefault();
 
 	/**
-	 * Copy MRT record version verify policy default to avoid problems if this shared instance is later modified.
-	 */
-	public TranVerifyPolicy getTranVerifyPolicyDefault();
-
-	/**
 	 * Copy MRT record version verify policy default.
 	 */
-	public TranVerifyPolicy copyTranVerifyPolicyDefault();
-
-	/**
-	 * Copy MRT roll forward/back policy default to avoid problems if this shared instance is later modified.
-	 */
-	public TranRollPolicy getTranRollPolicyDefault();
+	public TxnVerifyPolicy copyTxnVerifyPolicyDefault();
 
 	/**
 	 * Copy MRT roll forward/back policy default.
 	 */
-	public TranRollPolicy copyTranRollPolicyDefault();
+	public TxnRollPolicy copyTxnRollPolicyDefault();
 
 	//-------------------------------------------------------
 	// Cluster Connection Management
@@ -281,10 +271,11 @@ public interface IAerospikeClient extends Closeable {
 	 * <p>
 	 * Requires server version 8.0+
 	 *
-	 * @param tran			multi-record transaction
-	 * @throws AerospikeException.Commit    if commit fails
+	 * @param txn	multi-record transaction
+	 * @return		status of the commit on success
+	 * @throws AerospikeException.Commit	if verify commit fails
 	 */
-	void commit(Tran tran)
+	CommitStatus commit(Txn txn)
 		throws AerospikeException.Commit;
 
 	/**
@@ -300,10 +291,10 @@ public interface IAerospikeClient extends Closeable {
 	 * @param eventLoop		event loop that will process the command. If NULL, the event
 	 * 						loop will be chosen by round-robin.
 	 * @param listener		where to send results
-	 * @param tran			multi-record transaction
+	 * @param txn			multi-record transaction
 	 * @throws AerospikeException	if event loop registration fails
 	 */
-	void commit(EventLoop eventLoop, CommitListener listener, Tran tran)
+	void commit(EventLoop eventLoop, CommitListener listener, Txn txn)
 		throws AerospikeException;
 
 	/**
@@ -311,11 +302,10 @@ public interface IAerospikeClient extends Closeable {
 	 * <p>
 	 * Requires server version 8.0+
 	 *
-	 * @param tran			multi-record transaction
-	 * @throws AerospikeException.Abort    if abort fails
+	 * @param txn	multi-record transaction
+	 * @return		status of the abort
 	 */
-	void abort(Tran tran)
-		throws AerospikeException.Abort;
+	AbortStatus abort(Txn txn);
 
 	/**
 	 * Asynchronously abort and rollback the given multi-record transaction.
@@ -328,10 +318,10 @@ public interface IAerospikeClient extends Closeable {
 	 * @param eventLoop		event loop that will process the command. If NULL, the event
 	 * 						loop will be chosen by round-robin.
 	 * @param listener		where to send results
-	 * @param tran			multi-record transaction
+	 * @param txn			multi-record transaction
 	 * @throws AerospikeException	if event loop registration fails
 	 */
-	void abort(EventLoop eventLoop, AbortListener listener, Tran tran)
+	void abort(EventLoop eventLoop, AbortListener listener, Txn txn)
 		throws AerospikeException;
 
 	//-------------------------------------------------------
@@ -340,7 +330,7 @@ public interface IAerospikeClient extends Closeable {
 
 	/**
 	 * Write record bin(s).
-	 * The policy specifies the transaction timeout, record expiration and how the transaction is
+	 * The policy specifies the command timeout, record expiration and how the command is
 	 * handled when the record already exists.
 	 *
 	 * @param policy				write configuration parameters, pass in null for defaults
@@ -356,7 +346,7 @@ public interface IAerospikeClient extends Closeable {
 	 * This method registers the command with an event loop and returns.
 	 * The event loop thread will process the command and send the results to the listener.
 	 * <p>
-	 * The policy specifies the transaction timeout, record expiration and how the transaction is
+	 * The policy specifies the command timeout, record expiration and how the command is
 	 * handled when the record already exists.
 	 *
 	 * @param eventLoop				event loop that will process the command. If NULL, the event
@@ -376,7 +366,7 @@ public interface IAerospikeClient extends Closeable {
 
 	/**
 	 * Append bin string values to existing record bin values.
-	 * The policy specifies the transaction timeout, record expiration and how the transaction is
+	 * The policy specifies the command timeout, record expiration and how the command is
 	 * handled when the record already exists.
 	 * This call only works for string values.
 	 *
@@ -393,7 +383,7 @@ public interface IAerospikeClient extends Closeable {
 	 * This method registers the command with an event loop and returns.
 	 * The event loop thread will process the command and send the results to the listener.
 	 * <p>
-	 * The policy specifies the transaction timeout, record expiration and how the transaction is
+	 * The policy specifies the command timeout, record expiration and how the command is
 	 * handled when the record already exists.
 	 * This call only works for string values.
 	 *
@@ -410,7 +400,7 @@ public interface IAerospikeClient extends Closeable {
 
 	/**
 	 * Prepend bin string values to existing record bin values.
-	 * The policy specifies the transaction timeout, record expiration and how the transaction is
+	 * The policy specifies the command timeout, record expiration and how the command is
 	 * handled when the record already exists.
 	 * This call works only for string values.
 	 *
@@ -427,7 +417,7 @@ public interface IAerospikeClient extends Closeable {
 	 * This method registers the command with an event loop and returns.
 	 * The event loop thread will process the command and send the results to the listener.
 	 * <p>
-	 * The policy specifies the transaction timeout, record expiration and how the transaction is
+	 * The policy specifies the command timeout, record expiration and how the command is
 	 * handled when the record already exists.
 	 * This call only works for string values.
 	 *
@@ -448,7 +438,7 @@ public interface IAerospikeClient extends Closeable {
 
 	/**
 	 * Add integer bin values to existing record bin values.
-	 * The policy specifies the transaction timeout, record expiration and how the transaction is
+	 * The policy specifies the command timeout, record expiration and how the command is
 	 * handled when the record already exists.
 	 * This call only works for integer values.
 	 *
@@ -465,7 +455,7 @@ public interface IAerospikeClient extends Closeable {
 	 * This method registers the command with an event loop and returns.
 	 * The event loop thread will process the command and send the results to the listener.
 	 * <p>
-	 * The policy specifies the transaction timeout, record expiration and how the transaction is
+	 * The policy specifies the command timeout, record expiration and how the command is
 	 * handled when the record already exists.
 	 * This call only works for integer values.
 	 *
@@ -486,7 +476,7 @@ public interface IAerospikeClient extends Closeable {
 
 	/**
 	 * Delete record for specified key.
-	 * The policy specifies the transaction timeout.
+	 * The policy specifies the command timeout.
 	 *
 	 * @param policy				delete configuration parameters, pass in null for defaults
 	 * @param key					unique record identifier
@@ -501,7 +491,7 @@ public interface IAerospikeClient extends Closeable {
 	 * This method registers the command with an event loop and returns.
 	 * The event loop thread will process the command and send the results to the listener.
 	 * <p>
-	 * The policy specifies the transaction timeout.
+	 * The policy specifies the command timeout.
 	 *
 	 * @param eventLoop				event loop that will process the command. If NULL, the event
 	 * 								loop will be chosen by round-robin.
@@ -1467,7 +1457,7 @@ public interface IAerospikeClient extends Closeable {
 	 * @param functionName			user defined function
 	 * @param args					arguments passed in to user defined function
 	 * @return						return value of user defined function
-	 * @throws AerospikeException	if transaction fails
+	 * @throws AerospikeException	if command fails
 	 */
 	public Object execute(WritePolicy policy, Key key, String packageName, String functionName, Value... args)
 		throws AerospikeException;
