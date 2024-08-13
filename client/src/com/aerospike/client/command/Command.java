@@ -191,7 +191,7 @@ public class Command {
 		dataOffset = MSG_TOTAL_HEADER_SIZE;
 
 		writeKey(key);
-		writeFieldLE(tran.getId(), FieldType.MRT_ID);
+		writeFieldLE(txn.getId(), FieldType.MRT_ID);
 		writeFieldVersion(ver);
 		end();
 	}
@@ -296,7 +296,7 @@ public class Command {
 				}
 
 				writeBatchFields(key, fieldCount, 0);
-				writeFieldLE(tran.getId(), FieldType.MRT_ID);
+				writeFieldLE(txn.getId(), FieldType.MRT_ID);
 
 				if (ver != null) {
 					writeFieldVersion(ver);
