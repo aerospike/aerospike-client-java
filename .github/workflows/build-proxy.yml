@@ -37,7 +37,6 @@ jobs:
       # Enables pipefail
       shell: bash
 
-    # TODO: pass in fetched tag to compose.yml
     - run: docker compose up -d
       working-directory: .github/workflows/test-configs
       env:
@@ -67,6 +66,13 @@ jobs:
     - name: Run Maven workflow
       run: jf mvn deploy -Dtest=com.aerospike.test.SuiteAll -DfailIfNoTests=false -DskipTests=false --build-name=${{ steps.get-proxy-client-version.outputs.version }} --build-number=${{ github.run_number }}
 
+    - name: Setup GPG
+      uses: aerospike/shared-workflows/devops/setup-gpg@feat/setup-gpg-composite
+      with:
+        private-key: ${{ secrets.GPG_PRIVATE_KEY }}
+        key-pass: ${{ secrets.GPG_PASS }}
+        key-name: "aerospiketest"
+
     # For debugging the build info that was just collected by jf
     # Build info was not published to JFrog yet. This will be done in a later step
     - run: cat target/build-info.json
@@ -92,8 +98,6 @@ jobs:
       run: cat releasebundle-filespec.json | jq '.files[0].build = "${{ steps.get-proxy-client-version.outputs.version }}/${{ github.run_number }}"' | sponge releasebundle-filespec.json
       working-directory: .github/workflows
       shell: bash
-
-    # TODO: sign the JFrog artifacts
 
     - name: Create release bundle from JFrog build
       # Not the same name as in proxy/pom.xml
