@@ -16,6 +16,7 @@
  */
 package com.aerospike.client.async;
 
+import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.Node;
@@ -56,6 +57,16 @@ public abstract class AsyncWriteBase extends AsyncCommand {
 	boolean prepareRetry(boolean timeout) {
 		partition.prepareRetryWrite(timeout);
 		return true;
+	}
+
+	
+	@Override
+	void prepareException(Node node, int iteration, AerospikeException ae) {
+		super.prepareException(node, iteration, ae);
+		
+		if (ae.getInDoubt() && writePolicy.txn != null) {
+			writePolicy.txn.onWriteInDoubt(key);
+		}
 	}
 
 	protected int parseHeader() {

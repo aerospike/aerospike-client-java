@@ -447,6 +447,10 @@ public final class AsyncBatch {
 
 				if (record.resultCode == ResultCode.NO_RESPONSE) {
 					record.inDoubt = record.hasWrite;
+					
+					if (record.inDoubt && policy.txn != null) {
+						policy.txn.onWriteInDoubt(record.key);
+					}
 				}
 			}
 		}
@@ -538,6 +542,10 @@ public final class AsyncBatch {
 					// Set inDoubt, but do not call onRecord() because user already has access to full
 					// BatchRecord list and can examine each record for inDoubt when the exception occurs.
 					record.inDoubt = record.hasWrite;
+					
+					if (record.inDoubt && policy.txn != null) {
+						policy.txn.onWriteInDoubt(record.key);
+					}
 				}
 			}
 		}
@@ -614,7 +622,11 @@ public final class AsyncBatch {
 				BatchRecord record = records[index];
 
 				if (record.resultCode == ResultCode.NO_RESPONSE) {
-					record.inDoubt = inDoubt;
+					record.inDoubt = true;
+					
+					if (policy.txn != null) {
+						policy.txn.onWriteInDoubt(record.key);
+					}
 				}
 			}
 		}
@@ -696,6 +708,11 @@ public final class AsyncBatch {
 					Key key = keys[index];
 					BatchRecord record = new BatchRecord(key, null, ResultCode.NO_RESPONSE, attr.hasWrite && inDoubt, attr.hasWrite);
 					sent[index] = true;
+					
+					if (record.inDoubt && policy.txn != null) {
+						policy.txn.onWriteInDoubt(key);
+					}
+					
 					AsyncBatch.onRecord(listener, record, index);
 				}
 			}
@@ -793,7 +810,11 @@ public final class AsyncBatch {
 				BatchRecord record = records[index];
 
 				if (record.resultCode == ResultCode.NO_RESPONSE) {
-					record.inDoubt = inDoubt;
+					record.inDoubt = true;
+					
+					if (policy.txn != null) {
+						policy.txn.onWriteInDoubt(record.key);
+					}
 				}
 			}
 		}
@@ -893,6 +914,10 @@ public final class AsyncBatch {
 					Key key = keys[index];
 					BatchRecord record = new BatchRecord(key, null, ResultCode.NO_RESPONSE, attr.hasWrite && inDoubt, attr.hasWrite);
 					sent[index] = true;
+					
+					if (record.inDoubt && policy.txn != null) {
+						policy.txn.onWriteInDoubt(record.key);
+					}
 					AsyncBatch.onRecord(listener, record, index);
 				}
 			}

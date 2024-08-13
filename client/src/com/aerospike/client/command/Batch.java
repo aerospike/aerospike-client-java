@@ -273,6 +273,10 @@ public final class Batch {
 
 				if (record.resultCode == ResultCode.NO_RESPONSE) {
 					record.inDoubt = record.hasWrite;
+					
+					if (record.inDoubt && policy.txn != null) {
+						policy.txn.onWriteInDoubt(record.key);
+					}
 				}
 			}
 		}
@@ -352,6 +356,10 @@ public final class Batch {
 
 				if (record.resultCode == ResultCode.NO_RESPONSE) {
 					record.inDoubt = true;
+					
+					if (policy.txn != null) {
+						policy.txn.onWriteInDoubt(record.key);
+					}
 				}
 			}
 		}
@@ -451,6 +459,10 @@ public final class Batch {
 
 				if (record.resultCode == ResultCode.NO_RESPONSE) {
 					record.inDoubt = true;
+					
+					if (policy.txn != null) {
+						policy.txn.onWriteInDoubt(record.key);
+					}
 				}
 			}
 		}
