@@ -16,7 +16,8 @@
  */
 package com.aerospike.client.command;
 
-import com.aerospike.client.AerospikeException;
+import java.io.IOException;
+
 import com.aerospike.client.Key;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.Connection;
@@ -24,8 +25,6 @@ import com.aerospike.client.cluster.Node;
 import com.aerospike.client.cluster.Partition;
 import com.aerospike.client.metrics.LatencyType;
 import com.aerospike.client.policy.WritePolicy;
-import java.io.IOException;
-import java.util.List;
 
 public abstract class SyncWriteCommand extends SyncCommand {
 	final WritePolicy writePolicy;
@@ -62,10 +61,8 @@ public abstract class SyncWriteCommand extends SyncCommand {
 	}
 
 	@Override
-	protected void prepareException(Node node, AerospikeException ae, List<AerospikeException> subExceptions) {
-		super.prepareException(node, ae, subExceptions);
-		
-		if (ae.getInDoubt() && writePolicy.txn != null) {
+	protected void onInDoubt() {
+		if (writePolicy.txn != null) {
 			writePolicy.txn.onWriteInDoubt(key);
 		}
 	}

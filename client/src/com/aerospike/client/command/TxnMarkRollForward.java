@@ -50,4 +50,8 @@ public final class TxnMarkRollForward extends SyncWriteCommand {
 
 		throw new AerospikeException(resultCode);
 	}
+	
+	@Override
+	protected void onInDoubt() {
+	}
 }

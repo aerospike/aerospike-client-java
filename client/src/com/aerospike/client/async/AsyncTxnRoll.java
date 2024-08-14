@@ -81,9 +81,7 @@ public final class AsyncTxnRoll {
 				verifyRecords = records;
 
 				if (status) {
-					Set<Key> keySet = txn.getWrites();
-
-					if (! keySet.isEmpty()) {
+					if (txn.monitorExists()) {
 						markRollForward();
 					}
 					else {
@@ -307,7 +305,7 @@ public final class AsyncTxnRoll {
 	}
 
 	private void closeOnCommit(boolean verified) {
-		if (txn.getDeadline() == 0) {
+		if (! txn.monitorMightExist()) {
 			// There is no MRT monitor to remove.
 			if (verified) {
 				notifyCommitSuccess(CommitStatus.OK);
@@ -358,7 +356,7 @@ public final class AsyncTxnRoll {
 	}
 
 	private void closeOnAbort() {
-		if (txn.getDeadline() == 0) {
+		if (! txn.monitorMightExist()) {
 			// There is no MRT monitor record to remove.
 			notifyAbortSuccess(AbortStatus.OK);
 			return;

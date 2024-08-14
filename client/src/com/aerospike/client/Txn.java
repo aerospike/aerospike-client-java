@@ -31,6 +31,7 @@ public final class Txn {
 	private final Set<Key> writes;
 	private String namespace;
 	private int deadline;
+	private boolean monitorInDoubt;
 	private boolean rollAttempted;
 
 	/**
@@ -187,6 +188,27 @@ public final class Txn {
 	 */
 	public void setDeadline(int deadline) {
 		this.deadline = deadline;
+	}
+	
+	/**
+	 * Set that the MRT monitor existence is in doubt.
+	 */
+	public void setMonitorInDoubt() {
+		this.monitorInDoubt = true;
+	}
+
+	/**
+	 * Does MRT monitor record exist or is in doubt.
+	 */
+	public boolean monitorMightExist() {
+		return deadline != 0 || monitorInDoubt;
+	}
+
+	/**
+	 * Does MRT monitor record exist.
+	 */
+	public boolean monitorExists() {
+		return deadline != 0;
 	}
 
 	/**
