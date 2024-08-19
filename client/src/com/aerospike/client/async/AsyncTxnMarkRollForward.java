@@ -59,6 +59,10 @@ public final class AsyncTxnMarkRollForward extends AsyncWriteBase {
 	}
 
 	@Override
+	void onInDoubt() {
+	}
+
+	@Override
 	protected void onSuccess() {
 		listener.onSuccess(key);
 	}

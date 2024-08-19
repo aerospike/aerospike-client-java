@@ -52,6 +52,12 @@ public final class AsyncTxnAddKeys extends AsyncWriteBase {
 	}
 
 	@Override
+	void onInDoubt() {
+		// The MRT monitor record might exist if AsyncTxnAddKeys command is inDoubt.
+		policy.txn.setMonitorInDoubt();
+	}
+
+	@Override
 	protected void onSuccess() {
 		if (listener != null) {
 			listener.onSuccess(key, null);

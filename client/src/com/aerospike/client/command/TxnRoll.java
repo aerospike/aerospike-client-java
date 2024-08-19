@@ -57,7 +57,7 @@ public final class TxnRoll {
 				throw onCommitError(CommitError.VERIFY_FAIL_ABORT_ABANDONED, t, false);
 			}
 
-			if (txn.getDeadline() != 0) {
+			if (txn.monitorMightExist()) {
 				try {
 					WritePolicy writePolicy = new WritePolicy(rollPolicy);
 					Key txnKey = TxnMonitor.getTxnMonitorKey(txn);
@@ -76,9 +76,8 @@ public final class TxnRoll {
 
 		WritePolicy writePolicy = new WritePolicy(rollPolicy);
 		Key txnKey = TxnMonitor.getTxnMonitorKey(txn);
-		Set<Key> keySet = txn.getWrites();
-
-		if (!keySet.isEmpty()) {
+		
+		if (txn.monitorExists()) {
 			// Tell MRT monitor that a roll-forward will commence.
 			try {
 				markRollForward(writePolicy, txnKey);
@@ -86,17 +85,17 @@ public final class TxnRoll {
 			catch (Throwable t) {
 				throw onCommitError(CommitError.MARK_ROLL_FORWARD_ABANDONED, t, true);
 			}
-
-			// Roll-forward writes in batch.
-			try {
-				roll(rollPolicy, Command.INFO4_MRT_ROLL_FORWARD);
-			}
-			catch (Throwable t) {
-				return CommitStatus.ROLL_FORWARD_ABANDONED;
-			}
 		}
 
-		if (txn.getDeadline() != 0) {
+		// Roll-forward writes in batch.
+		try {
+			roll(rollPolicy, Command.INFO4_MRT_ROLL_FORWARD);
+		}
+		catch (Throwable t) {
+			return CommitStatus.ROLL_FORWARD_ABANDONED;
+		}
+
+		if (txn.monitorMightExist()) {
 			// Remove MRT monitor.
 			try {
 				close(writePolicy, txnKey);
@@ -125,18 +124,14 @@ public final class TxnRoll {
 	}
 
 	public AbortStatus abort(BatchPolicy rollPolicy) {
-		Set<Key> keySet = txn.getWrites();
-
-		if (! keySet.isEmpty()) {
-			try {
-				roll(rollPolicy, Command.INFO4_MRT_ROLL_BACK);
-			}
-			catch (Throwable t) {
-				return AbortStatus.ROLL_BACK_ABANDONED;
-			}
+		try {
+			roll(rollPolicy, Command.INFO4_MRT_ROLL_BACK);
+		}
+		catch (Throwable t) {
+			return AbortStatus.ROLL_BACK_ABANDONED;
 		}
 
-		if (txn.getDeadline() != 0) {
+		if (txn.monitorMightExist()) {
 			try {
 				WritePolicy writePolicy = new WritePolicy(rollPolicy);
 				Key txnKey = TxnMonitor.getTxnMonitorKey(txn);

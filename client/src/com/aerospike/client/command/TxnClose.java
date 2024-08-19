@@ -48,4 +48,8 @@ public final class TxnClose extends SyncWriteCommand {
 
 		throw new AerospikeException(resultCode);
 	}
+	
+	@Override
+	protected void onInDoubt() {
+	}
 }

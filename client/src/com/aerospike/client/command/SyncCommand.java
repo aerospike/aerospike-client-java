@@ -284,12 +284,20 @@ public abstract class SyncCommand extends Command {
 		subExceptions.add(exception);
 	}
 
-	protected void prepareException(Node node, AerospikeException ae, List<AerospikeException> subExceptions) {
+	private void prepareException(Node node, AerospikeException ae, List<AerospikeException> subExceptions) {
 		ae.setNode(node);
 		ae.setPolicy(policy);
 		ae.setIteration(iteration);
 		ae.setInDoubt(isWrite(), commandSentCounter);
 		ae.setSubExceptions(subExceptions);
+		
+		if (ae.getInDoubt()) {
+			onInDoubt();
+		}
+	}
+	
+	protected void onInDoubt() {
+		// Write commands will override this method.
 	}
 
 	public void resetDeadline(long startTime) {

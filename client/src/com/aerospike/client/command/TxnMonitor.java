@@ -68,15 +68,14 @@ public final class TxnMonitor {
 	public static Operation[] getTranOps(Txn txn, Key cmdKey) {
 		txn.setNamespace(cmdKey.namespace);
 
-		if (txn.getDeadline() == 0) {
-			// No existing monitor record.
+		if (txn.monitorExists()) {
 			return new Operation[] {
-				Operation.put(new Bin(BinNameId, txn.getId())),
 				ListOperation.append(OrderedListPolicy, BinNameDigests, Value.get(cmdKey.digest))
-			};
+			};		
 		}
 		else {
 			return new Operation[] {
+				Operation.put(new Bin(BinNameId, txn.getId())),
 				ListOperation.append(OrderedListPolicy, BinNameDigests, Value.get(cmdKey.digest))
 			};
 		}
@@ -111,15 +110,14 @@ public final class TxnMonitor {
 	}
 
 	private static Operation[] getTranOps(Txn txn, ArrayList<Value> list) {
-		if (txn.getDeadline() == 0) {
-			// No existing monitor record.
+		if (txn.monitorExists()) {
 			return new Operation[] {
-				Operation.put(new Bin(BinNameId, txn.getId())),
 				ListOperation.appendItems(OrderedListPolicy, BinNameDigests, list)
-			};
+			};			
 		}
 		else {
 			return new Operation[] {
+				Operation.put(new Bin(BinNameId, txn.getId())),
 				ListOperation.appendItems(OrderedListPolicy, BinNameDigests, list)
 			};
 		}
