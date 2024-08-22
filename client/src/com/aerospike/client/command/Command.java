@@ -231,7 +231,7 @@ public class Command {
 			}
 			else {
 				// Write full header and namespace/set/bin names.
-				dataOffset += 9; // header(4) + fieldCount(2) + opCount(2) = 9
+				dataOffset += 9; // header(4) + info4(1) + fieldCount(2) + opCount(2) = 9
 				dataOffset += Buffer.estimateSizeUtf8(key.namespace) + FIELD_HEADER_SIZE;
 				dataOffset += Buffer.estimateSizeUtf8(key.setName) + FIELD_HEADER_SIZE;
 
