@@ -24,7 +24,7 @@ public final class ResultCode {
 	/**
 	 * Multi-record transaction failed
 	 */
-	public static final int TRAN_FAILED = -17;
+	public static final int TXN_FAILED = -17;
 
 	/**
 	 * One or more keys failed in a batch.
@@ -475,7 +475,7 @@ public final class ResultCode {
 	 */
 	public static String getResultString(int resultCode) {
 		switch (resultCode) {
-		case TRAN_FAILED:
+		case TXN_FAILED:
 			return "Multi-record transaction failed";
 
 		case BATCH_FAILED:
