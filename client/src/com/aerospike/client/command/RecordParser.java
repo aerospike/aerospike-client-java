@@ -153,8 +153,8 @@ public final class RecordParser {
 		dataBuffer = buffer;
 	}
 
-	public void parseFields(Txn tran, Key key, boolean hasWrite) {
-		if (tran == null) {
+	public void parseFields(Txn txn, Key key, boolean hasWrite) {
+		if (txn == null) {
 			skipFields();
 			return;
 		}
@@ -180,13 +180,13 @@ public final class RecordParser {
 		}
 
 		if (hasWrite) {
-			tran.onWrite(key, version, resultCode);
+			txn.onWrite(key, version, resultCode);
 		} else {
-			tran.onRead(key, version);
+			txn.onRead(key, version);
 		}
 	}
 
-	public void parseTranDeadline(Txn tran) {
+	public void parseTranDeadline(Txn txn) {
 		for (int i = 0; i < fieldCount; i++) {
 			int len = Buffer.bytesToInt(dataBuffer, dataOffset);
 			dataOffset += 4;
@@ -196,7 +196,7 @@ public final class RecordParser {
 
 			if (type == FieldType.MRT_DEADLINE) {
 				int deadline = Buffer.littleBytesToInt(dataBuffer, dataOffset);
-				tran.setDeadline(deadline);
+				txn.setDeadline(deadline);
 			}
 			dataOffset += size;
 		}

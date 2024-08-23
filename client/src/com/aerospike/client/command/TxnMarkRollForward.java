@@ -28,9 +28,9 @@ import java.io.IOException;
 public final class TxnMarkRollForward extends SyncWriteCommand {
 	private final Txn txn;
 
-	public TxnMarkRollForward(Cluster cluster, Txn tran, WritePolicy writePolicy, Key key) {
+	public TxnMarkRollForward(Cluster cluster, Txn txn, WritePolicy writePolicy, Key key) {
 		super(cluster, writePolicy, key);
-		this.txn = tran;
+		this.txn = txn;
 	}
 
 	@Override
