@@ -215,7 +215,8 @@ public class Command {
 		// Batch field
 		dataOffset += FIELD_HEADER_SIZE + 5;
 
-		Key prev = null;
+		Key keyPrev = null;
+		Long verPrev = null;
 		int max = offsets.size();
 
 		for (int i = 0; i < max; i++) {
@@ -225,7 +226,7 @@ public class Command {
 
 			dataOffset += key.digest.length + 4;
 
-			if (canRepeat(key, prev, ver)) {
+			if (canRepeat(key, keyPrev, ver, verPrev)) {
 				// Can set repeat previous namespace/bin names to save space.
 				dataOffset++;
 			}
@@ -238,7 +239,8 @@ public class Command {
 				if (ver != null) {
 					dataOffset += 7 + FIELD_HEADER_SIZE;
 				}
-				prev = key;
+				keyPrev = key;
+				verPrev = ver;
 			}
 		}
 
@@ -252,7 +254,8 @@ public class Command {
 		Buffer.intToBytes(max, dataBuffer, dataOffset);
 		dataOffset += 4;
 		dataBuffer[dataOffset++] = getBatchFlags(policy);
-		prev = null;
+		keyPrev = null;
+		verPrev = null;
 
 		for (int i = 0; i < max; i++) {
 			int offset = offsets.get(i);
@@ -266,7 +269,7 @@ public class Command {
 			System.arraycopy(digest, 0, dataBuffer, dataOffset, digest.length);
 			dataOffset += digest.length;
 
-			if (canRepeat(key, prev, ver)) {
+			if (canRepeat(key, keyPrev, ver, verPrev)) {
 				// Can set repeat previous namespace/bin names to save space.
 				dataBuffer[dataOffset++] = BATCH_MSG_REPEAT;
 			}
@@ -290,7 +293,8 @@ public class Command {
 					writeFieldVersion(ver);
 				}
 
-				prev = key;
+				keyPrev = key;
+				verPrev = ver;
 			}
 		}
 
@@ -368,7 +372,8 @@ public class Command {
 		// Batch field
 		dataOffset += FIELD_HEADER_SIZE + 5;
 
-		Key prev = null;
+		Key keyPrev = null;
+		Long verPrev = null;
 
 		for (int i = 0; i < max; i++) {
 			int offset = offsets.get(i);
@@ -377,7 +382,7 @@ public class Command {
 
 			dataOffset += key.digest.length + 4;
 
-			if (canRepeat(key, prev, ver)) {
+			if (canRepeat(key, keyPrev, ver, verPrev)) {
 				// Can set repeat previous namespace/bin names to save space.
 				dataOffset++;
 			}
@@ -388,7 +393,8 @@ public class Command {
 				dataOffset += Buffer.estimateSizeUtf8(key.setName) + FIELD_HEADER_SIZE;
 				sizeTxnBatch(txn, ver);
 				dataOffset += 2; // gen(2) = 2
-				prev = key;
+				keyPrev = key;
+				verPrev = ver;
 			}
 		}
 
@@ -402,7 +408,8 @@ public class Command {
 		Buffer.intToBytes(max, dataBuffer, dataOffset);
 		dataOffset += 4;
 		dataBuffer[dataOffset++] = getBatchFlags(policy);
-		prev = null;
+		keyPrev = null;
+		verPrev = null;
 
 		for (int i = 0; i < max; i++) {
 			int offset = offsets.get(i);
@@ -416,14 +423,15 @@ public class Command {
 			System.arraycopy(digest, 0, dataBuffer, dataOffset, digest.length);
 			dataOffset += digest.length;
 
-			if (canRepeat(key, prev, ver)) {
+			if (canRepeat(key, keyPrev, ver, verPrev)) {
 				// Can set repeat previous namespace/bin names to save space.
 				dataBuffer[dataOffset++] = BATCH_MSG_REPEAT;
 			}
 			else {
 				// Write full message.
 				writeBatchWrite(key, txn, ver, attr, null, 0, 0);
-				prev = key;
+				keyPrev = key;
+				verPrev = ver;
 			}
 		}
 
@@ -1100,6 +1108,7 @@ public class Command {
 		dataOffset += FIELD_HEADER_SIZE + 5;
 
 		BatchRecord prev = null;
+		Long verPrev = null;
 
 		for (int i = 0; i < max; i++) {
 			int offset = offsets.get(i);
@@ -1109,7 +1118,7 @@ public class Command {
 
 			dataOffset += key.digest.length + 4;
 
-			if (canRepeat(policy, key, record, prev, ver)) {
+			if (canRepeat(policy, key, record, prev, ver, verPrev)) {
 				// Can set repeat previous namespace/bin names to save space.
 				dataOffset++;
 			}
@@ -1121,6 +1130,7 @@ public class Command {
 				sizeTxnBatch(txn, ver);
 				dataOffset += record.size(policy);
 				prev = record;
+				verPrev = ver;
 			}
 		}
 		sizeBuffer();
@@ -1140,6 +1150,7 @@ public class Command {
 
 		BatchAttr attr = new BatchAttr();
 		prev = null;
+		verPrev = null;
 
 		for (int i = 0; i < max; i++) {
 			int offset = offsets.get(i);
@@ -1154,7 +1165,7 @@ public class Command {
 			System.arraycopy(digest, 0, dataBuffer, dataOffset, digest.length);
 			dataOffset += digest.length;
 
-			if (canRepeat(policy, key, record, prev, ver)) {
+			if (canRepeat(policy, key, record, prev, ver, verPrev)) {
 				// Can set repeat previous namespace/bin names to save space.
 				dataBuffer[dataOffset++] = BATCH_MSG_REPEAT;
 			}
@@ -1223,6 +1234,7 @@ public class Command {
 					}
 				}
 				prev = record;
+				verPrev = ver;
 			}
 		}
 
@@ -1278,7 +1290,8 @@ public class Command {
 
 		dataOffset += FIELD_HEADER_SIZE + 5;
 
-		Key prev = null;
+		Key keyPrev = null;
+		Long verPrev = null;
 
 		for (int i = 0; i < max; i++) {
 			int offset = offsets.get(i);
@@ -1287,7 +1300,7 @@ public class Command {
 
 			dataOffset += key.digest.length + 4;
 
-			if (canRepeat(key, prev, attr, ver)) {
+			if (canRepeat(attr, key, keyPrev, ver, verPrev)) {
 				// Can set repeat previous namespace/bin names to save space.
 				dataOffset++;
 			}
@@ -1321,7 +1334,8 @@ public class Command {
 				else if ((attr.writeAttr & Command.INFO2_DELETE) != 0) {
 					dataOffset += 2; // Extra write specific fields.
 				}
-				prev = key;
+				keyPrev = key;
+				verPrev = ver;
 			}
 		}
 
@@ -1339,7 +1353,8 @@ public class Command {
 		Buffer.intToBytes(max, dataBuffer, dataOffset);
 		dataOffset += 4;
 		dataBuffer[dataOffset++] = getBatchFlags(policy);
-		prev = null;
+		keyPrev = null;
+		verPrev = null;
 
 		for (int i = 0; i < max; i++) {
 			int offset = offsets.get(i);
@@ -1353,7 +1368,7 @@ public class Command {
 			System.arraycopy(digest, 0, dataBuffer, dataOffset, digest.length);
 			dataOffset += digest.length;
 
-			if (canRepeat(key, prev, attr, ver)) {
+			if (canRepeat(attr, key, keyPrev, ver, verPrev)) {
 				// Can set repeat previous namespace/bin names to save space.
 				dataBuffer[dataOffset++] = BATCH_MSG_REPEAT;
 			}
@@ -1371,7 +1386,8 @@ public class Command {
 				else {
 					writeBatchRead(key, txn, ver, attr, null, 0);
 				}
-				prev = key;
+				keyPrev = key;
+				verPrev = ver;
 			}
 		}
 
@@ -1429,7 +1445,8 @@ public class Command {
 
 		dataOffset += FIELD_HEADER_SIZE + 5;
 
-		Key prev = null;
+		Key keyPrev = null;
+		Long verPrev = null;
 
 		for (int i = 0; i < max; i++) {
 			int offset = offsets.get(i);
@@ -1438,7 +1455,7 @@ public class Command {
 
 			dataOffset += key.digest.length + 4;
 
-			if (canRepeat(key, prev, attr, ver)) {
+			if (canRepeat(attr, key, keyPrev, ver, verPrev)) {
 				// Can set repeat previous namespace/bin names to save space.
 				dataOffset++;
 			}
@@ -1454,7 +1471,8 @@ public class Command {
 				}
 				dataOffset += 2; // gen(2) = 2
 				estimateUdfSize(packageName, functionName, argBytes);
-				prev = key;
+				keyPrev = key;
+				verPrev = ver;
 			}
 		}
 
@@ -1472,7 +1490,8 @@ public class Command {
 		Buffer.intToBytes(max, dataBuffer, dataOffset);
 		dataOffset += 4;
 		dataBuffer[dataOffset++] = getBatchFlags(policy);
-		prev = null;
+		keyPrev = null;
+		verPrev = null;
 
 		for (int i = 0; i < max; i++) {
 			int offset = offsets.get(i);
@@ -1486,7 +1505,7 @@ public class Command {
 			System.arraycopy(digest, 0, dataBuffer, dataOffset, digest.length);
 			dataOffset += digest.length;
 
-			if (canRepeat(key, prev, attr, ver)) {
+			if (canRepeat(attr, key, keyPrev, ver, verPrev)) {
 				// Can set repeat previous namespace/bin names to save space.
 				dataBuffer[dataOffset++] = BATCH_MSG_REPEAT;
 			}
@@ -1496,7 +1515,8 @@ public class Command {
 				writeField(packageName, FieldType.UDF_PACKAGE_NAME);
 				writeField(functionName, FieldType.UDF_FUNCTION);
 				writeField(argBytes, FieldType.UDF_ARGLIST);
-				prev = key;
+				keyPrev = key;
+				verPrev = ver;
 			}
 		}
 
@@ -1511,24 +1531,26 @@ public class Command {
 		Key key,
 		BatchRecord record,
 		BatchRecord prev,
-		Long ver
+		Long ver,
+		Long verPrev
 	) {
 		// Avoid relatively expensive full equality checks for performance reasons.
 		// Use reference equality only in hope that common namespaces/bin names are set from
 		// fixed variables.  It's fine if equality not determined correctly because it just
 		// results in more space used. The batch will still be correct.
-		return ver == null && !policy.sendKey && prev != null && prev.key.namespace == key.namespace &&
+		// Same goes for ver reference equality check.
+		return !policy.sendKey && verPrev == ver && prev != null && prev.key.namespace == key.namespace &&
 				prev.key.setName == key.setName && record.equals(prev);
 	}
 
-	private static boolean canRepeat(Key key, Key prev, BatchAttr attr, Long ver) {
-		return ver == null && !attr.sendKey && prev != null && prev.namespace == key.namespace &&
-				prev.setName == key.setName;
+	private static boolean canRepeat(BatchAttr attr, Key key, Key keyPrev, Long ver, Long verPrev) {
+		return !attr.sendKey && verPrev == ver && keyPrev != null && keyPrev.namespace == key.namespace &&
+				keyPrev.setName == key.setName;
 	}
 
-	private static boolean canRepeat(Key key, Key prev, Long ver) {
-		return ver == null && prev != null && prev.namespace == key.namespace &&
-				prev.setName == key.setName;
+	private static boolean canRepeat(Key key, Key keyPrev, Long ver, Long verPrev) {
+		return verPrev == ver && keyPrev != null && keyPrev.namespace == key.namespace &&
+				keyPrev.setName == key.setName;
 	}
 
 	private static final Expression getBatchExpression(Policy policy, BatchAttr attr) {
