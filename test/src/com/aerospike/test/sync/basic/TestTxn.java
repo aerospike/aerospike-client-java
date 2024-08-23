@@ -42,6 +42,7 @@ import com.aerospike.client.policy.BatchPolicy;
 import com.aerospike.client.policy.Policy;
 import com.aerospike.client.policy.WritePolicy;
 import com.aerospike.client.task.RegisterTask;
+import com.aerospike.proxy.client.Kvs.ReadPolicy;
 import com.aerospike.client.Txn;
 
 public class TestTxn extends TestSync {
@@ -563,6 +564,7 @@ public class TestTxn extends TestSync {
 
 		Record record = client.get(null, key);
 		assertBinEqual(key, record, binName, "val1");
+		verifyNotMRTLocked(key);
 	}
 
 	private Txn beginAbortAfterDeadline() {
@@ -601,5 +603,15 @@ public class TestTxn extends TestSync {
 
 		Record record = client.get(null, key);
 		assertBinEqual(key, record, binName, "val1");
+		verifyNotMRTLocked(key);
+	}
+
+	private void verifyNotMRTLocked(Key key) {
+		Txn txn = new Txn();
+		Policy rp = client.copyReadPolicyDefault();
+
+		rp.txn = txn;
+
+		client.get(rp, key); // shouldn't throw an exception.
 	}
 }
