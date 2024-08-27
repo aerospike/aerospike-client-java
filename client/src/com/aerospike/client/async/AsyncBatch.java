@@ -27,6 +27,7 @@ import com.aerospike.client.Log;
 import com.aerospike.client.Operation;
 import com.aerospike.client.Record;
 import com.aerospike.client.ResultCode;
+import com.aerospike.client.Txn;
 import com.aerospike.client.command.BatchAttr;
 import com.aerospike.client.command.BatchNode;
 import com.aerospike.client.command.BatchNodeList;
@@ -988,6 +989,7 @@ public final class AsyncBatch {
 	}
 
 	public static final class TxnRoll extends AsyncBatchCommand {
+		private final Txn txn;
 		private final Key[] keys;
 		private final BatchRecord[] records;
 		private final BatchAttr attr;
@@ -996,11 +998,13 @@ public final class AsyncBatch {
 			AsyncBatchExecutor parent,
 			BatchNode batch,
 			BatchPolicy batchPolicy,
+			Txn txn,
 			Key[] keys,
 			BatchRecord[] records,
 			BatchAttr attr
 		) {
 			super(parent, batch, batchPolicy, false);
+			this.txn = txn;
 			this.keys = keys;
 			this.records = records;
 			this.attr = attr;
@@ -1008,7 +1012,7 @@ public final class AsyncBatch {
 
 		@Override
 		protected void writeBuffer() {
-			setBatchTxnRoll(batchPolicy, keys, batch, attr);
+			setBatchTxnRoll(batchPolicy, txn, keys, batch, attr);
 		}
 
 		@Override
@@ -1028,7 +1032,7 @@ public final class AsyncBatch {
 
 		@Override
 		protected AsyncBatchCommand createCommand(BatchNode batchNode) {
-			return new TxnRoll(parent, batchNode, batchPolicy, keys, records, attr);
+			return new TxnRoll(parent, batchNode, batchPolicy, txn, keys, records, attr);
 		}
 
 		@Override

@@ -215,35 +215,27 @@ public final class TxnRoll {
 
 		this.rollRecords = records;
 
-		// Copy transaction roll policy because it needs to be modified.
-		BatchPolicy batchPolicy = new BatchPolicy(rollPolicy);
-
 		BatchAttr attr = new BatchAttr();
 		attr.setTxn(txnAttr);
 
 		BatchStatus status = new BatchStatus(true);
 
-		// generate() requires a null transaction instance.
-		List<BatchNode> bns = BatchNodeList.generate(cluster, batchPolicy, keys, records, true, status);
+		List<BatchNode> bns = BatchNodeList.generate(cluster, rollPolicy, keys, records, true, status);
 		IBatchCommand[] commands = new IBatchCommand[bns.size()];
-
-		// Batch roll forward requires the transaction instance.
-		batchPolicy.txn = txn;
-
 		int count = 0;
 
 		for (BatchNode bn : bns) {
 			if (bn.offsetsSize == 1) {
 				int i = bn.offsets[0];
 				commands[count++] = new BatchSingle.TxnRoll(
-					cluster, batchPolicy, records[i], status, bn.node, txnAttr);
+					cluster, rollPolicy, txn, records[i], status, bn.node, txnAttr);
 			}
 			else {
 				commands[count++] = new Batch.TxnRoll(
-					cluster, bn, batchPolicy, keys, records, attr, status);
+					cluster, bn, rollPolicy, txn, keys, records, attr, status);
 			}
 		}
-		BatchExecutor.execute(cluster, batchPolicy, commands, status);
+		BatchExecutor.execute(cluster, rollPolicy, commands, status);
 
 		if (!status.getStatus()) {
 			String rollString = txnAttr == Command.INFO4_MRT_ROLL_FORWARD? "commit" : "abort";

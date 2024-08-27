@@ -340,16 +340,18 @@ public class Command {
 
 	public final void setBatchTxnRoll(
 		BatchPolicy policy,
+		Txn txn,
 		Key[] keys,
 		BatchNode batch,
 		BatchAttr attr
 	) {
 		final BatchOffsetsNative offsets = new BatchOffsetsNative(batch);
-		setBatchTxnRoll(policy, keys, attr, offsets);
+		setBatchTxnRoll(policy, txn, keys, attr, offsets);
 	}
 
 	public final void setBatchTxnRoll(
 		BatchPolicy policy,
+		Txn txn,
 		Key[] keys,
 		BatchAttr attr,
 		BatchOffsets offsets
@@ -358,7 +360,6 @@ public class Command {
 		begin();
 		int fieldCount = 1;
 		int max = offsets.size();
-		Txn txn = policy.txn;
 		Long[] versions = new Long[max];
 
 		for (int i = 0; i < max; i++) {

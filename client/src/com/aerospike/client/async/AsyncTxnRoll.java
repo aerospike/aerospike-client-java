@@ -272,33 +272,25 @@ public final class AsyncTxnRoll {
 			records[i] = new BatchRecord(keys[i], true);
 		}
 
-		// Copy transaction roll policy because it needs to be modified.
-		BatchPolicy batchPolicy = new BatchPolicy(rollPolicy);
-
 		BatchAttr attr = new BatchAttr();
 		attr.setTxn(txnAttr);
 
 		AsyncBatchExecutor.BatchRecordArray executor = new AsyncBatchExecutor.BatchRecordArray(
 			eventLoop, cluster, rollListener, records);
 
-		// generate() requires a null transaction instance.
-		List<BatchNode> bns = BatchNodeList.generate(cluster, batchPolicy, keys, records, true, executor);
+		List<BatchNode> bns = BatchNodeList.generate(cluster, rollPolicy, keys, records, true, executor);
 		AsyncCommand[] commands = new AsyncCommand[bns.size()];
-
-		// Batch roll forward requires the transaction instance.
-		batchPolicy.txn = txn;
-
 		int count = 0;
 
 		for (BatchNode bn : bns) {
 			if (bn.offsetsSize == 1) {
 				int i = bn.offsets[0];
 				commands[count++] = new AsyncBatchSingle.TxnRoll(
-					executor, cluster, batchPolicy, records[i], bn.node, txnAttr);
+					executor, cluster, rollPolicy, txn, records[i], bn.node, txnAttr);
 			}
 			else {
 				commands[count++] = new AsyncBatch.TxnRoll(
-					executor, bn, batchPolicy, keys, records, attr);
+					executor, bn, rollPolicy, txn, keys, records, attr);
 			}
 		}
 		executor.execute(commands);
