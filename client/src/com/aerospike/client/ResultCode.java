@@ -254,6 +254,11 @@ public final class ResultCode {
 	public static final int MRT_EXPIRED = 31;
 
 	/**
+	 * Write can't complete until XDR finishes shipping.
+	 */
+	public static final int XDR_KEY_BUSY = 32;
+
+	/**
 	 * There are no more records left for query.
 	 */
 	public static final int QUERY_END = 50;
@@ -613,6 +618,9 @@ public final class ResultCode {
 		case MRT_EXPIRED:
 			return "MRT expired";
 
+		case XDR_KEY_BUSY:
+			return "Write can't complete until XDR finishes shipping";
+			
 		case QUERY_END:
 			return "Query end";
 
