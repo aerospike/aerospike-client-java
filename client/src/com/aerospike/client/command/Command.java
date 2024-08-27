@@ -390,7 +390,7 @@ public class Command {
 				dataOffset += 12; // header(4) + ttl(4) + fieldCount(2) + opCount(2) = 12
 				dataOffset += Buffer.estimateSizeUtf8(key.namespace) + FIELD_HEADER_SIZE;
 				dataOffset += Buffer.estimateSizeUtf8(key.setName) + FIELD_HEADER_SIZE;
-				sizeTxnBatch(txn, ver);
+				sizeTxnBatch(txn, ver, attr.hasWrite);
 				dataOffset += 2; // gen(2) = 2
 				keyPrev = key;
 				verPrev = ver;
@@ -1126,7 +1126,7 @@ public class Command {
 				dataOffset += 12;
 				dataOffset += Buffer.estimateSizeUtf8(key.namespace) + FIELD_HEADER_SIZE;
 				dataOffset += Buffer.estimateSizeUtf8(key.setName) + FIELD_HEADER_SIZE;
-				sizeTxnBatch(txn, ver);
+				sizeTxnBatch(txn, ver, record.hasWrite);
 				dataOffset += record.size(policy);
 				prev = record;
 				verPrev = ver;
@@ -1308,7 +1308,7 @@ public class Command {
 				dataOffset += 12; // header(4) + ttl(4) + fieldCount(2) + opCount(2) = 12
 				dataOffset += Buffer.estimateSizeUtf8(key.namespace) + FIELD_HEADER_SIZE;
 				dataOffset += Buffer.estimateSizeUtf8(key.setName) + FIELD_HEADER_SIZE;
-				sizeTxnBatch(txn, ver);
+				sizeTxnBatch(txn, ver, attr.hasWrite);
 
 				if (attr.sendKey) {
 					dataOffset += key.userKey.estimateSize() + FIELD_HEADER_SIZE + 1;
@@ -1463,7 +1463,7 @@ public class Command {
 				dataOffset += 12; // header(4) + ttl(4) + fieldCount(2) + opCount(2) = 12
 				dataOffset += Buffer.estimateSizeUtf8(key.namespace) + FIELD_HEADER_SIZE;
 				dataOffset += Buffer.estimateSizeUtf8(key.setName) + FIELD_HEADER_SIZE;
-				sizeTxnBatch(txn, ver);
+				sizeTxnBatch(txn, ver, attr.hasWrite);
 
 				if (attr.sendKey) {
 					dataOffset += key.userKey.estimateSize() + FIELD_HEADER_SIZE + 1;
@@ -1573,7 +1573,7 @@ public class Command {
 		return flags;
 	}
 
-	private void sizeTxnBatch(Txn txn, Long ver) {
+	private void sizeTxnBatch(Txn txn, Long ver, boolean hasWrite) {
 		if (txn != null) {
 			dataOffset++; // Add info4 byte for MRT.
 			dataOffset += 8 + FIELD_HEADER_SIZE;
@@ -1582,7 +1582,7 @@ public class Command {
 				dataOffset += 7 + FIELD_HEADER_SIZE;
 			}
 
-			if (txn.getDeadline() != 0) {
+			if (hasWrite && txn.getDeadline() != 0) {
 				dataOffset += 4 + FIELD_HEADER_SIZE;
 			}
 		}
@@ -2227,10 +2227,10 @@ public class Command {
 		return fieldCount;
 	}
 
-	private int estimateKeySize(Policy policy, Key key, boolean sendDeadline) {
+	private int estimateKeySize(Policy policy, Key key, boolean hasWrite) {
 		int fieldCount = estimateKeySize(key);
 
-		fieldCount += sizeTxn(key, policy.txn, sendDeadline);
+		fieldCount += sizeTxn(key, policy.txn, hasWrite);
 
 		if (policy.sendKey) {
 			dataOffset += key.userKey.estimateSize() + FIELD_HEADER_SIZE + 1;
@@ -2676,7 +2676,7 @@ public class Command {
 		dataBuffer[dataOffset++] = 0;
 	}
 
-	private int sizeTxn(Key key, Txn txn, boolean sendDeadline) {
+	private int sizeTxn(Key key, Txn txn, boolean hasWrite) {
 		int fieldCount = 0;
 
 		if (txn != null) {
@@ -2690,7 +2690,7 @@ public class Command {
 				fieldCount++;
 			}
 
-			if (sendDeadline && txn.getDeadline() != 0) {
+			if (hasWrite && txn.getDeadline() != 0) {
 				dataOffset += 4 + FIELD_HEADER_SIZE;
 				fieldCount++;
 			}
