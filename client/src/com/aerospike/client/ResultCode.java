@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -232,6 +232,11 @@ public final class ResultCode {
 	 * Write command loses conflict to XDR.
 	 */
 	public static final int LOST_CONFLICT = 28;
+
+	/**
+	 * Write can't complete until XDR finishes shipping.
+	 */
+	public static final int XDR_KEY_BUSY = 32;
 
 	/**
 	 * There are no more records left for query.
@@ -582,6 +587,9 @@ public final class ResultCode {
 		case LOST_CONFLICT:
 			return "Transaction failed due to conflict with XDR";
 
+		case XDR_KEY_BUSY:
+			return "Write can't complete until XDR finishes shipping";
+			
 		case QUERY_END:
 			return "Query end";
 
