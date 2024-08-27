@@ -164,7 +164,7 @@ public class Command {
 		compress(policy);
 	}
 
-	public final void setTxnVerify(Txn txn, Key key, long ver) {
+	public final void setTxnVerify(Key key, long ver) {
 		begin();
 		int fieldCount = estimateKeySize(key);
 
@@ -193,18 +193,16 @@ public class Command {
 
 	public final void setBatchTxnVerify(
 		BatchPolicy policy,
-		Txn txn,
 		Key[] keys,
 		Long[] versions,
 		BatchNode batch
 	) {
 		final BatchOffsetsNative offsets = new BatchOffsetsNative(batch);
-		setBatchTxnVerify(policy, txn, keys, versions, offsets);
+		setBatchTxnVerify(policy, keys, versions, offsets);
 	}
 
 	public final void setBatchTxnVerify(
 		BatchPolicy policy,
-		Txn txn,
 		Key[] keys,
 		Long[] versions,
 		BatchOffsets offsets

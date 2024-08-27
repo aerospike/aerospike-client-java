@@ -178,11 +178,11 @@ public final class TxnRoll {
 			if (bn.offsetsSize == 1) {
 				int i = bn.offsets[0];
 				commands[count++] = new BatchSingle.TxnVerify(
-					cluster, verifyPolicy, txn, versions[i], records[i], status, bn.node);
+					cluster, verifyPolicy, versions[i], records[i], status, bn.node);
 			}
 			else {
 				commands[count++] = new Batch.TxnVerify(
-					cluster, bn, verifyPolicy, txn, keys, versions, records, status);
+					cluster, bn, verifyPolicy, keys, versions, records, status);
 			}
 		}
 
