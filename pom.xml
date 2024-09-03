@@ -5,7 +5,7 @@
   <groupId>com.aerospike</groupId>
   <artifactId>aerospike-parent</artifactId>
   <name>aerospike-parent</name>
-  <version>8.1.2</version>
+  <version>9.0.0-SNAPSHOT</version>
   <packaging>pom</packaging>
   <url>https://github.com/aerospike/aerospike-client-java</url>
 
@@ -38,6 +38,9 @@
     <maven-compiler-plugin.version>3.8.0</maven-compiler-plugin.version>
     <maven-surefire-plugin.version>2.18.1</maven-surefire-plugin.version>
     <maven-javadoc-plugin.version>3.2.0</maven-javadoc-plugin.version>
+
+    <maven.compiler.source>1.21</maven.compiler.source>
+    <maven.compiler.target>1.21</maven.compiler.target>
 
     <netty.version>4.1.110.Final</netty.version>
     <netty.tcnative.version>2.0.62.Final</netty.tcnative.version>
@@ -160,14 +163,30 @@
     </pluginManagement>
   </build>
 
-  <!-- Enable this section when new grpc stub changes need to be
-       tested in development.
   <repositories>
     <repository>
-      <id>oss-sonatype</id>
-      <url>https://oss.sonatype.org/content/repositories/snapshots</url>
+      <id>snapshots</id>
+      <url>https://aerospike.jfrog.io/artifactory/clients-maven-dev-local</url>
     </repository>
+
+      <repository>
+        <id>oss-sonatype</id>
+        <url>https://oss.sonatype.org/content/repositories/snapshots</url>
+      </repository>
+
   </repositories>
-  -->
+
+  <distributionManagement>
+    <repository>
+      <id>central</id>
+      <name>clients-maven-stage-local</name>
+      <url>https://aerospike.jfrog.io/artifactory/clients-maven-stage-local</url>
+    </repository>
+    <snapshotRepository>
+      <id>snapshots</id>
+      <name>clients-maven-dev-local</name>
+      <url>https://aerospike.jfrog.io/artifactory/clients-maven-dev-local</url>
+    </snapshotRepository>
+  </distributionManagement>
 
 </project>
