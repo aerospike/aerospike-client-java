@@ -57,6 +57,10 @@ public final class AsyncTxnClose extends AsyncWriteBase {
 	}
 
 	@Override
+	void onInDoubt() {
+	}
+
+	@Override
 	protected void onSuccess() {
 		listener.onSuccess(key, true);
 	}

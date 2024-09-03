@@ -16,7 +16,6 @@
  */
 package com.aerospike.client.async;
 
-import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.Node;
@@ -59,13 +58,16 @@ public abstract class AsyncWriteBase extends AsyncCommand {
 		return true;
 	}
 
+	@Override
+	void onInDoubt() {
+		if (writePolicy.txn != null) {
+			writePolicy.txn.onWriteInDoubt(key);
+		}
+	}
+
 	protected int parseHeader() {
 		RecordParser rp = new RecordParser(dataBuffer, dataOffset, receiveSize);
 		rp.parseFields(policy.txn, key, true);
-
-		if (rp.opCount > 0) {
-			throw new AerospikeException("Unexpected write response opCount: " + rp.opCount + ',' + rp.resultCode);
-		}
 		return rp.resultCode;
 	}
 }

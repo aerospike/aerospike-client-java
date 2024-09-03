@@ -18,6 +18,9 @@ package com.aerospike.client.policy;
 
 /**
  * Container object for optional parameters used in scan operations.
+ * <p>
+ * Inherited Policy fields {@link Policy#txn} and {@link Policy#failOnFilteredOut} are ignored in
+ * scan commands.
  */
 public final class ScanPolicy extends Policy {
 	/**

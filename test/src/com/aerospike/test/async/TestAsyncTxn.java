@@ -19,9 +19,11 @@ package com.aerospike.test.async;
 import org.junit.Test;
 import org.junit.BeforeClass;
 
+import com.aerospike.client.AbortStatus;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.BatchRecord;
 import com.aerospike.client.Bin;
+import com.aerospike.client.CommitStatus;
 import com.aerospike.client.Key;
 import com.aerospike.client.Language;
 import com.aerospike.client.Operation;
@@ -398,7 +400,7 @@ public class TestAsyncTxn extends TestAsync {
 
 		public void run(Listener listener) {
 			CommitListener tcl = new CommitListener() {
-				public void onSuccess() {
+				public void onSuccess(CommitStatus status) {
 					listener.onSuccess();
 				}
 
@@ -420,12 +422,8 @@ public class TestAsyncTxn extends TestAsync {
 
 		public void run(Listener listener) {
 			AbortListener tal = new AbortListener() {
-				public void onSuccess() {
+				public void onSuccess(AbortStatus status) {
 					listener.onSuccess();
-				}
-
-				public void onFailure(AerospikeException.Abort ae) {
-					listener.onFailure(ae);
 				}
 			};
 

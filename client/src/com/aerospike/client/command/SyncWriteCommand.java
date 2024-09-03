@@ -16,7 +16,8 @@
  */
 package com.aerospike.client.command;
 
-import com.aerospike.client.AerospikeException;
+import java.io.IOException;
+
 import com.aerospike.client.Key;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.Connection;
@@ -24,7 +25,6 @@ import com.aerospike.client.cluster.Node;
 import com.aerospike.client.cluster.Partition;
 import com.aerospike.client.metrics.LatencyType;
 import com.aerospike.client.policy.WritePolicy;
-import java.io.IOException;
 
 public abstract class SyncWriteCommand extends SyncCommand {
 	final WritePolicy writePolicy;
@@ -60,13 +60,16 @@ public abstract class SyncWriteCommand extends SyncCommand {
 		return true;
 	}
 
+	@Override
+	protected void onInDoubt() {
+		if (writePolicy.txn != null) {
+			writePolicy.txn.onWriteInDoubt(key);
+		}
+	}
+
 	protected int parseHeader(Connection conn) throws IOException {
 		RecordParser rp = new RecordParser(conn, dataBuffer);
 		rp.parseFields(policy.txn, key, true);
-
-		if (rp.opCount > 0) {
-			throw new AerospikeException("Unexpected write response opCount: " + rp.opCount + ',' + rp.resultCode);
-		}
 		return rp.resultCode;
 	}
 }

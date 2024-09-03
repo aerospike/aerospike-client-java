@@ -17,15 +17,17 @@
 package com.aerospike.client;
 
 /**
- * Multi-record transaction (MRT) abort error status.
+ * Multi-record transaction (MRT) commit status code.
  */
-public enum AbortError {
-	ROLL_BACK_ABANDONED("MRT client roll back abandoned. Server will eventually abort the MRT."),
-	CLOSE_ABANDONED("MRT has been rolled back, but MRT client close was abandoned. Server will eventually close the MRT.");
+public enum CommitStatus {
+	OK("Commit succeeded"),
+	ALREADY_ATTEMPTED("Commit or abort already attempted"),
+	ROLL_FORWARD_ABANDONED("MRT client roll forward abandoned. Server will eventually commit the MRT."),
+	CLOSE_ABANDONED("MRT has been rolled forward, but MRT client close was abandoned. Server will eventually close the MRT.");
 
 	public final String str;
 
-	AbortError(String str) {
+	CommitStatus(String str) {
 		this.str = str;
 	}
 }

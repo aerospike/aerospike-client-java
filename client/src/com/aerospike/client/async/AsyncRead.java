@@ -60,10 +60,6 @@ public class AsyncRead extends AsyncReadBase {
 			return true;
 		}
 
-		if (rp.opCount > 0) {
-			throw new AerospikeException("Unexpected read opCount on error: " + rp.opCount + ',' + rp.resultCode);
-		}
-
 		if (rp.resultCode == ResultCode.KEY_NOT_FOUND_ERROR) {
 			return true;
 		}

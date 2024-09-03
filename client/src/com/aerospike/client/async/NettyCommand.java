@@ -1041,11 +1041,7 @@ public final class NettyCommand implements Runnable, TimerTask {
 	}
 
 	private void retry(AerospikeException ae, long deadline) {
-		ae.setNode(node);
-		ae.setPolicy(command.policy);
-		ae.setIteration(iteration);
-		ae.setInDoubt(command.isWrite(), command.commandSentCounter);
-		command.addSubException(ae);
+		command.onRetryException(node, iteration, ae);
 
 		if (! command.prepareRetry(ae.getResultCode() != ResultCode.SERVER_NOT_AVAILABLE)) {
 			// Batch may be retried in separate commands.
@@ -1093,15 +1089,10 @@ public final class NettyCommand implements Runnable, TimerTask {
 
 	private void notifyFailure(AerospikeException ae) {
 		try {
-			ae.setNode(node);
-			ae.setPolicy(command.policy);
-			ae.setIteration(iteration);
-			ae.setInDoubt(command.isWrite(), command.commandSentCounter);
-			ae.setSubExceptions(command.subExceptions);
-			command.onFailure(ae);
+			command.onFinalException(node, iteration, ae);
 		}
 		catch (Throwable e) {
-			logError("onFailure() error", e);
+			logError("onFinalException() error", e);
 		}
 	}
 

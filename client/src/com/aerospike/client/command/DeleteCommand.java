@@ -40,7 +40,7 @@ public final class DeleteCommand extends SyncWriteCommand {
 	protected void parseResult(Connection conn) throws IOException {
 		int resultCode = parseHeader(conn);
 
-		if (resultCode == 0) {
+		if (resultCode == ResultCode.OK) {
 			existed = true;
 			return;
 		}

@@ -31,6 +31,7 @@ public final class Txn {
 	private final Set<Key> writes;
 	private String namespace;
 	private int deadline;
+	private boolean monitorInDoubt;
 	private boolean rollAttempted;
 
 	/**
@@ -120,6 +121,14 @@ public final class Txn {
 	}
 
 	/**
+	 * Add key to write hash when write command is in doubt (usually caused by timeout).
+	 */
+	public void onWriteInDoubt(Key key) {
+		reads.remove(key);
+		writes.add(key);
+	}
+
+	/**
 	 * Get all write keys and their versions.
 	 */
 	public Set<Key> getWrites() {
@@ -180,16 +189,37 @@ public final class Txn {
 	public void setDeadline(int deadline) {
 		this.deadline = deadline;
 	}
+	
+	/**
+	 * Set that the MRT monitor existence is in doubt.
+	 */
+	public void setMonitorInDoubt() {
+		this.monitorInDoubt = true;
+	}
+
+	/**
+	 * Does MRT monitor record exist or is in doubt.
+	 */
+	public boolean monitorMightExist() {
+		return deadline != 0 || monitorInDoubt;
+	}
+
+	/**
+	 * Does MRT monitor record exist.
+	 */
+	public boolean monitorExists() {
+		return deadline != 0;
+	}
 
 	/**
 	 * Verify that commit/abort is only attempted once. For internal use only.
 	 */
-	public void setRollAttempted() {
+	public boolean setRollAttempted() {
 		if (rollAttempted) {
-			throw new AerospikeException(ResultCode.PARAMETER_ERROR,
-				"commit() or abort() may only be called once for a given MRT");
+			return false;
 		}
 		rollAttempted = true;
+		return true;
 	}
 
 	/**

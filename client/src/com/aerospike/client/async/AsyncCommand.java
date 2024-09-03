@@ -177,11 +177,37 @@ public abstract class AsyncCommand extends Command {
 		valid = false;
 	}
 
+	final void onRetryException(Node node, int iteration, AerospikeException ae) {
+		ae.setNode(node);
+		ae.setPolicy(policy);
+		ae.setIteration(iteration);
+		ae.setInDoubt(isWrite(), commandSentCounter);
+		addSubException(ae);
+	}
+
 	void addSubException(AerospikeException ae) {
 		if (subExceptions == null) {
 			subExceptions = new ArrayList<AerospikeException>(policy.maxRetries);
 		}
 		subExceptions.add(ae);
+	}
+
+	final void onFinalException(Node node, int iteration, AerospikeException ae) {
+		ae.setNode(node);
+		ae.setPolicy(policy);
+		ae.setIteration(iteration);
+		ae.setInDoubt(isWrite(), commandSentCounter);
+		ae.setSubExceptions(subExceptions);
+		
+		if (ae.getInDoubt()) {
+			onInDoubt();
+		}
+
+		onFailure(ae);
+	}
+	
+	void onInDoubt() {
+        // Write commands will override this method.		
 	}
 
 	boolean retryBatch(Runnable command, long deadline) {

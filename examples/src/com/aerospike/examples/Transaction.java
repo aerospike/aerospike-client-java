@@ -34,12 +34,12 @@ public class Transaction extends Example {
 	 */
 	@Override
 	public void runExample(IAerospikeClient client, Parameters params) throws Exception {
-		tranReadWrite(client, params);
+		txnReadWrite(client, params);
 	}
 
-	private void tranReadWrite(IAerospikeClient client, Parameters params) {
+	private void txnReadWrite(IAerospikeClient client, Parameters params) {
 		Txn txn = new Txn();
-		System.out.println("Begin tran: " + txn.getId());
+		System.out.println("Begin txn: " + txn.getId());
 
 		try {
 			WritePolicy wp = client.copyWritePolicyDefault();
@@ -68,7 +68,7 @@ public class Transaction extends Example {
 			throw t;
 		}
 
-		System.out.println("Commit tran: " + txn.getId());
+		System.out.println("Commit txn: " + txn.getId());
 		client.commit(txn);
 	}
 }

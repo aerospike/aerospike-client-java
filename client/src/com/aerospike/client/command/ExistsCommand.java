@@ -42,10 +42,6 @@ public final class ExistsCommand extends SyncReadCommand {
 		RecordParser rp = new RecordParser(conn, dataBuffer);
 		rp.parseFields(policy.txn, key, false);
 
-		if (rp.opCount > 0) {
-			throw new AerospikeException("Unexpected exists opCount: " + rp.opCount + ',' + rp.resultCode);
-		}
-
 		if (rp.resultCode == ResultCode.OK) {
 			exists = true;
 			return;
