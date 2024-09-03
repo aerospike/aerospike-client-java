@@ -486,6 +486,7 @@ public final class Batch {
 		private final Key[] keys;
 		private final Long[] versions;
 		private final BatchRecord[] records;
+		private final long id;
 
 		public TxnVerify(
 			Cluster cluster,
@@ -494,12 +495,14 @@ public final class Batch {
 			Key[] keys,
 			Long[] versions,
 			BatchRecord[] records,
-			BatchStatus status
+			BatchStatus status,
+			long id
 		) {
 			super(cluster, batch, batchPolicy, status, false);
 			this.keys = keys;
 			this.versions = versions;
 			this.records = records;
+			this.id = id;
 		}
 
 		@Override
@@ -509,7 +512,7 @@ public final class Batch {
 
 		@Override
 		protected void writeBuffer() {
-			setBatchTxnVerify(batchPolicy, keys, versions, batch);
+			setBatchTxnVerify(batchPolicy, keys, versions, batch, id);
 		}
 
 		@Override
@@ -530,7 +533,7 @@ public final class Batch {
 
 		@Override
 		protected BatchCommand createCommand(BatchNode batchNode) {
-			return new TxnVerify(cluster, batchNode, batchPolicy, keys, versions, records, status);
+			return new TxnVerify(cluster, batchNode, batchPolicy, keys, versions, records, status, id);
 		}
 
 		@Override

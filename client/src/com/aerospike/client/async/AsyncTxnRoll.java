@@ -166,11 +166,11 @@ public final class AsyncTxnRoll {
 			if (bn.offsetsSize == 1) {
 				int i = bn.offsets[0];
 				commands[count++] = new AsyncBatchSingle.TxnVerify(
-					executor, cluster, verifyPolicy, versions[i], records[i], bn.node);
+					executor, cluster, verifyPolicy, versions[i], records[i], bn.node, txn.getId());
 			}
 			else {
 				commands[count++] = new AsyncBatch.TxnVerify(
-					executor, bn, verifyPolicy, keys, versions, records);
+					executor, bn, verifyPolicy, keys, versions, records, txn.getId());
 			}
 		}
 		executor.execute(commands);
