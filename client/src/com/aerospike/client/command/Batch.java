@@ -483,7 +483,6 @@ public final class Batch {
 	//-------------------------------------------------------
 
 	public static final class TxnVerify extends BatchCommand {
-		private final Txn txn;
 		private final Key[] keys;
 		private final Long[] versions;
 		private final BatchRecord[] records;
@@ -492,14 +491,12 @@ public final class Batch {
 			Cluster cluster,
 			BatchNode batch,
 			BatchPolicy batchPolicy,
-			Txn txn,
 			Key[] keys,
 			Long[] versions,
 			BatchRecord[] records,
 			BatchStatus status
 		) {
 			super(cluster, batch, batchPolicy, status, false);
-			this.txn = txn;
 			this.keys = keys;
 			this.versions = versions;
 			this.records = records;
@@ -512,7 +509,7 @@ public final class Batch {
 
 		@Override
 		protected void writeBuffer() {
-			setBatchTxnVerify(batchPolicy, txn, keys, versions, batch);
+			setBatchTxnVerify(batchPolicy, keys, versions, batch);
 		}
 
 		@Override
@@ -533,7 +530,7 @@ public final class Batch {
 
 		@Override
 		protected BatchCommand createCommand(BatchNode batchNode) {
-			return new TxnVerify(cluster, batchNode, batchPolicy, txn, keys, versions, records, status);
+			return new TxnVerify(cluster, batchNode, batchPolicy, keys, versions, records, status);
 		}
 
 		@Override
@@ -543,6 +540,7 @@ public final class Batch {
 	}
 
 	public static final class TxnRoll extends BatchCommand {
+		private final Txn txn;
 		private final Key[] keys;
 		private final BatchRecord[] records;
 		private final BatchAttr attr;
@@ -551,12 +549,14 @@ public final class Batch {
 			Cluster cluster,
 			BatchNode batch,
 			BatchPolicy batchPolicy,
+			Txn txn,
 			Key[] keys,
 			BatchRecord[] records,
 			BatchAttr attr,
 			BatchStatus status
 		) {
 			super(cluster, batch, batchPolicy, status, false);
+			this.txn = txn;
 			this.keys = keys;
 			this.records = records;
 			this.attr = attr;
@@ -569,7 +569,7 @@ public final class Batch {
 
 		@Override
 		protected void writeBuffer() {
-			setBatchTxnRoll(batchPolicy, keys, batch, attr);
+			setBatchTxnRoll(batchPolicy, txn, keys, batch, attr);
 		}
 
 		@Override
@@ -605,7 +605,7 @@ public final class Batch {
 
 		@Override
 		protected BatchCommand createCommand(BatchNode batchNode) {
-			return new TxnRoll(cluster, batchNode, batchPolicy, keys, records, attr, status);
+			return new TxnRoll(cluster, batchNode, batchPolicy, txn, keys, records, attr, status);
 		}
 
 		@Override

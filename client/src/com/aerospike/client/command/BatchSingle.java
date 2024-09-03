@@ -365,28 +365,25 @@ public final class BatchSingle {
 	//-------------------------------------------------------
 
 	public static final class TxnVerify extends BaseCommand {
-		private final Txn txn;
 		private final long version;
 		private final BatchRecord record;
 
 		public TxnVerify(
 			Cluster cluster,
 			BatchPolicy policy,
-			Txn txn,
 			long version,
 			BatchRecord record,
 			BatchStatus status,
 			Node node
 		) {
 			super(cluster, policy, status, record.key, node, false);
-			this.txn = txn;
 			this.version = version;
 			this.record = record;
 		}
 
 		@Override
 		protected void writeBuffer() {
-			setTxnVerify(txn, record.key, version);
+			setTxnVerify(record.key, version);
 		}
 
 		@Override
@@ -404,25 +401,28 @@ public final class BatchSingle {
 	}
 
 	public static final class TxnRoll extends BaseCommand {
+		private final Txn txn;
 		private final BatchRecord record;
 		private final int attr;
 
 		public TxnRoll(
 			Cluster cluster,
 			BatchPolicy policy,
+			Txn txn,
 			BatchRecord record,
 			BatchStatus status,
 			Node node,
 			int attr
 		) {
 			super(cluster, policy, status, record.key, node, true);
+			this.txn = txn;
 			this.record = record;
 			this.attr = attr;
 		}
 
 		@Override
 		protected void writeBuffer() {
-			setTxnRoll(record.key, policy.txn, attr);
+			setTxnRoll(record.key, txn, attr);
 		}
 
 		@Override

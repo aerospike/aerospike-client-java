@@ -916,7 +916,6 @@ public final class AsyncBatchSingle {
 	//-------------------------------------------------------
 
 	public static class TxnVerify extends AsyncBaseCommand {
-		private final Txn txn;
 		private final long version;
 		private final BatchRecord record;
 
@@ -924,20 +923,18 @@ public final class AsyncBatchSingle {
 			AsyncBatchExecutor executor,
 			Cluster cluster,
 			BatchPolicy policy,
-			Txn txn,
 			long version,
 			BatchRecord record,
 			Node node
 		) {
 			super(executor, cluster, policy, record.key, node, false);
-			this.txn = txn;
 			this.version = version;
 			this.record = record;
 		}
 
 		@Override
 		protected void writeBuffer() {
-			setTxnVerify(txn, record.key, version);
+			setTxnVerify(record.key, version);
 		}
 
 		@Override
@@ -960,6 +957,7 @@ public final class AsyncBatchSingle {
 	}
 
 	public static class TxnRoll extends AsyncBaseCommand {
+		private final Txn txn;
 		private final BatchRecord record;
 		private final int attr;
 
@@ -967,18 +965,20 @@ public final class AsyncBatchSingle {
 			AsyncBatchExecutor executor,
 			Cluster cluster,
 			BatchPolicy policy,
+			Txn txn,
 			BatchRecord record,
 			Node node,
 			int attr
 		) {
 			super(executor, cluster, policy, record.key, node, true);
+			this.txn = txn;
 			this.record = record;
 			this.attr = attr;
 		}
 
 		@Override
 		protected void writeBuffer() {
-			setTxnRoll(record.key, policy.txn, attr);
+			setTxnRoll(record.key, txn, attr);
 		}
 
 		@Override

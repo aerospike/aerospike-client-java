@@ -518,14 +518,14 @@ public class AerospikeException extends RuntimeException {
 		public final BatchRecord[] rollRecords;
 
 		public Commit(CommitError error, BatchRecord[] verifyRecords, BatchRecord[] rollRecords) {
-			super(ResultCode.TRAN_FAILED, error.str);
+			super(ResultCode.TXN_FAILED, error.str);
 			this.error = error;
 			this.verifyRecords = verifyRecords;
 			this.rollRecords = rollRecords;
 		}
 
 		public Commit(CommitError error, BatchRecord[] verifyRecords, BatchRecord[] rollRecords, Throwable cause) {
-			super(ResultCode.TRAN_FAILED, error.str, cause);
+			super(ResultCode.TXN_FAILED, error.str, cause);
 			this.error = error;
 			this.verifyRecords = verifyRecords;
 			this.rollRecords = rollRecords;

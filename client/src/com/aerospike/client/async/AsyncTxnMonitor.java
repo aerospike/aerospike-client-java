@@ -169,7 +169,7 @@ public abstract class AsyncTxnMonitor {
 
 			@Override
 			public void onFailure(AerospikeException ae) {
-				notifyFailure(new AerospikeException(ResultCode.TRAN_FAILED, "Failed to add key(s) to MRT monitor", ae));
+				notifyFailure(new AerospikeException(ResultCode.TXN_FAILED, "Failed to add key(s) to MRT monitor", ae));
 			}
 		};
 

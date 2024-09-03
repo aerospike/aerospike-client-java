@@ -166,11 +166,11 @@ public final class AsyncTxnRoll {
 			if (bn.offsetsSize == 1) {
 				int i = bn.offsets[0];
 				commands[count++] = new AsyncBatchSingle.TxnVerify(
-					executor, cluster, verifyPolicy, txn, versions[i], records[i], bn.node);
+					executor, cluster, verifyPolicy, versions[i], records[i], bn.node);
 			}
 			else {
 				commands[count++] = new AsyncBatch.TxnVerify(
-					executor, bn, verifyPolicy, txn, keys, versions, records);
+					executor, bn, verifyPolicy, keys, versions, records);
 			}
 		}
 		executor.execute(commands);
@@ -191,7 +191,7 @@ public final class AsyncTxnRoll {
 				}
 			};
 
-			AsyncTxnMarkRollForward command = new AsyncTxnMarkRollForward(cluster, txn, writeListener, writePolicy, tranKey);
+			AsyncTxnMarkRollForward command = new AsyncTxnMarkRollForward(cluster, writeListener, writePolicy, tranKey);
 			eventLoop.execute(cluster, command);
 		}
 		catch (Throwable t) {
@@ -272,33 +272,25 @@ public final class AsyncTxnRoll {
 			records[i] = new BatchRecord(keys[i], true);
 		}
 
-		// Copy transaction roll policy because it needs to be modified.
-		BatchPolicy batchPolicy = new BatchPolicy(rollPolicy);
-
 		BatchAttr attr = new BatchAttr();
 		attr.setTxn(txnAttr);
 
 		AsyncBatchExecutor.BatchRecordArray executor = new AsyncBatchExecutor.BatchRecordArray(
 			eventLoop, cluster, rollListener, records);
 
-		// generate() requires a null transaction instance.
-		List<BatchNode> bns = BatchNodeList.generate(cluster, batchPolicy, keys, records, true, executor);
+		List<BatchNode> bns = BatchNodeList.generate(cluster, rollPolicy, keys, records, true, executor);
 		AsyncCommand[] commands = new AsyncCommand[bns.size()];
-
-		// Batch roll forward requires the transaction instance.
-		batchPolicy.txn = txn;
-
 		int count = 0;
 
 		for (BatchNode bn : bns) {
 			if (bn.offsetsSize == 1) {
 				int i = bn.offsets[0];
 				commands[count++] = new AsyncBatchSingle.TxnRoll(
-					executor, cluster, batchPolicy, records[i], bn.node, txnAttr);
+					executor, cluster, rollPolicy, txn, records[i], bn.node, txnAttr);
 			}
 			else {
 				commands[count++] = new AsyncBatch.TxnRoll(
-					executor, bn, batchPolicy, keys, records, attr);
+					executor, bn, rollPolicy, txn, keys, records, attr);
 			}
 		}
 		executor.execute(commands);
