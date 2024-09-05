@@ -27,11 +27,13 @@
 
     <dependency>
       <groupId>io.grpc</groupId>
+      <version>${grpc.version}</version>
       <artifactId>grpc-netty</artifactId>
     </dependency>
 
     <dependency>
       <groupId>io.netty</groupId>
+      <version>${netty.version}</version>
       <artifactId>netty-transport</artifactId>
     </dependency>
 
