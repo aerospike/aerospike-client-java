@@ -65,7 +65,7 @@ jobs:
 
     - uses: aerospike/shared-workflows/devops/setup-gpg@0b6e88ca5dcf11002afcff0aa06759abf278c119
       with:
-        gpg-private-key: ${{ secrets.GPG_PRIVATE_KEY }}
+        gpg-private-key: ${{ secrets.GPG_SECRET_KEY }}
         gpg-key-pass: ${{ secrets.GPG_PASS }}
         gpg-key-name: "aerospike-inc"
 
