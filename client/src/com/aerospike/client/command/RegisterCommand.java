@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -55,11 +55,23 @@ public final class RegisterCommand {
 			String file = null;
 			String line = null;
 			String message = null;
+			String messageNew = null;
+			int errorCode = 0;
 
 			while (parser.next()) {
 				String name = parser.getName();
-
-				if (name.equals("error")) {
+				
+				if (name.startsWith("ERROR")) {
+					// New error format: ERROR:<code>:<msg1>;file=<filename>;line=<line>;message=<base64 encoded msg2>
+					int idx = name.indexOf(';');
+					String s = (idx > 0)? name.substring(0, idx) : name;					
+					Info.Error ie = new Info.Error(s);
+					messageNew = ie.message;
+					errorCode = ie.code;
+					file = parser.getValue();
+				}
+				else if (name.equals("error")) {
+					// Old error format: error=<code>;file=<filename>;line=<line>;message=<base64 encoded msg>
 					error = parser.getValue();
 				}
 				else if (name.equals("file")) {
@@ -72,8 +84,15 @@ public final class RegisterCommand {
 					message = parser.getStringBase64();
 				}
 			}
-
-			if (error != null) {
+			
+			if (errorCode != 0) {
+				throw new AerospikeException(errorCode, "Registration failed: " + System.lineSeparator() +
+					"File: " + file + System.lineSeparator() +
+					"Line: " + line + System.lineSeparator() +
+					"Message: " + messageNew + ". " + message
+					);			
+			}
+			else if (error != null) {
 				throw new AerospikeException("Registration failed: " + error + System.lineSeparator() +
 					"File: " + file + System.lineSeparator() +
 					"Line: " + line + System.lineSeparator() +
