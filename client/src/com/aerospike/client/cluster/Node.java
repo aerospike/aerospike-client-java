@@ -426,7 +426,7 @@ public class Node implements Closeable {
 			boolean peersValidated = true;
 
 			for (Peer peer : peers.peers) {
-				if (findPeerNode(cluster, peers, peer.nodeName)) {
+				if (findPeerNode(cluster, peers, peer)) {
 					// Node already exists. Do not even try to connect to hosts.
 					continue;
 				}
@@ -449,13 +449,6 @@ public class Node implements Closeable {
 							// Must look for new node name in the unlikely event that node names do not agree.
 							if (Log.warnEnabled()) {
 								Log.warn("Peer node " + peer.nodeName + " is different than actual node " + nv.name + " for host " + host);
-							}
-
-							if (findPeerNode(cluster, peers, nv.name)) {
-								// Node already exists. Do not even try to connect to hosts.
-								nv.primaryConn.close();
-								nodeValidated = true;
-								break;
 							}
 						}
 
@@ -490,17 +483,23 @@ public class Node implements Closeable {
 		}
 	}
 
-	private static boolean findPeerNode(Cluster cluster, Peers peers, String nodeName) {
+	private static boolean findPeerNode(Cluster cluster, Peers peers, Peer peer) {
 		// Check global node map for existing cluster.
-		Node node = cluster.nodesMap.get(nodeName);
+		Node node = cluster.nodesMap.get(peer.nodeName);
 
 		if (node != null) {
-			node.referenceCount++;
-			return true;
+			// Node name found. Match peer hosts with the node host.			
+			for (Host h : peer.hosts) {
+				if (h.equals(node.host)) {
+					// Main node host is also the same as one of the peer hosts.
+					node.referenceCount++;
+					return true;
+				}
+			}
 		}
 
 		// Check local node map for this tend iteration.
-		node = peers.nodes.get(nodeName);
+		node = peers.nodes.get(peer.nodeName);
 
 		if (node != null) {
 			node.referenceCount++;
