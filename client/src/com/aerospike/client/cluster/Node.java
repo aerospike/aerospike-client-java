@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -455,7 +455,11 @@ public class Node implements Closeable {
 						// Create new node.
 						Node node = cluster.createNode(nv);
 						peers.nodes.put(nv.name, node);
-						nodeValidated = true;
+						nodeValidated = true;							
+
+						if (peer.replaceNode != null) {
+							peers.removeList.add(peer.replaceNode);
+						}
 						break;
 					}
 					catch (Throwable e) {
@@ -488,14 +492,24 @@ public class Node implements Closeable {
 		Node node = cluster.nodesMap.get(peer.nodeName);
 
 		if (node != null) {
-			// Node name found. Match peer hosts with the node host.			
+			// Node name found.
+			if (node.failures <= 0 || node.address.getAddress().isLoopbackAddress()) {
+				// If the node does not have cluster tend errors or is localhost,
+				// reject new peer as the IP address does not need to change.
+				node.referenceCount++;
+				return true;
+			}
+			
+			// Match peer hosts with the node host.
 			for (Host h : peer.hosts) {
 				if (h.equals(node.host)) {
 					// Main node host is also the same as one of the peer hosts.
+					// Peer should not be added.
 					node.referenceCount++;
 					return true;
 				}
 			}
+			peer.replaceNode = node;
 		}
 
 		// Check local node map for this tend iteration.
@@ -503,6 +517,7 @@ public class Node implements Closeable {
 
 		if (node != null) {
 			node.referenceCount++;
+			peer.replaceNode = null;
 			return true;
 		}
 		return false;
