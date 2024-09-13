@@ -111,6 +111,8 @@ public class Main implements Log.Callback {
 	private boolean initialize;
 	private boolean batchShowNodes;
 	private String filepath;
+	private boolean mrtEnabled;
+	private long nMRTs;
 
 	private EventLoops eventLoops;
 	private final ClientPolicy clientPolicy = new ClientPolicy();
@@ -172,6 +174,7 @@ public class Main implements Log.Callback {
 		options.addOption("asyncMaxConnsPerNode", true,
 			"Maximum number of async connections allowed per server node. Default: 100"
 			);
+		options.addOption("m", "mrts", true, "Set the number of multi record transactions.");
 		options.addOption("k", "keys", true,
 			"Set the number of keys the client is dealing with. " +
 			"If using an 'insert' workload (detailed below), the client will write this " +
@@ -380,6 +383,11 @@ public class Main implements Log.Callback {
 
 		if (line.hasOption("async")) {
 			this.asyncEnabled = true;
+		}
+
+		if(line.hasOption("mrts")){
+		    this.mrtEnabled = true;
+		    this.nMRTs = Long.parseLong(line.getOptionValue("mrts"));
 		}
 
 		if (line.hasOption("proxy")) {
@@ -1235,12 +1243,19 @@ public class Main implements Log.Callback {
 				IAerospikeClient client = AerospikeClientFactory.getClient(clientPolicy, useProxyClient, hosts);
 
 				try {
-					if (initialize) {
-						doAsyncInserts(client);
+					if(mrtEnabled) {
+						if(initialize) {
+							// TODO
+						}
 					}
 					else {
-						showBatchNodes(client);
-						doAsyncRWTest(client);
+						if (initialize) {
+							doAsyncInserts(client);
+						}
+						else {
+							showBatchNodes(client);
+							doAsyncRWTest(client);
+						}
 					}
 				}
 				finally {
@@ -1255,12 +1270,19 @@ public class Main implements Log.Callback {
 			IAerospikeClient client = AerospikeClientFactory.getClient(clientPolicy, useProxyClient, hosts);
 
 			try {
-				if (initialize) {
-					doInserts(client);
+				if(mrtEnabled) {
+					if(initialize) {
+						doMRTs(client);
+					}
 				}
 				else {
-					showBatchNodes(client);
-					doRWTest(client);
+					if (initialize) {
+						doInserts(client);
+					}
+					else {
+						showBatchNodes(client);
+						doRWTest(client);
+					}
 				}
 			}
 			finally {
@@ -1286,6 +1308,26 @@ public class Main implements Log.Callback {
 		}
 		Thread.sleep(900);
 		collectInsertStats();
+		es.shutdownNow();
+	}
+
+	private void doMRTs(IAerospikeClient client) throws Exception {
+		ExecutorService es = getExecutorService();
+
+		// Create N insert tasks
+		long ntasks = this.nThreads < this.nMRTs ? this.nThreads : this.nMRTs;
+		long mrtsPerTask = this.nMRTs / ntasks;
+		long rem = this.nMRTs - (mrtsPerTask * ntasks);
+		long start = this.startKey;
+		long nKeys = this.nKeys;
+
+		for (long i = 0; i < ntasks; i++) {
+			long nMrtsPerThread = (i < rem)? mrtsPerTask + 1 : mrtsPerTask;
+			MRTTaskSync it = new MRTTaskSync(client, args, counters, start, nMrtsPerThread, nKeys);
+			es.execute(it);
+		}
+		Thread.sleep(900);
+		collectMRTStats();
 		es.shutdownNow();
 	}
 
@@ -1322,6 +1364,38 @@ public class Main implements Log.Callback {
 		long total = 0;
 
 		while (total < this.nKeys) {
+			long time = System.currentTimeMillis();
+
+			int numWrites = this.counters.write.count.getAndSet(0);
+			int timeoutWrites = this.counters.write.timeouts.getAndSet(0);
+			int errorWrites = this.counters.write.errors.getAndSet(0);
+			total += numWrites;
+
+			this.counters.periodBegin.set(time);
+
+			LocalDateTime dt = Instant.ofEpochMilli(time).atZone(ZoneId.systemDefault()).toLocalDateTime();
+			System.out.println(dt.format(TimeFormatter) + " write(count=" + total + " tps=" + numWrites +
+				" timeouts=" + timeoutWrites + " errors=" + errorWrites + ")");
+
+			if (this.counters.write.latency != null) {
+				this.counters.write.latency.printHeader(System.out);
+				this.counters.write.latency.printResults(System.out, "write");
+			}
+
+			Thread.sleep(1000);
+		}
+
+		if (this.counters.write.latency != null) {
+			this.counters.write.latency.printSummaryHeader(System.out);
+			this.counters.write.latency.printSummary(System.out, "write");
+		}
+	}
+
+	private void collectMRTStats() throws Exception {
+		long total = 0;
+		long totalnKeys = this.nKeys * this.nMRTs;
+
+		while (total < totalnKeys) {
 			long time = System.currentTimeMillis();
 
 			int numWrites = this.counters.write.count.getAndSet(0);
