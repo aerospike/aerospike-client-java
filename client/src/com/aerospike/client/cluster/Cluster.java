@@ -569,11 +569,11 @@ public class Cluster implements Runnable, Closeable {
 				}
 
 				// Handle nodes changes determined from refreshes.
-				ArrayList<Node> removeList = findNodesToRemove(peers.refreshCount);
+				findNodesToRemove(peers);
 
 				// Remove nodes in a batch.
-				if (removeList.size() > 0) {
-					removeNodes(removeList);
+				if (peers.removeList.size() > 0) {
+					removeNodes(peers.removeList);
 				}
 			}
 
@@ -762,8 +762,9 @@ public class Cluster implements Runnable, Closeable {
 		return node;
 	}
 
-	private final ArrayList<Node> findNodesToRemove(int refreshCount) {
-		ArrayList<Node> removeList = new ArrayList<Node>();
+	private final void findNodesToRemove(Peers peers) {
+		int refreshCount = peers.refreshCount;	
+		ArrayList<Node> removeList = peers.removeList;
 
 		for (Node node : nodes) {
 			if (! node.isActive()) {
@@ -797,7 +798,6 @@ public class Cluster implements Runnable, Closeable {
 				}
 			}
 		}
-		return removeList;
 	}
 
 	private final boolean findNodeInPartitionMap(Node filter) {
