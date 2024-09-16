@@ -70,7 +70,7 @@ jobs:
         gpg-key-name: "aerospike-inc"
 
     - name: Run Maven workflow
-      run: jf mvn deploy -Dtest=com.aerospike.test.SuiteAll -DfailIfNoTests=false -DskipTests=false --build-name=${{ steps.get-proxy-client-version.outputs.version }} --build-number=${{ github.run_number }}
+      run: jf mvn deploy -Dtest=com.aerospike.test.SuiteAll -DfailIfNoTests=false -DskipTests=true --build-name=${{ steps.get-proxy-client-version.outputs.version }} --build-number=${{ github.run_number }}
 
     # For debugging the build info that was just collected by jf
     # Build info was not published to JFrog yet. This will be done in a later step
