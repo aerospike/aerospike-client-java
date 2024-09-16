@@ -63,7 +63,7 @@ jobs:
       # TODO: find a way to do this via java ecosystem instead of using generic cli tools
       run: echo version=$(xpath -q -e "//project/version/text()" pom.xml) >> $GITHUB_OUTPUT
 
-    - uses: aerospike/shared-workflows/devops/setup-gpg@0b6e88ca5dcf11002afcff0aa06759abf278c119
+    - uses: aerospike/shared-workflows/devops/setup-gpg@052d1b0a751414b0e03d12271bb7d09a4fe2dde0
       with:
         gpg-private-key: ${{ secrets.GPG_SECRET_KEY }}
         gpg-key-pass: ${{ secrets.GPG_PASS }}
