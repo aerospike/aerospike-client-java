@@ -69,6 +69,8 @@ jobs:
         gpg-key-pass: ${{ secrets.GPG_PASS }}
         gpg-key-name: "aerospike-inc"
 
+    - run: echo -e "passphrase-file ~/pass" >> ~/.gnupg/gpg.conf
+
     - name: Run Maven workflow
       run: jf mvn deploy -Dtest=com.aerospike.test.SuiteAll -DfailIfNoTests=false -DskipTests=true --build-name=${{ steps.get-proxy-client-version.outputs.version }} --build-number=${{ github.run_number }}
       env:
