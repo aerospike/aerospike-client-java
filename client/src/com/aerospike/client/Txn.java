@@ -18,14 +18,16 @@ package com.aerospike.client;
 
 import java.util.List;
 import java.util.Map;
-import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * Multi-record transaction (MRT). Each command in the MRT must use the same namespace.
  */
 public final class Txn {
+	private static AtomicLong randomState = new AtomicLong(System.nanoTime());
+
 	private final long id;
 	private final ConcurrentHashMap<Key,Long> reads;
 	private final Set<Key> writes;
@@ -64,15 +66,19 @@ public final class Txn {
 	}
 
 	private static long createId() {
-		// An id of zero is considered invalid. Create random numbers
-		// in a loop until non-zero is returned.
-		Random r = new Random();
-		long id = r.nextLong();
+		// xorshift64* doesn't generate zeroes.
+		long oldState;
+		long newState;
 
-		while (id == 0) {
-			id = r.nextLong();
-		}
-		return id;
+		do {
+			oldState = randomState.get();
+			newState = oldState;
+			newState ^= newState >>> 12;
+			newState ^= newState << 25;
+			newState ^= newState >>> 27;
+		} while (!randomState.compareAndSet(oldState, newState));
+
+		return newState * 0x2545f4914f6cdd1dl;
 	}
 
 	/**
