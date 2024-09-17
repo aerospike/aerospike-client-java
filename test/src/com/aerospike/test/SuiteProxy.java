@@ -51,6 +51,7 @@ import com.aerospike.test.util.Args;
 
 @RunWith(Suite.class)
 @Suite.SuiteClasses({
+	// TODO: add test for username and password with proxy client
 	TestAsyncPutGet.class,
 	TestAsyncBatch.class,
 	TestAsyncOperate.class,

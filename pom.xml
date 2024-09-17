@@ -5,7 +5,7 @@
   <groupId>com.aerospike</groupId>
   <artifactId>aerospike-parent</artifactId>
   <name>aerospike-parent</name>
-  <version>8.1.4</version>
+  <version>8.1.4-SNAPSHOT</version>
   <packaging>pom</packaging>
   <url>https://github.com/aerospike/aerospike-client-java</url>
 
@@ -139,6 +139,20 @@
     <pluginManagement>
       <plugins>
         <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-gpg-plugin</artifactId>
+          <version>3.2.5</version>
+          <executions>
+            <execution>
+              <id>sign-artifacts</id>
+              <phase>verify</phase>
+              <goals>
+                <goal>sign</goal>
+              </goals>
+            </execution>
+          </executions>
+        </plugin>
+        <plugin>
           <artifactId>maven-compiler-plugin</artifactId>
           <version>${maven-compiler-plugin.version}</version>
           <configuration>
@@ -170,4 +184,16 @@
   </repositories>
   -->
 
+  <distributionManagement>
+      <repository>
+          <id>central</id>
+          <name>aerospike-artifactory-primary-0-releases</name>
+          <url>https://aerospike.jfrog.io/artifactory/clients-maven-dev-local</url>
+      </repository>
+      <snapshotRepository>
+          <id>snapshots</id>
+          <name>aerospike-artifactory-primary-0-snapshots</name>
+          <url>https://aerospike.jfrog.io/artifactory/clients-maven-dev-local</url>
+      </snapshotRepository>
+  </distributionManagement>
 </project>

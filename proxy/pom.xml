@@ -6,7 +6,7 @@
   <parent>
     <groupId>com.aerospike</groupId>
     <artifactId>aerospike-parent</artifactId>
-    <version>8.1.4</version>
+    <version>8.1.4-SNAPSHOT</version>
   </parent>
   <artifactId>aerospike-proxy-client</artifactId>
   <packaging>jar</packaging>
@@ -27,11 +27,13 @@
 
     <dependency>
       <groupId>io.grpc</groupId>
+      <version>${grpc.version}</version>
       <artifactId>grpc-netty</artifactId>
     </dependency>
 
     <dependency>
       <groupId>io.netty</groupId>
+      <version>${netty.version}</version>
       <artifactId>netty-transport</artifactId>
     </dependency>
 
@@ -80,6 +82,10 @@
     </resources>
 
     <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-gpg-plugin</artifactId>
+      </plugin>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-compiler-plugin</artifactId>
