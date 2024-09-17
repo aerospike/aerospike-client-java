@@ -73,8 +73,6 @@ jobs:
 
     - name: Run Maven workflow
       run: jf mvn deploy -Dtest=com.aerospike.test.SuiteAll -DfailIfNoTests=false -DskipTests=true --build-name=${{ steps.get-proxy-client-version.outputs.version }} --build-number=${{ github.run_number }}
-      env:
-        GPG_TTY: no-tty
 
     # For debugging the build info that was just collected by jf
     # Build info was not published to JFrog yet. This will be done in a later step
