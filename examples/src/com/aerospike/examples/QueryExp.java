@@ -65,6 +65,7 @@ public class QueryExp extends Example {
 		runQuery2(client, params, binName);
 		runQuery3(client, params, binName);
 		runQuery4(client, params, binName);
+		runQuery5(client, params, binName);
 
 		//client.dropIndex(params.policy, params.namespace, params.set, indexName);
 	}
@@ -249,6 +250,7 @@ public class QueryExp extends Example {
 			rs.close();
 		}
 	}
+	// Example 4: Get a value from a map inside a list
 	private void runQuery4(
 			IAerospikeClient client,
 			Parameters params,
@@ -269,7 +271,7 @@ public class QueryExp extends Example {
 		policy.filterExp = Exp.build(
 				Exp.regexCompare("str.*3", RegexFlag.ICASE | RegexFlag.NEWLINE,
 						MapExp.getByKey(MapReturnType.VALUE, Exp.Type.STRING, Exp.val(2),
-						ListExp.getByIndex(ListReturnType.VALUE, Exp.Type.MAP, Exp.val(3), Exp.listBin("bin4")))));
+								ListExp.getByIndex(ListReturnType.VALUE, Exp.Type.MAP, Exp.val(3), Exp.listBin("bin4")))));
 
 		RecordSet rs = client.query(policy, stmt);
 
@@ -283,4 +285,41 @@ public class QueryExp extends Example {
 			rs.close();
 		}
 	}
+	// Example 5: Get a value from an inner list from a map inside an outer list
+	private void runQuery5(
+			IAerospikeClient client,
+			Parameters params,
+			String binName
+	) throws Exception {
+
+		int begin = 20;
+		int end = 30;
+
+		console.info("Query Predicate: bin4, inner list index 0, from map key 'list' at outer list index 3 contains regex str.*2");
+
+		Statement stmt = new Statement();
+		stmt.setNamespace(params.namespace);
+		stmt.setSetName(params.set);
+		stmt.setFilter(Filter.range(binName, begin, end));
+
+		QueryPolicy policy = client.copyQueryPolicyDefault();
+		policy.filterExp = Exp.build(
+				Exp.regexCompare("str.*2", RegexFlag.ICASE | RegexFlag.NEWLINE,
+						ListExp.getByIndex(MapReturnType.VALUE, Exp.Type.STRING, Exp.val(0),
+						MapExp.getByKey(MapReturnType.VALUE, Exp.Type.LIST, Exp.val("list"),
+						ListExp.getByIndex(ListReturnType.VALUE, Exp.Type.MAP, Exp.val(3), Exp.listBin("bin4"))))));
+
+		RecordSet rs = client.query(policy, stmt);
+
+		try {
+			while (rs.next()) {
+				Record record = rs.getRecord();
+				console.info("Record: " + record.toString());
+			}
+		}
+		finally {
+			rs.close();
+		}
+	}
+
 }
