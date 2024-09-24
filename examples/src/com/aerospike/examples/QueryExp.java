@@ -271,7 +271,7 @@ public class QueryExp extends Example {
 		policy.filterExp = Exp.build(
 				Exp.regexCompare("str.*3", RegexFlag.ICASE | RegexFlag.NEWLINE,
 						MapExp.getByKey(MapReturnType.VALUE, Exp.Type.STRING, Exp.val(2),
-								ListExp.getByIndex(ListReturnType.VALUE, Exp.Type.MAP, Exp.val(3), Exp.listBin("bin4")))));
+						ListExp.getByIndex(ListReturnType.VALUE, Exp.Type.MAP, Exp.val(3), Exp.listBin("bin4")))));
 
 		RecordSet rs = client.query(policy, stmt);
 
