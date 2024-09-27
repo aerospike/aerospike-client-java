@@ -23,7 +23,9 @@ import java.util.zip.DataFormatException;
 import java.util.zip.Inflater;
 
 import com.aerospike.client.AerospikeException;
+import com.aerospike.client.Key;
 import com.aerospike.client.Record;
+import com.aerospike.client.Txn;
 import com.aerospike.client.cluster.Connection;
 import com.aerospike.client.command.Command.OpResults;
 import com.aerospike.client.util.ThreadLocalData;
@@ -115,18 +117,18 @@ public final class RecordParser {
 			throw new AerospikeException("Invalid proto type: " + type + " Expected: " + Command.AS_MSG_TYPE);
 		}
 
-		this.resultCode = buffer[offset] & 0xFF;
+		resultCode = buffer[offset] & 0xFF;
 		offset++;
-		this.generation = Buffer.bytesToInt(buffer, offset);
+		generation = Buffer.bytesToInt(buffer, offset);
 		offset += 4;
-		this.expiration = Buffer.bytesToInt(buffer, offset);
+		expiration = Buffer.bytesToInt(buffer, offset);
 		offset += 8;
-		this.fieldCount = Buffer.bytesToShort(buffer, offset);
+		fieldCount = Buffer.bytesToShort(buffer, offset);
 		offset += 2;
-		this.opCount = Buffer.bytesToShort(buffer, offset);
+		opCount = Buffer.bytesToShort(buffer, offset);
 		offset += 2;
-		this.dataOffset = offset;
-		this.dataBuffer = buffer;
+		dataOffset = offset;
+		dataBuffer = buffer;
 	}
 
 	/**
@@ -138,18 +140,76 @@ public final class RecordParser {
 		}
 
 		offset += 5;
-		this.resultCode = buffer[offset] & 0xFF;
+		resultCode = buffer[offset] & 0xFF;
 		offset++;
-		this.generation = Buffer.bytesToInt(buffer, offset);
+		generation = Buffer.bytesToInt(buffer, offset);
 		offset += 4;
-		this.expiration = Buffer.bytesToInt(buffer, offset);
+		expiration = Buffer.bytesToInt(buffer, offset);
 		offset += 8;
-		this.fieldCount = Buffer.bytesToShort(buffer, offset);
+		fieldCount = Buffer.bytesToShort(buffer, offset);
 		offset += 2;
-		this.opCount = Buffer.bytesToShort(buffer, offset);
+		opCount = Buffer.bytesToShort(buffer, offset);
 		offset += 2;
-		this.dataOffset = offset;
-		this.dataBuffer = buffer;
+		dataOffset = offset;
+		dataBuffer = buffer;
+	}
+
+	public void parseFields(Txn txn, Key key, boolean hasWrite) {
+		if (txn == null) {
+			skipFields();
+			return;
+		}
+
+		Long version = null;
+
+		for (int i = 0; i < fieldCount; i++) {
+			int len = Buffer.bytesToInt(dataBuffer, dataOffset);
+			dataOffset += 4;
+
+			int type = dataBuffer[dataOffset++];
+			int size = len - 1;
+
+			if (type == FieldType.RECORD_VERSION) {
+				if (size == 7) {
+					version = Buffer.versionBytesToLong(dataBuffer, dataOffset);
+				}
+				else {
+					throw new AerospikeException("Record version field has invalid size: " + size);
+				}
+			}
+			dataOffset += size;
+		}
+
+		if (hasWrite) {
+			txn.onWrite(key, version, resultCode);
+		} else {
+			txn.onRead(key, version);
+		}
+	}
+
+	public void parseTranDeadline(Txn txn) {
+		for (int i = 0; i < fieldCount; i++) {
+			int len = Buffer.bytesToInt(dataBuffer, dataOffset);
+			dataOffset += 4;
+
+			int type = dataBuffer[dataOffset++];
+			int size = len - 1;
+
+			if (type == FieldType.MRT_DEADLINE) {
+				int deadline = Buffer.littleBytesToInt(dataBuffer, dataOffset);
+				txn.setDeadline(deadline);
+			}
+			dataOffset += size;
+		}
+	}
+
+	private void skipFields() {
+		// There can be fields in the response (setname etc).
+		// But for now, ignore them. Expose them to the API if needed in the future.
+		for (int i = 0; i < fieldCount; i++) {
+			int fieldlen = Buffer.bytesToInt(dataBuffer, dataOffset);
+			dataOffset += 4 + fieldlen;
+		}
 	}
 
 	public Record parseRecord(boolean isOperation)  {
@@ -158,13 +218,6 @@ public final class RecordParser {
 			return new Record(null, generation, expiration);
 		}
 
-		// Skip key.
-		for (int i = 0; i < fieldCount; i++) {
-			int fieldlen = Buffer.bytesToInt(dataBuffer, dataOffset);
-			dataOffset += 4 + fieldlen;
-		}
-
-		// Parse record.
 		Map<String,Object> bins = new LinkedHashMap<>();
 
 		for (int i = 0 ; i < opCount; i++) {

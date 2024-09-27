@@ -37,7 +37,7 @@ public final class ScanExecutor {
 		ScanCallback callback,
 		PartitionTracker tracker
 	) {
-		cluster.addTran();
+		cluster.addCommandCount();
 
 		while (true) {
 			long taskId = RandomShift.instance().nextLong();

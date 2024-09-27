@@ -83,7 +83,7 @@ public abstract class SyncCommand extends Command {
 			catch (AerospikeException ae) {
 				if (cluster.isActive()) {
 					// Log.info("Throw AerospikeException: " + tranId + ',' + node + ',' + sequence + ',' + iteration + ',' + ae.getResultCode());
-					setExceptionData(null, ae, subExceptions);
+					prepareException(null, ae, subExceptions);
 					throw ae;
 				}
 				else {
@@ -149,7 +149,7 @@ public abstract class SyncCommand extends Command {
 					}
 					else {
 						node.addError();
-						setExceptionData(node, ae, subExceptions);
+						prepareException(node, ae, subExceptions);
 						throw ae;
 					}
 				}
@@ -187,7 +187,7 @@ public abstract class SyncCommand extends Command {
 					node.closeConnection(conn);
 					node.addError();
 					AerospikeException ae = new AerospikeException(t);
-					setExceptionData(node, ae, subExceptions);
+					prepareException(node, ae, subExceptions);
 					throw ae;
 				}
 			}
@@ -214,13 +214,13 @@ public abstract class SyncCommand extends Command {
 			catch (AerospikeException ae) {
 				// Log.info("Throw AerospikeException: " + tranId + ',' + node + ',' + sequence + ',' + iteration + ',' + ae.getResultCode());
 				node.addError();
-				setExceptionData(node, ae, subExceptions);
+				prepareException(node, ae, subExceptions);
 				throw ae;
 			}
 			catch (Throwable t) {
 				node.addError();
 				AerospikeException ae = new AerospikeException(t);
-				setExceptionData(node, ae, subExceptions);
+				prepareException(node, ae, subExceptions);
 				throw ae;
 			}
 
@@ -254,7 +254,10 @@ public abstract class SyncCommand extends Command {
 				Util.sleep(policy.sleepBetweenRetries);
 			}
 
-			setExceptionData(node, exception, null);
+			exception.setNode(node);
+			exception.setPolicy(policy);
+			exception.setIteration(iteration);
+			exception.setInDoubt(isWrite(), commandSentCounter);
 			addSubException(exception);
 			iteration++;
 
@@ -271,7 +274,7 @@ public abstract class SyncCommand extends Command {
 
 		// Retries have been exhausted.  Throw last exception.
 		// Log.info("Runtime exception: " + tranId + ',' + sequence + ',' + iteration + ',' + exception.getMessage());
-		setExceptionData(node, exception, subExceptions);
+		prepareException(node, exception, subExceptions);
 		throw exception;
 	}
 
@@ -282,12 +285,20 @@ public abstract class SyncCommand extends Command {
 		subExceptions.add(exception);
 	}
 
-	private void setExceptionData(Node node, AerospikeException exception, List<AerospikeException> subExceptions) {
-		exception.setNode(node);
-		exception.setPolicy(policy);
-		exception.setIteration(iteration);
-		exception.setInDoubt(isWrite(), commandSentCounter);
-		exception.setSubExceptions(subExceptions);
+	private void prepareException(Node node, AerospikeException ae, List<AerospikeException> subExceptions) {
+		ae.setNode(node);
+		ae.setPolicy(policy);
+		ae.setIteration(iteration);
+		ae.setInDoubt(isWrite(), commandSentCounter);
+		ae.setSubExceptions(subExceptions);
+		
+		if (ae.getInDoubt()) {
+			onInDoubt();
+		}
+	}
+	
+	protected void onInDoubt() {
+		// Write commands will override this method.
 	}
 
 	public void resetDeadline(long startTime) {

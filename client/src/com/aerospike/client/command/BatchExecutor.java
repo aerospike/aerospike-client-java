@@ -27,7 +27,7 @@ import com.aerospike.client.policy.BatchPolicy;
 public final class BatchExecutor {
 
 	public static void execute(Cluster cluster, BatchPolicy policy, IBatchCommand[] commands, BatchStatus status) {
-		cluster.addTran();
+		cluster.addCommandCount();
 
 		if (policy.maxConcurrentThreads == 1 || commands.length <= 1) {
 			// Run batch requests sequentially in same thread.

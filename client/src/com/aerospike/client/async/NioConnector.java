@@ -159,7 +159,7 @@ public final class NioConnector extends AsyncConnector implements INioCommand {
 		if (resultCode != 0 && resultCode != ResultCode.SECURITY_NOT_ENABLED) {
 			// Authentication failed. Session token probably expired.
 			// Signal tend thread to perform node login, so future
-			// transactions do not fail.
+			// commands do not fail.
 			node.signalLogin();
 
 			// This is a rare event because the client tracks session

@@ -27,6 +27,7 @@ import com.aerospike.client.Log;
 import com.aerospike.client.Operation;
 import com.aerospike.client.Record;
 import com.aerospike.client.ResultCode;
+import com.aerospike.client.Txn;
 import com.aerospike.client.command.BatchAttr;
 import com.aerospike.client.command.BatchNode;
 import com.aerospike.client.command.BatchNodeList;
@@ -71,9 +72,9 @@ public final class AsyncBatch {
 
 		@Override
 		protected void parseRow() {
-			skipKey(fieldCount);
-
 			BatchRead record = records.get(batchIndex);
+
+			parseFieldsRead(record.key);
 
 			if (resultCode == 0) {
 				record.setRecord(parseRecord());
@@ -126,9 +127,9 @@ public final class AsyncBatch {
 
 		@Override
 		protected void parseRow() {
-			skipKey(fieldCount);
-
 			BatchRead record = records.get(batchIndex);
+
+			parseFieldsRead(record.key);
 
 			if (resultCode == 0) {
 				record.setRecord(parseRecord());
@@ -193,7 +194,7 @@ public final class AsyncBatch {
 
 		@Override
 		protected void parseRow() {
-			skipKey(fieldCount);
+			parseFieldsRead(keys[batchIndex]);
 
 			if (resultCode == 0) {
 				records[batchIndex] = parseRecord();
@@ -254,9 +255,9 @@ public final class AsyncBatch {
 
 		@Override
 		protected void parseRow() {
-			skipKey(fieldCount);
-
 			Key keyOrig = keys[batchIndex];
+
+			parseFieldsRead(keyOrig);
 
 			if (resultCode == 0) {
 				Record record = parseRecord();
@@ -311,12 +312,7 @@ public final class AsyncBatch {
 
 		@Override
 		protected void parseRow() {
-			skipKey(fieldCount);
-
-			if (opCount > 0) {
-				throw new AerospikeException.Parse("Received bins that were not requested!");
-			}
-
+			parseFieldsRead(keys[batchIndex]);
 			existsArray[batchIndex] = resultCode == 0;
 		}
 
@@ -364,13 +360,8 @@ public final class AsyncBatch {
 
 		@Override
 		protected void parseRow() {
-			skipKey(fieldCount);
-
-			if (opCount > 0) {
-				throw new AerospikeException.Parse("Received bins that were not requested!");
-			}
-
 			Key keyOrig = keys[batchIndex];
+			parseFieldsRead(keyOrig);
 			listener.onExists(keyOrig, resultCode == 0);
 		}
 
@@ -418,9 +409,9 @@ public final class AsyncBatch {
 
 		@Override
 		protected void parseRow() {
-			skipKey(fieldCount);
-
 			BatchRecord record = records.get(batchIndex);
+
+			parseFields(record.key, record.hasWrite);
 
 			if (resultCode == 0) {
 				record.setRecord(parseRecord());
@@ -456,6 +447,10 @@ public final class AsyncBatch {
 
 				if (record.resultCode == ResultCode.NO_RESPONSE) {
 					record.inDoubt = record.hasWrite;
+					
+					if (record.inDoubt && policy.txn != null) {
+						policy.txn.onWriteInDoubt(record.key);
+					}
 				}
 			}
 		}
@@ -507,9 +502,9 @@ public final class AsyncBatch {
 
 		@Override
 		protected void parseRow() {
-			skipKey(fieldCount);
-
 			BatchRecord record = records.get(batchIndex);
+
+			parseFields(record.key, record.hasWrite);
 
 			if (resultCode == 0) {
 				record.setRecord(parseRecord());
@@ -547,6 +542,10 @@ public final class AsyncBatch {
 					// Set inDoubt, but do not call onRecord() because user already has access to full
 					// BatchRecord list and can examine each record for inDoubt when the exception occurs.
 					record.inDoubt = record.hasWrite;
+					
+					if (record.inDoubt && policy.txn != null) {
+						policy.txn.onWriteInDoubt(record.key);
+					}
 				}
 			}
 		}
@@ -600,9 +599,9 @@ public final class AsyncBatch {
 
 		@Override
 		protected void parseRow() {
-			skipKey(fieldCount);
-
 			BatchRecord record = records[batchIndex];
+
+			parseFields(record.key, record.hasWrite);
 
 			if (resultCode == 0) {
 				record.setRecord(parseRecord());
@@ -623,7 +622,11 @@ public final class AsyncBatch {
 				BatchRecord record = records[index];
 
 				if (record.resultCode == ResultCode.NO_RESPONSE) {
-					record.inDoubt = inDoubt;
+					record.inDoubt = true;
+					
+					if (policy.txn != null) {
+						policy.txn.onWriteInDoubt(record.key);
+					}
 				}
 			}
 		}
@@ -680,9 +683,10 @@ public final class AsyncBatch {
 
 		@Override
 		protected void parseRow() {
-			skipKey(fieldCount);
-
 			Key keyOrig = keys[batchIndex];
+
+			parseFields(keyOrig, attr.hasWrite);
+
 			BatchRecord record;
 
 			if (resultCode == 0) {
@@ -691,6 +695,7 @@ public final class AsyncBatch {
 			else {
 				record = new BatchRecord(keyOrig, null, resultCode, Command.batchInDoubt(attr.hasWrite, commandSentCounter), attr.hasWrite);
 			}
+
 			sent[batchIndex] = true;
 			AsyncBatch.onRecord(listener, record, batchIndex);
 		}
@@ -703,6 +708,11 @@ public final class AsyncBatch {
 					Key key = keys[index];
 					BatchRecord record = new BatchRecord(key, null, ResultCode.NO_RESPONSE, attr.hasWrite && inDoubt, attr.hasWrite);
 					sent[index] = true;
+					
+					if (record.inDoubt && policy.txn != null) {
+						policy.txn.onWriteInDoubt(key);
+					}
+					
 					AsyncBatch.onRecord(listener, record, index);
 				}
 			}
@@ -763,9 +773,9 @@ public final class AsyncBatch {
 
 		@Override
 		protected void parseRow() {
-			skipKey(fieldCount);
-
 			BatchRecord record = records[batchIndex];
+
+			parseFields(record.key, record.hasWrite);
 
 			if (resultCode == 0) {
 				record.setRecord(parseRecord());
@@ -800,7 +810,11 @@ public final class AsyncBatch {
 				BatchRecord record = records[index];
 
 				if (record.resultCode == ResultCode.NO_RESPONSE) {
-					record.inDoubt = inDoubt;
+					record.inDoubt = true;
+					
+					if (policy.txn != null) {
+						policy.txn.onWriteInDoubt(record.key);
+					}
 				}
 			}
 		}
@@ -863,9 +877,10 @@ public final class AsyncBatch {
 
 		@Override
 		protected void parseRow() {
-			skipKey(fieldCount);
-
 			Key keyOrig = keys[batchIndex];
+
+			parseFields(keyOrig, attr.hasWrite);
+
 			BatchRecord record;
 
 			if (resultCode == 0) {
@@ -886,6 +901,7 @@ public final class AsyncBatch {
 			else {
 				record = new BatchRecord(keyOrig, null, resultCode, Command.batchInDoubt(attr.hasWrite, commandSentCounter), attr.hasWrite);
 			}
+
 			sent[batchIndex] = true;
 			AsyncBatch.onRecord(listener, record, batchIndex);
 		}
@@ -898,6 +914,10 @@ public final class AsyncBatch {
 					Key key = keys[index];
 					BatchRecord record = new BatchRecord(key, null, ResultCode.NO_RESPONSE, attr.hasWrite && inDoubt, attr.hasWrite);
 					sent[index] = true;
+					
+					if (record.inDoubt && policy.txn != null) {
+						policy.txn.onWriteInDoubt(record.key);
+					}
 					AsyncBatch.onRecord(listener, record, index);
 				}
 			}
@@ -911,6 +931,113 @@ public final class AsyncBatch {
 		@Override
 		protected List<BatchNode> generateBatchNodes() {
 			return BatchNodeList.generate(parent.cluster, batchPolicy, keys, sent, sequenceAP, sequenceSC, batch, attr.hasWrite, parent);
+		}
+	}
+
+	//-------------------------------------------------------
+	// MRT
+	//-------------------------------------------------------
+
+	public static final class TxnVerify extends AsyncBatchCommand {
+		private final Key[] keys;
+		private final Long[] versions;
+		private final BatchRecord[] records;
+
+		public TxnVerify(
+			AsyncBatchExecutor parent,
+			BatchNode batch,
+			BatchPolicy batchPolicy,
+			Key[] keys,
+			Long[] versions,
+			BatchRecord[] records
+		) {
+			super(parent, batch, batchPolicy, false);
+			this.keys = keys;
+			this.versions = versions;
+			this.records = records;
+		}
+
+		@Override
+		protected void writeBuffer() {
+			setBatchTxnVerify(batchPolicy, keys, versions, batch);
+		}
+
+		@Override
+		protected void parseRow() {
+			skipKey(fieldCount);
+
+			BatchRecord record = records[batchIndex];
+
+			if (resultCode == ResultCode.OK) {
+				record.resultCode = resultCode;
+			}
+			else {
+				record.setError(resultCode, false);
+				parent.setRowError();
+			}
+		}
+
+		@Override
+		protected AsyncBatchCommand createCommand(BatchNode batchNode) {
+			return new TxnVerify(parent, batchNode, batchPolicy, keys, versions, records);
+		}
+
+		@Override
+		protected List<BatchNode> generateBatchNodes() {
+			return BatchNodeList.generate(parent.cluster, batchPolicy, keys, sequenceAP, sequenceSC, batch, false, parent);
+		}
+	}
+
+	public static final class TxnRoll extends AsyncBatchCommand {
+		private final Txn txn;
+		private final Key[] keys;
+		private final BatchRecord[] records;
+		private final BatchAttr attr;
+
+		public TxnRoll(
+			AsyncBatchExecutor parent,
+			BatchNode batch,
+			BatchPolicy batchPolicy,
+			Txn txn,
+			Key[] keys,
+			BatchRecord[] records,
+			BatchAttr attr
+		) {
+			super(parent, batch, batchPolicy, false);
+			this.txn = txn;
+			this.keys = keys;
+			this.records = records;
+			this.attr = attr;
+		}
+
+		@Override
+		protected void writeBuffer() {
+			setBatchTxnRoll(batchPolicy, txn, keys, batch, attr);
+		}
+
+		@Override
+		protected void parseRow() {
+			skipKey(fieldCount);
+
+			BatchRecord record = records[batchIndex];
+
+			if (resultCode == ResultCode.OK) {
+				record.resultCode = resultCode;
+			}
+			else {
+				record.setError(resultCode, Command.batchInDoubt(attr.hasWrite, commandSentCounter));
+				parent.setRowError();
+			}
+		}
+
+		@Override
+		protected AsyncBatchCommand createCommand(BatchNode batchNode) {
+			return new TxnRoll(parent, batchNode, batchPolicy, txn, keys, records, attr);
+		}
+
+		@Override
+		protected List<BatchNode> generateBatchNodes() {
+			return BatchNodeList.generate(parent.cluster, batchPolicy, keys, sequenceAP, sequenceSC, batch, true, parent);
 		}
 	}
 
@@ -940,6 +1067,32 @@ public final class AsyncBatch {
 		@Override
 		void addSubException(AerospikeException ae) {
 			parent.addSubException(ae);
+		}
+
+		final void parseFieldsRead(Key key) {
+			if (policy.txn != null) {
+				Long version = parseVersion(fieldCount);
+				policy.txn.onRead(key, version);
+			}
+			else {
+				skipKey(fieldCount);
+			}
+		}
+
+		final void parseFields(Key key, boolean hasWrite) {
+			if (policy.txn != null) {
+				Long version = parseVersion(fieldCount);
+
+				if (hasWrite) {
+					policy.txn.onWrite(key, version, resultCode);
+				}
+				else {
+					policy.txn.onRead(key, version);
+				}
+			}
+			else {
+				skipKey(fieldCount);
+			}
 		}
 
 		@Override

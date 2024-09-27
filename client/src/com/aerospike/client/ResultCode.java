@@ -22,6 +22,11 @@ package com.aerospike.client;
  */
 public final class ResultCode {
 	/**
+	 * Multi-record transaction failed
+	 */
+	public static final int TXN_FAILED = -17;
+
+	/**
 	 * One or more keys failed in a batch.
 	 */
 	public static final int BATCH_FAILED = -16;
@@ -224,7 +229,7 @@ public final class ResultCode {
 	public static final int OP_NOT_APPLICABLE = 26;
 
 	/**
-	 * The transaction was not performed because the filter was false.
+	 * The command was not performed because the filter was false.
 	 */
 	public static final int FILTERED_OUT = 27;
 
@@ -232,6 +237,21 @@ public final class ResultCode {
 	 * Write command loses conflict to XDR.
 	 */
 	public static final int LOST_CONFLICT = 28;
+
+	/**
+	 * MRT record blocked by a different transaction.
+	 */
+	public static final int MRT_BLOCKED = 29;
+
+	/**
+	 * MRT read verify failed. Some other command changed record outside of the transaction.
+	 */
+	public static final int MRT_CONFLICT = 30;
+
+	/**
+	 * MRT deadline reached without a successful commit or abort.
+	 */
+	public static final int MRT_EXPIRED = 31;
 
 	/**
 	 * Write can't complete until XDR finishes shipping.
@@ -460,6 +480,8 @@ public final class ResultCode {
 	 */
 	public static String getResultString(int resultCode) {
 		switch (resultCode) {
+		case TXN_FAILED:
+			return "Multi-record transaction failed";
 
 		case BATCH_FAILED:
 			return "One or more keys failed in a batch";
@@ -582,10 +604,19 @@ public final class ResultCode {
 			return "Operation not applicable";
 
 		case FILTERED_OUT:
-			return "Transaction filtered out";
+			return "Command filtered out";
 
 		case LOST_CONFLICT:
-			return "Transaction failed due to conflict with XDR";
+			return "Command failed due to conflict with XDR";
+
+		case MRT_BLOCKED:
+			return "MRT record blocked by a different transaction";
+
+		case MRT_CONFLICT:
+			return "MRT read verify failed";
+
+		case MRT_EXPIRED:
+			return "MRT expired";
 
 		case XDR_KEY_BUSY:
 			return "Write can't complete until XDR finishes shipping";

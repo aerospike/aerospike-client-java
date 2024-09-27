@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -16,8 +16,6 @@
  */
 package com.aerospike.client.command;
 
-import java.io.IOException;
-
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Bin;
 import com.aerospike.client.Key;
@@ -25,41 +23,17 @@ import com.aerospike.client.Operation;
 import com.aerospike.client.ResultCode;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.Connection;
-import com.aerospike.client.cluster.Node;
-import com.aerospike.client.cluster.Partition;
-import com.aerospike.client.metrics.LatencyType;
 import com.aerospike.client.policy.WritePolicy;
+import java.io.IOException;
 
-public final class WriteCommand extends SyncCommand {
-	private final WritePolicy writePolicy;
-	private final Key key;
-	private final Partition partition;
+public final class WriteCommand extends SyncWriteCommand {
 	private final Bin[] bins;
 	private final Operation.Type operation;
 
 	public WriteCommand(Cluster cluster, WritePolicy writePolicy, Key key, Bin[] bins, Operation.Type operation) {
-		super(cluster, writePolicy);
-		this.writePolicy = writePolicy;
-		this.key = key;
-		this.partition = Partition.write(cluster, writePolicy, key);
+		super(cluster, writePolicy, key);
 		this.bins = bins;
 		this.operation = operation;
-		cluster.addTran();
-	}
-
-	@Override
-	protected boolean isWrite() {
-		return true;
-	}
-
-	@Override
-	protected Node getNode() {
-		return partition.getNodeWrite(cluster);
-	}
-
-	@Override
-	protected LatencyType getLatencyType() {
-		return LatencyType.WRITE;
 	}
 
 	@Override
@@ -69,25 +43,19 @@ public final class WriteCommand extends SyncCommand {
 
 	@Override
 	protected void parseResult(Connection conn) throws IOException {
-		RecordParser rp = new RecordParser(conn, dataBuffer);
+		int resultCode = parseHeader(conn);
 
-		if (rp.resultCode == 0) {
+		if (resultCode == ResultCode.OK) {
 			return;
 		}
 
-		if (rp.resultCode == ResultCode.FILTERED_OUT) {
+		if (resultCode == ResultCode.FILTERED_OUT) {
 			if (writePolicy.failOnFilteredOut) {
-				throw new AerospikeException(rp.resultCode);
+				throw new AerospikeException(resultCode);
 			}
 			return;
 		}
 
-		throw new AerospikeException(rp.resultCode);
-	}
-
-	@Override
-	protected boolean prepareRetry(boolean timeout) {
-		partition.prepareRetryWrite(timeout);
-		return true;
+		throw new AerospikeException(resultCode);
 	}
 }

@@ -314,7 +314,7 @@ public abstract class AsyncBatchExecutor implements BatchNodeList.IBatchStatus {
 		this.eventLoop = eventLoop;
 		this.cluster = cluster;
 		this.hasResultCode = hasResultCode;
-		cluster.addTran();
+		cluster.addCommandCount();
 	}
 
 	public void execute(AsyncCommand[] cmds) {
