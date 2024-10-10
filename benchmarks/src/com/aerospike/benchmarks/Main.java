@@ -26,6 +26,7 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Properties;
+import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -113,6 +114,7 @@ public class Main implements Log.Callback {
 	private String filepath;
 	private boolean mrtEnabled;
 	private long nMRTs;
+	private long perMRTKeys;
 
 	private EventLoops eventLoops;
 	private final ClientPolicy clientPolicy = new ClientPolicy();
@@ -174,7 +176,7 @@ public class Main implements Log.Callback {
 		options.addOption("asyncMaxConnsPerNode", true,
 			"Maximum number of async connections allowed per server node. Default: 100"
 			);
-		options.addOption("m", "mrts", true, "Set the number of multi record transactions.");
+		options.addOption("mSize", "mSize", true, "Number of records per multi record transaction.");
 		options.addOption("k", "keys", true,
 			"Set the number of keys the client is dealing with. " +
 			"If using an 'insert' workload (detailed below), the client will write this " +
@@ -385,11 +387,6 @@ public class Main implements Log.Callback {
 			this.asyncEnabled = true;
 		}
 
-		if(line.hasOption("mrts")){
-		    this.mrtEnabled = true;
-		    this.nMRTs = Long.parseLong(line.getOptionValue("mrts"));
-		}
-
 		if (line.hasOption("proxy")) {
 			this.useProxyClient = true;
 		}
@@ -551,6 +548,16 @@ public class Main implements Log.Callback {
 		}
 		else {
 			this.nKeys = 100000;
+		}
+
+		if(line.hasOption("mSize")){
+		    this.mrtEnabled = true;
+		    this.perMRTKeys = Long.parseLong(line.getOptionValue("mSize"));
+		    if ( this.perMRTKeys < 1) {
+				throw new Exception("Number of records per MRT (-mSize) must be > 0");
+			}
+		    // TODO - add code for perMRTKeys > nKeys
+		    this.nMRTs = this.nKeys / this.perMRTKeys;
 		}
 
 		if (line.hasOption("startkey")) {
@@ -1272,7 +1279,10 @@ public class Main implements Log.Callback {
 			try {
 				if(mrtEnabled) {
 					if(initialize) {
-						doMRTs(client);
+						doMRTInserts(client);
+					}
+					else {
+						doMRTRWTest(client);
 					}
 				}
 				else {
@@ -1311,7 +1321,7 @@ public class Main implements Log.Callback {
 		es.shutdownNow();
 	}
 
-	private void doMRTs(IAerospikeClient client) throws Exception {
+	private void doMRTInserts(IAerospikeClient client) throws Exception {
 		ExecutorService es = getExecutorService();
 
 		// Create N insert tasks
@@ -1319,11 +1329,11 @@ public class Main implements Log.Callback {
 		long mrtsPerTask = this.nMRTs / ntasks;
 		long rem = this.nMRTs - (mrtsPerTask * ntasks);
 		long start = this.startKey;
-		long nKeys = this.nKeys;
+		long perMRTKeys = this.perMRTKeys;
 
 		for (long i = 0; i < ntasks; i++) {
 			long nMrtsPerThread = (i < rem)? mrtsPerTask + 1 : mrtsPerTask;
-			MRTTaskSync it = new MRTTaskSync(client, args, counters, start, nMrtsPerThread, nKeys);
+			MRTTaskSync it = new MRTTaskSync(client, args, counters, start, nMrtsPerThread, perMRTKeys);
 			es.execute(it);
 		}
 		Thread.sleep(900);
@@ -1393,9 +1403,8 @@ public class Main implements Log.Callback {
 
 	private void collectMRTStats() throws Exception {
 		long total = 0;
-		long totalnKeys = this.nKeys * this.nMRTs;
 
-		while (total < totalnKeys) {
+		while (total < this.nKeys) {
 			long time = System.currentTimeMillis();
 
 			int numWrites = this.counters.write.count.getAndSet(0);
@@ -1435,6 +1444,45 @@ public class Main implements Log.Callback {
 		Thread.sleep(900);
 		collectRWStats(tasks);
 		es.shutdown();
+	}
+
+	private long[] generateKeys(long numKeys) {
+		long[] keys = new long[(int) numKeys];
+		// Use a Random generator for key generation (could use RandomShift as per your requirements)
+		Random random = new Random();
+		// Generate keys using random numbers
+		for (int i = 0; i < numKeys; i++) {
+			keys[i] = Math.abs(random.nextLong());  // Generate positive long values for keys
+		}
+		return keys;
+	}
+
+	private void doMRTRWTest(IAerospikeClient client) throws Exception {
+		ExecutorService es = getExecutorService();
+		long ntasks = this.nThreads < this.nMRTs ? this.nThreads : this.nMRTs;
+		long mrtsPerTask = this.nMRTs / ntasks;
+		long rem = this.nMRTs - (mrtsPerTask * ntasks);
+
+		// TODO - Optimize MRT Keys.
+		long[][] mrtKeys = new long[(int) this.nMRTs][];  // Generate keys for each MRT
+
+		for (int i = 0; i < this.nMRTs; i++) {
+			mrtKeys[i] = generateKeys(this.perMRTKeys);
+		}
+		MRTRWTask[] tasks = new MRTRWTask[this.nThreads];
+		long startIndex = 0;
+
+		for (int i = 0; i < ntasks; i++) {
+			long nMrtsPerThread = (i < rem)? mrtsPerTask + 1 : mrtsPerTask;
+			long endIndex = startIndex + nMrtsPerThread - 1;
+			MRTRWTaskSync rt = new MRTRWTaskSync(client, args, counters, startIndex, endIndex, mrtKeys);
+			startIndex += nMrtsPerThread;
+			tasks[i] = rt;
+			es.execute(rt);
+		}
+		Thread.sleep(1000);
+		collectMRTRWStats(tasks);
+		es.shutdownNow();
 	}
 
 	private void doAsyncRWTest(IAerospikeClient client) throws Exception {
@@ -1521,6 +1569,83 @@ public class Main implements Log.Callback {
 
 				if (transactionTotal >= args.transactionLimit) {
 					for (RWTask task : tasks) {
+						task.stop();
+					}
+
+					if (this.counters.write.latency != null) {
+						this.counters.write.latency.printSummaryHeader(System.out);
+						this.counters.write.latency.printSummary(System.out, "write");
+						this.counters.read.latency.printSummary(System.out, "read");
+						if (this.counters.transaction != null && this.counters.transaction.latency != null) {
+							this.counters.transaction.latency.printSummary(System.out, "txn");
+						}
+					}
+
+					System.out.println("Transaction limit reached: " + args.transactionLimit + ". Exiting.");
+					break;
+				}
+			}
+
+			Thread.sleep(1000);
+		}
+	}
+
+	private void collectMRTRWStats(MRTRWTask[] tasks) throws Exception {
+		long transactionTotal = 0;
+
+		while (true) {
+			long time = System.currentTimeMillis();
+
+			int numWrites = this.counters.write.count.getAndSet(0);
+			int timeoutWrites = this.counters.write.timeouts.getAndSet(0);
+			int errorWrites = this.counters.write.errors.getAndSet(0);
+
+			int numReads = this.counters.read.count.getAndSet(0);
+			int timeoutReads = this.counters.read.timeouts.getAndSet(0);
+			int errorReads = this.counters.read.errors.getAndSet(0);
+
+			int numTxns = this.counters.transaction.count.getAndSet(0);
+			int timeoutTxns = this.counters.transaction.timeouts.getAndSet(0);
+			int errorTxns = this.counters.transaction.errors.getAndSet(0);
+
+			int notFound = 0;
+
+			if (args.reportNotFound) {
+				notFound = this.counters.readNotFound.getAndSet(0);
+			}
+			this.counters.periodBegin.set(time);
+
+			LocalDateTime dt = Instant.ofEpochMilli(time).atZone(ZoneId.systemDefault()).toLocalDateTime();
+			System.out.print(dt.format(TimeFormatter));
+			System.out.print(" write(tps=" + numWrites + " timeouts=" + timeoutWrites + " errors=" + errorWrites + ")");
+			System.out.print(" read(tps=" + numReads + " timeouts=" + timeoutReads + " errors=" + errorReads);
+			if (this.counters.transaction.latency != null) {
+				System.out.print(" txns(tps=" + numTxns + " timeouts=" + timeoutTxns + " errors=" + errorTxns);
+			}
+			if (args.reportNotFound) {
+				System.out.print(" nf=" + notFound);
+			}
+			System.out.print(")");
+
+			System.out.print(" total(tps=" + (numWrites + numReads) + " timeouts=" + (timeoutWrites + timeoutReads) + " errors=" + (errorWrites + errorReads) + ")");
+			//System.out.print(" buffused=" + used
+			//System.out.print(" nodeused=" + ((AsyncNode)nodes[0]).openCount.get() + ',' + ((AsyncNode)nodes[1]).openCount.get() + ',' + ((AsyncNode)nodes[2]).openCount.get()
+			System.out.println();
+
+			if (this.counters.write.latency != null) {
+				this.counters.write.latency.printHeader(System.out);
+				this.counters.write.latency.printResults(System.out, "write");
+				this.counters.read.latency.printResults(System.out, "read");
+				if (this.counters.transaction != null && this.counters.transaction.latency != null) {
+					this.counters.transaction.latency.printResults(System.out, "txn");
+				}
+			}
+
+			if (args.transactionLimit > 0) {
+				transactionTotal += numWrites + timeoutWrites + errorWrites + numReads + timeoutReads + errorReads;
+
+				if (transactionTotal >= args.transactionLimit) {
+					for (MRTRWTask task : tasks) {
 						task.stop();
 					}
 
