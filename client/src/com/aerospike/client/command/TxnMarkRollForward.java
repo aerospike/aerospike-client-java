@@ -16,26 +16,24 @@
  */
 package com.aerospike.client.command;
 
+import java.io.IOException;
+
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
 import com.aerospike.client.ResultCode;
-import com.aerospike.client.Txn;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.Connection;
 import com.aerospike.client.policy.WritePolicy;
-import java.io.IOException;
 
 public final class TxnMarkRollForward extends SyncWriteCommand {
-	private final Txn txn;
 
-	public TxnMarkRollForward(Cluster cluster, Txn txn, WritePolicy writePolicy, Key key) {
+	public TxnMarkRollForward(Cluster cluster, WritePolicy writePolicy, Key key) {
 		super(cluster, writePolicy, key);
-		this.txn = txn;
 	}
 
 	@Override
 	protected void writeBuffer() {
-		setTxnMarkRollForward(txn, key);
+		setTxnMarkRollForward(key);
 	}
 
 	@Override

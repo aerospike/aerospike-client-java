@@ -195,7 +195,7 @@ public final class TxnRoll {
 
 	private void markRollForward(WritePolicy writePolicy, Key txnKey) {
 		// Tell MRT monitor that a roll-forward will commence.
-		TxnMarkRollForward cmd = new TxnMarkRollForward(cluster, txn, writePolicy, txnKey);
+		TxnMarkRollForward cmd = new TxnMarkRollForward(cluster, writePolicy, txnKey);
 		cmd.execute();
 	}
 

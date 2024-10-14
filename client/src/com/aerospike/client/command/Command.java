@@ -302,7 +302,7 @@ public class Command {
 		compress(policy);
 	}
 
-	public final void setTxnMarkRollForward(Txn txn, Key key) {
+	public final void setTxnMarkRollForward(Key key) {
 		Bin bin = new Bin("fwd", true);
 
 		begin();

@@ -191,7 +191,7 @@ public final class AsyncTxnRoll {
 				}
 			};
 
-			AsyncTxnMarkRollForward command = new AsyncTxnMarkRollForward(cluster, txn, writeListener, writePolicy, tranKey);
+			AsyncTxnMarkRollForward command = new AsyncTxnMarkRollForward(cluster, writeListener, writePolicy, tranKey);
 			eventLoop.execute(cluster, command);
 		}
 		catch (Throwable t) {

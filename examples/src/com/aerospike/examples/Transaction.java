@@ -39,24 +39,28 @@ public class Transaction extends Example {
 
 	private void txnReadWrite(IAerospikeClient client, Parameters params) {
 		Txn txn = new Txn();
-		System.out.println("Begin txn: " + txn.getId());
+		console.info("Begin txn: " + txn.getId());
 
 		try {
 			WritePolicy wp = client.copyWritePolicyDefault();
 			wp.txn = txn;
 
+			console.info("Run put");
 			Key key1 = new Key(params.namespace, params.set, 1);
 			client.put(wp, key1, new Bin("a", "val1"));
 
+			console.info("Run another put");
 			Key key2 = new Key(params.namespace, params.set, 2);
 			client.put(wp, key2, new Bin("b", "val2"));
 
+			console.info("Run get");
 			Policy p = client.copyReadPolicyDefault();
 			p.txn = txn;
 
 			Key key3 = new Key(params.namespace, params.set, 3);
 			Record rec = client.get(p, key3);
 
+			console.info("Run delete");
 			WritePolicy dp = client.copyWritePolicyDefault();
 			dp.txn = txn;
 			dp.durableDelete = true;  // Required when running delete in a MRT.
@@ -64,11 +68,12 @@ public class Transaction extends Example {
 		}
 		catch (Throwable t) {
 			// Abort and rollback MRT (multi-record transaction) if any errors occur.
+			console.info("Abort txn: " + txn.getId());
 			client.abort(txn);
 			throw t;
 		}
 
-		System.out.println("Commit txn: " + txn.getId());
+		console.info("Commit txn: " + txn.getId());
 		client.commit(txn);
 	}
 }

@@ -19,30 +19,26 @@ package com.aerospike.client.async;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
 import com.aerospike.client.ResultCode;
-import com.aerospike.client.Txn;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.listener.WriteListener;
 import com.aerospike.client.policy.WritePolicy;
 
 public final class AsyncTxnMarkRollForward extends AsyncWriteBase {
-	private final Txn txn;
 	private final WriteListener listener;
 
 	public AsyncTxnMarkRollForward(
 		Cluster cluster,
-		Txn txn,
 		WriteListener listener,
 		WritePolicy writePolicy,
 		Key key
 	) {
 		super(cluster, writePolicy, key);
-		this.txn = txn;
 		this.listener = listener;
 	}
 
 	@Override
 	protected void writeBuffer() {
-		setTxnMarkRollForward(txn, key);
+		setTxnMarkRollForward(key);
 	}
 
 	@Override
