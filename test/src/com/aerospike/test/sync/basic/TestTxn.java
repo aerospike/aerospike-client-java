@@ -40,8 +40,26 @@ import com.aerospike.client.policy.WritePolicy;
 import com.aerospike.client.task.RegisterTask;
 import com.aerospike.client.Txn;
 
+import com.aerospike.client.AerospikeClient;
+import com.aerospike.client.Key;
+import com.aerospike.client.Record;
+import com.aerospike.client.Value;
+import com.aerospike.client.cdt.MapOperation;
+import com.aerospike.client.cdt.MapPolicy;
+import com.aerospike.client.cdt.MapReturnType;
+import com.aerospike.client.exp.Exp;
+import com.aerospike.client.policy.QueryPolicy;
+import com.aerospike.client.query.Filter;
+import com.aerospike.client.query.IndexType;
+import com.aerospike.client.query.RecordSet;
+import com.aerospike.client.query.Statement;
+import com.aerospike.client.task.IndexTask;
+
+import java.util.Arrays;
+import java.util.List;
+
 public class TestTxn extends TestSync {
-	public static final String binName = "bin";
+	public static final String binName = "bin1";
 
 	@BeforeClass
 	public static void register() {
@@ -52,6 +70,138 @@ public class TestTxn extends TestSync {
 		RegisterTask task = client.register(null, TestUDF.class.getClassLoader(), "udf/record_example.lua", "record_example.lua", Language.LUA);
 		task.waitTillComplete();
 	}
+
+	//================================================================================================
+	public static void queryKey(String expected_val) {
+
+		Statement stmt = new Statement();
+		stmt.setNamespace(args.namespace);
+		stmt.setSetName(args.set);
+		stmt.setBinNames(binName);
+		stmt.setFilter(Filter.equal(binName, expected_val));
+
+		RecordSet rs = client.query(null, stmt);
+
+		int recordCount = 0;
+		// Get the results
+		try{
+		    while(rs.next()){
+		    	
+		        Key key = rs.getKey();
+		        Record record = rs.getRecord();
+		        // Do something
+		        System.out.format("Key: %s | Record: %s\\n", key.userKey, record.bins); 
+		        recordCount++;
+		    }
+		}
+		finally{
+		    rs.close();
+		}
+		
+	    if (recordCount == 0) {
+	        throw new AssertionError("No records found for the given query!");
+	    }
+	}
+
+	// Test1
+	// No crash test
+	// Steps:
+	// 1- insert one key
+	// 2- create sindex testsindex
+	// 3- Begin Tran
+	//  - Update bin
+	//	- Commit
+	// 4- No crash of server 
+	@Test
+	public void txnWriteWithSindex() {
+		//insert one key
+		Key key = new Key(args.namespace, args.set, "mrtkey1");
+		String sindexname = "testsindex";
+
+		client.put(null, key, new Bin(binName, 1));
+		
+		//create sindex
+		try {
+			IndexTask task = client.createIndex(args.indexPolicy, args.namespace, args.set, sindexname, binName, IndexType.NUMERIC);
+			task.waitTillComplete();
+		}
+		catch (AerospikeException ae) {
+			if (ae.getResultCode() != ResultCode.INDEX_ALREADY_EXISTS) {
+				IndexTask task = client.dropIndex(args.indexPolicy, args.namespace, args.set, sindexname);
+				task.waitTillComplete();
+				throw ae;
+			}
+		}
+		
+		//begin tran
+		Txn txn = new Txn();
+
+		WritePolicy wp = client.copyWritePolicyDefault();
+		wp.txn = txn;
+		client.put(wp, key, new Bin(binName, 2));
+
+		client.commit(txn);
+
+		Record record = client.get(null, key);
+		assertBinEqual(key, record, binName, 2);
+		
+		IndexTask task = client.dropIndex(args.indexPolicy, args.namespace, args.set, sindexname);
+		task.waitTillComplete();
+	}
+	
+	// Test2:
+	// Query provisional and original record.
+	// 1 Insert one record with Bin1 with value val1.
+	// 2 Create sindex
+	// 3 Begin Tran
+	//	-	Query for Bin1 -> should get original value should get val1
+	//	- 	Update Bin1 value to val2
+	//	-	Query for Bin1 -> should get origin value i.e val1 (not commited yet)
+	//	-commit tran
+	//  - Query for Bin1 -> should get commited value i.e val2 (after commit)
+	@Test
+	public void txnWriteWithSindex1() {
+		//insert one key
+		Key key = new Key(args.namespace, args.set, "mrtkey1");
+
+		client.put(null, key, new Bin(binName, "val1"));
+		
+		//create sindex
+		try {
+			IndexTask task = client.createIndex(args.indexPolicy, args.namespace, args.set, "testsindex", binName, IndexType.STRING);
+			task.waitTillComplete();
+		}
+		catch (AerospikeException ae) {
+			if (ae.getResultCode() != ResultCode.INDEX_ALREADY_EXISTS) {
+				IndexTask task = client.dropIndex(args.indexPolicy, args.namespace, args.set, "testsindex");
+				task.waitTillComplete();
+				throw ae;
+			}
+		}
+		
+		//begin tran
+//        System.out.println("Begin tran----s\\n"); 
+		Txn txn = new Txn();
+
+			
+		WritePolicy wp = client.copyWriteMAX_ERROR_RATEPolicyDefault();
+		wp.txn = txn;
+//		System.out.println("query with binvalue as val1----s\\n");
+		queryKey("val1");
+		client.put(wp, key, new Bin(binName, "val2"));
+		queryKey("val1");
+		client.commit(txn);
+		queryKey("val2");
+		System.out.println("\ncommit tran success----s\\n"); 
+
+		Record record = client.get(null, key);
+		assertBinEqual(key, record, binName, "val2");
+		
+		IndexTask task = client.dropIndex(args.indexPolicy, args.namespace, args.set, "testsindex");
+		task.waitTillComplete();
+	}
+	
+	//================================================================================================
 
 	@Test
 	public void txnWrite() {
@@ -70,7 +220,7 @@ public class TestTxn extends TestSync {
 		Record record = client.get(null, key);
 		assertBinEqual(key, record, binName, "val2");
 	}
-
+	
 	@Test
 	public void txnWriteTwice() {
 		Key key = new Key(args.namespace, args.set, "mrtkey2");
