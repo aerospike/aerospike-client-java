@@ -260,6 +260,16 @@ public final class ResultCode {
 	public static final int XDR_KEY_BUSY = 32;
 
 	/**
+	 * MRT was already committed.
+	 */
+	public static final int MRT_COMMITTED = 33;
+
+	/**
+	 * MRT was already aborted.
+	 */
+	public static final int MRT_ABORTED = 34;
+
+	/**
 	 * There are no more records left for query.
 	 */
 	public static final int QUERY_END = 50;
@@ -621,6 +631,12 @@ public final class ResultCode {
 
 		case XDR_KEY_BUSY:
 			return "Write can't complete until XDR finishes shipping";
+			
+		case MRT_COMMITTED:
+			return "MRT already committed";
+			
+		case MRT_ABORTED:
+			return "MRT already aborted";
 			
 		case QUERY_END:
 			return "Query end";

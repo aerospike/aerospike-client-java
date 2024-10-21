@@ -40,9 +40,9 @@ public final class TxnMarkRollForward extends SyncWriteCommand {
 	protected void parseResult(Connection conn) throws IOException {
 		int resultCode = parseHeader(conn);
 
-		// BIN_EXISTS_ERROR is considered a success because it means a previous attempt already
+		// MRT_COMMITTED is considered a success because it means a previous attempt already
 		// succeeded in notifying the server that the MRT will be rolled forward.
-		if (resultCode == ResultCode.OK || resultCode == ResultCode.BIN_EXISTS_ERROR) {
+		if (resultCode == ResultCode.OK || resultCode == ResultCode.MRT_COMMITTED) {
 			return;
 		}
 
