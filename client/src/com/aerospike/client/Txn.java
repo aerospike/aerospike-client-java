@@ -26,15 +26,25 @@ import java.util.concurrent.atomic.AtomicLong;
  * Multi-record transaction (MRT). Each command in the MRT must use the same namespace.
  */
 public final class Txn {
+	/**
+	 * Transaction state.
+	 */
+	public static enum State {
+		OPEN,
+		VERIFIED,
+		COMMITTED,
+		ABORTED;
+	}
+	
 	private static AtomicLong randomState = new AtomicLong(System.nanoTime());
 
 	private final long id;
 	private final ConcurrentHashMap<Key,Long> reads;
 	private final Set<Key> writes;
+	private Txn.State state;
 	private String namespace;
 	private int deadline;
 	private boolean monitorInDoubt;
-	private boolean rollAttempted;
 
 	/**
 	 * Create MRT, assign random transaction id and initialize reads/writes hashmaps with default capacities.
@@ -43,6 +53,7 @@ public final class Txn {
 		id = createId();
 		reads = new ConcurrentHashMap<>();
 		writes = ConcurrentHashMap.newKeySet();
+		state = Txn.State.OPEN;
 	}
 
 	/**
@@ -63,6 +74,7 @@ public final class Txn {
 		id = createId();
 		reads = new ConcurrentHashMap<>(readsCapacity);
 		writes = ConcurrentHashMap.newKeySet(writesCapacity);
+		state = Txn.State.OPEN;
 	}
 
 	private static long createId() {
@@ -218,14 +230,17 @@ public final class Txn {
 	}
 
 	/**
-	 * Verify that commit/abort is only attempted once. For internal use only.
+	 * Return transaction state.
 	 */
-	public boolean setRollAttempted() {
-		if (rollAttempted) {
-			return false;
-		}
-		rollAttempted = true;
-		return true;
+	public Txn.State getState() {
+		return state;
+	}
+	
+	/**
+	 * Set transaction state. For internal use only.
+	 */
+	public void setState(Txn.State state) {
+		this.state = state;
 	}
 
 	/**
