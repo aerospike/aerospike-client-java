@@ -30,6 +30,7 @@ import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -114,7 +115,7 @@ public class Main implements Log.Callback {
 	private String filepath;
 	private boolean mrtEnabled;
 	private long nMRTs;
-	private long perMRTKeys;
+	private long keysPerMRT;
 
 	private EventLoops eventLoops;
 	private final ClientPolicy clientPolicy = new ClientPolicy();
@@ -552,12 +553,12 @@ public class Main implements Log.Callback {
 
 		if(line.hasOption("mSize")){
 		    this.mrtEnabled = true;
-		    this.perMRTKeys = Long.parseLong(line.getOptionValue("mSize"));
-		    if ( this.perMRTKeys < 1) {
+		    this.keysPerMRT = Long.parseLong(line.getOptionValue("mSize"));
+		    if ( this.keysPerMRT < 1) {
 				throw new Exception("Number of records per MRT (-mSize) must be > 0");
 			}
 		    // TODO - add code for perMRTKeys > nKeys
-		    this.nMRTs = this.nKeys / this.perMRTKeys;
+		    this.nMRTs = this.nKeys / this.keysPerMRT;
 		}
 
 		if (line.hasOption("startkey")) {
@@ -1329,11 +1330,11 @@ public class Main implements Log.Callback {
 		long mrtsPerTask = this.nMRTs / ntasks;
 		long rem = this.nMRTs - (mrtsPerTask * ntasks);
 		long start = this.startKey;
-		long perMRTKeys = this.perMRTKeys;
+		long keysPerMRT = this.keysPerMRT;
 
 		for (long i = 0; i < ntasks; i++) {
 			long nMrtsPerThread = (i < rem)? mrtsPerTask + 1 : mrtsPerTask;
-			MRTTaskSync it = new MRTTaskSync(client, args, counters, start, nMrtsPerThread, perMRTKeys);
+			MRTInsertTaskSync it = new MRTInsertTaskSync(client, args, counters, start, nMrtsPerThread, keysPerMRT);
 			es.execute(it);
 		}
 		Thread.sleep(900);
@@ -1446,7 +1447,91 @@ public class Main implements Log.Callback {
 		es.shutdown();
 	}
 
-	private long[] generateKeys(long numKeys) {
+	private long[] generateUniqueKeys(Set<Long> usedUniqueKeys, Random random) {
+		long[] keys = new long[(int) this.keysPerMRT];
+		int count = 0;
+
+		while (count < this.keysPerMRT) {
+			long key = Math.abs(random.nextLong()) % this.nKeys;
+			if (!usedUniqueKeys.contains(key)) {
+				usedUniqueKeys.add(key);
+				keys[count++] = key;
+			}
+		}
+
+		return keys;
+	}
+
+	private long[] generateSharedDuplicateKeys(Set<Long> usedUniqueKeys, Random random) {
+		long[] keys = new long[(int) this.keysPerMRT];
+
+		Set<Long> uniquePart = new HashSet<>();
+
+		// Generate unique keys for the remaining part
+		while (uniquePart.size() < this.keysPerMRT - 2) { // Leave space for exactly 2 duplicates
+			long key = Math.abs(random.nextLong()) % this.nKeys;
+			if (!usedUniqueKeys.contains(key)) {
+				usedUniqueKeys.add(key);
+				uniquePart.add(key);
+			}
+		}
+
+		// Fill in with two different duplicates
+		Long[] uniqueArray = uniquePart.toArray(new Long[0]);
+
+		// Ensure we have at least two unique keys to duplicate
+		if (uniqueArray.length < 2) {
+			throw new IllegalStateException("Not enough unique keys available to create duplicates.");
+		}
+
+		// Add two different duplicate keys
+		keys[0] = uniqueArray[uniqueArray.length - 1]; // First duplicate key
+		keys[1] = uniqueArray[uniqueArray.length - 2]; // Second duplicate key
+
+		// Add the rest of the unique keys
+		int index = 2; // Start filling from index 2
+		for (Long key : uniquePart) {
+			if (index < this.keysPerMRT) {
+				keys[index++] = key;
+			}
+			if (index >= this.keysPerMRT) break;
+		}
+
+		return keys;
+	}
+
+	private long[][] generateKeys() {
+		// Validate input parameters
+		if (this.nMRTs <= 0) {
+			throw new IllegalArgumentException("Number of MRTs must be greater than zero");
+		}
+		if (this.nKeys <= 0) {
+			throw new IllegalArgumentException("Number of keys must be greater than zero");
+		}
+		if (this.keysPerMRT <= 0 || this.keysPerMRT > this.nKeys) {
+			throw new IllegalArgumentException("keysPerMRT must be greater than zero and cannot exceed nKeys");
+		}
+
+		long[][] mrtKeys = new long[(int) this.nMRTs][];
+		Set<Long> usedUniqueKeys = new HashSet<>();
+		Random random = new Random();
+		double uniquePercentage = 0.8;
+		int numUniqueMRTs = (int) (this.nMRTs * uniquePercentage);
+
+		// Generate keys for each MRT
+		for (int i = 0; i < this.nMRTs; i++) {
+			if (i < numUniqueMRTs) { // First 8 MRTs get unique keys
+				mrtKeys[i] = generateUniqueKeys(usedUniqueKeys, random);
+			} else { // MRTs 8 and 9 get shared duplicate keys
+				mrtKeys[i] = generateSharedDuplicateKeys(usedUniqueKeys, random);
+			}
+		}
+
+		return mrtKeys;
+	}
+
+
+	private long[] generateRandomKeys(long numKeys) {
 		long[] keys = new long[(int) numKeys];
 		// Use a Random generator for key generation (could use RandomShift as per your requirements)
 		Random random = new Random();
@@ -1455,8 +1540,7 @@ public class Main implements Log.Callback {
 			keys[i] = Math.abs(random.nextLong());  // Generate positive long values for keys
 		}
 		return keys;
-	}
-
+}
 	private void doMRTRWTest(IAerospikeClient client) throws Exception {
 		ExecutorService es = getExecutorService();
 		long ntasks = this.nThreads < this.nMRTs ? this.nThreads : this.nMRTs;
@@ -1465,9 +1549,14 @@ public class Main implements Log.Callback {
 
 		// TODO - Optimize MRT Keys.
 		long[][] mrtKeys = new long[(int) this.nMRTs][];  // Generate keys for each MRT
+		mrtKeys = generateKeys();
 
 		for (int i = 0; i < this.nMRTs; i++) {
-			mrtKeys[i] = generateKeys(this.perMRTKeys);
+			System.out.print("MRT Iteration :" + i + " ");
+			for(int j = 0; j < this.keysPerMRT; j++) {
+				System.out.print(mrtKeys[i][j]+" ");
+			}
+			System.out.println();
 		}
 		MRTRWTask[] tasks = new MRTRWTask[this.nThreads];
 		long startIndex = 0;

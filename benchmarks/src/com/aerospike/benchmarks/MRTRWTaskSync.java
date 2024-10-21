@@ -52,16 +52,13 @@ public class MRTRWTaskSync extends MRTRWTask implements Runnable {
 
 		while (valid) {
 			for (long i = startIndex; i <= endIndex; i++) {
-				//long threadId = Thread.currentThread().threadId();
-				//System.out.println("Thread ID: " + threadId + " MRT number : " + i);
 				Txn txn = new Txn();
 				writePolicy.txn = txn;
 				long[] keys = mrtKeys[(int) i];
-				
+
 				try {
 					for (long key : keys) {
 						runCommand(random, key);
-
 						// Throttle throughput
 						if (args.throughput > 0) {
 							int transactions;
@@ -81,8 +78,13 @@ public class MRTRWTaskSync extends MRTRWTask implements Runnable {
 							}
 						}	
 					}
-					//System.out.println("mrt-commit");
-					client.commit(txn);
+
+					if(valid) {
+						client.commit(txn);
+					}
+					else {
+						client.abort(txn);
+					}
 				} catch (Exception e) {
 					System.err.println("Transaction failed for MRT iteration: " + (i+1) + " - " + e.getMessage());
 					client.abort(txn);

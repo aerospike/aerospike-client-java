@@ -9,7 +9,7 @@ import com.aerospike.client.policy.WritePolicy;
 import com.aerospike.client.util.RandomShift;
 import com.aerospike.client.util.Util;
 
-public final class MRTTaskSync implements Runnable {
+public final class MRTInsertTaskSync implements Runnable {
 	private final IAerospikeClient client;
 	private final Arguments args;
 	private final WritePolicy writePolicy;
@@ -17,8 +17,7 @@ public final class MRTTaskSync implements Runnable {
 	private final long nMRTs;
 	private final long nKeys;
 
-	public MRTTaskSync(IAerospikeClient client, Arguments args, CounterStore counters, long start, 
-			long nMRTs, long nKeys) {
+	public MRTInsertTaskSync(IAerospikeClient client, Arguments args, CounterStore counters, long start, long nMRTs, long nKeys) {
 		this.client = client;
 		this.counters = counters;
 		this.nMRTs = nMRTs;
