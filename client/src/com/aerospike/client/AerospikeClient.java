@@ -632,12 +632,24 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 */
 	public final CommitStatus commit(Txn txn)
 		throws AerospikeException.Commit {
-		if (! txn.setRollAttempted()) {
-			return CommitStatus.ALREADY_ATTEMPTED;
-		}
-
+		
 		TxnRoll tr = new TxnRoll(cluster, txn);
-		return tr.commit(txnVerifyPolicyDefault, txnRollPolicyDefault);
+
+		switch (txn.getState()) {
+			default:
+			case OPEN:
+				tr.verify(txnVerifyPolicyDefault, txnRollPolicyDefault);
+				return tr.commit(txnRollPolicyDefault);
+	
+			case VERIFIED:
+				return tr.commit(txnRollPolicyDefault);
+			
+			case COMMITTED:
+				return CommitStatus.ALREADY_COMMITTED;
+				
+			case ABORTED:
+				return CommitStatus.ALREADY_ABORTED;
+		}
 	}
 
 	/**
@@ -658,10 +670,6 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 */
 	public final void commit(EventLoop eventLoop, CommitListener listener, Txn txn)
 		throws AerospikeException {
-		if (! txn.setRollAttempted()) {
-			listener.onSuccess(CommitStatus.ALREADY_ATTEMPTED);
-		}
-
 		if (eventLoop == null) {
 			eventLoop = cluster.eventLoops.next();
 		}
@@ -669,7 +677,25 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		AsyncTxnRoll atr = new AsyncTxnRoll(
 			cluster, eventLoop, txnVerifyPolicyDefault, txnRollPolicyDefault, txn
 			);
-		atr.commit(listener);
+		
+		switch (txn.getState()) {
+			default:
+			case OPEN:
+				atr.verify(listener);
+				break;
+	
+			case VERIFIED:
+				atr.commit(listener);
+				break;
+			
+			case COMMITTED:
+				listener.onSuccess(CommitStatus.ALREADY_COMMITTED);
+				break;
+				
+			case ABORTED:
+				listener.onSuccess(CommitStatus.ALREADY_ABORTED);
+				break;
+		}
 	}
 
 	/**
@@ -681,12 +707,20 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * @return		status of the abort
 	 */
 	public final AbortStatus abort(Txn txn) {
-		if (! txn.setRollAttempted()) {
-			return AbortStatus.ALREADY_ATTEMPTED;
-		}
-		
 		TxnRoll tr = new TxnRoll(cluster, txn);
-		return tr.abort(txnRollPolicyDefault);
+
+		switch (txn.getState()) {
+			default:
+			case OPEN:
+			case VERIFIED:
+				return tr.abort(txnRollPolicyDefault);
+	
+			case COMMITTED:
+				return AbortStatus.ALREADY_COMMITTED;
+				
+			case ABORTED:
+				return AbortStatus.ALREADY_ABORTED;
+		}		
 	}
 
 	/**
@@ -704,17 +738,28 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * @throws AerospikeException	if event loop registration fails
 	 */
 	public final void abort(EventLoop eventLoop, AbortListener listener, Txn txn)
-		throws AerospikeException {
-		if (! txn.setRollAttempted()) {
-			listener.onSuccess(AbortStatus.ALREADY_ATTEMPTED);
-		}
-		
+		throws AerospikeException {	
 		if (eventLoop == null) {
 			eventLoop = cluster.eventLoops.next();
 		}
 
 		AsyncTxnRoll atr = new AsyncTxnRoll(cluster, eventLoop, null, txnRollPolicyDefault, txn);
-		atr.abort(listener);
+
+		switch (txn.getState()) {
+			default:
+			case OPEN:
+			case VERIFIED:
+				atr.abort(listener);
+				break;
+
+			case COMMITTED:
+				listener.onSuccess(AbortStatus.ALREADY_COMMITTED);
+				break;
+
+			case ABORTED:
+				listener.onSuccess(AbortStatus.ALREADY_ABORTED);
+				break;
+		}
 	}
 
 	//-------------------------------------------------------
