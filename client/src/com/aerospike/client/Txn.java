@@ -27,7 +27,7 @@ import java.util.concurrent.atomic.AtomicLong;
  */
 public final class Txn {
 	/**
-	 * Transaction state.
+	 * MRT state.
 	 */
 	public static enum State {
 		OPEN,
@@ -35,7 +35,7 @@ public final class Txn {
 		COMMITTED,
 		ABORTED;
 	}
-	
+
 	private static AtomicLong randomState = new AtomicLong(System.nanoTime());
 
 	private final long id;
@@ -43,21 +43,25 @@ public final class Txn {
 	private final Set<Key> writes;
 	private Txn.State state;
 	private String namespace;
+	private int timeout;
 	private int deadline;
 	private boolean monitorInDoubt;
 
 	/**
-	 * Create MRT, assign random transaction id and initialize reads/writes hashmaps with default capacities.
+	 * Create MRT, assign random transaction id and initialize reads/writes hashmaps with default
+	 * capacities. The default MRT timeout is 10 seconds.
 	 */
 	public Txn() {
 		id = createId();
 		reads = new ConcurrentHashMap<>();
 		writes = ConcurrentHashMap.newKeySet();
 		state = Txn.State.OPEN;
+		timeout = 10; // seconds
 	}
 
 	/**
-	 * Create MRT, assign random transaction id and initialize reads/writes hashmaps with given capacities.
+	 * Create MRT, assign random transaction id and initialize reads/writes hashmaps with given
+	 * capacities. The default MRT timeout is 10 seconds.
 	 *
 	 * @param readsCapacity     expected number of record reads in the MRT. Minimum value is 16.
 	 * @param writesCapacity    expected number of record writes in the MRT. Minimum value is 16.
@@ -75,6 +79,7 @@ public final class Txn {
 		reads = new ConcurrentHashMap<>(readsCapacity);
 		writes = ConcurrentHashMap.newKeySet(writesCapacity);
 		state = Txn.State.OPEN;
+		timeout = 10; // seconds
 	}
 
 	private static long createId() {
@@ -98,6 +103,22 @@ public final class Txn {
 	 */
 	public long getId() {
 		return id;
+	}
+
+	/**
+	 * Set MRT timeout in seconds. The timer starts when the MRT monitor record is created.
+	 * This occurs when the first command in the MRT is executed. If the timeout is reached before
+	 * a commit or abort called, the server will expire and rollback the MRT.
+	 */
+	public void setTimeout(int timeout) {
+		this.timeout = timeout;
+	}
+
+	/**
+	 * Return MRT timeout in seconds.
+	 */
+	public int getTimeout() {
+		return timeout;
 	}
 
 	/**
@@ -154,13 +175,6 @@ public final class Txn {
 	}
 
 	/**
-	 * Return MRT namespace.
-	 */
-	public String getNamespace() {
-		return namespace;
-	}
-
-	/**
 	 * Set MRT namespace only if doesn't already exist.
 	 * If namespace already exists, verify new namespace is the same.
 	 */
@@ -195,21 +209,30 @@ public final class Txn {
 	}
 
 	/**
-	 * Get MRT deadline.
+	 * Return MRT namespace.
+	 */
+	public String getNamespace() {
+		return namespace;
+	}
+
+	/**
+	 * Set MRT deadline. The deadline is a wall clock time calculated by the server from the
+	 * MRT timeout that is sent by the client when creating the MRT monitor record. This deadline
+	 * is used to avoid client/server clock skew issues. For internal use only.
+	 */
+	public void setDeadline(int deadline) {
+		this.deadline = deadline;
+	}
+
+	/**
+	 * Get MRT deadline. For internal use only.
 	 */
 	public int getDeadline() {
 		return deadline;
 	}
 
 	/**
-	 * Set MRT deadline. For internal use only.
-	 */
-	public void setDeadline(int deadline) {
-		this.deadline = deadline;
-	}
-	
-	/**
-	 * Set that the MRT monitor existence is in doubt.
+	 * Set that the MRT monitor existence is in doubt. For internal use only.
 	 */
 	public void setMonitorInDoubt() {
 		this.monitorInDoubt = true;
@@ -230,17 +253,17 @@ public final class Txn {
 	}
 
 	/**
-	 * Return transaction state.
-	 */
-	public Txn.State getState() {
-		return state;
-	}
-	
-	/**
-	 * Set transaction state. For internal use only.
+	 * Set MRT state. For internal use only.
 	 */
 	public void setState(Txn.State state) {
 		this.state = state;
+	}
+
+	/**
+	 * Return MRT state.
+	 */
+	public Txn.State getState() {
+		return state;
 	}
 
 	/**
