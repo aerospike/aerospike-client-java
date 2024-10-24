@@ -108,7 +108,7 @@ public final class Txn {
 	/**
 	 * Set MRT timeout in seconds. The timer starts when the MRT monitor record is created.
 	 * This occurs when the first command in the MRT is executed. If the timeout is reached before
-	 * a commit or abort called, the server will expire and rollback the MRT.
+	 * a commit or abort is called, the server will expire and rollback the MRT.
 	 */
 	public void setTimeout(int timeout) {
 		this.timeout = timeout;
