@@ -41,13 +41,15 @@ public final class TxnRoll {
 		this.txn = txn;
 	}
 
-	public CommitStatus commit(BatchPolicy verifyPolicy, BatchPolicy rollPolicy) {
+	public void verify(BatchPolicy verifyPolicy, BatchPolicy rollPolicy) {
 		try {
 			// Verify read versions in batch.
-			verify(verifyPolicy);
+			verifyRecordVersions(verifyPolicy);
 		}
 		catch (Throwable t) {
 			// Verify failed. Abort.
+			txn.setState(Txn.State.ABORTED);
+
 			try {
 				roll(rollPolicy, Command.INFO4_MRT_ROLL_BACK);
 			}
@@ -73,7 +75,11 @@ public final class TxnRoll {
 			// Throw original exception when abort succeeds.
 			throw onCommitError(CommitError.VERIFY_FAIL, t, false);
 		}
-
+		
+		txn.setState(Txn.State.VERIFIED);
+	}
+	
+	public CommitStatus commit(BatchPolicy rollPolicy) {
 		WritePolicy writePolicy = new WritePolicy(rollPolicy);
 		Key txnKey = TxnMonitor.getTxnMonitorKey(txn);
 		
@@ -86,6 +92,8 @@ public final class TxnRoll {
 				throw onCommitError(CommitError.MARK_ROLL_FORWARD_ABANDONED, t, true);
 			}
 		}
+		
+		txn.setState(Txn.State.COMMITTED);
 
 		// Roll-forward writes in batch.
 		try {
@@ -124,6 +132,8 @@ public final class TxnRoll {
 	}
 
 	public AbortStatus abort(BatchPolicy rollPolicy) {
+		txn.setState(Txn.State.ABORTED);
+
 		try {
 			roll(rollPolicy, Command.INFO4_MRT_ROLL_BACK);
 		}
@@ -144,7 +154,7 @@ public final class TxnRoll {
 		return AbortStatus.OK;
 	}
 
-	private void verify(BatchPolicy verifyPolicy) {
+	private void verifyRecordVersions(BatchPolicy verifyPolicy) {
 		// Validate record versions in a batch.
 		Set<Map.Entry<Key, Long>> reads = txn.getReads();
 		int max = reads.size();

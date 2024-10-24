@@ -71,7 +71,7 @@ public final class TxnMonitor {
 		if (txn.monitorExists()) {
 			return new Operation[] {
 				ListOperation.append(OrderedListPolicy, BinNameDigests, Value.get(cmdKey.digest))
-			};		
+			};
 		}
 		else {
 			return new Operation[] {
@@ -113,7 +113,7 @@ public final class TxnMonitor {
 		if (txn.monitorExists()) {
 			return new Operation[] {
 				ListOperation.appendItems(OrderedListPolicy, BinNameDigests, list)
-			};			
+			};
 		}
 		else {
 			return new Operation[] {
@@ -147,6 +147,11 @@ public final class TxnMonitor {
 		wp.sleepBetweenRetries = policy.sleepBetweenRetries;
 		wp.compress = policy.compress;
 		wp.respondAllOps = true;
+
+		// Note that the server only accepts the timeout on MRT monitor record create.
+		// The server ignores the MRT timeout field on successive MRT monitor record
+		// updates.
+		wp.expiration = policy.txn.getTimeout();
 		return wp;
 	}
 }

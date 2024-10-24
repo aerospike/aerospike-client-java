@@ -16,31 +16,32 @@
  */
 package com.aerospike.client.async;
 
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
 import com.aerospike.client.AbortStatus;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.BatchRecord;
+import com.aerospike.client.CommitError;
+import com.aerospike.client.CommitStatus;
 import com.aerospike.client.Key;
 import com.aerospike.client.Log;
 import com.aerospike.client.Txn;
-import com.aerospike.client.CommitError;
-import com.aerospike.client.CommitStatus;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.command.BatchAttr;
 import com.aerospike.client.command.BatchNode;
 import com.aerospike.client.command.BatchNodeList;
 import com.aerospike.client.command.Command;
 import com.aerospike.client.command.TxnMonitor;
-import com.aerospike.client.listener.BatchRecordArrayListener;
-import com.aerospike.client.listener.DeleteListener;
 import com.aerospike.client.listener.AbortListener;
+import com.aerospike.client.listener.BatchRecordArrayListener;
 import com.aerospike.client.listener.CommitListener;
+import com.aerospike.client.listener.DeleteListener;
 import com.aerospike.client.listener.WriteListener;
 import com.aerospike.client.policy.BatchPolicy;
 import com.aerospike.client.policy.WritePolicy;
 import com.aerospike.client.util.Util;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
 
 public final class AsyncTxnRoll {
 	private final Cluster cluster;
@@ -72,7 +73,7 @@ public final class AsyncTxnRoll {
 		this.tranKey = TxnMonitor.getTxnMonitorKey(txn);
 	}
 
-	public void commit(CommitListener listener) {
+	public void verify(CommitListener listener) {
 		commitListener = listener;
 
 		BatchRecordArrayListener verifyListener = new BatchRecordArrayListener() {
@@ -81,15 +82,11 @@ public final class AsyncTxnRoll {
 				verifyRecords = records;
 
 				if (status) {
-					if (txn.monitorExists()) {
-						markRollForward();
-					}
-					else {
-						// There is nothing to roll-forward.
-						closeOnCommit(true);
-					}
+					txn.setState(Txn.State.VERIFIED);
+					commit();
 				}
 				else {
+					txn.setState(Txn.State.ABORTED);
 					rollBack();
 				}
 			}
@@ -98,6 +95,7 @@ public final class AsyncTxnRoll {
 			public void onFailure(BatchRecord[] records, AerospikeException ae) {
 				verifyRecords = records;
 				verifyException = ae;
+				txn.setState(Txn.State.ABORTED);
 				rollBack();
 			}
 		};
@@ -105,8 +103,25 @@ public final class AsyncTxnRoll {
 		verify(verifyListener);
 	}
 
+	public void commit(CommitListener listener) {
+		commitListener = listener;
+		commit();
+	}
+
+	private void commit() {
+		if (txn.monitorExists()) {
+			markRollForward();
+		}
+		else {
+			// There is nothing to roll-forward.
+			txn.setState(Txn.State.COMMITTED);
+			closeOnCommit(true);
+		}
+	}
+
 	public void abort(AbortListener listener) {
 		abortListener = listener;
+		txn.setState(Txn.State.ABORTED);
 
 		BatchRecordArrayListener rollListener = new BatchRecordArrayListener() {
 			@Override
@@ -182,6 +197,7 @@ public final class AsyncTxnRoll {
 			WriteListener writeListener = new WriteListener() {
 				@Override
 				public void onSuccess(Key key) {
+					txn.setState(Txn.State.COMMITTED);
 					rollForward();
 				}
 
@@ -329,7 +345,6 @@ public final class AsyncTxnRoll {
 					}
 					else {
 						notifyCommitFailure(CommitError.VERIFY_FAIL_CLOSE_ABANDONED, ae, false);
-						
 					}
 				}
 			};
@@ -401,7 +416,7 @@ public final class AsyncTxnRoll {
 				aec.setNode(src.getNode());
 				aec.setPolicy(src.getPolicy());
 				aec.setIteration(src.getIteration());
-				
+
 				if (setInDoubt) {
 					aec.setInDoubt(src.getInDoubt());
 				}

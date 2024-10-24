@@ -21,7 +21,8 @@ package com.aerospike.client;
  */
 public enum CommitStatus {
 	OK("Commit succeeded"),
-	ALREADY_ATTEMPTED("Commit or abort already attempted"),
+	ALREADY_COMMITTED("Already committed"),
+	ALREADY_ABORTED("Already aborted"),
 	ROLL_FORWARD_ABANDONED("MRT client roll forward abandoned. Server will eventually commit the MRT."),
 	CLOSE_ABANDONED("MRT has been rolled forward, but MRT client close was abandoned. Server will eventually close the MRT.");
 
