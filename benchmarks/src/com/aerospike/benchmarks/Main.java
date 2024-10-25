@@ -85,14 +85,11 @@ public class Main implements Log.Callback {
 		try {
 			program = new Main(args);
 			program.runBenchmarks();
-		}
-		catch (UsageException ue) {
-		}
-		catch (ParseException pe) {
+		} catch (UsageException ue) {
+		} catch (ParseException pe) {
 			System.out.println(pe.getMessage());
 			System.out.println("Use -u option for program usage");
-		}
-		catch (Exception e) {
+		} catch (Exception e) {
 			System.out.println("Error: " + e.getMessage());
 			e.printStackTrace();
 		}
@@ -125,127 +122,94 @@ public class Main implements Log.Callback {
 		boolean hasTxns = false;
 
 		Options options = new Options();
-		options.addOption("h", "hosts", true,
-			"List of seed hosts in format: " +
-			"hostname1[:tlsname][:port1],...\n" +
-			"The tlsname is only used when connecting with a secure TLS enabled server. " +
-			"If the port is not specified, the default port is used. " +
-			"IPv6 addresses must be enclosed in square brackets.\n" +
-			"Default: localhost\n" +
-			"Examples:\n" +
-			"host1\n" +
-			"host1:3000,host2:3000\n" +
-			"192.168.1.10:cert1:3000,[2001::1111]:cert2:3000\n"
-			);
+		options.addOption("h", "hosts", true, "List of seed hosts in format: " + "hostname1[:tlsname][:port1],...\n"
+				+ "The tlsname is only used when connecting with a secure TLS enabled server. "
+				+ "If the port is not specified, the default port is used. "
+				+ "IPv6 addresses must be enclosed in square brackets.\n" + "Default: localhost\n" + "Examples:\n"
+				+ "host1\n" + "host1:3000,host2:3000\n" + "192.168.1.10:cert1:3000,[2001::1111]:cert2:3000\n");
 		options.addOption("p", "port", true, "Set the default port on which to connect to Aerospike.");
 		options.addOption("U", "user", true, "User name");
 		options.addOption("P", "password", true, "Password");
 		options.addOption("n", "namespace", true, "Set the Aerospike namespace. Default: test");
-		options.addOption("bns","batchNamespaces", true, "Set batch namespaces. Default is regular namespace.");
+		options.addOption("bns", "batchNamespaces", true, "Set batch namespaces. Default is regular namespace.");
 		options.addOption("s", "set", true, "Set the Aerospike set name. Default: testset");
 		options.addOption("c", "clusterName", true, "Set expected cluster name.");
-		options.addOption("servicesAlternate", false, "Set to enable use of services-alternate instead of services in info request during cluster tending");
+		options.addOption("servicesAlternate", false,
+				"Set to enable use of services-alternate instead of services in info request during cluster tending");
 
 		options.addOption("lt", "loginTimeout", true,
-			"Set expected loginTimeout in milliseconds. The timeout is used when user " +
-			"authentication is enabled and a node login is being performed. Default: 5000"
-			);
+				"Set expected loginTimeout in milliseconds. The timeout is used when user "
+						+ "authentication is enabled and a node login is being performed. Default: 5000");
 		options.addOption("tt", "tendTimeout", true,
-			"Set cluster tend info call timeout in milliseconds. Default: 1000"
-			);
-		options.addOption("ti", "tendInterval", true,
-			"Interval between cluster tends in milliseconds. Default: 1000"
-			);
-		options.addOption("maxSocketIdle", true,
-			"Maximum socket idle in connection pool in seconds. Default: 0"
-			);
+				"Set cluster tend info call timeout in milliseconds. Default: 1000");
+		options.addOption("ti", "tendInterval", true, "Interval between cluster tends in milliseconds. Default: 1000");
+		options.addOption("maxSocketIdle", true, "Maximum socket idle in connection pool in seconds. Default: 0");
 		options.addOption("maxErrorRate", true,
-			"Maximum number of errors allowed per node per tend iteration. Default: 100"
-			);
+				"Maximum number of errors allowed per node per tend iteration. Default: 100");
 		options.addOption("errorRateWindow", true,
-			"Number of cluster tend iterations that defines the window for maxErrorRate. Default: 1"
-			);
+				"Number of cluster tend iterations that defines the window for maxErrorRate. Default: 1");
 		options.addOption("minConnsPerNode", true,
-			"Minimum number of sync connections pre-allocated per server node. Default: 0"
-			);
+				"Minimum number of sync connections pre-allocated per server node. Default: 0");
 		options.addOption("maxConnsPerNode", true,
-			"Maximum number of sync connections allowed per server node. Default: 100"
-			);
+				"Maximum number of sync connections allowed per server node. Default: 100");
 		options.addOption("asyncMinConnsPerNode", true,
-			"Minimum number of async connections pre-allocated per server node. Default: 0"
-			);
+				"Minimum number of async connections pre-allocated per server node. Default: 0");
 		options.addOption("asyncMaxConnsPerNode", true,
-			"Maximum number of async connections allowed per server node. Default: 100"
-			);
+				"Maximum number of async connections allowed per server node. Default: 100");
 		options.addOption("mSize", "mSize", true, "Number of records per multi record transaction.");
 		options.addOption("k", "keys", true,
-			"Set the number of keys the client is dealing with. " +
-			"If using an 'insert' workload (detailed below), the client will write this " +
-			"number of keys, starting from value = startkey. Otherwise, the client " +
-			"will read and update randomly across the values between startkey and " +
-			"startkey + num_keys.  startkey can be set using '-S' or '-startkey'."
-			);
-		options.addOption("b", "bins", true,
-			"Set the number of Aerospike bins. " +
-			"Each bin will contain an object defined with -o. The default is single bin (-b 1)."
-			);
+				"Set the number of keys the client is dealing with. "
+						+ "If using an 'insert' workload (detailed below), the client will write this "
+						+ "number of keys, starting from value = startkey. Otherwise, the client "
+						+ "will read and update randomly across the values between startkey and "
+						+ "startkey + num_keys.  startkey can be set using '-S' or '-startkey'.");
+		options.addOption("b", "bins", true, "Set the number of Aerospike bins. "
+				+ "Each bin will contain an object defined with -o. The default is single bin (-b 1).");
 		options.addOption("o", "objectSpec", true,
-			"I | S:<size> | B:<size> | R:<size>:<rand_pct>\n" +
-			"Set the type of object(s) to use in Aerospike transactions. Type can be 'I' " +
-			"for integer, 'S' for string, 'B' for byte[] or 'R' for random bytes. " +
-			"If type is 'I' (integer), do not set a size (integers are always 8 bytes)."
-			);
+				"I | S:<size> | B:<size> | R:<size>:<rand_pct>\n"
+						+ "Set the type of object(s) to use in Aerospike transactions. Type can be 'I' "
+						+ "for integer, 'S' for string, 'B' for byte[] or 'R' for random bytes. "
+						+ "If type is 'I' (integer), do not set a size (integers are always 8 bytes).");
 		options.addOption("R", "random", false,
-			"Use dynamically generated random bin values instead of default static fixed bin values."
-			);
+				"Use dynamically generated random bin values instead of default static fixed bin values.");
 		options.addOption("S", "startkey", true,
-			"Set the starting value of the working set of keys. " +
-			"If using an 'insert' workload, the start_value indicates the first value to write. " +
-			"Otherwise, the start_value indicates the smallest value in the working set of keys."
-			);
+				"Set the starting value of the working set of keys. "
+						+ "If using an 'insert' workload, the start_value indicates the first value to write. "
+						+ "Otherwise, the start_value indicates the smallest value in the working set of keys.");
 		options.addOption("w", "workload", true,
-			"I | RU,<percent>[,<percent2>][,<percent3>] | RR,<percent>[,<percent2>][,<percent3>], RMU | RMI | RMD\n" +
-			"Set the desired workload.\n\n" +
-			"   -w I sets a linear 'insert' workload.\n\n" +
-			"   -w RU,80 sets a random read-update workload with 80% reads and 20% writes.\n\n" +
-			"      100% of reads will read all bins.\n\n" +
-			"      100% of writes will write all bins.\n\n" +
-			"   -w RU,80,60,30 sets a random multi-bin read-update workload with 80% reads and 20% writes.\n\n" +
-			"      60% of reads will read all bins. 40% of reads will read a single bin.\n\n" +
-			"      30% of writes will write all bins. 70% of writes will write a single bin.\n\n" +
-			"   -w RR,20 sets a random read-replace workload with 20% reads and 80% replace all bin(s) writes.\n\n" +
-			"      100% of reads will read all bins.\n\n" +
-			"      100% of writes will replace all bins.\n\n" +
-			"   -w RMU sets a random read all bins-update one bin workload with 50% reads.\n\n" +
-			"   -w RMI sets a random read all bins-increment one integer bin workload with 50% reads.\n\n" +
-			"   -w RMD sets a random read all bins-decrement one integer bin workload with 50% reads.\n\n" +
-			"   -w TXN,r:1000,w:200,v:20%\n\n" +
-			"      form business transactions with 1000 reads, 200 writes with a variation (+/-) of 20%\n\n"
-			);
+				"I | RU,<percent>[,<percent2>][,<percent3>] | RR,<percent>[,<percent2>][,<percent3>], RMU | RMI | RMD\n"
+						+ "Set the desired workload.\n\n" + "   -w I sets a linear 'insert' workload.\n\n"
+						+ "   -w RU,80 sets a random read-update workload with 80% reads and 20% writes.\n\n"
+						+ "      100% of reads will read all bins.\n\n"
+						+ "      100% of writes will write all bins.\n\n"
+						+ "   -w RU,80,60,30 sets a random multi-bin read-update workload with 80% reads and 20% writes.\n\n"
+						+ "      60% of reads will read all bins. 40% of reads will read a single bin.\n\n"
+						+ "      30% of writes will write all bins. 70% of writes will write a single bin.\n\n"
+						+ "   -w RR,20 sets a random read-replace workload with 20% reads and 80% replace all bin(s) writes.\n\n"
+						+ "      100% of reads will read all bins.\n\n"
+						+ "      100% of writes will replace all bins.\n\n"
+						+ "   -w RMU sets a random read all bins-update one bin workload with 50% reads.\n\n"
+						+ "   -w RMI sets a random read all bins-increment one integer bin workload with 50% reads.\n\n"
+						+ "   -w RMD sets a random read all bins-decrement one integer bin workload with 50% reads.\n\n"
+						+ "   -w TXN,r:1000,w:200,v:20%\n\n"
+						+ "      form business transactions with 1000 reads, 200 writes with a variation (+/-) of 20%\n\n");
 		options.addOption("e", "expirationTime", true,
-			"Set expiration time of each record in seconds.\n" +
-			" -1: Never expire\n" +
-			"  0: Default to namespace expiration time\n" +
-			" >0: Actual given expiration time"
-			);
+				"Set expiration time of each record in seconds.\n" + " -1: Never expire\n"
+						+ "  0: Default to namespace expiration time\n" + " >0: Actual given expiration time");
 		options.addOption("rt", "readTouchTtlPercent", true,
-			"Read touch TTL percent is expressed as a percentage of the TTL (or expiration) sent on the most\n" +
-			"recent write such that a read within this interval of the record’s end of life will generate a touch.\n" +
-			"Range: 0 - 100"
-		);
+				"Read touch TTL percent is expressed as a percentage of the TTL (or expiration) sent on the most\n"
+						+ "recent write such that a read within this interval of the record’s end of life will generate a touch.\n"
+						+ "Range: 0 - 100");
 		options.addOption("g", "throughput", true,
-			"Set a target transactions per second for the client. The client should not exceed this " +
-			"average throughput."
-			);
+				"Set a target transactions per second for the client. The client should not exceed this "
+						+ "average throughput.");
 		options.addOption("t", "transactions", true,
-			"Number of transactions to perform in read/write mode before shutting down. " +
-			"The default is to run indefinitely."
-			);
-		options.addOption("ct", "connectTimeout", true,
-			"Set socket connection timeout in milliseconds. Default: 0"
-			);
+				"Number of transactions to perform in read/write mode before shutting down. "
+						+ "The default is to run indefinitely.");
+		options.addOption("ct", "connectTimeout", true, "Set socket connection timeout in milliseconds. Default: 0");
 
-		options.addOption("T", "timeout", true, "Set read and write socketTimeout and totalTimeout to the same timeout in milliseconds.");
+		options.addOption("T", "timeout", true,
+				"Set read and write socketTimeout and totalTimeout to the same timeout in milliseconds.");
 		options.addOption("socketTimeout", true, "Set read and write socketTimeout in milliseconds.");
 		options.addOption("readSocketTimeout", true, "Set read socketTimeout in milliseconds.");
 		options.addOption("writeSocketTimeout", true, "Set write socketTimeout in milliseconds.");
@@ -257,112 +221,88 @@ public class Main implements Log.Callback {
 		options.addOption("rackId", true, "Set Rack where this benchmark instance resides.  Default: 0");
 		options.addOption("maxRetries", true, "Maximum number of retries before aborting the current transaction.");
 		options.addOption("sleepBetweenRetries", true,
-			"Milliseconds to sleep between retries if a transaction fails and the timeout was not exceeded. " +
-			"Enter zero to skip sleep."
-			);
-		options.addOption("r", "replica", true,
-			"Which replica to use for reads.\n\n" +
-			"Values:  master | any | sequence | preferRack.  Default: sequence\n" +
-			"master: Always use node containing master partition.\n" +
-			"any: Distribute reads across master and proles in round-robin fashion.\n" +
-			"sequence: Always try master first. If master fails, try proles in sequence.\n" +
-			"preferRack: Always try node on the same rack as the benchmark first. If no nodes on the same rack, use sequence.\n" +
-			"Use 'rackId' option to set rack."
-			);
+				"Milliseconds to sleep between retries if a transaction fails and the timeout was not exceeded. "
+						+ "Enter zero to skip sleep.");
+		options.addOption("r", "replica", true, "Which replica to use for reads.\n\n"
+				+ "Values:  master | any | sequence | preferRack.  Default: sequence\n"
+				+ "master: Always use node containing master partition.\n"
+				+ "any: Distribute reads across master and proles in round-robin fashion.\n"
+				+ "sequence: Always try master first. If master fails, try proles in sequence.\n"
+				+ "preferRack: Always try node on the same rack as the benchmark first. If no nodes on the same rack, use sequence.\n"
+				+ "Use 'rackId' option to set rack.");
 		options.addOption("readModeAP", true,
-			"Read consistency level when in AP mode.\n" +
-			"Values:  one | all.  Default: one"
-			);
-		options.addOption("readModeSC", true,
-			"Read consistency level when in SC (strong consistency) mode.\n" +
-			"Values:  session | linearize | allow_replica | allow_unavailable.  Default: session"
-			);
+				"Read consistency level when in AP mode.\n" + "Values:  one | all.  Default: one");
+		options.addOption("readModeSC", true, "Read consistency level when in SC (strong consistency) mode.\n"
+				+ "Values:  session | linearize | allow_replica | allow_unavailable.  Default: session");
 		options.addOption("commitLevel", true,
-			"Desired replica consistency guarantee when committing a transaction on the server.\n" +
-			"Values:  all | master.  Default: all"
-			);
+				"Desired replica consistency guarantee when committing a transaction on the server.\n"
+						+ "Values:  all | master.  Default: all");
 		options.addOption("Y", "connPoolsPerNode", true,
-			"Number of synchronous connection pools per node.  Default 1."
-			);
-		options.addOption("z", "threads", true,
-			"Set the number of OS threads the client will use to generate load."
-			);
+				"Number of synchronous connection pools per node.  Default 1.");
+		options.addOption("z", "threads", true, "Set the number of OS threads the client will use to generate load.");
 		options.addOption("vt", "virtualThreads", true,
-			"Set the number of virtual threads the client will use to generate load.\n" +
-			"This option will override the OS threads setting (-z)."
-		);
-		options.addOption("latency", true,
-			"ycsb[,<warmup count>] | [alt,]<columns>,<range shift increment>[,us|ms]\n" +
-			"ycsb: Show the timings in ycsb format.\n" +
-			"alt: Show both count and pecentage in each elapsed time bucket.\n" +
-			"default: Show pecentage in each elapsed time bucket.\n" +
-			"<columns>: Number of elapsed time ranges.\n" +
-			"<range shift increment>: Power of 2 multiple between each range starting at column 3.\n" +
-			"(ms|us): display times in milliseconds (ms, default) or microseconds (us)\n\n" +
-			"A latency definition of '-latency 7,1' results in this layout:\n" +
-			"    <=1ms >1ms >2ms >4ms >8ms >16ms >32ms\n" +
-			"       x%   x%   x%   x%   x%    x%    x%\n" +
-			"A latency definition of '-latency 4,3' results in this layout:\n" +
-			"    <=1ms >1ms >8ms >64ms\n" +
-			"       x%   x%   x%    x%\n\n" +
-			"Latency columns are cumulative. If a transaction takes 9ms, it will be included in both the >1ms and >8ms columns."
-			);
+				"Set the number of virtual threads the client will use to generate load.\n"
+						+ "This option will override the OS threads setting (-z).");
+		options.addOption("latency", true, "ycsb[,<warmup count>] | [alt,]<columns>,<range shift increment>[,us|ms]\n"
+				+ "ycsb: Show the timings in ycsb format.\n"
+				+ "alt: Show both count and pecentage in each elapsed time bucket.\n"
+				+ "default: Show pecentage in each elapsed time bucket.\n"
+				+ "<columns>: Number of elapsed time ranges.\n"
+				+ "<range shift increment>: Power of 2 multiple between each range starting at column 3.\n"
+				+ "(ms|us): display times in milliseconds (ms, default) or microseconds (us)\n\n"
+				+ "A latency definition of '-latency 7,1' results in this layout:\n"
+				+ "    <=1ms >1ms >2ms >4ms >8ms >16ms >32ms\n" + "       x%   x%   x%   x%   x%    x%    x%\n"
+				+ "A latency definition of '-latency 4,3' results in this layout:\n" + "    <=1ms >1ms >8ms >64ms\n"
+				+ "       x%   x%   x%    x%\n\n"
+				+ "Latency columns are cumulative. If a transaction takes 9ms, it will be included in both the >1ms and >8ms columns.");
 
-		options.addOption("N", "reportNotFound", false, "Report not found errors. Data should be fully initialized before using this option.");
+		options.addOption("N", "reportNotFound", false,
+				"Report not found errors. Data should be fully initialized before using this option.");
 		options.addOption("D", "debug", false, "Run benchmarks in debug mode.");
 		options.addOption("u", "usage", false, "Print usage.");
 		options.addOption("V", "version", false, "Print version.");
 
 		options.addOption("B", "batchSize", true,
-			"Enable batch mode with number of records to process in each batch get call. " +
-			"Batch mode is valid only for RU (read update) workloads. Batch mode is disabled by default."
-			);
+				"Enable batch mode with number of records to process in each batch get call. "
+						+ "Batch mode is valid only for RU (read update) workloads. Batch mode is disabled by default.");
 
 		options.addOption("BSN", "batchShowNodes", false,
-			"Print target nodes and count of keys directed at each node once on start of benchmarks."
-			);
+				"Print target nodes and count of keys directed at each node once on start of benchmarks.");
 
 		options.addOption("prole", false, "Distribute reads across proles in round-robin fashion.");
 
 		options.addOption("a", "async", false, "Benchmark asynchronous methods instead of synchronous methods.");
-		options.addOption("C", "asyncMaxCommands", true, "Maximum number of concurrent asynchronous database commands.");
+		options.addOption("C", "asyncMaxCommands", true,
+				"Maximum number of concurrent asynchronous database commands.");
 		options.addOption("W", "eventLoops", true, "Number of event loop threads when running in asynchronous mode.");
 		options.addOption("F", "keyFile", true, "File path to read the keys for read operation.");
 		options.addOption("KT", "keyType", true, "Type of the key(String/Integer) in the file, default is String");
 		options.addOption("tls", "tlsEnable", false, "Use TLS/SSL sockets");
 		options.addOption("tp", "tlsProtocols", true,
-			"Allow TLS protocols\n" +
-			"Values:  TLSv1,TLSv1.1,TLSv1.2 separated by comma\n" +
-			"Default: TLSv1.2"
-			);
+				"Allow TLS protocols\n" + "Values:  TLSv1,TLSv1.1,TLSv1.2 separated by comma\n" + "Default: TLSv1.2");
 		options.addOption("tlsCiphers", "tlsCipherSuite", true,
-			"Allow TLS cipher suites\n" +
-			"Values:  cipher names defined by JVM separated by comma\n" +
-			"Default: null (default cipher list provided by JVM)"
-			);
-		options.addOption("tr", "tlsRevoke", true,
-			"Revoke certificates identified by their serial number\n" +
-			"Values:  serial numbers separated by comma\n" +
-			"Default: null (Do not revoke certificates)"
-			);
+				"Allow TLS cipher suites\n" + "Values:  cipher names defined by JVM separated by comma\n"
+						+ "Default: null (default cipher list provided by JVM)");
+		options.addOption("tr", "tlsRevoke", true, "Revoke certificates identified by their serial number\n"
+				+ "Values:  serial numbers separated by comma\n" + "Default: null (Do not revoke certificates)");
 		options.addOption("tlsLoginOnly", false, "Use TLS/SSL sockets on node login only");
 		options.addOption("auth", true, "Authentication mode. Values: " + Arrays.toString(AuthMode.values()));
 
 		options.addOption("netty", false, "Use Netty NIO event loops for async benchmarks");
 		options.addOption("nettyEpoll", false, "Use Netty epoll event loops for async benchmarks (Linux only)");
-		options.addOption("elt", "eventLoopType", true,
-			"Use specified event loop type for async examples\n" +
-			"Value: DIRECT_NIO | NETTY_NIO | NETTY_EPOLL | NETTY_KQUEUE | NETTY_IOURING"
-			);
+		options.addOption("elt", "eventLoopType", true, "Use specified event loop type for async examples\n"
+				+ "Value: DIRECT_NIO | NETTY_NIO | NETTY_EPOLL | NETTY_KQUEUE | NETTY_IOURING");
 
 		options.addOption("proxy", false, "Use proxy client.");
 
 		options.addOption("upn", "udfPackageName", true, "Specify the package name where the udf function is located");
-		options.addOption("ufn", "udfFunctionName", true, "Specify the udf function name that must be used in the udf benchmarks");
-		options.addOption("ufv","udfFunctionValues",true, "The udf argument values comma separated");
+		options.addOption("ufn", "udfFunctionName", true,
+				"Specify the udf function name that must be used in the udf benchmarks");
+		options.addOption("ufv", "udfFunctionValues", true, "The udf argument values comma separated");
 		options.addOption("sendKey", false, "Send key to server");
 
-		options.addOption("pids", "partitionIds", true, "Specify the list of comma seperated partition IDs the primary keys must belong to");
+		options.addOption("pids", "partitionIds", true,
+				"Specify the list of comma seperated partition IDs the primary keys must belong to");
 
 		// parse the command line arguments
 		CommandLineParser parser = new DefaultParser();
@@ -378,7 +318,6 @@ public class Main implements Log.Callback {
 			printVersion();
 			throw new UsageException();
 		}
-
 
 		if (extra.length > 0) {
 			throw new Exception("Unexpected arguments: " + Arrays.toString(extra));
@@ -406,19 +345,19 @@ public class Main implements Log.Callback {
 		if (line.hasOption("readTouchTtlPercent")) {
 			args.readPolicy.readTouchTtlPercent = Integer.parseInt(line.getOptionValue("readTouchTtlPercent"));
 			if (args.readPolicy.readTouchTtlPercent < 0 || args.readPolicy.readTouchTtlPercent > 100) {
-				throw new Exception("Invalid readTouchTtlPercent: " + args.readPolicy.readTouchTtlPercent +
-					" Range: 0 - 100");
+				throw new Exception(
+						"Invalid readTouchTtlPercent: " + args.readPolicy.readTouchTtlPercent + " Range: 0 - 100");
 			}
 		}
 
 		if (line.hasOption("port")) {
 			this.port = Integer.parseInt(line.getOptionValue("port"));
-		}
-		else {
+		} else {
 			this.port = 3000;
 		}
 
-		// If the Aerospike server's default port (3000) is used and the proxy client is used,
+		// If the Aerospike server's default port (3000) is used and the proxy client is
+		// used,
 		// Reset the port to the proxy server's default port (4000).
 		if (port == 3000 && useProxyClient) {
 			System.out.println("Change proxy server port to 4000");
@@ -427,8 +366,7 @@ public class Main implements Log.Callback {
 
 		if (line.hasOption("hosts")) {
 			this.hosts = Host.parseHosts(line.getOptionValue("hosts"), this.port);
-		}
-		else {
+		} else {
 			this.hosts = new Host[1];
 			this.hosts[0] = new Host("127.0.0.1", this.port);
 		}
@@ -489,8 +427,7 @@ public class Main implements Log.Callback {
 
 		if (line.hasOption("namespace")) {
 			args.namespace = line.getOptionValue("namespace");
-		}
-		else {
+		} else {
 			args.namespace = "test";
 		}
 
@@ -500,8 +437,7 @@ public class Main implements Log.Callback {
 
 		if (line.hasOption("set")) {
 			args.setName = line.getOptionValue("set");
-		}
-		else {
+		} else {
 			args.setName = "testset";
 		}
 
@@ -539,37 +475,35 @@ public class Main implements Log.Callback {
 
 		if (line.hasOption("asyncMaxConnsPerNode")) {
 			clientPolicy.asyncMaxConnsPerNode = Integer.parseInt(line.getOptionValue("asyncMaxConnsPerNode"));
-		}
-		else {
+		} else {
 			clientPolicy.asyncMaxConnsPerNode = clientPolicy.maxConnsPerNode;
 		}
 
 		if (line.hasOption("keys")) {
 			this.nKeys = Long.parseLong(line.getOptionValue("keys"));
-		}
-		else {
+		} else {
 			this.nKeys = 100000;
 		}
 
-		if(line.hasOption("mSize")){
-		    this.mrtEnabled = true;
-		    this.keysPerMRT = Long.parseLong(line.getOptionValue("mSize"));
-		    if ( this.keysPerMRT < 1) {
+		if (line.hasOption("mSize")) {
+			this.mrtEnabled = true;
+			this.keysPerMRT = Long.parseLong(line.getOptionValue("mSize"));
+			if (this.keysPerMRT < 1) {
 				throw new Exception("Number of records per MRT (-mSize) must be > 0");
 			}
-		    // TODO - add code for perMRTKeys > nKeys
-		    this.nMRTs = this.nKeys / this.keysPerMRT;
+			// TODO - add code for perMRTKeys > nKeys
+			this.nMRTs = this.nKeys / this.keysPerMRT;
 		}
 
 		if (line.hasOption("startkey")) {
 			this.startKey = Long.parseLong(line.getOptionValue("startkey"));
 		}
 
-		//Variables setting in case of command arguments passed with keys in File
+		// Variables setting in case of command arguments passed with keys in File
 		if (line.hasOption("keyFile")) {
 			if (startKey + nKeys > Integer.MAX_VALUE) {
-				throw new Exception("Invalid arguments when keyFile specified.  startkey " + startKey +
-									" + keys " + nKeys + " must be <= " + Integer.MAX_VALUE);
+				throw new Exception("Invalid arguments when keyFile specified.  startkey " + startKey + " + keys "
+						+ nKeys + " must be <= " + Integer.MAX_VALUE);
 			}
 
 			this.filepath = line.getOptionValue("keyFile");
@@ -586,20 +520,17 @@ public class Main implements Log.Callback {
 
 				if (keyType.equals("S")) {
 					args.keyType = KeyType.STRING;
-				}
-				else if (keyType.equals("I")) {
+				} else if (keyType.equals("I")) {
 					if (Utils.isNumeric(keyList.get(0))) {
 						args.keyType = KeyType.INTEGER;
+					} else {
+						throw new Exception(
+								"Invalid keyType '" + keyType + "' Key type doesn't match with file content type.");
 					}
-					else {
-						throw new Exception("Invalid keyType '" + keyType + "' Key type doesn't match with file content type.");
-					}
-				}
-				else {
+				} else {
 					throw new Exception("Invalid keyType: " + keyType);
 				}
-			}
-			else {
+			} else {
 				args.keyType = KeyType.STRING;
 			}
 
@@ -607,8 +538,7 @@ public class Main implements Log.Callback {
 
 		if (line.hasOption("bins")) {
 			args.nBins = Integer.parseInt(line.getOptionValue("bins"));
-		}
-		else {
+		} else {
 			args.nBins = 1;
 		}
 
@@ -620,14 +550,11 @@ public class Main implements Log.Callback {
 				try {
 					DBObjectSpec spec = new DBObjectSpec(objectsArr[i]);
 					args.objectSpec[i] = spec;
-				}
-				catch (Throwable t) {
-					throw new Exception("Invalid object spec: " + objectsArr[i] + "\n" +
-						t.getMessage());
+				} catch (Throwable t) {
+					throw new Exception("Invalid object spec: " + objectsArr[i] + "\n" + t.getMessage());
 				}
 			}
-		}
-		else {
+		} else {
 			// If the object is not specified, it has one bin of integer type.
 			args.objectSpec = new DBObjectSpec[1];
 			args.objectSpec[0] = new DBObjectSpec();
@@ -635,8 +562,7 @@ public class Main implements Log.Callback {
 
 		if (line.hasOption("keyFile")) {
 			args.workload = Workload.READ_FROM_FILE;
-		}
-		else {
+		} else {
 			args.workload = Workload.READ_UPDATE;
 		}
 		args.readPct = 50;
@@ -652,10 +578,10 @@ public class Main implements Log.Callback {
 				this.initialize = true;
 
 				if (workloadOpts.length > 1) {
-					throw new Exception("Invalid workload number of arguments: " + workloadOpts.length + " Expected 1.");
+					throw new Exception(
+							"Invalid workload number of arguments: " + workloadOpts.length + " Expected 1.");
 				}
-			}
-			else if (workloadType.equals("RU") || workloadType.equals("RR")) {
+			} else if (workloadType.equals("RU") || workloadType.equals("RR")) {
 
 				if (workloadType.equals("RR")) {
 					args.writePolicy.recordExistsAction = RecordExistsAction.REPLACE;
@@ -663,7 +589,8 @@ public class Main implements Log.Callback {
 				}
 
 				if (workloadOpts.length < 2 || workloadOpts.length > 4) {
-					throw new Exception("Invalid workload number of arguments: " + workloadOpts.length + " Expected 2 to 4.");
+					throw new Exception(
+							"Invalid workload number of arguments: " + workloadOpts.length + " Expected 2 to 4.");
 				}
 
 				if (workloadOpts.length >= 2) {
@@ -681,34 +608,32 @@ public class Main implements Log.Callback {
 				if (workloadOpts.length >= 4) {
 					args.writeMultiBinPct = Integer.parseInt(workloadOpts[3]);
 				}
-			}
-			else if (workloadType.equals("RMU")) {
+			} else if (workloadType.equals("RMU")) {
 				args.workload = Workload.READ_MODIFY_UPDATE;
 
 				if (workloadOpts.length > 1) {
-					throw new Exception("Invalid workload number of arguments: " + workloadOpts.length + " Expected 1.");
+					throw new Exception(
+							"Invalid workload number of arguments: " + workloadOpts.length + " Expected 1.");
 				}
-			}
-			else if (workloadType.equals("RMI")) {
+			} else if (workloadType.equals("RMI")) {
 				args.workload = Workload.READ_MODIFY_INCREMENT;
 
 				if (workloadOpts.length > 1) {
-					throw new Exception("Invalid workload number of arguments: " + workloadOpts.length + " Expected 1.");
+					throw new Exception(
+							"Invalid workload number of arguments: " + workloadOpts.length + " Expected 1.");
 				}
-			}
-			else if (workloadType.equals("RMD")) {
+			} else if (workloadType.equals("RMD")) {
 				args.workload = Workload.READ_MODIFY_DECREMENT;
 
 				if (workloadOpts.length > 1) {
-					throw new Exception("Invalid workload number of arguments: " + workloadOpts.length + " Expected 1.");
+					throw new Exception(
+							"Invalid workload number of arguments: " + workloadOpts.length + " Expected 1.");
 				}
-			}
-			else if (workloadType.equals("TXN")) {
+			} else if (workloadType.equals("TXN")) {
 				args.workload = Workload.TRANSACTION;
 				args.transactionalWorkload = new TransactionalWorkload(workloadOpts);
 				hasTxns = true;
-			}
-			else {
+			} else {
 				throw new Exception("Unknown workload: " + workloadType);
 			}
 		}
@@ -806,21 +731,17 @@ public class Main implements Log.Callback {
 			if (replica.equals("master")) {
 				args.readPolicy.replica = Replica.MASTER;
 				args.batchPolicy.replica = Replica.MASTER;
-			}
-			else if (replica.equals("any")) {
+			} else if (replica.equals("any")) {
 				args.readPolicy.replica = Replica.MASTER_PROLES;
 				args.batchPolicy.replica = Replica.MASTER_PROLES;
-			}
-			else if (replica.equals("sequence")) {
+			} else if (replica.equals("sequence")) {
 				args.readPolicy.replica = Replica.SEQUENCE;
 				args.batchPolicy.replica = Replica.SEQUENCE;
-			}
-			else if (replica.equals("preferRack")) {
+			} else if (replica.equals("preferRack")) {
 				args.readPolicy.replica = Replica.PREFER_RACK;
 				args.batchPolicy.replica = Replica.PREFER_RACK;
 				clientPolicy.rackAware = true;
-			}
-			else {
+			} else {
 				throw new Exception("Invalid replica: " + replica);
 			}
 		}
@@ -851,8 +772,7 @@ public class Main implements Log.Callback {
 
 			if (level.equals("master")) {
 				args.writePolicy.commitLevel = CommitLevel.COMMIT_MASTER;
-			}
-			else if (! level.equals("all")) {
+			} else if (!level.equals("all")) {
 				throw new Exception("Invalid commitLevel: " + level);
 			}
 		}
@@ -867,8 +787,7 @@ public class Main implements Log.Callback {
 			if (this.nThreads < 1) {
 				throw new Exception("Client threads (-z) must be > 0");
 			}
-		}
-		else {
+		} else {
 			this.nThreads = 16;
 		}
 
@@ -927,8 +846,7 @@ public class Main implements Log.Callback {
 				if (hasTxns) {
 					counters.transaction.latency = new LatencyManagerYcsb(" txns", warmupCount);
 				}
-			}
-			else {
+			} else {
 				boolean alt = false;
 				int index = 0;
 
@@ -938,8 +856,7 @@ public class Main implements Log.Callback {
 					}
 					alt = true;
 					index++;
-				}
-				else {
+				} else {
 					if (latencyOpts.length > 3) {
 						throw new Exception(getLatencyUsage(latencyString));
 					}
@@ -959,8 +876,7 @@ public class Main implements Log.Callback {
 					if (hasTxns) {
 						counters.transaction.latency = new LatencyManagerAlternate(columns, bitShift, showMicroSeconds);
 					}
-				}
-				else {
+				} else {
 					counters.read.latency = new LatencyManagerAerospike(columns, bitShift, showMicroSeconds);
 					counters.write.latency = new LatencyManagerAerospike(columns, bitShift, showMicroSeconds);
 					if (hasTxns) {
@@ -970,7 +886,7 @@ public class Main implements Log.Callback {
 			}
 		}
 
-		if (! line.hasOption("random")) {
+		if (!line.hasOption("random")) {
 			args.setFixedBins();
 		}
 
@@ -1028,12 +944,11 @@ public class Main implements Log.Callback {
 
 				try {
 					partitionId = Integer.parseInt(pid);
-				}
-				catch(NumberFormatException nfe) {
+				} catch (NumberFormatException nfe) {
 					throw new Exception("Partition ID has to be an integer");
 				}
 
-				if (partitionId < 0  || partitionId >= Node.PARTITIONS) {
+				if (partitionId < 0 || partitionId >= Node.PARTITIONS) {
 					throw new Exception("Partition ID has to be a value between 0 and " + Node.PARTITIONS);
 				}
 
@@ -1045,11 +960,9 @@ public class Main implements Log.Callback {
 
 		String threadType = useVirtualThreads ? "virtual" : "OS";
 
-		System.out.println("Benchmark: " + this.hosts[0]
-			+ ", namespace: " + args.namespace
-			+ ", set: " + (args.setName.length() > 0? args.setName : "<empty>")
-			+ ", " + threadType + " threads: " + this.nThreads
-			+ ", workload: " + args.workload);
+		System.out.println("Benchmark: " + this.hosts[0] + ", namespace: " + args.namespace + ", set: "
+				+ (args.setName.length() > 0 ? args.setName : "<empty>") + ", " + threadType + " threads: "
+				+ this.nThreads + ", workload: " + args.workload);
 
 		if (args.workload == Workload.READ_UPDATE || args.workload == Workload.READ_REPLACE) {
 			System.out.print("read: " + args.readPct + '%');
@@ -1061,73 +974,49 @@ public class Main implements Log.Callback {
 			System.out.println(", single bin: " + (100 - args.writeMultiBinPct) + "%)");
 		}
 
-		System.out.println("keys: " + this.nKeys
-			+ ", start key: " + this.startKey
-			+ ", transactions: " + args.transactionLimit
-			+ ", bins: " + args.nBins
-			+ ", random values: " + (args.fixedBins == null)
-			+ ", throughput: " + (args.throughput == 0 ? "unlimited" : (args.throughput + " tps"))
-			+ ", partitions: " + (args.partitionIds == null ? "all" : args.partitionIds.toString()));
+		System.out.println("keys: " + this.nKeys + ", start key: " + this.startKey + ", transactions: "
+				+ args.transactionLimit + ", bins: " + args.nBins + ", random values: " + (args.fixedBins == null)
+				+ ", throughput: " + (args.throughput == 0 ? "unlimited" : (args.throughput + " tps"))
+				+ ", partitions: " + (args.partitionIds == null ? "all" : args.partitionIds.toString()));
 
 		System.out.println("client policy:");
-		System.out.println(
-			"    loginTimeout: " + clientPolicy.loginTimeout
-			+ ", tendTimeout: " + clientPolicy.timeout
-			+ ", tendInterval: " + clientPolicy.tendInterval
-			+ ", maxSocketIdle: " + clientPolicy.maxSocketIdle
-			+ ", maxErrorRate: " + clientPolicy.maxErrorRate);
-		System.out.println(
-			"    errorRateWindow: " + clientPolicy.errorRateWindow
-			+ ", minConnsPerNode: " + clientPolicy.minConnsPerNode
-			+ ", maxConnsPerNode: " + clientPolicy.maxConnsPerNode
-			+ ", asyncMinConnsPerNode: " + clientPolicy.asyncMinConnsPerNode
-			+ ", asyncMaxConnsPerNode: " + clientPolicy.asyncMaxConnsPerNode);
+		System.out.println("    loginTimeout: " + clientPolicy.loginTimeout + ", tendTimeout: " + clientPolicy.timeout
+				+ ", tendInterval: " + clientPolicy.tendInterval + ", maxSocketIdle: " + clientPolicy.maxSocketIdle
+				+ ", maxErrorRate: " + clientPolicy.maxErrorRate);
+		System.out.println("    errorRateWindow: " + clientPolicy.errorRateWindow + ", minConnsPerNode: "
+				+ clientPolicy.minConnsPerNode + ", maxConnsPerNode: " + clientPolicy.maxConnsPerNode
+				+ ", asyncMinConnsPerNode: " + clientPolicy.asyncMinConnsPerNode + ", asyncMaxConnsPerNode: "
+				+ clientPolicy.asyncMaxConnsPerNode);
 
 		if (args.workload != Workload.INITIALIZE) {
 			System.out.println("read policy:");
-			System.out.println(
-				"    connectTimeout: " + args.readPolicy.connectTimeout
-				+ ", socketTimeout: " + args.readPolicy.socketTimeout
-				+ ", totalTimeout: " + args.readPolicy.totalTimeout
-				+ ", timeoutDelay: " + args.readPolicy.timeoutDelay
-				+ ", maxRetries: " + args.readPolicy.maxRetries
-				+ ", sleepBetweenRetries: " + args.readPolicy.sleepBetweenRetries
-				);
+			System.out.println("    connectTimeout: " + args.readPolicy.connectTimeout + ", socketTimeout: "
+					+ args.readPolicy.socketTimeout + ", totalTimeout: " + args.readPolicy.totalTimeout
+					+ ", timeoutDelay: " + args.readPolicy.timeoutDelay + ", maxRetries: " + args.readPolicy.maxRetries
+					+ ", sleepBetweenRetries: " + args.readPolicy.sleepBetweenRetries);
 
-			System.out.println(
-				"    readModeAP: " + args.readPolicy.readModeAP
-				+ ", readModeSC: " + args.readPolicy.readModeSC
-				+ ", replica: " + args.readPolicy.replica
-				+ ", readTouchTtlPercent: " + args.readPolicy.readTouchTtlPercent
-				+ ", reportNotFound: " + args.reportNotFound
-				);
+			System.out.println("    readModeAP: " + args.readPolicy.readModeAP + ", readModeSC: "
+					+ args.readPolicy.readModeSC + ", replica: " + args.readPolicy.replica + ", readTouchTtlPercent: "
+					+ args.readPolicy.readTouchTtlPercent + ", reportNotFound: " + args.reportNotFound);
 		}
 
 		System.out.println("write policy:");
-		System.out.println(
-			"    connectTimeout: " + args.writePolicy.connectTimeout
-			+ ", socketTimeout: " + args.writePolicy.socketTimeout
-			+ ", totalTimeout: " + args.writePolicy.totalTimeout
-			+ ", timeoutDelay: " + args.writePolicy.timeoutDelay
-			+ ", maxRetries: " + args.writePolicy.maxRetries
-			+ ", sleepBetweenRetries: " + args.writePolicy.sleepBetweenRetries
-			);
+		System.out.println("    connectTimeout: " + args.writePolicy.connectTimeout + ", socketTimeout: "
+				+ args.writePolicy.socketTimeout + ", totalTimeout: " + args.writePolicy.totalTimeout
+				+ ", timeoutDelay: " + args.writePolicy.timeoutDelay + ", maxRetries: " + args.writePolicy.maxRetries
+				+ ", sleepBetweenRetries: " + args.writePolicy.sleepBetweenRetries);
 
 		System.out.println(
-			"    commitLevel: " + args.writePolicy.commitLevel
-			+ ", expiration: " + args.writePolicy.expiration
-		);
+				"    commitLevel: " + args.writePolicy.commitLevel + ", expiration: " + args.writePolicy.expiration);
 
 		if (args.batchSize > 1) {
 			System.out.println("batch size: " + args.batchSize);
 		}
 
 		if (this.asyncEnabled) {
-			System.out.println("Async " + this.eventLoopType + ": MaxCommands " +  this.asyncMaxCommands
-				+ ", EventLoops: " + this.eventLoopSize
-				);
-		}
-		else {
+			System.out.println("Async " + this.eventLoopType + ": MaxCommands " + this.asyncMaxCommands
+					+ ", EventLoops: " + this.eventLoopSize);
+		} else {
 			System.out.println("Sync: connPoolsPerNode: " + clientPolicy.connPoolsPerNode);
 		}
 
@@ -1137,32 +1026,32 @@ public class Main implements Log.Callback {
 			System.out.print("bin[" + binCount + "]: ");
 
 			switch (spec.type) {
-				case INTEGER:
-					System.out.println("integer");
-					break;
+			case INTEGER:
+				System.out.println("integer");
+				break;
 
-				case STRING:
-					System.out.println("string[" + spec.size + "]");
-					break;
+			case STRING:
+				System.out.println("string[" + spec.size + "]");
+				break;
 
-				case BYTES:
-					System.out.println("byte[" + spec.size + "]");
-					break;
+			case BYTES:
+				System.out.println("byte[" + spec.size + "]");
+				break;
 
-				case RANDOM:
-					System.out.println("random[" + (spec.size * 8) + "]");
-					break;
+			case RANDOM:
+				System.out.println("random[" + (spec.size * 8) + "]");
+				break;
 
-				case TIMESTAMP:
-					System.out.println("timestamp");
-					break;
+			case TIMESTAMP:
+				System.out.println("timestamp");
+				break;
 			}
 			binCount++;
 		}
 
 		System.out.println("debug: " + args.debug);
 
-		Log.Level level = (args.debug)? Log.Level.DEBUG : Log.Level.INFO;
+		Log.Level level = (args.debug) ? Log.Level.DEBUG : Log.Level.INFO;
 		Log.setLevel(level);
 		Log.setCallback(this);
 		args.updatePolicy = new WritePolicy(args.writePolicy);
@@ -1184,7 +1073,8 @@ public class Main implements Log.Callback {
 	}
 
 	private static String getLatencyUsage(String latencyString) {
-		return "Latency usage: ycsb[,<warmup count>] | [alt,]<columns>,<range shift increment>[,us|ms]  Received: " + latencyString;
+		return "Latency usage: ycsb[,<warmup count>] | [alt,]<columns>,<range shift increment>[,us|ms]  Received: "
+				+ latencyString;
 	}
 
 	public void runBenchmarks() throws Exception {
@@ -1203,42 +1093,41 @@ public class Main implements Log.Callback {
 				// Proxy client requires netty event loops.
 				if (Epoll.isAvailable()) {
 					this.eventLoopType = EventLoopType.NETTY_EPOLL;
-				}
-				else {
+				} else {
 					this.eventLoopType = EventLoopType.NETTY_NIO;
 				}
 			}
 
 			switch (this.eventLoopType) {
-				default:
-				case DIRECT_NIO: {
-					eventLoops = new NioEventLoops(eventPolicy, this.eventLoopSize);
-					break;
-				}
+			default:
+			case DIRECT_NIO: {
+				eventLoops = new NioEventLoops(eventPolicy, this.eventLoopSize);
+				break;
+			}
 
-				case NETTY_NIO: {
-					EventLoopGroup group = new NioEventLoopGroup(this.eventLoopSize);
-					eventLoops = new NettyEventLoops(eventPolicy, group, this.eventLoopType);
-					break;
-				}
+			case NETTY_NIO: {
+				EventLoopGroup group = new NioEventLoopGroup(this.eventLoopSize);
+				eventLoops = new NettyEventLoops(eventPolicy, group, this.eventLoopType);
+				break;
+			}
 
-				case NETTY_EPOLL: {
-					EventLoopGroup group = new EpollEventLoopGroup(this.eventLoopSize);
-					eventLoops = new NettyEventLoops(eventPolicy, group, this.eventLoopType);
-					break;
-				}
+			case NETTY_EPOLL: {
+				EventLoopGroup group = new EpollEventLoopGroup(this.eventLoopSize);
+				eventLoops = new NettyEventLoops(eventPolicy, group, this.eventLoopType);
+				break;
+			}
 
-				case NETTY_KQUEUE: {
-					EventLoopGroup group = new KQueueEventLoopGroup(this.eventLoopSize);
-					eventLoops = new NettyEventLoops(eventPolicy, group, this.eventLoopType);
-					break;
-				}
+			case NETTY_KQUEUE: {
+				EventLoopGroup group = new KQueueEventLoopGroup(this.eventLoopSize);
+				eventLoops = new NettyEventLoops(eventPolicy, group, this.eventLoopType);
+				break;
+			}
 
-				case NETTY_IOURING: {
-					EventLoopGroup group = new IOUringEventLoopGroup(this.eventLoopSize);
-					eventLoops = new NettyEventLoops(eventPolicy, group, this.eventLoopType);
-					break;
-				}
+			case NETTY_IOURING: {
+				EventLoopGroup group = new IOUringEventLoopGroup(this.eventLoopSize);
+				eventLoops = new NettyEventLoops(eventPolicy, group, this.eventLoopType);
+				break;
+			}
 			}
 
 			try {
@@ -1251,52 +1140,43 @@ public class Main implements Log.Callback {
 				IAerospikeClient client = AerospikeClientFactory.getClient(clientPolicy, useProxyClient, hosts);
 
 				try {
-					if(mrtEnabled) {
-						if(initialize) {
+					if (mrtEnabled) {
+						if (initialize) {
 							// TODO
 						}
-					}
-					else {
+					} else {
 						if (initialize) {
 							doAsyncInserts(client);
-						}
-						else {
+						} else {
 							showBatchNodes(client);
 							doAsyncRWTest(client);
 						}
 					}
-				}
-				finally {
+				} finally {
 					client.close();
 				}
-			}
-			finally {
+			} finally {
 				eventLoops.close();
 			}
-		}
-		else {
+		} else {
 			IAerospikeClient client = AerospikeClientFactory.getClient(clientPolicy, useProxyClient, hosts);
 
 			try {
-				if(mrtEnabled) {
-					if(initialize) {
+				if (mrtEnabled) {
+					if (initialize) {
 						doMRTInserts(client);
-					}
-					else {
+					} else {
 						doMRTRWTest(client);
 					}
-				}
-				else {
+				} else {
 					if (initialize) {
 						doInserts(client);
-					}
-					else {
+					} else {
 						showBatchNodes(client);
 						doRWTest(client);
 					}
 				}
-			}
-			finally {
+			} finally {
 				client.close();
 			}
 		}
@@ -1312,7 +1192,7 @@ public class Main implements Log.Callback {
 		long start = this.startKey;
 
 		for (long i = 0; i < ntasks; i++) {
-			long keyCount = (i < rem)? keysPerTask + 1 : keysPerTask;
+			long keyCount = (i < rem) ? keysPerTask + 1 : keysPerTask;
 			InsertTaskSync it = new InsertTaskSync(client, args, counters, start, keyCount);
 			es.execute(it);
 			start += keyCount;
@@ -1333,7 +1213,7 @@ public class Main implements Log.Callback {
 		long keysPerMRT = this.keysPerMRT;
 
 		for (long i = 0; i < ntasks; i++) {
-			long nMrtsPerThread = (i < rem)? mrtsPerTask + 1 : mrtsPerTask;
+			long nMrtsPerThread = (i < rem) ? mrtsPerTask + 1 : mrtsPerTask;
 			MRTInsertTaskSync it = new MRTInsertTaskSync(client, args, counters, start, nMrtsPerThread, keysPerMRT);
 			es.execute(it);
 		}
@@ -1359,7 +1239,7 @@ public class Main implements Log.Callback {
 
 		for (int i = 0; i < maxConcurrentCommands; i++) {
 			// Allocate separate tasks for each seed command and reuse them in callbacks.
-			long keyCount = (i < keysRem)? keysPerCommand + 1 : keysPerCommand;
+			long keyCount = (i < keysRem) ? keysPerCommand + 1 : keysPerCommand;
 
 			// Start seed commands on random event loops.
 			EventLoop eventLoop = this.eventLoops.next();
@@ -1385,8 +1265,8 @@ public class Main implements Log.Callback {
 			this.counters.periodBegin.set(time);
 
 			LocalDateTime dt = Instant.ofEpochMilli(time).atZone(ZoneId.systemDefault()).toLocalDateTime();
-			System.out.println(dt.format(TimeFormatter) + " write(count=" + total + " tps=" + numWrites +
-				" timeouts=" + timeoutWrites + " errors=" + errorWrites + ")");
+			System.out.println(dt.format(TimeFormatter) + " write(count=" + total + " tps=" + numWrites + " timeouts="
+					+ timeoutWrites + " errors=" + errorWrites + ")");
 
 			if (this.counters.write.latency != null) {
 				this.counters.write.latency.printHeader(System.out);
@@ -1416,8 +1296,8 @@ public class Main implements Log.Callback {
 			this.counters.periodBegin.set(time);
 
 			LocalDateTime dt = Instant.ofEpochMilli(time).atZone(ZoneId.systemDefault()).toLocalDateTime();
-			System.out.println(dt.format(TimeFormatter) + " write(count=" + total + " tps=" + numWrites +
-				" timeouts=" + timeoutWrites + " errors=" + errorWrites + ")");
+			System.out.println(dt.format(TimeFormatter) + " write(count=" + total + " tps=" + numWrites + " timeouts="
+					+ timeoutWrites + " errors=" + errorWrites + ")");
 
 			if (this.counters.write.latency != null) {
 				this.counters.write.latency.printHeader(System.out);
@@ -1447,124 +1327,19 @@ public class Main implements Log.Callback {
 		es.shutdown();
 	}
 
-	private long[] generateUniqueKeys(Set<Long> usedUniqueKeys, Random random) {
-		long[] keys = new long[(int) this.keysPerMRT];
-		int count = 0;
-
-		while (count < this.keysPerMRT) {
-			long key = Math.abs(random.nextLong()) % this.nKeys;
-			if (!usedUniqueKeys.contains(key)) {
-				usedUniqueKeys.add(key);
-				keys[count++] = key;
-			}
-		}
-
-		return keys;
-	}
-
-	private long[] generateSharedDuplicateKeys(Set<Long> usedUniqueKeys, Random random) {
-		long[] keys = new long[(int) this.keysPerMRT];
-
-		Set<Long> uniquePart = new HashSet<>();
-
-		// Generate unique keys for the remaining part
-		while (uniquePart.size() < this.keysPerMRT - 2) { // Leave space for exactly 2 duplicates
-			long key = Math.abs(random.nextLong()) % this.nKeys;
-			if (!usedUniqueKeys.contains(key)) {
-				usedUniqueKeys.add(key);
-				uniquePart.add(key);
-			}
-		}
-
-		// Fill in with two different duplicates
-		Long[] uniqueArray = uniquePart.toArray(new Long[0]);
-
-		// Ensure we have at least two unique keys to duplicate
-		if (uniqueArray.length < 2) {
-			throw new IllegalStateException("Not enough unique keys available to create duplicates.");
-		}
-
-		// Add two different duplicate keys
-		keys[0] = uniqueArray[uniqueArray.length - 1]; // First duplicate key
-		keys[1] = uniqueArray[uniqueArray.length - 2]; // Second duplicate key
-
-		// Add the rest of the unique keys
-		int index = 2; // Start filling from index 2
-		for (Long key : uniquePart) {
-			if (index < this.keysPerMRT) {
-				keys[index++] = key;
-			}
-			if (index >= this.keysPerMRT) break;
-		}
-
-		return keys;
-	}
-
-	private long[][] generateKeys() {
-		// Validate input parameters
-		if (this.nMRTs <= 0) {
-			throw new IllegalArgumentException("Number of MRTs must be greater than zero");
-		}
-		if (this.nKeys <= 0) {
-			throw new IllegalArgumentException("Number of keys must be greater than zero");
-		}
-		if (this.keysPerMRT <= 0 || this.keysPerMRT > this.nKeys) {
-			throw new IllegalArgumentException("keysPerMRT must be greater than zero and cannot exceed nKeys");
-		}
-
-		long[][] mrtKeys = new long[(int) this.nMRTs][];
-		Set<Long> usedUniqueKeys = new HashSet<>();
-		Random random = new Random();
-		double uniquePercentage = 0.8;
-		int numUniqueMRTs = (int) (this.nMRTs * uniquePercentage);
-
-		// Generate keys for each MRT
-		for (int i = 0; i < this.nMRTs; i++) {
-			if (i < numUniqueMRTs) { // First 8 MRTs get unique keys
-				mrtKeys[i] = generateUniqueKeys(usedUniqueKeys, random);
-			} else { // MRTs 8 and 9 get shared duplicate keys
-				mrtKeys[i] = generateSharedDuplicateKeys(usedUniqueKeys, random);
-			}
-		}
-
-		return mrtKeys;
-	}
-
-
-	private long[] generateRandomKeys(long numKeys) {
-		long[] keys = new long[(int) numKeys];
-		// Use a Random generator for key generation (could use RandomShift as per your requirements)
-		Random random = new Random();
-		// Generate keys using random numbers
-		for (int i = 0; i < numKeys; i++) {
-			keys[i] = Math.abs(random.nextLong());  // Generate positive long values for keys
-		}
-		return keys;
-}
 	private void doMRTRWTest(IAerospikeClient client) throws Exception {
 		ExecutorService es = getExecutorService();
 		long ntasks = this.nThreads < this.nMRTs ? this.nThreads : this.nMRTs;
 		long mrtsPerTask = this.nMRTs / ntasks;
 		long rem = this.nMRTs - (mrtsPerTask * ntasks);
-
-		// TODO - Optimize MRT Keys.
-		long[][] mrtKeys = new long[(int) this.nMRTs][];  // Generate keys for each MRT
-		mrtKeys = generateKeys();
-
-		for (int i = 0; i < this.nMRTs; i++) {
-			System.out.print("MRT Iteration :" + i + " ");
-			for(int j = 0; j < this.keysPerMRT; j++) {
-				System.out.print(mrtKeys[i][j]+" ");
-			}
-			System.out.println();
-		}
 		MRTRWTask[] tasks = new MRTRWTask[this.nThreads];
 		long startIndex = 0;
 
 		for (int i = 0; i < ntasks; i++) {
-			long nMrtsPerThread = (i < rem)? mrtsPerTask + 1 : mrtsPerTask;
+			long nMrtsPerThread = (i < rem) ? mrtsPerTask + 1 : mrtsPerTask;
 			long endIndex = startIndex + nMrtsPerThread - 1;
-			MRTRWTaskSync rt = new MRTRWTaskSync(client, args, counters, startIndex, endIndex, mrtKeys);
+			MRTRWTaskSync rt = new MRTRWTaskSync(client, args, counters, startIndex, endIndex, this.startKey,
+					this.nKeys, this.keysPerMRT);
 			startIndex += nMrtsPerThread;
 			tasks[i] = rt;
 			es.execute(rt);
@@ -1582,7 +1357,7 @@ public class Main implements Log.Callback {
 		int maxConcurrentCommands = this.asyncMaxCommands;
 
 		if (maxConcurrentCommands > this.nKeys) {
-			maxConcurrentCommands = (int)this.nKeys;
+			maxConcurrentCommands = (int) this.nKeys;
 		}
 
 		// Create seed commands distributed among event loops.
@@ -1639,9 +1414,12 @@ public class Main implements Log.Callback {
 			}
 			System.out.print(")");
 
-			System.out.print(" total(tps=" + (numWrites + numReads) + " timeouts=" + (timeoutWrites + timeoutReads) + " errors=" + (errorWrites + errorReads) + ")");
-			//System.out.print(" buffused=" + used
-			//System.out.print(" nodeused=" + ((AsyncNode)nodes[0]).openCount.get() + ',' + ((AsyncNode)nodes[1]).openCount.get() + ',' + ((AsyncNode)nodes[2]).openCount.get()
+			System.out.print(" total(tps=" + (numWrites + numReads) + " timeouts=" + (timeoutWrites + timeoutReads)
+					+ " errors=" + (errorWrites + errorReads) + ")");
+			// System.out.print(" buffused=" + used
+			// System.out.print(" nodeused=" + ((AsyncNode)nodes[0]).openCount.get() + ',' +
+			// ((AsyncNode)nodes[1]).openCount.get() + ',' +
+			// ((AsyncNode)nodes[2]).openCount.get()
 			System.out.println();
 
 			if (this.counters.write.latency != null) {
@@ -1716,9 +1494,12 @@ public class Main implements Log.Callback {
 			}
 			System.out.print(")");
 
-			System.out.print(" total(tps=" + (numWrites + numReads) + " timeouts=" + (timeoutWrites + timeoutReads) + " errors=" + (errorWrites + errorReads) + ")");
-			//System.out.print(" buffused=" + used
-			//System.out.print(" nodeused=" + ((AsyncNode)nodes[0]).openCount.get() + ',' + ((AsyncNode)nodes[1]).openCount.get() + ',' + ((AsyncNode)nodes[2]).openCount.get()
+			System.out.print(" total(tps=" + (numWrites + numReads) + " timeouts=" + (timeoutWrites + timeoutReads)
+					+ " errors=" + (errorWrites + errorReads) + ")");
+			// System.out.print(" buffused=" + used
+			// System.out.print(" nodeused=" + ((AsyncNode)nodes[0]).openCount.get() + ',' +
+			// ((AsyncNode)nodes[1]).openCount.get() + ',' +
+			// ((AsyncNode)nodes[2]).openCount.get()
 			System.out.println();
 
 			if (this.counters.write.latency != null) {
@@ -1757,9 +1538,8 @@ public class Main implements Log.Callback {
 	}
 
 	private ExecutorService getExecutorService() {
-		return useVirtualThreads ?
-				Executors.newVirtualThreadPerTaskExecutor() :
-				Executors.newFixedThreadPool(this.nThreads);
+		return useVirtualThreads ? Executors.newVirtualThreadPerTaskExecutor()
+				: Executors.newFixedThreadPool(this.nThreads);
 	}
 
 	private void showBatchNodes(IAerospikeClient client) {
@@ -1767,10 +1547,14 @@ public class Main implements Log.Callback {
 			return;
 		}
 
-		// Print target nodes for the first batchSize keys. The keys in each batch transaction
-		// are randomly generated, so the actual target nodes may differ in each batch transaction.
-		// This is useful to determine how increasing the cluster size also increases the number of
-		// batch target nodes, which may result in a performance decrease for batch commands.
+		// Print target nodes for the first batchSize keys. The keys in each batch
+		// transaction
+		// are randomly generated, so the actual target nodes may differ in each batch
+		// transaction.
+		// This is useful to determine how increasing the cluster size also increases
+		// the number of
+		// batch target nodes, which may result in a performance decrease for batch
+		// commands.
 		Key[] keys = new Key[args.batchSize];
 
 		for (int i = 0; i < keys.length; i++) {
@@ -1778,7 +1562,8 @@ public class Main implements Log.Callback {
 		}
 
 		BatchStatus status = new BatchStatus(false);
-		List<BatchNode> batchNodes = BatchNodeList.generate(client.getCluster(), args.batchPolicy, keys, null, false, status);
+		List<BatchNode> batchNodes = BatchNodeList.generate(client.getCluster(), args.batchPolicy, keys, null, false,
+				status);
 
 		System.out.println("Batch target nodes for first " + keys.length + " keys:");
 
@@ -1796,8 +1581,8 @@ public class Main implements Log.Callback {
 			name = thread.getName();
 		}
 
-		System.out.println(LocalDateTime.now().format(TimeFormatter) + ' ' + level.toString() +
-			" Thread " + name + ' ' + message);
+		System.out.println(
+				LocalDateTime.now().format(TimeFormatter) + ' ' + level.toString() + " Thread " + name + ' ' + message);
 	}
 
 	private static class UsageException extends Exception {
@@ -1808,11 +1593,9 @@ public class Main implements Log.Callback {
 		final Properties properties = new Properties();
 		try {
 			properties.load(Main.class.getClassLoader().getResourceAsStream("project.properties"));
-		}
-		catch (Exception e) {
+		} catch (Exception e) {
 			System.out.println("None");
-		}
-		finally {
+		} finally {
 			System.out.println(properties.getProperty("name"));
 			System.out.println("Version " + properties.getProperty("version"));
 		}

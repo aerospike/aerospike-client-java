@@ -30,6 +30,7 @@ import com.aerospike.client.policy.WritePolicy;
 import com.aerospike.client.util.RandomShift;
 import com.aerospike.client.util.Util;
 import com.aerospike.client.policy.Policy;
+import com.aerospike.client.AerospikeException;
 
 /**
  * Synchronous read/write task.
@@ -39,12 +40,19 @@ public class MRTRWTaskSync extends MRTRWTask implements Runnable {
 	private final IAerospikeClient client;
 	private final WritePolicy writePolicy;
 	private final Policy readPolicy;
+	private final long startIndex;
+	private final long endIndex;
+	private final long keysPerMRT;
 
-	public MRTRWTaskSync(IAerospikeClient client, Arguments args, CounterStore counters, long startIndex, long endIndex, long[][] mrtKeys) {
-		super(args, counters, startIndex, endIndex, mrtKeys);
+	public MRTRWTaskSync(IAerospikeClient client, Arguments args, CounterStore counters, long startIndex, long endIndex,
+			long keyStart, long keyCount, long keysPerMRT) {
+		super(args, counters, keyStart, keyCount);
 		this.writePolicy = new WritePolicy(args.writePolicy);
 		this.readPolicy = new Policy(args.readPolicy);
 		this.client = client;
+		this.startIndex = startIndex;
+		this.endIndex = endIndex;
+		this.keysPerMRT = keysPerMRT;
 	}
 
 	public void run() {
@@ -54,19 +62,17 @@ public class MRTRWTaskSync extends MRTRWTask implements Runnable {
 			for (long i = startIndex; i <= endIndex; i++) {
 				Txn txn = new Txn();
 				writePolicy.txn = txn;
-				long[] keys = mrtKeys[(int) i];
 
 				try {
-					for (long key : keys) {
-						runCommand(random, key);
+					for (int k = 0; k < keysPerMRT; k++) {
+						runCommand(random);
 						// Throttle throughput
 						if (args.throughput > 0) {
 							int transactions;
 							if (counters.transaction.latency != null) {
 								// Measure the transactions as per one "business" transaction
 								transactions = counters.transaction.count.get();
-							}
-							else {
+							} else {
 								transactions = counters.write.count.get() + counters.read.count.get();
 							}
 							if (transactions > args.throughput) {
@@ -76,17 +82,15 @@ public class MRTRWTaskSync extends MRTRWTask implements Runnable {
 									Util.sleep(millis);
 								}
 							}
-						}	
+						}
 					}
 
-					if(valid) {
+					if (valid) {
 						client.commit(txn);
-					}
-					else {
+					} else {
 						client.abort(txn);
 					}
-				} catch (Exception e) {
-					System.err.println("Transaction failed for MRT iteration: " + (i+1) + " - " + e.getMessage());
+				} catch (AerospikeException e) {
 					client.abort(txn);
 				}
 			}
@@ -106,8 +110,7 @@ public class MRTRWTaskSync extends MRTRWTask implements Runnable {
 			long elapsed = System.nanoTime() - begin;
 			counters.write.count.getAndIncrement();
 			counters.write.latency.add(elapsed);
-		}
-		else {
+		} else {
 			client.put(this.writePolicy, key, bins);
 			counters.write.count.getAndIncrement();
 		}
@@ -126,8 +129,7 @@ public class MRTRWTaskSync extends MRTRWTask implements Runnable {
 			long elapsed = System.nanoTime() - begin;
 			counters.write.count.getAndIncrement();
 			counters.write.latency.add(elapsed);
-		}
-		else {
+		} else {
 			client.add(writePolicyGeneration, key, bins);
 			counters.write.count.getAndIncrement();
 		}
@@ -147,8 +149,7 @@ public class MRTRWTaskSync extends MRTRWTask implements Runnable {
 			record = client.get(this.readPolicy, key, binName);
 			long elapsed = System.nanoTime() - begin;
 			counters.read.latency.add(elapsed);
-		}
-		else {
+		} else {
 			record = client.get(this.readPolicy, key, binName);
 		}
 		processRead(key, record);
@@ -168,8 +169,7 @@ public class MRTRWTaskSync extends MRTRWTask implements Runnable {
 			record = client.get(this.readPolicy, key);
 			long elapsed = System.nanoTime() - begin;
 			counters.read.latency.add(elapsed);
-		}
-		else {
+		} else {
 			record = client.get(this.readPolicy, key);
 		}
 		processRead(key, record);
@@ -190,8 +190,7 @@ public class MRTRWTaskSync extends MRTRWTask implements Runnable {
 			udfReturnObj = client.execute(this.writePolicy, key, udfPackageName, udfFunctionName, udfValues);
 			long elapsed = System.nanoTime() - begin;
 			counters.read.latency.add(elapsed);
-		}
-		else {
+		} else {
 			udfReturnObj = client.execute(this.writePolicy, key, udfPackageName, udfFunctionName, udfValues);
 		}
 		processRead(key, udfReturnObj);
@@ -210,8 +209,7 @@ public class MRTRWTaskSync extends MRTRWTask implements Runnable {
 			records = client.get(args.batchPolicy, keys, binName);
 			long elapsed = System.nanoTime() - begin;
 			counters.read.latency.add(elapsed);
-		}
-		else {
+		} else {
 			records = client.get(args.batchPolicy, keys, binName);
 		}
 
@@ -234,8 +232,7 @@ public class MRTRWTaskSync extends MRTRWTask implements Runnable {
 			records = client.get(args.batchPolicy, keys);
 			long elapsed = System.nanoTime() - begin;
 			counters.read.latency.add(elapsed);
-		}
-		else {
+		} else {
 			records = client.get(args.batchPolicy, keys);
 		}
 
@@ -246,14 +243,14 @@ public class MRTRWTaskSync extends MRTRWTask implements Runnable {
 	}
 
 	private boolean skipKey(Key key) {
-        return args.partitionIds != null && !args.partitionIds.contains(Partition.getPartitionId(key.digest));
-    }
+		return args.partitionIds != null && !args.partitionIds.contains(Partition.getPartitionId(key.digest));
+	}
 
 	private Key[] getFilteredKeys(Key[] keys) {
 		List<Key> filteredKeys = new ArrayList<>();
 
 		for (Key key : keys) {
-			if (! skipKey(key)) {
+			if (!skipKey(key)) {
 				filteredKeys.add(key);
 			}
 		}
