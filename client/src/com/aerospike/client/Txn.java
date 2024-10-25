@@ -46,6 +46,7 @@ public final class Txn {
 	private int timeout;
 	private int deadline;
 	private boolean monitorInDoubt;
+	private boolean inDoubt;
 
 	/**
 	 * Create MRT, assign random transaction id and initialize reads/writes hashmaps with default
@@ -264,6 +265,20 @@ public final class Txn {
 	 */
 	public Txn.State getState() {
 		return state;
+	}
+
+	/**
+	 * Set MRT inDoubt flag. For internal use only.
+	 */
+	public void setInDoubt(boolean inDoubt) {
+		this.inDoubt = inDoubt;
+	}
+
+	/**
+	 * Return if MRT is inDoubt.
+	 */
+	public boolean getInDoubt() {
+		return inDoubt;
 	}
 
 	/**

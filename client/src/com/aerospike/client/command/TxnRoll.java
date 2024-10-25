@@ -75,14 +75,14 @@ public final class TxnRoll {
 			// Throw original exception when abort succeeds.
 			throw onCommitError(CommitError.VERIFY_FAIL, t, false);
 		}
-		
+
 		txn.setState(Txn.State.VERIFIED);
 	}
-	
+
 	public CommitStatus commit(BatchPolicy rollPolicy) {
 		WritePolicy writePolicy = new WritePolicy(rollPolicy);
 		Key txnKey = TxnMonitor.getTxnMonitorKey(txn);
-		
+
 		if (txn.monitorExists()) {
 			// Tell MRT monitor that a roll-forward will commence.
 			try {
@@ -92,8 +92,9 @@ public final class TxnRoll {
 				throw onCommitError(CommitError.MARK_ROLL_FORWARD_ABANDONED, t, true);
 			}
 		}
-		
+
 		txn.setState(Txn.State.COMMITTED);
+		txn.setInDoubt(false);
 
 		// Roll-forward writes in batch.
 		try {
@@ -114,18 +115,27 @@ public final class TxnRoll {
 		}
 		return CommitStatus.OK;
 	}
-	
+
 	private AerospikeException.Commit onCommitError(CommitError error, Throwable cause, boolean setInDoubt) {
 		AerospikeException.Commit aec = new AerospikeException.Commit(error, verifyRecords, rollRecords, cause);
-		
+
 		if (cause instanceof AerospikeException) {
 			AerospikeException src = (AerospikeException)cause;
 			aec.setNode(src.getNode());
 			aec.setPolicy(src.getPolicy());
 			aec.setIteration(src.getIteration());
-			
+
 			if (setInDoubt) {
-				aec.setInDoubt(src.getInDoubt());
+				if (txn.getInDoubt()) {
+					// The transaction was already inDoubt and just failed again,
+					// so the new exception should also be inDoubt.
+					aec.setInDoubt(true);
+				}
+				else if (src.getInDoubt()){
+					// The current exception is inDoubt.
+					aec.setInDoubt(true);
+					txn.setInDoubt(true);
+				}
 			}
 		}
 		return aec;

@@ -211,7 +211,7 @@ public final class AsyncTxnRoll {
 			eventLoop.execute(cluster, command);
 		}
 		catch (Throwable t) {
-			notifyCommitFailure(CommitError.MARK_ROLL_FORWARD_ABANDONED, t, false);
+			notifyCommitFailure(CommitError.MARK_ROLL_FORWARD_ABANDONED, t, true);
 		}
 	}
 
@@ -418,7 +418,16 @@ public final class AsyncTxnRoll {
 				aec.setIteration(src.getIteration());
 
 				if (setInDoubt) {
-					aec.setInDoubt(src.getInDoubt());
+					if (txn.getInDoubt()) {
+						// The transaction was already inDoubt and just failed again,
+						// so the new exception should also be inDoubt.
+						aec.setInDoubt(true);
+					}
+					else if (src.getInDoubt()){
+						// The current exception is inDoubt.
+						aec.setInDoubt(true);
+						txn.setInDoubt(true);
+					}
 				}
 			}
 
