@@ -198,6 +198,7 @@ public final class AsyncTxnRoll {
 				@Override
 				public void onSuccess(Key key) {
 					txn.setState(Txn.State.COMMITTED);
+					txn.setInDoubt(false);
 					rollForward();
 				}
 
