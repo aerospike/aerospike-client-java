@@ -62,6 +62,7 @@ public class MRTRWTaskSync extends MRTRWTask implements Runnable {
 			for (long i = startIndex; i <= endIndex; i++) {
 				Txn txn = new Txn();
 				writePolicy.txn = txn;
+				readPolicy.txn = txn;
 
 				try {
 					for (int k = 0; k < keysPerMRT; k++) {

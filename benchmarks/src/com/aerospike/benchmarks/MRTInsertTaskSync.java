@@ -1,5 +1,6 @@
 package com.aerospike.benchmarks;
 
+import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Bin;
 import com.aerospike.client.IAerospikeClient;
 import com.aerospike.client.Key;
@@ -9,21 +10,21 @@ import com.aerospike.client.policy.WritePolicy;
 import com.aerospike.client.util.RandomShift;
 import com.aerospike.client.util.Util;
 
-public final class MRTInsertTaskSync implements Runnable {
+public final class MRTInsertTaskSync extends MRTInsertTask implements Runnable {
 	private final IAerospikeClient client;
-	private final Arguments args;
 	private final WritePolicy writePolicy;
-	private final CounterStore counters;
+	private final long keyStart;
+	private final long keyCount;
 	private final long nMRTs;
-	private final long nKeys;
 
-	public MRTInsertTaskSync(IAerospikeClient client, Arguments args, CounterStore counters, long start, long nMRTs, long nKeys) {
+	public MRTInsertTaskSync(IAerospikeClient client, Arguments args, CounterStore counters, long keyStart,
+			long keyCount, long nMRTs) {
+		super(args, counters);
 		this.client = client;
-		this.counters = counters;
-		this.nMRTs = nMRTs;
-		this.args = args;
 		this.writePolicy = new WritePolicy(args.writePolicy);
-		this.nKeys = nKeys;
+		this.keyStart = keyStart;
+		this.keyCount = keyCount;
+		this.nMRTs = nMRTs;
 	}
 
 	public void run() {
@@ -32,10 +33,18 @@ public final class MRTInsertTaskSync implements Runnable {
 		for (long i = 0; i < nMRTs; i++) {
 			Txn txn = new Txn();
 			writePolicy.txn = txn;
-
+			long startKey = keyStart + keyCount * i;
 			try {
-				for (long j = 0; j < nKeys; j++) {
-					runCommand(random);
+				for (long j = 0; j < keyCount; j++) {
+					try {
+						runCommand(startKey + j, random);
+					} catch (AerospikeException ae) {
+						i--;
+						writeFailure(ae);
+					} catch (Exception e) {
+						i--;
+						writeFailure(e);
+					}
 
 					// Throttle throughput
 					if (args.throughput > 0) {
@@ -52,17 +61,16 @@ public final class MRTInsertTaskSync implements Runnable {
 				}
 				client.commit(txn);
 			} catch (Exception e) {
-				System.err.println("Transaction failed for MRT iteration: " + (i+1) + " - " + e.getMessage());
+				System.err.println("Transaction failed for MRT iteration: " + (i + 1) + " - " + e.getMessage());
 				client.abort(txn);
 			}
 		}
 	}
 
-	private void runCommand(RandomShift random) {
-		long keyRandom = random.nextLong();
-		Key key = new Key(args.namespace, args.setName, keyRandom);
+	private void runCommand(long keyCurrent, RandomShift random) {
+		Key key = new Key(args.namespace, args.setName, keyCurrent);
 		// Use predictable value for 0th bin same as key value
-		Bin[] bins = args.getBins(random, true, keyRandom);
+		Bin[] bins = args.getBins(random, true, keyCurrent);
 		put(key, bins);
 
 	}

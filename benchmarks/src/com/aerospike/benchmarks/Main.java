@@ -488,10 +488,13 @@ public class Main implements Log.Callback {
 		if (line.hasOption("mSize")) {
 			this.mrtEnabled = true;
 			this.keysPerMRT = Long.parseLong(line.getOptionValue("mSize"));
-			if (this.keysPerMRT < 1) {
-				throw new Exception("Number of records per MRT (-mSize) must be > 0");
+			if (this.keysPerMRT < 1 || this.keysPerMRT > this.nKeys) {
+				throw new Exception("Invalid mSize value");
 			}
-			// TODO - add code for perMRTKeys > nKeys
+			long rem = this.nKeys % this.keysPerMRT;
+			if (rem != 0) {
+				throw new Exception("Invalid key distribution per MRT");
+			}
 			this.nMRTs = this.nKeys / this.keysPerMRT;
 		}
 
@@ -1210,12 +1213,13 @@ public class Main implements Log.Callback {
 		long mrtsPerTask = this.nMRTs / ntasks;
 		long rem = this.nMRTs - (mrtsPerTask * ntasks);
 		long start = this.startKey;
-		long keysPerMRT = this.keysPerMRT;
+		long keyCount = this.keysPerMRT;
 
 		for (long i = 0; i < ntasks; i++) {
 			long nMrtsPerThread = (i < rem) ? mrtsPerTask + 1 : mrtsPerTask;
-			MRTInsertTaskSync it = new MRTInsertTaskSync(client, args, counters, start, nMrtsPerThread, keysPerMRT);
+			MRTInsertTaskSync it = new MRTInsertTaskSync(client, args, counters, start, keyCount, nMrtsPerThread);
 			es.execute(it);
+			start += keyCount * nMrtsPerThread;
 		}
 		Thread.sleep(900);
 		collectMRTStats();
@@ -1516,7 +1520,9 @@ public class Main implements Log.Callback {
 
 				if (transactionTotal >= args.transactionLimit) {
 					for (MRTRWTask task : tasks) {
-						task.stop();
+						if (task != null) {
+							task.stop();
+						}
 					}
 
 					if (this.counters.write.latency != null) {
