@@ -20,6 +20,7 @@ import com.aerospike.client.AbortStatus;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.BatchRecord;
 import com.aerospike.client.Key;
+import com.aerospike.client.ResultCode;
 import com.aerospike.client.Txn;
 import com.aerospike.client.CommitError;
 import com.aerospike.client.CommitStatus;
@@ -41,20 +42,22 @@ public final class TxnRoll {
 		this.txn = txn;
 	}
 
-	public CommitStatus commit(BatchPolicy verifyPolicy, BatchPolicy rollPolicy) {
+	public void verify(BatchPolicy verifyPolicy, BatchPolicy rollPolicy) {
 		try {
 			// Verify read versions in batch.
-			verify(verifyPolicy);
+			verifyRecordVersions(verifyPolicy);
 		}
 		catch (Throwable t) {
 			// Verify failed. Abort.
+			txn.setState(Txn.State.ABORTED);
+
 			try {
 				roll(rollPolicy, Command.INFO4_MRT_ROLL_BACK);
 			}
 			catch (Throwable t2) {
 				// Throw combination of verify and roll exceptions.
 				t.addSuppressed(t2);
-				throw onCommitError(CommitError.VERIFY_FAIL_ABORT_ABANDONED, t, false);
+				throw createCommitException(CommitError.VERIFY_FAIL_ABORT_ABANDONED, t);
 			}
 
 			if (txn.monitorMightExist()) {
@@ -66,26 +69,58 @@ public final class TxnRoll {
 				catch (Throwable t3) {
 					// Throw combination of verify and close exceptions.
 					t.addSuppressed(t3);
-					throw onCommitError(CommitError.VERIFY_FAIL_CLOSE_ABANDONED, t, false);
+					throw createCommitException(CommitError.VERIFY_FAIL_CLOSE_ABANDONED, t);
 				}
 			}
 
 			// Throw original exception when abort succeeds.
-			throw onCommitError(CommitError.VERIFY_FAIL, t, false);
+			throw createCommitException(CommitError.VERIFY_FAIL, t);
 		}
 
+		txn.setState(Txn.State.VERIFIED);
+	}
+
+	public CommitStatus commit(BatchPolicy rollPolicy) {
 		WritePolicy writePolicy = new WritePolicy(rollPolicy);
 		Key txnKey = TxnMonitor.getTxnMonitorKey(txn);
-		
+
 		if (txn.monitorExists()) {
 			// Tell MRT monitor that a roll-forward will commence.
 			try {
 				markRollForward(writePolicy, txnKey);
 			}
+			catch (AerospikeException ae) {
+				AerospikeException.Commit aec = createCommitException(CommitError.MARK_ROLL_FORWARD_ABANDONED, ae);
+
+				if (ae.getResultCode() == ResultCode.MRT_ABORTED) {
+					aec.setInDoubt(false);
+					txn.setInDoubt(false);
+					txn.setState(Txn.State.ABORTED);
+				}
+				else if (txn.getInDoubt()) {
+					// The transaction was already inDoubt and just failed again,
+					// so the new exception should also be inDoubt.
+					aec.setInDoubt(true);
+				}
+				else if (ae.getInDoubt()){
+					// The current exception is inDoubt.
+					aec.setInDoubt(true);
+					txn.setInDoubt(true);
+				}
+				throw aec;
+			}
 			catch (Throwable t) {
-				throw onCommitError(CommitError.MARK_ROLL_FORWARD_ABANDONED, t, true);
+				AerospikeException.Commit aec = createCommitException(CommitError.MARK_ROLL_FORWARD_ABANDONED, t);
+
+				if (txn.getInDoubt()) {
+					aec.setInDoubt(true);
+				}
+				throw aec;
 			}
 		}
+
+		txn.setState(Txn.State.COMMITTED);
+		txn.setInDoubt(false);
 
 		// Roll-forward writes in batch.
 		try {
@@ -106,24 +141,23 @@ public final class TxnRoll {
 		}
 		return CommitStatus.OK;
 	}
-	
-	private AerospikeException.Commit onCommitError(CommitError error, Throwable cause, boolean setInDoubt) {
+
+	private AerospikeException.Commit createCommitException(CommitError error, Throwable cause) {
 		AerospikeException.Commit aec = new AerospikeException.Commit(error, verifyRecords, rollRecords, cause);
-		
+
 		if (cause instanceof AerospikeException) {
 			AerospikeException src = (AerospikeException)cause;
 			aec.setNode(src.getNode());
 			aec.setPolicy(src.getPolicy());
 			aec.setIteration(src.getIteration());
-			
-			if (setInDoubt) {
-				aec.setInDoubt(src.getInDoubt());
-			}
+			aec.setInDoubt(src.getInDoubt());
 		}
 		return aec;
 	}
 
 	public AbortStatus abort(BatchPolicy rollPolicy) {
+		txn.setState(Txn.State.ABORTED);
+
 		try {
 			roll(rollPolicy, Command.INFO4_MRT_ROLL_BACK);
 		}
@@ -144,7 +178,7 @@ public final class TxnRoll {
 		return AbortStatus.OK;
 	}
 
-	private void verify(BatchPolicy verifyPolicy) {
+	private void verifyRecordVersions(BatchPolicy verifyPolicy) {
 		// Validate record versions in a batch.
 		Set<Map.Entry<Key, Long>> reads = txn.getReads();
 		int max = reads.size();
