@@ -1,3 +1,19 @@
+/*
+ * Copyright 2012-2024 Aerospike, Inc.
+ *
+ * Portions may be licensed to Aerospike, Inc. under one or more contributor
+ * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
+ */
 package com.aerospike.benchmarks;
 
 import com.aerospike.client.AerospikeException;
@@ -14,16 +30,16 @@ public final class MRTInsertTaskSync extends MRTInsertTask implements Runnable {
 	private final IAerospikeClient client;
 	private final WritePolicy writePolicy;
 	private final long keyStart;
-	private final long keyCount;
+	private final long keysPerMRT;
 	private final long nMRTs;
 
 	public MRTInsertTaskSync(IAerospikeClient client, Arguments args, CounterStore counters, long keyStart,
-			long keyCount, long nMRTs) {
+			long keysPerMRT, long nMRTs) {
 		super(args, counters);
 		this.client = client;
 		this.writePolicy = new WritePolicy(args.writePolicy);
 		this.keyStart = keyStart;
-		this.keyCount = keyCount;
+		this.keysPerMRT = keysPerMRT;
 		this.nMRTs = nMRTs;
 	}
 
@@ -33,9 +49,11 @@ public final class MRTInsertTaskSync extends MRTInsertTask implements Runnable {
 		for (long i = 0; i < nMRTs; i++) {
 			Txn txn = new Txn();
 			writePolicy.txn = txn;
-			long startKey = keyStart + keyCount * i;
+
+			long startKey = keyStart + keysPerMRT * i;
+
 			try {
-				for (long j = 0; j < keyCount; j++) {
+				for (long j = 0; j < keysPerMRT; j++) {
 					try {
 						runCommand(startKey + j, random);
 					} catch (AerospikeException ae) {
@@ -72,7 +90,6 @@ public final class MRTInsertTaskSync extends MRTInsertTask implements Runnable {
 		// Use predictable value for 0th bin same as key value
 		Bin[] bins = args.getBins(random, true, keyCurrent);
 		put(key, bins);
-
 	}
 
 	private void put(Key key, Bin[] bins) {

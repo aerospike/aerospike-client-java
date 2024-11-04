@@ -175,7 +175,7 @@ public class Main implements Log.Callback {
 		options.addOption("asyncMaxConnsPerNode", true,
 			"Maximum number of async connections allowed per server node. Default: 100"
 			);
-		options.addOption("mSize", "mSize", true, "Number of records per multi record transaction.");
+		options.addOption("mrtSize", true, "Number of records per multi record transaction.");
 		options.addOption("k", "keys", true,
 			"Set the number of keys the client is dealing with. " +
 			"If using an 'insert' workload (detailed below), the client will write this " +
@@ -1329,13 +1329,13 @@ public class Main implements Log.Callback {
 		long mrtsPerTask = this.nMRTs / ntasks;
 		long rem = this.nMRTs - (mrtsPerTask * ntasks);
 		long start = this.startKey;
-		long keyCount = this.keysPerMRT;
+		long keysPerMRT = this.keysPerMRT;
 
 		for (long i = 0; i < ntasks; i++) {
 			long nMrtsPerThread = (i < rem) ? mrtsPerTask + 1 : mrtsPerTask;
-			MRTInsertTaskSync it = new MRTInsertTaskSync(client, args, counters, start, keyCount, nMrtsPerThread);
+			MRTInsertTaskSync it = new MRTInsertTaskSync(client, args, counters, start, keysPerMRT, nMrtsPerThread);
 			es.execute(it);
-			start += keyCount * nMrtsPerThread;
+			start += keysPerMRT * nMrtsPerThread;
 		}
 		Thread.sleep(900);
 		collectMRTStats();
@@ -1453,14 +1453,11 @@ public class Main implements Log.Callback {
 		long mrtsPerTask = this.nMRTs / ntasks;
 		long rem = this.nMRTs - (mrtsPerTask * ntasks);
 		MRTRWTask[] tasks = new MRTRWTask[this.nThreads];
-		long startIndex = 0;
 
 		for (int i = 0; i < ntasks; i++) {
 			long nMrtsPerThread = (i < rem) ? mrtsPerTask + 1 : mrtsPerTask;
-			long endIndex = startIndex + nMrtsPerThread - 1;
-			MRTRWTaskSync rt = new MRTRWTaskSync(client, args, counters, startIndex, endIndex, this.startKey,
+			MRTRWTaskSync rt = new MRTRWTaskSync(client, args, counters, nMrtsPerThread, this.startKey,
 					this.nKeys, this.keysPerMRT);
-			startIndex += nMrtsPerThread;
 			tasks[i] = rt;
 			es.execute(rt);
 		}

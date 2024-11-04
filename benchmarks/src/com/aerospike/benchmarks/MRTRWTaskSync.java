@@ -40,18 +40,16 @@ public class MRTRWTaskSync extends MRTRWTask implements Runnable {
 	private final IAerospikeClient client;
 	private final WritePolicy writePolicy;
 	private final Policy readPolicy;
-	private final long startIndex;
-	private final long endIndex;
+	private final long nMRTs;
 	private final long keysPerMRT;
 
-	public MRTRWTaskSync(IAerospikeClient client, Arguments args, CounterStore counters, long startIndex, long endIndex,
-			long keyStart, long keyCount, long keysPerMRT) {
+	public MRTRWTaskSync(IAerospikeClient client, Arguments args, CounterStore counters, long nMRTs, long keyStart,
+						 long keyCount, long keysPerMRT) {
 		super(args, counters, keyStart, keyCount);
 		this.writePolicy = new WritePolicy(args.writePolicy);
 		this.readPolicy = new Policy(args.readPolicy);
 		this.client = client;
-		this.startIndex = startIndex;
-		this.endIndex = endIndex;
+		this.nMRTs = nMRTs;
 		this.keysPerMRT = keysPerMRT;
 	}
 
@@ -59,7 +57,7 @@ public class MRTRWTaskSync extends MRTRWTask implements Runnable {
 		RandomShift random = new RandomShift();
 
 		while (valid) {
-			for (long i = startIndex; i <= endIndex; i++) {
+			for (long i = 0; i < nMRTs; i++) {
 				Txn txn = new Txn();
 				writePolicy.txn = txn;
 				readPolicy.txn = txn;
