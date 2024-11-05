@@ -50,10 +50,7 @@ public class QueryExp extends Example {
 		String binName = "idxbin";
 		int size = 50;
 
-		if (!params.useProxyClient) {
-			createIndex(client, params, indexName, binName);
-		}
-
+		createIndex(client, params, indexName, binName);
 		writeRecords(client, params, binName, size);
 		runQuery1(client, params, binName);
 		runQuery2(client, params, binName);

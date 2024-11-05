@@ -185,7 +185,6 @@ public class TestAsync extends TestBase {
 
 	public boolean assertBatchEqual(Key[] keys, Record[] recs, String binName, int expected) {
 		for (int i = 0; i < keys.length; i++) {
-			Key key = keys[i];
 			Record rec = recs[i];
 
 			if (rec == null) {

@@ -31,10 +31,6 @@ import com.aerospike.test.sync.TestSync;
 public class TestServerInfo extends TestSync {
 	@Test
 	public void serverInfo() {
-		if (args.useProxyClient) {
-			System.out.println("Skip TestServerInfo.serverInfo");
-			return;
-		}
 		Node node = client.getNodes()[0];
 		GetServerConfig(node);
 		GetNamespaceConfig(node);

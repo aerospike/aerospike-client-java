@@ -19,7 +19,6 @@ package com.aerospike.examples;
 import com.aerospike.client.Bin;
 import com.aerospike.client.IAerospikeClient;
 import com.aerospike.client.Key;
-import com.aerospike.client.Record;
 import com.aerospike.client.Txn;
 import com.aerospike.client.policy.Policy;
 import com.aerospike.client.policy.WritePolicy;
@@ -58,7 +57,7 @@ public class Transaction extends Example {
 			p.txn = txn;
 
 			Key key3 = new Key(params.namespace, params.set, 3);
-			Record rec = client.get(p, key3);
+			client.get(p, key3);
 
 			console.info("Run delete");
 			WritePolicy dp = client.copyWritePolicyDefault();

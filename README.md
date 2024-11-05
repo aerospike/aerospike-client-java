@@ -4,7 +4,6 @@ Aerospike Java Client Package
 Aerospike Java client.  This package contains full source code for these projects.
 
 * client:      Java native client library.
-* proxy:       Java proxy client library for dbaas (database as a service).
 * examples:    Java client examples.
 * benchmarks:  Java client benchmarks.
 * test:        Java client unit tests.
