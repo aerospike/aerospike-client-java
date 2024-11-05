@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -21,17 +21,16 @@ import org.junit.BeforeClass;
 import org.junit.runner.RunWith;
 import org.junit.runners.Suite;
 
+import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.Host;
 import com.aerospike.client.IAerospikeClient;
 import com.aerospike.client.Log;
 import com.aerospike.client.async.EventLoop;
-import com.aerospike.client.async.EventLoopType;
 import com.aerospike.client.async.EventLoops;
 import com.aerospike.client.async.EventPolicy;
 import com.aerospike.client.async.NettyEventLoops;
 import com.aerospike.client.async.NioEventLoops;
 import com.aerospike.client.policy.ClientPolicy;
-import com.aerospike.client.proxy.AerospikeClientFactory;
 import com.aerospike.test.async.TestAsyncBatch;
 import com.aerospike.test.async.TestAsyncOperate;
 import com.aerospike.test.async.TestAsyncPutGet;
@@ -42,7 +41,6 @@ import com.aerospike.test.async.TestAsyncUDF;
 import com.aerospike.test.util.Args;
 
 import io.netty.channel.EventLoopGroup;
-import io.netty.channel.epoll.Epoll;
 import io.netty.channel.epoll.EpollEventLoopGroup;
 import io.netty.channel.kqueue.KQueueEventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
@@ -71,16 +69,6 @@ public class SuiteAsync {
 		Args args = Args.Instance;
 
 		EventPolicy eventPolicy = new EventPolicy();
-
-		if (args.useProxyClient && args.eventLoopType == EventLoopType.DIRECT_NIO) {
-			// Proxy client requires netty event loops.
-			if (Epoll.isAvailable()) {
-				args.eventLoopType = EventLoopType.NETTY_EPOLL;
-			}
-			else {
-				args.eventLoopType = EventLoopType.NETTY_NIO;
-			}
-		}
 
 		switch (args.eventLoopType) {
 			default:
@@ -123,7 +111,7 @@ public class SuiteAsync {
 
 			eventLoop = eventLoops.get(0);
 
-			client = AerospikeClientFactory.getClient(policy, args.useProxyClient, hosts);
+			client = new AerospikeClient(policy, hosts);
 
 			try {
 				args.setServerSpecific(client);
