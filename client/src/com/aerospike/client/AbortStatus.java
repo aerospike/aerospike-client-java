@@ -21,7 +21,8 @@ package com.aerospike.client;
  */
 public enum AbortStatus {
 	OK("Abort succeeded"),
-	ALREADY_ATTEMPTED("Abort or commit already attempted"),
+	ALREADY_COMMITTED("Already committed"),
+	ALREADY_ABORTED("Already aborted"),
 	ROLL_BACK_ABANDONED("MRT client roll back abandoned. Server will eventually abort the MRT."),
 	CLOSE_ABANDONED("MRT has been rolled back, but MRT client close was abandoned. Server will eventually close the MRT.");
 

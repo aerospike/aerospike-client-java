@@ -155,7 +155,23 @@ public class Command {
 		begin();
 		int fieldCount = estimateKeySize(key);
 		dataOffset += args.size;
-		writeTxnMonitor(key, args.readAttr, args.writeAttr, fieldCount, args.operations.length);
+
+		sizeBuffer();
+
+		dataBuffer[8]  = MSG_REMAINING_HEADER_SIZE;
+		dataBuffer[9]  = (byte)args.readAttr;
+		dataBuffer[10] = (byte)args.writeAttr;
+		dataBuffer[11] = (byte)0;
+		dataBuffer[12] = 0;
+		dataBuffer[13] = 0;
+		Buffer.intToBytes(0, dataBuffer, 14);
+		Buffer.intToBytes(policy.expiration, dataBuffer, 18);
+		Buffer.intToBytes(serverTimeout, dataBuffer, 22);
+		Buffer.shortToBytes(fieldCount, dataBuffer, 26);
+		Buffer.shortToBytes(args.operations.length, dataBuffer, 28);
+		dataOffset = MSG_TOTAL_HEADER_SIZE;
+
+		writeKey(key);
 
 		for (Operation operation : args.operations) {
 			writeOperation(operation);
@@ -1663,7 +1679,7 @@ public class Command {
 			dataBuffer[dataOffset++] = (byte)attr.infoAttr;
 			Buffer.intToBytes(attr.expiration, dataBuffer, dataOffset);
 			dataOffset += 4;
-			writeBatchFieldsReg(key, attr, filter, 0, opCount);				
+			writeBatchFieldsReg(key, attr, filter, 0, opCount);
 		}
 	}
 
@@ -1697,7 +1713,7 @@ public class Command {
 			dataOffset += 2;
 			Buffer.intToBytes(attr.expiration, dataBuffer, dataOffset);
 			dataOffset += 4;
-			writeBatchFieldsReg(key, attr, filter, fieldCount, opCount);			
+			writeBatchFieldsReg(key, attr, filter, fieldCount, opCount);
 		}
 	}
 
@@ -1772,9 +1788,9 @@ public class Command {
 
 		if (attr.sendKey) {
 			writeField(key.userKey, FieldType.KEY);
-		}		
+		}
 	}
-	
+
 	private void writeBatchFields(Key key, int fieldCount, int opCount) {
 		fieldCount += 2;
 		Buffer.shortToBytes(fieldCount, dataBuffer, dataOffset);
