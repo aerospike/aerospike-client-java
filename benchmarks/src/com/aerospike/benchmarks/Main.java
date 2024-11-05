@@ -548,11 +548,11 @@ public class Main implements Log.Callback {
 			this.nKeys = 100000;
 		}
 
-		if (line.hasOption("mSize")) {
+		if (line.hasOption("mrtSize")) {
 			this.mrtEnabled = true;
-			this.keysPerMRT = Long.parseLong(line.getOptionValue("mSize"));
+			this.keysPerMRT = Long.parseLong(line.getOptionValue("mrtSize"));
 			if (this.keysPerMRT < 1 || this.keysPerMRT > this.nKeys) {
-				throw new Exception("Invalid mSize value");
+				throw new Exception("Invalid mrtSize value");
 			}
 			long rem = this.nKeys % this.keysPerMRT;
 			if (rem != 0) {
