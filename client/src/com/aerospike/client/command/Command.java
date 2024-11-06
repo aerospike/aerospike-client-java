@@ -2210,9 +2210,8 @@ public class Command {
 
 	private final void compress(Policy policy) {
 		if (policy.compress && dataOffset > COMPRESS_THRESHOLD) {
-			Deflater def = new Deflater();
+			Deflater def = new Deflater(Deflater.BEST_SPEED);
 			try {
-				def.setLevel(Deflater.BEST_SPEED);
 				def.setInput(dataBuffer, 0, dataOffset);
 				def.finish();
 
