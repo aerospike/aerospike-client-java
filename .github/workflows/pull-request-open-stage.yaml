@@ -1,0 +1,26 @@
+name: PR open
+
+on:
+  pull_request:
+    branches:
+      - "stage*"
+    types:
+      - opened
+      - reopened
+  workflow_dispatch:
+
+jobs:
+  test-with-server-release:
+    name: Build stage - Test with latest version of Aerospike Enterprise Server
+    uses: ./.github/workflows/build-stage.yaml
+    with:
+      branch: ${{ github.base_ref }}
+    secrets: inherit
+
+  test-with-server-rc:
+    name: Build stage - Test with latest RC version of Aerospike Enterprise Server
+    uses: ./.github/workflows/build-stage.yaml
+    with:
+      branch: ${{ github.base_ref }}
+      use-server-rc: true
+    secrets: inherit

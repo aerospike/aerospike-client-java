@@ -1,0 +1,48 @@
+name: Bump version
+on:
+  workflow_call:
+    inputs:
+      base-branch:
+        type: string
+        required: true
+      major:
+        type: number
+        required: true
+        description: ""
+      minor:
+        type: number
+        required: true
+        description: ""
+      patch:
+        type: number
+        required: true
+        description: ""
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      BUILD_IDENTIFIER: "${{ inputs.branch }}-{{ inputs.java-version }}"
+    steps:
+      - name: Checkout client
+        uses: actions/checkout@v2
+        with:
+          ref: ${{ inputs.base-branch }}
+
+      - name: Increment version
+        run: |
+          mvn versions:set \
+          -DnewVersion=${{ inputs.major }}.${{ inputs.minor }}.${{ inputs.patch }} \
+          versions:commit
+
+      - name: Echo new version to CI
+        id: get-new-version
+        run: echo new_version=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout) >> $GITHUB_OUTPUT
+
+      - name: Commit new version
+        uses: stefanzweifel/git-auto-commit-action@v4
+        with:
+          commit_message: "Auto-bump version to ${{ steps.get-new-version.outputs.new_version }} [skip ci]"
+          commit_author: github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>
+          tagging_message: ${{ steps.get-new-version.outputs.new_version }}
+          branch: ${{ inputs.is_workflow_call && github.ref }}

@@ -1,0 +1,30 @@
+name: Push to staging (WIP)
+
+on:
+  push:
+    branches:
+      - stage*
+  workflow_dispatch:
+
+jobs:
+  build-stage:
+    name: Build stage
+    uses: ./.github/workflows/build-stage.yaml
+    with:
+      branch: ${{ github.ref }}
+      upload-artifacts: true
+    secrets: inherit
+
+  upload-to-jfrog:
+    name: Upload artifacts to JFrog
+    needs: "build-stage"
+    uses: ./.github/workflows/upload-to-jfrog.yaml
+    with:
+      version: ${{ needs.bump-dev-number.outputs.new_version }}
+    secrets: inherit
+
+  # Clean up after files artifacts have been uploaded to jfrog
+  delete-artifacts:
+    needs: ["upload-to-jfrog"]
+    name: Delete artifacts
+    uses: ./.github/workflows/delete-artifacts.yaml

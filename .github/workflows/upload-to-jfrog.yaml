@@ -1,0 +1,45 @@
+on:
+  workflow_call:
+    inputs:
+      version:
+        type: string
+        required: false
+      jfrog-repo-name:
+        type: string
+        required: false
+        default: ${{ vars.JFROG_REPO_NAME }}
+    secrets:
+      JFROG_PLATFORM_URL:
+        required: true
+      JFROG_ACCESS_TOKEN:
+        required: true
+
+jobs:
+  upload-to-jfrog:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: "*.build"
+          merge-multiple: true
+          path: artifacts
+
+      - name: list content
+        run: ls -R
+        working-directory: artifacts
+
+      - name: Set up JFrog credentials
+        uses: jfrog/setup-jfrog-cli@v3
+        env:
+          JF_URL: ${{ secrets.JFROG_PLATFORM_URL }}
+          JF_ACCESS_TOKEN: ${{ secrets.JFROG_ACCESS_TOKEN }}
+
+      - name: Upload from branches to JFrog generic repo
+        if: ${{ inputs.jfrog-repo-name == vars.JFROG_GENERIC_REPO_NAME }}
+        run: jf rt upload "**/*.jar" ${{ vars.JFROG_GENERIC_REPO_NAME }}/${{ github.ref_name }}/
+        working-directory: artifacts
+
+      - name: Publish build info
+        if: ${{ inputs.jfrog-repo-name == vars.JFROG_REPO_NAME }}
+        run: jf rt build-publish aerospike-client-java ${{ inputs.version }}
