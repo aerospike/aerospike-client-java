@@ -1,0 +1,11 @@
+on:
+  workflow_call:
+
+jobs:
+  delete-artifacts:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Remove artifacts with dev version
+        uses: geekyeggo/delete-artifact@v5
+        with:
+          name: "*.build"

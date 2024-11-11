@@ -1,0 +1,17 @@
+name: Push to staging
+
+on:
+  push:
+    branches:
+      - stage*
+  workflow_dispatch:
+
+jobs:
+  build-stage:
+    name: Build stage
+    uses: ./.github/workflows/build-stage.yaml
+    with:
+      branch: ${{ github.ref }}
+      upload-artifacts: true
+      bump-version: true
+    secrets: inherit
