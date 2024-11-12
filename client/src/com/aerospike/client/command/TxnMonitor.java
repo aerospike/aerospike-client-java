@@ -66,6 +66,7 @@ public final class TxnMonitor {
 	}
 
 	public static Operation[] getTranOps(Txn txn, Key cmdKey) {
+		txn.verifyCommand();
 		txn.setNamespace(cmdKey.namespace);
 
 		if (txn.monitorExists()) {
@@ -82,6 +83,8 @@ public final class TxnMonitor {
 	}
 
 	public static Operation[] getTranOps(Txn txn, Key[] keys) {
+		txn.verifyCommand();
+
 		ArrayList<Value> list = new ArrayList<>(keys.length);
 
 		for (Key key : keys) {
@@ -92,6 +95,8 @@ public final class TxnMonitor {
 	}
 
 	public static Operation[] getTranOps(Txn txn, List<BatchRecord> records) {
+		txn.verifyCommand();
+
 		ArrayList<Value> list = new ArrayList<>(records.size());
 
 		for (BatchRecord br : records) {
