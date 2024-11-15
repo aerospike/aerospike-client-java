@@ -1,0 +1,39 @@
+name: Publish artifacts to JFrog
+description: "Publishes artifacts to JFrog"
+
+inputs:
+  version:
+    description: ""
+    required: true
+  jdk-version:
+    description: ""
+    required: true
+  jfrog-repo-name:
+    description: ""
+    required: false
+    default: aerospike-maven-dev-local
+  jfrog-platform-url:
+    description: ""
+    required: false
+    default: https://aerospike.jfrog.io/
+  jfrog-token:
+    description: ""
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - name: Set up JFrog credentials
+      uses: jfrog/setup-jfrog-cli@v3
+      env:
+        JF_URL: ${{ inputs.jfrog-platform-url }}
+        JF_ACCESS_TOKEN: ${{ inputs.jfrog-token }}
+
+    - name: Upload from branches to JFrog
+      shell: bash
+      # Only interested in `aerospike-proxy-client-x.x.x....` and  `aerospike-client-jdkx-x.x.x....`
+      run: jf rt upload --regexp=true --dry-run "aerospike-(proxy-client|client-(jdk\d+))-\d+\.\d+\.\d+(-jar-with-dependencies)?\.jar" "${{ inputs.jfrog-repo-name }}"
+
+    - name: Publish build info
+      shell: bash
+      run: jf rt build-publish --dry-run ${{ inputs.jdk-version == 'jdk8' && 'aerospike-client-jdk8' || 'aerospike-client-jdk21' }} ${{ inputs.version }}

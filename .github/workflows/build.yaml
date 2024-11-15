@@ -1,0 +1,98 @@
+name: Build artifacts
+
+on:
+  workflow_call:
+    inputs:
+      branch:
+        type: string
+        required: true
+      java-version:
+        type: number
+        required: true
+      bump-version:
+        type: boolean
+        required: false
+        default: false
+      use-server-rc:
+        type: boolean
+        required: false
+        default: false
+        description: "Test against server release candidate?"
+      server-tag:
+        type: string
+        required: false
+        default: "latest"
+        description: "Server docker image tag"
+      upload-artifacts:
+        type: boolean
+        required: false
+        default: false
+        description: "Upload built artifacts to github?"
+    secrets:
+      JFROG_USERNAME:
+        required: true
+      JFROG_DOCKER_TOKEN:
+        required: true
+      JFROG_MAVEN_TOKEN:
+        required: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      BUILD_IDENTIFIER: "${{ inputs.branch }}-${{ inputs.java-version }}"
+    steps:
+      - name: Checkout client
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.branch }}
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: "semeru" # See 'Supported distributions' for available options
+          java-version: ${{ inputs.java-version }}
+
+      - name: Increment version
+        if: ${{ inputs.bump-version == true }}
+        run: |
+          mvn build-helper:parse-version versions:set \
+          -DnewVersion=\${parsedVersion.majorVersion}.\${parsedVersion.nextMinorVersion}.\${parsedVersion.incrementalVersion} \
+          versions:commit
+
+      - name: Echo new version to CI
+        if: ${{ inputs.bump-version == true }}
+        id: get-new-version
+        run: echo new_version=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout) >> $GITHUB_OUTPUT
+
+      - name: Commit new version
+        if: ${{ inputs.bump-version == true }}
+        uses: stefanzweifel/git-auto-commit-action@v4
+        with:
+          commit_message: "Auto-bump version to ${{ steps.get-new-version.outputs.new_version }} [skip ci]"
+          commit_author: github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>
+          tagging_message: ${{ steps.get-new-version.outputs.new_version }}
+          branch: ${{ inputs.is_workflow_call && github.ref }}
+
+      - name: Run EE server
+        uses: ./.github/actions/run-ee-server
+        with:
+          use-server-rc: ${{ inputs.use-server-rc }}
+          server-tag: ${{ inputs.server-tag }}
+          docker-hub-username: ${{ secrets.JFROG_USERNAME }}
+          docker-hub-password: ${{ secrets.JFROG_DOCKER_TOKEN }}
+
+      - name: Build
+        run: mvn install
+
+      - name: Test
+        working-directory: test
+        run: mvn test -DskipTests=false
+
+      - name: Upload to JFrog
+        if: ${{ !cancelled() && inputs.upload-artifacts == true }}
+        uses: ./.github/actions/upload-to-jfrog
+        with:
+          version: ${{ steps.get-new-version.outputs.new_version }}
+          jdk-version: "jdk${{ inputs.java-version }}"
+          jfrog-token: ${{ secrets.JFROG_MAVEN_TOKEN }}

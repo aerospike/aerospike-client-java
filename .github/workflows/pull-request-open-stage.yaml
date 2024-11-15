@@ -1,0 +1,31 @@
+name: PR open
+
+on:
+  pull_request:
+    branches:
+      - "stage*"
+    types:
+      - opened
+      - reopened
+  workflow_dispatch:
+    inputs:
+      branch:
+        type: string
+        default: stage
+        description: Base branch to use if manually starting. By default base_ref will empty if triggering manually hence base_ref is only available on PRs.
+
+jobs:
+  test-with-server-release:
+    name: Build stage - Test with latest version of Aerospike Enterprise Server
+    uses: ./.github/workflows/build-stage.yaml
+    with:
+      branch: ${{ github.base_ref || inputs.branch }}
+    secrets: inherit
+
+  test-with-server-rc:
+    name: Build stage - Test with latest RC version of Aerospike Enterprise Server
+    uses: ./.github/workflows/build-stage.yaml
+    with:
+      branch: ${{ github.base_ref || inputs.branch }}
+      use-server-rc: true
+    secrets: inherit

@@ -1,0 +1,44 @@
+name: "Run EE Server"
+description: "Run EE server. Returns once server is ready. Only tested on Linux and macOS"
+
+inputs:
+  # All inputs in composite actions are strings
+  use-server-rc:
+    description: Flag for rc candidates
+    required: true
+    default: "false"
+  server-tag:
+    description: Server version to use
+    required: true
+    default: "latest"
+  # Github Composite Actions can't access secrets
+  # so we need to pass them in as inputs
+  docker-hub-username:
+    description: Dockerhub username
+    required: false
+  docker-hub-password:
+    description: Dockerhub password
+    required: false
+  container-repo-url:
+    required: false
+    description: Container repo url
+    default: aerospike.jfrog.io/docker/
+
+runs:
+  using: "composite"
+  steps:
+    - name: Log into Docker Hub to get server RC
+      if: ${{ inputs.use-server-rc == 'true' }}
+      run: docker login ${{ inputs.container-repo-url }} --username ${{ inputs.docker-hub-username }} --password ${{ inputs.docker-hub-password }}
+      shell: bash
+
+    - run: echo IMAGE_NAME=${{ inputs.use-server-rc == 'true' && inputs.container-repo-url || '' }}aerospike/aerospike-server-enterprise${{ inputs.use-server-rc == 'true' && '-rc' || '' }}:${{ inputs.server-tag }} >> $GITHUB_ENV
+      shell: bash
+
+    - run: docker run -d --name aerospike -p 3000:3000 ${{ env.IMAGE_NAME }}
+      shell: bash
+
+    - uses: ./.github/actions/wait-for-as-server-to-start
+      with:
+        container-name: aerospike
+        is-security-enabled: true

@@ -1,0 +1,71 @@
+on:
+  workflow_call:
+    inputs:
+      branch:
+        type: string
+        required: true
+      use-server-rc:
+        type: boolean
+        required: false
+        default: false
+        description: "Test against server release candidate?"
+      server-tag:
+        type: string
+        required: false
+        default: "latest"
+        description: "Server docker image tag"
+      upload-artifacts:
+        type: boolean
+        required: false
+        default: false
+        description: "Upload built artifacts to github?"
+      bump-version:
+        type: boolean
+        required: false
+        default: false
+        description: "Bump artifact version"
+
+jobs:
+  debug-job:
+    runs-on: ubuntu-latest
+    steps:
+      - name: debug
+        run: |
+          echo "${{ inputs.branch }}"
+          echo "${{ github.ref }}"
+
+  build-java-21:
+    if: ${{ inputs.branch == 'refs/heads/stage' || inputs.branch == 'stage' }}
+    uses: ./.github/workflows/build.yaml
+    strategy:
+      matrix:
+        java-version: [21]
+        include:
+          - java-version: 21
+            branch: "stage"
+    with:
+      java-version: ${{ matrix.java-version }}
+      branch: ${{ matrix.branch }}
+      bump-version: ${{ inputs.bump-version }}
+      use-server-rc: ${{ inputs.use-server-rc }}
+      server-tag: ${{ inputs.server-tag }}
+      upload-artifacts: ${{ inputs.upload-artifacts }}
+    secrets: inherit
+
+  build-java-8:
+    if: ${{ inputs.branch == 'refs/heads/stage-jdk8' || inputs.branch == 'stage-jdk8' }}
+    uses: ./.github/workflows/build.yaml
+    strategy:
+      matrix:
+        java-version: [8]
+        include:
+          - java-version: 8
+            branch: "stage-jdk8"
+    with:
+      java-version: ${{ matrix.java-version }}
+      branch: ${{ matrix.branch }}
+      bump-version: ${{ inputs.bump-version }}
+      use-server-rc: ${{ inputs.use-server-rc }}
+      server-tag: ${{ inputs.server-tag }}
+      upload-artifacts: ${{ inputs.upload-artifacts }}
+    secrets: inherit
