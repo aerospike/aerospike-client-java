@@ -39,7 +39,7 @@ public abstract class MRTInsertTask {
 				ae.printStackTrace();
 			}
 		}
-		counters.write.latency.getOpenTelemetry().addException(ae);
+		counters.write.addException(ae);
 	}
 
 	protected void writeFailure(Exception e) {
@@ -48,6 +48,6 @@ public abstract class MRTInsertTask {
 		if (args.debug) {
 			e.printStackTrace();
 		}
-		counters.write.latency.getOpenTelemetry().addException(e);
+		counters.write.addException(e);
 	}
 }

@@ -45,21 +45,9 @@ public class CounterStore {
 		if(this.transaction.latency != null) {
 			this.transaction.latency.setOpenTelemetry(openTelemetry);
 		}
-	}
-
-	public long getTotalErrors() {
-		long errors = 0;
-
-		if(this.write != null) {
-			errors += this.write.errors.get() + this.write.timeouts.get();
-		}
-		if(this.read != null) {
-			errors += this.read.errors.get() + this.read.timeouts.get();
-		}
-		if (this.transaction != null) {
-			errors += this.transaction.errors.get() + this.transaction.timeouts.get();
-		}
-		return errors;
+		this.write.openTelemetry = openTelemetry;
+		this.read.openTelemetry = openTelemetry;
+		this.transaction.openTelemetry = openTelemetry;
 	}
 
 	/**
@@ -110,5 +98,18 @@ public class CounterStore {
 		AtomicInteger min = new AtomicInteger(-1);
 		AtomicInteger max = new AtomicInteger(-1);
 		LatencyManager latency;
+		OpenTelemetry openTelemetry = null;
+
+		public void addException(Exception e) {
+			if(openTelemetry != null) {
+				openTelemetry.addException(e);
+			}
+		}
+
+		public void incrTransCount(LatencyTypes type) {
+			if(openTelemetry != null) {
+				openTelemetry.incrTransCounter(type);
+			}
+		}
 	}
 }

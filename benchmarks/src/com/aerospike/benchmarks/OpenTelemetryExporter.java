@@ -33,6 +33,7 @@ public final class OpenTelemetryExporter implements com.aerospike.benchmarks.Ope
     private final Meter openTelemetryMeter;
     private final ObservableLongGauge openTelemetryHBGauge;
     private final LongCounter openTelemetryExceptionCounter;
+    private final LongCounter openTelemetryTransactionCounter;
     private final LongHistogram openTelemetryLatencyHistogram;
 
     private long hbCnt = 0;
@@ -73,6 +74,7 @@ public final class OpenTelemetryExporter implements com.aerospike.benchmarks.Ope
         final Attributes attributes2 = Attributes.of(
                 AttributeKey.stringKey("DBHost"), host.toString(),
                 AttributeKey.stringArrayKey("namespaces"), args.batchSize > 0 ? Arrays.asList(args.batchNamespaces) : Collections.singletonList(args.namespace),
+                AttributeKey.stringKey("namespace"), args.namespace == null ? args.batchNamespaces[0] : args.namespace,
                 AttributeKey.stringKey("setname"), args.setName,
                 AttributeKey.stringKey("workload"), args.workload.name(),
                 AttributeKey.longKey("batchSize"), (long) args.batchSize
@@ -129,6 +131,12 @@ public final class OpenTelemetryExporter implements com.aerospike.benchmarks.Ope
                         .setDescription("Aerospike Benchmark MRT Latencies")
                         .ofLongs()
                         .setUnit(counters.showMicroSeconds ? "us" : "ms")
+                        .build();
+
+        this.openTelemetryTransactionCounter =
+                openTelemetryMeter
+                        .counterBuilder(METRIC_NAME + ".transaction")
+                        .setDescription("Aerospike Benchmark MRT Transaction")
                         .build();
 
         if(this.debug) {
@@ -191,7 +199,8 @@ public final class OpenTelemetryExporter implements com.aerospike.benchmarks.Ope
     public void addException(Exception exception) {
 
         final Attributes attributes = Attributes.of(
-                AttributeKey.stringKey("exception_type"), exception.getClass().getName()
+                AttributeKey.stringKey("exception_type"), exception.getClass().getName(),
+                AttributeKey.stringKey("exception"), exception.getMessage()
         );
 
         this.openTelemetryExceptionCounter.add(1, attributes);
@@ -209,9 +218,23 @@ public final class OpenTelemetryExporter implements com.aerospike.benchmarks.Ope
         );
 
         this.openTelemetryLatencyHistogram.record(elapsed, attributes);
+        this.openTelemetryTransactionCounter.add(1, attributes);
 
         if(this.debug) {
-            this.printDebug("Elapsed Time Counter Add " + attributes.get(AttributeKey.stringKey("type")), true);
+            this.printDebug("Elapsed Time Record  " + attributes.get(AttributeKey.stringKey("type")), true);
+        }
+    }
+
+    @Override
+    public void incrTransCounter(LatencyTypes type) {
+
+        final Attributes attributes = Attributes.of(
+                AttributeKey.stringKey("type"), type.name().toLowerCase()
+        );
+        this.openTelemetryTransactionCounter.add(1, attributes);
+
+        if(this.debug) {
+            this.printDebug("Transaction Counter Add " + attributes.get(AttributeKey.stringKey("type")), true);
         }
     }
 

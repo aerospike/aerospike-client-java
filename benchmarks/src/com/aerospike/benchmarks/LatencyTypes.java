@@ -1,5 +1,5 @@
 package com.aerospike.benchmarks;
 
 public enum LatencyTypes {
-	READ, WRITE, TRANSACTION
+	READ, READNOTFOUND, WRITE, TRANSACTION
 }

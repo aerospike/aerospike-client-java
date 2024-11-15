@@ -20,6 +20,11 @@ public class OpenTelemetryDummy  implements OpenTelemetry {
 
     @SuppressWarnings("unused")
     @Override
+    public void incrTransCounter(LatencyTypes type) {
+    }
+
+    @SuppressWarnings("unused")
+    @Override
     public void addException(Exception exception) {
     }
 

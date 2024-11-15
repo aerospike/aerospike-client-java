@@ -73,6 +73,7 @@ public class RWTaskSync extends RWTask implements Runnable {
 	protected void put(WritePolicy writePolicy, Key key, Bin[] bins) {
 		if (skipKey(key)) {
 			counters.write.count.getAndIncrement();
+			counters.write.incrTransCount(LatencyTypes.WRITE);
 			return;
 		}
 
@@ -86,6 +87,7 @@ public class RWTaskSync extends RWTask implements Runnable {
 		else {
 			client.put(writePolicy, key, bins);
 			counters.write.count.getAndIncrement();
+			counters.write.incrTransCount(LatencyTypes.WRITE);
 		}
 	}
 
@@ -93,6 +95,7 @@ public class RWTaskSync extends RWTask implements Runnable {
 	protected void add(Key key, Bin[] bins) {
 		if (skipKey(key)) {
 			counters.write.count.getAndIncrement();
+			counters.write.incrTransCount(LatencyTypes.WRITE);
 			return;
 		}
 
@@ -106,6 +109,7 @@ public class RWTaskSync extends RWTask implements Runnable {
 		else {
 			client.add(writePolicyGeneration, key, bins);
 			counters.write.count.getAndIncrement();
+			counters.write.incrTransCount(LatencyTypes.WRITE);
 		}
 	}
 

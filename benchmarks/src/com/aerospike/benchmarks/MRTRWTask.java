@@ -409,21 +409,26 @@ public abstract class MRTRWTask {
 	protected void processRead(Key key, Record record) {
 		if (record == null && args.reportNotFound) {
 			counters.readNotFound.getAndIncrement();
+			counters.read.incrTransCount(LatencyTypes.READNOTFOUND);
 		} else {
 			counters.read.count.getAndIncrement();
+			counters.read.incrTransCount(LatencyTypes.READ);
 		}
 	}
 
 	protected void processRead(Key key, Object udfReturnValue) {
 		if (udfReturnValue == null && args.reportNotFound) {
 			counters.readNotFound.getAndIncrement();
+			counters.read.incrTransCount(LatencyTypes.READNOTFOUND);
 		} else {
 			counters.read.count.getAndIncrement();
+			counters.read.incrTransCount(LatencyTypes.READ);
 		}
 	}
 
 	protected void processBatchRead() {
 		counters.read.count.getAndIncrement();
+		counters.read.incrTransCount(LatencyTypes.READ);
 	}
 
 	protected void writeFailure(AerospikeException ae) {
@@ -436,7 +441,7 @@ public abstract class MRTRWTask {
 				ae.printStackTrace();
 			}
 		}
-		counters.write.latency.getOpenTelemetry().addException(ae);
+		counters.write.addException(ae);
 	}
 
 	protected void writeFailure(Exception e) {
@@ -445,7 +450,7 @@ public abstract class MRTRWTask {
 		if (args.debug) {
 			e.printStackTrace();
 		}
-		counters.write.latency.getOpenTelemetry().addException(e);
+		counters.write.addException(e);
 	}
 
 	protected void readFailure(AerospikeException ae) {
@@ -458,7 +463,7 @@ public abstract class MRTRWTask {
 				ae.printStackTrace();
 			}
 		}
-		counters.read.latency.getOpenTelemetry().addException(ae);
+		counters.read.addException(ae);
 	}
 
 	protected void readFailure(Exception e) {
@@ -467,7 +472,7 @@ public abstract class MRTRWTask {
 		if (args.debug) {
 			e.printStackTrace();
 		}
-		counters.read.latency.getOpenTelemetry().addException(e);
+		counters.read.addException(e);
 	}
 
 	protected abstract void put(WritePolicy policy, Key key, Bin[] bins);

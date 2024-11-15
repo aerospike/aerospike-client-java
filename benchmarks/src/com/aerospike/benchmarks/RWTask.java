@@ -431,6 +431,7 @@ public abstract class RWTask {
 		}
 		else {
 			counters.read.count.getAndIncrement();
+			counters.read.incrTransCount(LatencyTypes.READ);
 		}
 	}
 
@@ -440,11 +441,13 @@ public abstract class RWTask {
 		}
 		else {
 			counters.read.count.getAndIncrement();
+			counters.read.incrTransCount(LatencyTypes.READ);
 		}
 	}
 
 	protected void processBatchRead() {
 		counters.read.count.getAndIncrement();
+		counters.read.incrTransCount(LatencyTypes.READ);
 	}
 
 	protected void writeFailure(AerospikeException ae) {
@@ -458,7 +461,7 @@ public abstract class RWTask {
 				ae.printStackTrace();
 			}
 		}
-		counters.write.latency.getOpenTelemetry().addException(ae);
+		counters.write.addException(ae);
 	}
 
 	protected void writeFailure(Exception e) {
@@ -467,7 +470,7 @@ public abstract class RWTask {
 		if (args.debug) {
 			e.printStackTrace();
 		}
-		counters.write.latency.getOpenTelemetry().addException(e);
+		counters.write.addException(e);
 	}
 
 	protected void readFailure(AerospikeException ae) {
@@ -481,7 +484,7 @@ public abstract class RWTask {
 				ae.printStackTrace();
 			}
 		}
-		counters.read.latency.getOpenTelemetry().addException(ae);
+		counters.read.addException(ae);
 	}
 
 	protected void readFailure(Exception e) {
@@ -490,7 +493,7 @@ public abstract class RWTask {
 		if (args.debug) {
 			e.printStackTrace();
 		}
-		counters.write.latency.getOpenTelemetry().addException(e);
+		counters.write.addException(e);
 	}
 
 	protected abstract void put(WritePolicy policy, Key key, Bin[] bins);

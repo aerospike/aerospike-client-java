@@ -130,6 +130,7 @@ public final class RWTaskAsync extends RWTask {
 		@Override
 		public void onSuccess(Key key) {
 			counters.write.count.getAndIncrement();
+			counters.write.incrTransCount(LatencyTypes.WRITE);
 			runNextCommand();
 		}
 
@@ -161,9 +162,11 @@ public final class RWTaskAsync extends RWTask {
 		public void onSuccess(Key key, Record record) {
 			if (record == null && args.reportNotFound) {
 				counters.readNotFound.getAndIncrement();
+				counters.read.incrTransCount(LatencyTypes.READNOTFOUND);
 			}
 			else {
 				counters.read.count.getAndIncrement();
+				counters.read.incrTransCount(LatencyTypes.READ);
 			}
 			runNextCommand();
 		}
@@ -183,9 +186,11 @@ public final class RWTaskAsync extends RWTask {
 
 			if (record == null && args.reportNotFound) {
 				counters.readNotFound.getAndIncrement();
+				counters.read.incrTransCount(LatencyTypes.READNOTFOUND);
 			}
 			else {
 				counters.read.count.getAndIncrement();
+				counters.read.incrTransCount(LatencyTypes.READ);
 			}
 			runNextCommand();
 		}
@@ -201,6 +206,7 @@ public final class RWTaskAsync extends RWTask {
 		@Override
 		public void onSuccess(Key[] keys, Record[] records) {
 			counters.read.count.getAndIncrement();
+			counters.read.incrTransCount(LatencyTypes.READ);
 			runNextCommand();
 		}
 

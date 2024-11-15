@@ -108,6 +108,7 @@ public final class MRTInsertTaskSync extends MRTInsertTask implements Runnable {
 				client.put(writePolicy, key, bins);
 			}
 			counters.write.count.getAndIncrement();
+			counters.write.incrTransCount(LatencyTypes.WRITE);
 		}
 	}
 

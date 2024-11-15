@@ -98,6 +98,7 @@ public final class InsertTaskSync extends InsertTask implements Runnable {
 				client.put(args.writePolicy, key, bins);
 			}
 			counters.write.count.getAndIncrement();
+			counters.write.incrTransCount(LatencyTypes.WRITE);
 		}
 	}
 
