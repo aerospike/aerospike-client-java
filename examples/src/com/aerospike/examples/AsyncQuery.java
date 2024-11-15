@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -46,18 +46,13 @@ public class AsyncQuery extends AsyncExample {
 		String binName = "asqbin";
 		int size = 50;
 
-		// Proxy client does not support createIndex(), so must assume
-		// index already created to run this test.
-		if (! params.useProxyClient) {
-			createIndex(client, indexName, binName);
-		}
+		createIndex(client, indexName, binName);
 		runQueryExample(client, eventLoop, keyPrefix, binName, size);
 
 		// Wait until query finishes before dropping index.
 		waitTillComplete();
 
-		// Do not drop index because after native client tests run, the proxy
-		// client tests need the index to exist.
+		// Do not drop index because after native client tests run.
 		//client.dropIndex(policy, params.namespace, params.set, indexName);
 	}
 
