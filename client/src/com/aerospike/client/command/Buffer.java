@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -276,7 +276,7 @@ public final class Buffer {
 		int mult = 1;
 
 		for (int i = end - 1; i >= begin; i--) {
-			val += ((int)buf[i] - 48) * mult;
+			val += (buf[i] - 48) * mult;
 			mult *= 10;
 		}
 		return val;
