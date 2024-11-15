@@ -50,10 +50,6 @@ public class TestAsyncTxn extends TestAsync {
 
 	@BeforeClass
 	public static void register() {
-		if (args.useProxyClient) {
-			System.out.println("Skip TestTxn.register");
-			return;
-		}
 		RegisterTask task = client.register(null, TestUDF.class.getClassLoader(), "udf/record_example.lua", "record_example.lua", Language.LUA);
 		task.waitTillComplete();
 	}
