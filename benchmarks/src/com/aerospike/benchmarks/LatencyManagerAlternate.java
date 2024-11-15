@@ -30,8 +30,10 @@ public class LatencyManagerAlternate implements LatencyManager {
 	private final int bitShift;
 	private final boolean showMicroSeconds;
 	private final DecimalFormat format;
+	private final LatencyTypes latencyType;
 
-	public LatencyManagerAlternate(int columns, int bitShift, boolean showMicroSeconds) {
+	public LatencyManagerAlternate(LatencyTypes type,int columns, int bitShift, boolean showMicroSeconds) {
+		this.latencyType = type;
 		this.lastBucket = columns - 1;
 		this.bitShift = bitShift;
 		this.showMicroSeconds = showMicroSeconds;
@@ -87,6 +89,10 @@ public class LatencyManagerAlternate implements LatencyManager {
 			}
 		}
 
+		if(this.openTelemetry != null){
+			this.openTelemetry.recordElapsedTime(this.latencyType, elapsed, this.showMicroSeconds);
+		}
+
 		for (int i = 0; i < lastBucket; i++) {
 			if (elapsed <= limit) {
 				return i;
@@ -94,6 +100,21 @@ public class LatencyManagerAlternate implements LatencyManager {
 			limit <<= bitShift;
 		}
 		return lastBucket;
+	}
+
+	private OpenTelemetry openTelemetry;
+	@Override
+	public OpenTelemetry getOpenTelemetry() {
+		return this.openTelemetry;
+	}
+	@Override
+	public void setOpenTelemetry(OpenTelemetry openTelemetry) {
+		this.openTelemetry = openTelemetry;
+	}
+
+	@Override
+	public LatencyTypes getType() {
+		return this.latencyType;
 	}
 
 	public void printHeader(PrintStream stream) {

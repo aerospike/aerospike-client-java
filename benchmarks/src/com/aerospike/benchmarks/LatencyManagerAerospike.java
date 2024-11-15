@@ -28,8 +28,10 @@ public class LatencyManagerAerospike implements LatencyManager {
 	private final int bitShift;
 	private final boolean showMicroSeconds;
 	private String header;
+	private final LatencyTypes latencyType;
 
-	public LatencyManagerAerospike(int columns, int bitShift, boolean showMicroSeconds) {
+	public LatencyManagerAerospike(LatencyTypes type, int columns, int bitShift, boolean showMicroSeconds) {
+		this.latencyType = type;
 		this.lastBucket = columns - 1;
 		this.bitShift = bitShift;
 		this.showMicroSeconds = showMicroSeconds;
@@ -80,6 +82,10 @@ public class LatencyManagerAerospike implements LatencyManager {
 			}
 		}
 
+		if(this.openTelemetry != null){
+			this.openTelemetry.recordElapsedTime(this.latencyType, elapsed, this.showMicroSeconds);
+		}
+
 		for (int i = 0; i < lastBucket; i++) {
 			if (elapsed <= limit) {
 				return i;
@@ -88,6 +94,19 @@ public class LatencyManagerAerospike implements LatencyManager {
 		}
 		return lastBucket;
 	}
+
+	private OpenTelemetry openTelemetry;
+	@Override
+	public OpenTelemetry getOpenTelemetry() {
+		return this.openTelemetry;
+	}
+	@Override
+	public void setOpenTelemetry(OpenTelemetry openTelemetry) {
+		this.openTelemetry = openTelemetry;
+	}
+
+	@Override
+	public LatencyTypes getType() { return latencyType; }
 
 	public void printHeader(PrintStream stream) {
 		stream.println(header);

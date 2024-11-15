@@ -40,9 +40,16 @@ public class LatencyManagerYcsb implements LatencyManager {
 	private final AtomicLong min;
 	private final AtomicLong max;
 	private final String name;
+	private final LatencyTypes latencyType;
 
-	public LatencyManagerYcsb(String name, int warmupCount) {
-		this.name = name;
+	public LatencyManagerYcsb(LatencyTypes type, int warmupCount) {
+		this.latencyType = type;
+		switch (type) {
+			case READ -> this.name = "read";
+			case WRITE -> this.name = "write";
+			case TRANSACTION -> this.name = "txns";
+			default -> this.name = "unknown";
+		}
 		_buckets = new AtomicInteger(1000);
 		histogram = new AtomicLongArray(_buckets.get());
 		histogramoverflow = new AtomicLong(0);
@@ -82,7 +89,24 @@ public class LatencyManagerYcsb implements LatencyManager {
 		if ((max.get() < 0) || (latencyUs > max.get())) {
 			max.set(latencyUs);
 		}
+
+		if(this.openTelemetry != null) {
+			this.openTelemetry.recordElapsedTime(this.latencyType, latencyMs, false);
+		}
 	}
+
+	private OpenTelemetry openTelemetry;
+	@Override
+	public OpenTelemetry getOpenTelemetry() {
+		return this.openTelemetry;
+	}
+	@Override
+	public void setOpenTelemetry(OpenTelemetry openTelemetry) {
+		this.openTelemetry = openTelemetry;
+	}
+
+	@Override
+	public LatencyTypes getType() { return latencyType; }
 
 	@Override
 	public void printHeader(PrintStream stream) {

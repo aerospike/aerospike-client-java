@@ -436,6 +436,7 @@ public abstract class MRTRWTask {
 				ae.printStackTrace();
 			}
 		}
+		counters.write.latency.getOpenTelemetry().addException(ae);
 	}
 
 	protected void writeFailure(Exception e) {
@@ -444,6 +445,7 @@ public abstract class MRTRWTask {
 		if (args.debug) {
 			e.printStackTrace();
 		}
+		counters.write.latency.getOpenTelemetry().addException(e);
 	}
 
 	protected void readFailure(AerospikeException ae) {
@@ -456,6 +458,7 @@ public abstract class MRTRWTask {
 				ae.printStackTrace();
 			}
 		}
+		counters.read.latency.getOpenTelemetry().addException(ae);
 	}
 
 	protected void readFailure(Exception e) {
@@ -464,6 +467,7 @@ public abstract class MRTRWTask {
 		if (args.debug) {
 			e.printStackTrace();
 		}
+		counters.read.latency.getOpenTelemetry().addException(e);
 	}
 
 	protected abstract void put(WritePolicy policy, Key key, Bin[] bins);

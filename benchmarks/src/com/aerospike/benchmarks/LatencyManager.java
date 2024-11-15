@@ -22,6 +22,11 @@ public interface LatencyManager {
 
 	void add(long elapsed);
 
+	LatencyTypes getType();
+
+	OpenTelemetry  getOpenTelemetry();
+	void setOpenTelemetry(OpenTelemetry openTelemetry);
+
 	void printHeader(PrintStream stream);
 
 	/**
