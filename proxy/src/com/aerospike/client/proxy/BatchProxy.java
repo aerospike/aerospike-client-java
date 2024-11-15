@@ -27,7 +27,6 @@ import com.aerospike.client.Record;
 import com.aerospike.client.ResultCode;
 import com.aerospike.client.command.BatchAttr;
 import com.aerospike.client.command.Command;
-import com.aerospike.client.command.Command.KeyIter;
 import com.aerospike.client.listener.BatchListListener;
 import com.aerospike.client.listener.BatchOperateListListener;
 import com.aerospike.client.listener.BatchRecordArrayListener;
@@ -74,8 +73,8 @@ public class BatchProxy {
 
 		@Override
 		void writeCommand(Command command) {
-			BatchRecordIterProxy iter = new BatchRecordIterProxy(records);
-			command.setBatchOperate(batchPolicy, null, null, null, iter);
+			BatchOffsetsProxy offsets = new BatchOffsetsProxy(records.size());
+			command.setBatchOperate(batchPolicy, null, null, null, records, offsets);
 		}
 
 		@Override
@@ -119,8 +118,8 @@ public class BatchProxy {
 
 		@Override
 		void writeCommand(Command command) {
-			BatchRecordIterProxy iter = new BatchRecordIterProxy(records);
-			command.setBatchOperate(batchPolicy, null, null, null, iter);
+			BatchOffsetsProxy offsets = new BatchOffsetsProxy(records.size());
+			command.setBatchOperate(batchPolicy, null, null, null, records, offsets);
 		}
 
 		@Override
@@ -163,8 +162,8 @@ public class BatchProxy {
 
 		@Override
 		void writeCommand(Command command) {
-			BatchRecordIterProxy iter = new BatchRecordIterProxy(records);
-			command.setBatchOperate(batchPolicy, null, null, null, iter);
+			BatchOffsetsProxy offsets = new BatchOffsetsProxy(records.size());
+			command.setBatchOperate(batchPolicy, null, null, null, records, offsets);
 		}
 
 		@Override
@@ -226,8 +225,8 @@ public class BatchProxy {
 		@Override
 		void writeCommand(Command command) {
 			BatchAttr attr = new BatchAttr(batchPolicy, readAttr, ops);
-			KeyIterProxy iter = new KeyIterProxy(keys);
-			command.setBatchOperate(batchPolicy, iter, binNames, ops, attr);
+			BatchOffsetsProxy offsets = new BatchOffsetsProxy(keys.length);
+			command.setBatchOperate(batchPolicy, keys, binNames, ops, attr, offsets);
 		}
 
 		@Override
@@ -284,8 +283,8 @@ public class BatchProxy {
 		@Override
 		void writeCommand(Command command) {
 			BatchAttr attr = new BatchAttr(batchPolicy, readAttr, ops);
-			KeyIterProxy iter = new KeyIterProxy(keys);
-			command.setBatchOperate(batchPolicy, iter, binNames, ops, attr);
+			BatchOffsetsProxy offsets = new BatchOffsetsProxy(keys.length);
+			command.setBatchOperate(batchPolicy, keys, binNames, ops, attr, offsets);
 		}
 
 		@Override
@@ -337,16 +336,12 @@ public class BatchProxy {
 		@Override
 		void writeCommand(Command command) {
 			BatchAttr attr = new BatchAttr(batchPolicy, Command.INFO1_READ | Command.INFO1_NOBINDATA);
-			KeyIterProxy iter = new KeyIterProxy(keys);
-			command.setBatchOperate(batchPolicy, iter, null, null, attr);
+			BatchOffsetsProxy offsets = new BatchOffsetsProxy(keys.length);
+			command.setBatchOperate(batchPolicy, keys, null, null, attr, offsets);
 		}
 
 		@Override
 		void parse(Parser parser, int resultCode) {
-			if (parser.opCount > 0) {
-				throw new AerospikeException.Parse("Received bins that were not requested!");
-			}
-
 			if (resultCode == 0) {
 				existsArray[parser.batchIndex] = true;
 			}
@@ -389,15 +384,12 @@ public class BatchProxy {
 		@Override
 		void writeCommand(Command command) {
 			BatchAttr attr = new BatchAttr(batchPolicy, Command.INFO1_READ | Command.INFO1_NOBINDATA);
-			KeyIterProxy iter = new KeyIterProxy(keys);
-			command.setBatchOperate(batchPolicy, iter, null, null, attr);
+			BatchOffsetsProxy offsets = new BatchOffsetsProxy(keys.length);
+			command.setBatchOperate(batchPolicy, keys, null, null, attr, offsets);
 		}
 
 		@Override
 		void parse(Parser parser, int resultCode) {
-			if (parser.opCount > 0) {
-				throw new AerospikeException.Parse("Received bins that were not requested!");
-			}
 			listener.onExists(keys[parser.batchIndex], resultCode == 0);
 		}
 
@@ -438,9 +430,9 @@ public class BatchProxy {
 
 		@Override
 		void writeCommand(Command command) {
-			BatchRecordIterProxy iter = new BatchRecordIterProxy(records);
+			BatchOffsetsProxy offsets = new BatchOffsetsProxy(records.size());
 			command.setBatchOperate(batchPolicy, client.batchWritePolicyDefault, client.batchUDFPolicyDefault,
-				client.batchDeletePolicyDefault, iter);
+				client.batchDeletePolicyDefault, records, offsets);
 		}
 
 		@Override
@@ -508,9 +500,9 @@ public class BatchProxy {
 
 		@Override
 		void writeCommand(Command command) {
-			BatchRecordIterProxy iter = new BatchRecordIterProxy(records);
+			BatchOffsetsProxy offsets = new BatchOffsetsProxy(records.size());
 			command.setBatchOperate(batchPolicy, client.batchWritePolicyDefault, client.batchUDFPolicyDefault,
-				client.batchDeletePolicyDefault, iter);
+				client.batchDeletePolicyDefault, records, offsets);
 		}
 
 		@Override
@@ -594,8 +586,8 @@ public class BatchProxy {
 
 		@Override
 		void writeCommand(Command command) {
-			KeyIterProxy iter = new KeyIterProxy(keys);
-			command.setBatchOperate(batchPolicy, iter, null, ops, attr);
+			BatchOffsetsProxy offsets = new BatchOffsetsProxy(keys.length);
+			command.setBatchOperate(batchPolicy, keys, null, ops, attr, offsets);
 		}
 
 		@Override
@@ -652,8 +644,8 @@ public class BatchProxy {
 
 		@Override
 		void writeCommand(Command command) {
-			KeyIterProxy iter = new KeyIterProxy(keys);
-			command.setBatchOperate(batchPolicy, iter, null, ops, attr);
+			BatchOffsetsProxy offsets = new BatchOffsetsProxy(keys.length);
+			command.setBatchOperate(batchPolicy, keys, null, ops, attr, offsets);
 		}
 
 		@Override
@@ -724,8 +716,8 @@ public class BatchProxy {
 
 		@Override
 		void writeCommand(Command command) {
-			KeyIterProxy iter = new KeyIterProxy(keys);
-			command.setBatchUDF(batchPolicy, iter, packageName, functionName, argBytes, attr);
+			BatchOffsetsProxy offsets = new BatchOffsetsProxy(keys.length);
+			command.setBatchUDF(batchPolicy, keys, packageName, functionName, argBytes, attr, offsets);
 		}
 
 		@Override
@@ -802,8 +794,8 @@ public class BatchProxy {
 
 		@Override
 		void writeCommand(Command command) {
-			KeyIterProxy iter = new KeyIterProxy(keys);
-			command.setBatchUDF(batchPolicy, iter, packageName, functionName, argBytes, attr);
+			BatchOffsetsProxy offsets = new BatchOffsetsProxy(keys.length);
+			command.setBatchUDF(batchPolicy, keys, packageName, functionName, argBytes, attr, offsets);
 		}
 
 		@Override
@@ -913,15 +905,11 @@ public class BatchProxy {
 	// Proxy Iterators
 	//-------------------------------------------------------
 
-	private static class BatchRecordIterProxy implements KeyIter<BatchRecord> {
-		private final List<? extends BatchRecord> records;
+	private static class BatchOffsetsProxy implements Command.BatchOffsets {
 		private final int size;
-		private int offset;
-		private int index;
 
-		public BatchRecordIterProxy(List<? extends BatchRecord> records) {
-			this.records = records;
-			this.size = records.size();
+		public BatchOffsetsProxy(int size) {
+			this.size = size;
 		}
 
 		@Override
@@ -930,56 +918,8 @@ public class BatchProxy {
 		}
 
 		@Override
-		public BatchRecord next() {
-			if (index >= size) {
-				return null;
-			}
-			offset = index++;
-			return records.get(offset);
-		}
-
-		@Override
-		public int offset() {
-			return offset;
-		}
-
-		@Override
-		public void reset() {
-			index = 0;
-		}
-	}
-
-	private static class KeyIterProxy implements KeyIter<Key> {
-		private final Key[] keys;
-		private int offset;
-		private int index;
-
-		public KeyIterProxy(Key[] keys) {
-			this.keys = keys;
-		}
-
-		@Override
-		public int size() {
-			return keys.length;
-		}
-
-		@Override
-		public Key next() {
-			if (index >= keys.length) {
-				return null;
-			}
-			offset = index++;
-			return keys[offset];
-		}
-
-		@Override
-		public int offset() {
-			return offset;
-		}
-
-		@Override
-		public void reset() {
-			index = 0;
+		public int get(int i) {
+			return i;
 		}
 	}
 }

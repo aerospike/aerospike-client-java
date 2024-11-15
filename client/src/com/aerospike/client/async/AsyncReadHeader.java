@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -21,35 +21,17 @@ import com.aerospike.client.Key;
 import com.aerospike.client.Record;
 import com.aerospike.client.ResultCode;
 import com.aerospike.client.cluster.Cluster;
-import com.aerospike.client.cluster.Node;
-import com.aerospike.client.cluster.Partition;
-import com.aerospike.client.command.Buffer;
+import com.aerospike.client.command.RecordParser;
 import com.aerospike.client.listener.RecordListener;
-import com.aerospike.client.metrics.LatencyType;
 import com.aerospike.client.policy.Policy;
 
-public final class AsyncReadHeader extends AsyncCommand {
+public final class AsyncReadHeader extends AsyncReadBase {
 	private final RecordListener listener;
-	private final Key key;
-	private final Partition partition;
 	private Record record;
 
 	public AsyncReadHeader(Cluster cluster, RecordListener listener, Policy policy, Key key) {
-		super(policy, true);
+		super(cluster, policy, key);
 		this.listener = listener;
-		this.key = key;
-		this.partition = Partition.read(cluster, policy, key);
-		cluster.addTran();
-	}
-
-	@Override
-	Node getNode(Cluster cluster) {
-		return partition.getNodeRead(cluster);
-	}
-
-	@Override
-	protected LatencyType getLatencyType() {
-		return LatencyType.READ;
 	}
 
 	@Override
@@ -59,35 +41,26 @@ public final class AsyncReadHeader extends AsyncCommand {
 
 	@Override
 	protected boolean parseResult() {
-		validateHeaderSize();
+		RecordParser rp = new RecordParser(dataBuffer, dataOffset, receiveSize);
+		rp.parseFields(policy.txn, key, false);
 
-		int resultCode = dataBuffer[5] & 0xFF;
-
-		if (resultCode == 0) {
-			int generation = Buffer.bytesToInt(dataBuffer, 6);
-			int expiration = Buffer.bytesToInt(dataBuffer, 10);
-			record = new Record(null, generation, expiration);
+		if (rp.resultCode == ResultCode.OK) {
+			record = new Record(null, rp.generation, rp.expiration);
 			return true;
 		}
 
-		if (resultCode == ResultCode.KEY_NOT_FOUND_ERROR) {
+		if (rp.resultCode == ResultCode.KEY_NOT_FOUND_ERROR) {
 			return true;
 		}
 
-		if (resultCode == ResultCode.FILTERED_OUT) {
+		if (rp.resultCode == ResultCode.FILTERED_OUT) {
 			if (policy.failOnFilteredOut) {
-				throw new AerospikeException(resultCode);
+				throw new AerospikeException(rp.resultCode);
 			}
 			return true;
 		}
 
-		throw new AerospikeException(resultCode);
-	}
-
-	@Override
-	protected boolean prepareRetry(boolean timeout) {
-		partition.prepareRetryRead(timeout);
-		return true;
+		throw new AerospikeException(rp.resultCode);
 	}
 
 	@Override

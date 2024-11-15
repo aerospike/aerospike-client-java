@@ -44,7 +44,7 @@ public final class ClusterStats {
 	public final int invalidNodeCount;
 
 	/**
-	 * Count of transaction retries since the client was started.
+	 * Count of command retries since the client was started.
 	 */
 	public final long retryCount;
 

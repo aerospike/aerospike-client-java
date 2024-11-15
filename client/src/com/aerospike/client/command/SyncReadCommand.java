@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -16,57 +16,37 @@
  */
 package com.aerospike.client.command;
 
-import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.Node;
+import com.aerospike.client.cluster.Partition;
 import com.aerospike.client.metrics.LatencyType;
+import com.aerospike.client.policy.Policy;
 
-public final class OperateCommand extends ReadCommand {
-	private final OperateArgs args;
+public abstract class SyncReadCommand extends SyncCommand {
+	final Key key;
+	final Partition partition;
 
-	public OperateCommand(Cluster cluster, Key key, OperateArgs args) {
-		super(cluster, args.writePolicy, key, args.getPartition(cluster, key), true);
-		this.args = args;
-	}
-
-	@Override
-	protected boolean isWrite() {
-		return args.hasWrite;
+	public SyncReadCommand(Cluster cluster, Policy policy, Key key) {
+		super(cluster, policy);
+		this.key = key;
+		this.partition = Partition.read(cluster, policy, key);
+		cluster.addCommandCount();
 	}
 
 	@Override
 	protected Node getNode() {
-		return args.hasWrite ? partition.getNodeWrite(cluster) : partition.getNodeRead(cluster);
+		return partition.getNodeRead(cluster);
 	}
 
 	@Override
 	protected LatencyType getLatencyType() {
-		return args.hasWrite ? LatencyType.WRITE : LatencyType.READ;
-	}
-
-	@Override
-	protected void writeBuffer() {
-		setOperate(args.writePolicy, key, args);
-	}
-
-	@Override
-	protected void handleNotFound(int resultCode) {
-		// Only throw not found exception for command with write operations.
-		// Read-only command operations return a null record.
-		if (args.hasWrite) {
-			throw new AerospikeException(resultCode);
-		}
+		return LatencyType.READ;
 	}
 
 	@Override
 	protected boolean prepareRetry(boolean timeout) {
-		if (args.hasWrite) {
-			partition.prepareRetryWrite(timeout);
-		}
-		else {
-			partition.prepareRetryRead(timeout);
-		}
+		partition.prepareRetryRead(timeout);
 		return true;
 	}
 }

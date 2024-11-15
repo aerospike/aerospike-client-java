@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -17,7 +17,7 @@
 package com.aerospike.client.policy;
 
 /**
- * Desired consistency guarantee when committing a transaction on the server.
+ * Desired consistency guarantee when committing a command on the server.
  */
 public enum CommitLevel {
 	/**

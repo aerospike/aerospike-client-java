@@ -37,6 +37,7 @@ import com.aerospike.test.async.TestAsyncOperate;
 import com.aerospike.test.async.TestAsyncPutGet;
 import com.aerospike.test.async.TestAsyncQuery;
 import com.aerospike.test.async.TestAsyncScan;
+import com.aerospike.test.async.TestAsyncTxn;
 import com.aerospike.test.async.TestAsyncUDF;
 import com.aerospike.test.util.Args;
 
@@ -54,6 +55,7 @@ import io.netty.incubator.channel.uring.IOUringEventLoopGroup;
 	TestAsyncOperate.class,
 	TestAsyncScan.class,
 	TestAsyncQuery.class,
+	TestAsyncTxn.class,
 	TestAsyncUDF.class
 })
 public class SuiteAsync {

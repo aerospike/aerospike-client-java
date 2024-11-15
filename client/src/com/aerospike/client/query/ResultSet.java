@@ -158,7 +158,7 @@ public class ResultSet implements Iterable<Object>, Closeable {
 		valid = false;
 		queue.clear();
 
-		// Send end command to transaction thread.
+		// Send end command to command thread.
 		// It's critical that the end offer succeeds.
 		while (!queue.offer(END)) {
 			// Queue must be full. Remove one item to make room.

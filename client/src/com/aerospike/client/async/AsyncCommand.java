@@ -139,12 +139,6 @@ public abstract class AsyncCommand extends Command {
 		}
 	}
 
-	final void validateHeaderSize() {
-		if (receiveSize < Command.MSG_REMAINING_HEADER_SIZE) {
-			throw new AerospikeException.Parse("Invalid receive size: " + receiveSize);
-		}
-	}
-
 	boolean parseCommandResult() {
 		if (compressed) {
 			int usize = (int)Buffer.bytesToLong(dataBuffer, 0);
@@ -183,6 +177,14 @@ public abstract class AsyncCommand extends Command {
 		valid = false;
 	}
 
+	final void onRetryException(Node node, int iteration, AerospikeException ae) {
+		ae.setNode(node);
+		ae.setPolicy(policy);
+		ae.setIteration(iteration);
+		ae.setInDoubt(isWrite(), commandSentCounter);
+		addSubException(ae);
+	}
+
 	void addSubException(AerospikeException ae) {
 		if (subExceptions == null) {
 			subExceptions = new ArrayList<AerospikeException>(policy.maxRetries);
@@ -190,11 +192,30 @@ public abstract class AsyncCommand extends Command {
 		subExceptions.add(ae);
 	}
 
+	final void onFinalException(Node node, int iteration, AerospikeException ae) {
+		ae.setNode(node);
+		ae.setPolicy(policy);
+		ae.setIteration(iteration);
+		ae.setInDoubt(isWrite(), commandSentCounter);
+		ae.setSubExceptions(subExceptions);
+		
+		if (ae.getInDoubt()) {
+			onInDoubt();
+		}
+
+		onFailure(ae);
+	}
+	
+	void onInDoubt() {
+        // Write commands will override this method.		
+	}
+
 	boolean retryBatch(Runnable command, long deadline) {
 		// Override this method in batch to regenerate node assignments.
 		return false;
 	}
 
+	// TODD: Make abstract.
 	boolean isWrite() {
 		return false;
 	}
