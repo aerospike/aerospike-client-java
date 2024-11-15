@@ -40,7 +40,7 @@ public final class WritePolicy extends Policy {
 	public GenerationPolicy generationPolicy = GenerationPolicy.NONE;
 
 	/**
-	 * Desired consistency guarantee when committing a transaction on the server. The default
+	 * Desired consistency guarantee when committing a command on the server. The default
 	 * (COMMIT_ALL) indicates that the server should wait for master and all replica commits to
 	 * be successful before returning success to the client.
 	 * <p>
@@ -93,7 +93,7 @@ public final class WritePolicy extends Policy {
 	public boolean respondAllOps;
 
 	/**
-	 * If the transaction results in a record deletion, leave a tombstone for the record.
+	 * If the command results in a record deletion, leave a tombstone for the record.
 	 * This prevents deleted records from reappearing after node failures.
 	 * Valid for Aerospike Server Enterprise Edition 3.10+ only.
 	 * <p>

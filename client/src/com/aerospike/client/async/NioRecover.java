@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -118,7 +118,7 @@ public final class NioRecover implements INioCommand, TimerTask {
 	public final void timeout() {
 		//System.out.println("" + tranId + " timeout expired. close connection");
 
-		// Transaction has been delayed long enough.
+		// Command has been delayed long enough.
 		// User has already been notified.
 		// timeoutTask has already been removed, so avoid cancel.
 		abort(false);

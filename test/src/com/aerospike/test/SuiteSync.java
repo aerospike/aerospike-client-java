@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -49,6 +49,7 @@ import com.aerospike.test.sync.basic.TestReplace;
 import com.aerospike.test.sync.basic.TestScan;
 import com.aerospike.test.sync.basic.TestServerInfo;
 import com.aerospike.test.sync.basic.TestTouch;
+import com.aerospike.test.sync.basic.TestTxn;
 import com.aerospike.test.sync.basic.TestUDF;
 import com.aerospike.test.sync.query.TestIndex;
 import com.aerospike.test.sync.query.TestQueryAverage;
@@ -92,6 +93,7 @@ import com.aerospike.test.util.Args;
 	TestScan.class,
 	TestServerInfo.class,
 	TestTouch.class,
+	TestTxn.class,
 	TestUDF.class,
 	TestIndex.class,
 	TestQueryAverage.class,

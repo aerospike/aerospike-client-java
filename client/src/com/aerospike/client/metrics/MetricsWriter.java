@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -142,7 +142,7 @@ public final class MetricsWriter implements MetricsListener {
 		sb.setLength(0);
 		sb.append(now.format(TimestampFormat));
 		sb.append(" header(1)");
-		sb.append(" cluster[name,cpu,mem,threadsInUse,recoverQueueSize,invalidNodeCount,tranCount,retryCount,delayQueueTimeoutCount,eventloop[],node[]]");
+		sb.append(" cluster[name,cpu,mem,threadsInUse,recoverQueueSize,invalidNodeCount,commandCount,retryCount,delayQueueTimeoutCount,eventloop[],node[]]");
 		sb.append(" eventloop[processSize,queueSize]");
 		sb.append(" node[name,address,port,syncConn,asyncConn,errors,timeouts,latency[]]");
 		sb.append(" conn[inUse,inPool,opened,closed]");
@@ -180,7 +180,7 @@ public final class MetricsWriter implements MetricsListener {
 		sb.append(',');
 		sb.append(cluster.getInvalidNodeCount()); // Cumulative. Not reset on each interval.
 		sb.append(',');
-		sb.append(cluster.getTranCount());  // Cumulative. Not reset on each interval.
+		sb.append(cluster.getCommandCount());  // Cumulative. Not reset on each interval.
 		sb.append(',');
 		sb.append(cluster.getRetryCount()); // Cumulative. Not reset on each interval.
 		sb.append(',');

@@ -32,6 +32,7 @@ public final class BatchAttr {
 	public int readAttr;
 	public int writeAttr;
 	public int infoAttr;
+	public int txnAttr;
 	public int expiration;
 	public int opSize;
 	public short generation;
@@ -320,5 +321,17 @@ public final class BatchAttr {
 			dataOffset += op.value.estimateSize();
 		}
 		opSize = dataOffset;
+	}
+
+	public void setTxn(int attr) {
+		filterExp = null;
+		readAttr = 0;
+		writeAttr = Command.INFO2_WRITE | Command.INFO2_RESPOND_ALL_OPS | Command.INFO2_DURABLE_DELETE;
+		infoAttr = 0;
+		txnAttr = attr;
+		expiration = 0;
+		generation = 0;
+		hasWrite = true;
+		sendKey = false;
 	}
 }

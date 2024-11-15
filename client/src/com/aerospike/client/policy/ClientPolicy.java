@@ -110,7 +110,7 @@ public class ClientPolicy {
 	public int minConnsPerNode;
 
 	/**
-	 * Maximum number of synchronous connections allowed per server node.  Transactions will go
+	 * Maximum number of synchronous connections allowed per server node.  Commands will go
 	 * through retry logic and potentially fail with "ResultCode.NO_MORE_CONNECTIONS" if the maximum
 	 * number of connections would be exceeded.
 	 * <p>
@@ -136,7 +136,7 @@ public class ClientPolicy {
 	public int asyncMinConnsPerNode;
 
 	/**
-	 * Maximum number of asynchronous connections allowed per server node.  Transactions will go
+	 * Maximum number of asynchronous connections allowed per server node.  Commands will go
 	 * through retry logic and potentially fail with "ResultCode.NO_MORE_CONNECTIONS" if the maximum
 	 * number of connections would be exceeded.
 	 * <p>
@@ -174,7 +174,7 @@ public class ClientPolicy {
 	 * attempt to use a socket that has already been reaped by the server.
 	 * <p>
 	 * If server's proto-fd-idle-ms is zero (no reap), then maxSocketIdle should also be zero.
-	 * Connections retrieved from a pool in transactions will not be checked for maxSocketIdle
+	 * Connections retrieved from a pool in commands will not be checked for maxSocketIdle
 	 * when maxSocketIdle is zero.  Idle connections will still be trimmed down from peak
 	 * connections to min connections (minConnsPerNode and asyncMinConnsPerNode) using a
 	 * hard-coded 55 second limit in the cluster tend thread.
@@ -284,6 +284,17 @@ public class ClientPolicy {
 	 * Default user defined function policy used in batch UDF excecute commands.
 	 */
 	public BatchUDFPolicy batchUDFPolicyDefault = new BatchUDFPolicy();
+
+	/**
+	 * Default multi-record transaction (MRT) policy when verifying record versions in a batch.
+	 */
+	public TxnVerifyPolicy txnVerifyPolicyDefault = new TxnVerifyPolicy();
+
+	/**
+	 * Default multi-record transaction (MRT) policy when rolling the transaction records forward (commit)
+	 * or back (abort) in a batch.
+	 */
+	public TxnRollPolicy txnRollPolicyDefault = new TxnRollPolicy();
 
 	/**
 	 * Default info policy that is used when info command's policy is null.
@@ -437,6 +448,8 @@ public class ClientPolicy {
 		this.batchWritePolicyDefault = new BatchWritePolicy(other.batchWritePolicyDefault);
 		this.batchDeletePolicyDefault = new BatchDeletePolicy(other.batchDeletePolicyDefault);
 		this.batchUDFPolicyDefault = new BatchUDFPolicy(other.batchUDFPolicyDefault);
+		this.txnVerifyPolicyDefault = new TxnVerifyPolicy(other.txnVerifyPolicyDefault);
+		this.txnRollPolicyDefault = new TxnRollPolicy(other.txnRollPolicyDefault);
 		this.infoPolicyDefault = new InfoPolicy(other.infoPolicyDefault);
 		this.tlsPolicy = (other.tlsPolicy != null)? new TlsPolicy(other.tlsPolicy) : null;
 		this.keepAlive = (other.keepAlive != null)? new TCPKeepAlive(other.keepAlive) : null;
@@ -568,6 +581,14 @@ public class ClientPolicy {
 
 	public void setBatchUDFPolicyDefault(BatchUDFPolicy batchUDFPolicyDefault) {
 		this.batchUDFPolicyDefault = batchUDFPolicyDefault;
+	}
+
+	public void setTxnVerifyPolicyDefault(TxnVerifyPolicy txnVerifyPolicyDefault) {
+		this.txnVerifyPolicyDefault = txnVerifyPolicyDefault;
+	}
+
+	public void setTxnRollPolicyDefault(TxnRollPolicy txnRollPolicyDefault) {
+		this.txnRollPolicyDefault = txnRollPolicyDefault;
 	}
 
 	public void setInfoPolicyDefault(InfoPolicy infoPolicyDefault) {

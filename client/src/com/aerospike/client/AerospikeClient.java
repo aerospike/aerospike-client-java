@@ -37,13 +37,16 @@ import com.aerospike.client.async.AsyncExecute;
 import com.aerospike.client.async.AsyncExists;
 import com.aerospike.client.async.AsyncIndexTask;
 import com.aerospike.client.async.AsyncInfoCommand;
-import com.aerospike.client.async.AsyncOperate;
+import com.aerospike.client.async.AsyncOperateRead;
+import com.aerospike.client.async.AsyncOperateWrite;
 import com.aerospike.client.async.AsyncQueryExecutor;
 import com.aerospike.client.async.AsyncQueryPartitionExecutor;
 import com.aerospike.client.async.AsyncRead;
 import com.aerospike.client.async.AsyncReadHeader;
 import com.aerospike.client.async.AsyncScanPartitionExecutor;
 import com.aerospike.client.async.AsyncTouch;
+import com.aerospike.client.async.AsyncTxnMonitor;
+import com.aerospike.client.async.AsyncTxnRoll;
 import com.aerospike.client.async.AsyncWrite;
 import com.aerospike.client.async.EventLoop;
 import com.aerospike.client.cdt.CTX;
@@ -66,12 +69,15 @@ import com.aerospike.client.command.Executor;
 import com.aerospike.client.command.ExistsCommand;
 import com.aerospike.client.command.IBatchCommand;
 import com.aerospike.client.command.OperateArgs;
-import com.aerospike.client.command.OperateCommand;
+import com.aerospike.client.command.OperateCommandRead;
+import com.aerospike.client.command.OperateCommandWrite;
 import com.aerospike.client.command.ReadCommand;
 import com.aerospike.client.command.ReadHeaderCommand;
 import com.aerospike.client.command.RegisterCommand;
 import com.aerospike.client.command.ScanExecutor;
 import com.aerospike.client.command.TouchCommand;
+import com.aerospike.client.command.TxnMonitor;
+import com.aerospike.client.command.TxnRoll;
 import com.aerospike.client.command.WriteCommand;
 import com.aerospike.client.exp.Expression;
 import com.aerospike.client.listener.BatchListListener;
@@ -90,6 +96,8 @@ import com.aerospike.client.listener.InfoListener;
 import com.aerospike.client.listener.RecordArrayListener;
 import com.aerospike.client.listener.RecordListener;
 import com.aerospike.client.listener.RecordSequenceListener;
+import com.aerospike.client.listener.AbortListener;
+import com.aerospike.client.listener.CommitListener;
 import com.aerospike.client.listener.WriteListener;
 import com.aerospike.client.metrics.MetricsPolicy;
 import com.aerospike.client.policy.AdminPolicy;
@@ -102,6 +110,8 @@ import com.aerospike.client.policy.InfoPolicy;
 import com.aerospike.client.policy.Policy;
 import com.aerospike.client.policy.QueryPolicy;
 import com.aerospike.client.policy.ScanPolicy;
+import com.aerospike.client.policy.TxnRollPolicy;
+import com.aerospike.client.policy.TxnVerifyPolicy;
 import com.aerospike.client.policy.WritePolicy;
 import com.aerospike.client.query.IndexCollectionType;
 import com.aerospike.client.query.IndexType;
@@ -187,7 +197,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	public final BatchDeletePolicy batchDeletePolicyDefault;
 
 	/**
-	 * Default user defined function policy used in batch UDF excecute commands.
+	 * Default user defined function policy used in batch UDF execute commands.
 	 */
 	public final BatchUDFPolicy batchUDFPolicyDefault;
 
@@ -195,6 +205,17 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * Default info policy that is used when info command policy is null.
 	 */
 	public final InfoPolicy infoPolicyDefault;
+
+	/**
+	 * Default multi-record transaction (MRT) policy when verifying record versions in a batch on a commit.
+	 */
+	public final TxnVerifyPolicy txnVerifyPolicyDefault;
+
+	/**
+	 * Default multi-record transaction (MRT) policy when rolling the transaction records forward (commit)
+	 * or back (abort) in a batch.
+	 */
+	public final TxnRollPolicy txnRollPolicyDefault;
 
 	private final WritePolicy operatePolicyReadDefault;
 
@@ -294,6 +315,8 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		this.batchDeletePolicyDefault = policy.batchDeletePolicyDefault;
 		this.batchUDFPolicyDefault = policy.batchUDFPolicyDefault;
 		this.infoPolicyDefault = policy.infoPolicyDefault;
+		this.txnVerifyPolicyDefault = policy.txnVerifyPolicyDefault;
+		this.txnRollPolicyDefault = policy.txnRollPolicyDefault;
 		this.operatePolicyReadDefault = new WritePolicy(this.readPolicyDefault);
 
 		cluster = new Cluster(this, policy, hosts);
@@ -318,6 +341,8 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			this.batchDeletePolicyDefault = policy.batchDeletePolicyDefault;
 			this.batchUDFPolicyDefault = policy.batchUDFPolicyDefault;
 			this.infoPolicyDefault = policy.infoPolicyDefault;
+			this.txnVerifyPolicyDefault = policy.txnVerifyPolicyDefault;
+			this.txnRollPolicyDefault = policy.txnRollPolicyDefault;
 			this.operatePolicyReadDefault = new WritePolicy(this.readPolicyDefault);
 		}
 		else {
@@ -331,6 +356,8 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			this.batchDeletePolicyDefault = new BatchDeletePolicy();
 			this.batchUDFPolicyDefault = new BatchUDFPolicy();
 			this.infoPolicyDefault = new InfoPolicy();
+			this.txnVerifyPolicyDefault = new TxnVerifyPolicy();
+			this.txnRollPolicyDefault = new TxnRollPolicy();
 			this.operatePolicyReadDefault = new WritePolicy(this.readPolicyDefault);
 		}
 	}
@@ -340,143 +367,157 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	//-------------------------------------------------------
 
 	/**
-	 * Return read policy default. Use when the policy will not be modified.
+	 * Copy read policy default to avoid problems if this shared instance is later modified.
 	 */
 	public final Policy getReadPolicyDefault() {
-		return readPolicyDefault;
+		return new Policy(readPolicyDefault);
 	}
 
 	/**
-	 * Copy read policy default. Use when the policy will be modified for use in a specific transaction.
+	 * Copy read policy default.
 	 */
 	public final Policy copyReadPolicyDefault() {
 		return new Policy(readPolicyDefault);
 	}
 
 	/**
-	 * Return write policy default. Use when the policy will not be modified.
+	 * Copy write policy default to avoid problems if this shared instance is later modified.
 	 */
 	public final WritePolicy getWritePolicyDefault() {
-		return writePolicyDefault;
+		return new WritePolicy(writePolicyDefault);
 	}
 
 	/**
-	 * Copy write policy default. Use when the policy will be modified for use in a specific transaction.
+	 * Copy write policy default.
 	 */
 	public final WritePolicy copyWritePolicyDefault() {
 		return new WritePolicy(writePolicyDefault);
 	}
 
 	/**
-	 * Return scan policy default. Use when the policy will not be modified.
+	 * Copy scan policy default to avoid problems if this shared instance is later modified.
 	 */
 	public final ScanPolicy getScanPolicyDefault() {
-		return scanPolicyDefault;
+		return new ScanPolicy(scanPolicyDefault);
 	}
 
 	/**
-	 * Copy scan policy default. Use when the policy will be modified for use in a specific transaction.
+	 * Copy scan policy default.
 	 */
 	public final ScanPolicy copyScanPolicyDefault() {
 		return new ScanPolicy(scanPolicyDefault);
 	}
 
 	/**
-	 * Return query policy default. Use when the policy will not be modified.
+	 * Copy query policy default to avoid problems if this shared instance is later modified.
 	 */
 	public final QueryPolicy getQueryPolicyDefault() {
-		return queryPolicyDefault;
+		return new QueryPolicy(queryPolicyDefault);
 	}
 
 	/**
-	 * Copy query policy default. Use when the policy will be modified for use in a specific transaction.
+	 * Copy query policy default.
 	 */
 	public final QueryPolicy copyQueryPolicyDefault() {
 		return new QueryPolicy(queryPolicyDefault);
 	}
 
 	/**
-	 * Return batch header read policy default. Use when the policy will not be modified.
+	 * Copy batch header read policy default to avoid problems if this shared instance is later modified.
 	 */
 	public final BatchPolicy getBatchPolicyDefault() {
-		return batchPolicyDefault;
+		return new BatchPolicy(batchPolicyDefault);
 	}
 
 	/**
-	 * Copy batch header read policy default. Use when the policy will be modified for use in a specific transaction.
+	 * Copy batch header read policy default.
 	 */
 	public final BatchPolicy copyBatchPolicyDefault() {
 		return new BatchPolicy(batchPolicyDefault);
 	}
 
 	/**
-	 * Return batch header write policy default. Use when the policy will not be modified.
+	 * Copy batch header write policy default to avoid problems if this shared instance is later modified.
 	 */
 	public final BatchPolicy getBatchParentPolicyWriteDefault() {
-		return batchParentPolicyWriteDefault;
+		return new BatchPolicy(batchParentPolicyWriteDefault);
 	}
 
 	/**
-	 * Copy batch header write policy default. Use when the policy will be modified for use in a specific transaction.
+	 * Copy batch header write policy default.
 	 */
 	public final BatchPolicy copyBatchParentPolicyWriteDefault() {
 		return new BatchPolicy(batchParentPolicyWriteDefault);
 	}
 
 	/**
-	 * Return batch detail write policy default. Use when the policy will not be modified.
+	 * Copy batch detail write policy default to avoid problems if this shared instance is later modified.
 	 */
 	public final BatchWritePolicy getBatchWritePolicyDefault() {
-		return batchWritePolicyDefault;
+		return new BatchWritePolicy(batchWritePolicyDefault);
 	}
 
 	/**
-	 * Copy batch detail write policy default. Use when the policy will be modified for use in a specific transaction.
+	 * Copy batch detail write policy default.
 	 */
 	public final BatchWritePolicy copyBatchWritePolicyDefault() {
 		return new BatchWritePolicy(batchWritePolicyDefault);
 	}
 
 	/**
-	 * Return batch detail delete policy default. Use when the policy will not be modified.
+	 * Copy batch detail delete policy default to avoid problems if this shared instance is later modified.
 	 */
 	public final BatchDeletePolicy getBatchDeletePolicyDefault() {
-		return batchDeletePolicyDefault;
+		return new BatchDeletePolicy(batchDeletePolicyDefault);
 	}
 
 	/**
-	 * Copy batch detail delete policy default. Use when the policy will be modified for use in a specific transaction.
+	 * Copy batch detail delete policy default.
 	 */
 	public final BatchDeletePolicy copyBatchDeletePolicyDefault() {
 		return new BatchDeletePolicy(batchDeletePolicyDefault);
 	}
 
 	/**
-	 * Return batch detail UDF policy default. Use when the policy will not be modified.
+	 * Copy batch detail UDF policy default to avoid problems if this shared instance is later modified.
 	 */
 	public final BatchUDFPolicy getBatchUDFPolicyDefault() {
-		return batchUDFPolicyDefault;
+		return new BatchUDFPolicy(batchUDFPolicyDefault);
 	}
 
 	/**
-	 * Copy batch detail UDF policy default. Use when the policy will be modified for use in a specific transaction.
+	 * Copy batch detail UDF policy default.
 	 */
 	public final BatchUDFPolicy copyBatchUDFPolicyDefault() {
 		return new BatchUDFPolicy(batchUDFPolicyDefault);
 	}
 
 	/**
-	 * Return info command policy default. Use when the policy will not be modified.
+	 * Copy info command policy default to avoid problems if this shared instance is later modified.
 	 */
 	public final InfoPolicy getInfoPolicyDefault() {
-		return infoPolicyDefault;
+		return new InfoPolicy(infoPolicyDefault);
 	}
 
 	/**
-	 * Copy info command policy default. Use when the policy will be modified for use in a specific transaction.
+	 * Copy info command policy default.
 	 */
 	public final InfoPolicy copyInfoPolicyDefault() {
 		return new InfoPolicy(infoPolicyDefault);
+	}
+
+	/**
+	 * Copy MRT record version verify policy default.
+	 */
+	public final TxnVerifyPolicy copyTxnVerifyPolicyDefault() {
+		return new TxnVerifyPolicy(txnVerifyPolicyDefault);
+	}
+
+	/**
+	 * Copy MRT roll forward/back policy default.
+	 */
+	public final TxnRollPolicy copyTxnRollPolicyDefault() {
+		return new TxnRollPolicy(txnRollPolicyDefault);
 	}
 
 	//-------------------------------------------------------
@@ -575,12 +616,159 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	}
 
 	//-------------------------------------------------------
+	// Multi-Record Transactions
+	//-------------------------------------------------------
+
+	/**
+	 * Attempt to commit the given multi-record transaction. First, the expected record versions are
+	 * sent to the server nodes for verification. If all nodes return success, the transaction is
+	 * committed. Otherwise, the transaction is aborted.
+	 * <p>
+	 * Requires server version 8.0+
+	 *
+	 * @param txn	multi-record transaction
+	 * @return		status of the commit on success
+	 * @throws AerospikeException.Commit	if verify commit fails
+	 */
+	public final CommitStatus commit(Txn txn)
+		throws AerospikeException.Commit {
+
+		TxnRoll tr = new TxnRoll(cluster, txn);
+
+		switch (txn.getState()) {
+			default:
+			case OPEN:
+				tr.verify(txnVerifyPolicyDefault, txnRollPolicyDefault);
+				return tr.commit(txnRollPolicyDefault);
+
+			case VERIFIED:
+				return tr.commit(txnRollPolicyDefault);
+
+			case COMMITTED:
+				return CommitStatus.ALREADY_COMMITTED;
+
+			case ABORTED:
+				return CommitStatus.ALREADY_ABORTED;
+		}
+	}
+
+	/**
+	 * Asynchronously attempt to commit the given multi-record transaction. First, the expected
+	 * record versions are sent to the server nodes for verification. If all nodes return success,
+	 * the transaction is committed. Otherwise, the transaction is aborted.
+	 * <p>
+	 * This method registers the command with an event loop and returns.
+	 * The event loop thread will process the command and send the results to the listener.
+	 * <p>
+	 * Requires server version 8.0+
+	 *
+	 * @param eventLoop		event loop that will process the command. If NULL, the event
+	 * 						loop will be chosen by round-robin.
+	 * @param listener		where to send results
+	 * @param txn			multi-record transaction
+	 * @throws AerospikeException	if event loop registration fails
+	 */
+	public final void commit(EventLoop eventLoop, CommitListener listener, Txn txn)
+		throws AerospikeException {
+		if (eventLoop == null) {
+			eventLoop = cluster.eventLoops.next();
+		}
+
+		AsyncTxnRoll atr = new AsyncTxnRoll(
+			cluster, eventLoop, txnVerifyPolicyDefault, txnRollPolicyDefault, txn
+			);
+
+		switch (txn.getState()) {
+			default:
+			case OPEN:
+				atr.verify(listener);
+				break;
+
+			case VERIFIED:
+				atr.commit(listener);
+				break;
+
+			case COMMITTED:
+				listener.onSuccess(CommitStatus.ALREADY_COMMITTED);
+				break;
+
+			case ABORTED:
+				listener.onSuccess(CommitStatus.ALREADY_ABORTED);
+				break;
+		}
+	}
+
+	/**
+	 * Abort and rollback the given multi-record transaction.
+	 * <p>
+	 * Requires server version 8.0+
+	 *
+	 * @param txn	multi-record transaction
+	 * @return		status of the abort
+	 */
+	public final AbortStatus abort(Txn txn) {
+		TxnRoll tr = new TxnRoll(cluster, txn);
+
+		switch (txn.getState()) {
+			default:
+			case OPEN:
+			case VERIFIED:
+				return tr.abort(txnRollPolicyDefault);
+
+			case COMMITTED:
+				return AbortStatus.ALREADY_COMMITTED;
+
+			case ABORTED:
+				return AbortStatus.ALREADY_ABORTED;
+		}
+	}
+
+	/**
+	 * Asynchronously abort and rollback the given multi-record transaction.
+	 * <p>
+	 * This method registers the command with an event loop and returns.
+	 * The event loop thread will process the command and send the results to the listener.
+	 * <p>
+	 * Requires server version 8.0+
+	 *
+	 * @param eventLoop		event loop that will process the command. If NULL, the event
+	 * 						loop will be chosen by round-robin.
+	 * @param listener		where to send results
+	 * @param txn			multi-record transaction
+	 * @throws AerospikeException	if event loop registration fails
+	 */
+	public final void abort(EventLoop eventLoop, AbortListener listener, Txn txn)
+		throws AerospikeException {
+		if (eventLoop == null) {
+			eventLoop = cluster.eventLoops.next();
+		}
+
+		AsyncTxnRoll atr = new AsyncTxnRoll(cluster, eventLoop, null, txnRollPolicyDefault, txn);
+
+		switch (txn.getState()) {
+			default:
+			case OPEN:
+			case VERIFIED:
+				atr.abort(listener);
+				break;
+
+			case COMMITTED:
+				listener.onSuccess(AbortStatus.ALREADY_COMMITTED);
+				break;
+
+			case ABORTED:
+				listener.onSuccess(AbortStatus.ALREADY_ABORTED);
+				break;
+		}
+	}
+
+	//-------------------------------------------------------
 	// Write Record Operations
 	//-------------------------------------------------------
 
 	/**
 	 * Write record bin(s).
-	 * The policy specifies the transaction timeout, record expiration and how the transaction is
+	 * The policy specifies the command timeouts, record expiration and how the command is
 	 * handled when the record already exists.
 	 *
 	 * @param policy				write configuration parameters, pass in null for defaults
@@ -593,6 +781,11 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		if (policy == null) {
 			policy = writePolicyDefault;
 		}
+
+		if (policy.txn != null) {
+			TxnMonitor.addKey(cluster, policy, key);
+		}
+
 		WriteCommand command = new WriteCommand(cluster, policy, key, bins, Operation.Type.WRITE);
 		command.execute();
 	}
@@ -602,7 +795,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * This method registers the command with an event loop and returns.
 	 * The event loop thread will process the command and send the results to the listener.
 	 * <p>
-	 * The policy specifies the transaction timeout, record expiration and how the transaction is
+	 * The policy specifies the command timeout, record expiration and how the command is
 	 * handled when the record already exists.
 	 *
 	 * @param eventLoop				event loop that will process the command. If NULL, the event
@@ -622,8 +815,9 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		if (policy == null) {
 			policy = writePolicyDefault;
 		}
+
 		AsyncWrite command = new AsyncWrite(cluster, listener, policy, key, bins, Operation.Type.WRITE);
-		eventLoop.execute(cluster, command);
+		AsyncTxnMonitor.execute(eventLoop, cluster, policy, command);
 	}
 
 	//-------------------------------------------------------
@@ -632,7 +826,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 
 	/**
 	 * Append bin string values to existing record bin values.
-	 * The policy specifies the transaction timeout, record expiration and how the transaction is
+	 * The policy specifies the command timeout, record expiration and how the command is
 	 * handled when the record already exists.
 	 * This call only works for string values.
 	 *
@@ -646,6 +840,11 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		if (policy == null) {
 			policy = writePolicyDefault;
 		}
+
+		if (policy.txn != null) {
+			TxnMonitor.addKey(cluster, policy, key);
+		}
+
 		WriteCommand command = new WriteCommand(cluster, policy, key, bins, Operation.Type.APPEND);
 		command.execute();
 	}
@@ -655,7 +854,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * This method registers the command with an event loop and returns.
 	 * The event loop thread will process the command and send the results to the listener.
 	 * <p>
-	 * The policy specifies the transaction timeout, record expiration and how the transaction is
+	 * The policy specifies the command timeout, record expiration and how the command is
 	 * handled when the record already exists.
 	 * This call only works for string values.
 	 *
@@ -676,13 +875,14 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		if (policy == null) {
 			policy = writePolicyDefault;
 		}
+
 		AsyncWrite command = new AsyncWrite(cluster, listener, policy, key, bins, Operation.Type.APPEND);
-		eventLoop.execute(cluster, command);
+		AsyncTxnMonitor.execute(eventLoop, cluster, policy, command);
 	}
 
 	/**
 	 * Prepend bin string values to existing record bin values.
-	 * The policy specifies the transaction timeout, record expiration and how the transaction is
+	 * The policy specifies the command timeout, record expiration and how the command is
 	 * handled when the record already exists.
 	 * This call works only for string values.
 	 *
@@ -696,6 +896,11 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		if (policy == null) {
 			policy = writePolicyDefault;
 		}
+
+		if (policy.txn != null) {
+			TxnMonitor.addKey(cluster, policy, key);
+		}
+
 		WriteCommand command = new WriteCommand(cluster, policy, key, bins, Operation.Type.PREPEND);
 		command.execute();
 	}
@@ -705,7 +910,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * This method registers the command with an event loop and returns.
 	 * The event loop thread will process the command and send the results to the listener.
 	 * <p>
-	 * The policy specifies the transaction timeout, record expiration and how the transaction is
+	 * The policy specifies the command timeout, record expiration and how the command is
 	 * handled when the record already exists.
 	 * This call only works for string values.
 	 *
@@ -726,8 +931,9 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		if (policy == null) {
 			policy = writePolicyDefault;
 		}
+
 		AsyncWrite command = new AsyncWrite(cluster, listener, policy, key, bins, Operation.Type.PREPEND);
-		eventLoop.execute(cluster, command);
+		AsyncTxnMonitor.execute(eventLoop, cluster, policy, command);
 	}
 
 	//-------------------------------------------------------
@@ -737,7 +943,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	/**
 	 * Add integer/double bin values to record bin values. If the record or bin does not exist, the
 	 * record/bin will be created by default with the value to be added. The policy specifies the
-	 * transaction timeout, record expiration and how the transaction is handled when the record
+	 * command timeout, record expiration and how the command is handled when the record
 	 * already exists.
 	 *
 	 * @param policy				write configuration parameters, pass in null for defaults
@@ -750,6 +956,11 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		if (policy == null) {
 			policy = writePolicyDefault;
 		}
+
+		if (policy.txn != null) {
+			TxnMonitor.addKey(cluster, policy, key);
+		}
+
 		WriteCommand command = new WriteCommand(cluster, policy, key, bins, Operation.Type.ADD);
 		command.execute();
 	}
@@ -757,7 +968,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	/**
 	 * Asynchronously add integer/double bin values to record bin values. If the record or bin does
 	 * not exist, the record/bin will be created by default with the value to be added. The policy
-	 * specifies the transaction timeout, record expiration and how the transaction is handled when
+	 * specifies the command timeout, record expiration and how the command is handled when
 	 * the record already exists.
 	 * <p>
 	 * This method registers the command with an event loop and returns.
@@ -780,8 +991,9 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		if (policy == null) {
 			policy = writePolicyDefault;
 		}
+
 		AsyncWrite command = new AsyncWrite(cluster, listener, policy, key, bins, Operation.Type.ADD);
-		eventLoop.execute(cluster, command);
+		AsyncTxnMonitor.execute(eventLoop, cluster, policy, command);
 	}
 
 	//-------------------------------------------------------
@@ -790,7 +1002,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 
 	/**
 	 * Delete record for specified key.
-	 * The policy specifies the transaction timeout.
+	 * The policy specifies the command timeout.
 	 *
 	 * @param policy				delete configuration parameters, pass in null for defaults
 	 * @param key					unique record identifier
@@ -802,6 +1014,11 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		if (policy == null) {
 			policy = writePolicyDefault;
 		}
+
+		if (policy.txn != null) {
+			TxnMonitor.addKey(cluster, policy, key);
+		}
+
 		DeleteCommand command = new DeleteCommand(cluster, policy, key);
 		command.execute();
 		return command.existed();
@@ -812,7 +1029,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * This method registers the command with an event loop and returns.
 	 * The event loop thread will process the command and send the results to the listener.
 	 * <p>
-	 * The policy specifies the transaction timeout.
+	 * The policy specifies the command timeout.
 	 *
 	 * @param eventLoop				event loop that will process the command. If NULL, the event
 	 * 								loop will be chosen by round-robin.
@@ -830,8 +1047,9 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		if (policy == null) {
 			policy = writePolicyDefault;
 		}
+
 		AsyncDelete command = new AsyncDelete(cluster, listener, policy, key);
-		eventLoop.execute(cluster, command);
+		AsyncTxnMonitor.execute(eventLoop, cluster, policy, command);
 	}
 
 	/**
@@ -857,6 +1075,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 
 		if (deletePolicy == null) {
 			deletePolicy = batchDeletePolicyDefault;
+		}
+
+		if (batchPolicy.txn != null) {
+			TxnMonitor.addKeys(cluster, batchPolicy, keys);
 		}
 
 		BatchAttr attr = new BatchAttr();
@@ -962,7 +1184,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 					executor, bn, batchPolicy, keys, null, records, attr);
 			}
 		}
-		executor.execute(commands);
+		AsyncTxnMonitor.executeBatch(batchPolicy, executor, commands, keys);
 	}
 
 	/**
@@ -1029,7 +1251,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 					executor, bn, batchPolicy, keys, null, sent, listener, attr);
 			}
 		}
-		executor.execute(commands);
+		AsyncTxnMonitor.executeBatch(batchPolicy, executor, commands, keys);
 	}
 
 	/**
@@ -1102,6 +1324,11 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		if (policy == null) {
 			policy = writePolicyDefault;
 		}
+
+		if (policy.txn != null) {
+			TxnMonitor.addKey(cluster, policy, key);
+		}
+
 		TouchCommand command = new TouchCommand(cluster, policy, key);
 		command.execute();
 	}
@@ -1129,8 +1356,9 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		if (policy == null) {
 			policy = writePolicyDefault;
 		}
+
 		AsyncTouch command = new AsyncTouch(cluster, listener, policy, key);
-		eventLoop.execute(cluster, command);
+		AsyncTxnMonitor.execute(eventLoop, cluster, policy, command);
 	}
 
 	//-------------------------------------------------------
@@ -1151,6 +1379,11 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		if (policy == null) {
 			policy = readPolicyDefault;
 		}
+
+		if (policy.txn != null) {
+			policy.txn.prepareRead(key.namespace);
+		}
+
 		ExistsCommand command = new ExistsCommand(cluster, policy, key);
 		command.execute();
 		return command.exists();
@@ -1179,6 +1412,11 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		if (policy == null) {
 			policy = readPolicyDefault;
 		}
+
+		if (policy.txn != null) {
+			policy.txn.prepareRead(key.namespace);
+		}
+
 		AsyncExists command = new AsyncExists(cluster, listener, policy, key);
 		eventLoop.execute(cluster, command);
 	}
@@ -1200,6 +1438,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 
 		if (policy == null) {
 			policy = batchPolicyDefault;
+		}
+
+		if (policy.txn != null) {
+			policy.txn.prepareRead(keys);
 		}
 
 		boolean[] existsArray = new boolean[keys.length];
@@ -1258,6 +1500,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			policy = batchPolicyDefault;
 		}
 
+		if (policy.txn != null) {
+			policy.txn.prepareRead(keys);
+		}
+
 		boolean[] existsArray = new boolean[keys.length];
 		AsyncBatchExecutor.ExistsArray executor = new AsyncBatchExecutor.ExistsArray(
 			eventLoop, cluster, listener, keys, existsArray);
@@ -1308,6 +1554,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			policy = batchPolicyDefault;
 		}
 
+		if (policy.txn != null) {
+			policy.txn.prepareRead(keys);
+		}
+
 		AsyncBatchExecutor.ExistsSequence executor = new AsyncBatchExecutor.ExistsSequence(
 			eventLoop, cluster, listener);
 		List<BatchNode> bns = BatchNodeList.generate(cluster, policy, keys, null, false, executor);
@@ -1346,6 +1596,11 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		if (policy == null) {
 			policy = readPolicyDefault;
 		}
+
+		if (policy.txn != null) {
+			policy.txn.prepareRead(key.namespace);
+		}
+
 		ReadCommand command = new ReadCommand(cluster, policy, key);
 		command.execute();
 		return command.getRecord();
@@ -1374,6 +1629,11 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		if (policy == null) {
 			policy = readPolicyDefault;
 		}
+
+		if (policy.txn != null) {
+			policy.txn.prepareRead(key.namespace);
+		}
+
 		AsyncRead command = new AsyncRead(cluster, listener, policy, key, null);
 		eventLoop.execute(cluster, command);
 	}
@@ -1393,6 +1653,11 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		if (policy == null) {
 			policy = readPolicyDefault;
 		}
+
+		if (policy.txn != null) {
+			policy.txn.prepareRead(key.namespace);
+		}
+
 		ReadCommand command = new ReadCommand(cluster, policy, key, binNames);
 		command.execute();
 		return command.getRecord();
@@ -1422,6 +1687,11 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		if (policy == null) {
 			policy = readPolicyDefault;
 		}
+
+		if (policy.txn != null) {
+			policy.txn.prepareRead(key.namespace);
+		}
+
 		AsyncRead command = new AsyncRead(cluster, listener, policy, key, binNames);
 		eventLoop.execute(cluster, command);
 	}
@@ -1440,6 +1710,11 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		if (policy == null) {
 			policy = readPolicyDefault;
 		}
+
+		if (policy.txn != null) {
+			policy.txn.prepareRead(key.namespace);
+		}
+
 		ReadHeaderCommand command = new ReadHeaderCommand(cluster, policy, key);
 		command.execute();
 		return command.getRecord();
@@ -1468,6 +1743,11 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		if (policy == null) {
 			policy = readPolicyDefault;
 		}
+
+		if (policy.txn != null) {
+			policy.txn.prepareRead(key.namespace);
+		}
+
 		AsyncReadHeader command = new AsyncReadHeader(cluster, listener, policy, key);
 		eventLoop.execute(cluster, command);
 	}
@@ -1496,6 +1776,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 
 		if (policy == null) {
 			policy = batchPolicyDefault;
+		}
+
+		if (policy.txn != null) {
+			policy.txn.prepareRead(records);
 		}
 
 		BatchStatus status = new BatchStatus(true);
@@ -1548,6 +1832,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			policy = batchPolicyDefault;
 		}
 
+		if (policy.txn != null) {
+			policy.txn.prepareRead(records);
+		}
+
 		AsyncBatchExecutor.ReadList executor = new AsyncBatchExecutor.ReadList(eventLoop, cluster, listener, records);
 		List<BatchNode> bns = BatchNodeList.generate(cluster, policy, records, executor);
 		AsyncCommand[] commands = new AsyncCommand[bns.size()];
@@ -1597,6 +1885,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			policy = batchPolicyDefault;
 		}
 
+		if (policy.txn != null) {
+			policy.txn.prepareRead(records);
+		}
+
 		AsyncBatchExecutor.ReadSequence executor = new AsyncBatchExecutor.ReadSequence(eventLoop, cluster, listener);
 		List<BatchNode> bns = BatchNodeList.generate(cluster, policy, records, executor);
 		AsyncCommand[] commands = new AsyncCommand[bns.size()];
@@ -1634,6 +1926,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 
 		if (policy == null) {
 			policy = batchPolicyDefault;
+		}
+
+		if (policy.txn != null) {
+			policy.txn.prepareRead(keys);
 		}
 
 		Record[] records = new Record[keys.length];
@@ -1694,6 +1990,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			policy = batchPolicyDefault;
 		}
 
+		if (policy.txn != null) {
+			policy.txn.prepareRead(keys);
+		}
+
 		Record[] records = new Record[keys.length];
 		AsyncBatchExecutor.GetArray executor = new AsyncBatchExecutor.GetArray(
 			eventLoop, cluster, listener, keys, records);
@@ -1745,6 +2045,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			policy = batchPolicyDefault;
 		}
 
+		if (policy.txn != null) {
+			policy.txn.prepareRead(keys);
+		}
+
 		AsyncBatchExecutor.GetSequence executor = new AsyncBatchExecutor.GetSequence(eventLoop, cluster, listener);
 		List<BatchNode> bns = BatchNodeList.generate(cluster, policy, keys, null, false, executor);
 		AsyncCommand[] commands = new AsyncCommand[bns.size()];
@@ -1784,6 +2088,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 
 		if (policy == null) {
 			policy = batchPolicyDefault;
+		}
+
+		if (policy.txn != null) {
+			policy.txn.prepareRead(keys);
 		}
 
 		int readAttr = (binNames == null || binNames.length == 0)?
@@ -1847,6 +2155,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			policy = batchPolicyDefault;
 		}
 
+		if (policy.txn != null) {
+			policy.txn.prepareRead(keys);
+		}
+
 		int readAttr = (binNames == null || binNames.length == 0)?
 			Command.INFO1_READ | Command.INFO1_GET_ALL : Command.INFO1_READ;
 
@@ -1902,6 +2214,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			policy = batchPolicyDefault;
 		}
 
+		if (policy.txn != null) {
+			policy.txn.prepareRead(keys);
+		}
+
 		int readAttr = (binNames == null || binNames.length == 0)?
 			Command.INFO1_READ | Command.INFO1_GET_ALL : Command.INFO1_READ;
 
@@ -1943,6 +2259,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 
 		if (policy == null) {
 			policy = batchPolicyDefault;
+		}
+
+		if (policy.txn != null) {
+			policy.txn.prepareRead(keys);
 		}
 
 		Record[] records = new Record[keys.length];
@@ -2003,6 +2323,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			policy = batchPolicyDefault;
 		}
 
+		if (policy.txn != null) {
+			policy.txn.prepareRead(keys);
+		}
+
 		Record[] records = new Record[keys.length];
 		AsyncBatchExecutor.GetArray executor = new AsyncBatchExecutor.GetArray(
 			eventLoop, cluster, listener, keys, records);
@@ -2055,6 +2379,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			policy = batchPolicyDefault;
 		}
 
+		if (policy.txn != null) {
+			policy.txn.prepareRead(keys);
+		}
+
 		AsyncBatchExecutor.GetSequence executor = new AsyncBatchExecutor.GetSequence(eventLoop, cluster, listener);
 		List<BatchNode> bns = BatchNodeList.generate(cluster, policy, keys, null, false, executor);
 		AsyncCommand[] commands = new AsyncCommand[bns.size()];
@@ -2092,6 +2420,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 
 		if (policy == null) {
 			policy = batchPolicyDefault;
+		}
+
+		if (policy.txn != null) {
+			policy.txn.prepareRead(keys);
 		}
 
 		Record[] records = new Record[keys.length];
@@ -2152,6 +2484,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			policy = batchPolicyDefault;
 		}
 
+		if (policy.txn != null) {
+			policy.txn.prepareRead(keys);
+		}
+
 		Record[] records = new Record[keys.length];
 		AsyncBatchExecutor.GetArray executor = new AsyncBatchExecutor.GetArray(
 			eventLoop, cluster, listener, keys, records);
@@ -2204,6 +2540,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			policy = batchPolicyDefault;
 		}
 
+		if (policy.txn != null) {
+			policy.txn.prepareRead(keys);
+		}
+
 		AsyncBatchExecutor.GetSequence executor = new AsyncBatchExecutor.GetSequence(eventLoop, cluster, listener);
 		List<BatchNode> bns = BatchNodeList.generate(cluster, policy, keys, null, false, executor);
 		AsyncCommand[] commands = new AsyncCommand[bns.size()];
@@ -2249,9 +2589,26 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	public final Record operate(WritePolicy policy, Key key, Operation... operations)
 		throws AerospikeException {
 		OperateArgs args = new OperateArgs(policy, writePolicyDefault, operatePolicyReadDefault, operations);
-		OperateCommand command = new OperateCommand(cluster, key, args);
-		command.execute();
-		return command.getRecord();
+		policy = args.writePolicy;
+
+		if (args.hasWrite) {
+			if (policy.txn != null) {
+				TxnMonitor.addKey(cluster, policy, key);
+			}
+
+			OperateCommandWrite command = new OperateCommandWrite(cluster, key, args);
+			command.execute();
+			return command.getRecord();
+		}
+		else {
+			if (policy.txn != null) {
+				policy.txn.prepareRead(key.namespace);
+			}
+
+			OperateCommandRead command = new OperateCommandRead(cluster, key, args);
+			command.execute();
+			return command.getRecord();
+		}
 	}
 
 	/**
@@ -2284,8 +2641,20 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		}
 
 		OperateArgs args = new OperateArgs(policy, writePolicyDefault, operatePolicyReadDefault, operations);
-		AsyncOperate command = new AsyncOperate(cluster, listener, key, args);
-		eventLoop.execute(cluster, command);
+		policy = args.writePolicy;
+
+		if (args.hasWrite) {
+			AsyncOperateWrite command = new AsyncOperateWrite(cluster, listener, key, args);
+			AsyncTxnMonitor.execute(eventLoop, cluster, args.writePolicy, command);
+		}
+		else {
+			if (policy.txn != null) {
+				policy.txn.prepareRead(key.namespace);
+			}
+
+			AsyncOperateRead command = new AsyncOperateRead(cluster, listener, key, args);
+			eventLoop.execute(cluster, command);
+		}
 	}
 
 	//-------------------------------------------------------
@@ -2315,6 +2684,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 
 		if (policy == null) {
 			policy = batchParentPolicyWriteDefault;
+		}
+
+		if (policy.txn != null) {
+			TxnMonitor.addKeys(cluster, policy, records);
 		}
 
 		BatchStatus status = new BatchStatus(true);
@@ -2481,7 +2854,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 				commands[count++] = new AsyncBatch.OperateListCommand(executor, bn, policy, records);
 			}
 		}
-		executor.execute(commands);
+		AsyncTxnMonitor.executeBatch(policy, executor, commands, records);
 	}
 
 	/**
@@ -2586,7 +2959,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 				commands[count++] = new AsyncBatch.OperateSequenceCommand(executor, bn, policy, listener, records);
 			}
 		}
-		executor.execute(commands);
+		AsyncTxnMonitor.executeBatch(policy, executor, commands, records);
 	}
 
 	/**
@@ -2620,6 +2993,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 
 		if (writePolicy == null) {
 			writePolicy = batchWritePolicyDefault;
+		}
+
+		if (batchPolicy.txn != null) {
+			TxnMonitor.addKeys(cluster, batchPolicy, keys);
 		}
 
 		BatchAttr attr = new BatchAttr(batchPolicy, writePolicy, ops);
@@ -2731,7 +3108,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 					executor, bn, batchPolicy, keys, ops, records, attr);
 			}
 		}
-		executor.execute(commands);
+		AsyncTxnMonitor.executeBatch(batchPolicy, executor, commands, keys);
 	}
 
 	/**
@@ -2801,7 +3178,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 					executor, bn, batchPolicy, keys, ops, sent, listener, attr);
 			}
 		}
-		executor.execute(commands);
+		AsyncTxnMonitor.executeBatch(batchPolicy, executor, commands, keys);
 	}
 
 	//-------------------------------------------------------
@@ -3095,13 +3472,18 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * @param functionName			user defined function
 	 * @param functionArgs			arguments passed in to user defined function
 	 * @return						return value of user defined function
-	 * @throws AerospikeException	if transaction fails
+	 * @throws AerospikeException	if command fails
 	 */
 	public final Object execute(WritePolicy policy, Key key, String packageName, String functionName, Value... functionArgs)
 		throws AerospikeException {
 		if (policy == null) {
 			policy = writePolicyDefault;
 		}
+
+		if (policy.txn != null) {
+			TxnMonitor.addKey(cluster, policy, key);
+		}
+
 		ExecuteCommand command = new ExecuteCommand(cluster, policy, key, packageName, functionName, functionArgs);
 		command.execute();
 
@@ -3168,8 +3550,9 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		if (policy == null) {
 			policy = writePolicyDefault;
 		}
+
 		AsyncExecute command = new AsyncExecute(cluster, listener, policy, key, packageName, functionName, functionArgs);
-		eventLoop.execute(cluster, command);
+		AsyncTxnMonitor.execute(eventLoop, cluster, policy, command);
 	}
 
 	/**
@@ -3206,6 +3589,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 
 		if (udfPolicy == null) {
 			udfPolicy = batchUDFPolicyDefault;
+		}
+
+		if (batchPolicy.txn != null) {
+			TxnMonitor.addKeys(cluster, batchPolicy, keys);
 		}
 
 		byte[] argBytes = Packer.pack(functionArgs);
@@ -3323,7 +3710,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 					executor, bn, batchPolicy, keys, packageName, functionName, argBytes, records, attr);
 			}
 		}
-		executor.execute(commands);
+		AsyncTxnMonitor.executeBatch(batchPolicy, executor, commands, keys);
 	}
 
 	/**
@@ -3399,7 +3786,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 					executor, bn, batchPolicy, keys, packageName, functionName, argBytes, sent, listener, attr);
 			}
 		}
-		executor.execute(commands);
+		AsyncTxnMonitor.executeBatch(batchPolicy, executor, commands, keys);
 	}
 
 	//----------------------------------------------------------
@@ -3432,7 +3819,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		}
 		statement.setAggregateFunction(packageName, functionName, functionArgs);
 
-		cluster.addTran();
+		cluster.addCommandCount();
 
 		long taskId = statement.prepareTaskId();
 		Node[] nodes = cluster.validateNodes();
@@ -3471,7 +3858,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			statement.setOperations(operations);
 		}
 
-		cluster.addTran();
+		cluster.addCommandCount();
 
 		long taskId = statement.prepareTaskId();
 		Node[] nodes = cluster.validateNodes();

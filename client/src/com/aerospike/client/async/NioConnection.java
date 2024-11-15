@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -116,7 +116,7 @@ public final class NioConnection extends AsyncConnection implements Closeable {
 	}
 
 	/**
-	 * Validate connection in a transaction.  Return true if socket is connected and
+	 * Validate connection in a command.  Return true if socket is connected and
 	 * has no data in it's buffer.  Return false, if not connected, socket read error
 	 * or has data in it's buffer.
 	 */

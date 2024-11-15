@@ -26,6 +26,7 @@ import com.aerospike.client.Key;
 import com.aerospike.client.Operation;
 import com.aerospike.client.Record;
 import com.aerospike.client.ResultCode;
+import com.aerospike.client.Txn;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.metrics.LatencyType;
 import com.aerospike.client.policy.BatchPolicy;
@@ -63,9 +64,9 @@ public final class Batch {
 
 		@Override
 		protected boolean parseRow() {
-			skipKey(fieldCount);
-
 			BatchRead record = records.get(batchIndex);
+
+			parseFieldsRead(record.key);
 
 			if (resultCode == 0) {
 				record.setRecord(parseRecord());
@@ -132,7 +133,7 @@ public final class Batch {
 
 		@Override
 		protected boolean parseRow() {
-			skipKey(fieldCount);
+			parseFieldsRead(keys[batchIndex]);
 
 			if (resultCode == 0) {
 				records[batchIndex] = parseRecord();
@@ -185,12 +186,7 @@ public final class Batch {
 
 		@Override
 		protected boolean parseRow() {
-			skipKey(fieldCount);
-
-			if (opCount > 0) {
-				throw new AerospikeException.Parse("Received bins that were not requested!");
-			}
-
+			parseFieldsRead(keys[batchIndex]);
 			existsArray[batchIndex] = resultCode == 0;
 			return true;
 		}
@@ -240,9 +236,9 @@ public final class Batch {
 
 		@Override
 		protected boolean parseRow() {
-			skipKey(fieldCount);
-
 			BatchRecord record = records.get(batchIndex);
+
+			parseFields(record);
 
 			if (resultCode == 0) {
 				record.setRecord(parseRecord());
@@ -275,6 +271,10 @@ public final class Batch {
 
 				if (record.resultCode == ResultCode.NO_RESPONSE) {
 					record.inDoubt = record.hasWrite;
+					
+					if (record.inDoubt && policy.txn != null) {
+						policy.txn.onWriteInDoubt(record.key);
+					}
 				}
 			}
 		}
@@ -329,9 +329,9 @@ public final class Batch {
 
 		@Override
 		protected boolean parseRow() {
-			skipKey(fieldCount);
-
 			BatchRecord record = records[batchIndex];
+
+			parseFields(record);
 
 			if (resultCode == 0) {
 				record.setRecord(parseRecord());
@@ -354,6 +354,10 @@ public final class Batch {
 
 				if (record.resultCode == ResultCode.NO_RESPONSE) {
 					record.inDoubt = true;
+					
+					if (policy.txn != null) {
+						policy.txn.onWriteInDoubt(record.key);
+					}
 				}
 			}
 		}
@@ -414,9 +418,9 @@ public final class Batch {
 
 		@Override
 		protected boolean parseRow() {
-			skipKey(fieldCount);
-
 			BatchRecord record = records[batchIndex];
+
+			parseFields(record);
 
 			if (resultCode == 0) {
 				record.setRecord(parseRecord());
@@ -453,6 +457,10 @@ public final class Batch {
 
 				if (record.resultCode == ResultCode.NO_RESPONSE) {
 					record.inDoubt = true;
+					
+					if (policy.txn != null) {
+						policy.txn.onWriteInDoubt(record.key);
+					}
 				}
 			}
 		}
@@ -460,6 +468,142 @@ public final class Batch {
 		@Override
 		protected BatchCommand createCommand(BatchNode batchNode) {
 			return new UDFCommand(cluster, batchNode, batchPolicy, keys, packageName, functionName, argBytes, records, attr, status);
+		}
+
+		@Override
+		protected List<BatchNode> generateBatchNodes() {
+			return BatchNodeList.generate(cluster, batchPolicy, keys, records, sequenceAP, sequenceSC, batch, attr.hasWrite, status);
+		}
+	}
+
+	//-------------------------------------------------------
+	// MRT
+	//-------------------------------------------------------
+
+	public static final class TxnVerify extends BatchCommand {
+		private final Key[] keys;
+		private final Long[] versions;
+		private final BatchRecord[] records;
+
+		public TxnVerify(
+			Cluster cluster,
+			BatchNode batch,
+			BatchPolicy batchPolicy,
+			Key[] keys,
+			Long[] versions,
+			BatchRecord[] records,
+			BatchStatus status
+		) {
+			super(cluster, batch, batchPolicy, status, false);
+			this.keys = keys;
+			this.versions = versions;
+			this.records = records;
+		}
+
+		@Override
+		protected boolean isWrite() {
+			return false;
+		}
+
+		@Override
+		protected void writeBuffer() {
+			setBatchTxnVerify(batchPolicy, keys, versions, batch);
+		}
+
+		@Override
+		protected boolean parseRow() {
+			skipKey(fieldCount);
+
+			BatchRecord record = records[batchIndex];
+
+			if (resultCode == 0) {
+				record.resultCode = resultCode;
+			}
+			else {
+				record.setError(resultCode, false);
+				status.setRowError();
+			}
+			return true;
+		}
+
+		@Override
+		protected BatchCommand createCommand(BatchNode batchNode) {
+			return new TxnVerify(cluster, batchNode, batchPolicy, keys, versions, records, status);
+		}
+
+		@Override
+		protected List<BatchNode> generateBatchNodes() {
+			return BatchNodeList.generate(cluster, batchPolicy, keys, records, sequenceAP, sequenceSC, batch, false, status);
+		}
+	}
+
+	public static final class TxnRoll extends BatchCommand {
+		private final Txn txn;
+		private final Key[] keys;
+		private final BatchRecord[] records;
+		private final BatchAttr attr;
+
+		public TxnRoll(
+			Cluster cluster,
+			BatchNode batch,
+			BatchPolicy batchPolicy,
+			Txn txn,
+			Key[] keys,
+			BatchRecord[] records,
+			BatchAttr attr,
+			BatchStatus status
+		) {
+			super(cluster, batch, batchPolicy, status, false);
+			this.txn = txn;
+			this.keys = keys;
+			this.records = records;
+			this.attr = attr;
+		}
+
+		@Override
+		protected boolean isWrite() {
+			return attr.hasWrite;
+		}
+
+		@Override
+		protected void writeBuffer() {
+			setBatchTxnRoll(batchPolicy, txn, keys, batch, attr);
+		}
+
+		@Override
+		protected boolean parseRow() {
+			skipKey(fieldCount);
+
+			BatchRecord record = records[batchIndex];
+
+			if (resultCode == 0) {
+				record.resultCode = resultCode;
+			}
+			else {
+				record.setError(resultCode, Command.batchInDoubt(attr.hasWrite, commandSentCounter));
+				status.setRowError();
+			}
+			return true;
+		}
+
+		@Override
+		protected void inDoubt() {
+			if (!attr.hasWrite) {
+				return;
+			}
+
+			for (int index : batch.offsets) {
+				BatchRecord record = records[index];
+
+				if (record.resultCode == ResultCode.NO_RESPONSE) {
+					record.inDoubt = true;
+				}
+			}
+		}
+
+		@Override
+		protected BatchCommand createCommand(BatchNode batchNode) {
+			return new TxnRoll(cluster, batchNode, batchPolicy, txn, keys, records, attr, status);
 		}
 
 		@Override
@@ -516,6 +660,32 @@ public final class Batch {
 			}
 			finally {
 				parent.onComplete();
+			}
+		}
+
+		protected final void parseFieldsRead(Key key) {
+			if (policy.txn != null) {
+				Long version = parseVersion(fieldCount);
+				policy.txn.onRead(key, version);
+			}
+			else {
+				skipKey(fieldCount);
+			}
+		}
+
+		protected final void parseFields(BatchRecord br) {
+			if (policy.txn != null) {
+				Long version = parseVersion(fieldCount);
+
+				if (br.hasWrite) {
+					policy.txn.onWrite(br.key, version, resultCode);
+				}
+				else {
+					policy.txn.onRead(br.key, version);
+				}
+			}
+			else {
+				skipKey(fieldCount);
 			}
 		}
 

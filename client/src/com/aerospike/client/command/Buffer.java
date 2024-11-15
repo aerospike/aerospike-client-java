@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -276,7 +276,7 @@ public final class Buffer {
 		int mult = 1;
 
 		for (int i = end - 1; i >= begin; i--) {
-			val += ((int)buf[i] - 48) * mult;
+			val += (buf[i] - 48) * mult;
 			mult *= 10;
 		}
 		return val;
@@ -449,6 +449,38 @@ public final class Buffer {
 			((long)(buf[offset+6] & 0xFF) << 48) |
 			((long)(buf[offset+7] & 0xFF) << 56)
 			);
+	}
+
+	//-------------------------------------------------------
+	// Transaction version conversions.
+	//-------------------------------------------------------
+
+	/**
+	 * Convert long to a 7 byte record version for MRT.
+	 */
+	public static void longToVersionBytes(long v, byte[] buf, int offset) {
+		buf[offset++] = (byte)(v >>> 0);
+		buf[offset++] = (byte)(v >>> 8);
+		buf[offset++] = (byte)(v >>> 16);
+		buf[offset++] = (byte)(v >>> 24);
+		buf[offset++] = (byte)(v >>> 32);
+		buf[offset++] = (byte)(v >>> 40);
+		buf[offset] = (byte)(v >>> 48);
+	}
+
+	/**
+	 * Convert 7 byte record version to a long for MRT.
+	 */
+	public static long versionBytesToLong(byte[] buf, int offset) {
+		return (
+			((long)(buf[offset]   & 0xFF) << 0) |
+			((long)(buf[offset+1] & 0xFF) << 8) |
+			((long)(buf[offset+2] & 0xFF) << 16) |
+			((long)(buf[offset+3] & 0xFF) << 24) |
+			((long)(buf[offset+4] & 0xFF) << 32) |
+			((long)(buf[offset+5] & 0xFF) << 40) |
+			((long)(buf[offset+6] & 0xFF) << 48)
+		);
 	}
 
 	//-------------------------------------------------------

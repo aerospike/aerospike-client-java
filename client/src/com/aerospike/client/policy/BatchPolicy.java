@@ -19,7 +19,7 @@ package com.aerospike.client.policy;
 /**
  * Batch parent policy.
  */
-public final class BatchPolicy extends Policy {
+public class BatchPolicy extends Policy {
 	/**
 	 * Maximum number of concurrent synchronous batch node request threads to server nodes.
 	 * Asynchronous batch requests ignore this field and always issue all node requests in parallel.
@@ -64,7 +64,7 @@ public final class BatchPolicy extends Policy {
 	 * Allow batch to be processed immediately in the server's receiving thread for in-memory
 	 * namespaces. If false, the batch will always be processed in separate service threads.
 	 * <p>
-	 * For batch transactions with smaller sized records (&lt;= 1K per record), inline
+	 * For batch commands with smaller sized records (&lt;= 1K per record), inline
 	 * processing will be significantly faster on in-memory namespaces.
 	 * <p>
 	 * Inline processing can introduce the possibility of unfairness because the server
