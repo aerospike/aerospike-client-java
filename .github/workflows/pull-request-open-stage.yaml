@@ -9,9 +9,8 @@ on:
       - reopened
   workflow_dispatch:
     inputs:
-      branch:
+      source-branch:
         type: string
-        default: stage
         description: Base branch to use if manually starting. By default base_ref will empty if triggering manually hence base_ref is only available on PRs.
 
 jobs:
@@ -19,7 +18,8 @@ jobs:
     name: Build stage - Test with latest version of Aerospike Enterprise Server
     uses: ./.github/workflows/build-stage.yaml
     with:
-      branch: ${{ github.base_ref || inputs.branch }}
+      branch: ${{ github.ref }}
+      source-branch: ${{ inputs.source-branch || github.base_ref }}
     secrets: inherit
 
   test-with-server-rc:
@@ -27,5 +27,6 @@ jobs:
     uses: ./.github/workflows/build-stage.yaml
     with:
       branch: ${{ github.base_ref || inputs.branch }}
+      source-branch: ${{ inputs.source-branch || github.base_ref }}
       use-server-rc: true
     secrets: inherit

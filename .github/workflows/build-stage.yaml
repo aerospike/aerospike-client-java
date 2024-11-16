@@ -4,6 +4,9 @@ on:
       branch:
         type: string
         required: true
+      source-branch:
+        type: string
+        required: false
       use-server-rc:
         type: boolean
         required: false
@@ -32,20 +35,14 @@ jobs:
       - name: debug
         run: |
           echo "${{ inputs.branch }}"
-          echo "${{ github.ref }}"
+          echo "${{ github.base_ref }}"
 
   build-java-21:
-    if: ${{ inputs.branch == 'refs/heads/stage' || inputs.branch == 'stage' }}
+    if: ${{ inputs.source-branch == 'refs/heads/stage' }}
     uses: ./.github/workflows/build.yaml
-    strategy:
-      matrix:
-        java-version: [21]
-        include:
-          - java-version: 21
-            branch: "stage"
     with:
-      java-version: ${{ matrix.java-version }}
-      branch: ${{ matrix.branch }}
+      java-version: 21
+      branch: ${{ inputs.branch }}
       bump-version: ${{ inputs.bump-version }}
       use-server-rc: ${{ inputs.use-server-rc }}
       server-tag: ${{ inputs.server-tag }}
@@ -53,17 +50,11 @@ jobs:
     secrets: inherit
 
   build-java-8:
-    if: ${{ inputs.branch == 'refs/heads/stage-jdk8' || inputs.branch == 'stage-jdk8' }}
+    if: ${{ inputs.source-branch == 'refs/heads/stage-jdk8' }}
     uses: ./.github/workflows/build.yaml
-    strategy:
-      matrix:
-        java-version: [8]
-        include:
-          - java-version: 8
-            branch: "stage-jdk8"
     with:
-      java-version: ${{ matrix.java-version }}
-      branch: ${{ matrix.branch }}
+      java-version: 8
+      branch: ${{ inputs.branch }}
       bump-version: ${{ inputs.bump-version }}
       use-server-rc: ${{ inputs.use-server-rc }}
       server-tag: ${{ inputs.server-tag }}

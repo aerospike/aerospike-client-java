@@ -33,8 +33,6 @@ on:
         required: true
       JFROG_DOCKER_TOKEN:
         required: true
-      JFROG_MAVEN_TOKEN:
-        required: true
 
 jobs:
   build:
@@ -52,6 +50,11 @@ jobs:
         with:
           distribution: "semeru" # See 'Supported distributions' for available options
           java-version: ${{ inputs.java-version }}
+
+      - name: Debug, list files
+        run: |
+          ls -laR .github
+          echo "Checked out branch ${{ inputs.branch }}"
 
       - name: Increment version
         if: ${{ inputs.bump-version == true }}
@@ -95,4 +98,3 @@ jobs:
         with:
           version: ${{ steps.get-new-version.outputs.new_version }}
           jdk-version: "jdk${{ inputs.java-version }}"
-          jfrog-token: ${{ secrets.JFROG_MAVEN_TOKEN }}
