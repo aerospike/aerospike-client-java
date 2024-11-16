@@ -16,9 +16,14 @@ inputs:
     description: ""
     required: false
     default: https://aerospike.jfrog.io/
-  jfrog-token:
+  oidc-provider:
     description: ""
-    required: true
+    required: false
+    default: gh-aerospike-clients
+  oidc-audience:
+    description: ""
+    required: false
+    default: aerospike/clients
 
 runs:
   using: "composite"
@@ -27,7 +32,9 @@ runs:
       uses: jfrog/setup-jfrog-cli@v3
       env:
         JF_URL: ${{ inputs.jfrog-platform-url }}
-        JF_ACCESS_TOKEN: ${{ inputs.jfrog-token }}
+      with:
+        oidc-provider-name: ${{ inputs.oidc-provider }}
+        oidc-audience: ${{ inputs.oidc-audience }}
 
     - name: Upload from branches to JFrog
       shell: bash

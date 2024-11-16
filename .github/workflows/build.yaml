@@ -33,8 +33,6 @@ on:
         required: true
       JFROG_DOCKER_TOKEN:
         required: true
-      JFROG_MAVEN_TOKEN:
-        required: true
 
 jobs:
   build:
@@ -95,4 +93,3 @@ jobs:
         with:
           version: ${{ steps.get-new-version.outputs.new_version }}
           jdk-version: "jdk${{ inputs.java-version }}"
-          jfrog-token: ${{ secrets.JFROG_MAVEN_TOKEN }}
