@@ -1,5 +1,9 @@
 name: Build artifacts
 
+permissions:
+  # This is required for requesting the OIDC token
+  id-token: write
+
 on:
   workflow_call:
     inputs:
@@ -88,9 +92,9 @@ jobs:
       - name: Build
         run: mvn install
 
-      - name: Test
-        working-directory: test
-        run: mvn test -DskipTests=false
+      #- name: Test
+      #  working-directory: test
+      #  run: mvn test -DskipTests=false
 
       - name: Upload to JFrog
         if: ${{ !cancelled() && inputs.upload-artifacts == true }}

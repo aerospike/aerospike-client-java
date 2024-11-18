@@ -20,6 +20,7 @@ jobs:
     with:
       branch: ${{ github.ref }}
       source-branch: ${{ inputs.source-branch || github.base_ref }}
+      upload-artifacts: true
     secrets: inherit
 
   test-with-server-rc:
@@ -29,4 +30,5 @@ jobs:
       branch: ${{ github.base_ref || inputs.branch }}
       source-branch: ${{ inputs.source-branch || github.base_ref }}
       use-server-rc: true
+      upload-artifacts: true
     secrets: inherit
