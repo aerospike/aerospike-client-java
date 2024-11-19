@@ -367,6 +367,7 @@ public final class BatchSingle {
 	public static final class TxnVerify extends BaseCommand {
 		private final long version;
 		private final BatchRecord record;
+		private final long id;
 
 		public TxnVerify(
 			Cluster cluster,
@@ -374,16 +375,18 @@ public final class BatchSingle {
 			long version,
 			BatchRecord record,
 			BatchStatus status,
-			Node node
+			Node node,
+			long id
 		) {
 			super(cluster, policy, status, record.key, node, false);
 			this.version = version;
 			this.record = record;
+			this.id = id;
 		}
 
 		@Override
 		protected void writeBuffer() {
-			setTxnVerify(record.key, version);
+			setTxnVerify(record.key, version, id);
 		}
 
 		@Override

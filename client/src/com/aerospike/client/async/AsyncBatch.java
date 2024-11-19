@@ -942,6 +942,7 @@ public final class AsyncBatch {
 		private final Key[] keys;
 		private final Long[] versions;
 		private final BatchRecord[] records;
+		private final long id;
 
 		public TxnVerify(
 			AsyncBatchExecutor parent,
@@ -949,17 +950,19 @@ public final class AsyncBatch {
 			BatchPolicy batchPolicy,
 			Key[] keys,
 			Long[] versions,
-			BatchRecord[] records
+			BatchRecord[] records,
+			long id
 		) {
 			super(parent, batch, batchPolicy, false);
 			this.keys = keys;
 			this.versions = versions;
 			this.records = records;
+			this.id = id;
 		}
 
 		@Override
 		protected void writeBuffer() {
-			setBatchTxnVerify(batchPolicy, keys, versions, batch);
+			setBatchTxnVerify(batchPolicy, keys, versions, batch, id);
 		}
 
 		@Override
@@ -979,7 +982,7 @@ public final class AsyncBatch {
 
 		@Override
 		protected AsyncBatchCommand createCommand(BatchNode batchNode) {
-			return new TxnVerify(parent, batchNode, batchPolicy, keys, versions, records);
+			return new TxnVerify(parent, batchNode, batchPolicy, keys, versions, records, id);
 		}
 
 		@Override

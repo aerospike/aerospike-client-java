@@ -180,9 +180,13 @@ public class Command {
 		compress(policy);
 	}
 
-	public final void setTxnVerify(Key key, long ver) {
+	public final void setTxnVerify(Key key, long ver, long id) {
 		begin();
 		int fieldCount = estimateKeySize(key);
+
+		// MRT ID field.
+		dataOffset += 8 + FIELD_HEADER_SIZE;
+		fieldCount++;
 
 		// Version field.
 		dataOffset += 7 + FIELD_HEADER_SIZE;
@@ -203,6 +207,7 @@ public class Command {
 		dataOffset = MSG_TOTAL_HEADER_SIZE;
 
 		writeKey(key);
+		writeFieldLE(id, FieldType.MRT_ID);
 		writeFieldVersion(ver);
 		end();
 	}
@@ -211,7 +216,8 @@ public class Command {
 		BatchPolicy policy,
 		Key[] keys,
 		Long[] versions,
-		BatchNode batch
+		BatchNode batch,
+		long id
 	) {
 		// Estimate buffer size.
 		begin();
@@ -239,6 +245,9 @@ public class Command {
 				dataOffset += 9; // header(4) + info4(1) + fieldCount(2) + opCount(2) = 9
 				dataOffset += Buffer.estimateSizeUtf8(key.namespace) + FIELD_HEADER_SIZE;
 				dataOffset += Buffer.estimateSizeUtf8(key.setName) + FIELD_HEADER_SIZE;
+
+				// MRT ID field.
+				dataOffset += 8 + FIELD_HEADER_SIZE;
 
 				if (ver != null) {
 					dataOffset += 7 + FIELD_HEADER_SIZE;
@@ -287,11 +296,15 @@ public class Command {
 
 				int fieldCount = 0;
 
+				// MRT ID field.
+				fieldCount++;
+
 				if (ver != null) {
 					fieldCount++;
 				}
 
 				writeBatchFields(key, fieldCount, 0);
+				writeFieldLE(id, FieldType.MRT_ID);
 
 				if (ver != null) {
 					writeFieldVersion(ver);

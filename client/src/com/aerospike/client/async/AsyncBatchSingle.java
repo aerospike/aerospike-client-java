@@ -918,6 +918,7 @@ public final class AsyncBatchSingle {
 	public static class TxnVerify extends AsyncBaseCommand {
 		private final long version;
 		private final BatchRecord record;
+		private final long id;
 
 		public TxnVerify(
 			AsyncBatchExecutor executor,
@@ -925,16 +926,18 @@ public final class AsyncBatchSingle {
 			BatchPolicy policy,
 			long version,
 			BatchRecord record,
-			Node node
+			Node node,
+			long id
 		) {
 			super(executor, cluster, policy, record.key, node, false);
 			this.version = version;
 			this.record = record;
+			this.id = id;
 		}
 
 		@Override
 		protected void writeBuffer() {
-			setTxnVerify(record.key, version);
+			setTxnVerify(record.key, version, id);
 		}
 
 		@Override
