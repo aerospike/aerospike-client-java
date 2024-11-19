@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -21,11 +21,11 @@ import org.junit.BeforeClass;
 import org.junit.runner.RunWith;
 import org.junit.runners.Suite;
 
+import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.Host;
 import com.aerospike.client.IAerospikeClient;
 import com.aerospike.client.Log;
 import com.aerospike.client.policy.ClientPolicy;
-import com.aerospike.client.proxy.AerospikeClientFactory;
 import com.aerospike.test.sync.basic.TestAdd;
 import com.aerospike.test.sync.basic.TestAppend;
 import com.aerospike.test.sync.basic.TestBatch;
@@ -49,6 +49,7 @@ import com.aerospike.test.sync.basic.TestReplace;
 import com.aerospike.test.sync.basic.TestScan;
 import com.aerospike.test.sync.basic.TestServerInfo;
 import com.aerospike.test.sync.basic.TestTouch;
+import com.aerospike.test.sync.basic.TestTxn;
 import com.aerospike.test.sync.basic.TestUDF;
 import com.aerospike.test.sync.query.TestIndex;
 import com.aerospike.test.sync.query.TestQueryAverage;
@@ -92,6 +93,7 @@ import com.aerospike.test.util.Args;
 	TestScan.class,
 	TestServerInfo.class,
 	TestTouch.class,
+	TestTxn.class,
 	TestUDF.class,
 	TestIndex.class,
 	TestQueryAverage.class,
@@ -124,7 +126,7 @@ public class SuiteSync {
 
 		Host[] hosts = Host.parseHosts(args.host, args.port);
 
-		client = AerospikeClientFactory.getClient(policy, args.useProxyClient, hosts);
+		client = new AerospikeClient(policy, hosts);
 
 		try {
 			args.setServerSpecific(client);

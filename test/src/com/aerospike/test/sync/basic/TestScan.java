@@ -43,10 +43,6 @@ public class TestScan extends TestSync implements ScanCallback {
 
 	@Test
 	public void scanSeries() {
-		if (args.useProxyClient) {
-			System.out.println("Skip TestScan.scanSeries");
-			return;
-		}
 		ScanPolicy policy = new ScanPolicy();
 		List<String> nodeList = client.getNodeNames();
 

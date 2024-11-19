@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -276,9 +276,10 @@ public final class Key {
 	 */
 	@Override
 	public int hashCode() {
-		final int prime = 31;
-		int result = prime + Arrays.hashCode(digest);
-		return prime * result + namespace.hashCode();
+		// The digest is already a hash, so pick 4 bytes from the 20 byte digest at a
+		// random offset (in this case 8).
+		final int result = Buffer.littleBytesToInt(digest, 8) + 31;
+		return result * 31 + namespace.hashCode();
 	}
 
 	/**
@@ -289,14 +290,16 @@ public final class Key {
 		if (this == obj) {
 			return true;
 		}
+
 		if (obj == null || getClass() != obj.getClass()) {
 			return false;
 		}
+
 		Key other = (Key) obj;
 
-		if (! Arrays.equals(digest, other.digest))
+		if (! Arrays.equals(digest, other.digest)) {
 			return false;
-
+		}
 		return namespace.equals(other.namespace);
 	}
 

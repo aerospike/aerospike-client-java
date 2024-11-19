@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -100,10 +100,16 @@ public class TestAsyncOperate extends TestAsync {
 				map.put(Value.get("b"), Value.get(2));
 				map.put(Value.get("c"), Value.get(3));
 
-				client.operate(eventLoop, new MapHandler(), null, key,
+				try {
+					client.operate(eventLoop, new MapHandler(), null, key,
 						MapOperation.putItems(MapPolicy.Default, binName, map),
 						MapOperation.getByRankRange(binName, -1, 1, MapReturnType.KEY_VALUE)
-						);
+					);
+				}
+				catch (Throwable t) {
+					setError(t);
+					notifyComplete();
+				}
 			}
 
 			public void onFailure(AerospikeException e) {

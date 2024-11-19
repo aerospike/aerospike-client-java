@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -40,7 +40,7 @@ public class BatchRecord {
 	public int resultCode;
 
 	/**
-	 * Is it possible that the write transaction may have completed even though an error
+	 * Is it possible that the write command may have completed even though an error
 	 * occurred for this record. This may be the case when a client error occurs (like timeout)
 	 * after the command was sent to the server.
 	 */

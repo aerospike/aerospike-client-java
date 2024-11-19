@@ -6,7 +6,7 @@
   <parent>
     <groupId>com.aerospike</groupId>
     <artifactId>aerospike-parent</artifactId>
-    <version>8.1.4</version>
+    <version>9.0.0</version>
   </parent>
   <artifactId>aerospike-client-test</artifactId>
   <packaging>jar</packaging>
@@ -22,11 +22,6 @@
     <dependency>
       <groupId>com.aerospike</groupId>
       <artifactId>aerospike-client-jdk8</artifactId>
-    </dependency>
-
-    <dependency>
-      <groupId>com.aerospike</groupId>
-      <artifactId>aerospike-proxy-client</artifactId>
     </dependency>
 
     <dependency>

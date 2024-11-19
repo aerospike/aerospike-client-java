@@ -25,6 +25,7 @@ import com.aerospike.client.Key;
 import com.aerospike.client.Operation;
 import com.aerospike.client.Record;
 import com.aerospike.client.ResultCode;
+import com.aerospike.client.Txn;
 import com.aerospike.client.Value;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.Connection;
@@ -92,6 +93,7 @@ public final class BatchSingle {
 		@Override
 		protected void parseResult(Connection conn) throws IOException {
 			RecordParser rp = new RecordParser(conn, dataBuffer);
+			rp.parseFields(policy.txn, key, false);
 
 			if (rp.resultCode == ResultCode.OK) {
 				records[index] = rp.parseRecord(isOperation);
@@ -127,6 +129,7 @@ public final class BatchSingle {
 		@Override
 		protected void parseResult(Connection conn) throws IOException {
 			RecordParser rp = new RecordParser(conn, dataBuffer);
+			rp.parseFields(policy.txn, key, false);
 
 			if (rp.resultCode == 0) {
 				records[index] = new Record(null, rp.generation, rp.expiration);
@@ -156,6 +159,7 @@ public final class BatchSingle {
 		@Override
 		protected void parseResult(Connection conn) throws IOException {
 			RecordParser rp = new RecordParser(conn, dataBuffer);
+			rp.parseFields(policy.txn, key, false);
 
 			if (rp.resultCode == ResultCode.OK) {
 				record.setRecord(rp.parseRecord(true));
@@ -195,7 +199,7 @@ public final class BatchSingle {
 		@Override
 		protected void parseResult(Connection conn) throws IOException {
 			RecordParser rp = new RecordParser(conn, dataBuffer);
-
+			rp.parseFields(policy.txn, key, false);
 			existsArray[index] = rp.resultCode == 0;
 		}
 	}
@@ -228,6 +232,7 @@ public final class BatchSingle {
 		@Override
 		protected void parseResult(Connection conn) throws IOException {
 			RecordParser rp = new RecordParser(conn, dataBuffer);
+			rp.parseFields(policy.txn, key, record.hasWrite);
 
 			if (rp.resultCode == ResultCode.OK) {
 				record.setRecord(rp.parseRecord(true));
@@ -271,6 +276,7 @@ public final class BatchSingle {
 		@Override
 		protected void parseResult(Connection conn) throws IOException {
 			RecordParser rp = new RecordParser(conn, dataBuffer);
+			rp.parseFields(policy.txn, key, true);
 
 			if (rp.resultCode == ResultCode.OK || rp.resultCode == ResultCode.KEY_NOT_FOUND_ERROR) {
 				record.setRecord(new Record(null, rp.generation, rp.expiration));
@@ -323,6 +329,7 @@ public final class BatchSingle {
 		@Override
 		protected void parseResult(Connection conn) throws IOException {
 			RecordParser rp = new RecordParser(conn, dataBuffer);
+			rp.parseFields(policy.txn, key, true);
 
 			if (rp.resultCode == ResultCode.OK) {
 				record.setRecord(rp.parseRecord(false));
@@ -338,6 +345,92 @@ public final class BatchSingle {
 					record.inDoubt = Command.batchInDoubt(true, commandSentCounter);
 					status.setRowError();
 				}
+			}
+			else {
+				record.setError(rp.resultCode, Command.batchInDoubt(true, commandSentCounter));
+				status.setRowError();
+			}
+		}
+
+		@Override
+		public void setInDoubt() {
+			if (record.resultCode == ResultCode.NO_RESPONSE) {
+				record.inDoubt = true;
+			}
+		}
+	}
+
+	//-------------------------------------------------------
+	// MRT
+	//-------------------------------------------------------
+
+	public static final class TxnVerify extends BaseCommand {
+		private final long version;
+		private final BatchRecord record;
+
+		public TxnVerify(
+			Cluster cluster,
+			BatchPolicy policy,
+			long version,
+			BatchRecord record,
+			BatchStatus status,
+			Node node
+		) {
+			super(cluster, policy, status, record.key, node, false);
+			this.version = version;
+			this.record = record;
+		}
+
+		@Override
+		protected void writeBuffer() {
+			setTxnVerify(record.key, version);
+		}
+
+		@Override
+		protected void parseResult(Connection conn) throws IOException {
+			RecordParser rp = new RecordParser(conn, dataBuffer);
+
+			if (rp.resultCode == ResultCode.OK) {
+				record.resultCode = rp.resultCode;
+			}
+			else {
+				record.setError(rp.resultCode, false);
+				status.setRowError();
+			}
+		}
+	}
+
+	public static final class TxnRoll extends BaseCommand {
+		private final Txn txn;
+		private final BatchRecord record;
+		private final int attr;
+
+		public TxnRoll(
+			Cluster cluster,
+			BatchPolicy policy,
+			Txn txn,
+			BatchRecord record,
+			BatchStatus status,
+			Node node,
+			int attr
+		) {
+			super(cluster, policy, status, record.key, node, true);
+			this.txn = txn;
+			this.record = record;
+			this.attr = attr;
+		}
+
+		@Override
+		protected void writeBuffer() {
+			setTxnRoll(record.key, txn, attr);
+		}
+
+		@Override
+		protected void parseResult(Connection conn) throws IOException {
+			RecordParser rp = new RecordParser(conn, dataBuffer);
+
+			if (rp.resultCode == ResultCode.OK) {
+				record.resultCode = rp.resultCode;
 			}
 			else {
 				record.setError(rp.resultCode, Command.batchInDoubt(true, commandSentCounter));

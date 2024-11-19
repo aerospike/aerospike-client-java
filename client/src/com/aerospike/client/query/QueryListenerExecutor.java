@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -34,7 +34,7 @@ public final class QueryListenerExecutor {
 		QueryListener listener,
 		PartitionTracker tracker
 	) {
-		cluster.addTran();
+		cluster.addCommandCount();
 
 		long taskId = statement.prepareTaskId();
 

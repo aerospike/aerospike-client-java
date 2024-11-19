@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -27,7 +27,7 @@ import com.aerospike.client.policy.BatchPolicy;
 public final class BatchExecutor {
 
 	public static void execute(Cluster cluster, BatchPolicy policy, IBatchCommand[] commands, BatchStatus status) {
-		cluster.addTran();
+		cluster.addCommandCount();
 
 		if (policy.maxConcurrentThreads == 1 || commands.length <= 1) {
 			// Run batch requests sequentially in same thread.

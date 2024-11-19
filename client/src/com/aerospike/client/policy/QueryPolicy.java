@@ -18,6 +18,9 @@ package com.aerospike.client.policy;
 
 /**
  * Container object for policy attributes used in query operations.
+ * <p>
+ * Inherited Policy fields {@link Policy#txn} and {@link Policy#failOnFilteredOut} are ignored
+ * in query commands.
  */
 public class QueryPolicy extends Policy {
 	/**

@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -16,10 +16,7 @@
  */
 package com.aerospike.client.command;
 
-import com.aerospike.client.Key;
 import com.aerospike.client.Operation;
-import com.aerospike.client.cluster.Cluster;
-import com.aerospike.client.cluster.Partition;
 import com.aerospike.client.policy.WritePolicy;
 
 public final class OperateArgs {
@@ -111,14 +108,5 @@ public final class OperateArgs {
 			wattr |= Command.INFO2_RESPOND_ALL_OPS;
 		}
 		writeAttr = wattr;
-	}
-
-	public Partition getPartition(Cluster cluster, Key key) {
-		if (hasWrite) {
-			return Partition.write(cluster, writePolicy, key);
-		}
-		else {
-			return Partition.read(cluster, writePolicy, key);
-		}
 	}
 }

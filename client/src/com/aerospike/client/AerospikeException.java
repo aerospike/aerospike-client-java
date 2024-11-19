@@ -150,14 +150,14 @@ public class AerospikeException extends RuntimeException {
 	}
 
 	/**
-	 * Get transaction policy.  Will be null for non-transaction exceptions.
+	 * Get command policy.  Will be null for non-command exceptions.
 	 */
 	public final Policy getPolicy() {
 		return policy;
 	}
 
 	/**
-	 * Set transaction policy.
+	 * Set command policy.
 	 */
 	public final void setPolicy(Policy policy) {
 		this.policy = policy;
@@ -199,14 +199,14 @@ public class AerospikeException extends RuntimeException {
 	}
 
 	/**
-	 * Is it possible that write transaction may have completed.
+	 * Is it possible that write command may have completed.
 	 */
 	public final boolean getInDoubt() {
 		return inDoubt;
 	}
 
 	/**
-	 * Set whether it is possible that the write transaction may have completed
+	 * Set whether it is possible that the write command may have completed
 	 * even though this exception was generated.  This may be the case when a
 	 * client error occurs (like timeout) after the command was sent to the server.
 	 */
@@ -434,6 +434,11 @@ public class AerospikeException extends RuntimeException {
 			super(ResultCode.BATCH_FAILED, "Batch failed", e);
 			this.records = records;
 		}
+
+		public BatchRecordArray(BatchRecord[] records, String message, Throwable e) {
+			super(ResultCode.BATCH_FAILED, message, e);
+			this.records = records;
+		}
 	}
 
 	/**
@@ -487,6 +492,85 @@ public class AerospikeException extends RuntimeException {
 
 		public Backoff(int resultCode) {
 			super(resultCode);
+		}
+	}
+
+	/**
+	 * Exception thrown when {@link AerospikeClient#commit(com.aerospike.client.Tran)} fails.
+	 */
+	public static final class Commit extends AerospikeException {
+		private static final long serialVersionUID = 1L;
+
+		/**
+		 * Error status of the attempted commit.
+		 */
+		public final CommitError error;
+
+		/**
+		 * Verify result for each read key in the MRT. May be null if failure occurred before verify.
+		 */
+		public final BatchRecord[] verifyRecords;
+
+		/**
+		 * Roll forward/backward result for each write key in the MRT. May be null if failure occurred before
+		 * roll forward/backward.
+		 */
+		public final BatchRecord[] rollRecords;
+
+		public Commit(CommitError error, BatchRecord[] verifyRecords, BatchRecord[] rollRecords) {
+			super(ResultCode.TXN_FAILED, error.str);
+			this.error = error;
+			this.verifyRecords = verifyRecords;
+			this.rollRecords = rollRecords;
+		}
+
+		public Commit(CommitError error, BatchRecord[] verifyRecords, BatchRecord[] rollRecords, Throwable cause) {
+			super(ResultCode.TXN_FAILED, error.str, cause);
+			this.error = error;
+			this.verifyRecords = verifyRecords;
+			this.rollRecords = rollRecords;
+		}
+
+		@Override
+		public String getMessage() {
+			String msg = super.getMessage();
+			StringBuilder sb = new StringBuilder(1024);
+			recordsToString(sb, "verify errors:", verifyRecords);
+			recordsToString(sb, "roll errors:", rollRecords);
+			return msg + sb.toString();
+		}
+	}
+
+	private static void recordsToString(StringBuilder sb, String title, BatchRecord[] records) {
+		if (records == null) {
+			return;
+		}
+
+		int count = 0;
+
+		for (BatchRecord br : records) {
+			// Only show results with an error response.
+			if (!(br.resultCode == ResultCode.OK || br.resultCode == ResultCode.NO_RESPONSE)) {
+				// Only show first 3 errors.
+				if (count >= 3) {
+					sb.append(System.lineSeparator());
+					sb.append("...");
+					break;
+				}
+
+				if (count == 0) {
+					sb.append(System.lineSeparator());
+					sb.append(title);
+				}
+
+				sb.append(System.lineSeparator());
+				sb.append(br.key);
+				sb.append(',');
+				sb.append(br.resultCode);
+				sb.append(',');
+				sb.append(br.inDoubt);
+				count++;
+			}
 		}
 	}
 }
