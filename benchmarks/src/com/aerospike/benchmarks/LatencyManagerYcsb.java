@@ -91,7 +91,7 @@ public class LatencyManagerYcsb implements LatencyManager {
 		}
 
 		if(this.openTelemetry != null) {
-			this.openTelemetry.recordElapsedTime(this.latencyType, latencyMs, false);
+			this.openTelemetry.recordElapsedTime(this.latencyType, latencyMs);
 		}
 	}
 

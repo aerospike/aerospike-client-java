@@ -75,7 +75,6 @@ public class LatencyManagerAerospike implements LatencyManager {
 		}
 		else {
 			elapsed = elapsedNanos / NS_TO_MS;
-
 			// Round up elapsed to nearest millisecond.
 			if ((elapsedNanos - (elapsed * NS_TO_MS)) > 0) {
 				elapsed++;
@@ -83,7 +82,18 @@ public class LatencyManagerAerospike implements LatencyManager {
 		}
 
 		if(this.openTelemetry != null){
-			this.openTelemetry.recordElapsedTime(this.latencyType, elapsed, this.showMicroSeconds);
+			long elapsedMS;
+			if(showMicroSeconds){
+				elapsedMS = elapsedNanos / NS_TO_MS;
+				// Round up elapsed to nearest millisecond.
+				if ((elapsedNanos - (elapsedMS * NS_TO_MS)) > 0) {
+					elapsedMS++;
+				}
+			}
+			else {
+				elapsedMS = elapsed;
+			}
+			this.openTelemetry.recordElapsedTime(this.latencyType, elapsedMS);
 		}
 
 		for (int i = 0; i < lastBucket; i++) {

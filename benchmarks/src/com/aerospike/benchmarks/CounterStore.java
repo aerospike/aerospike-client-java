@@ -50,47 +50,6 @@ public class CounterStore {
 		this.transaction.openTelemetry = openTelemetry;
 	}
 
-	/**
-	 * Returns an array of current (snapshot) of long counts for each type.
-	 * <p>
-	 * This method always returns a fixed array of associated triple elements.
-	 * <ul>
-	 * The three elements per type are:
-	 * 	<li>count</li>
-	 * 	<li>timeouts</li>
-	 * 	<li>errors</li>
-	 *</ul>
-	 *
-	 * The last tree slots in the array are the totals for all types.
-	 *
-	 * @return Elements 0-2 Writes, 3-5 Reads, 6-8 Transactions, 9-11 totals
-	 */
-	public long[] getCounts() {
-		long[] counts = new long[12];
-
-		if(this.write != null) {
-			counts[0] = this.write.count.get();
-			counts[1] = this.write.timeouts.get();
-			counts[2] = this.write.errors.get();
-		}
-		if(this.read != null) {
-			counts[3] = this.read.count.get();
-			counts[4] = this.read.timeouts.get();
-			counts[5] = this.read.errors.get();
-		}
-		if (this.transaction != null) {
-			counts[6] = this.transaction.count.get();
-			counts[7] = this.transaction.timeouts.get();
-			counts[8] = this.transaction.errors.get();
-		}
-
-		counts[9] = counts[0] + counts[3] + counts[6];
-		counts[10] = counts[1] + counts[4] + counts[7];
-		counts[11] = counts[2] + counts[5] + counts[8];
-
-		return counts;
-	}
-
 	public static class Current {
 		AtomicInteger count = new AtomicInteger();
 		AtomicInteger timeouts = new AtomicInteger();
@@ -102,7 +61,7 @@ public class CounterStore {
 
 		public void addException(Exception e) {
 			if(openTelemetry != null) {
-				openTelemetry.addException(e);
+				openTelemetry.addException(e, latency.getType());
 			}
 		}
 

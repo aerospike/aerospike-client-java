@@ -1093,6 +1093,7 @@ public class Main implements Log.Callback {
 		try (OpenTelemetry openTelemetry = OpenTelemetryHelper.Create(this.openTelemetryEndPointPort,
 																		this.args,
 																		this.hosts[0],
+																		this.clientPolicy.clusterName,
 																		this.argsHdrGeneral,
 																		this.argsHdrPolicies,
 																		this.argsHdrOther,
@@ -1104,6 +1105,7 @@ public class Main implements Log.Callback {
 				System.out.println();
 			}
 
+			IAerospikeClient client;
 			if (this.asyncEnabled) {
 				EventPolicy eventPolicy = new EventPolicy();
 
@@ -1163,7 +1165,16 @@ public class Main implements Log.Callback {
 						clientPolicy.asyncMaxConnsPerNode = this.asyncMaxCommands;
 					}
 
-					IAerospikeClient client = AerospikeClientFactory.getClient(clientPolicy, useProxyClient, hosts);
+					try {
+						openTelemetry.setDBConnectionState("Opening");
+						client = AerospikeClientFactory.getClient(clientPolicy, useProxyClient, hosts);
+					}
+					catch (Exception e) {
+						openTelemetry.setDBConnectionState(e.getMessage());
+						throw e;
+					}
+					openTelemetry.setDBConnectionState("Opened");
+					openTelemetry.setClusterName(client.getCluster().getClusterName());
 
 					try {
 						if (mrtEnabled) {
@@ -1180,12 +1191,24 @@ public class Main implements Log.Callback {
 						}
 					} finally {
 						client.close();
+						openTelemetry.setDBConnectionState("Closed");
 					}
 				} finally {
 					eventLoops.close();
 				}
 			} else {
-				IAerospikeClient client = AerospikeClientFactory.getClient(clientPolicy, useProxyClient, hosts);
+
+				try {
+					openTelemetry.setDBConnectionState("Opening");
+					client = AerospikeClientFactory.getClient(clientPolicy, useProxyClient, hosts);
+				}
+				catch (Exception e) {
+					openTelemetry.setDBConnectionState(e.getMessage());
+					throw e;
+				}
+
+				openTelemetry.setDBConnectionState("Opened");
+				openTelemetry.setClusterName(client.getCluster().getClusterName());
 
 				try {
 					if (mrtEnabled) {
@@ -1204,6 +1227,7 @@ public class Main implements Log.Callback {
 					}
 				} finally {
 					client.close();
+					openTelemetry.setDBConnectionState("Closed");
 				}
 			}
 

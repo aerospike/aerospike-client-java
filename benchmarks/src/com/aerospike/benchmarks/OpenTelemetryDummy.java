@@ -8,6 +8,7 @@ public class OpenTelemetryDummy  implements OpenTelemetry {
     public OpenTelemetryDummy(int endPointPort,
                                  Arguments args,
                                  Host host,
+                                 String clusterName,
                                  StringBuilder generalInfo,
                                  StringBuilder policies,
                                  StringBuilder otherInfo,
@@ -25,16 +26,26 @@ public class OpenTelemetryDummy  implements OpenTelemetry {
 
     @SuppressWarnings("unused")
     @Override
-    public void addException(Exception exception) {
+    public void addException(Exception exception, LatencyTypes type) {
     }
 
     @SuppressWarnings("unused")
     @Override
-    public void recordElapsedTime(LatencyTypes type, long elapsed, boolean isMicroSeconds) {
+    public void recordElapsedTime(LatencyTypes type, long elapsedMS) {
     }
 
     @Override
     public void close() throws Exception {
+    }
+
+    @SuppressWarnings("unused")
+    @Override
+    public void setClusterName(String clusterName) {
+    }
+
+    @SuppressWarnings("unused")
+    @Override
+    public void setDBConnectionState(String dbConnectionState){
     }
 
     @Override

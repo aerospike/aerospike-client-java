@@ -2,6 +2,7 @@ package com.aerospike.benchmarks;
 
 import static io.opentelemetry.semconv.resource.attributes.ResourceAttributes.SERVICE_NAME;
 
+import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Host;
 import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.api.common.Attributes;
@@ -9,6 +10,7 @@ import io.opentelemetry.api.common.AttributesBuilder;
 import io.opentelemetry.api.metrics.*;
 import io.opentelemetry.exporter.prometheus.PrometheusHttpServer;
 import io.opentelemetry.sdk.OpenTelemetrySdk;
+import io.opentelemetry.sdk.OpenTelemetrySdkBuilder;
 import io.opentelemetry.sdk.metrics.SdkMeterProvider;
 import io.opentelemetry.sdk.resources.Resource;
 
@@ -18,6 +20,7 @@ import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Timer;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -27,11 +30,13 @@ public final class OpenTelemetryExporter implements com.aerospike.benchmarks.Ope
     private final String METRIC_NAME = "aerospike.benchmarks.mrt";
 
     private final int prometheusPort;
+    private String clusterName = null;
+    private String dbConnectionState = null;
     private final CounterStore counters;
 
     private final OpenTelemetrySdk openTelemetrySdk;
     private final Meter openTelemetryMeter;
-    private final ObservableLongGauge openTelemetryHBGauge;
+    private final ObservableLongGauge openTelemetryHBGaugeCB;
     private final LongCounter openTelemetryExceptionCounter;
     private final LongCounter openTelemetryTransactionCounter;
     private final LongHistogram openTelemetryLatencyHistogram;
@@ -42,14 +47,28 @@ public final class OpenTelemetryExporter implements com.aerospike.benchmarks.Ope
     private final boolean debug;
     private boolean closed = false;
 
+    private final Timer hbTimer;
+
+    private AtomicLong writeCounter = new AtomicLong();
+    private AtomicLong writeError = new AtomicLong();
+    private AtomicLong writeTimeout = new AtomicLong();
+    private AtomicLong readCounter = new AtomicLong();
+    private AtomicLong readError = new AtomicLong();
+    private AtomicLong readTimeout = new AtomicLong();
+    private AtomicLong txnCounter = new AtomicLong();
+    private AtomicLong txnError = new AtomicLong();
+    private AtomicLong txnTimeout = new AtomicLong();
+
     public OpenTelemetryExporter(int prometheusPort,
                                  Arguments args,
                                  Host host,
+                                 String clusterName,
                                  StringBuilder generalInfo,
                                  StringBuilder policies,
                                  StringBuilder otherInfo,
                                  CounterStore counters) {
         this.debug = args.debug;
+        this.clusterName = clusterName;
         this.startTimeMillis = System.currentTimeMillis();
         this.startLocalDateTime = LocalDateTime.ofInstant(Instant.ofEpochMilli(this.startTimeMillis),
                                     ZoneId.systemDefault());
@@ -80,43 +99,57 @@ public final class OpenTelemetryExporter implements com.aerospike.benchmarks.Ope
                 AttributeKey.longKey("batchSize"), (long) args.batchSize
         );
 
+         this.hbTimer = new Timer();
+         
         if(this.debug) {
             this.printDebug("Creating Metrics");
         }
 
-        this.openTelemetryHBGauge =
+        this.openTelemetryHBGaugeCB =
                 openTelemetryMeter
                     .gaugeBuilder(METRIC_NAME + ".heartbeat")
                     .ofLongs()
                     .setDescription("Aerospike Benchmark MRT HB")
                     .buildWithCallback(hb -> {
-
-                        // cunt, timeouts, errors
-                        //Elements 0-2 Writes, 3-5 Reads, 6-8 Transactions, 9-11 totals
-                        long[] counts = this.counters.getCounts();
-
                         AttributesBuilder attributes = Attributes.builder();
 
                         attributes.putAll(attributes1);
                         attributes.putAll(attributes2);
-                        attributes.put("writecounts", counts[0]);
-                        attributes.put("writetimeoutcount", counts[1]);
-                        attributes.put("writeerrorcount", counts[2]);
-                        attributes.put("readcounts", counts[3]);
-                        attributes.put("readtimeoutcount", counts[4]);
-                        attributes.put("readerrorcount", counts[5]);
-                        attributes.put("txncounts", counts[6]);
-                        attributes.put("txntimeoutcount", counts[7]);
-                        attributes.put("txnerrorcount", counts[8]);
-                        attributes.put("counts", counts[9]);
-                        attributes.put("timeoutcount", counts[10]);
-                        attributes.put("errorcount", counts[11]);
+
+                        long writeCounter = this.writeCounter.get();
+                        long writeError = this.writeError.get();
+                        long writeTimeout = this.writeTimeout.get();
+                        long readCounter = this.readCounter.get();
+                        long readError = this.readError.get();
+                        long readTimeout = this.readTimeout.get();
+                        long txnCounter = this.txnCounter.get();
+                        long txnError = this.txnError.get();
+                        long txnTimeout = this.txnTimeout.get();
+
+                        attributes.put("writecounts", writeCounter);
+                        attributes.put("writetimeoutcount", writeTimeout);
+                        attributes.put("writeerrorcount", writeError);
+                        attributes.put("readcounts", readCounter);
+                        attributes.put("readtimeoutcount", readTimeout);
+                        attributes.put("readerrorcount", readError);
+                        attributes.put("txncounts", txnCounter);
+                        attributes.put("txntimeoutcount", txnTimeout);
+                        attributes.put("txnerrorcount", txnError);
+                        attributes.put("counts", writeCounter + readCounter + txnCounter);
+                        attributes.put("timeoutcount", writeTimeout + readTimeout + txnTimeout);
+                        attributes.put("errorcount", writeError + readError + txnError);
+                        if(this.clusterName != null) {
+                            attributes.put("cluster", this.clusterName);
+                        }
+                        if(this.dbConnectionState != null) {
+                            attributes.put("DBConnState", this.dbConnectionState);
+                        }
 
                         hb.record(this.hbCnt++, attributes.build());
 
-                        if(this.debug) {
-                            this.printDebug("HeartBeat");
-                        }
+                        //if(this.debug) {
+                            this.printDebug(String.format("HeartBeat %d %d", hbCnt, writeCounter + readCounter + txnCounter));
+                        //}
                     });
 
         this.openTelemetryExceptionCounter =
@@ -130,7 +163,7 @@ public final class OpenTelemetryExporter implements com.aerospike.benchmarks.Ope
                         .histogramBuilder(METRIC_NAME + ".latency")
                         .setDescription("Aerospike Benchmark MRT Latencies")
                         .ofLongs()
-                        .setUnit(counters.showMicroSeconds ? "us" : "ms")
+                        .setUnit("ms")
                         .build();
 
         this.openTelemetryTransactionCounter =
@@ -196,14 +229,32 @@ public final class OpenTelemetryExporter implements com.aerospike.benchmarks.Ope
     }
 
     @Override
-    public void addException(Exception exception) {
+    public void addException(Exception exception, LatencyTypes type) {
 
         final Attributes attributes = Attributes.of(
                 AttributeKey.stringKey("exception_type"), exception.getClass().getName(),
-                AttributeKey.stringKey("exception"), exception.getMessage()
+                AttributeKey.stringKey("exception"), exception.getMessage(),
+                AttributeKey.stringKey("type"), type.name().toLowerCase()
         );
 
         this.openTelemetryExceptionCounter.add(1, attributes);
+
+        if(exception instanceof AerospikeException.Timeout) {
+            switch (type) {
+                case TRANSACTION -> this.txnTimeout.incrementAndGet();
+                case READ -> this.readTimeout.incrementAndGet();
+                case WRITE -> this.writeTimeout.incrementAndGet();
+                default -> this.printDebug("Exception Counter Type unknown " + type, true);
+            }
+        }
+        else {
+            switch (type) {
+                case TRANSACTION -> this.txnError.incrementAndGet();
+                case READ -> this.readError.incrementAndGet();
+                case WRITE -> this.writeError.incrementAndGet();
+                default -> this.printDebug("Exception Counter Type unknown " + type, true);
+            }
+        }
 
         if(this.debug) {
             this.printDebug("Exception Counter Add " + attributes.get(AttributeKey.stringKey("exception_type")));
@@ -211,17 +262,29 @@ public final class OpenTelemetryExporter implements com.aerospike.benchmarks.Ope
     }
 
     @Override
-    public void recordElapsedTime(LatencyTypes type, long elapsed, boolean isMicroSeconds) {
+    public void recordElapsedTime(LatencyTypes type, long elapsedMS) {
 
         final Attributes attributes = Attributes.of(
             AttributeKey.stringKey("type"), type.name().toLowerCase()
         );
 
-        this.openTelemetryLatencyHistogram.record(elapsed, attributes);
-        this.openTelemetryTransactionCounter.add(1, attributes);
+        this.openTelemetryLatencyHistogram.record(elapsedMS, attributes);
+        this.incrTransCounter(type, attributes);
 
         if(this.debug) {
             this.printDebug("Elapsed Time Record  " + attributes.get(AttributeKey.stringKey("type")), true);
+        }
+    }
+
+    private void incrTransCounter(LatencyTypes type, Attributes attributes) {
+
+        this.openTelemetryTransactionCounter.add(1, attributes);
+
+        switch (type) {
+            case TRANSACTION -> this.txnCounter.incrementAndGet();
+            case READ -> this.readCounter.incrementAndGet();
+            case WRITE -> this.writeCounter.incrementAndGet();
+            default -> this.printDebug("Transaction Counter Type unknown " + type, true);
         }
     }
 
@@ -231,11 +294,25 @@ public final class OpenTelemetryExporter implements com.aerospike.benchmarks.Ope
         final Attributes attributes = Attributes.of(
                 AttributeKey.stringKey("type"), type.name().toLowerCase()
         );
-        this.openTelemetryTransactionCounter.add(1, attributes);
 
-        if(this.debug) {
-            this.printDebug("Transaction Counter Add " + attributes.get(AttributeKey.stringKey("type")), true);
+        this.incrTransCounter(type, attributes);
+
+        if (this.debug) {
+            this.printDebug("Transaction Counter Add " + type.name().toLowerCase(), true);
         }
+    }
+
+    @Override
+    public void setClusterName(String clusterName) {
+        this.clusterName = clusterName;
+        if(this.debug) {
+            this.printDebug("Cluster Name  " + clusterName, false);
+        }
+    }
+
+    @Override
+    public void setDBConnectionState(String dbConnectionState){
+        this.dbConnectionState = dbConnectionState;
     }
 
     @Override
@@ -250,8 +327,12 @@ public final class OpenTelemetryExporter implements com.aerospike.benchmarks.Ope
 
         closed = true;
 
-        if(openTelemetryMeter != null) {
-            openTelemetryHBGauge.close();
+        if(this.counters != null) {
+            this.counters.setOpenTelemetry(null);
+        }
+
+        if(openTelemetryHBGaugeCB != null) {
+            openTelemetryHBGaugeCB.close();
         }
         if(openTelemetrySdk != null) {
             this.openTelemetrySdk.close();
@@ -274,7 +355,7 @@ public final class OpenTelemetryExporter implements com.aerospike.benchmarks.Ope
     public String toString() {
         return String.format("OpenTelemetryExporter{prometheusport:%d, heartbeat:%s, exceptioncounter:%s, latancyhistogram:%s}",
                                 this.prometheusPort,
-                                this.openTelemetryHBGauge,
+                                this.openTelemetryHBGaugeCB,
                                 this.openTelemetryExceptionCounter,
                                 this.openTelemetryLatencyHistogram);
     }
