@@ -126,7 +126,7 @@ public class Cluster implements Runnable, Closeable {
 	// Extra event loop state for this cluster.
 	public final EventState[] eventState;
 
-	// Maximum socket idle to validate connections in transactions.
+	// Maximum socket idle to validate connections in command.
 	private final long maxSocketIdleNanosTran;
 
 	// Maximum socket idle to trim peak connections to min connections.
@@ -202,7 +202,7 @@ public class Cluster implements Runnable, Closeable {
 	MetricsPolicy metricsPolicy;
 	private volatile MetricsListener metricsListener;
 	private final AtomicLong retryCount = new AtomicLong();
-	private final AtomicLong tranCount = new AtomicLong();
+	private final AtomicLong commandCount = new AtomicLong();
 	private final AtomicLong delayQueueTimeoutCount = new AtomicLong();
 
 	public Cluster(AerospikeClient client, ClientPolicy policy, Host[] hosts) {
@@ -1373,37 +1373,45 @@ public class Cluster implements Runnable, Closeable {
 	}
 
 	/**
-	 * Increment transaction count when metrics are enabled.
+	 * Increment command count when metrics are enabled.
 	 */
-	public final void addTran() {
+	public final void addCommandCount() {
 		if (metricsEnabled) {
-			tranCount.getAndIncrement();
+			commandCount.getAndIncrement();
 		}
 	}
 
 	/**
-	 * Return transaction count. The value is cumulative and not reset per metrics interval.
+	 * Return command count. The value is cumulative and not reset per metrics interval.
 	 */
-	public final long getTranCount() {
-		return tranCount.get();
+	public final long getCommandCount() {
+		return commandCount.get();
 	}
 
 	/**
-	 * Increment transaction retry count. There can be multiple retries for a single transaction.
+	 * Return command count. The value is cumulative and not reset per metrics interval.
+	 * This function is left for backwards compatibility. Use {@link #getCommandCount()} instead.
+	 */
+	public final long getTranCount() {
+		return commandCount.get();
+	}
+
+	/**
+	 * Increment command retry count. There can be multiple retries for a single command.
 	 */
 	public final void addRetry() {
 		retryCount.getAndIncrement();
 	}
 
 	/**
-	 * Add transaction retry count. There can be multiple retries for a single transaction.
+	 * Add command retry count. There can be multiple retries for a single command.
 	 */
 	public final void addRetries(int count) {
 		retryCount.getAndAdd(count);
 	}
 
 	/**
-	 * Return transaction retry count. The value is cumulative and not reset per metrics interval.
+	 * Return command retry count. The value is cumulative and not reset per metrics interval.
 	 */
 	public final long getRetryCount() {
 		return retryCount.get();

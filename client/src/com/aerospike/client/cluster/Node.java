@@ -955,7 +955,7 @@ public class Node implements Closeable {
 			// This should not happen since connection slots are reserved in advance
 			// and total connections should never exceed maxSize. If it does happen,
 			// it's highly likely that total count was decremented twice for the same
-			// transaction, causing the connection balancer to create more connections
+			// command, causing the connection balancer to create more connections
 			// than necessary. Attempt to correct situation by not decrementing total
 			// when this excess connection is closed.
 			conn.close();

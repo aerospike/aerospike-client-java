@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -19,10 +19,10 @@ package com.aerospike.examples;
 import java.lang.reflect.Constructor;
 import java.util.List;
 
+import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.Host;
 import com.aerospike.client.IAerospikeClient;
 import com.aerospike.client.async.EventLoop;
-import com.aerospike.client.async.EventLoopType;
 import com.aerospike.client.async.EventLoops;
 import com.aerospike.client.async.EventPolicy;
 import com.aerospike.client.async.NettyEventLoops;
@@ -30,11 +30,9 @@ import com.aerospike.client.async.NioEventLoops;
 import com.aerospike.client.policy.ClientPolicy;
 import com.aerospike.client.policy.Policy;
 import com.aerospike.client.policy.WritePolicy;
-import com.aerospike.client.proxy.AerospikeClientFactory;
 import com.aerospike.client.util.Util;
 
 import io.netty.channel.EventLoopGroup;
-import io.netty.channel.epoll.Epoll;
 import io.netty.channel.epoll.EpollEventLoopGroup;
 import io.netty.channel.kqueue.KQueueEventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
@@ -48,16 +46,6 @@ public abstract class AsyncExample {
 		EventPolicy eventPolicy = new EventPolicy();
 		eventPolicy.maxCommandsInProcess = params.maxCommandsInProcess;
 		eventPolicy.maxCommandsInQueue = params.maxCommandsInQueue;
-
-		if (params.useProxyClient && params.eventLoopType == EventLoopType.DIRECT_NIO) {
-			// Proxy client requires netty event loops.
-			if (Epoll.isAvailable()) {
-				params.eventLoopType = EventLoopType.NETTY_EPOLL;
-			}
-			else {
-				params.eventLoopType = EventLoopType.NETTY_NIO;
-			}
-		}
 
 		EventLoops eventLoops;
 
@@ -106,7 +94,7 @@ public abstract class AsyncExample {
 
 			Host[] hosts = Host.parseHosts(params.host, params.port);
 
-			IAerospikeClient client = AerospikeClientFactory.getClient(policy, params.useProxyClient, hosts);
+			IAerospikeClient client = new AerospikeClient(policy, hosts);
 
 			try {
 				EventLoop eventLoop = eventLoops.get(0);

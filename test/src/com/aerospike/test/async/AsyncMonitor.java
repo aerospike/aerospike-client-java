@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -39,6 +39,11 @@ public final class AsyncMonitor {
 		}
 
 		if (error != null) {
+			if (error instanceof RuntimeException) {
+				RuntimeException e = (RuntimeException)error;
+				throw e;
+			}
+
 			StringWriter out = new StringWriter();
 			error.printStackTrace(new PrintWriter(out));
 			fail(out.toString());

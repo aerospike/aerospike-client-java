@@ -100,10 +100,16 @@ public class TestAsyncOperate extends TestAsync {
 				map.put(Value.get("b"), Value.get(2));
 				map.put(Value.get("c"), Value.get(3));
 
-				client.operate(eventLoop, new MapHandler(), null, key,
+				try {
+					client.operate(eventLoop, new MapHandler(), null, key,
 						MapOperation.putItems(MapPolicy.Default, binName, map),
 						MapOperation.getByRankRange(binName, -1, 1, MapReturnType.KEY_VALUE)
-						);
+					);
+				}
+				catch (Throwable t) {
+					setError(t);
+					notifyComplete();
+				}
 			}
 
 			public void onFailure(AerospikeException e) {

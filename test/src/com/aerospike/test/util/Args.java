@@ -57,7 +57,6 @@ public class Args {
 	public int totalTimeout = 1000;
 	public boolean enterprise;
 	public boolean hasTtl;
-	public boolean useProxyClient;
 
 	public Args() {
 		host = "127.0.0.1";
@@ -130,7 +129,6 @@ public class Args {
 					"for single record and batch commands."
 					);
 
-			options.addOption("proxy", false, "Use proxy client.");
 			options.addOption("d", "debug", false, "Run in debug mode.");
 			options.addOption("u", "usage", false, "Print usage.");
 
@@ -214,17 +212,6 @@ public class Args {
 				totalTimeout = Integer.parseInt(cl.getOptionValue("totalTimeout"));;
 			}
 
-			if (cl.hasOption("proxy")) {
-				useProxyClient = true;
-			}
-
-			// If the Aerospike server's default port (3000) is used and the proxy client is used,
-			// Reset the port to the proxy server's default port (4000).
-			if (port == 3000 && useProxyClient) {
-				System.out.println("Change proxy server port to 4000");
-				port = 4000;
-			}
-
 			if (cl.hasOption("d")) {
 				Log.setLevel(Level.DEBUG);
 			}
@@ -262,11 +249,6 @@ public class Args {
 	 * Some database calls need to know how the server is configured.
 	 */
 	public void setServerSpecific(IAerospikeClient client) {
-		if (useProxyClient) {
-			// Proxy client does not support querying nodes directly for their configuration.
-			return;
-		}
-
 		Node node = client.getNodes()[0];
 		String editionFilter = "edition";
 		String namespaceFilter = "namespace/" + namespace;

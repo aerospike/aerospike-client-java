@@ -45,6 +45,8 @@ import com.aerospike.client.listener.InfoListener;
 import com.aerospike.client.listener.RecordArrayListener;
 import com.aerospike.client.listener.RecordListener;
 import com.aerospike.client.listener.RecordSequenceListener;
+import com.aerospike.client.listener.AbortListener;
+import com.aerospike.client.listener.CommitListener;
 import com.aerospike.client.listener.WriteListener;
 import com.aerospike.client.metrics.MetricsPolicy;
 import com.aerospike.client.policy.AdminPolicy;
@@ -56,6 +58,8 @@ import com.aerospike.client.policy.InfoPolicy;
 import com.aerospike.client.policy.Policy;
 import com.aerospike.client.policy.QueryPolicy;
 import com.aerospike.client.policy.ScanPolicy;
+import com.aerospike.client.policy.TxnRollPolicy;
+import com.aerospike.client.policy.TxnVerifyPolicy;
 import com.aerospike.client.policy.WritePolicy;
 import com.aerospike.client.query.IndexCollectionType;
 import com.aerospike.client.query.IndexType;
@@ -78,104 +82,114 @@ public interface IAerospikeClient extends Closeable {
 	//-------------------------------------------------------
 
 	/**
-	 * Return read policy default. Use when the policy will not be modified.
+	 * Copy read policy default to avoid problems if this shared instance is later modified.
 	 */
 	public Policy getReadPolicyDefault();
 
 	/**
-	 * Copy read policy default. Use when the policy will be modified for use in a specific transaction.
+	 * Copy read policy default.
 	 */
 	public Policy copyReadPolicyDefault();
 
 	/**
-	 * Return write policy default. Use when the policy will not be modified.
+	 * Copy write policy default to avoid problems if this shared instance is later modified.
 	 */
 	public WritePolicy getWritePolicyDefault();
 
 	/**
-	 * Copy write policy default. Use when the policy will be modified for use in a specific transaction.
+	 * Copy write policy default.
 	 */
 	public WritePolicy copyWritePolicyDefault();
 
 	/**
-	 * Return scan policy default. Use when the policy will not be modified.
+	 * Copy scan policy default to avoid problems if this shared instance is later modified.
 	 */
 	public ScanPolicy getScanPolicyDefault();
 
 	/**
-	 * Copy scan policy default. Use when the policy will be modified for use in a specific transaction.
+	 * Copy scan policy default.
 	 */
 	public ScanPolicy copyScanPolicyDefault();
 
 	/**
-	 * Return query policy default. Use when the policy will not be modified.
+	 * Copy query policy default to avoid problems if this shared instance is later modified.
 	 */
 	public QueryPolicy getQueryPolicyDefault();
 
 	/**
-	 * Copy query policy default. Use when the policy will be modified for use in a specific transaction.
+	 * Copy query policy default.
 	 */
 	public QueryPolicy copyQueryPolicyDefault();
 
 	/**
-	 * Return batch header read policy default. Use when the policy will not be modified.
+	 * Copy batch header read policy default to avoid problems if this shared instance is later modified.
 	 */
 	public BatchPolicy getBatchPolicyDefault();
 
 	/**
-	 * Copy batch header read policy default. Use when the policy will be modified for use in a specific transaction.
+	 * Copy batch header read policy default.
 	 */
 	public BatchPolicy copyBatchPolicyDefault();
 
 	/**
-	 * Return batch header write policy default. Use when the policy will not be modified.
+	 * Copy batch header write policy default to avoid problems if this shared instance is later modified.
 	 */
 	public BatchPolicy getBatchParentPolicyWriteDefault();
 
 	/**
-	 * Copy batch header write policy default. Use when the policy will be modified for use in a specific transaction.
+	 * Copy batch header write policy default.
 	 */
 	public BatchPolicy copyBatchParentPolicyWriteDefault();
 
 	/**
-	 * Return batch detail write policy default. Use when the policy will not be modified.
+	 * Copy batch detail write policy default to avoid problems if this shared instance is later modified.
 	 */
 	public BatchWritePolicy getBatchWritePolicyDefault();
 
 	/**
-	 * Copy batch detail write policy default. Use when the policy will be modified for use in a specific transaction.
+	 * Copy batch detail write policy default.
 	 */
 	public BatchWritePolicy copyBatchWritePolicyDefault();
 
 	/**
-	 * Return batch detail delete policy default. Use when the policy will not be modified.
+	 * Copy batch detail delete policy default to avoid problems if this shared instance is later modified.
 	 */
 	public BatchDeletePolicy getBatchDeletePolicyDefault();
 
 	/**
-	 * Copy batch detail delete policy default. Use when the policy will be modified for use in a specific transaction.
+	 * Copy batch detail delete policy default.
 	 */
 	public BatchDeletePolicy copyBatchDeletePolicyDefault();
 
 	/**
-	 * Return batch detail UDF policy default. Use when the policy will not be modified.
+	 * Copy batch detail UDF policy default to avoid problems if this shared instance is later modified.
 	 */
 	public BatchUDFPolicy getBatchUDFPolicyDefault();
 
 	/**
-	 * Copy batch detail UDF policy default. Use when the policy will be modified for use in a specific transaction.
+	 * Copy batch detail UDF policy default.
 	 */
 	public BatchUDFPolicy copyBatchUDFPolicyDefault();
 
 	/**
-	 * Return info command policy default. Use when the policy will not be modified.
+	 * Copy info command policy default to avoid problems if this shared instance is later modified.
 	 */
 	public InfoPolicy getInfoPolicyDefault();
 
 	/**
-	 * Copy info command policy default. Use when the policy will be modified for use in a specific transaction.
+	 * Copy info command policy default.
 	 */
 	public InfoPolicy copyInfoPolicyDefault();
+
+	/**
+	 * Copy MRT record version verify policy default.
+	 */
+	public TxnVerifyPolicy copyTxnVerifyPolicyDefault();
+
+	/**
+	 * Copy MRT roll forward/back policy default.
+	 */
+	public TxnRollPolicy copyTxnRollPolicyDefault();
 
 	//-------------------------------------------------------
 	// Cluster Connection Management
@@ -247,12 +261,76 @@ public interface IAerospikeClient extends Closeable {
 	public Cluster getCluster();
 
 	//-------------------------------------------------------
+	// Multi-Record Transactions
+	//-------------------------------------------------------
+
+	/**
+	 * Attempt to commit the given multi-record transaction. First, the expected record versions are
+	 * sent to the server nodes for verification. If all nodes return success, the transaction is
+	 * committed. Otherwise, the transaction is aborted.
+	 * <p>
+	 * Requires server version 8.0+
+	 *
+	 * @param txn	multi-record transaction
+	 * @return		status of the commit on success
+	 * @throws AerospikeException.Commit	if verify commit fails
+	 */
+	CommitStatus commit(Txn txn)
+		throws AerospikeException.Commit;
+
+	/**
+	 * Asynchronously attempt to commit the given multi-record transaction. First, the expected
+	 * record versions are sent to the server nodes for verification. If all nodes return success,
+	 * the transaction is committed. Otherwise, the transaction is aborted.
+	 * <p>
+	 * This method registers the command with an event loop and returns.
+	 * The event loop thread will process the command and send the results to the listener.
+	 * <p>
+	 * Requires server version 8.0+
+	 *
+	 * @param eventLoop		event loop that will process the command. If NULL, the event
+	 * 						loop will be chosen by round-robin.
+	 * @param listener		where to send results
+	 * @param txn			multi-record transaction
+	 * @throws AerospikeException	if event loop registration fails
+	 */
+	void commit(EventLoop eventLoop, CommitListener listener, Txn txn)
+		throws AerospikeException;
+
+	/**
+	 * Abort and rollback the given multi-record transaction.
+	 * <p>
+	 * Requires server version 8.0+
+	 *
+	 * @param txn	multi-record transaction
+	 * @return		status of the abort
+	 */
+	AbortStatus abort(Txn txn);
+
+	/**
+	 * Asynchronously abort and rollback the given multi-record transaction.
+	 * <p>
+	 * This method registers the command with an event loop and returns.
+	 * The event loop thread will process the command and send the results to the listener.
+	 * <p>
+	 * Requires server version 8.0+
+	 *
+	 * @param eventLoop		event loop that will process the command. If NULL, the event
+	 * 						loop will be chosen by round-robin.
+	 * @param listener		where to send results
+	 * @param txn			multi-record transaction
+	 * @throws AerospikeException	if event loop registration fails
+	 */
+	void abort(EventLoop eventLoop, AbortListener listener, Txn txn)
+		throws AerospikeException;
+
+	//-------------------------------------------------------
 	// Write Record Operations
 	//-------------------------------------------------------
 
 	/**
 	 * Write record bin(s).
-	 * The policy specifies the transaction timeout, record expiration and how the transaction is
+	 * The policy specifies the command timeout, record expiration and how the command is
 	 * handled when the record already exists.
 	 *
 	 * @param policy				write configuration parameters, pass in null for defaults
@@ -268,7 +346,7 @@ public interface IAerospikeClient extends Closeable {
 	 * This method registers the command with an event loop and returns.
 	 * The event loop thread will process the command and send the results to the listener.
 	 * <p>
-	 * The policy specifies the transaction timeout, record expiration and how the transaction is
+	 * The policy specifies the command timeout, record expiration and how the command is
 	 * handled when the record already exists.
 	 *
 	 * @param eventLoop				event loop that will process the command. If NULL, the event
@@ -288,7 +366,7 @@ public interface IAerospikeClient extends Closeable {
 
 	/**
 	 * Append bin string values to existing record bin values.
-	 * The policy specifies the transaction timeout, record expiration and how the transaction is
+	 * The policy specifies the command timeout, record expiration and how the command is
 	 * handled when the record already exists.
 	 * This call only works for string values.
 	 *
@@ -305,7 +383,7 @@ public interface IAerospikeClient extends Closeable {
 	 * This method registers the command with an event loop and returns.
 	 * The event loop thread will process the command and send the results to the listener.
 	 * <p>
-	 * The policy specifies the transaction timeout, record expiration and how the transaction is
+	 * The policy specifies the command timeout, record expiration and how the command is
 	 * handled when the record already exists.
 	 * This call only works for string values.
 	 *
@@ -322,7 +400,7 @@ public interface IAerospikeClient extends Closeable {
 
 	/**
 	 * Prepend bin string values to existing record bin values.
-	 * The policy specifies the transaction timeout, record expiration and how the transaction is
+	 * The policy specifies the command timeout, record expiration and how the command is
 	 * handled when the record already exists.
 	 * This call works only for string values.
 	 *
@@ -339,7 +417,7 @@ public interface IAerospikeClient extends Closeable {
 	 * This method registers the command with an event loop and returns.
 	 * The event loop thread will process the command and send the results to the listener.
 	 * <p>
-	 * The policy specifies the transaction timeout, record expiration and how the transaction is
+	 * The policy specifies the command timeout, record expiration and how the command is
 	 * handled when the record already exists.
 	 * This call only works for string values.
 	 *
@@ -360,7 +438,7 @@ public interface IAerospikeClient extends Closeable {
 
 	/**
 	 * Add integer bin values to existing record bin values.
-	 * The policy specifies the transaction timeout, record expiration and how the transaction is
+	 * The policy specifies the command timeout, record expiration and how the command is
 	 * handled when the record already exists.
 	 * This call only works for integer values.
 	 *
@@ -377,7 +455,7 @@ public interface IAerospikeClient extends Closeable {
 	 * This method registers the command with an event loop and returns.
 	 * The event loop thread will process the command and send the results to the listener.
 	 * <p>
-	 * The policy specifies the transaction timeout, record expiration and how the transaction is
+	 * The policy specifies the command timeout, record expiration and how the command is
 	 * handled when the record already exists.
 	 * This call only works for integer values.
 	 *
@@ -398,7 +476,7 @@ public interface IAerospikeClient extends Closeable {
 
 	/**
 	 * Delete record for specified key.
-	 * The policy specifies the transaction timeout.
+	 * The policy specifies the command timeout.
 	 *
 	 * @param policy				delete configuration parameters, pass in null for defaults
 	 * @param key					unique record identifier
@@ -413,7 +491,7 @@ public interface IAerospikeClient extends Closeable {
 	 * This method registers the command with an event loop and returns.
 	 * The event loop thread will process the command and send the results to the listener.
 	 * <p>
-	 * The policy specifies the transaction timeout.
+	 * The policy specifies the command timeout.
 	 *
 	 * @param eventLoop				event loop that will process the command. If NULL, the event
 	 * 								loop will be chosen by round-robin.
@@ -1379,7 +1457,7 @@ public interface IAerospikeClient extends Closeable {
 	 * @param functionName			user defined function
 	 * @param args					arguments passed in to user defined function
 	 * @return						return value of user defined function
-	 * @throws AerospikeException	if transaction fails
+	 * @throws AerospikeException	if command fails
 	 */
 	public Object execute(WritePolicy policy, Key key, String packageName, String functionName, Value... args)
 		throws AerospikeException;
