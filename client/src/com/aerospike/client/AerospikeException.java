@@ -496,7 +496,7 @@ public class AerospikeException extends RuntimeException {
 	}
 
 	/**
-	 * Exception thrown when {@link AerospikeClient#commit(com.aerospike.client.Tran)} fails.
+	 * Exception thrown when a multi-record transaction commit fails.
 	 */
 	public static final class Commit extends AerospikeException {
 		private static final long serialVersionUID = 1L;
