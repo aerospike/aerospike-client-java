@@ -50,19 +50,24 @@ public final class Txn {
 
 	/**
 	 * Create MRT, assign random transaction id and initialize reads/writes hashmaps with default
-	 * capacities. The default MRT timeout is 10 seconds.
+	 * capacities.
+	 * <p>
+	 * The default client MRT timeout is zero. This means use the server configuration mrt-duration
+	 * as the MRT timeout. The default mrt-duration is 10 seconds.
 	 */
 	public Txn() {
 		id = createId();
 		reads = new ConcurrentHashMap<>();
 		writes = ConcurrentHashMap.newKeySet();
 		state = Txn.State.OPEN;
-		timeout = 10; // seconds
 	}
 
 	/**
 	 * Create MRT, assign random transaction id and initialize reads/writes hashmaps with given
-	 * capacities. The default MRT timeout is 10 seconds.
+	 * capacities.
+	 * <p>
+	 * The default client MRT timeout is zero. This means use the server configuration mrt-duration
+	 * as the MRT timeout. The default mrt-duration is 10 seconds.
 	 *
 	 * @param readsCapacity     expected number of record reads in the MRT. Minimum value is 16.
 	 * @param writesCapacity    expected number of record writes in the MRT. Minimum value is 16.
@@ -80,7 +85,6 @@ public final class Txn {
 		reads = new ConcurrentHashMap<>(readsCapacity);
 		writes = ConcurrentHashMap.newKeySet(writesCapacity);
 		state = Txn.State.OPEN;
-		timeout = 10; // seconds
 	}
 
 	private static long createId() {
@@ -110,6 +114,9 @@ public final class Txn {
 	 * Set MRT timeout in seconds. The timer starts when the MRT monitor record is created.
 	 * This occurs when the first command in the MRT is executed. If the timeout is reached before
 	 * a commit or abort is called, the server will expire and rollback the MRT.
+	 * <p>
+	 * If the MRT timeout is zero, the server configuration mrt-duration is used.
+	 * The default mrt-duration is 10 seconds.
 	 */
 	public void setTimeout(int timeout) {
 		this.timeout = timeout;
