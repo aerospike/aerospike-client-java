@@ -30,6 +30,7 @@ import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import com.aerospike.client.*;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
@@ -37,12 +38,7 @@ import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 
-import com.aerospike.client.Host;
-import com.aerospike.client.IAerospikeClient;
-import com.aerospike.client.Key;
-import com.aerospike.client.Log;
 import com.aerospike.client.Log.Level;
-import com.aerospike.client.Value;
 import com.aerospike.client.async.EventLoop;
 import com.aerospike.client.async.EventLoopType;
 import com.aerospike.client.async.EventLoops;
@@ -123,6 +119,7 @@ public class Main implements Log.Callback {
 	private final CounterStore counters = new CounterStore();
 
 	private int openTelemetryEndPointPort = 19090;
+	private int openTelemetryRefreshIntervalSecs = 5;
 
 	public Main(String[] commandLineArgs) throws Exception {
 		boolean hasTxns = false;
@@ -814,6 +811,9 @@ public class Main implements Log.Callback {
 		if(line.hasOption("prometheusPort")) {
 			this.openTelemetryEndPointPort = Integer.parseInt(line.getOptionValue("prometheusPort"));
 		}
+		if(line.hasOption("prometheusRefreshSecs")) {
+			this.openTelemetryRefreshIntervalSecs = Integer.parseInt(line.getOptionValue("prometheusRefreshSecs"));
+		}
 
 		printOptions();
 
@@ -831,16 +831,18 @@ public class Main implements Log.Callback {
 	private static Options getOptions() {
 		Options options = new Options();
 		options.addOption("h", "hosts", true,
-			"List of seed hosts in format: " +
-			"hostname1[:tlsname][:port1],...\n" +
-			"The tlsname is only used when connecting with a secure TLS enabled server. " +
-			"If the port is not specified, the default port is used. " +
-			"IPv6 addresses must be enclosed in square brackets.\n" +
-			"Default: localhost\n" +
-			"Examples:\n" +
-			"host1\n" +
-			"host1:3000,host2:3000\n" +
-			"192.168.1.10:cert1:3000,[2001::1111]:cert2:3000\n"
+                """
+                        List of seed hosts in format: \
+                        hostname1[:tlsname][:port1],...
+                        The tlsname is only used when connecting with a secure TLS enabled server. \
+                        If the port is not specified, the default port is used. \
+                        IPv6 addresses must be enclosed in square brackets.
+                        Default: localhost
+                        Examples:
+                        host1
+                        host1:3000,host2:3000
+                        192.168.1.10:cert1:3000,[2001::1111]:cert2:3000
+                        """
 			);
 		options.addOption("p", "port", true, "Set the default port on which to connect to Aerospike.");
 		options.addOption("U", "user", true, "User name");
@@ -909,34 +911,54 @@ public class Main implements Log.Callback {
 			"Otherwise, the start_value indicates the smallest value in the working set of keys."
 			);
 		options.addOption("w", "workload", true,
-			"I | RU,<percent>[,<percent2>][,<percent3>] | RR,<percent>[,<percent2>][,<percent3>], RMU | RMI | RMD\n" +
-			"Set the desired workload.\n\n" +
-			"   -w I sets a linear 'insert' workload.\n\n" +
-			"   -w RU,80 sets a random read-update workload with 80% reads and 20% writes.\n\n" +
-			"      100% of reads will read all bins.\n\n" +
-			"      100% of writes will write all bins.\n\n" +
-			"   -w RU,80,60,30 sets a random multi-bin read-update workload with 80% reads and 20% writes.\n\n" +
-			"      60% of reads will read all bins. 40% of reads will read a single bin.\n\n" +
-			"      30% of writes will write all bins. 70% of writes will write a single bin.\n\n" +
-			"   -w RR,20 sets a random read-replace workload with 20% reads and 80% replace all bin(s) writes.\n\n" +
-			"      100% of reads will read all bins.\n\n" +
-			"      100% of writes will replace all bins.\n\n" +
-			"   -w RMU sets a random read all bins-update one bin workload with 50% reads.\n\n" +
-			"   -w RMI sets a random read all bins-increment one integer bin workload with 50% reads.\n\n" +
-			"   -w RMD sets a random read all bins-decrement one integer bin workload with 50% reads.\n\n" +
-			"   -w TXN,r:1000,w:200,v:20%\n\n" +
-			"      form business transactions with 1000 reads, 200 writes with a variation (+/-) of 20%\n\n"
+                """
+                        I | RU,<percent>[,<percent2>][,<percent3>] | RR,<percent>[,<percent2>][,<percent3>], RMU | RMI | RMD
+                        Set the desired workload.
+                        
+                           -w I sets a linear 'insert' workload.
+                        
+                           -w RU,80 sets a random read-update workload with 80% reads and 20% writes.
+                        
+                              100% of reads will read all bins.
+                        
+                              100% of writes will write all bins.
+                        
+                           -w RU,80,60,30 sets a random multi-bin read-update workload with 80% reads and 20% writes.
+                        
+                              60% of reads will read all bins. 40% of reads will read a single bin.
+                        
+                              30% of writes will write all bins. 70% of writes will write a single bin.
+                        
+                           -w RR,20 sets a random read-replace workload with 20% reads and 80% replace all bin(s) writes.
+                        
+                              100% of reads will read all bins.
+                        
+                              100% of writes will replace all bins.
+                        
+                           -w RMU sets a random read all bins-update one bin workload with 50% reads.
+                        
+                           -w RMI sets a random read all bins-increment one integer bin workload with 50% reads.
+                        
+                           -w RMD sets a random read all bins-decrement one integer bin workload with 50% reads.
+                        
+                           -w TXN,r:1000,w:200,v:20%
+                        
+                              form business transactions with 1000 reads, 200 writes with a variation (+/-) of 20%
+                        
+                        """
 			);
 		options.addOption("e", "expirationTime", true,
-			"Set expiration time of each record in seconds.\n" +
-			" -1: Never expire\n" +
-			"  0: Default to namespace expiration time\n" +
-			" >0: Actual given expiration time"
+                """
+                        Set expiration time of each record in seconds.
+                         -1: Never expire
+                          0: Default to namespace expiration time
+                         >0: Actual given expiration time"""
 			);
 		options.addOption("rt", "readTouchTtlPercent", true,
-			"Read touch TTL percent is expressed as a percentage of the TTL (or expiration) sent on the most\n" +
-			"recent write such that a read within this interval of the record’s end of life will generate a touch.\n" +
-			"Range: 0 - 100"
+                """
+                        Read touch TTL percent is expressed as a percentage of the TTL (or expiration) sent on the most
+                        recent write such that a read within this interval of the record’s end of life will generate a touch.
+                        Range: 0 - 100"""
 		);
 		options.addOption("g", "throughput", true,
 			"Set a target transactions per second for the client. The client should not exceed this " +
@@ -966,13 +988,15 @@ public class Main implements Log.Callback {
 			"Enter zero to skip sleep."
 			);
 		options.addOption("r", "replica", true,
-			"Which replica to use for reads.\n\n" +
-			"Values:  master | any | sequence | preferRack.  Default: sequence\n" +
-			"master: Always use node containing master partition.\n" +
-			"any: Distribute reads across master and proles in round-robin fashion.\n" +
-			"sequence: Always try master first. If master fails, try proles in sequence.\n" +
-			"preferRack: Always try node on the same rack as the benchmark first. If no nodes on the same rack, use sequence.\n" +
-			"Use 'rackId' option to set rack."
+                """
+                        Which replica to use for reads.
+                        
+                        Values:  master | any | sequence | preferRack.  Default: sequence
+                        master: Always use node containing master partition.
+                        any: Distribute reads across master and proles in round-robin fashion.
+                        sequence: Always try master first. If master fails, try proles in sequence.
+                        preferRack: Always try node on the same rack as the benchmark first. If no nodes on the same rack, use sequence.
+                        Use 'rackId' option to set rack."""
 			);
 		options.addOption("readModeAP", true,
 			"Read consistency level when in AP mode.\n" +
@@ -997,20 +1021,23 @@ public class Main implements Log.Callback {
 			"This option will override the OS threads setting (-z)."
 		);
 		options.addOption("latency", true,
-			"ycsb[,<warmup count>] | [alt,]<columns>,<range shift increment>[,us|ms]\n" +
-			"ycsb: Show the timings in ycsb format.\n" +
-			"alt: Show both count and pecentage in each elapsed time bucket.\n" +
-			"default: Show pecentage in each elapsed time bucket.\n" +
-			"<columns>: Number of elapsed time ranges.\n" +
-			"<range shift increment>: Power of 2 multiple between each range starting at column 3.\n" +
-			"(ms|us): display times in milliseconds (ms, default) or microseconds (us)\n\n" +
-			"A latency definition of '-latency 7,1' results in this layout:\n" +
-			"    <=1ms >1ms >2ms >4ms >8ms >16ms >32ms\n" +
-			"       x%   x%   x%   x%   x%    x%    x%\n" +
-			"A latency definition of '-latency 4,3' results in this layout:\n" +
-			"    <=1ms >1ms >8ms >64ms\n" +
-			"       x%   x%   x%    x%\n\n" +
-			"Latency columns are cumulative. If a transaction takes 9ms, it will be included in both the >1ms and >8ms columns."
+                """
+                        ycsb[,<warmup count>] | [alt,]<columns>,<range shift increment>[,us|ms]
+                        ycsb: Show the timings in ycsb format.
+                        alt: Show both count and pecentage in each elapsed time bucket.
+                        default: Show pecentage in each elapsed time bucket.
+                        <columns>: Number of elapsed time ranges.
+                        <range shift increment>: Power of 2 multiple between each range starting at column 3.
+                        (ms|us): display times in milliseconds (ms, default) or microseconds (us)
+                        
+                        A latency definition of '-latency 7,1' results in this layout:
+                            <=1ms >1ms >2ms >4ms >8ms >16ms >32ms
+                               x%   x%   x%   x%   x%    x%    x%
+                        A latency definition of '-latency 4,3' results in this layout:
+                            <=1ms >1ms >8ms >64ms
+                               x%   x%   x%    x%
+                        
+                        Latency columns are cumulative. If a transaction takes 9ms, it will be included in both the >1ms and >8ms columns."""
 			);
 
 		options.addOption("N", "reportNotFound", false, "Report not found errors. Data should be fully initialized before using this option.");
@@ -1036,19 +1063,22 @@ public class Main implements Log.Callback {
 		options.addOption("KT", "keyType", true, "Type of the key(String/Integer) in the file, default is String");
 		options.addOption("tls", "tlsEnable", false, "Use TLS/SSL sockets");
 		options.addOption("tp", "tlsProtocols", true,
-			"Allow TLS protocols\n" +
-			"Values:  TLSv1,TLSv1.1,TLSv1.2 separated by comma\n" +
-			"Default: TLSv1.2"
+                """
+                        Allow TLS protocols
+                        Values:  TLSv1,TLSv1.1,TLSv1.2 separated by comma
+                        Default: TLSv1.2"""
 			);
 		options.addOption("tlsCiphers", "tlsCipherSuite", true,
-			"Allow TLS cipher suites\n" +
-			"Values:  cipher names defined by JVM separated by comma\n" +
-			"Default: null (default cipher list provided by JVM)"
+                """
+                        Allow TLS cipher suites
+                        Values:  cipher names defined by JVM separated by comma
+                        Default: null (default cipher list provided by JVM)"""
 			);
 		options.addOption("tr", "tlsRevoke", true,
-			"Revoke certificates identified by their serial number\n" +
-			"Values:  serial numbers separated by comma\n" +
-			"Default: null (Do not revoke certificates)"
+                """
+                        Revoke certificates identified by their serial number
+                        Values:  serial numbers separated by comma
+                        Default: null (Do not revoke certificates)"""
 			);
 		options.addOption("tlsLoginOnly", false, "Use TLS/SSL sockets on node login only");
 		options.addOption("auth", true, "Authentication mode. Values: " + Arrays.toString(AuthMode.values()));
@@ -1070,6 +1100,7 @@ public class Main implements Log.Callback {
 		options.addOption("pids", "partitionIds", true, "Specify the list of comma seperated partition IDs the primary keys must belong to");
 
 		options.addOption("pom", "prometheusPort", true, "Prometheus OpenTel End Point. If -1, OpenTel metrics are disabled. Default 19090");
+		options.addOption("pomRefresh", "prometheusRefreshSecs", true, "Prometheus Refresh Interval in Seconds. If -1 refresh will be disabled. Default 5 seconds");
 
 		return options;
 	}
@@ -1093,6 +1124,7 @@ public class Main implements Log.Callback {
 		try (OpenTelemetry openTelemetry = OpenTelemetryHelper.Create(this.openTelemetryEndPointPort,
 																		this.args,
 																		this.hosts[0],
+																		this.openTelemetryRefreshIntervalSecs * 1000,
 																		this.clientPolicy.clusterName,
 																		this.argsHdrGeneral,
 																		this.argsHdrPolicies,
@@ -1106,6 +1138,8 @@ public class Main implements Log.Callback {
 			}
 
 			IAerospikeClient client;
+			String clusterName;
+
 			if (this.asyncEnabled) {
 				EventPolicy eventPolicy = new EventPolicy();
 
@@ -1168,13 +1202,18 @@ public class Main implements Log.Callback {
 					try {
 						openTelemetry.setDBConnectionState("Opening");
 						client = AerospikeClientFactory.getClient(clientPolicy, useProxyClient, hosts);
+						clusterName = client.getCluster().getClusterName();
+
+						if(clusterName == null && !useProxyClient){
+							clusterName = Info.request(this.hosts[0].name, this.hosts[0].port, "cluster-name");
+						}
 					}
 					catch (Exception e) {
 						openTelemetry.setDBConnectionState(e.getMessage());
 						throw e;
 					}
 					openTelemetry.setDBConnectionState("Opened");
-					openTelemetry.setClusterName(client.getCluster().getClusterName());
+					openTelemetry.setClusterName(clusterName);
 
 					try {
 						if (mrtEnabled) {
@@ -1190,8 +1229,8 @@ public class Main implements Log.Callback {
 							}
 						}
 					} finally {
-						client.close();
 						openTelemetry.setDBConnectionState("Closed");
+						client.close();
 					}
 				} finally {
 					eventLoops.close();
@@ -1201,6 +1240,12 @@ public class Main implements Log.Callback {
 				try {
 					openTelemetry.setDBConnectionState("Opening");
 					client = AerospikeClientFactory.getClient(clientPolicy, useProxyClient, hosts);
+
+					clusterName = client.getCluster().getClusterName();
+
+					if(clusterName == null && !useProxyClient){
+						clusterName = Info.request(this.hosts[0].name, this.hosts[0].port, "cluster-name");
+					}
 				}
 				catch (Exception e) {
 					openTelemetry.setDBConnectionState(e.getMessage());
@@ -1208,7 +1253,7 @@ public class Main implements Log.Callback {
 				}
 
 				openTelemetry.setDBConnectionState("Opened");
-				openTelemetry.setClusterName(client.getCluster().getClusterName());
+				openTelemetry.setClusterName(clusterName);
 
 				try {
 					if (mrtEnabled) {
@@ -1226,8 +1271,8 @@ public class Main implements Log.Callback {
 						}
 					}
 				} finally {
-					client.close();
 					openTelemetry.setDBConnectionState("Closed");
+					client.close();
 				}
 			}
 

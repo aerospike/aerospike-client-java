@@ -431,7 +431,6 @@ public abstract class RWTask {
 		}
 		else {
 			counters.read.count.getAndIncrement();
-			counters.read.incrTransCount(LatencyTypes.READ);
 		}
 	}
 
@@ -441,13 +440,11 @@ public abstract class RWTask {
 		}
 		else {
 			counters.read.count.getAndIncrement();
-			counters.read.incrTransCount(LatencyTypes.READ);
 		}
 	}
 
 	protected void processBatchRead() {
 		counters.read.count.getAndIncrement();
-		counters.read.incrTransCount(LatencyTypes.READ);
 	}
 
 	protected void writeFailure(AerospikeException ae) {

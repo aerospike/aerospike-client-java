@@ -61,7 +61,7 @@ public class CounterStore {
 
 		public void addException(Exception e) {
 			if(openTelemetry != null) {
-				openTelemetry.addException(e, latency.getType());
+				openTelemetry.addException(e, latency == null ? LatencyTypes.TRANSACTION : latency.getType());
 			}
 		}
 

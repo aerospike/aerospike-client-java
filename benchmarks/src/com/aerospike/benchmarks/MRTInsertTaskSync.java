@@ -49,6 +49,7 @@ public final class MRTInsertTaskSync extends MRTInsertTask implements Runnable {
 		for (long i = 0; i < nMRTs; i++) {
 			Txn txn = new Txn();
 			writePolicy.txn = txn;
+			this.counters.transaction.incrTransCount(LatencyTypes.TRANSACTION);
 
 			long startKey = keyStart + keysPerMRT * i;
 
@@ -90,6 +91,7 @@ public final class MRTInsertTaskSync extends MRTInsertTask implements Runnable {
 		// Use predictable value for 0th bin same as key value
 		Bin[] bins = args.getBins(random, true, keyCurrent);
 		put(key, bins);
+		counters.write.incrTransCount(LatencyTypes.TRANSACTION);
 	}
 
 	private void put(Key key, Bin[] bins) {
@@ -106,9 +108,9 @@ public final class MRTInsertTaskSync extends MRTInsertTask implements Runnable {
 		} else {
 			if (!skipKey(key)) {
 				client.put(writePolicy, key, bins);
+				counters.write.incrTransCount(LatencyTypes.WRITE);
 			}
 			counters.write.count.getAndIncrement();
-			counters.write.incrTransCount(LatencyTypes.WRITE);
 		}
 	}
 

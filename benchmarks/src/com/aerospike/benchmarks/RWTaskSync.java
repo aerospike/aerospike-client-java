@@ -73,7 +73,6 @@ public class RWTaskSync extends RWTask implements Runnable {
 	protected void put(WritePolicy writePolicy, Key key, Bin[] bins) {
 		if (skipKey(key)) {
 			counters.write.count.getAndIncrement();
-			counters.write.incrTransCount(LatencyTypes.WRITE);
 			return;
 		}
 
@@ -95,7 +94,6 @@ public class RWTaskSync extends RWTask implements Runnable {
 	protected void add(Key key, Bin[] bins) {
 		if (skipKey(key)) {
 			counters.write.count.getAndIncrement();
-			counters.write.incrTransCount(LatencyTypes.WRITE);
 			return;
 		}
 
@@ -130,6 +128,7 @@ public class RWTaskSync extends RWTask implements Runnable {
 		}
 		else {
 			record = client.get(args.readPolicy, key, binName);
+			counters.read.incrTransCount(LatencyTypes.READ);
 		}
 		processRead(key, record);
 	}
@@ -151,6 +150,7 @@ public class RWTaskSync extends RWTask implements Runnable {
 		}
 		else {
 			record = client.get(args.readPolicy, key);
+			counters.read.incrTransCount(LatencyTypes.READ);
 		}
 		processRead(key, record);
 	}
@@ -173,6 +173,7 @@ public class RWTaskSync extends RWTask implements Runnable {
 		}
 		else {
 			udfReturnObj = client.execute(args.writePolicy, key, udfPackageName, udfFunctionName, udfValues);
+			counters.read.incrTransCount(LatencyTypes.READ);
 		}
 		processRead(key, udfReturnObj);
 	}
@@ -193,6 +194,7 @@ public class RWTaskSync extends RWTask implements Runnable {
 		}
 		else {
 			records = client.get(args.batchPolicy, keys, binName);
+			counters.read.incrTransCount(LatencyTypes.READ);
 		}
 
 		if (records == null) {
@@ -217,6 +219,7 @@ public class RWTaskSync extends RWTask implements Runnable {
 		}
 		else {
 			records = client.get(args.batchPolicy, keys);
+			counters.read.incrTransCount(LatencyTypes.READ);
 		}
 
 		if (records == null) {

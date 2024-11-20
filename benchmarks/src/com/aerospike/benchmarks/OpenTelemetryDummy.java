@@ -6,13 +6,14 @@ public class OpenTelemetryDummy  implements OpenTelemetry {
 
     @SuppressWarnings("unused")
     public OpenTelemetryDummy(int endPointPort,
-                                 Arguments args,
-                                 Host host,
-                                 String clusterName,
-                                 StringBuilder generalInfo,
-                                 StringBuilder policies,
-                                 StringBuilder otherInfo,
-                                 CounterStore counters) {
+                                Arguments args,
+                                Host host,
+                                int hbTimeInterval,
+                                String clusterName,
+                                StringBuilder generalInfo,
+                                StringBuilder policies,
+                                StringBuilder otherInfo,
+                                CounterStore counters) {
         counters.setOpenTelemetry(this);
     }
 

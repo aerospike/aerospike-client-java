@@ -61,6 +61,7 @@ public class MRTRWTaskSync extends MRTRWTask implements Runnable {
 				Txn txn = new Txn();
 				writePolicy.txn = txn;
 				readPolicy.txn = txn;
+				counters.transaction.incrTransCount(LatencyTypes.TRANSACTION);
 
 				try {
 					for (int k = 0; k < keysPerMRT; k++) {

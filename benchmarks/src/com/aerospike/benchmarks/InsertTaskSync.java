@@ -87,18 +87,18 @@ public final class InsertTaskSync extends InsertTask implements Runnable {
 
 			if (! skipKey(key)) {
 				client.put(args.writePolicy, key, bins);
-			}
 
-			long elapsed = System.nanoTime() - begin;
+				long elapsed = System.nanoTime() - begin;
+				counters.write.latency.add(elapsed);
+			}
 			counters.write.count.getAndIncrement();
-			counters.write.latency.add(elapsed);
 		}
 		else {
 			if (! skipKey(key)) {
 				client.put(args.writePolicy, key, bins);
+				counters.write.incrTransCount(LatencyTypes.WRITE);
 			}
 			counters.write.count.getAndIncrement();
-			counters.write.incrTransCount(LatencyTypes.WRITE);
 		}
 	}
 

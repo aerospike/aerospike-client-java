@@ -409,26 +409,21 @@ public abstract class MRTRWTask {
 	protected void processRead(Key key, Record record) {
 		if (record == null && args.reportNotFound) {
 			counters.readNotFound.getAndIncrement();
-			counters.read.incrTransCount(LatencyTypes.READNOTFOUND);
 		} else {
 			counters.read.count.getAndIncrement();
-			counters.read.incrTransCount(LatencyTypes.READ);
 		}
 	}
 
 	protected void processRead(Key key, Object udfReturnValue) {
 		if (udfReturnValue == null && args.reportNotFound) {
 			counters.readNotFound.getAndIncrement();
-			counters.read.incrTransCount(LatencyTypes.READNOTFOUND);
 		} else {
 			counters.read.count.getAndIncrement();
-			counters.read.incrTransCount(LatencyTypes.READ);
 		}
 	}
 
 	protected void processBatchRead() {
 		counters.read.count.getAndIncrement();
-		counters.read.incrTransCount(LatencyTypes.READ);
 	}
 
 	protected void writeFailure(AerospikeException ae) {
