@@ -24,7 +24,9 @@ public class CounterStore {
 
 	Current write = new Current();
 	Current read = new Current();
-	Current transaction = new Current();
+	Current txnUnitOfWork = new Current();
+	Current txnCommit = new Current();
+	Current txnAbort = new Current();
 
 	boolean showMicroSeconds = false;
 
@@ -42,12 +44,20 @@ public class CounterStore {
 		if(this.read.latency != null) {
 			this.read.latency.setOpenTelemetry(openTelemetry);
 		}
-		if(this.transaction.latency != null) {
-			this.transaction.latency.setOpenTelemetry(openTelemetry);
+		if(this.txnUnitOfWork.latency != null) {
+			this.txnUnitOfWork.latency.setOpenTelemetry(openTelemetry);
+		}
+		if(this.txnCommit.latency != null) {
+			this.txnCommit.latency.setOpenTelemetry(openTelemetry);
+		}
+		if(this.txnAbort.latency != null) {
+			this.txnAbort.latency.setOpenTelemetry(openTelemetry);
 		}
 		this.write.openTelemetry = openTelemetry;
 		this.read.openTelemetry = openTelemetry;
-		this.transaction.openTelemetry = openTelemetry;
+		this.txnUnitOfWork.openTelemetry = openTelemetry;
+		this.txnCommit.openTelemetry = openTelemetry;
+		this.txnAbort.openTelemetry = openTelemetry;
 	}
 
 	public static class Current {

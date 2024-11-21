@@ -55,10 +55,15 @@ public class MRTRWTaskSync extends MRTRWTask implements Runnable {
 
 	public void run() {
 		RandomShift random = new RandomShift();
+		long begin;
+		boolean withinCommit = false;
+		boolean withinAbort = false;
 
 		while (valid) {
 			for (long i = 0; i < nMRTs; i++) {
-				counters.transaction.incrTransCountOTel(LatencyTypes.TXNUOW);
+				withinCommit = false;
+				withinAbort = false;
+				begin = System.nanoTime();
 				Txn txn = new Txn();
 				writePolicy.txn = txn;
 				readPolicy.txn = txn;
@@ -68,14 +73,7 @@ public class MRTRWTaskSync extends MRTRWTask implements Runnable {
 						runCommand(random);
 						// Throttle throughput
 						if (args.throughput > 0) {
-							int transactions;
-							if (counters.transaction.latency != null) {
-								// Measure the transactions as per one "business" transaction
-								transactions = counters.transaction.count.get();
-							} else {
-								transactions = counters.write.count.get() + counters.read.count.get();
-							}
-							if (transactions > args.throughput) {
+							if (counters.write.count.get() + counters.read.count.get() > args.throughput) {
 								long millis = counters.periodBegin.get() + 1000L - System.currentTimeMillis();
 
 								if (millis > 0) {
@@ -85,18 +83,63 @@ public class MRTRWTaskSync extends MRTRWTask implements Runnable {
 						}
 					}
 
-					long begin = System.nanoTime();
+					if(counters.txnUnitOfWork.latency != null) {
+						long elapsed = System.nanoTime() - begin;
+						counters.txnUnitOfWork.count.getAndIncrement();
+						counters.txnUnitOfWork.latency.add(elapsed);
+					}
+					else {
+						counters.txnUnitOfWork.count.getAndIncrement();
+						counters.txnUnitOfWork.incrTransCountOTel(LatencyTypes.TXNUOW);
+					}
+
 					if (valid) {
+						begin = System.nanoTime();
+						withinCommit = true;
 						client.commit(txn);
-						counters.transaction.recordElapsedTimeOTel(LatencyTypes.TXNCOMMIT, System.nanoTime() - begin);
+						if(counters.txnCommit.latency != null) {
+							long elapsed = System.nanoTime() - begin;
+							counters.txnCommit.count.getAndIncrement();
+							counters.txnCommit.latency.add(elapsed);
+						}
+						else {
+							counters.txnCommit.count.getAndIncrement();
+							counters.txnCommit.incrTransCountOTel(LatencyTypes.TXNCOMMIT);
+						}
 					} else {
+						begin = System.nanoTime();
+						withinAbort = true;
 						client.abort(txn);
-						counters.transaction.recordElapsedTimeOTel(LatencyTypes.TXNABORT, System.nanoTime() - begin);
+						if(counters.txnAbort.latency != null) {
+							long elapsed = System.nanoTime() - begin;
+							counters.txnAbort.count.getAndIncrement();
+							counters.txnAbort.latency.add(elapsed);
+						}
+						else {
+							counters.txnAbort.count.getAndIncrement();
+							counters.txnAbort.incrTransCountOTel(LatencyTypes.TXNABORT);
+						}
 					}
 				} catch (AerospikeException e) {
-					long begin = System.nanoTime();
+					if(withinAbort) {
+						counters.txnAbort.errors.incrementAndGet();
+					} else if (withinCommit) {
+						counters.txnCommit.errors.incrementAndGet();
+					}
+					else {
+						counters.txnUnitOfWork.errors.incrementAndGet();
+					}
+					begin = System.nanoTime();
 					client.abort(txn);
-					counters.transaction.recordElapsedTimeOTel(LatencyTypes.TXNABORT, System.nanoTime() - begin);
+					if(counters.txnAbort.latency != null) {
+						long elapsed = System.nanoTime() - begin;
+						counters.txnAbort.count.getAndIncrement();
+						counters.txnAbort.latency.add(elapsed);
+					}
+					else {
+						counters.txnAbort.count.getAndIncrement();
+						counters.txnAbort.incrTransCountOTel(LatencyTypes.TXNABORT);
+					}
 				}
 			}
 		}

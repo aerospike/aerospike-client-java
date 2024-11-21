@@ -687,6 +687,12 @@ public class Main implements Log.Callback {
 				}
 				counters.read.latency = new LatencyManagerYcsb(LatencyTypes.READ, warmupCount);
 				counters.write.latency = new LatencyManagerYcsb(LatencyTypes.WRITE, warmupCount);
+				//This needs to be set above!!!!
+				if(this.mrtEnabled) {
+					counters.txnUnitOfWork.latency = new LatencyManagerYcsb(LatencyTypes.TXNUOW, warmupCount);
+					counters.txnCommit.latency = new LatencyManagerYcsb(LatencyTypes.TXNCOMMIT, warmupCount);
+					counters.txnAbort.latency = new LatencyManagerYcsb(LatencyTypes.TXNABORT, warmupCount);
+				}
 			}
 			else {
 				boolean alt = false;
@@ -719,10 +725,22 @@ public class Main implements Log.Callback {
 				if (alt) {
 					counters.read.latency = new LatencyManagerAlternate(LatencyTypes.READ, columns, bitShift, showMicroSeconds);
 					counters.write.latency = new LatencyManagerAlternate(LatencyTypes.WRITE, columns, bitShift, showMicroSeconds);
+					//This needs to be set above!!!!
+					if(this.mrtEnabled) {
+						counters.txnUnitOfWork.latency = new LatencyManagerAlternate(LatencyTypes.TXNUOW, columns, bitShift, showMicroSeconds);
+						counters.txnCommit.latency = new LatencyManagerAlternate(LatencyTypes.TXNCOMMIT, columns, bitShift, showMicroSeconds);
+						counters.txnAbort.latency = new LatencyManagerAlternate(LatencyTypes.TXNABORT, columns, bitShift, showMicroSeconds);
+					}
 				}
 				else {
 					counters.read.latency = new LatencyManagerAerospike(LatencyTypes.READ, columns, bitShift, showMicroSeconds);
 					counters.write.latency = new LatencyManagerAerospike(LatencyTypes.WRITE, columns, bitShift, showMicroSeconds);
+					//This needs to be set above!!!!
+					if(this.mrtEnabled) {
+						counters.txnUnitOfWork.latency = new LatencyManagerAerospike(LatencyTypes.TXNUOW, columns, bitShift, showMicroSeconds);
+						counters.txnCommit.latency = new LatencyManagerAerospike(LatencyTypes.TXNCOMMIT, columns, bitShift, showMicroSeconds);
+						counters.txnAbort.latency = new LatencyManagerAerospike(LatencyTypes.TXNABORT, columns, bitShift, showMicroSeconds);
+					}
 				}
 			}
 		}
@@ -1482,9 +1500,17 @@ public class Main implements Log.Callback {
 			int timeoutReads = this.counters.read.timeouts.getAndSet(0);
 			int errorReads = this.counters.read.errors.getAndSet(0);
 
-			int numTxns = this.counters.transaction.count.getAndSet(0);
-			int timeoutTxns = this.counters.transaction.timeouts.getAndSet(0);
-			int errorTxns = this.counters.transaction.errors.getAndSet(0);
+			int numTxns = this.counters.txnUnitOfWork.count.getAndSet(0);
+			int timeoutTxns = this.counters.txnUnitOfWork.timeouts.getAndSet(0);
+			int errorTxns = this.counters.txnUnitOfWork.errors.getAndSet(0);
+
+			int numTxnsCommit = this.counters.txnCommit.count.getAndSet(0);
+			int timeoutTxnsCommit = this.counters.txnCommit.timeouts.getAndSet(0);
+			int errorTxnsCommit = this.counters.txnCommit.errors.getAndSet(0);
+
+			int numTxnsAbort = this.counters.txnAbort.count.getAndSet(0);
+			int timeoutTxnsAbort = this.counters.txnAbort.timeouts.getAndSet(0);
+			int errorTxnsAbort = this.counters.txnAbort.errors.getAndSet(0);
 
 			int notFound = 0;
 
@@ -1497,8 +1523,14 @@ public class Main implements Log.Callback {
 			System.out.print(dt.format(TimeFormatter));
 			System.out.print(" write(tps=" + numWrites + " timeouts=" + timeoutWrites + " errors=" + errorWrites + ")");
 			System.out.print(" read(tps=" + numReads + " timeouts=" + timeoutReads + " errors=" + errorReads);
-			if (this.counters.transaction.latency != null) {
+			if (this.counters.txnUnitOfWork.latency != null) {
 				System.out.print(" txns(tps=" + numTxns + " timeouts=" + timeoutTxns + " errors=" + errorTxns);
+			}
+			if (this.counters.txnCommit.latency != null) {
+				System.out.print(" txnCmts(tps=" + numTxnsCommit + " timeouts=" + timeoutTxnsCommit + " errors=" + errorTxnsCommit);
+			}
+			if (this.counters.txnAbort.latency != null) {
+				System.out.print(" txnAbts(tps=" + numTxnsAbort + " timeouts=" + timeoutTxnsAbort + " errors=" + errorTxnsAbort);
 			}
 			if (args.reportNotFound) {
 				System.out.print(" nf=" + notFound);
@@ -1514,8 +1546,14 @@ public class Main implements Log.Callback {
 				this.counters.write.latency.printHeader(System.out);
 				this.counters.write.latency.printResults(System.out, "write");
 				this.counters.read.latency.printResults(System.out, "read");
-				if (this.counters.transaction != null && this.counters.transaction.latency != null) {
-					this.counters.transaction.latency.printResults(System.out, "txn");
+				if (this.counters.txnUnitOfWork != null && this.counters.txnUnitOfWork.latency != null) {
+					this.counters.txnUnitOfWork.latency.printResults(System.out, "txn");
+				}
+				if (this.counters.txnCommit != null && this.counters.txnCommit.latency != null) {
+					this.counters.txnCommit.latency.printResults(System.out, "txnCmt");
+				}
+				if (this.counters.txnAbort != null && this.counters.txnAbort.latency != null) {
+					this.counters.txnAbort.latency.printResults(System.out, "txnAbt");
 				}
 			}
 
@@ -1531,8 +1569,14 @@ public class Main implements Log.Callback {
 						this.counters.write.latency.printSummaryHeader(System.out);
 						this.counters.write.latency.printSummary(System.out, "write");
 						this.counters.read.latency.printSummary(System.out, "read");
-						if (this.counters.transaction != null && this.counters.transaction.latency != null) {
-							this.counters.transaction.latency.printSummary(System.out, "txn");
+						if (this.counters.txnUnitOfWork != null && this.counters.txnUnitOfWork.latency != null) {
+							this.counters.txnUnitOfWork.latency.printSummary(System.out, "txn");
+						}
+						if (this.counters.txnCommit != null && this.counters.txnCommit.latency != null) {
+							this.counters.txnCommit.latency.printSummary(System.out, "txnCmt");
+						}
+						if (this.counters.txnAbort != null && this.counters.txnAbort.latency != null) {
+							this.counters.txnAbort.latency.printSummary(System.out, "txnAbt");
 						}
 					}
 
@@ -1559,9 +1603,9 @@ public class Main implements Log.Callback {
 			int timeoutReads = this.counters.read.timeouts.getAndSet(0);
 			int errorReads = this.counters.read.errors.getAndSet(0);
 
-			int numTxns = this.counters.transaction.count.getAndSet(0);
-			int timeoutTxns = this.counters.transaction.timeouts.getAndSet(0);
-			int errorTxns = this.counters.transaction.errors.getAndSet(0);
+			int numTxns = this.counters.txnUnitOfWork.count.getAndSet(0);
+			int timeoutTxns = this.counters.txnUnitOfWork.timeouts.getAndSet(0);
+			int errorTxns = this.counters.txnUnitOfWork.errors.getAndSet(0);
 
 			int notFound = 0;
 
@@ -1574,7 +1618,7 @@ public class Main implements Log.Callback {
 			System.out.print(dt.format(TimeFormatter));
 			System.out.print(" write(tps=" + numWrites + " timeouts=" + timeoutWrites + " errors=" + errorWrites + ")");
 			System.out.print(" read(tps=" + numReads + " timeouts=" + timeoutReads + " errors=" + errorReads);
-			if (this.counters.transaction.latency != null) {
+			if (this.counters.txnUnitOfWork.latency != null) {
 				System.out.print(" txns(tps=" + numTxns + " timeouts=" + timeoutTxns + " errors=" + errorTxns);
 			}
 			if (args.reportNotFound) {
@@ -1594,8 +1638,8 @@ public class Main implements Log.Callback {
 				this.counters.write.latency.printHeader(System.out);
 				this.counters.write.latency.printResults(System.out, "write");
 				this.counters.read.latency.printResults(System.out, "read");
-				if (this.counters.transaction != null && this.counters.transaction.latency != null) {
-					this.counters.transaction.latency.printResults(System.out, "txn");
+				if (this.counters.txnUnitOfWork != null && this.counters.txnUnitOfWork.latency != null) {
+					this.counters.txnUnitOfWork.latency.printResults(System.out, "txn");
 				}
 			}
 
@@ -1613,8 +1657,14 @@ public class Main implements Log.Callback {
 						this.counters.write.latency.printSummaryHeader(System.out);
 						this.counters.write.latency.printSummary(System.out, "write");
 						this.counters.read.latency.printSummary(System.out, "read");
-						if (this.counters.transaction != null && this.counters.transaction.latency != null) {
-							this.counters.transaction.latency.printSummary(System.out, "txn");
+						if (this.counters.txnUnitOfWork != null && this.counters.txnUnitOfWork.latency != null) {
+							this.counters.txnUnitOfWork.latency.printSummary(System.out, "txn");
+						}
+						if (this.counters.txnCommit != null && this.counters.txnCommit.latency != null) {
+							this.counters.txnCommit.latency.printSummary(System.out, "txnCmt");
+						}
+						if (this.counters.txnAbort != null && this.counters.txnAbort.latency != null) {
+							this.counters.txnAbort.latency.printSummary(System.out, "txnAbt");
 						}
 					}
 

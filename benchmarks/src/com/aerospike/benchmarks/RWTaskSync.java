@@ -50,15 +50,7 @@ public class RWTaskSync extends RWTask implements Runnable {
 
 			// Throttle throughput
 			if (args.throughput > 0) {
-				int transactions;
-				if (counters.transaction.latency != null) {
-					// Measure the transactions as per one "business" transaction
-					transactions = counters.transaction.count.get();
-				}
-				else {
-					transactions = counters.write.count.get() + counters.read.count.get();
-				}
-				if (transactions > args.throughput) {
+				if (counters.write.count.get() + counters.read.count.get() > args.throughput) {
 					long millis = counters.periodBegin.get() + 1000L - System.currentTimeMillis();
 
 					if (millis > 0) {

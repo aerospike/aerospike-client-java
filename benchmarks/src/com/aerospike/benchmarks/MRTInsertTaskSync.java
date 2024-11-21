@@ -45,9 +45,12 @@ public final class MRTInsertTaskSync extends MRTInsertTask implements Runnable {
 
 	public void run() {
 		RandomShift random = new RandomShift();
+		long begin;
+		boolean withinCommit = false;
 
 		for (long i = 0; i < nMRTs; i++) {
-			this.counters.transaction.incrTransCountOTel(LatencyTypes.TXNUOW);
+			withinCommit = false;
+			begin = System.nanoTime();
 			Txn txn = new Txn();
 			writePolicy.txn = txn;
 
@@ -78,14 +81,48 @@ public final class MRTInsertTaskSync extends MRTInsertTask implements Runnable {
 						}
 					}
 				}
-				long begin = System.nanoTime();
+
+				if(counters.txnUnitOfWork.latency != null) {
+					long elapsed = System.nanoTime() - begin;
+					counters.txnUnitOfWork.count.getAndIncrement();
+					counters.txnUnitOfWork.latency.add(elapsed);
+				}
+				else {
+					counters.txnUnitOfWork.count.getAndIncrement();
+					counters.txnUnitOfWork.incrTransCountOTel(LatencyTypes.TXNUOW);
+				}
+
+				begin = System.nanoTime();
+				withinCommit = true;
 				client.commit(txn);
-				this.counters.transaction.recordElapsedTimeOTel(LatencyTypes.TXNCOMMIT, System.nanoTime() - begin);
+				if(counters.txnCommit.latency != null) {
+					long elapsed = System.nanoTime() - begin;
+					counters.txnCommit.count.getAndIncrement();
+					counters.txnCommit.latency.add(elapsed);
+				}
+				else {
+					counters.txnCommit.count.getAndIncrement();
+					counters.txnCommit.incrTransCountOTel(LatencyTypes.TXNCOMMIT);
+				}
 			} catch (Exception e) {
+				if (withinCommit) {
+					counters.txnCommit.errors.incrementAndGet();
+				}
+				else {
+					counters.txnUnitOfWork.errors.incrementAndGet();
+				}
 				System.err.println("Transaction failed for MRT iteration: " + (i + 1) + " - " + e.getMessage());
-				long begin = System.nanoTime();
+				begin = System.nanoTime();
 				client.abort(txn);
-				this.counters.transaction.recordElapsedTimeOTel(LatencyTypes.TXNABORT, System.nanoTime() - begin);
+				if(counters.txnAbort.latency != null) {
+					long elapsed = System.nanoTime() - begin;
+					counters.txnAbort.count.getAndIncrement();
+					counters.txnAbort.latency.add(elapsed);
+				}
+				else {
+					counters.txnAbort.count.getAndIncrement();
+					counters.txnAbort.incrTransCountOTel(LatencyTypes.TXNABORT);
+				}
 			}
 		}
 	}

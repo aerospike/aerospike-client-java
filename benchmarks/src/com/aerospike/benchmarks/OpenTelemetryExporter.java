@@ -17,7 +17,6 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
-import java.util.Arrays;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -52,6 +51,8 @@ public final class OpenTelemetryExporter implements com.aerospike.benchmarks.Ope
     private final AtomicBoolean aborted = new AtomicBoolean(false);
 
     //If a signal is sent, this will help ensure proper shutdown of OpenTel
+    //I know it is a proprietary API but this is the way I know, need to replace with a "better" modern approach
+    // maybe Runtime.getRuntime().addShutdownHook
     private static class OTelSignalHandler implements SignalHandler {
 
         final OpenTelemetryExporter exporter;

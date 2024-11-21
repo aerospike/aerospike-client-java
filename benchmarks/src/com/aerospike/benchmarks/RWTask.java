@@ -163,7 +163,6 @@ public abstract class RWTask {
 	private void runTransaction(RandomShift random) {
 		long key;
 		Iterator<TransactionalItem> iterator = args.transactionalWorkload.iterator(random);
-		long begin = System.nanoTime();
 		while (iterator.hasNext()) {
 			TransactionalItem thisItem = iterator.next();
 			switch (thisItem.getType()) {
@@ -205,12 +204,6 @@ public abstract class RWTask {
 				default:
 					break;
 			}
-		}
-
-		if (counters.transaction.latency != null) {
-			long elapsed = System.nanoTime() - begin;
-			counters.transaction.count.getAndIncrement();
-			counters.transaction.latency.add(elapsed);
 		}
 	}
 
