@@ -123,11 +123,10 @@ public class MRTRWTaskSync extends MRTRWTask implements Runnable {
 				} catch (AerospikeException e) {
 					if(withinAbort) {
 						counters.txnAbort.errors.incrementAndGet();
+						counters.txnAbort.addExceptionOTel(e);
 					} else if (withinCommit) {
 						counters.txnCommit.errors.incrementAndGet();
-					}
-					else {
-						counters.txnUnitOfWork.errors.incrementAndGet();
+						counters.txnCommit.addExceptionOTel(e);
 					}
 					begin = System.nanoTime();
 					client.abort(txn);

@@ -1141,7 +1141,7 @@ public class Main implements Log.Callback {
 																		this.argsHdrOther,
 																		this.nKeys,
 																		this.nThreads,
-																		this.mrtEnabled ? this.nMRTs : -1,
+																		this.mrtEnabled ? this.keysPerMRT : -1,
 																		this.asyncEnabled,
 																		this.counters)) {
 			System.out.println(openTelemetry.printConfiguration());
@@ -1523,19 +1523,21 @@ public class Main implements Log.Callback {
 			System.out.print(dt.format(TimeFormatter));
 			System.out.print(" write(tps=" + numWrites + " timeouts=" + timeoutWrites + " errors=" + errorWrites + ")");
 			System.out.print(" read(tps=" + numReads + " timeouts=" + timeoutReads + " errors=" + errorReads);
-			if (this.counters.txnUnitOfWork.latency != null) {
-				System.out.print(" txns(tps=" + numTxns + " timeouts=" + timeoutTxns + " errors=" + errorTxns);
-			}
-			if (this.counters.txnCommit.latency != null) {
-				System.out.print(" txnCmts(tps=" + numTxnsCommit + " timeouts=" + timeoutTxnsCommit + " errors=" + errorTxnsCommit);
-			}
-			if (this.counters.txnAbort.latency != null) {
-				System.out.print(" txnAbts(tps=" + numTxnsAbort + " timeouts=" + timeoutTxnsAbort + " errors=" + errorTxnsAbort);
-			}
 			if (args.reportNotFound) {
 				System.out.print(" nf=" + notFound);
 			}
 			System.out.print(")");
+
+			if (this.counters.txnUnitOfWork.latency != null) {
+				System.out.print(" txns(tps=" + numTxns + " timeouts=" + timeoutTxns + " errors=" + errorTxns + ")");
+			}
+			if (this.counters.txnCommit.latency != null) {
+				System.out.print(" txnCmts(tps=" + numTxnsCommit + " timeouts=" + timeoutTxnsCommit + " errors=" + errorTxnsCommit + ")");
+			}
+			if (this.counters.txnAbort.latency != null) {
+				System.out.print(" txnAbts(tps=" + numTxnsAbort + " timeouts=" + timeoutTxnsAbort + " errors=" + errorTxnsAbort + ")");
+			}
+
 
 			System.out.print(" total(tps=" + (numWrites + numReads) + " timeouts=" + (timeoutWrites + timeoutReads) + " errors=" + (errorWrites + errorReads) + ")");
 			//System.out.print(" buffused=" + used
@@ -1607,6 +1609,14 @@ public class Main implements Log.Callback {
 			int timeoutTxns = this.counters.txnUnitOfWork.timeouts.getAndSet(0);
 			int errorTxns = this.counters.txnUnitOfWork.errors.getAndSet(0);
 
+			int numTxnsCmt = this.counters.txnCommit.count.getAndSet(0);
+			int timeoutTxnsCmt = this.counters.txnCommit.timeouts.getAndSet(0);
+			int errorTxnsCmt = this.counters.txnCommit.errors.getAndSet(0);
+
+			int numTxnsAbt = this.counters.txnAbort.count.getAndSet(0);
+			int timeoutTxnsAbt = this.counters.txnAbort.timeouts.getAndSet(0);
+			int errorTxnsAbt = this.counters.txnAbort.errors.getAndSet(0);
+
 			int notFound = 0;
 
 			if (args.reportNotFound) {
@@ -1618,16 +1628,19 @@ public class Main implements Log.Callback {
 			System.out.print(dt.format(TimeFormatter));
 			System.out.print(" write(tps=" + numWrites + " timeouts=" + timeoutWrites + " errors=" + errorWrites + ")");
 			System.out.print(" read(tps=" + numReads + " timeouts=" + timeoutReads + " errors=" + errorReads);
-			if (this.counters.txnUnitOfWork.latency != null) {
-				System.out.print(" txns(tps=" + numTxns + " timeouts=" + timeoutTxns + " errors=" + errorTxns);
-			}
 			if (args.reportNotFound) {
 				System.out.print(" nf=" + notFound);
 			}
 			System.out.print(")");
 
+			if (this.mrtEnabled) {
+				System.out.print(" txns(tps=" + numTxns + " timeouts=" + timeoutTxns + " errors=" + errorTxns + ")");
+				System.out.print(" txnCmts(tps=" + numTxnsCmt + " timeouts=" + timeoutTxnsCmt + " errors=" + errorTxnsCmt+ ")");
+				System.out.print(" txnAbts(tps=" + numTxnsAbt + " timeouts=" + timeoutTxnsAbt + " errors=" + errorTxnsAbt + ")");
+			}
+
 			System.out.print(" total(tps=" + (numWrites + numReads) + " timeouts=" + (timeoutWrites + timeoutReads)
-					+ " errors=" + (errorWrites + errorReads) + ")");
+					+ " errors=" + (errorWrites + errorReads + errorTxns + errorTxnsAbt + errorTxnsCmt) + ")");
 			// System.out.print(" buffused=" + used
 			// System.out.print(" nodeused=" + ((AsyncNode)nodes[0]).openCount.get() + ',' +
 			// ((AsyncNode)nodes[1]).openCount.get() + ',' +
@@ -1640,6 +1653,12 @@ public class Main implements Log.Callback {
 				this.counters.read.latency.printResults(System.out, "read");
 				if (this.counters.txnUnitOfWork != null && this.counters.txnUnitOfWork.latency != null) {
 					this.counters.txnUnitOfWork.latency.printResults(System.out, "txn");
+				}
+				if (this.counters.txnCommit != null && this.counters.txnCommit.latency != null) {
+					this.counters.txnCommit.latency.printResults(System.out, "txnCmt");
+				}
+				if (this.counters.txnAbort != null && this.counters.txnAbort.latency != null) {
+					this.counters.txnAbort.latency.printResults(System.out, "txnAbt");
 				}
 			}
 

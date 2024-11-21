@@ -14,7 +14,7 @@ public class OpenTelemetryDummy  implements OpenTelemetry {
                                 StringBuilder otherInfo,
                                 long nKeys,
                                 int nthreads,
-                                long nbrMRTs,
+                                long keysMRT,
                                 boolean asyncEnabled,
                                 CounterStore counters) {
         counters.setOpenTelemetry(this);

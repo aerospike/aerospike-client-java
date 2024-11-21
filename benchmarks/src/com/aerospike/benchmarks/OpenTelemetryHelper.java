@@ -14,7 +14,7 @@ public final class OpenTelemetryHelper {
                                        StringBuilder otherInfo,
                                        long nKeys,
                                        int nThreads,
-                                       long nbrMRTs,
+                                       long keysMRT,
                                        boolean asyncEnabled,
                                        CounterStore counters) {
 
@@ -28,7 +28,7 @@ public final class OpenTelemetryHelper {
                                                 otherInfo,
                                                 nKeys,
                                                 nThreads,
-                                                nbrMRTs,
+                                                keysMRT,
                                                 asyncEnabled,
                                                 counters);
         }
@@ -42,7 +42,7 @@ public final class OpenTelemetryHelper {
                                         otherInfo,
                                         nKeys,
                                         nThreads,
-                                        nbrMRTs,
+                                        keysMRT,
                                         asyncEnabled,
                                         counters);
     }

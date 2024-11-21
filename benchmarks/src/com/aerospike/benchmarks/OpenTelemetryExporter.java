@@ -91,7 +91,7 @@ public final class OpenTelemetryExporter implements com.aerospike.benchmarks.Ope
                                  StringBuilder otherInfo,
                                  long nKeys,
                                  int nthreads,
-                                 long nbrMRTs,
+                                 long keysMRT,
                                  boolean asyncEnabled,
                                  CounterStore counters) {
         this.debug = args.debug;
@@ -174,8 +174,8 @@ public final class OpenTelemetryExporter implements com.aerospike.benchmarks.Ope
                         AttributeKey.longKey("throughputThrottle"), (long) args.throughput,
                         AttributeKey.longKey("transactionLimit"), args.transactionLimit,
                         AttributeKey.longKey("threads"), (long) nthreads,
-                        AttributeKey.longKey("nbrMRTs"), nbrMRTs <= 0 ? 0L : nbrMRTs,
-                        AttributeKey.longKey("mrtSize"), nbrMRTs <= 0 ? 0L : nbrMRTs / (long) nthreads
+                        AttributeKey.longKey("nbrMRTs"), keysMRT <= 0 ? 0L : nKeys / keysMRT,
+                        AttributeKey.longKey("mrtSize"), keysMRT <= 0 ? 0L : keysMRT
                 ),
                 Attributes.of(
                         AttributeKey.booleanKey("asyncEnabled"), asyncEnabled,
@@ -289,9 +289,17 @@ public final class OpenTelemetryExporter implements com.aerospike.benchmarks.Ope
         String exceptionType = exception.getClass().getName().replaceFirst("com\\.aerospike\\.client\\.AerospikeException\\$", "");
         exceptionType = exceptionType.replaceFirst("com\\.aerospike\\.client\\.", "");
 
+        String message = exception.getMessage();
+        if(message != null) {
+            int pos = message.indexOf("verify errors:");
+            if(pos != -1) {
+                message = message.substring(0, pos);
+            }
+        }
+
         final Attributes attributes = Attributes.of(
                 AttributeKey.stringKey("exception_type"), exceptionType,
-                AttributeKey.stringKey("exception"), exception.getMessage(),
+                AttributeKey.stringKey("exception"), message,
                 AttributeKey.stringKey("type"), type.name().toLowerCase(),
                 AttributeKey.longKey("startTimeMillis"), this.startTimeMillis
         );

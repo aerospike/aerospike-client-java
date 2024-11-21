@@ -107,9 +107,7 @@ public final class MRTInsertTaskSync extends MRTInsertTask implements Runnable {
 			} catch (Exception e) {
 				if (withinCommit) {
 					counters.txnCommit.errors.incrementAndGet();
-				}
-				else {
-					counters.txnUnitOfWork.errors.incrementAndGet();
+					counters.txnCommit.addExceptionOTel(e);
 				}
 				System.err.println("Transaction failed for MRT iteration: " + (i + 1) + " - " + e.getMessage());
 				begin = System.nanoTime();
