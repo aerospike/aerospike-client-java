@@ -39,7 +39,7 @@ public abstract class MRTInsertTask {
 				ae.printStackTrace();
 			}
 		}
-		counters.write.addException(ae);
+		counters.write.addExceptionOTel(ae, LatencyTypes.WRITE);
 	}
 
 	protected void writeFailure(Exception e) {
@@ -48,6 +48,6 @@ public abstract class MRTInsertTask {
 		if (args.debug) {
 			e.printStackTrace();
 		}
-		counters.write.addException(e);
+		counters.write.addExceptionOTel(e, LatencyTypes.WRITE);
 	}
 }

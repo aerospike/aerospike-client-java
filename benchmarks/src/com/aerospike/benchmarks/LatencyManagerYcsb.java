@@ -47,7 +47,9 @@ public class LatencyManagerYcsb implements LatencyManager {
 		switch (type) {
 			case READ -> this.name = "read";
 			case WRITE -> this.name = "write";
-			case TRANSACTION -> this.name = "txns";
+			case TRANSACTION, TXNUOW -> this.name = "txns";
+            case TXNCOMMIT -> this.name = "txncommit";
+			case TXNABORT -> this.name = "txnabort";
 			default -> this.name = "unknown";
 		}
 		_buckets = new AtomicInteger(1000);
@@ -91,7 +93,7 @@ public class LatencyManagerYcsb implements LatencyManager {
 		}
 
 		if(this.openTelemetry != null) {
-			this.openTelemetry.recordElapsedTime(this.latencyType, latencyMs);
+			this.openTelemetry.recordElapsedTime(this.latencyType, latency);
 		}
 	}
 

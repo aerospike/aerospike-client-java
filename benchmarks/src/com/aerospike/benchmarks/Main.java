@@ -119,10 +119,11 @@ public class Main implements Log.Callback {
 	private final CounterStore counters = new CounterStore();
 
 	private int openTelemetryEndPointPort = 19090;
-	private int openTelemetryRefreshIntervalSecs = 5;
 
 	public Main(String[] commandLineArgs) throws Exception {
 		boolean hasTxns = false;
+
+		this.args.commandLineArgs = commandLineArgs;
 
 		Options options = getOptions();
 
@@ -686,9 +687,6 @@ public class Main implements Log.Callback {
 				}
 				counters.read.latency = new LatencyManagerYcsb(LatencyTypes.READ, warmupCount);
 				counters.write.latency = new LatencyManagerYcsb(LatencyTypes.WRITE, warmupCount);
-				if (hasTxns) {
-					counters.transaction.latency = new LatencyManagerYcsb(LatencyTypes.TRANSACTION, warmupCount);
-				}
 			}
 			else {
 				boolean alt = false;
@@ -721,16 +719,10 @@ public class Main implements Log.Callback {
 				if (alt) {
 					counters.read.latency = new LatencyManagerAlternate(LatencyTypes.READ, columns, bitShift, showMicroSeconds);
 					counters.write.latency = new LatencyManagerAlternate(LatencyTypes.WRITE, columns, bitShift, showMicroSeconds);
-					if (hasTxns) {
-						counters.transaction.latency = new LatencyManagerAlternate(LatencyTypes.TRANSACTION, columns, bitShift, showMicroSeconds);
-					}
 				}
 				else {
 					counters.read.latency = new LatencyManagerAerospike(LatencyTypes.READ, columns, bitShift, showMicroSeconds);
 					counters.write.latency = new LatencyManagerAerospike(LatencyTypes.WRITE, columns, bitShift, showMicroSeconds);
-					if (hasTxns) {
-						counters.transaction.latency = new LatencyManagerAerospike(LatencyTypes.TRANSACTION, columns, bitShift, showMicroSeconds);
-					}
 				}
 			}
 		}
@@ -811,8 +803,8 @@ public class Main implements Log.Callback {
 		if(line.hasOption("prometheusPort")) {
 			this.openTelemetryEndPointPort = Integer.parseInt(line.getOptionValue("prometheusPort"));
 		}
-		if(line.hasOption("prometheusRefreshSecs")) {
-			this.openTelemetryRefreshIntervalSecs = Integer.parseInt(line.getOptionValue("prometheusRefreshSecs"));
+		if(line.hasOption("opentelEnable")) {
+			this.args.opentelEnabled = true;
 		}
 
 		printOptions();
@@ -1100,7 +1092,7 @@ public class Main implements Log.Callback {
 		options.addOption("pids", "partitionIds", true, "Specify the list of comma seperated partition IDs the primary keys must belong to");
 
 		options.addOption("pom", "prometheusPort", true, "Prometheus OpenTel End Point. If -1, OpenTel metrics are disabled. Default 19090");
-		options.addOption("pomRefresh", "prometheusRefreshSecs", true, "Prometheus Refresh Interval in Seconds. If -1 refresh will be disabled. Default 5 seconds");
+		options.addOption("otel", "opentelEnable", false, "Open Telemetry Metrics will be enabled. Disabled by default.");
 
 		return options;
 	}
@@ -1124,11 +1116,15 @@ public class Main implements Log.Callback {
 		try (OpenTelemetry openTelemetry = OpenTelemetryHelper.Create(this.openTelemetryEndPointPort,
 																		this.args,
 																		this.hosts[0],
-																		this.openTelemetryRefreshIntervalSecs * 1000,
+																		this.args.opentelEnabled,
 																		this.clientPolicy.clusterName,
 																		this.argsHdrGeneral,
 																		this.argsHdrPolicies,
 																		this.argsHdrOther,
+																		this.nKeys,
+																		this.nThreads,
+																		this.mrtEnabled ? this.nMRTs : -1,
+																		this.asyncEnabled,
 																		this.counters)) {
 			System.out.println(openTelemetry.printConfiguration());
 			System.out.println();

@@ -90,18 +90,7 @@ public class LatencyManagerAlternate implements LatencyManager {
 		}
 
 		if(this.openTelemetry != null){
-			long elapsedMS;
-			if(showMicroSeconds){
-				elapsedMS = elapsedNanos / NS_TO_MS;
-				// Round up elapsed to nearest millisecond.
-				if ((elapsedNanos - (elapsedMS * NS_TO_MS)) > 0) {
-					elapsedMS++;
-				}
-			}
-			else {
-				elapsedMS = elapsed;
-			}
-			this.openTelemetry.recordElapsedTime(this.latencyType, elapsedMS);
+			this.openTelemetry.recordElapsedTime(this.latencyType, elapsedNanos);
 		}
 
 		for (int i = 0; i < lastBucket; i++) {

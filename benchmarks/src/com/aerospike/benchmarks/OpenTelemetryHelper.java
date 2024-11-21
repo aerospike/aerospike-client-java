@@ -7,33 +7,43 @@ public final class OpenTelemetryHelper {
     public static OpenTelemetry Create(int endPointPort,
                                        Arguments args,
                                        Host host,
-                                       int hbTimeInterval,
+                                       boolean enable,
                                        String clusterName,
                                        StringBuilder generalInfo,
                                        StringBuilder policies,
                                        StringBuilder otherInfo,
+                                       long nKeys,
+                                       int nThreads,
+                                       long nbrMRTs,
+                                       boolean asyncEnabled,
                                        CounterStore counters) {
 
-        if(endPointPort > 0) {
+        if(enable) {
             return new OpenTelemetryExporter(endPointPort,
                                                 args,
                                                 host,
-                                                hbTimeInterval,
                                                 clusterName,
                                                 generalInfo,
                                                 policies,
                                                 otherInfo,
+                                                nKeys,
+                                                nThreads,
+                                                nbrMRTs,
+                                                asyncEnabled,
                                                 counters);
         }
 
         return new OpenTelemetryDummy(endPointPort,
                                         args,
                                         host,
-                                        hbTimeInterval,
                                         clusterName,
                                         generalInfo,
                                         policies,
                                         otherInfo,
+                                        nKeys,
+                                        nThreads,
+                                        nbrMRTs,
+                                        asyncEnabled,
                                         counters);
     }
 

@@ -96,7 +96,7 @@ public final class InsertTaskSync extends InsertTask implements Runnable {
 		else {
 			if (! skipKey(key)) {
 				client.put(args.writePolicy, key, bins);
-				counters.write.incrTransCount(LatencyTypes.WRITE);
+				counters.write.incrTransCountOTel(LatencyTypes.WRITE);
 			}
 			counters.write.count.getAndIncrement();
 		}

@@ -58,10 +58,10 @@ public class MRTRWTaskSync extends MRTRWTask implements Runnable {
 
 		while (valid) {
 			for (long i = 0; i < nMRTs; i++) {
+				counters.transaction.incrTransCountOTel(LatencyTypes.TXNUOW);
 				Txn txn = new Txn();
 				writePolicy.txn = txn;
 				readPolicy.txn = txn;
-				counters.transaction.incrTransCount(LatencyTypes.TRANSACTION);
 
 				try {
 					for (int k = 0; k < keysPerMRT; k++) {
@@ -85,13 +85,18 @@ public class MRTRWTaskSync extends MRTRWTask implements Runnable {
 						}
 					}
 
+					long begin = System.nanoTime();
 					if (valid) {
 						client.commit(txn);
+						counters.transaction.recordElapsedTimeOTel(LatencyTypes.TXNCOMMIT, System.nanoTime() - begin);
 					} else {
 						client.abort(txn);
+						counters.transaction.recordElapsedTimeOTel(LatencyTypes.TXNABORT, System.nanoTime() - begin);
 					}
 				} catch (AerospikeException e) {
+					long begin = System.nanoTime();
 					client.abort(txn);
+					counters.transaction.recordElapsedTimeOTel(LatencyTypes.TXNABORT, System.nanoTime() - begin);
 				}
 			}
 		}
@@ -101,7 +106,6 @@ public class MRTRWTaskSync extends MRTRWTask implements Runnable {
 	protected void put(WritePolicy writePolicy, Key key, Bin[] bins) {
 		if (skipKey(key)) {
 			counters.write.count.getAndIncrement();
-			counters.write.incrTransCount(LatencyTypes.WRITE);
 			return;
 		}
 
@@ -114,7 +118,7 @@ public class MRTRWTaskSync extends MRTRWTask implements Runnable {
 		} else {
 			client.put(this.writePolicy, key, bins);
 			counters.write.count.getAndIncrement();
-			counters.write.incrTransCount(LatencyTypes.WRITE);
+			counters.write.incrTransCountOTel(LatencyTypes.WRITE);
 		}
 	}
 
@@ -122,7 +126,6 @@ public class MRTRWTaskSync extends MRTRWTask implements Runnable {
 	protected void add(Key key, Bin[] bins) {
 		if (skipKey(key)) {
 			counters.write.count.getAndIncrement();
-			counters.write.incrTransCount(LatencyTypes.WRITE);
 			return;
 		}
 
@@ -135,7 +138,7 @@ public class MRTRWTaskSync extends MRTRWTask implements Runnable {
 		} else {
 			client.add(writePolicyGeneration, key, bins);
 			counters.write.count.getAndIncrement();
-			counters.write.incrTransCount(LatencyTypes.WRITE);
+			counters.write.incrTransCountOTel(LatencyTypes.WRITE);
 		}
 	}
 
@@ -155,6 +158,7 @@ public class MRTRWTaskSync extends MRTRWTask implements Runnable {
 			counters.read.latency.add(elapsed);
 		} else {
 			record = client.get(this.readPolicy, key, binName);
+			counters.read.incrTransCountOTel(LatencyTypes.READ);
 		}
 		processRead(key, record);
 	}
@@ -175,6 +179,7 @@ public class MRTRWTaskSync extends MRTRWTask implements Runnable {
 			counters.read.latency.add(elapsed);
 		} else {
 			record = client.get(this.readPolicy, key);
+			counters.read.incrTransCountOTel(LatencyTypes.READ);
 		}
 		processRead(key, record);
 	}
@@ -215,6 +220,7 @@ public class MRTRWTaskSync extends MRTRWTask implements Runnable {
 			counters.read.latency.add(elapsed);
 		} else {
 			records = client.get(args.batchPolicy, keys, binName);
+			counters.read.incrTransCountOTel(LatencyTypes.READ);
 		}
 
 		if (records == null) {
@@ -238,6 +244,7 @@ public class MRTRWTaskSync extends MRTRWTask implements Runnable {
 			counters.read.latency.add(elapsed);
 		} else {
 			records = client.get(args.batchPolicy, keys);
+			counters.read.incrTransCountOTel(LatencyTypes.READ);
 		}
 
 		if (records == null) {

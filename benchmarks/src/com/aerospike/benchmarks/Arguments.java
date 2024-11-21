@@ -26,6 +26,7 @@ import com.aerospike.client.policy.WritePolicy;
 import com.aerospike.client.util.RandomShift;
 
 public class Arguments {
+	public String[] commandLineArgs;
 	public String namespace;
 	public String[] batchNamespaces;
 	public String setName;
@@ -53,6 +54,7 @@ public class Arguments {
 	public String udfPackageName;
 	public String udfFunctionName;
 	public Value[] udfValues;
+	public boolean opentelEnabled;
 
 	public void setFixedBins() {
 		// Fixed values are used when the extra random call overhead is not wanted

@@ -59,15 +59,22 @@ public class CounterStore {
 		LatencyManager latency;
 		OpenTelemetry openTelemetry = null;
 
-		public void addException(Exception e) {
+		public void addExceptionOTel(Exception e) {
+			this.addExceptionOTel(e, latency.getType());
+		}
+		public void addExceptionOTel(Exception e, LatencyTypes latencyType) {
 			if(openTelemetry != null) {
-				openTelemetry.addException(e, latency == null ? LatencyTypes.TRANSACTION : latency.getType());
+				openTelemetry.addException(e, latencyType);
 			}
 		}
-
-		public void incrTransCount(LatencyTypes type) {
+		public void incrTransCountOTel(LatencyTypes type) {
 			if(openTelemetry != null) {
 				openTelemetry.incrTransCounter(type);
+			}
+		}
+		public void recordElapsedTimeOTel(LatencyTypes type, long elapsedNanos) {
+			if(openTelemetry != null) {
+				openTelemetry.recordElapsedTime(type, elapsedNanos);
 			}
 		}
 	}

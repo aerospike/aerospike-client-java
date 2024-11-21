@@ -40,7 +40,7 @@ public abstract class InsertTask {
 				ae.printStackTrace();
 			}
 		}
-		counters.write.addException(ae);
+		counters.write.addExceptionOTel(ae, LatencyTypes.WRITE);
 	}
 
 	protected void writeFailure(Exception e) {
@@ -49,6 +49,6 @@ public abstract class InsertTask {
 		if (args.debug) {
 			e.printStackTrace();
 		}
-		counters.write.addException(e);
+		counters.write.addExceptionOTel(e, LatencyTypes.WRITE);
 	}
 }

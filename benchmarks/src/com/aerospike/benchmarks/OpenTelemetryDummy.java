@@ -8,11 +8,14 @@ public class OpenTelemetryDummy  implements OpenTelemetry {
     public OpenTelemetryDummy(int endPointPort,
                                 Arguments args,
                                 Host host,
-                                int hbTimeInterval,
                                 String clusterName,
                                 StringBuilder generalInfo,
                                 StringBuilder policies,
                                 StringBuilder otherInfo,
+                                long nKeys,
+                                int nthreads,
+                                long nbrMRTs,
+                                boolean asyncEnabled,
                                 CounterStore counters) {
         counters.setOpenTelemetry(this);
     }
@@ -32,7 +35,12 @@ public class OpenTelemetryDummy  implements OpenTelemetry {
 
     @SuppressWarnings("unused")
     @Override
-    public void recordElapsedTime(LatencyTypes type, long elapsedMS) {
+    public void recordElapsedTime(LatencyTypes type, double elapsedMS) {
+    }
+
+    @SuppressWarnings("unused")
+    @Override
+    public void recordElapsedTime(LatencyTypes type, long elapsedNanos) {
     }
 
     @Override

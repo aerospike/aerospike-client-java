@@ -86,7 +86,7 @@ public class RWTaskSync extends RWTask implements Runnable {
 		else {
 			client.put(writePolicy, key, bins);
 			counters.write.count.getAndIncrement();
-			counters.write.incrTransCount(LatencyTypes.WRITE);
+			counters.write.incrTransCountOTel(LatencyTypes.WRITE);
 		}
 	}
 
@@ -107,7 +107,7 @@ public class RWTaskSync extends RWTask implements Runnable {
 		else {
 			client.add(writePolicyGeneration, key, bins);
 			counters.write.count.getAndIncrement();
-			counters.write.incrTransCount(LatencyTypes.WRITE);
+			counters.write.incrTransCountOTel(LatencyTypes.WRITE);
 		}
 	}
 
@@ -128,7 +128,7 @@ public class RWTaskSync extends RWTask implements Runnable {
 		}
 		else {
 			record = client.get(args.readPolicy, key, binName);
-			counters.read.incrTransCount(LatencyTypes.READ);
+			counters.read.incrTransCountOTel(LatencyTypes.READ);
 		}
 		processRead(key, record);
 	}
@@ -150,7 +150,7 @@ public class RWTaskSync extends RWTask implements Runnable {
 		}
 		else {
 			record = client.get(args.readPolicy, key);
-			counters.read.incrTransCount(LatencyTypes.READ);
+			counters.read.incrTransCountOTel(LatencyTypes.READ);
 		}
 		processRead(key, record);
 	}
@@ -173,7 +173,7 @@ public class RWTaskSync extends RWTask implements Runnable {
 		}
 		else {
 			udfReturnObj = client.execute(args.writePolicy, key, udfPackageName, udfFunctionName, udfValues);
-			counters.read.incrTransCount(LatencyTypes.READ);
+			counters.read.incrTransCountOTel(LatencyTypes.READ);
 		}
 		processRead(key, udfReturnObj);
 	}
@@ -194,7 +194,7 @@ public class RWTaskSync extends RWTask implements Runnable {
 		}
 		else {
 			records = client.get(args.batchPolicy, keys, binName);
-			counters.read.incrTransCount(LatencyTypes.READ);
+			counters.read.incrTransCountOTel(LatencyTypes.READ);
 		}
 
 		if (records == null) {
@@ -219,7 +219,7 @@ public class RWTaskSync extends RWTask implements Runnable {
 		}
 		else {
 			records = client.get(args.batchPolicy, keys);
-			counters.read.incrTransCount(LatencyTypes.READ);
+			counters.read.incrTransCountOTel(LatencyTypes.READ);
 		}
 
 		if (records == null) {

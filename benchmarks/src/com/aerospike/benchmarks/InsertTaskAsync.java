@@ -97,7 +97,7 @@ public final class InsertTaskAsync extends InsertTask {
 		@Override
 		public void onSuccess(Key key) {
 			counters.write.count.getAndIncrement();
-			counters.write.incrTransCount(LatencyTypes.WRITE);
+			counters.write.incrTransCountOTel(LatencyTypes.WRITE);
 
 			keyCount++;
 

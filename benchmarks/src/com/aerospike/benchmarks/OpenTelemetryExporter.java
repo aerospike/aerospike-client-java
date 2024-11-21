@@ -18,9 +18,6 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
-import java.util.Collections;
-import java.util.Timer;
-import java.util.TimerTask;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -31,21 +28,21 @@ public final class OpenTelemetryExporter implements com.aerospike.benchmarks.Ope
 
     private final String SCOPE_NAME = "com.aerospike.benchmarks";
     private final String METRIC_NAME = "aerospike.benchmarks.mrt";
+    private static final double NS_TO_MS = 1000000D;
 
     private final int prometheusPort;
     private String clusterName;
-    private String dbConnectionState = null;
+    private String dbConnectionState;
     private final CounterStore counters;
-    private final int hbTimeInterval;
 
     private final Attributes[] hbAttributes;
     private final OpenTelemetrySdk openTelemetrySdk;
-    private final LongGauge openTelemetryHBGauge;
+    private final LongGauge openTelemetryInfoGauge;
     private final LongCounter openTelemetryExceptionCounter;
     private final LongCounter openTelemetryTransactionCounter;
-    private final LongHistogram openTelemetryLatencyHistogram;
+    private final DoubleHistogram openTelemetryLatencyHistogram;
 
-    private AtomicInteger hbCnt = new AtomicInteger();
+    private final AtomicInteger hbCnt = new AtomicInteger();
     private final long startTimeMillis;
     private final LocalDateTime startLocalDateTime;
     private long endTimeMillis;
@@ -53,23 +50,6 @@ public final class OpenTelemetryExporter implements com.aerospike.benchmarks.Ope
     private final boolean debug;
     private final AtomicBoolean closed = new AtomicBoolean(false);
     private final AtomicBoolean aborted = new AtomicBoolean(false);
-
-    private final Timer hbTimer;
-    private final HBTimerTask hbTimerTask;
-
-    private static class HBTimerTask extends TimerTask {
-
-        final OpenTelemetryExporter exporter;
-
-        public HBTimerTask(OpenTelemetryExporter exporter) {
-            this.exporter = exporter;
-        }
-
-        @Override
-        public void run() {
-            this.exporter.updateHBGauge();
-        }
-    }
 
     //If a signal is sent, this will help ensure proper shutdown of OpenTel
     private static class OTelSignalHandler implements SignalHandler {
@@ -92,9 +72,7 @@ public final class OpenTelemetryExporter implements com.aerospike.benchmarks.Ope
             this.handlerRunning = true;
             this.exporter.printMsg("Received signal: " + sig.getName());
             try {
-                this.exporter.setDBConnectionState("SIG" + sig.getName());
-                this.exporter.aborted.set(true);
-                Thread.sleep(1000);
+                this.exporter.setDBConnectionStateAbort("SIG" + sig.getName());
                 this.exporter.close();
             }
             catch (Exception ignored) {
@@ -106,11 +84,14 @@ public final class OpenTelemetryExporter implements com.aerospike.benchmarks.Ope
     public OpenTelemetryExporter(int prometheusPort,
                                  Arguments args,
                                  Host host,
-                                 int hbTimeInterval,
                                  String clusterName,
                                  StringBuilder generalInfo,
                                  StringBuilder policies,
                                  StringBuilder otherInfo,
+                                 long nKeys,
+                                 int nthreads,
+                                 long nbrMRTs,
+                                 boolean asyncEnabled,
                                  CounterStore counters) {
         this.debug = args.debug;
         this.clusterName = clusterName;
@@ -120,7 +101,6 @@ public final class OpenTelemetryExporter implements com.aerospike.benchmarks.Ope
         this.prometheusPort = prometheusPort;
         this.dbConnectionState = "Initializing";
         this.counters = counters;
-        this.hbTimeInterval = hbTimeInterval;
 
         if(this.debug) {
             this.printDebug("Creating OpenTelemetryExporter");
@@ -133,11 +113,11 @@ public final class OpenTelemetryExporter implements com.aerospike.benchmarks.Ope
             this.printDebug("Creating Metrics");
         }
 
-        this.openTelemetryHBGauge =
+        this.openTelemetryInfoGauge =
                 openTelemetryMeter
-                    .gaugeBuilder(METRIC_NAME + ".heartbeat")
-                    .ofLongs()
-                    .setDescription("Aerospike Benchmark MRT HB")
+                        .gaugeBuilder(METRIC_NAME + ".stateinfo")
+                        .setDescription("Aerospike Benchmark MRT Config/State Information")
+                        .ofLongs()
                         .build();
 
         this.openTelemetryExceptionCounter =
@@ -150,7 +130,6 @@ public final class OpenTelemetryExporter implements com.aerospike.benchmarks.Ope
                 openTelemetryMeter
                         .histogramBuilder(METRIC_NAME + ".latency")
                         .setDescription("Aerospike Benchmark MRT Latencies")
-                        .ofLongs()
                         .setUnit("ms")
                         .build();
 
@@ -167,22 +146,43 @@ public final class OpenTelemetryExporter implements com.aerospike.benchmarks.Ope
 
         this.counters.setOpenTelemetry(this);
 
+        if(this.debug) {
+            this.printDebug("Updating Gauge");
+        }
+
         this.hbAttributes = new Attributes[] {
                 Attributes.of(
                         AttributeKey.stringKey("generalInfo"), generalInfo.toString(),
                         AttributeKey.stringKey("policies"), policies.toString(),
                         AttributeKey.stringKey("otherInfo"), otherInfo.toString(),
                         AttributeKey.longKey("startTimeMillis"), this.startTimeMillis,
-                        AttributeKey.stringKey("startDateTime"), this.startLocalDateTime.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
-                ),
+                        AttributeKey.stringKey("startDateTime"), this.startLocalDateTime.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME),
+                        AttributeKey.stringKey("DBHost"), host.toString()
+                        ),
                 Attributes.of(
-                        AttributeKey.stringKey("DBHost"), host.toString(),
-                        AttributeKey.stringArrayKey("namespaces"), args.batchSize > 0 ? Arrays.asList(args.batchNamespaces) : Collections.singletonList(args.namespace),
+                        //AttributeKey.stringArrayKey("namespaces"), args.batchSize > 0 ? Arrays.asList(args.batchNamespaces) : Collections.singletonList(args.namespace),
                         AttributeKey.stringKey("namespace"), args.namespace == null ? args.batchNamespaces[0] : args.namespace,
                         AttributeKey.stringKey("setname"), args.setName,
                         AttributeKey.stringKey("workload"), args.workload.name(),
-                        AttributeKey.longKey("batchSize"), (long) args.batchSize
+                        AttributeKey.longKey("batchSize"), (long) args.batchSize,
+                        AttributeKey.longKey("readPct"), (long) args.readPct,
+                        AttributeKey.longKey("readMultiBinPct"), (long) args.readMultiBinPct
+                        ),
+                Attributes.of(
+                        AttributeKey.longKey("writeMultiBinPct"), (long) args.writeMultiBinPct,
+                        AttributeKey.longKey("throughputThrottle"), (long) args.throughput,
+                        AttributeKey.longKey("transactionLimit"), args.transactionLimit,
+                        AttributeKey.longKey("threads"), (long) nthreads,
+                        AttributeKey.longKey("nbrMRTs"), nbrMRTs <= 0 ? 0L : nbrMRTs,
+                        AttributeKey.longKey("mrtSize"), nbrMRTs <= 0 ? 0L : nbrMRTs / (long) nthreads
+                ),
+                Attributes.of(
+                        AttributeKey.booleanKey("asyncEnabled"), asyncEnabled,
+                        AttributeKey.longKey("nkeys"), nKeys <= 0 ? 0L : nKeys,
+                        AttributeKey.stringKey("commandlineargs"), String.join(" ", args.commandLineArgs)
                 )};
+
+        this.updateInfoGauge(true);
 
         if(this.debug) {
             this.printDebug("Creating Signal Handler...");
@@ -191,22 +191,6 @@ public final class OpenTelemetryExporter implements com.aerospike.benchmarks.Ope
         OTelSignalHandler handler = new OTelSignalHandler(this);
         Signal.handle(new Signal("TERM"), handler); // Catch SIGTERM
         Signal.handle(new Signal("INT"), handler);  // Catch SIGINT (Ctrl+C)
-
-        if(this.debug) {
-            this.printDebug("Creating Timer");
-        }
-
-        //Originally went with the observer/callback/async pattern but the callback interval was being influenced by the benchmark app.
-        //  This ensures proper heartbeat interval being sent...
-        //  THB is more important for long running executions...
-        this.hbTimer = new Timer();
-        this.hbTimerTask = new HBTimerTask(this);
-        if(this.hbTimeInterval > 0) {
-            this.hbTimer.schedule(this.hbTimerTask, 1, this.hbTimeInterval);
-        }
-        else {
-            this.updateHBGauge();
-        }
     }
 
     private OpenTelemetrySdk initOpenTelemetry() {
@@ -262,13 +246,21 @@ public final class OpenTelemetryExporter implements com.aerospike.benchmarks.Ope
         System.out.printf("%s %s%n", formattedDateTime, msg);
     }
 
-    private void updateHBGauge() {
+    private void updateInfoGauge(boolean initial) {
+
+        if(this.closed.get()) { return; }
+
         AttributesBuilder attributes = Attributes.builder();
 
-        for (Attributes attrItem : this.hbAttributes) {
-            attributes.putAll(attrItem);
-        }
+
         attributes.put("hbCount", this.hbCnt.incrementAndGet());
+
+        if(initial) {
+            attributes.put("type", "static");
+            for (Attributes attrItem : this.hbAttributes) {
+                attributes.putAll(attrItem);
+            }
+        }
 
         if(this.clusterName != null) {
             attributes.put("cluster", this.clusterName);
@@ -281,10 +273,10 @@ public final class OpenTelemetryExporter implements com.aerospike.benchmarks.Ope
             attributes.put("endLocalDateTime", this.endLocalDateTime.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
         }
 
-        this.openTelemetryHBGauge.set(System.currentTimeMillis(), attributes.build());
+        this.openTelemetryInfoGauge.set(System.currentTimeMillis(), attributes.build());
 
         if(this.debug) {
-            this.printDebug(String.format("HeartBeat %d", hbCnt.get()));
+            this.printDebug(String.format("Info Gauge %d", hbCnt.get()));
         }
     }
 
@@ -299,7 +291,8 @@ public final class OpenTelemetryExporter implements com.aerospike.benchmarks.Ope
         final Attributes attributes = Attributes.of(
                 AttributeKey.stringKey("exception_type"), exceptionType,
                 AttributeKey.stringKey("exception"), exception.getMessage(),
-                AttributeKey.stringKey("type"), type.name().toLowerCase()
+                AttributeKey.stringKey("type"), type.name().toLowerCase(),
+                AttributeKey.longKey("startTimeMillis"), this.startTimeMillis
         );
 
         this.openTelemetryExceptionCounter.add(1, attributes);
@@ -310,12 +303,18 @@ public final class OpenTelemetryExporter implements com.aerospike.benchmarks.Ope
     }
 
     @Override
-    public void recordElapsedTime(LatencyTypes type, long elapsedMS) {
+    public void recordElapsedTime(LatencyTypes type, long elapsedNanos) {
+        this.recordElapsedTime(type, elapsedNanos / NS_TO_MS);
+    }
+
+    @Override
+    public void recordElapsedTime(LatencyTypes type, double elapsedMS) {
 
         if(this.closed.get()) { return; }
 
         final Attributes attributes = Attributes.of(
-            AttributeKey.stringKey("type"), type.name().toLowerCase()
+                AttributeKey.stringKey("type"), type.name().toLowerCase(),
+                AttributeKey.longKey("startTimeMillis"), this.startTimeMillis
         );
 
         this.openTelemetryLatencyHistogram.record(elapsedMS, attributes);
@@ -347,7 +346,7 @@ public final class OpenTelemetryExporter implements com.aerospike.benchmarks.Ope
         if(this.debug) {
             this.printDebug("Cluster Name  " + clusterName, false);
         }
-        this.updateHBGauge();
+        this.updateInfoGauge(false);
     }
 
     @Override
@@ -356,24 +355,34 @@ public final class OpenTelemetryExporter implements com.aerospike.benchmarks.Ope
         if(this.debug) {
             this.printDebug("DB Status Change  " + dbConnectionState, false);
         }
-        this.updateHBGauge();
+        this.updateInfoGauge(false);
+    }
+
+    private void setDBConnectionStateAbort(String state) throws InterruptedException {
+        this.dbConnectionState = state;
+        this.endTimeMillis = System.currentTimeMillis();
+        this.endLocalDateTime = LocalDateTime.now();
+        try {
+            if (this.debug) {
+                this.printDebug("DB Status Change  " + state, false);
+            }
+            this.printMsg("Sending OpenTelemetry Last Updated Metrics...");
+            this.updateInfoGauge(false);
+            Thread.sleep(6000);
+        }
+        finally {
+            this.aborted.set(true);
+        }
     }
 
     private void setDBConnectionStateClosed() throws InterruptedException {
         this.endTimeMillis = System.currentTimeMillis();
         this.endLocalDateTime = LocalDateTime.now();
         try {
-            if (hbTimer != null) {
-                if (this.debug) {
-                    this.printDebug("Cancelling HB Timer");
-                }
-                this.hbTimerTask.cancel();
-                this.hbTimer.cancel();
-            }
-            if (openTelemetryHBGauge != null && !this.aborted.get()) {
+            if (openTelemetryInfoGauge != null && !this.aborted.get()) {
                 this.printMsg("Sending OpenTelemetry Last Updated Metrics...");
-                this.updateHBGauge();
-                Thread.sleep(this.hbTimeInterval);
+                this.updateInfoGauge(false);
+                Thread.sleep(5000); //need to wait for POM to re-scrap...
             }
         }
         finally {
@@ -411,21 +420,19 @@ public final class OpenTelemetryExporter implements com.aerospike.benchmarks.Ope
     }
 
     public String printConfiguration() {
-        return String.format("Open Telemetry Enabled at %s\n\tPrometheus Exporter using Port %d\n\tRefresh Interval (secs): %s\n\tScope Name: '%s'\n\tMetric Prefix Name: '%s'",
+        return String.format("Open Telemetry Enabled at %s\n\tPrometheus Exporter using Port %d\n\tScope Name: '%s'\n\tMetric Prefix Name: '%s'",
                 this.startLocalDateTime.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME),
                 this.prometheusPort,
-                this.hbTimeInterval > 0 ? this.hbTimeInterval/1000 : "disabled",
                 SCOPE_NAME,
                 METRIC_NAME);
     }
 
     @Override
     public String toString() {
-        return String.format("OpenTelemetryExporter{prometheusport:%d, state:%s, interval:%d, heartbeat:%s, transactioncounter:%s, exceptioncounter:%s, latancyhistogram:%s closed:%s}",
+        return String.format("OpenTelemetryExporter{prometheusport:%d, state:%s, Gauge:%s, transactioncounter:%s, exceptioncounter:%s, latancyhistogram:%s closed:%s}",
                                 this.prometheusPort,
                                 this.dbConnectionState,
-                                this.hbTimeInterval,
-                                this.openTelemetryHBGauge,
+                                this.openTelemetryInfoGauge,
                                 this.openTelemetryTransactionCounter,
                                 this.openTelemetryExceptionCounter,
                                 this.openTelemetryLatencyHistogram,
