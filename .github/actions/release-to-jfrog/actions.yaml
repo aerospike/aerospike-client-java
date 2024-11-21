@@ -1,0 +1,53 @@
+name: Publish artifacts to JFrog
+description: Publishes artifacts to Sonatype
+
+inputs:
+  version:
+    description: "Version of client to build"
+    required: true
+  crypto-type:
+    description: Crypto type. This should either be bouncycastle or gnu
+    required: true
+  maven-username:
+    description: Maven repo username
+    required: true
+  maven-token:
+    description: Maven repo password
+    required: true
+  gpg-signing-key:
+    description: GPG private signing key
+    required: true
+  gpg-signing-key-password:
+    description: GPG private signing key password
+    required: true
+  module:
+    description: Module to publish
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - name: Set version
+      shell: bash
+      run: mvn versions:set -DnewVersion=${{ inputs.version }}
+
+    - name: Build
+      shell: bash
+      run: |
+        echo "-${{ inputs.crypto-type }}-"
+        mvn clean install -Dcrypto.type=${{ inputs.crypto-type }}
+
+    - name: Build source jar
+      run: mvn source:jar -Dcrypto.type=${{ inputs.crypto-type }}
+      shell: bash
+      working-directory: ${{ inputs.module }}
+
+    - name: Build docs
+      run: mvn javadoc:jar -Dcrypto.type=${{ inputs.crypto-type }}
+      shell: bash
+      working-directory: ${{ inputs.module }}
+
+    - name: Debug list content
+      shell: bash
+      run: |
+        ls -R | grep ".*.jar"
