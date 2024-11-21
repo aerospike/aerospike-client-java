@@ -154,14 +154,14 @@
         <configuration>
           <mainClass>com.aerospike.benchmarks.Main</mainClass>
           <arguments>
-           <argument>-n</argument>
-            <argument>testsc</argument>
-            <argument>-w</argument>
+            <!--
+            <argument>-w</-argument>
             <argument>RU,80</argument>
             <argument>-b</argument>
             <argument>10</argument>
             <argument>-latency</argument>
             <argument>alt,7,1</argument>
+            -->
           </arguments>
         </configuration>
       </plugin>

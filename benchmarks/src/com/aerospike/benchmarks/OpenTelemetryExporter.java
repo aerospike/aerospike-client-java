@@ -72,6 +72,7 @@ public final class OpenTelemetryExporter implements com.aerospike.benchmarks.Ope
             if(this.handlerRunning) {return;}
             this.handlerRunning = true;
             this.exporter.printMsg("Received signal: " + sig.getName());
+            Main.abortRun.set(true);
             try {
                 this.exporter.setDBConnectionStateAbort("SIG" + sig.getName());
                 this.exporter.close();
@@ -180,7 +181,8 @@ public final class OpenTelemetryExporter implements com.aerospike.benchmarks.Ope
                 Attributes.of(
                         AttributeKey.booleanKey("asyncEnabled"), asyncEnabled,
                         AttributeKey.longKey("nkeys"), nKeys <= 0 ? 0L : nKeys,
-                        AttributeKey.stringKey("commandlineargs"), String.join(" ", args.commandLineArgs)
+                        AttributeKey.stringKey("commandlineargs"), String.join(" ", args.commandLineArgs),
+                        AttributeKey.stringKey("appversion"), Main.getAppVersion()[1]
                 )};
 
         this.updateInfoGauge(true);
@@ -351,6 +353,8 @@ public final class OpenTelemetryExporter implements com.aerospike.benchmarks.Ope
 
     @Override
     public void setClusterName(String clusterName) {
+        if(this.closed.get() | this.aborted.get()) { return; }
+
         this.clusterName = clusterName;
         if(this.debug) {
             this.printDebug("Cluster Name  " + clusterName, false);
@@ -360,6 +364,8 @@ public final class OpenTelemetryExporter implements com.aerospike.benchmarks.Ope
 
     @Override
     public void setDBConnectionState(String dbConnectionState){
+        if(this.closed.get() | this.aborted.get()) { return; }
+
         this.dbConnectionState = dbConnectionState;
         if(this.debug) {
             this.printDebug("DB Status Change  " + dbConnectionState, false);
@@ -368,6 +374,9 @@ public final class OpenTelemetryExporter implements com.aerospike.benchmarks.Ope
     }
 
     private void setDBConnectionStateAbort(String state) throws InterruptedException {
+        if(this.closed.get() | this.aborted.get()) { return; }
+
+        this.aborted.set(true);
         this.dbConnectionState = state;
         this.endTimeMillis = System.currentTimeMillis();
         this.endLocalDateTime = LocalDateTime.now();
@@ -375,26 +384,26 @@ public final class OpenTelemetryExporter implements com.aerospike.benchmarks.Ope
             if (this.debug) {
                 this.printDebug("DB Status Change  " + state, false);
             }
-            this.printMsg("Sending OpenTelemetry Last Updated Metrics...");
+            this.printMsg("Sending OpenTelemetry Last Updated Metrics in Abort Mode...");
             this.updateInfoGauge(false);
             Thread.sleep(6000);
         }
-        finally {
-            this.aborted.set(true);
-        }
+        catch (Exception ignored) {}
     }
 
     private void setDBConnectionStateClosed() throws InterruptedException {
-        this.endTimeMillis = System.currentTimeMillis();
-        this.endLocalDateTime = LocalDateTime.now();
-        try {
+       try {
             if (openTelemetryInfoGauge != null && !this.aborted.get()) {
+                this.endTimeMillis = System.currentTimeMillis();
+                this.endLocalDateTime = LocalDateTime.now();
+
                 this.printMsg("Sending OpenTelemetry Last Updated Metrics...");
                 this.updateInfoGauge(false);
-                Thread.sleep(5000); //need to wait for POM to re-scrap...
+                Thread.sleep(6000); //need to wait for POM to re-scrap...
             }
         }
-        finally {
+       catch (Exception ignored) {}
+       finally {
             closed.set(true);
         }
     }

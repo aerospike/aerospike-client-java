@@ -29,6 +29,7 @@ import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import com.aerospike.client.*;
 import org.apache.commons.cli.CommandLine;
@@ -119,6 +120,8 @@ public class Main implements Log.Callback {
 	private final CounterStore counters = new CounterStore();
 
 	private int openTelemetryEndPointPort = 19090;
+
+	public static final AtomicBoolean abortRun = new AtomicBoolean(false);
 
 	public Main(String[] commandLineArgs) throws Exception {
 		boolean hasTxns = false;
@@ -1220,6 +1223,8 @@ public class Main implements Log.Callback {
 
 						if(clusterName == null && !useProxyClient){
 							clusterName = Info.request(this.hosts[0].name, this.hosts[0].port, "cluster-name");
+						} else if (useProxyClient) {
+							clusterName = "Proxy";
 						}
 					}
 					catch (Exception e) {
@@ -1259,6 +1264,8 @@ public class Main implements Log.Callback {
 
 					if(clusterName == null && !useProxyClient){
 						clusterName = Info.request(this.hosts[0].name, this.hosts[0].port, "cluster-name");
+					}  else if (useProxyClient) {
+						clusterName = "Proxy";
 					}
 				}
 				catch (Exception e) {
@@ -1307,6 +1314,9 @@ public class Main implements Log.Callback {
 			InsertTaskSync it = new InsertTaskSync(client, args, counters, start, keyCount);
 			es.execute(it);
 			start += keyCount;
+			if(abortRun.get()) {
+				break;
+			}
 		}
 		Thread.sleep(900);
 		collectInsertStats();
@@ -1328,6 +1338,9 @@ public class Main implements Log.Callback {
 			MRTInsertTaskSync it = new MRTInsertTaskSync(client, args, counters, start, keysPerMRT, nMrtsPerThread);
 			es.execute(it);
 			start += keysPerMRT * nMrtsPerThread;
+			if(abortRun.get()) {
+				break;
+			}
 		}
 		Thread.sleep(900);
 		collectMRTStats();
@@ -1358,6 +1371,9 @@ public class Main implements Log.Callback {
 			InsertTaskAsync task = new InsertTaskAsync(client, eventLoop, args, counters, keyStart, keyCount);
 			task.runCommand();
 			keyStart += keyCount;
+			if(abortRun.get()) {
+				break;
+			}
 		}
 		Thread.sleep(900);
 		collectInsertStats();
@@ -1372,25 +1388,66 @@ public class Main implements Log.Callback {
 			int numWrites = this.counters.write.count.getAndSet(0);
 			int timeoutWrites = this.counters.write.timeouts.getAndSet(0);
 			int errorWrites = this.counters.write.errors.getAndSet(0);
+
+			int numTxns = this.counters.txnUnitOfWork.count.getAndSet(0);
+			int timeoutTxns = this.counters.txnUnitOfWork.timeouts.getAndSet(0);
+			int errorTxns = this.counters.txnUnitOfWork.errors.getAndSet(0);
+
+			int numTxnsCommit = this.counters.txnCommit.count.getAndSet(0);
+			int timeoutTxnsCommit = this.counters.txnCommit.timeouts.getAndSet(0);
+			int errorTxnsCommit = this.counters.txnCommit.errors.getAndSet(0);
+
+			int numTxnsAbort = this.counters.txnAbort.count.getAndSet(0);
+			int timeoutTxnsAbort = this.counters.txnAbort.timeouts.getAndSet(0);
+			int errorTxnsAbort = this.counters.txnAbort.errors.getAndSet(0);
+
 			total += numWrites;
 
 			this.counters.periodBegin.set(time);
 
 			LocalDateTime dt = Instant.ofEpochMilli(time).atZone(ZoneId.systemDefault()).toLocalDateTime();
-			System.out.println(dt.format(TimeFormatter) + " write(count=" + total + " tps=" + numWrites +
+			System.out.print(dt.format(TimeFormatter) + " write(count=" + total + " tps=" + numWrites +
 				" timeouts=" + timeoutWrites + " errors=" + errorWrites + ")");
+
+			if(this.mrtEnabled) {
+				System.out.print(" txns(tps=" + numTxns + " timeouts=" + timeoutTxns + " errors=" + errorTxns + ")");
+				System.out.print(" txnCmts(tps=" + numTxnsCommit + " timeouts=" + timeoutTxnsCommit + " errors=" + errorTxnsCommit + ")");
+				System.out.print(" txnAbts(tps=" + numTxnsAbort + " timeouts=" + timeoutTxnsAbort + " errors=" + errorTxnsAbort + ")");
+			}
+			System.out.println();
 
 			if (this.counters.write.latency != null) {
 				this.counters.write.latency.printHeader(System.out);
 				this.counters.write.latency.printResults(System.out, "write");
+				if (this.counters.txnUnitOfWork.latency != null) {
+					this.counters.txnUnitOfWork.latency.printResults(System.out, "txn");
+				}
+				if (this.counters.txnCommit.latency != null) {
+					this.counters.txnCommit.latency.printResults(System.out, "txnCmt");
+				}
+				if (this.counters.txnAbort.latency != null) {
+					this.counters.txnAbort.latency.printResults(System.out, "txnAbt");
+				}
 			}
 
 			Thread.sleep(1000);
+			if(abortRun.get()) {
+				break;
+			}
 		}
 
 		if (this.counters.write.latency != null) {
 			this.counters.write.latency.printSummaryHeader(System.out);
 			this.counters.write.latency.printSummary(System.out, "write");
+			if (this.counters.txnUnitOfWork.latency != null) {
+				this.counters.txnUnitOfWork.latency.printResults(System.out, "txn");
+			}
+			if (this.counters.txnCommit.latency != null) {
+				this.counters.txnCommit.latency.printResults(System.out, "txnCmt");
+			}
+			if (this.counters.txnAbort.latency != null) {
+				this.counters.txnAbort.latency.printResults(System.out, "txnAbt");
+			}
 		}
 	}
 
@@ -1403,25 +1460,66 @@ public class Main implements Log.Callback {
 			int numWrites = this.counters.write.count.getAndSet(0);
 			int timeoutWrites = this.counters.write.timeouts.getAndSet(0);
 			int errorWrites = this.counters.write.errors.getAndSet(0);
+
+			int numTxns = this.counters.txnUnitOfWork.count.getAndSet(0);
+			int timeoutTxns = this.counters.txnUnitOfWork.timeouts.getAndSet(0);
+			int errorTxns = this.counters.txnUnitOfWork.errors.getAndSet(0);
+
+			int numTxnsCommit = this.counters.txnCommit.count.getAndSet(0);
+			int timeoutTxnsCommit = this.counters.txnCommit.timeouts.getAndSet(0);
+			int errorTxnsCommit = this.counters.txnCommit.errors.getAndSet(0);
+
+			int numTxnsAbort = this.counters.txnAbort.count.getAndSet(0);
+			int timeoutTxnsAbort = this.counters.txnAbort.timeouts.getAndSet(0);
+			int errorTxnsAbort = this.counters.txnAbort.errors.getAndSet(0);
+
 			total += numWrites;
 
 			this.counters.periodBegin.set(time);
 
 			LocalDateTime dt = Instant.ofEpochMilli(time).atZone(ZoneId.systemDefault()).toLocalDateTime();
-			System.out.println(dt.format(TimeFormatter) + " write(count=" + total + " tps=" + numWrites + " timeouts="
+			System.out.print(dt.format(TimeFormatter) + " write(count=" + total + " tps=" + numWrites + " timeouts="
 					+ timeoutWrites + " errors=" + errorWrites + ")");
+
+			if(this.mrtEnabled) {
+				System.out.print(" txns(tps=" + numTxns + " timeouts=" + timeoutTxns + " errors=" + errorTxns + ")");
+				System.out.print(" txnCmts(tps=" + numTxnsCommit + " timeouts=" + timeoutTxnsCommit + " errors=" + errorTxnsCommit + ")");
+				System.out.print(" txnAbts(tps=" + numTxnsAbort + " timeouts=" + timeoutTxnsAbort + " errors=" + errorTxnsAbort + ")");
+			}
+			System.out.println();
 
 			if (this.counters.write.latency != null) {
 				this.counters.write.latency.printHeader(System.out);
 				this.counters.write.latency.printResults(System.out, "write");
+				if (this.counters.txnUnitOfWork.latency != null) {
+					this.counters.txnUnitOfWork.latency.printResults(System.out, "txn");
+				}
+				if (this.counters.txnCommit.latency != null) {
+					this.counters.txnCommit.latency.printResults(System.out, "txnCmt");
+				}
+				if (this.counters.txnAbort.latency != null) {
+					this.counters.txnAbort.latency.printResults(System.out, "txnAbt");
+				}
 			}
 
 			Thread.sleep(1000);
+			if(abortRun.get()) {
+				break;
+			}
 		}
 
 		if (this.counters.write.latency != null) {
 			this.counters.write.latency.printSummaryHeader(System.out);
 			this.counters.write.latency.printSummary(System.out, "write");
+			if (this.counters.txnUnitOfWork.latency != null) {
+				this.counters.txnUnitOfWork.latency.printResults(System.out, "txn");
+			}
+			if (this.counters.txnCommit.latency != null) {
+				this.counters.txnCommit.latency.printResults(System.out, "txnCmt");
+			}
+			if (this.counters.txnAbort.latency != null) {
+				this.counters.txnAbort.latency.printResults(System.out, "txnAbt");
+			}
 		}
 	}
 
@@ -1433,6 +1531,9 @@ public class Main implements Log.Callback {
 			RWTaskSync rt = new RWTaskSync(client, args, counters, this.startKey, this.nKeys);
 			tasks[i] = rt;
 			es.execute(rt);
+			if(abortRun.get()) {
+				break;
+			}
 		}
 		Thread.sleep(900);
 		collectRWStats(tasks);
@@ -1452,6 +1553,9 @@ public class Main implements Log.Callback {
 					this.nKeys, this.keysPerMRT);
 			tasks[i] = rt;
 			es.execute(rt);
+			if(abortRun.get()) {
+				break;
+			}
 		}
 		Thread.sleep(1000);
 		collectMRTRWStats(tasks);
@@ -1480,6 +1584,9 @@ public class Main implements Log.Callback {
 		// Start seed commands.
 		for (RWTask task : tasks) {
 			task.runNextCommand();
+			if(abortRun.get()) {
+				break;
+			}
 		}
 
 		Thread.sleep(900);
@@ -1528,16 +1635,11 @@ public class Main implements Log.Callback {
 			}
 			System.out.print(")");
 
-			if (this.counters.txnUnitOfWork.latency != null) {
+			if(this.mrtEnabled) {
 				System.out.print(" txns(tps=" + numTxns + " timeouts=" + timeoutTxns + " errors=" + errorTxns + ")");
-			}
-			if (this.counters.txnCommit.latency != null) {
 				System.out.print(" txnCmts(tps=" + numTxnsCommit + " timeouts=" + timeoutTxnsCommit + " errors=" + errorTxnsCommit + ")");
-			}
-			if (this.counters.txnAbort.latency != null) {
 				System.out.print(" txnAbts(tps=" + numTxnsAbort + " timeouts=" + timeoutTxnsAbort + " errors=" + errorTxnsAbort + ")");
 			}
-
 
 			System.out.print(" total(tps=" + (numWrites + numReads) + " timeouts=" + (timeoutWrites + timeoutReads) + " errors=" + (errorWrites + errorReads) + ")");
 			//System.out.print(" buffused=" + used
@@ -1548,13 +1650,13 @@ public class Main implements Log.Callback {
 				this.counters.write.latency.printHeader(System.out);
 				this.counters.write.latency.printResults(System.out, "write");
 				this.counters.read.latency.printResults(System.out, "read");
-				if (this.counters.txnUnitOfWork != null && this.counters.txnUnitOfWork.latency != null) {
+				if (this.counters.txnUnitOfWork.latency != null) {
 					this.counters.txnUnitOfWork.latency.printResults(System.out, "txn");
 				}
-				if (this.counters.txnCommit != null && this.counters.txnCommit.latency != null) {
+				if (this.counters.txnCommit.latency != null) {
 					this.counters.txnCommit.latency.printResults(System.out, "txnCmt");
 				}
-				if (this.counters.txnAbort != null && this.counters.txnAbort.latency != null) {
+				if (this.counters.txnAbort.latency != null) {
 					this.counters.txnAbort.latency.printResults(System.out, "txnAbt");
 				}
 			}
@@ -1588,6 +1690,9 @@ public class Main implements Log.Callback {
 			}
 
 			Thread.sleep(1000);
+			if(abortRun.get()) {
+				break;
+			}
 		}
 	}
 
@@ -1651,13 +1756,13 @@ public class Main implements Log.Callback {
 				this.counters.write.latency.printHeader(System.out);
 				this.counters.write.latency.printResults(System.out, "write");
 				this.counters.read.latency.printResults(System.out, "read");
-				if (this.counters.txnUnitOfWork != null && this.counters.txnUnitOfWork.latency != null) {
+				if (this.counters.txnUnitOfWork.latency != null) {
 					this.counters.txnUnitOfWork.latency.printResults(System.out, "txn");
 				}
-				if (this.counters.txnCommit != null && this.counters.txnCommit.latency != null) {
+				if (this.counters.txnCommit.latency != null) {
 					this.counters.txnCommit.latency.printResults(System.out, "txnCmt");
 				}
-				if (this.counters.txnAbort != null && this.counters.txnAbort.latency != null) {
+				if (this.counters.txnAbort.latency != null) {
 					this.counters.txnAbort.latency.printResults(System.out, "txnAbt");
 				}
 			}
@@ -1676,13 +1781,13 @@ public class Main implements Log.Callback {
 						this.counters.write.latency.printSummaryHeader(System.out);
 						this.counters.write.latency.printSummary(System.out, "write");
 						this.counters.read.latency.printSummary(System.out, "read");
-						if (this.counters.txnUnitOfWork != null && this.counters.txnUnitOfWork.latency != null) {
+						if (this.counters.txnUnitOfWork.latency != null) {
 							this.counters.txnUnitOfWork.latency.printSummary(System.out, "txn");
 						}
-						if (this.counters.txnCommit != null && this.counters.txnCommit.latency != null) {
+						if (this.counters.txnCommit.latency != null) {
 							this.counters.txnCommit.latency.printSummary(System.out, "txnCmt");
 						}
-						if (this.counters.txnAbort != null && this.counters.txnAbort.latency != null) {
+						if (this.counters.txnAbort.latency != null) {
 							this.counters.txnAbort.latency.printSummary(System.out, "txnAbt");
 						}
 					}
@@ -1693,6 +1798,9 @@ public class Main implements Log.Callback {
 			}
 
 			Thread.sleep(1000);
+			if(abortRun.get()) {
+				break;
+			}
 		}
 	}
 
@@ -1744,18 +1852,26 @@ public class Main implements Log.Callback {
 		private static final long serialVersionUID = 1L;
 	}
 
-	private static void printVersion() {
+	public static String[] getAppVersion() {
 		final Properties properties = new Properties();
+		final String[] info = new String[2];
 		try {
 			properties.load(Main.class.getClassLoader().getResourceAsStream("project.properties"));
+			info[0] = properties.getProperty("name");
+			info[1] = properties.getProperty("version");
 		}
 		catch (Exception e) {
-			System.out.println("None");
+			info[0] = "None";
+			info[1] = "";
 		}
-		finally {
-			System.out.println(properties.getProperty("name"));
-			System.out.println("Version " + properties.getProperty("version"));
-		}
+
+		return info;
+	}
+
+	private static void printVersion() {
+		String[] info = getAppVersion();
+		System.out.println(info[0]);
+		System.out.println("Version " + info[1]);
 	}
 
 	private void printOptions(){

@@ -34,3 +34,14 @@ Some sample arguments are:
 
     # Run default benchmarks using TLS secure sockets.
     java -Djavax.net.ssl.trustStore=TrustStorePath -Djavax.net.ssl.trustStorePassword=TrustStorePassword -jar target/aerospike-benchmarks-*-jar-with-dependencies.jar -h "hostname:tlsname:tlsport" -tlsEnable
+
+To enable the Open Telemetry interface to Prometheus use the '--opentelEnable' (-otel). You can change the listening port via '--prometheusPort' (-pom) argument.
+Open Telemetry is **disabled** by default.
+
+Below is a list of Metric Event Names:
+- aerospike.benchmarks.mrt.stateinfo -- This is a Gauge used for static information and current state of the application
+- aerospike.benchmarks.mrt.exception -- This is a Counter for exceptions. It consists of the exception class and message plus associated action (read, write, commit, abort, etc) 
+- aerospike.benchmarks.mrt.latency   -- This is a Histogram to track latency of actions (read, write, commit, abort, etc)
+- aerospike.benchmarks.mrt.transaction -- This is a Counter to track actions (read, write, commit, abort, etc)
+
+All Metric Event Names with have an attribute named 'type'. The value will be the action (read, write, commit, abort, etc) that represents this OpenTel event.
