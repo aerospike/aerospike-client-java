@@ -119,7 +119,8 @@ public class Main implements Log.Callback {
 	private final ClientPolicy clientPolicy = new ClientPolicy();
 	private final CounterStore counters = new CounterStore();
 
-	private int openTelemetryEndPointPort = 19090;
+	private int promEndPointPort = 19090;
+	private int promCloseWaitMS = 15000;
 
 	public static final AtomicBoolean abortRun = new AtomicBoolean(false);
 
@@ -822,10 +823,13 @@ public class Main implements Log.Callback {
 		}
 
 		if(line.hasOption("prometheusPort")) {
-			this.openTelemetryEndPointPort = Integer.parseInt(line.getOptionValue("prometheusPort"));
+			this.promEndPointPort = Integer.parseInt(line.getOptionValue("prometheusPort"));
 		}
 		if(line.hasOption("opentelEnable")) {
 			this.args.opentelEnabled = true;
+		}
+		if(line.hasOption("prometheusCloseWaitSecs")) {
+			this.promCloseWaitMS = (int) (Float.parseFloat(line.getOptionValue("prometheusCloseWaitSecs")) * 1000);
 		}
 
 		printOptions();
@@ -1112,8 +1116,9 @@ public class Main implements Log.Callback {
 
 		options.addOption("pids", "partitionIds", true, "Specify the list of comma seperated partition IDs the primary keys must belong to");
 
-		options.addOption("pom", "prometheusPort", true, "Prometheus OpenTel End Point. If -1, OpenTel metrics are disabled. Default 19090");
+		options.addOption("prom", "prometheusPort", true, "Prometheus OpenTel End Point port. If -1, OpenTel metrics are disabled. Default 19090");
 		options.addOption("otel", "opentelEnable", false, "Open Telemetry Metrics will be enabled. Disabled by default.");
+		options.addOption("promWait", "prometheusCloseWaitSecs", true, "Open Telemetry wait interval. in seconds. upon close. This interval ensure all values are picked by the Prometheus server. This should match the 'scrape_interval' in the PROM ymal file. Can be zero to disable wait. Default is 15 seconds.");
 
 		return options;
 	}
@@ -1134,10 +1139,11 @@ public class Main implements Log.Callback {
 
 	public void runBenchmarks() throws Exception {
 
-		try (OpenTelemetry openTelemetry = OpenTelemetryHelper.Create(this.openTelemetryEndPointPort,
+		try (OpenTelemetry openTelemetry = OpenTelemetryHelper.Create(this.promEndPointPort,
 																		this.args,
 																		this.hosts[0],
 																		this.args.opentelEnabled,
+																		this.promCloseWaitMS,
 																		this.clientPolicy.clusterName,
 																		this.argsHdrGeneral,
 																		this.argsHdrPolicies,
@@ -1410,9 +1416,9 @@ public class Main implements Log.Callback {
 				" timeouts=" + timeoutWrites + " errors=" + errorWrites + ")");
 
 			if(this.mrtEnabled) {
-				System.out.print(" txns(tps=" + numTxns + " timeouts=" + timeoutTxns + " errors=" + errorTxns + ")");
-				System.out.print(" txnCmts(tps=" + numTxnsCommit + " timeouts=" + timeoutTxnsCommit + " errors=" + errorTxnsCommit + ")");
-				System.out.print(" txnAbts(tps=" + numTxnsAbort + " timeouts=" + timeoutTxnsAbort + " errors=" + errorTxnsAbort + ")");
+				System.out.print(" txns(count=" + numTxns + " timeouts=" + timeoutTxns + " errors=" + errorTxns + ")");
+				System.out.print(" txnCmts(count=" + numTxnsCommit + " timeouts=" + timeoutTxnsCommit + " errors=" + errorTxnsCommit + ")");
+				System.out.print(" txnAbts(count=" + numTxnsAbort + " timeouts=" + timeoutTxnsAbort + " errors=" + errorTxnsAbort + ")");
 			}
 			System.out.println();
 
@@ -1482,9 +1488,9 @@ public class Main implements Log.Callback {
 					+ timeoutWrites + " errors=" + errorWrites + ")");
 
 			if(this.mrtEnabled) {
-				System.out.print(" txns(tps=" + numTxns + " timeouts=" + timeoutTxns + " errors=" + errorTxns + ")");
-				System.out.print(" txnCmts(tps=" + numTxnsCommit + " timeouts=" + timeoutTxnsCommit + " errors=" + errorTxnsCommit + ")");
-				System.out.print(" txnAbts(tps=" + numTxnsAbort + " timeouts=" + timeoutTxnsAbort + " errors=" + errorTxnsAbort + ")");
+				System.out.print(" txns(count=" + numTxns + " timeouts=" + timeoutTxns + " errors=" + errorTxns + ")");
+				System.out.print(" txnCmts(count=" + numTxnsCommit + " timeouts=" + timeoutTxnsCommit + " errors=" + errorTxnsCommit + ")");
+				System.out.print(" txnAbts(count=" + numTxnsAbort + " timeouts=" + timeoutTxnsAbort + " errors=" + errorTxnsAbort + ")");
 			}
 			System.out.println();
 
@@ -1636,9 +1642,9 @@ public class Main implements Log.Callback {
 			System.out.print(")");
 
 			if(this.mrtEnabled) {
-				System.out.print(" txns(tps=" + numTxns + " timeouts=" + timeoutTxns + " errors=" + errorTxns + ")");
-				System.out.print(" txnCmts(tps=" + numTxnsCommit + " timeouts=" + timeoutTxnsCommit + " errors=" + errorTxnsCommit + ")");
-				System.out.print(" txnAbts(tps=" + numTxnsAbort + " timeouts=" + timeoutTxnsAbort + " errors=" + errorTxnsAbort + ")");
+				System.out.print(" txns(count=" + numTxns + " timeouts=" + timeoutTxns + " errors=" + errorTxns + ")");
+				System.out.print(" txnCmts(count=" + numTxnsCommit + " timeouts=" + timeoutTxnsCommit + " errors=" + errorTxnsCommit + ")");
+				System.out.print(" txnAbts(count=" + numTxnsAbort + " timeouts=" + timeoutTxnsAbort + " errors=" + errorTxnsAbort + ")");
 			}
 
 			System.out.print(" total(tps=" + (numWrites + numReads) + " timeouts=" + (timeoutWrites + timeoutReads) + " errors=" + (errorWrites + errorReads) + ")");
@@ -1739,9 +1745,9 @@ public class Main implements Log.Callback {
 			System.out.print(")");
 
 			if (this.mrtEnabled) {
-				System.out.print(" txns(tps=" + numTxns + " timeouts=" + timeoutTxns + " errors=" + errorTxns + ")");
-				System.out.print(" txnCmts(tps=" + numTxnsCmt + " timeouts=" + timeoutTxnsCmt + " errors=" + errorTxnsCmt+ ")");
-				System.out.print(" txnAbts(tps=" + numTxnsAbt + " timeouts=" + timeoutTxnsAbt + " errors=" + errorTxnsAbt + ")");
+				System.out.print(" txns(count=" + numTxns + " timeouts=" + timeoutTxns + " errors=" + errorTxns + ")");
+				System.out.print(" txnCmts(count=" + numTxnsCmt + " timeouts=" + timeoutTxnsCmt + " errors=" + errorTxnsCmt+ ")");
+				System.out.print(" txnAbts(count=" + numTxnsAbt + " timeouts=" + timeoutTxnsAbt + " errors=" + errorTxnsAbt + ")");
 			}
 
 			System.out.print(" total(tps=" + (numWrites + numReads) + " timeouts=" + (timeoutWrites + timeoutReads)

@@ -8,6 +8,7 @@ public class OpenTelemetryDummy  implements OpenTelemetry {
     public OpenTelemetryDummy(int endPointPort,
                                 Arguments args,
                                 Host host,
+                                int closeWaitMS,
                                 String clusterName,
                                 StringBuilder generalInfo,
                                 StringBuilder policies,

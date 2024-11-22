@@ -32,6 +32,7 @@ public final class OpenTelemetryExporter implements com.aerospike.benchmarks.Ope
     private final int prometheusPort;
     private String clusterName;
     private String dbConnectionState;
+    private final int closeWaitMS;
     private final CounterStore counters;
 
     private final Attributes[] hbAttributes;
@@ -86,6 +87,7 @@ public final class OpenTelemetryExporter implements com.aerospike.benchmarks.Ope
     public OpenTelemetryExporter(int prometheusPort,
                                  Arguments args,
                                  Host host,
+                                 int closeWaitMS,
                                  String clusterName,
                                  StringBuilder generalInfo,
                                  StringBuilder policies,
@@ -102,6 +104,7 @@ public final class OpenTelemetryExporter implements com.aerospike.benchmarks.Ope
                                     ZoneId.systemDefault());
         this.prometheusPort = prometheusPort;
         this.dbConnectionState = "Initializing";
+        this.closeWaitMS = closeWaitMS;
         this.counters = counters;
 
         if(this.debug) {
@@ -152,6 +155,14 @@ public final class OpenTelemetryExporter implements com.aerospike.benchmarks.Ope
             this.printDebug("Updating Gauge");
         }
 
+        int readPct = args.readPct;
+        String workload = args.workload.name();
+
+        if(args.workload == Workload.INITIALIZE) {
+            readPct = 0;
+            workload = "Insert";
+        }
+
         this.hbAttributes = new Attributes[] {
                 Attributes.of(
                         AttributeKey.stringKey("generalInfo"), generalInfo.toString(),
@@ -165,9 +176,9 @@ public final class OpenTelemetryExporter implements com.aerospike.benchmarks.Ope
                         //AttributeKey.stringArrayKey("namespaces"), args.batchSize > 0 ? Arrays.asList(args.batchNamespaces) : Collections.singletonList(args.namespace),
                         AttributeKey.stringKey("namespace"), args.namespace == null ? args.batchNamespaces[0] : args.namespace,
                         AttributeKey.stringKey("setname"), args.setName,
-                        AttributeKey.stringKey("workload"), args.workload.name(),
+                        AttributeKey.stringKey("workload"),workload,
                         AttributeKey.longKey("batchSize"), (long) args.batchSize,
-                        AttributeKey.longKey("readPct"), (long) args.readPct,
+                        AttributeKey.longKey("readPct"), (long) readPct,
                         AttributeKey.longKey("readMultiBinPct"), (long) args.readMultiBinPct
                         ),
                 Attributes.of(
@@ -380,13 +391,14 @@ public final class OpenTelemetryExporter implements com.aerospike.benchmarks.Ope
         this.dbConnectionState = state;
         this.endTimeMillis = System.currentTimeMillis();
         this.endLocalDateTime = LocalDateTime.now();
+        this.printMsg(String.format("OpenTelemetry Disabled at %s", this.endLocalDateTime.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)));
         try {
             if (this.debug) {
                 this.printDebug("DB Status Change  " + state, false);
             }
             this.printMsg("Sending OpenTelemetry Last Updated Metrics in Abort Mode...");
             this.updateInfoGauge(false);
-            Thread.sleep(6000);
+            Thread.sleep(this.closeWaitMS + 1000);
         }
         catch (Exception ignored) {}
     }
@@ -396,10 +408,10 @@ public final class OpenTelemetryExporter implements com.aerospike.benchmarks.Ope
             if (openTelemetryInfoGauge != null && !this.aborted.get()) {
                 this.endTimeMillis = System.currentTimeMillis();
                 this.endLocalDateTime = LocalDateTime.now();
-
+                this.printMsg(String.format("OpenTelemetry Disabled at %s", this.endLocalDateTime.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)));
                 this.printMsg("Sending OpenTelemetry Last Updated Metrics...");
                 this.updateInfoGauge(false);
-                Thread.sleep(6000); //need to wait for POM to re-scrap...
+                Thread.sleep(this.closeWaitMS + 1000); //need to wait for PROM to re-scrap...
             }
         }
        catch (Exception ignored) {}
@@ -438,9 +450,10 @@ public final class OpenTelemetryExporter implements com.aerospike.benchmarks.Ope
     }
 
     public String printConfiguration() {
-        return String.format("Open Telemetry Enabled at %s\n\tPrometheus Exporter using Port %d\n\tScope Name: '%s'\n\tMetric Prefix Name: '%s'",
+        return String.format("Open Telemetry Enabled at %s\n\tPrometheus Exporter using Port %d\n\tClose wait interval %d ms\n\tScope Name: '%s'\n\tMetric Prefix Name: '%s'",
                 this.startLocalDateTime.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME),
                 this.prometheusPort,
+                this.closeWaitMS,
                 SCOPE_NAME,
                 METRIC_NAME);
     }
