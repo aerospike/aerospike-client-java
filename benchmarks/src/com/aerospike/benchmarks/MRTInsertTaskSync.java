@@ -82,44 +82,44 @@ public final class MRTInsertTaskSync extends MRTInsertTask implements Runnable {
 					}
 				}
 
-				if(counters.txnUnitOfWork.latency != null) {
+				if(counters.mrtUnitOfWork.latency != null) {
 					long elapsed = System.nanoTime() - begin;
-					counters.txnUnitOfWork.count.getAndIncrement();
-					counters.txnUnitOfWork.latency.add(elapsed);
+					counters.mrtUnitOfWork.count.getAndIncrement();
+					counters.mrtUnitOfWork.latency.add(elapsed);
 				}
 				else {
-					counters.txnUnitOfWork.count.getAndIncrement();
-					counters.txnUnitOfWork.incrTransCountOTel(LatencyTypes.TXNUOW);
+					counters.mrtUnitOfWork.count.getAndIncrement();
+					counters.mrtUnitOfWork.incrTransCountOTel(LatencyTypes.MRTUOW);
 				}
 
 				begin = System.nanoTime();
 				withinCommit = true;
 				client.commit(txn);
-				if(counters.txnCommit.latency != null) {
+				if(counters.mrtCommit.latency != null) {
 					long elapsed = System.nanoTime() - begin;
-					counters.txnCommit.count.getAndIncrement();
-					counters.txnCommit.latency.add(elapsed);
+					counters.mrtCommit.count.getAndIncrement();
+					counters.mrtCommit.latency.add(elapsed);
 				}
 				else {
-					counters.txnCommit.count.getAndIncrement();
-					counters.txnCommit.incrTransCountOTel(LatencyTypes.TXNCOMMIT);
+					counters.mrtCommit.count.getAndIncrement();
+					counters.mrtCommit.incrTransCountOTel(LatencyTypes.MRTCOMMIT);
 				}
 			} catch (Exception e) {
 				if (withinCommit) {
-					counters.txnCommit.errors.incrementAndGet();
-					counters.txnCommit.addExceptionOTel(e, LatencyTypes.TXNCOMMIT);
+					counters.mrtCommit.errors.incrementAndGet();
+					counters.mrtCommit.addExceptionOTel(e, LatencyTypes.MRTCOMMIT);
 				}
 				System.err.println("Transaction failed for MRT iteration: " + (i + 1) + " - " + e.getMessage());
 				begin = System.nanoTime();
 				client.abort(txn);
-				if(counters.txnAbort.latency != null) {
+				if(counters.mrtAbort.latency != null) {
 					long elapsed = System.nanoTime() - begin;
-					counters.txnAbort.count.getAndIncrement();
-					counters.txnAbort.latency.add(elapsed);
+					counters.mrtAbort.count.getAndIncrement();
+					counters.mrtAbort.latency.add(elapsed);
 				}
 				else {
-					counters.txnAbort.count.getAndIncrement();
-					counters.txnAbort.incrTransCountOTel(LatencyTypes.TXNABORT);
+					counters.mrtAbort.count.getAndIncrement();
+					counters.mrtAbort.incrTransCountOTel(LatencyTypes.MRTABORT);
 				}
 			}
 		}

@@ -685,6 +685,8 @@
               "Value #B": true,
               "__name__ 1": true,
               "__name__ 2": true,
+              "appversion 1": true,
+              "appversion 2": true,
               "asyncEnabled": true,
               "asyncEnabled 1": true,
               "asyncEnabled 2": true,
@@ -1841,6 +1843,77 @@
         "type": "prometheus",
         "uid": "${DS_PROMETHEUS}"
       },
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "dark-blue",
+                "value": null
+              }
+            ]
+          },
+          "unit": "string"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 3,
+        "w": 2,
+        "x": 0,
+        "y": 12
+      },
+      "id": 70,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "percentChangeColorMode": "standard",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "/^appversion$/",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "pluginVersion": "11.3.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DATASOURCE}"
+          },
+          "disableTextWrap": false,
+          "editorMode": "builder",
+          "expr": "aerospike_benchmarks_mrt_stateinfo{instance=~\"$client\", type=\"static\"}",
+          "format": "table",
+          "fullMetaSearch": false,
+          "includeNullMetadata": true,
+          "legendFormat": "__auto",
+          "range": true,
+          "refId": "A",
+          "useBackend": false
+        }
+      ],
+      "title": "Application Version",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
       "description": "The command line argument provided to the benchmark appllication",
       "fieldConfig": {
         "defaults": {
@@ -1862,9 +1935,9 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 2,
-        "w": 14,
-        "x": 0,
+        "h": 3,
+        "w": 22,
+        "x": 2,
         "y": 12
       },
       "id": 66,
@@ -1913,7 +1986,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 14
+        "y": 15
       },
       "id": 13,
       "panels": [],
@@ -1949,9 +2022,9 @@
       },
       "gridPos": {
         "h": 6,
-        "w": 4,
+        "w": 3,
         "x": 0,
-        "y": 15
+        "y": 16
       },
       "id": 51,
       "options": {
@@ -2050,9 +2123,9 @@
       },
       "gridPos": {
         "h": 6,
-        "w": 4,
-        "x": 4,
-        "y": 15
+        "w": 3,
+        "x": 3,
+        "y": 16
       },
       "id": 52,
       "options": {
@@ -2151,9 +2224,9 @@
       },
       "gridPos": {
         "h": 6,
-        "w": 4,
-        "x": 8,
-        "y": 15
+        "w": 3,
+        "x": 6,
+        "y": 16
       },
       "id": 53,
       "options": {
@@ -2228,7 +2301,7 @@
         "type": "prometheus",
         "uid": "${DATASOURCE}"
       },
-      "description": "The total number of Unit of Work (MRTs) that made it to either commit or abort point.",
+      "description": "The total completed number of transaction actions across all types",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -2253,10 +2326,10 @@
       "gridPos": {
         "h": 6,
         "w": 3,
-        "x": 12,
-        "y": 15
+        "x": 9,
+        "y": 16
       },
-      "id": 69,
+      "id": 75,
       "options": {
         "colorMode": "value",
         "graphMode": "none",
@@ -2281,6 +2354,108 @@
           },
           "disableTextWrap": false,
           "editorMode": "builder",
+          "exemplar": false,
+          "expr": "clamp_min(sum(sum_over_time(aerospike_benchmarks_mrt_latency_milliseconds_count{instance=~\"$client\", type=~\"transaction\"}[$__interval])), 0)",
+          "format": "time_series",
+          "fullMetaSearch": false,
+          "includeNullMetadata": true,
+          "instant": false,
+          "interval": "",
+          "legendFormat": "Measured",
+          "range": true,
+          "refId": "A",
+          "useBackend": false
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DATASOURCE}"
+          },
+          "disableTextWrap": false,
+          "editorMode": "builder",
+          "expr": "clamp_min(sum(sum_over_time(aerospike_benchmarks_mrt_transaction_total{instance=~\"$client\", type=~\"transaction\"}[$__interval])), 0)",
+          "fullMetaSearch": false,
+          "hide": false,
+          "includeNullMetadata": true,
+          "instant": false,
+          "legendFormat": "Not Measured",
+          "range": true,
+          "refId": "C",
+          "useBackend": false
+        },
+        {
+          "datasource": {
+            "type": "__expr__",
+            "uid": "${DS_EXPRESSION}"
+          },
+          "expression": "$A + $C",
+          "hide": false,
+          "refId": "Total",
+          "type": "math"
+        }
+      ],
+      "title": "Total Completed Transaction Count",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DATASOURCE}"
+      },
+      "description": "The total number of Unit of Work (MRTs) that made it to either commit or abort point.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "dark-green",
+            "mode": "shades"
+          },
+          "decimals": 0,
+          "mappings": [],
+          "noValue": "0",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "locale"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 3,
+        "x": 12,
+        "y": 16
+      },
+      "id": 69,
+      "options": {
+        "colorMode": "background_solid",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "percentChangeColorMode": "standard",
+        "reduceOptions": {
+          "calcs": [],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "pluginVersion": "11.3.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "disableTextWrap": false,
+          "editorMode": "code",
           "expr": "clamp_min(sum(sum_over_time(aerospike_benchmarks_mrt_transaction_total{instance=~\"$client\", type=~\"txnuow\"}[$__interval])), 0)",
           "fullMetaSearch": false,
           "hide": false,
@@ -2298,7 +2473,7 @@
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "clamp_min(sum(sum_over_time(aerospike_benchmarks_mrt_latency_milliseconds_count{instance=~\"$client\", type=~\"txnuow\"}[$__interval])), 0)",
+          "expr": "clamp_min(sum(sum_over_time(aerospike_benchmarks_mrt_latency_milliseconds_count{instance=~\"$client\", type=~\"mrtuow|txnuow\"}[$__interval])), 0)",
           "fullMetaSearch": false,
           "hide": false,
           "includeNullMetadata": true,
@@ -2331,7 +2506,8 @@
       "fieldConfig": {
         "defaults": {
           "color": {
-            "mode": "thresholds"
+            "fixedColor": "dark-green",
+            "mode": "fixed"
           },
           "decimals": 0,
           "mappings": [],
@@ -2353,11 +2529,11 @@
         "h": 6,
         "w": 3,
         "x": 15,
-        "y": 15
+        "y": 16
       },
       "id": 54,
       "options": {
-        "colorMode": "value",
+        "colorMode": "background_solid",
         "graphMode": "none",
         "justifyMode": "auto",
         "orientation": "auto",
@@ -2380,7 +2556,7 @@
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "clamp_min(sum(sum_over_time(aerospike_benchmarks_mrt_transaction_total{instance=~\"$client\", type=~\"txncommit\"}[$__interval])), 0)",
+          "expr": "clamp_min(sum(sum_over_time(aerospike_benchmarks_mrt_transaction_total{instance=~\"$client\", type=~\"txncommit|mrtcommit\"}[$__interval])), 0)",
           "fullMetaSearch": false,
           "hide": false,
           "includeNullMetadata": true,
@@ -2397,7 +2573,7 @@
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "clamp_min(sum(sum_over_time(aerospike_benchmarks_mrt_latency_milliseconds_count{instance=~\"$client\", type=~\"txncommit\"}[$__interval])), 0)",
+          "expr": "clamp_min(sum(sum_over_time(aerospike_benchmarks_mrt_latency_milliseconds_count{instance=~\"$client\", type=~\"txncommit|mrtcommit\"}[$__interval])), 0)",
           "fullMetaSearch": false,
           "hide": false,
           "includeNullMetadata": true,
@@ -2430,7 +2606,8 @@
       "fieldConfig": {
         "defaults": {
           "color": {
-            "mode": "thresholds"
+            "fixedColor": "dark-green",
+            "mode": "fixed"
           },
           "decimals": 0,
           "mappings": [],
@@ -2452,11 +2629,11 @@
         "h": 6,
         "w": 3,
         "x": 18,
-        "y": 15
+        "y": 16
       },
       "id": 68,
       "options": {
-        "colorMode": "value",
+        "colorMode": "background_solid",
         "graphMode": "none",
         "justifyMode": "auto",
         "orientation": "auto",
@@ -2479,7 +2656,7 @@
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "clamp_min(sum(sum_over_time(aerospike_benchmarks_mrt_transaction_total{instance=~\"$client\", type=~\"txnabort\"}[$__interval])), 0)",
+          "expr": "clamp_min(sum(sum_over_time(aerospike_benchmarks_mrt_transaction_total{instance=~\"$client\", type=~\"txnabort|mrtabort\"}[$__interval])), 0)",
           "fullMetaSearch": false,
           "hide": false,
           "includeNullMetadata": true,
@@ -2496,7 +2673,7 @@
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "clamp_min(sum(sum_over_time(aerospike_benchmarks_mrt_latency_milliseconds_count{instance=~\"$client\", type=~\"txnabort\"}[$__interval])), 0)",
+          "expr": "clamp_min(sum(sum_over_time(aerospike_benchmarks_mrt_latency_milliseconds_count{instance=~\"$client\", type=~\"txnabort|mrtabort\"}[$__interval])), 0)",
           "fullMetaSearch": false,
           "hide": false,
           "includeNullMetadata": true,
@@ -2571,7 +2748,7 @@
         "h": 6,
         "w": 3,
         "x": 21,
-        "y": 15
+        "y": 16
       },
       "id": 65,
       "options": {
@@ -2620,7 +2797,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 21
+        "y": 22
       },
       "id": 29,
       "panels": [],
@@ -2690,7 +2867,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 22
+        "y": 23
       },
       "id": 31,
       "options": {
@@ -2725,7 +2902,7 @@
           "expr": "rate(aerospike_benchmarks_mrt_latency_milliseconds_count{instance=~\"$client\", type=\"write\"}[$__rate_interval])",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
-          "legendFormat": "Writes",
+          "legendFormat": "{{type}}",
           "range": true,
           "refId": "A",
           "useBackend": false
@@ -2758,7 +2935,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 22
+        "y": 23
       },
       "id": 30,
       "options": {
@@ -2885,7 +3062,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 30
+        "y": 31
       },
       "id": 47,
       "options": {
@@ -2920,7 +3097,7 @@
           "expr": "rate(aerospike_benchmarks_mrt_transaction_total{instance=~\"$client\", type=\"write\"}[$__rate_interval])",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
-          "legendFormat": "Writes",
+          "legendFormat": "{{type}}",
           "range": true,
           "refId": "A",
           "useBackend": false
@@ -2993,7 +3170,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 30
+        "y": 31
       },
       "id": 48,
       "options": {
@@ -3039,7 +3216,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 38
+        "y": 39
       },
       "id": 32,
       "panels": [],
@@ -3109,7 +3286,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 39
+        "y": 40
       },
       "id": 33,
       "options": {
@@ -3177,7 +3354,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 39
+        "y": 40
       },
       "id": 34,
       "options": {
@@ -3304,7 +3481,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 47
+        "y": 48
       },
       "id": 45,
       "options": {
@@ -3412,7 +3589,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 47
+        "y": 48
       },
       "id": 46,
       "options": {
@@ -3458,11 +3635,218 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 55
+        "y": 56
+      },
+      "id": 72,
+      "panels": [],
+      "title": "Business Transaction work Load",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DATASOURCE}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "barWidthFactor": 0.6,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "fieldMinMax": false,
+          "mappings": [],
+          "noValue": "Latency Measurement Disabled",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "recps"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 12,
+        "w": 12,
+        "x": 0,
+        "y": 57
+      },
+      "id": 74,
+      "options": {
+        "legend": {
+          "calcs": [
+            "min",
+            "max",
+            "mean",
+            "p50",
+            "p80",
+            "p90",
+            "p99"
+          ],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "11.3.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "disableTextWrap": false,
+          "editorMode": "builder",
+          "expr": "rate(aerospike_benchmarks_mrt_latency_milliseconds_count{instance=~\"$client\", type=\"transaction\"}[$__rate_interval])",
+          "fullMetaSearch": false,
+          "includeNullMetadata": true,
+          "legendFormat": "{{type}}",
+          "range": true,
+          "refId": "A",
+          "useBackend": false
+        }
+      ],
+      "title": "TPS",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DATASOURCE}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "scaleDistribution": {
+              "type": "linear"
+            }
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 12,
+        "w": 12,
+        "x": 12,
+        "y": 57
+      },
+      "id": 73,
+      "options": {
+        "calculate": false,
+        "cellGap": 1,
+        "cellValues": {
+          "unit": "locale"
+        },
+        "color": {
+          "exponent": 0.5,
+          "fill": "dark-orange",
+          "mode": "scheme",
+          "reverse": false,
+          "scale": "exponential",
+          "scheme": "RdYlBu",
+          "steps": 64
+        },
+        "exemplars": {
+          "color": "rgba(255,0,255,0.7)"
+        },
+        "filterValues": {
+          "le": 1e-9
+        },
+        "legend": {
+          "show": true
+        },
+        "rowsFrame": {
+          "layout": "auto"
+        },
+        "tooltip": {
+          "mode": "single",
+          "showColorScale": false,
+          "yHistogram": true
+        },
+        "yAxis": {
+          "axisPlacement": "left",
+          "reverse": false,
+          "unit": "ms"
+        }
+      },
+      "pluginVersion": "11.3.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "disableTextWrap": false,
+          "editorMode": "builder",
+          "expr": "aerospike_benchmarks_mrt_latency_milliseconds_bucket{instance=~\"$client\", type=\"transaction\"}",
+          "format": "heatmap",
+          "fullMetaSearch": false,
+          "includeNullMetadata": true,
+          "legendFormat": "__auto",
+          "range": true,
+          "refId": "A",
+          "useBackend": false
+        }
+      ],
+      "title": "Latencies",
+      "type": "heatmap"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 69
       },
       "id": 35,
       "panels": [],
-      "title": "Transactions",
+      "title": "MRTs",
       "type": "row"
     },
     {
@@ -3490,7 +3874,7 @@
         "h": 9,
         "w": 12,
         "x": 0,
-        "y": 56
+        "y": 70
       },
       "id": 37,
       "options": {
@@ -3540,7 +3924,7 @@
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "sum by(le) (aerospike_benchmarks_mrt_latency_milliseconds_bucket{instance=~\"$client\", type=\"txncommit\"})",
+          "expr": "sum by(le) (aerospike_benchmarks_mrt_latency_milliseconds_bucket{instance=~\"$client\", type=~\"txncommit|mrtcommit\"})",
           "format": "heatmap",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
@@ -3550,7 +3934,7 @@
           "useBackend": false
         }
       ],
-      "title": "Transaction Latencies Commit",
+      "title": "MRT Latencies Commit",
       "type": "heatmap"
     },
     {
@@ -3578,7 +3962,7 @@
         "h": 9,
         "w": 12,
         "x": 12,
-        "y": 56
+        "y": 70
       },
       "id": 64,
       "options": {
@@ -3628,7 +4012,7 @@
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "sum by(le) (aerospike_benchmarks_mrt_latency_milliseconds_bucket{instance=~\"$client\", type=\"txnabort\"})",
+          "expr": "sum by(le) (aerospike_benchmarks_mrt_latency_milliseconds_bucket{instance=~\"$client\", type=~\"txnabort|mrtabort\"})",
           "format": "heatmap",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
@@ -3638,7 +4022,7 @@
           "useBackend": false
         }
       ],
-      "title": "Transaction Latencies Abort",
+      "title": "MRT Latencies Abort",
       "type": "heatmap"
     },
     {
@@ -3666,7 +4050,7 @@
         "h": 9,
         "w": 12,
         "x": 0,
-        "y": 65
+        "y": 79
       },
       "id": 67,
       "options": {
@@ -3716,7 +4100,7 @@
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "sum by(le) (aerospike_benchmarks_mrt_latency_milliseconds_bucket{instance=~\"$client\", type=\"txnuow\"})",
+          "expr": "sum by(le) (aerospike_benchmarks_mrt_latency_milliseconds_bucket{instance=~\"$client\", type=~\"txnuow|mrtuow\"})",
           "format": "heatmap",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
@@ -3726,7 +4110,7 @@
           "useBackend": false
         }
       ],
-      "title": "Transaction Latencies Unit of Work (MRT)",
+      "title": "MRT Latencies Unit of Work (MRT)",
       "type": "heatmap"
     },
     {
@@ -3734,7 +4118,7 @@
         "type": "prometheus",
         "uid": "${DATASOURCE}"
       },
-      "description": "The number of Transaction Action Counts (MRTs, Commits, and Aborts)",
+      "description": "The number of MRT Action Counts (MRTs, Commits, and Aborts)",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -3793,7 +4177,7 @@
         "h": 9,
         "w": 12,
         "x": 12,
-        "y": 65
+        "y": 79
       },
       "id": 50,
       "options": {
@@ -3821,7 +4205,7 @@
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "aerospike_benchmarks_mrt_transaction_total{instance=~\"$client\", type=~\"txnuow|txncommit|txnabort\"}",
+          "expr": "aerospike_benchmarks_mrt_transaction_total{instance=~\"$client\", type=~\"txnuow|txncommit|txnabort|mrtuow|mrtcommit|mrtabort\"}",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
           "legendFormat": "{{type}}",
@@ -3830,7 +4214,7 @@
           "useBackend": false
         }
       ],
-      "title": "Transaction Counts",
+      "title": "MRT Counts",
       "type": "timeseries"
     },
     {
@@ -3839,7 +4223,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 74
+        "y": 88
       },
       "id": 38,
       "panels": [],
@@ -3910,7 +4294,7 @@
         "h": 13,
         "w": 24,
         "x": 0,
-        "y": 75
+        "y": 89
       },
       "id": 42,
       "options": {
@@ -3978,7 +4362,7 @@
           "type": "prometheus",
           "uid": "${DATASOURCE}"
         },
-        "definition": "label_values(aerospike_benchmarks_mrt_heartbeat,clustername)",
+        "definition": "label_values(aerospike_benchmarks_mrt_stateinfo,clustername)",
         "description": "The name od the Cluster",
         "includeAll": true,
         "label": "Cluster Name",
@@ -3987,7 +4371,7 @@
         "options": [],
         "query": {
           "qryType": 1,
-          "query": "label_values(aerospike_benchmarks_mrt_heartbeat,clustername)",
+          "query": "label_values(aerospike_benchmarks_mrt_stateinfo,clustername)",
           "refId": "PrometheusVariableQueryEditor-VariableQuery"
         },
         "refresh": 1,
@@ -4001,7 +4385,7 @@
           "type": "prometheus",
           "uid": "${DS_PROMETHEUS}"
         },
-        "definition": "label_values(aerospike_benchmarks_mrt_heartbeat{clustername=~\"$cluster\"},instance)",
+        "definition": "label_values(aerospike_benchmarks_mrt_stateinfo{cluster=~\"$cluster\"},instance)",
         "description": "The client running the benchmark applications",
         "includeAll": true,
         "label": "Client",
@@ -4010,7 +4394,7 @@
         "options": [],
         "query": {
           "qryType": 1,
-          "query": "label_values(aerospike_benchmarks_mrt_heartbeat{clustername=~\"$cluster\"},instance)",
+          "query": "label_values(aerospike_benchmarks_mrt_stateinfo{cluster=~\"$cluster\"},instance)",
           "refId": "PrometheusVariableQueryEditor-VariableQuery"
         },
         "refresh": 1,
@@ -4020,13 +4404,13 @@
     ]
   },
   "time": {
-    "from": "2024-11-21T18:41:22.611Z",
-    "to": "2024-11-21T18:42:43.093Z"
+    "from": "now-5m",
+    "to": "now"
   },
   "timepicker": {},
   "timezone": "browser",
   "title": "Aerospike Benchmark MRT",
   "uid": "be423cq6i5dz4a",
-  "version": 56,
+  "version": 68,
   "weekStart": ""
 }

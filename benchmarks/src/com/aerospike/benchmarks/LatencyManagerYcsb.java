@@ -47,9 +47,10 @@ public class LatencyManagerYcsb implements LatencyManager {
 		switch (type) {
 			case READ -> this.name = "read";
 			case WRITE -> this.name = "write";
-			case TRANSACTION, TXNUOW -> this.name = "txns";
-            case TXNCOMMIT -> this.name = "txncommit";
-			case TXNABORT -> this.name = "txnabort";
+			case TRANSACTION -> this.name = "txns";
+			case MRTUOW -> this.name = "mrt";
+            case MRTCOMMIT -> this.name = "mrtcmt";
+			case MRTABORT -> this.name = "mrtabt";
 			default -> this.name = "unknown";
 		}
 		_buckets = new AtomicInteger(1000);

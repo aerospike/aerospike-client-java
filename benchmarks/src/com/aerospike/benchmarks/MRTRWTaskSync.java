@@ -73,7 +73,14 @@ public class MRTRWTaskSync extends MRTRWTask implements Runnable {
 						runCommand(random);
 						// Throttle throughput
 						if (args.throughput > 0) {
-							if (counters.write.count.get() + counters.read.count.get() > args.throughput) {
+							int transactions;
+							if (counters.transaction.latency != null) {
+								// Measure the transactions as per one "business" transaction
+								transactions = counters.transaction.count.get();
+							} else {
+								transactions = counters.write.count.get() + counters.read.count.get();
+							}
+							if (transactions > args.throughput) {
 								long millis = counters.periodBegin.get() + 1000L - System.currentTimeMillis();
 
 								if (millis > 0) {
@@ -83,61 +90,61 @@ public class MRTRWTaskSync extends MRTRWTask implements Runnable {
 						}
 					}
 
-					if(counters.txnUnitOfWork.latency != null) {
+					if(counters.mrtUnitOfWork.latency != null) {
 						long elapsed = System.nanoTime() - begin;
-						counters.txnUnitOfWork.count.getAndIncrement();
-						counters.txnUnitOfWork.latency.add(elapsed);
+						counters.mrtUnitOfWork.count.getAndIncrement();
+						counters.mrtUnitOfWork.latency.add(elapsed);
 					}
 					else {
-						counters.txnUnitOfWork.count.getAndIncrement();
-						counters.txnUnitOfWork.incrTransCountOTel(LatencyTypes.TXNUOW);
+						counters.mrtUnitOfWork.count.getAndIncrement();
+						counters.mrtUnitOfWork.incrTransCountOTel(LatencyTypes.MRTUOW);
 					}
 
 					if (valid) {
 						begin = System.nanoTime();
 						withinCommit = true;
 						client.commit(txn);
-						if(counters.txnCommit.latency != null) {
+						if(counters.mrtCommit.latency != null) {
 							long elapsed = System.nanoTime() - begin;
-							counters.txnCommit.count.getAndIncrement();
-							counters.txnCommit.latency.add(elapsed);
+							counters.mrtCommit.count.getAndIncrement();
+							counters.mrtCommit.latency.add(elapsed);
 						}
 						else {
-							counters.txnCommit.count.getAndIncrement();
-							counters.txnCommit.incrTransCountOTel(LatencyTypes.TXNCOMMIT);
+							counters.mrtCommit.count.getAndIncrement();
+							counters.mrtCommit.incrTransCountOTel(LatencyTypes.MRTCOMMIT);
 						}
 					} else {
 						begin = System.nanoTime();
 						withinAbort = true;
 						client.abort(txn);
-						if(counters.txnAbort.latency != null) {
+						if(counters.mrtAbort.latency != null) {
 							long elapsed = System.nanoTime() - begin;
-							counters.txnAbort.count.getAndIncrement();
-							counters.txnAbort.latency.add(elapsed);
+							counters.mrtAbort.count.getAndIncrement();
+							counters.mrtAbort.latency.add(elapsed);
 						}
 						else {
-							counters.txnAbort.count.getAndIncrement();
-							counters.txnAbort.incrTransCountOTel(LatencyTypes.TXNABORT);
+							counters.mrtAbort.count.getAndIncrement();
+							counters.mrtAbort.incrTransCountOTel(LatencyTypes.MRTABORT);
 						}
 					}
 				} catch (AerospikeException e) {
 					if(withinAbort) {
-						counters.txnAbort.errors.incrementAndGet();
-						counters.txnAbort.addExceptionOTel(e, LatencyTypes.TXNABORT);
+						counters.mrtAbort.errors.incrementAndGet();
+						counters.mrtAbort.addExceptionOTel(e, LatencyTypes.MRTABORT);
 					} else if (withinCommit) {
-						counters.txnCommit.errors.incrementAndGet();
-						counters.txnCommit.addExceptionOTel(e, LatencyTypes.TXNCOMMIT);
+						counters.mrtCommit.errors.incrementAndGet();
+						counters.mrtCommit.addExceptionOTel(e, LatencyTypes.MRTCOMMIT);
 					}
 					begin = System.nanoTime();
 					client.abort(txn);
-					if(counters.txnAbort.latency != null) {
+					if(counters.mrtAbort.latency != null) {
 						long elapsed = System.nanoTime() - begin;
-						counters.txnAbort.count.getAndIncrement();
-						counters.txnAbort.latency.add(elapsed);
+						counters.mrtAbort.count.getAndIncrement();
+						counters.mrtAbort.latency.add(elapsed);
 					}
 					else {
-						counters.txnAbort.count.getAndIncrement();
-						counters.txnAbort.incrTransCountOTel(LatencyTypes.TXNABORT);
+						counters.mrtAbort.count.getAndIncrement();
+						counters.mrtAbort.incrTransCountOTel(LatencyTypes.MRTABORT);
 					}
 				}
 			}

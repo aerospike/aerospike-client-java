@@ -76,7 +76,6 @@ public final class OpenTelemetryExporter implements com.aerospike.benchmarks.Ope
             Main.abortRun.set(true);
             try {
                 this.exporter.setDBConnectionStateAbort("SIG" + sig.getName());
-                this.exporter.close();
             }
             catch (Exception ignored) {
             }
@@ -261,11 +260,14 @@ public final class OpenTelemetryExporter implements com.aerospike.benchmarks.Ope
     }
 
     private void updateInfoGauge(boolean initial) {
+        this.updateInfoGauge(initial, false);
+    }
 
-        if(this.closed.get()) { return; }
+    private void updateInfoGauge(boolean initial, boolean force) {
+
+        if(!force && this.closed.get()) { return; }
 
         AttributesBuilder attributes = Attributes.builder();
-
 
         attributes.put("hbCount", this.hbCnt.incrementAndGet());
 
@@ -387,20 +389,25 @@ public final class OpenTelemetryExporter implements com.aerospike.benchmarks.Ope
     private void setDBConnectionStateAbort(String state) throws InterruptedException {
         if(this.closed.get() | this.aborted.get()) { return; }
 
+        this.closed.set(true);
         this.aborted.set(true);
-        this.dbConnectionState = state;
         this.endTimeMillis = System.currentTimeMillis();
         this.endLocalDateTime = LocalDateTime.now();
+        this.dbConnectionState = state;
+
         this.printMsg(String.format("OpenTelemetry Disabled at %s", this.endLocalDateTime.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)));
         try {
             if (this.debug) {
                 this.printDebug("DB Status Change  " + state, false);
             }
             this.printMsg("Sending OpenTelemetry Last Updated Metrics in Abort Mode...");
-            this.updateInfoGauge(false);
-            Thread.sleep(this.closeWaitMS + 1000);
+            this.updateInfoGauge(false, true);
+            this.printMsg("OpenTelemetry Waiting to complete...");
+            Thread.sleep(this.closeWaitMS + 1000); //need to wait for PROM to re-scrap...
+            this.internalclose();
         }
         catch (Exception ignored) {}
+        this.printMsg("Closed OpenTelemetry Exporter");
     }
 
     private void setDBConnectionStateClosed() throws InterruptedException {
@@ -420,17 +427,7 @@ public final class OpenTelemetryExporter implements com.aerospike.benchmarks.Ope
         }
     }
 
-    @Override
-    public boolean getClosed() { return this.closed.get(); }
-
-    @Override
-    public void close() throws Exception {
-
-        if(this.closed.get()) { return; }
-
-        this.printMsg("Closing OpenTelemetry Exporter...");
-
-        this.setDBConnectionStateClosed();
+    private void internalclose() {
 
         if(this.counters != null) {
             if (this.debug) {
@@ -445,6 +442,21 @@ public final class OpenTelemetryExporter implements com.aerospike.benchmarks.Ope
             }
             this.openTelemetrySdk.close();
         }
+    }
+
+    @Override
+    public boolean getClosed() { return this.closed.get(); }
+
+    @Override
+    public void close() throws Exception {
+
+        if(this.closed.get()) { return; }
+
+        this.printMsg("Closing OpenTelemetry Exporter...");
+
+        this.setDBConnectionStateClosed();
+
+        this.internalclose();
 
         this.printMsg("Closed OpenTelemetry Exporter");
     }

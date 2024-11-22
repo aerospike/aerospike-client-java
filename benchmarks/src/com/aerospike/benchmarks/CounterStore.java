@@ -24,9 +24,10 @@ public class CounterStore {
 
 	Current write = new Current();
 	Current read = new Current();
-	Current txnUnitOfWork = new Current();
-	Current txnCommit = new Current();
-	Current txnAbort = new Current();
+	Current transaction = new Current();
+	Current mrtUnitOfWork = new Current();
+	Current mrtCommit = new Current();
+	Current mrtAbort = new Current();
 
 	boolean showMicroSeconds = false;
 
@@ -44,20 +45,24 @@ public class CounterStore {
 		if(this.read.latency != null) {
 			this.read.latency.setOpenTelemetry(openTelemetry);
 		}
-		if(this.txnUnitOfWork.latency != null) {
-			this.txnUnitOfWork.latency.setOpenTelemetry(openTelemetry);
+		if(this.transaction.latency != null) {
+			this.transaction.latency.setOpenTelemetry(openTelemetry);
 		}
-		if(this.txnCommit.latency != null) {
-			this.txnCommit.latency.setOpenTelemetry(openTelemetry);
+		if(this.mrtUnitOfWork.latency != null) {
+			this.mrtUnitOfWork.latency.setOpenTelemetry(openTelemetry);
 		}
-		if(this.txnAbort.latency != null) {
-			this.txnAbort.latency.setOpenTelemetry(openTelemetry);
+		if(this.mrtCommit.latency != null) {
+			this.mrtCommit.latency.setOpenTelemetry(openTelemetry);
+		}
+		if(this.mrtAbort.latency != null) {
+			this.mrtAbort.latency.setOpenTelemetry(openTelemetry);
 		}
 		this.write.openTelemetry = openTelemetry;
 		this.read.openTelemetry = openTelemetry;
-		this.txnUnitOfWork.openTelemetry = openTelemetry;
-		this.txnCommit.openTelemetry = openTelemetry;
-		this.txnAbort.openTelemetry = openTelemetry;
+		this.transaction.openTelemetry = openTelemetry;
+		this.mrtUnitOfWork.openTelemetry = openTelemetry;
+		this.mrtCommit.openTelemetry = openTelemetry;
+		this.mrtAbort.openTelemetry = openTelemetry;
 	}
 
 	public static class Current {
