@@ -36,7 +36,7 @@ public class OpenTelemetryDummy  implements OpenTelemetry {
 
     @SuppressWarnings("unused")
     @Override
-    public void recordElapsedTime(LatencyTypes type, double elapsedMS) {
+    public void recordElapsedTime(String type, long elapsedNanos) {
     }
 
     @SuppressWarnings("unused")

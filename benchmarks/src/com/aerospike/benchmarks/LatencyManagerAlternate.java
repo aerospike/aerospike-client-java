@@ -66,6 +66,9 @@ public class LatencyManagerAlternate implements LatencyManager {
 	public void add(long elapsed) {
 		int index = getIndex(elapsed);
 		buckets[index].count.incrementAndGet();
+		if(this.openTelemetry != null){
+			this.openTelemetry.recordElapsedTime(this.latencyType, elapsed);
+		}
 	}
 
 	private int getIndex(long elapsedNanos) {
@@ -87,10 +90,6 @@ public class LatencyManagerAlternate implements LatencyManager {
 			if ((elapsedNanos - (elapsed * NS_TO_MS)) > 0) {
 				elapsed++;
 			}
-		}
-
-		if(this.openTelemetry != null){
-			this.openTelemetry.recordElapsedTime(this.latencyType, elapsedNanos);
 		}
 
 		for (int i = 0; i < lastBucket; i++) {

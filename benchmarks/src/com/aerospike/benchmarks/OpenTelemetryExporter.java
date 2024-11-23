@@ -28,6 +28,7 @@ public final class OpenTelemetryExporter implements com.aerospike.benchmarks.Ope
     private final String SCOPE_NAME = "com.aerospike.benchmarks";
     private final String METRIC_NAME = "aerospike.benchmarks.mrt";
     private static final double NS_TO_MS = 1000000D;
+    private static final double NS_TO_US = 1000D;
 
     private final int prometheusPort;
     private String clusterName;
@@ -40,7 +41,8 @@ public final class OpenTelemetryExporter implements com.aerospike.benchmarks.Ope
     private final LongGauge openTelemetryInfoGauge;
     private final LongCounter openTelemetryExceptionCounter;
     private final LongCounter openTelemetryTransactionCounter;
-    private final DoubleHistogram openTelemetryLatencyHistogram;
+    private final DoubleHistogram openTelemetryLatencyMSHistogram;
+    private final DoubleHistogram openTelemetryLatencyUSHistogram;
 
     private final AtomicInteger hbCnt = new AtomicInteger();
     private final long startTimeMillis;
@@ -130,11 +132,18 @@ public final class OpenTelemetryExporter implements com.aerospike.benchmarks.Ope
                         .setDescription("Aerospike Benchmark MRT Exception")
                         .build();
 
-        this.openTelemetryLatencyHistogram =
+        this.openTelemetryLatencyMSHistogram =
+                openTelemetryMeter
+                        .histogramBuilder(METRIC_NAME + ".lng.latency")
+                        .setDescription("Aerospike Benchmark MRT Latencies")
+                        .setUnit("ms")
+                        .build();
+
+        this.openTelemetryLatencyUSHistogram =
                 openTelemetryMeter
                         .histogramBuilder(METRIC_NAME + ".latency")
                         .setDescription("Aerospike Benchmark MRT Latencies")
-                        .setUnit("ms")
+                        .setUnit("microsecond")
                         .build();
 
         this.openTelemetryTransactionCounter =
@@ -310,6 +319,10 @@ public final class OpenTelemetryExporter implements com.aerospike.benchmarks.Ope
             if(pos != -1) {
                 message = message.substring(0, pos);
             }
+            pos = message.indexOf("partition");
+            if(pos != -1) {
+                message = message.substring(0, pos) + "partition";
+            }
         }
 
         final Attributes attributes = Attributes.of(
@@ -327,25 +340,28 @@ public final class OpenTelemetryExporter implements com.aerospike.benchmarks.Ope
     }
 
     @Override
-    public void recordElapsedTime(LatencyTypes type, long elapsedNanos) {
-        this.recordElapsedTime(type, elapsedNanos / NS_TO_MS);
+    public void recordElapsedTime(String type, long elapsedNanos) {
+        if(this.closed.get()) { return; }
+
+        AttributesBuilder attributes = Attributes.builder();
+        attributes.put("type", type.toLowerCase());
+        attributes.put("startTimeMillis", this.startTimeMillis);
+
+        if(elapsedNanos >= 7500000) {
+            this.openTelemetryLatencyMSHistogram.record((double) elapsedNanos / NS_TO_MS, attributes.build());
+            attributes.put("longrunning", true);
+        }
+
+        this.openTelemetryLatencyUSHistogram.record((double) elapsedNanos / NS_TO_US, attributes.build());
+
+        if(this.debug) {
+            this.printDebug("Elapsed Time Record  " + type, true);
+        }
     }
 
     @Override
-    public void recordElapsedTime(LatencyTypes type, double elapsedMS) {
-
-        if(this.closed.get()) { return; }
-
-        final Attributes attributes = Attributes.of(
-                AttributeKey.stringKey("type"), type.name().toLowerCase(),
-                AttributeKey.longKey("startTimeMillis"), this.startTimeMillis
-        );
-
-        this.openTelemetryLatencyHistogram.record(elapsedMS, attributes);
-
-        if(this.debug) {
-            this.printDebug("Elapsed Time Record  " + attributes.get(AttributeKey.stringKey("type")), true);
-        }
+    public void recordElapsedTime(LatencyTypes type, long elapsedNanos) {
+        this.recordElapsedTime(type.name(), elapsedNanos);
     }
 
     @Override
@@ -386,7 +402,7 @@ public final class OpenTelemetryExporter implements com.aerospike.benchmarks.Ope
         this.updateInfoGauge(false);
     }
 
-    private void setDBConnectionStateAbort(String state) throws InterruptedException {
+    private void setDBConnectionStateAbort(String state) {
         if(this.closed.get() | this.aborted.get()) { return; }
 
         this.closed.set(true);
@@ -400,9 +416,9 @@ public final class OpenTelemetryExporter implements com.aerospike.benchmarks.Ope
             if (this.debug) {
                 this.printDebug("DB Status Change  " + state, false);
             }
-            this.printMsg("Sending OpenTelemetry Last Updated Metrics in Abort Mode...");
+            this.printMsg("Sending OpenTelemetry LUpdating Metrics in Abort Mode...");
             this.updateInfoGauge(false, true);
-            this.printMsg("OpenTelemetry Waiting to complete...");
+            this.printMsg("OpenTelemetry Waiting to complete... Ctrl-C to cancel OpenTelemetry update...");
             Thread.sleep(this.closeWaitMS + 1000); //need to wait for PROM to re-scrap...
             this.internalclose();
         }
@@ -410,7 +426,7 @@ public final class OpenTelemetryExporter implements com.aerospike.benchmarks.Ope
         this.printMsg("Closed OpenTelemetry Exporter");
     }
 
-    private void setDBConnectionStateClosed() throws InterruptedException {
+    private void setDBConnectionStateClosed() {
        try {
             if (openTelemetryInfoGauge != null && !this.aborted.get()) {
                 this.endTimeMillis = System.currentTimeMillis();
@@ -448,7 +464,7 @@ public final class OpenTelemetryExporter implements com.aerospike.benchmarks.Ope
     public boolean getClosed() { return this.closed.get(); }
 
     @Override
-    public void close() throws Exception {
+    public void close() {
 
         if(this.closed.get()) { return; }
 
@@ -478,7 +494,7 @@ public final class OpenTelemetryExporter implements com.aerospike.benchmarks.Ope
                                 this.openTelemetryInfoGauge,
                                 this.openTelemetryTransactionCounter,
                                 this.openTelemetryExceptionCounter,
-                                this.openTelemetryLatencyHistogram,
+                                this.openTelemetryLatencyUSHistogram,
                                 this.closed.get());
     }
 }

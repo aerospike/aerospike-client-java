@@ -46,11 +46,13 @@ public final class MRTInsertTaskSync extends MRTInsertTask implements Runnable {
 	public void run() {
 		RandomShift random = new RandomShift();
 		long begin;
-		boolean withinCommit = false;
+		long uowElapse;
+		boolean withinCommit;
 
 		for (long i = 0; i < nMRTs; i++) {
 			withinCommit = false;
 			begin = System.nanoTime();
+			uowElapse = 0;
 			Txn txn = new Txn();
 			writePolicy.txn = txn;
 
@@ -83,9 +85,9 @@ public final class MRTInsertTaskSync extends MRTInsertTask implements Runnable {
 				}
 
 				if(counters.mrtUnitOfWork.latency != null) {
-					long elapsed = System.nanoTime() - begin;
+					uowElapse = System.nanoTime() - begin;
 					counters.mrtUnitOfWork.count.getAndIncrement();
-					counters.mrtUnitOfWork.latency.add(elapsed);
+					counters.mrtUnitOfWork.latency.add(uowElapse);
 				}
 				else {
 					counters.mrtUnitOfWork.count.getAndIncrement();
@@ -97,6 +99,7 @@ public final class MRTInsertTaskSync extends MRTInsertTask implements Runnable {
 				client.commit(txn);
 				if(counters.mrtCommit.latency != null) {
 					long elapsed = System.nanoTime() - begin;
+					uowElapse += elapsed;
 					counters.mrtCommit.count.getAndIncrement();
 					counters.mrtCommit.latency.add(elapsed);
 				}
@@ -114,6 +117,7 @@ public final class MRTInsertTaskSync extends MRTInsertTask implements Runnable {
 				client.abort(txn);
 				if(counters.mrtAbort.latency != null) {
 					long elapsed = System.nanoTime() - begin;
+					uowElapse += elapsed;
 					counters.mrtAbort.count.getAndIncrement();
 					counters.mrtAbort.latency.add(elapsed);
 				}
@@ -121,6 +125,9 @@ public final class MRTInsertTaskSync extends MRTInsertTask implements Runnable {
 					counters.mrtAbort.count.getAndIncrement();
 					counters.mrtAbort.incrTransCountOTel(LatencyTypes.MRTABORT);
 				}
+			}
+			if(uowElapse > 0) {
+				counters.mrtUnitOfWork.recordElapsedTimeOTel(LatencyTypes.MRTUOWTOTAL, uowElapse);
 			}
 		}
 	}
