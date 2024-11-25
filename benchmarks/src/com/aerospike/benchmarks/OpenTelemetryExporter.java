@@ -32,6 +32,8 @@ public final class OpenTelemetryExporter implements com.aerospike.benchmarks.Ope
 
     private final int prometheusPort;
     private String clusterName;
+    private String setName;
+    private String namespace;
     private String dbConnectionState;
     private final int closeWaitMS;
     private final CounterStore counters;
@@ -107,6 +109,8 @@ public final class OpenTelemetryExporter implements com.aerospike.benchmarks.Ope
         this.dbConnectionState = "Initializing";
         this.closeWaitMS = closeWaitMS;
         this.counters = counters;
+        this.namespace = args.namespace == null ? args.batchNamespaces[0] : args.namespace;
+        this.setName = args.setName;
 
         if(this.debug) {
             this.printDebug("Creating OpenTelemetryExporter");
@@ -172,6 +176,13 @@ public final class OpenTelemetryExporter implements com.aerospike.benchmarks.Ope
         }
 
         this.hbAttributes = new Attributes[] {
+                //This is a collection of attributes common used for all events
+                Attributes.of(
+                        //AttributeKey.stringKey("cluster", this.clusterName,
+                        //AttributeKey.stringArrayKey("namespaces"), args.batchSize > 0 ? Arrays.asList(args.batchNamespaces) : Collections.singletonList(args.namespace),
+                        AttributeKey.stringKey("namespace"), this.namespace,
+                        AttributeKey.stringKey("setname"), this.setName
+                ),
                 Attributes.of(
                         AttributeKey.stringKey("generalInfo"), generalInfo.toString(),
                         AttributeKey.stringKey("policies"), policies.toString(),
@@ -182,8 +193,6 @@ public final class OpenTelemetryExporter implements com.aerospike.benchmarks.Ope
                         ),
                 Attributes.of(
                         //AttributeKey.stringArrayKey("namespaces"), args.batchSize > 0 ? Arrays.asList(args.batchNamespaces) : Collections.singletonList(args.namespace),
-                        AttributeKey.stringKey("namespace"), args.namespace == null ? args.batchNamespaces[0] : args.namespace,
-                        AttributeKey.stringKey("setname"), args.setName,
                         AttributeKey.stringKey("workload"),workload,
                         AttributeKey.longKey("batchSize"), (long) args.batchSize,
                         AttributeKey.longKey("readPct"), (long) readPct,
@@ -278,6 +287,7 @@ public final class OpenTelemetryExporter implements com.aerospike.benchmarks.Ope
 
         AttributesBuilder attributes = Attributes.builder();
 
+        attributes.putAll(this.hbAttributes[0]);
         attributes.put("hbCount", this.hbCnt.incrementAndGet());
 
         if(initial) {
@@ -285,10 +295,6 @@ public final class OpenTelemetryExporter implements com.aerospike.benchmarks.Ope
             for (Attributes attrItem : this.hbAttributes) {
                 attributes.putAll(attrItem);
             }
-        }
-
-        if(this.clusterName != null) {
-            attributes.put("cluster", this.clusterName);
         }
         if(this.dbConnectionState != null) {
             attributes.put("DBConnState", this.dbConnectionState);
@@ -325,17 +331,19 @@ public final class OpenTelemetryExporter implements com.aerospike.benchmarks.Ope
             }
         }
 
-        final Attributes attributes = Attributes.of(
+        AttributesBuilder attributes = Attributes.builder();
+        attributes.putAll(this.hbAttributes[0]);
+        attributes.putAll(Attributes.of(
                 AttributeKey.stringKey("exception_type"), exceptionType,
                 AttributeKey.stringKey("exception"), message,
                 AttributeKey.stringKey("type"), type.name().toLowerCase(),
                 AttributeKey.longKey("startTimeMillis"), this.startTimeMillis
-        );
+        ));
 
-        this.openTelemetryExceptionCounter.add(1, attributes);
+        this.openTelemetryExceptionCounter.add(1, attributes.build());
 
         if(this.debug) {
-            this.printDebug("Exception Counter Add " + attributes.get(AttributeKey.stringKey("exception_type")));
+            this.printDebug("Exception Counter Add " + exceptionType);
         }
     }
 
@@ -344,15 +352,18 @@ public final class OpenTelemetryExporter implements com.aerospike.benchmarks.Ope
         if(this.closed.get()) { return; }
 
         AttributesBuilder attributes = Attributes.builder();
+        attributes.putAll(this.hbAttributes[0]);
         attributes.put("type", type.toLowerCase());
         attributes.put("startTimeMillis", this.startTimeMillis);
 
         if(elapsedNanos >= 7500000) {
-            this.openTelemetryLatencyMSHistogram.record((double) elapsedNanos / NS_TO_MS, attributes.build());
             attributes.put("longrunning", true);
         }
 
-        this.openTelemetryLatencyUSHistogram.record((double) elapsedNanos / NS_TO_US, attributes.build());
+        final Attributes attrsBuilt = attributes.build();
+
+        this.openTelemetryLatencyMSHistogram.record((double) elapsedNanos / NS_TO_MS, attrsBuilt);
+        this.openTelemetryLatencyUSHistogram.record((double) elapsedNanos / NS_TO_US, attrsBuilt);
 
         if(this.debug) {
             this.printDebug("Elapsed Time Record  " + type, true);
@@ -369,11 +380,11 @@ public final class OpenTelemetryExporter implements com.aerospike.benchmarks.Ope
 
         if(this.closed.get()) { return; }
 
-        final Attributes attributes = Attributes.of(
-                AttributeKey.stringKey("type"), type.name().toLowerCase()
-        );
+        AttributesBuilder attributes = Attributes.builder();
+        attributes.putAll(this.hbAttributes[0]);
+        attributes.put("type", type.name().toLowerCase());
 
-        this.openTelemetryTransactionCounter.add(1, attributes);
+        this.openTelemetryTransactionCounter.add(1, attributes.build());
 
         if (this.debug) {
             this.printDebug("Transaction Counter Add " + type.name().toLowerCase(), true);
@@ -388,6 +399,11 @@ public final class OpenTelemetryExporter implements com.aerospike.benchmarks.Ope
         if(this.debug) {
             this.printDebug("Cluster Name  " + clusterName, false);
         }
+        this.hbAttributes[0] = Attributes.of(
+                AttributeKey.stringKey("cluster"), this.clusterName,
+                AttributeKey.stringKey("namespace"), this.namespace,
+                AttributeKey.stringKey("setname"), this.setName
+        );
         this.updateInfoGauge(false);
     }
 

@@ -59,11 +59,14 @@ public class MRTRWTaskSync extends MRTRWTask implements Runnable {
 		long uowElapse;
 		boolean withinCommit;
 		boolean withinAbort;
+		boolean uowCompleted;
 
+		//uow (Unit of Work) consist of the actions (get/puts) within a MRT.
 		while (valid) {
 			for (long i = 0; i < nMRTs; i++) {
 				withinCommit = false;
 				withinAbort = false;
+				uowCompleted = false;
 				begin = System.nanoTime();
 				uowElapse = 0;
 				Txn txn = new Txn();
@@ -131,6 +134,7 @@ public class MRTRWTaskSync extends MRTRWTask implements Runnable {
 							counters.mrtAbort.incrTransCountOTel(LatencyTypes.MRTABORT);
 						}
 					}
+					uowCompleted = true;
 				} catch (AerospikeException e) {
 					if(withinAbort) {
 						counters.mrtAbort.errors.incrementAndGet();
@@ -152,7 +156,7 @@ public class MRTRWTaskSync extends MRTRWTask implements Runnable {
 						counters.mrtAbort.incrTransCountOTel(LatencyTypes.MRTABORT);
 					}
 				}
-				if(uowElapse > 0) {
+				if(uowCompleted) {
 					counters.mrtUnitOfWork.recordElapsedTimeOTel(LatencyTypes.MRTUOWTOTAL, uowElapse);
 				}
 			}
