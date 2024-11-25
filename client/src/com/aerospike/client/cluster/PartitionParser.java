@@ -84,7 +84,7 @@ public final class PartitionParser extends Info {
 		while (offset < length) {
 			if (buffer[offset] == ':') {
 				// Parse namespace.
-				String namespace = Buffer.utf8ToString(buffer, begin, offset - begin, sb).trim();
+				String namespace = Buffer.utf8ToString(buffer, begin, offset - begin).trim();
 
 				if (namespace.length() <= 0 || namespace.length() >= 32) {
 					String response = getTruncatedResponse();

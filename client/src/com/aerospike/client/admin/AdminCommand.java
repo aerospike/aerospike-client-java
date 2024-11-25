@@ -760,7 +760,6 @@ public class AdminCommand {
 
 		private List<String> parseWhitelist(int len) {
 			ArrayList<String> list = new ArrayList<String>();
-			StringBuilder sb = new StringBuilder(256);
 			int begin = super.dataOffset;
 			int max = super.dataOffset + len;
 			int l;
@@ -770,7 +769,7 @@ public class AdminCommand {
 					l = super.dataOffset - begin;
 
 					if (l > 0) {
-						String s = Buffer.utf8ToString(super.dataBuffer, begin, l, sb);
+						String s = Buffer.utf8ToString(super.dataBuffer, begin, l);
 						list.add(s);
 					}
 					begin = ++super.dataOffset;
@@ -782,7 +781,7 @@ public class AdminCommand {
 			l = super.dataOffset - begin;
 
 			if (l > 0) {
-				String s = Buffer.utf8ToString(super.dataBuffer, begin, l, sb);
+				String s = Buffer.utf8ToString(super.dataBuffer, begin, l);
 				list.add(s);
 			}
 			return list;
