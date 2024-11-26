@@ -270,6 +270,11 @@ public final class ResultCode {
 	public static final int MRT_ABORTED = 34;
 
 	/**
+	 * MRT write command limit (4096) exceeded.
+	 */
+	public static final int MRT_TOO_MANY_WRITES = 35;
+
+	/**
 	 * There are no more records left for query.
 	 */
 	public static final int QUERY_END = 50;
@@ -631,13 +636,16 @@ public final class ResultCode {
 
 		case XDR_KEY_BUSY:
 			return "Write can't complete until XDR finishes shipping";
-			
+
 		case MRT_COMMITTED:
 			return "MRT already committed";
-			
+
 		case MRT_ABORTED:
 			return "MRT already aborted";
-			
+
+		case MRT_TOO_MANY_WRITES:
+			return "MRT write command limit exceeded";
+
 		case QUERY_END:
 			return "Query end";
 
