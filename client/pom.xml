@@ -8,7 +8,7 @@
     <artifactId>aerospike-parent</artifactId>
     <version>9.0.0</version>
   </parent>
-  <artifactId>aerospike-client-jdk21</artifactId>
+  <artifactId>aerospike-client-jdk21${crypto.type}</artifactId>
   <packaging>jar</packaging>
 
   <name>aerospike-client-jdk21</name>
@@ -53,12 +53,6 @@
     </dependency>
 
     <dependency>
-      <groupId>org.gnu</groupId>
-      <artifactId>gnu-crypto</artifactId>
-      <version>2.0.1</version>
-    </dependency>
-
-    <dependency>
       <groupId>org.luaj</groupId>
       <artifactId>luaj-jse</artifactId>
     </dependency>
@@ -67,16 +61,64 @@
       <groupId>org.mindrot</groupId>
       <artifactId>jbcrypt</artifactId>
     </dependency>
+
+    <dependency>
+      <groupId>org.bouncycastle</groupId>
+      <artifactId>bcprov-jdk15on</artifactId>
+      <version>1.69</version>
+      <scope>compile</scope>
+    </dependency>
+
+    <dependency>
+      <groupId>org.gnu</groupId>
+      <artifactId>gnu-crypto</artifactId>
+      <version>2.0.1</version>
+      <scope>compile</scope>
+    </dependency>
   </dependencies>
+
+  <profiles>
+    <profile>
+      <id>bouncycastle</id>
+      <dependencies>
+        <dependency>
+          <groupId>org.bouncycastle</groupId>
+          <artifactId>bcprov-jdk15on</artifactId>
+          <version>1.69</version>
+        </dependency>
+      </dependencies>
+      <properties>
+        <crypto.type>-bc</crypto.type>
+      </properties>
+    </profile>
+
+    <profile>
+      <activation>
+        <activeByDefault>true</activeByDefault>
+      </activation>
+      <id>gnu</id>
+      <dependencies>
+        <dependency>
+          <groupId>org.gnu</groupId>
+          <artifactId>gnu-crypto</artifactId>
+          <version>2.0.1</version>
+        </dependency>
+      </dependencies>
+    </profile>
+  </profiles>
 
   <build>
     <sourceDirectory>${project.basedir}/src</sourceDirectory>
     <resources>
       <resource>
         <directory>${project.basedir}/src/resources</directory>
+        <filtering>true</filtering>
       </resource>
     </resources>
 
+    <filters>
+      <filter>${project.basedir}/src/resources/config.properties/</filter>
+    </filters>
     <plugins>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
@@ -85,6 +127,28 @@
               <source>21</source>
               <target>21</target>
           </configuration>
+      </plugin>
+
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-resources-plugin</artifactId>
+        <version>3.3.1</version>
+        <executions>
+          <execution>
+            <id>filter-resources-install</id>
+            <phase>install</phase>
+            <goals>
+              <goal>resources</goal>
+            </goals>
+          </execution>
+          <execution>
+            <id>filter-resources-deploy</id>
+            <phase>deploy</phase>
+            <goals>
+              <goal>resources</goal>
+            </goals>
+          </execution>
+        </executions>
       </plugin>
 
       <plugin>

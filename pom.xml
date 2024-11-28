@@ -43,6 +43,7 @@
     <jbcrypt.version>0.4</jbcrypt.version>
     <commons-cli.version>1.9.0</commons-cli.version>
     <junit.version>4.13.1</junit.version>
+    <crypto.type></crypto.type>
   </properties>
 
   <dependencyManagement>

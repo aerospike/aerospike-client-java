@@ -25,7 +25,7 @@ import com.aerospike.client.cluster.Connection;
 import com.aerospike.client.cluster.Node;
 import com.aerospike.client.policy.Policy;
 import com.aerospike.client.task.RegisterTask;
-import com.aerospike.client.util.Crypto;
+import com.aerospike.client.crypto.Crypto;
 
 public final class RegisterCommand {
 

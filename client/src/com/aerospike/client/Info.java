@@ -26,7 +26,7 @@ import com.aerospike.client.cluster.Connection;
 import com.aerospike.client.cluster.Node;
 import com.aerospike.client.command.Buffer;
 import com.aerospike.client.policy.InfoPolicy;
-import com.aerospike.client.util.Crypto;
+import com.aerospike.client.crypto.Crypto;
 
 /**
  * Access server's info monitoring protocol.

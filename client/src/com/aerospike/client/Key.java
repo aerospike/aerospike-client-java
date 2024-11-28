@@ -19,7 +19,7 @@ package com.aerospike.client;
 import java.util.Arrays;
 
 import com.aerospike.client.command.Buffer;
-import com.aerospike.client.util.Crypto;
+import com.aerospike.client.crypto.Crypto;
 
 /**
  * Unique record identifier. Records can be identified using a specified namespace,

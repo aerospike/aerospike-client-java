@@ -20,7 +20,7 @@ import java.io.Serializable;
 import java.util.Arrays;
 
 import com.aerospike.client.command.Command;
-import com.aerospike.client.util.Crypto;
+import com.aerospike.client.crypto.Crypto;
 import com.aerospike.client.util.Packer;
 
 /**
