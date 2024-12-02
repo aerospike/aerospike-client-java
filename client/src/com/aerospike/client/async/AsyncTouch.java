@@ -20,15 +20,25 @@ import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
 import com.aerospike.client.ResultCode;
 import com.aerospike.client.cluster.Cluster;
+import com.aerospike.client.listener.ExistsListener;
 import com.aerospike.client.listener.WriteListener;
 import com.aerospike.client.policy.WritePolicy;
 
 public final class AsyncTouch extends AsyncWriteBase {
-	private final WriteListener listener;
+	private final WriteListener writeListener;
+	private final ExistsListener existsListener;
+	private boolean touched;
 
 	public AsyncTouch(Cluster cluster, WriteListener listener, WritePolicy writePolicy, Key key) {
 		super(cluster, writePolicy, key);
-		this.listener = listener;
+		this.writeListener = listener;
+		this.existsListener = null;
+	}
+
+	public AsyncTouch(Cluster cluster, ExistsListener listener, WritePolicy writePolicy, Key key) {
+		super(cluster, writePolicy, key);
+		this.writeListener = null;
+		this.existsListener = listener;
 	}
 
 	@Override
@@ -41,6 +51,15 @@ public final class AsyncTouch extends AsyncWriteBase {
 		int resultCode = parseHeader();
 
 		if (resultCode == ResultCode.OK) {
+			touched = true;
+			return true;
+		}
+
+		if (resultCode == ResultCode.KEY_NOT_FOUND_ERROR) {
+			if (existsListener == null) {
+				throw new AerospikeException(resultCode);
+			}
+			touched = false;
 			return true;
 		}
 
@@ -48,6 +67,7 @@ public final class AsyncTouch extends AsyncWriteBase {
 			if (policy.failOnFilteredOut) {
 				throw new AerospikeException(resultCode);
 			}
+			touched = false;
 			return true;
 		}
 
@@ -56,15 +76,21 @@ public final class AsyncTouch extends AsyncWriteBase {
 
 	@Override
 	protected void onSuccess() {
-		if (listener != null) {
-			listener.onSuccess(key);
+		if (writeListener != null) {
+			writeListener.onSuccess(key);
+		}
+		else if (existsListener != null) {
+			existsListener.onSuccess(key, touched);
 		}
 	}
 
 	@Override
 	protected void onFailure(AerospikeException e) {
-		if (listener != null) {
-			listener.onFailure(e);
+		if (writeListener != null) {
+			writeListener.onFailure(e);
+		}
+		else if (existsListener != null) {
+			existsListener.onFailure(e);
 		}
 	}
 }

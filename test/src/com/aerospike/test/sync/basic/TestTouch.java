@@ -16,6 +16,7 @@
  */
 package com.aerospike.test.sync.basic;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNull;
 
@@ -31,31 +32,81 @@ import com.aerospike.test.sync.TestSync;
 
 public class TestTouch extends TestSync {
 	@Test
+	public void touchOperate() {
+		if (! args.hasTtl) {
+			return;
+		}
+
+		Key key = new Key(args.namespace, args.set, "touchOperate");
+		Bin bin = new Bin("touchbin", "touchvalue");
+
+		WritePolicy writePolicy = new WritePolicy();
+		writePolicy.expiration = 1;
+		client.put(writePolicy, key, bin);
+
+		writePolicy.expiration = 2;
+		Record record = client.operate(writePolicy, key, Operation.touch(), Operation.getHeader());
+		assertRecordFound(key, record);
+		assertNotEquals(0, record.expiration);
+
+		Util.sleep(1000);
+
+		record = client.get(null, key, bin.name);
+		assertRecordFound(key, record);
+
+		Util.sleep(3000);
+
+		record = client.get(null, key, bin.name);
+		assertNull(record);
+	}
+
+	@Test
 	public void touch() {
 		if (! args.hasTtl) {
 			return;
 		}
 
-		Key key = new Key(args.namespace, args.set, "touchkey");
+		Key key = new Key(args.namespace, args.set, "touch");
 		Bin bin = new Bin("touchbin", "touchvalue");
 
 		WritePolicy writePolicy = new WritePolicy();
-		writePolicy.expiration = 2;
+		writePolicy.expiration = 1;
 		client.put(writePolicy, key, bin);
 
-		writePolicy.expiration = 5;
-		Record record = client.operate(writePolicy, key, Operation.touch(), Operation.getHeader());
+		writePolicy.expiration = 2;
+		client.touch(writePolicy, key);
+
+		Util.sleep(1000);
+
+		Record record = client.getHeader(writePolicy, key);
 		assertRecordFound(key, record);
 		assertNotEquals(0, record.expiration);
 
 		Util.sleep(3000);
 
-		record = client.get(null, key, bin.name);
-		assertRecordFound(key, record);
-
-		Util.sleep(4000);
-
-		record = client.get(null, key, bin.name);
+		record = client.getHeader(null, key);
 		assertNull(record);
+	}
+
+	@Test
+	public void touched() {
+		if (! args.hasTtl) {
+			return;
+		}
+
+		Key key = new Key(args.namespace, args.set, "touched");
+
+		client.delete(null, key);
+
+		WritePolicy writePolicy = new WritePolicy();
+		writePolicy.expiration = 10;
+		boolean rv = client.touched(writePolicy, key);
+		assertEquals(false, rv);
+
+		Bin bin = new Bin("touchbin", "touchvalue");
+		client.put(writePolicy, key, bin);
+
+		rv = client.touched(writePolicy, key);
+		assertEquals(true, rv);
 	}
 }
