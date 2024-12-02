@@ -82,112 +82,130 @@ public interface IAerospikeClient extends Closeable {
 	//-------------------------------------------------------
 
 	/**
-	 * Copy read policy default to avoid problems if this shared instance is later modified.
+	 * Return read policy default. Use when the policy will not be modified.
 	 */
 	public Policy getReadPolicyDefault();
 
 	/**
-	 * Copy read policy default.
+	 * Copy read policy default. Use when the policy will be modified for use in a specific command.
 	 */
 	public Policy copyReadPolicyDefault();
 
 	/**
-	 * Copy write policy default to avoid problems if this shared instance is later modified.
+	 * Return write policy default. Use when the policy will not be modified.
 	 */
 	public WritePolicy getWritePolicyDefault();
 
 	/**
-	 * Copy write policy default.
+	 * Copy write policy default. Use when the policy will be modified for use in a specific command.
 	 */
 	public WritePolicy copyWritePolicyDefault();
 
 	/**
-	 * Copy scan policy default to avoid problems if this shared instance is later modified.
+	 * Return scan policy default. Use when the policy will not be modified.
 	 */
 	public ScanPolicy getScanPolicyDefault();
 
 	/**
-	 * Copy scan policy default.
+	 * Copy scan policy default. Use when the policy will be modified for use in a specific command.
 	 */
 	public ScanPolicy copyScanPolicyDefault();
 
 	/**
-	 * Copy query policy default to avoid problems if this shared instance is later modified.
+	 * Return query policy default. Use when the policy will not be modified.
 	 */
 	public QueryPolicy getQueryPolicyDefault();
 
 	/**
-	 * Copy query policy default.
+	 * Copy query policy default. Use when the policy will be modified for use in a specific command.
 	 */
 	public QueryPolicy copyQueryPolicyDefault();
 
 	/**
-	 * Copy batch header read policy default to avoid problems if this shared instance is later modified.
+	 * Return batch header read policy default. Use when the policy will not be modified.
 	 */
 	public BatchPolicy getBatchPolicyDefault();
 
 	/**
-	 * Copy batch header read policy default.
+	 * Copy batch header read policy default. Use when the policy will be modified for use in a
+	 * specific command.
 	 */
 	public BatchPolicy copyBatchPolicyDefault();
 
 	/**
-	 * Copy batch header write policy default to avoid problems if this shared instance is later modified.
+	 * Return batch header write policy default. Use when the policy will not be modified.
 	 */
 	public BatchPolicy getBatchParentPolicyWriteDefault();
 
 	/**
-	 * Copy batch header write policy default.
+	 * Copy batch header write policy default. Use when the policy will be modified for use in a
+	 * specific command.
 	 */
 	public BatchPolicy copyBatchParentPolicyWriteDefault();
 
 	/**
-	 * Copy batch detail write policy default to avoid problems if this shared instance is later modified.
+	 * Return batch detail write policy default. Use when the policy will not be modified.
 	 */
 	public BatchWritePolicy getBatchWritePolicyDefault();
 
 	/**
-	 * Copy batch detail write policy default.
+	 * Copy batch detail write policy default. Use when the policy will be modified for use in a
+	 * specific command.
 	 */
 	public BatchWritePolicy copyBatchWritePolicyDefault();
 
 	/**
-	 * Copy batch detail delete policy default to avoid problems if this shared instance is later modified.
+	 * Return batch detail delete policy default. Use when the policy will not be modified.
 	 */
 	public BatchDeletePolicy getBatchDeletePolicyDefault();
 
 	/**
-	 * Copy batch detail delete policy default.
+	 * Copy batch detail delete policy default. Use when the policy will be modified for use in a
+	 * specific command.
 	 */
 	public BatchDeletePolicy copyBatchDeletePolicyDefault();
 
 	/**
-	 * Copy batch detail UDF policy default to avoid problems if this shared instance is later modified.
+	 * Return batch detail UDF policy default. Use when the policy will not be modified.
 	 */
 	public BatchUDFPolicy getBatchUDFPolicyDefault();
 
 	/**
-	 * Copy batch detail UDF policy default.
+	 * Copy batch detail UDF policy default. Use when the policy will be modified for use in a
+	 * specific command.
 	 */
 	public BatchUDFPolicy copyBatchUDFPolicyDefault();
 
 	/**
-	 * Copy info command policy default to avoid problems if this shared instance is later modified.
+	 * Return info command policy default. Use when the policy will not be modified.
 	 */
 	public InfoPolicy getInfoPolicyDefault();
 
 	/**
-	 * Copy info command policy default.
+	 * Copy info command policy default. Use when the policy will be modified for use in a
+	 * specific command.
 	 */
 	public InfoPolicy copyInfoPolicyDefault();
 
 	/**
-	 * Copy MRT record version verify policy default.
+	 * Return MRT record version verify policy default. Use when the policy will not be modified.
+	 */
+	public TxnVerifyPolicy getTxnVerifyPolicyDefault();
+
+	/**
+	 * Copy MRT record version verify policy default. Use when the policy will be modified for use
+	 * in a specific command.
 	 */
 	public TxnVerifyPolicy copyTxnVerifyPolicyDefault();
 
 	/**
-	 * Copy MRT roll forward/back policy default.
+	 * Return MRT roll forward/back policy default. Use when the policy will not be modified.
+	 */
+	public TxnRollPolicy getTxnRollPolicyDefault();
+
+	/**
+	 * Copy MRT roll forward/back policy default. Use when the policy will be modified for use
+	 * in a specific command.
 	 */
 	public TxnRollPolicy copyTxnRollPolicyDefault();
 
