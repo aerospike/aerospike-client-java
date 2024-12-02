@@ -239,40 +239,9 @@ public final class ResultCode {
 	public static final int LOST_CONFLICT = 28;
 
 	/**
-	 * MRT record blocked by a different transaction.
-	 */
-	public static final int MRT_BLOCKED = 29;
-
-	/**
-	 * MRT read version mismatch identified during commit.
-	 * Some other command changed the record outside of the transaction.
-	 */
-	public static final int MRT_VERSION_MISMATCH = 30;
-
-	/**
-	 * MRT deadline reached without a successful commit or abort.
-	 */
-	public static final int MRT_EXPIRED = 31;
-
-	/**
 	 * Write can't complete until XDR finishes shipping.
 	 */
 	public static final int XDR_KEY_BUSY = 32;
-
-	/**
-	 * MRT was already committed.
-	 */
-	public static final int MRT_COMMITTED = 33;
-
-	/**
-	 * MRT was already aborted.
-	 */
-	public static final int MRT_ABORTED = 34;
-
-	/**
-	 * MRT write command limit (4096) exceeded.
-	 */
-	public static final int MRT_TOO_MANY_WRITES = 35;
 
 	/**
 	 * There are no more records left for query.
@@ -398,6 +367,37 @@ public final class ResultCode {
 	 * A user defined function returned an error code.
 	 */
 	public static final int UDF_BAD_RESPONSE = 100;
+
+	/**
+	 * MRT record blocked by a different transaction.
+	 */
+	public static final int MRT_BLOCKED = 120;
+
+	/**
+	 * MRT read version mismatch identified during commit.
+	 * Some other command changed the record outside of the transaction.
+	 */
+	public static final int MRT_VERSION_MISMATCH = 121;
+
+	/**
+	 * MRT deadline reached without a successful commit or abort.
+	 */
+	public static final int MRT_EXPIRED = 122;
+
+	/**
+	 * MRT write command limit (4096) exceeded.
+	 */
+	public static final int MRT_TOO_MANY_WRITES = 123;
+
+	/**
+	 * MRT was already committed.
+	 */
+	public static final int MRT_COMMITTED = 124;
+
+	/**
+	 * MRT was already aborted.
+	 */
+	public static final int MRT_ABORTED = 125;
 
 	/**
 	 * Batch functionality has been disabled.
@@ -625,26 +625,8 @@ public final class ResultCode {
 		case LOST_CONFLICT:
 			return "Command failed due to conflict with XDR";
 
-		case MRT_BLOCKED:
-			return "MRT record blocked by a different transaction";
-
-		case MRT_VERSION_MISMATCH:
-			return "MRT version mismatch";
-
-		case MRT_EXPIRED:
-			return "MRT expired";
-
 		case XDR_KEY_BUSY:
 			return "Write can't complete until XDR finishes shipping";
-
-		case MRT_COMMITTED:
-			return "MRT already committed";
-
-		case MRT_ABORTED:
-			return "MRT already aborted";
-
-		case MRT_TOO_MANY_WRITES:
-			return "MRT write command limit exceeded";
 
 		case QUERY_END:
 			return "Query end";
@@ -720,6 +702,24 @@ public final class ResultCode {
 
 		case UDF_BAD_RESPONSE:
 			return "UDF returned error";
+
+		case MRT_BLOCKED:
+			return "MRT record blocked by a different transaction";
+
+		case MRT_VERSION_MISMATCH:
+			return "MRT version mismatch";
+
+		case MRT_EXPIRED:
+			return "MRT expired";
+
+		case MRT_TOO_MANY_WRITES:
+			return "MRT write command limit exceeded";
+
+		case MRT_COMMITTED:
+			return "MRT already committed";
+
+		case MRT_ABORTED:
+			return "MRT already aborted";
 
 		case BATCH_DISABLED:
 			return "Batch functionality has been disabled";
