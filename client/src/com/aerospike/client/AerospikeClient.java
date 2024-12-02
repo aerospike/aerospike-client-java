@@ -367,154 +367,176 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	//-------------------------------------------------------
 
 	/**
-	 * Copy read policy default to avoid problems if this shared instance is later modified.
+	 * Return read policy default. Use when the policy will not be modified.
 	 */
 	public final Policy getReadPolicyDefault() {
-		return new Policy(readPolicyDefault);
+		return readPolicyDefault;
 	}
 
 	/**
-	 * Copy read policy default.
+	 * Copy read policy default. Use when the policy will be modified for use in a specific command.
 	 */
 	public final Policy copyReadPolicyDefault() {
 		return new Policy(readPolicyDefault);
 	}
 
 	/**
-	 * Copy write policy default to avoid problems if this shared instance is later modified.
+	 * Return write policy default. Use when the policy will not be modified.
 	 */
 	public final WritePolicy getWritePolicyDefault() {
-		return new WritePolicy(writePolicyDefault);
+		return writePolicyDefault;
 	}
 
 	/**
-	 * Copy write policy default.
+	 * Copy write policy default. Use when the policy will be modified for use in a specific command.
 	 */
 	public final WritePolicy copyWritePolicyDefault() {
 		return new WritePolicy(writePolicyDefault);
 	}
 
 	/**
-	 * Copy scan policy default to avoid problems if this shared instance is later modified.
+	 * Return scan policy default. Use when the policy will not be modified.
 	 */
 	public final ScanPolicy getScanPolicyDefault() {
-		return new ScanPolicy(scanPolicyDefault);
+		return scanPolicyDefault;
 	}
 
 	/**
-	 * Copy scan policy default.
+	 * Copy scan policy default. Use when the policy will be modified for use in a specific command.
 	 */
 	public final ScanPolicy copyScanPolicyDefault() {
 		return new ScanPolicy(scanPolicyDefault);
 	}
 
 	/**
-	 * Copy query policy default to avoid problems if this shared instance is later modified.
+	 * Return query policy default. Use when the policy will not be modified.
 	 */
 	public final QueryPolicy getQueryPolicyDefault() {
-		return new QueryPolicy(queryPolicyDefault);
+		return queryPolicyDefault;
 	}
 
 	/**
-	 * Copy query policy default.
+	 * Copy query policy default. Use when the policy will be modified for use in a specific command.
 	 */
 	public final QueryPolicy copyQueryPolicyDefault() {
 		return new QueryPolicy(queryPolicyDefault);
 	}
 
 	/**
-	 * Copy batch header read policy default to avoid problems if this shared instance is later modified.
+	 * Return batch header read policy default. Use when the policy will not be modified.
 	 */
 	public final BatchPolicy getBatchPolicyDefault() {
-		return new BatchPolicy(batchPolicyDefault);
+		return batchPolicyDefault;
 	}
 
 	/**
-	 * Copy batch header read policy default.
+	 * Copy batch header read policy default. Use when the policy will be modified for use in a
+	 * specific command.
 	 */
 	public final BatchPolicy copyBatchPolicyDefault() {
 		return new BatchPolicy(batchPolicyDefault);
 	}
 
 	/**
-	 * Copy batch header write policy default to avoid problems if this shared instance is later modified.
+	 * Return batch header write policy default. Use when the policy will not be modified.
 	 */
 	public final BatchPolicy getBatchParentPolicyWriteDefault() {
-		return new BatchPolicy(batchParentPolicyWriteDefault);
+		return batchParentPolicyWriteDefault;
 	}
 
 	/**
-	 * Copy batch header write policy default.
+	 * Copy batch header write policy default. Use when the policy will be modified for use in a
+	 * specific command.
 	 */
 	public final BatchPolicy copyBatchParentPolicyWriteDefault() {
 		return new BatchPolicy(batchParentPolicyWriteDefault);
 	}
 
 	/**
-	 * Copy batch detail write policy default to avoid problems if this shared instance is later modified.
+	 * Return batch detail write policy default. Use when the policy will not be modified.
 	 */
 	public final BatchWritePolicy getBatchWritePolicyDefault() {
-		return new BatchWritePolicy(batchWritePolicyDefault);
+		return batchWritePolicyDefault;
 	}
 
 	/**
-	 * Copy batch detail write policy default.
+	 * Copy batch detail write policy default. Use when the policy will be modified for use in a
+	 * specific command.
 	 */
 	public final BatchWritePolicy copyBatchWritePolicyDefault() {
 		return new BatchWritePolicy(batchWritePolicyDefault);
 	}
 
 	/**
-	 * Copy batch detail delete policy default to avoid problems if this shared instance is later modified.
+	 * Return batch detail delete policy default. Use when the policy will not be modified.
 	 */
 	public final BatchDeletePolicy getBatchDeletePolicyDefault() {
-		return new BatchDeletePolicy(batchDeletePolicyDefault);
+		return batchDeletePolicyDefault;
 	}
 
 	/**
-	 * Copy batch detail delete policy default.
+	 * Copy batch detail delete policy default. Use when the policy will be modified for use in a
+	 * specific command.
 	 */
 	public final BatchDeletePolicy copyBatchDeletePolicyDefault() {
 		return new BatchDeletePolicy(batchDeletePolicyDefault);
 	}
 
 	/**
-	 * Copy batch detail UDF policy default to avoid problems if this shared instance is later modified.
+	 * Return batch detail UDF policy default. Use when the policy will not be modified.
 	 */
 	public final BatchUDFPolicy getBatchUDFPolicyDefault() {
-		return new BatchUDFPolicy(batchUDFPolicyDefault);
+		return batchUDFPolicyDefault;
 	}
 
 	/**
-	 * Copy batch detail UDF policy default.
+	 * Copy batch detail UDF policy default. Use when the policy will be modified for use in a
+	 * specific command.
 	 */
 	public final BatchUDFPolicy copyBatchUDFPolicyDefault() {
 		return new BatchUDFPolicy(batchUDFPolicyDefault);
 	}
 
 	/**
-	 * Copy info command policy default to avoid problems if this shared instance is later modified.
+	 * Return info command policy default. Use when the policy will not be modified.
 	 */
 	public final InfoPolicy getInfoPolicyDefault() {
-		return new InfoPolicy(infoPolicyDefault);
+		return infoPolicyDefault;
 	}
 
 	/**
-	 * Copy info command policy default.
+	 * Copy info command policy default. Use when the policy will be modified for use in a
+	 * specific command.
 	 */
 	public final InfoPolicy copyInfoPolicyDefault() {
 		return new InfoPolicy(infoPolicyDefault);
 	}
 
 	/**
-	 * Copy MRT record version verify policy default.
+	 * Return MRT record version verify policy default. Use when the policy will not be modified.
+	 */
+	public final TxnVerifyPolicy getTxnVerifyPolicyDefault() {
+		return txnVerifyPolicyDefault;
+	}
+
+	/**
+	 * Copy MRT record version verify policy default. Use when the policy will be modified for use
+	 * in a specific command.
 	 */
 	public final TxnVerifyPolicy copyTxnVerifyPolicyDefault() {
 		return new TxnVerifyPolicy(txnVerifyPolicyDefault);
 	}
 
 	/**
-	 * Copy MRT roll forward/back policy default.
+	 * Return MRT roll forward/back policy default. Use when the policy will not be modified.
+	 */
+	public final TxnRollPolicy getTxnRollPolicyDefault() {
+		return txnRollPolicyDefault;
+	}
+
+	/**
+	 * Copy MRT roll forward/back policy default. Use when the policy will be modified for use
+	 * in a specific command.
 	 */
 	public final TxnRollPolicy copyTxnRollPolicyDefault() {
 		return new TxnRollPolicy(txnRollPolicyDefault);
