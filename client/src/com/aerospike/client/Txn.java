@@ -45,7 +45,7 @@ public final class Txn {
 	private String namespace;
 	private int timeout;
 	private int deadline;
-	private boolean monitorInDoubt;
+	private boolean writeInDoubt;
 	private boolean inDoubt;
 
 	/**
@@ -204,6 +204,7 @@ public final class Txn {
 	 * Add key to write hash when write command is in doubt (usually caused by timeout).
 	 */
 	public void onWriteInDoubt(Key key) {
+		writeInDoubt = true;
 		reads.remove(key);
 		writes.add(key);
 	}
@@ -273,17 +274,10 @@ public final class Txn {
 	}
 
 	/**
-	 * Set that the MRT monitor existence is in doubt. For internal use only.
+	 * Return if the MRT monitor record should be closed/deleted. For internal use only.
 	 */
-	public void setMonitorInDoubt() {
-		this.monitorInDoubt = true;
-	}
-
-	/**
-	 * Does MRT monitor record exist or is in doubt.
-	 */
-	public boolean monitorMightExist() {
-		return deadline != 0 || monitorInDoubt;
+	public boolean closeMonitor() {
+		return deadline != 0 && !writeInDoubt;
 	}
 
 	/**
