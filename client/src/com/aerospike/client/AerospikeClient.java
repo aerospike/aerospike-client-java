@@ -1335,7 +1335,8 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 
 	/**
 	 * Reset record's time to expiration using the policy's expiration.
-	 * Fail if the record does not exist.
+	 * If the record does not exist, it can't be created because the server deletes empty records.
+	 * Throw an exception if the record does not exist.
 	 *
 	 * @param policy				write configuration parameters, pass in null for defaults
 	 * @param key					unique record identifier
@@ -1351,12 +1352,14 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			TxnMonitor.addKey(cluster, policy, key);
 		}
 
-		TouchCommand command = new TouchCommand(cluster, policy, key);
+		TouchCommand command = new TouchCommand(cluster, policy, key, true);
 		command.execute();
 	}
 
 	/**
 	 * Asynchronously reset record's time to expiration using the policy's expiration.
+	 * If the record does not exist, it can't be created because the server deletes empty records.
+	 * <p>
 	 * This method registers the command with an event loop and returns.
 	 * The event loop thread will process the command and send the results to the listener.
 	 * <p>
@@ -1370,6 +1373,61 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * @throws AerospikeException	if event loop registration fails
 	 */
 	public final void touch(EventLoop eventLoop, WriteListener listener, WritePolicy policy, Key key)
+		throws AerospikeException {
+		if (eventLoop == null) {
+			eventLoop = cluster.eventLoops.next();
+		}
+
+		if (policy == null) {
+			policy = writePolicyDefault;
+		}
+
+		AsyncTouch command = new AsyncTouch(cluster, listener, policy, key);
+		AsyncTxnMonitor.execute(eventLoop, cluster, policy, command);
+	}
+
+	/**
+	 * Reset record's time to expiration using the policy's expiration.
+	 * If the record does not exist, it can't be created because the server deletes empty records.
+	 * Return true if the record exists and is touched. Return false if the record does not exist.
+	 *
+	 * @param policy				write configuration parameters, pass in null for defaults
+	 * @param key					unique record identifier
+	 * @throws AerospikeException	if touch fails
+	 */
+	public final boolean touched(WritePolicy policy, Key key)
+		throws AerospikeException {
+		if (policy == null) {
+			policy = writePolicyDefault;
+		}
+
+		if (policy.txn != null) {
+			TxnMonitor.addKey(cluster, policy, key);
+		}
+
+		TouchCommand command = new TouchCommand(cluster, policy, key, false);
+		command.execute();
+		return command.getTouched();
+	}
+
+	/**
+	 * Asynchronously reset record's time to expiration using the policy's expiration.
+	 * If the record does not exist, it can't be created because the server deletes empty records.
+	 * <p>
+	 * This method registers the command with an event loop and returns.
+	 * The event loop thread will process the command and send the results to the listener.
+	 * <p>
+	 * If the record does not exist, send a value of false to
+	 * {@link com.aerospike.client.listener.ExistsListener#onSuccess(Key, boolean)}
+	 *
+	 * @param eventLoop				event loop that will process the command. If NULL, the event
+	 * 								loop will be chosen by round-robin.
+	 * @param listener				where to send results, pass in null for fire and forget
+	 * @param policy				write configuration parameters, pass in null for defaults
+	 * @param key					unique record identifier
+	 * @throws AerospikeException	if event loop registration fails
+	 */
+	public final void touched(EventLoop eventLoop, ExistsListener listener, WritePolicy policy, Key key)
 		throws AerospikeException {
 		if (eventLoop == null) {
 			eventLoop = cluster.eventLoops.next();

@@ -26,8 +26,12 @@ import com.aerospike.client.cluster.Connection;
 import com.aerospike.client.policy.WritePolicy;
 
 public final class TouchCommand extends SyncWriteCommand {
-	public TouchCommand(Cluster cluster, WritePolicy writePolicy, Key key) {
+	private boolean failOnNotFound;
+	private boolean touched;
+
+	public TouchCommand(Cluster cluster, WritePolicy writePolicy, Key key, boolean failOnNotFound) {
 		super(cluster, writePolicy, key);
+		this.failOnNotFound = failOnNotFound;
 	}
 
 	@Override
@@ -40,6 +44,15 @@ public final class TouchCommand extends SyncWriteCommand {
 		int resultCode = parseHeader(conn);
 
 		if (resultCode == ResultCode.OK) {
+			touched = true;
+			return;
+		}
+
+		if (resultCode == ResultCode.KEY_NOT_FOUND_ERROR) {
+			if (failOnNotFound) {
+				throw new AerospikeException(resultCode);
+			}
+			touched = false;
 			return;
 		}
 
@@ -47,9 +60,14 @@ public final class TouchCommand extends SyncWriteCommand {
 			if (writePolicy.failOnFilteredOut) {
 				throw new AerospikeException(resultCode);
 			}
+			touched = false;
 			return;
 		}
 
 		throw new AerospikeException(resultCode);
+	}
+
+	public boolean getTouched() {
+		return touched;
 	}
 }
