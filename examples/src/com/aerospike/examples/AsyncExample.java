@@ -130,8 +130,8 @@ public abstract class AsyncExample {
 			AsyncExample example = (AsyncExample)ctor.newInstance();
 			example.console = console;
 			example.params = params;
-			example.writePolicy = client.getWritePolicyDefault();
-			example.policy = client.getReadPolicyDefault();
+			example.writePolicy = client.copyWritePolicyDefault();
+			example.policy = client.copyReadPolicyDefault();
 			example.run(client, eventLoop);
 		}
 		else {
