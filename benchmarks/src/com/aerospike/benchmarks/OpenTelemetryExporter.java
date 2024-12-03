@@ -356,9 +356,9 @@ public final class OpenTelemetryExporter implements com.aerospike.benchmarks.Ope
         attributes.put("type", type.toLowerCase());
         attributes.put("startTimeMillis", this.startTimeMillis);
 
-        if(elapsedNanos >= 7500000) {
-            attributes.put("longrunning", true);
-        }
+        //if(elapsedNanos >= 7500000) {
+        //    attributes.put("longrunning", true);
+        //}
 
         final Attributes attrsBuilt = attributes.build();
 

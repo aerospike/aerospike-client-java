@@ -2862,7 +2862,7 @@
                 "uid": "${DS_PROMETHEUS}"
               },
               "disableTextWrap": false,
-              "editorMode": "code",
+              "editorMode": "builder",
               "expr": "min by(type) (histogram_quantile(0.5, aerospike_benchmarks_mrt_latency_microsecond_bucket{instance=\"$client\", cluster=~\"$cluster\", type!~\"mrtuow|mrtuowtotal\"}))",
               "format": "time_series",
               "fullMetaSearch": false,
@@ -3200,7 +3200,7 @@
             "h": 4,
             "w": 24,
             "x": 0,
-            "y": 90
+            "y": 63
           },
           "id": 82,
           "options": {
@@ -3288,7 +3288,7 @@
             "h": 4,
             "w": 24,
             "x": 0,
-            "y": 94
+            "y": 67
           },
           "id": 84,
           "options": {
@@ -3376,7 +3376,7 @@
             "h": 4,
             "w": 24,
             "x": 0,
-            "y": 98
+            "y": 71
           },
           "id": 86,
           "options": {
@@ -3464,7 +3464,7 @@
             "h": 4,
             "w": 24,
             "x": 0,
-            "y": 102
+            "y": 75
           },
           "id": 85,
           "options": {
@@ -3552,7 +3552,7 @@
             "h": 4,
             "w": 24,
             "x": 0,
-            "y": 106
+            "y": 79
           },
           "id": 87,
           "options": {
@@ -4373,7 +4373,7 @@
             "h": 12,
             "w": 12,
             "x": 0,
-            "y": 667
+            "y": 867
           },
           "id": 74,
           "options": {
@@ -4441,7 +4441,7 @@
             "h": 12,
             "w": 12,
             "x": 12,
-            "y": 667
+            "y": 867
           },
           "id": 73,
           "options": {
@@ -5151,7 +5151,7 @@
           "query": "label_values(aerospike_benchmarks_mrt_stateinfo,instance)",
           "refId": "PrometheusVariableQueryEditor-VariableQuery"
         },
-        "refresh": 1,
+        "refresh": 2,
         "regex": "",
         "type": "query"
       },
@@ -5173,7 +5173,7 @@
           "query": "label_values(aerospike_benchmarks_mrt_stateinfo{instance=~\"$client\"},cluster)",
           "refId": "PrometheusVariableQueryEditor-VariableQuery"
         },
-        "refresh": 1,
+        "refresh": 2,
         "regex": "",
         "sort": 1,
         "type": "query"
@@ -5195,7 +5195,7 @@
           "query": "label_values(aerospike_benchmarks_mrt_stateinfo{instance=~\"$client\", cluster=~\"$cluster\"},namespace)",
           "refId": "PrometheusVariableQueryEditor-VariableQuery"
         },
-        "refresh": 1,
+        "refresh": 2,
         "regex": "",
         "type": "query"
       },
@@ -5216,7 +5216,7 @@
           "query": "label_values(aerospike_benchmarks_mrt_stateinfo{instance=~\"$client\", namespace=~\"$namespace\", cluster=~\"$cluster\"},setname)",
           "refId": "PrometheusVariableQueryEditor-VariableQuery"
         },
-        "refresh": 1,
+        "refresh": 2,
         "regex": "",
         "type": "query"
       }
@@ -5230,6 +5230,6 @@
   "timezone": "browser",
   "title": "Aerospike Benchmark MRT",
   "uid": "be423cq6i5dz4a",
-  "version": 2,
+  "version": 5,
   "weekStart": ""
 }
