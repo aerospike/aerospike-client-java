@@ -315,7 +315,7 @@ public final class AsyncTxnRoll {
 	}
 
 	private void closeOnCommit(boolean verified) {
-		if (! txn.monitorMightExist()) {
+		if (! txn.closeMonitor()) {
 			// There is no MRT monitor to remove.
 			if (verified) {
 				notifyCommitSuccess(CommitStatus.OK);
@@ -365,7 +365,7 @@ public final class AsyncTxnRoll {
 	}
 
 	private void closeOnAbort() {
-		if (! txn.monitorMightExist()) {
+		if (! txn.closeMonitor()) {
 			// There is no MRT monitor record to remove.
 			notifyAbortSuccess(AbortStatus.OK);
 			return;
