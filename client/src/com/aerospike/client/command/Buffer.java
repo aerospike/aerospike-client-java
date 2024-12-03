@@ -212,68 +212,7 @@ public final class Buffer {
 	}
 
 	public static String utf8ToString(byte[] buf, int offset, int length) {
-		// A Thread local implementation does not help here, so
-		// allocate character buffer each time.
-		if (length == 0) {
-			return "";
-		}
-
-		char[] charBuffer = new char[length];
-		int charCount = 0;
-		int limit = offset + length;
-		int origoffset = offset;
-
-		while (offset < limit ) {
-			int b1 = buf[offset];
-
-			if (b1 >= 0) {
-				charBuffer[charCount++] = (char)b1;
-				offset++;
-			}
-			else if ((b1 >> 5) == -2) {
-				int b2 = buf[offset + 1];
-				charBuffer[charCount++] = (char) (((b1 << 6) ^ b2) ^ 0x0f80);
-				offset += 2;
-			}
-			else {
-				// Encountered an UTF encoding which uses more than 2 bytes.
-				// Use a native function to do the conversion.
-				return new String(buf, origoffset, length, StandardCharsets.UTF_8);
-			}
-		}
-		return new String(charBuffer, 0, charCount);
-	}
-
-	public static String utf8ToString(byte[] buf, int offset, int length, StringBuilder sb) {
-		if (length == 0) {
-			return "";
-		}
-
-		// This method is designed to accommodate multiple string conversions on the same
-		// thread, but without the ThreadLocal overhead.  The StringBuilder instance is
-		// created on the stack and passed in each method invocation.
-		sb.setLength(0);
-		int limit = offset + length;
-		int origoffset = offset;
-
-		while (offset < limit ) {
-			if ((buf[offset] & 0x80) == 0) { // 1 byte
-				char c = (char) buf[offset];
-				sb.append(c);
-				offset++;
-			}
-			else if ((buf[offset] & 0xE0) == 0xC0) { // 2 bytes
-				char c =  (char) (((buf[offset] & 0x1f) << 6) | (buf[offset+1] & 0x3f));
-				sb.append(c);
-				offset += 2;
-			}
-			else {
-				// Encountered an UTF encoding which uses more than 2 bytes.
-				// Use a native function to do the conversion.
-				return new String(buf, origoffset, length, StandardCharsets.UTF_8);
-			}
-		}
-		return sb.toString();
+		return new String(buf, offset, length, StandardCharsets.UTF_8);
 	}
 
 	/**
