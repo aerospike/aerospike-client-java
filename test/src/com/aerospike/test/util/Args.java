@@ -34,6 +34,7 @@ import com.aerospike.client.Log;
 import com.aerospike.client.Log.Level;
 import com.aerospike.client.async.EventLoopType;
 import com.aerospike.client.cluster.Node;
+import com.aerospike.client.cluster.Partitions;
 import com.aerospike.client.policy.AuthMode;
 import com.aerospike.client.policy.ClientPolicy;
 import com.aerospike.client.policy.Policy;
@@ -57,7 +58,7 @@ public class Args {
 	public int totalTimeout = 1000;
 	public boolean enterprise;
 	public boolean hasTtl;
-	public boolean useProxyClient;
+	public boolean scMode;
 
 	public Args() {
 		host = "127.0.0.1";
@@ -130,7 +131,6 @@ public class Args {
 					"for single record and batch commands."
 					);
 
-			options.addOption("proxy", false, "Use proxy client.");
 			options.addOption("d", "debug", false, "Run in debug mode.");
 			options.addOption("u", "usage", false, "Print usage.");
 
@@ -214,17 +214,6 @@ public class Args {
 				totalTimeout = Integer.parseInt(cl.getOptionValue("totalTimeout"));;
 			}
 
-			if (cl.hasOption("proxy")) {
-				useProxyClient = true;
-			}
-
-			// If the Aerospike server's default port (3000) is used and the proxy client is used,
-			// Reset the port to the proxy server's default port (4000).
-			if (port == 3000 && useProxyClient) {
-				System.out.println("Change proxy server port to 4000");
-				port = 4000;
-			}
-
 			if (cl.hasOption("d")) {
 				Log.setLevel(Level.DEBUG);
 			}
@@ -261,10 +250,12 @@ public class Args {
 	/**
 	 * Some database calls need to know how the server is configured.
 	 */
+	@SuppressWarnings("resource")
 	public void setServerSpecific(IAerospikeClient client) {
-		if (useProxyClient) {
-			// Proxy client does not support querying nodes directly for their configuration.
-			return;
+		Partitions partitions = client.getCluster().partitionMap.get(namespace);
+
+		if (partitions != null) {
+			scMode = partitions.scMode;
 		}
 
 		Node node = client.getNodes()[0];

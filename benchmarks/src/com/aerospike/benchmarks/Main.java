@@ -59,11 +59,9 @@ import com.aerospike.client.policy.RecordExistsAction;
 import com.aerospike.client.policy.Replica;
 import com.aerospike.client.policy.TlsPolicy;
 import com.aerospike.client.policy.WritePolicy;
-import com.aerospike.client.proxy.AerospikeClientFactory;
 import com.aerospike.client.util.Util;
 
 import io.netty.channel.EventLoopGroup;
-import io.netty.channel.epoll.Epoll;
 import io.netty.channel.epoll.EpollEventLoopGroup;
 import io.netty.channel.kqueue.KQueueEventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
@@ -105,7 +103,6 @@ public class Main implements Log.Callback {
 	private int nThreads;
 	private int asyncMaxCommands = 100;
 	private int eventLoopSize = 1;
-	private boolean useProxyClient;
 	private boolean useVirtualThreads;
 	private boolean asyncEnabled;
 	private boolean initialize;
@@ -154,10 +151,6 @@ public class Main implements Log.Callback {
 			this.asyncEnabled = true;
 		}
 
-		if (line.hasOption("proxy")) {
-			this.useProxyClient = true;
-		}
-
 		args.readPolicy = clientPolicy.readPolicyDefault;
 		args.writePolicy = clientPolicy.writePolicyDefault;
 		args.batchPolicy = clientPolicy.batchPolicyDefault;
@@ -182,13 +175,6 @@ public class Main implements Log.Callback {
 		}
 		else {
 			this.port = 3000;
-		}
-
-		// If the Aerospike server's default port (3000) is used and the proxy client is used,
-		// Reset the port to the proxy server's default port (4000).
-		if (port == 3000 && useProxyClient) {
-			System.out.println("Change proxy server port to 4000");
-			port = 4000;
 		}
 
 		if (line.hasOption("hosts")) {
@@ -1183,15 +1169,6 @@ public class Main implements Log.Callback {
 					eventPolicy.minTimeout = args.writePolicy.socketTimeout;
 				}
 
-				if (this.useProxyClient && this.eventLoopType == EventLoopType.DIRECT_NIO) {
-					// Proxy client requires netty event loops.
-					if (Epoll.isAvailable()) {
-						this.eventLoopType = EventLoopType.NETTY_EPOLL;
-					} else {
-						this.eventLoopType = EventLoopType.NETTY_NIO;
-					}
-				}
-
 				switch (this.eventLoopType) {
 					default:
 					case DIRECT_NIO: {
@@ -1233,13 +1210,13 @@ public class Main implements Log.Callback {
 
 					try {
 						openTelemetry.setDBConnectionState("Opening");
-						client = AerospikeClientFactory.getClient(clientPolicy, useProxyClient, hosts);
+						client = new AerospikeClient(clientPolicy, hosts);
 						clusterName = client.getCluster().getClusterName();
 
-						if(clusterName == null && !useProxyClient){
+						if(clusterName == null){
 							clusterName = Info.request(this.hosts[0].name, this.hosts[0].port, "cluster-name");
-						} else if (useProxyClient) {
-							clusterName = "Proxy";
+						} else {
+							clusterName = "Unknown";
 						}
 					}
 					catch (Exception e) {
@@ -1273,14 +1250,14 @@ public class Main implements Log.Callback {
 
 				try {
 					openTelemetry.setDBConnectionState("Opening");
-					client = AerospikeClientFactory.getClient(clientPolicy, useProxyClient, hosts);
+					client = new AerospikeClient(clientPolicy, hosts);
 
 					clusterName = client.getCluster().getClusterName();
 
-					if(clusterName == null && !useProxyClient){
+					if(clusterName == null){
 						clusterName = Info.request(this.hosts[0].name, this.hosts[0].port, "cluster-name");
-					}  else if (useProxyClient) {
-						clusterName = "Proxy";
+					}  else {
+						clusterName = "Unknown";
 					}
 				}
 				catch (Exception e) {

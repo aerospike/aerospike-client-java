@@ -45,10 +45,8 @@ public class TestTxn extends TestSync {
 
 	@BeforeClass
 	public static void register() {
-		if (args.useProxyClient) {
-			System.out.println("Skip TestTxn.register");
-			return;
-		}
+		// Multi-record transactions require strong consistency namespaces.
+		org.junit.Assume.assumeTrue(args.scMode);
 		RegisterTask task = client.register(null, TestUDF.class.getClassLoader(), "udf/record_example.lua", "record_example.lua", Language.LUA);
 		task.waitTillComplete();
 	}
@@ -460,7 +458,6 @@ public class TestTxn extends TestSync {
 
 	private void assertBatchEqual(Key[] keys, Record[] recs, int expected) {
 		for (int i = 0; i < keys.length; i++) {
-			Key key = keys[i];
 			Record rec = recs[i];
 
 			assertNotNull(rec);

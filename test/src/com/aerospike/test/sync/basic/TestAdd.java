@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -59,13 +59,11 @@ public class TestAdd extends TestSync {
 
 	@Test
 	public void addNullValue() {
-		if (! args.useProxyClient) {
-			Version version = Version.getServerVersion(client, null);
+		Version version = Version.getServerVersion(client, null);
 
-			// Do not run on servers < 3.6.1
-			if (version.isLess(3, 6, 1)) {
-				return;
-			}
+		// Do not run on servers < 3.6.1
+		if (version.isLess(3, 6, 1)) {
+			return;
 		}
 
 		Key key = new Key(args.namespace, args.set, "addkey");

@@ -155,7 +155,23 @@ public class Command {
 		begin();
 		int fieldCount = estimateKeySize(key);
 		dataOffset += args.size;
-		writeTxnMonitor(key, args.readAttr, args.writeAttr, fieldCount, args.operations.length);
+
+		sizeBuffer();
+
+		dataBuffer[8]  = MSG_REMAINING_HEADER_SIZE;
+		dataBuffer[9]  = (byte)args.readAttr;
+		dataBuffer[10] = (byte)args.writeAttr;
+		dataBuffer[11] = (byte)0;
+		dataBuffer[12] = 0;
+		dataBuffer[13] = 0;
+		Buffer.intToBytes(0, dataBuffer, 14);
+		Buffer.intToBytes(policy.expiration, dataBuffer, 18);
+		Buffer.intToBytes(serverTimeout, dataBuffer, 22);
+		Buffer.shortToBytes(fieldCount, dataBuffer, 26);
+		Buffer.shortToBytes(args.operations.length, dataBuffer, 28);
+		dataOffset = MSG_TOTAL_HEADER_SIZE;
+
+		writeKey(key);
 
 		for (Operation operation : args.operations) {
 			writeOperation(operation);
@@ -197,16 +213,6 @@ public class Command {
 		Long[] versions,
 		BatchNode batch
 	) {
-		final BatchOffsetsNative offsets = new BatchOffsetsNative(batch);
-		setBatchTxnVerify(policy, keys, versions, offsets);
-	}
-
-	public final void setBatchTxnVerify(
-		BatchPolicy policy,
-		Key[] keys,
-		Long[] versions,
-		BatchOffsets offsets
-	) {
 		// Estimate buffer size.
 		begin();
 
@@ -215,10 +221,10 @@ public class Command {
 
 		Key keyPrev = null;
 		Long verPrev = null;
-		int max = offsets.size();
+		int max = batch.offsetsSize;
 
 		for (int i = 0; i < max; i++) {
-			int offset = offsets.get(i);
+			int offset = batch.offsets[i];
 			Key key = keys[offset];
 			Long ver = versions[offset];
 
@@ -256,7 +262,7 @@ public class Command {
 		verPrev = null;
 
 		for (int i = 0; i < max; i++) {
-			int offset = offsets.get(i);
+			int offset = batch.offsets[i];
 			Key key = keys[offset];
 			Long ver = versions[offset];
 
@@ -345,25 +351,14 @@ public class Command {
 		BatchNode batch,
 		BatchAttr attr
 	) {
-		final BatchOffsetsNative offsets = new BatchOffsetsNative(batch);
-		setBatchTxnRoll(policy, txn, keys, attr, offsets);
-	}
-
-	public final void setBatchTxnRoll(
-		BatchPolicy policy,
-		Txn txn,
-		Key[] keys,
-		BatchAttr attr,
-		BatchOffsets offsets
-	) {
 		// Estimate buffer size.
 		begin();
 		int fieldCount = 1;
-		int max = offsets.size();
+		int max = batch.offsetsSize;
 		Long[] versions = new Long[max];
 
 		for (int i = 0; i < max; i++) {
-			int offset = offsets.get(i);
+			int offset = batch.offsets[i];
 			Key key = keys[offset];
 			versions[i] = txn.getReadVersion(key);
 		}
@@ -375,7 +370,7 @@ public class Command {
 		Long verPrev = null;
 
 		for (int i = 0; i < max; i++) {
-			int offset = offsets.get(i);
+			int offset = batch.offsets[i];
 			Key key = keys[offset];
 			Long ver = versions[i];
 
@@ -411,7 +406,7 @@ public class Command {
 		verPrev = null;
 
 		for (int i = 0; i < max; i++) {
-			int offset = offsets.get(i);
+			int offset = batch.offsets[i];
 			Key key = keys[offset];
 			Long ver = versions[i];
 
@@ -1070,20 +1065,8 @@ public class Command {
 		List<? extends BatchRecord> records,
 		BatchNode batch
 	) {
-		final BatchOffsetsNative offsets = new BatchOffsetsNative(batch);
-		setBatchOperate(policy, writePolicy, udfPolicy, deletePolicy, records, offsets);
-	}
-
-	public final void setBatchOperate(
-		BatchPolicy policy,
-		BatchWritePolicy writePolicy,
-		BatchUDFPolicy udfPolicy,
-		BatchDeletePolicy deletePolicy,
-		List<? extends BatchRecord> records,
-		BatchOffsets offsets
-	) {
 		begin();
-		int max = offsets.size();
+		int max = batch.offsetsSize;
 		Txn txn = policy.txn;
 		Long[] versions = null;
 
@@ -1091,7 +1074,7 @@ public class Command {
 			versions = new Long[max];
 
 			for (int i = 0; i < max; i++) {
-				int offset = offsets.get(i);
+				int offset = batch.offsets[i];
 				BatchRecord record = records.get(offset);
 				versions[i] = txn.getReadVersion(record.key);
 			}
@@ -1110,7 +1093,7 @@ public class Command {
 		Long verPrev = null;
 
 		for (int i = 0; i < max; i++) {
-			int offset = offsets.get(i);
+			int offset = batch.offsets[i];
 			BatchRecord record = records.get(offset);
 			Key key = record.key;
 			Long ver = (versions != null)? versions[i] : null;
@@ -1152,7 +1135,7 @@ public class Command {
 		verPrev = null;
 
 		for (int i = 0; i < max; i++) {
-			int offset = offsets.get(i);
+			int offset = batch.offsets[i];
 			BatchRecord record = records.get(offset);
 			Long ver = (versions != null)? versions[i] : null;
 
@@ -1251,21 +1234,9 @@ public class Command {
 		Operation[] ops,
 		BatchAttr attr
 	) {
-		final BatchOffsetsNative offsets = new BatchOffsetsNative(batch);
-		setBatchOperate(policy, keys, binNames, ops, attr, offsets);
-	}
-
-	public final void setBatchOperate(
-		BatchPolicy policy,
-		Key[] keys,
-		String[] binNames,
-		Operation[] ops,
-		BatchAttr attr,
-		BatchOffsets offsets
-	) {
 		// Estimate buffer size.
 		begin();
-		int max = offsets.size();
+		int max = batch.offsetsSize;
 		Txn txn = policy.txn;
 		Long[] versions = null;
 
@@ -1273,7 +1244,7 @@ public class Command {
 			versions = new Long[max];
 
 			for (int i = 0; i < max; i++) {
-				int offset = offsets.get(i);
+				int offset = batch.offsets[i];
 				Key key = keys[offset];
 				versions[i] = txn.getReadVersion(key);
 			}
@@ -1293,7 +1264,7 @@ public class Command {
 		Long verPrev = null;
 
 		for (int i = 0; i < max; i++) {
-			int offset = offsets.get(i);
+			int offset = batch.offsets[i];
 			Key key = keys[offset];
 			Long ver = (versions != null)? versions[i] : null;
 
@@ -1356,7 +1327,7 @@ public class Command {
 		verPrev = null;
 
 		for (int i = 0; i < max; i++) {
-			int offset = offsets.get(i);
+			int offset = batch.offsets[i];
 			Key key = keys[offset];
 			Long ver = (versions != null)? versions[i] : null;
 
@@ -1405,22 +1376,9 @@ public class Command {
 		byte[] argBytes,
 		BatchAttr attr
 	) {
-		final BatchOffsetsNative offsets = new BatchOffsetsNative(batch);
-		setBatchUDF(policy, keys, packageName, functionName, argBytes, attr, offsets);
-	}
-
-	public final void setBatchUDF(
-		BatchPolicy policy,
-		Key[] keys,
-		String packageName,
-		String functionName,
-		byte[] argBytes,
-		BatchAttr attr,
-		BatchOffsets offsets
-	) {
 		// Estimate buffer size.
 		begin();
-		int max = offsets.size();
+		int max = batch.offsetsSize;
 		Txn txn = policy.txn;
 		Long[] versions = null;
 
@@ -1428,7 +1386,7 @@ public class Command {
 			versions = new Long[max];
 
 			for (int i = 0; i < max; i++) {
-				int offset = offsets.get(i);
+				int offset = batch.offsets[i];
 				Key key = keys[offset];
 				versions[i] = txn.getReadVersion(key);
 			}
@@ -1448,7 +1406,7 @@ public class Command {
 		Long verPrev = null;
 
 		for (int i = 0; i < max; i++) {
-			int offset = offsets.get(i);
+			int offset = batch.offsets[i];
 			Key key = keys[offset];
 			Long ver = (versions != null)? versions[i] : null;
 
@@ -1493,7 +1451,7 @@ public class Command {
 		verPrev = null;
 
 		for (int i = 0; i < max; i++) {
-			int offset = offsets.get(i);
+			int offset = batch.offsets[i];
 			Key key = keys[offset];
 			Long ver = (versions != null)? versions[i] : null;
 
@@ -1649,7 +1607,7 @@ public class Command {
 			dataBuffer[dataOffset++] = (byte)attr.infoAttr;
 			Buffer.intToBytes(attr.expiration, dataBuffer, dataOffset);
 			dataOffset += 4;
-			writeBatchFieldsReg(key, attr, filter, 0, opCount);				
+			writeBatchFieldsReg(key, attr, filter, 0, opCount);
 		}
 	}
 
@@ -1683,7 +1641,7 @@ public class Command {
 			dataOffset += 2;
 			Buffer.intToBytes(attr.expiration, dataBuffer, dataOffset);
 			dataOffset += 4;
-			writeBatchFieldsReg(key, attr, filter, fieldCount, opCount);			
+			writeBatchFieldsReg(key, attr, filter, fieldCount, opCount);
 		}
 	}
 
@@ -1758,7 +1716,7 @@ public class Command {
 
 		if (attr.sendKey) {
 			writeField(key.userKey, FieldType.KEY);
-		}		
+		}
 	}
 	
 	private void writeBatchFields(Key key, int fieldCount, int opCount) {
@@ -2784,9 +2742,8 @@ public class Command {
 
 	private final void compress(Policy policy) {
 		if (policy.compress && dataOffset > COMPRESS_THRESHOLD) {
-			Deflater def = new Deflater();
+			Deflater def = new Deflater(Deflater.BEST_SPEED);
 			try {
-				def.setLevel(Deflater.BEST_SPEED);
 				def.setInput(dataBuffer, 0, dataOffset);
 				def.finish();
 
@@ -2937,30 +2894,5 @@ public class Command {
 
 	public static class OpResults extends ArrayList<Object> {
 		private static final long serialVersionUID = 1L;
-	}
-
-	public interface BatchOffsets {
-		int size();
-		int get(int i);
-	}
-
-	private static final class BatchOffsetsNative implements BatchOffsets {
-		private final int size;
-		private final int[] offsets;
-
-		public BatchOffsetsNative(BatchNode batch) {
-			this.size = batch.offsetsSize;
-			this.offsets = batch.offsets;
-		}
-
-		@Override
-		public int size() {
-			return size;
-		}
-
-		@Override
-		public int get(int i) {
-			return offsets[i];
-		}
 	}
 }

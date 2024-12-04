@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -48,10 +48,6 @@ import com.aerospike.test.sync.TestSync;
 public class TestUDF extends TestSync {
 	@BeforeClass
 	public static void register() {
-		if (args.useProxyClient) {
-			System.out.println("Skip TestUDF.register");
-			return;
-		}
 		RegisterTask task = client.register(null, TestUDF.class.getClassLoader(), "udf/record_example.lua", "record_example.lua", Language.LUA);
 		task.waitTillComplete();
 	}

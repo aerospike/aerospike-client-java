@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -32,11 +32,7 @@ public class AsyncUserDefinedFunction extends AsyncExample {
 	 */
 	@Override
 	public void runExample(IAerospikeClient client, EventLoop eventLoop) {
-		// Register is not supported in the proxy client. To run this example with the proxy client,
-		// first run example with native client (which supports register) and then run proxy client.
-		if (! params.useProxyClient) {
-			register(client);
-		}
+		register(client);
 		writeUsingUdfAsync(client, eventLoop);
 	}
 

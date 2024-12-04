@@ -48,10 +48,4 @@ public final class TxnAddKeys extends SyncWriteCommand {
 
 		throw new AerospikeException(rp.resultCode);
 	}
-	
-	@Override
-	protected void onInDoubt() {
-		// The MRT monitor record might exist if TxnAddKeys command is inDoubt.
-		policy.txn.setMonitorInDoubt();
-	}
 }

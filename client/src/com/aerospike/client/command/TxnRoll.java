@@ -60,7 +60,7 @@ public final class TxnRoll {
 				throw createCommitException(CommitError.VERIFY_FAIL_ABORT_ABANDONED, t);
 			}
 
-			if (txn.monitorMightExist()) {
+			if (txn.closeMonitor()) {
 				try {
 					WritePolicy writePolicy = new WritePolicy(rollPolicy);
 					Key txnKey = TxnMonitor.getTxnMonitorKey(txn);
@@ -130,7 +130,7 @@ public final class TxnRoll {
 			return CommitStatus.ROLL_FORWARD_ABANDONED;
 		}
 
-		if (txn.monitorMightExist()) {
+		if (txn.closeMonitor()) {
 			// Remove MRT monitor.
 			try {
 				close(writePolicy, txnKey);
@@ -165,7 +165,7 @@ public final class TxnRoll {
 			return AbortStatus.ROLL_BACK_ABANDONED;
 		}
 
-		if (txn.monitorMightExist()) {
+		if (txn.closeMonitor()) {
 			try {
 				WritePolicy writePolicy = new WritePolicy(rollPolicy);
 				Key txnKey = TxnMonitor.getTxnMonitorKey(txn);
