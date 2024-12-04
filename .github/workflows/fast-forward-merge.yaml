@@ -1,0 +1,45 @@
+name: "Fast forward merge"
+on:
+  workflow_dispatch:
+    inputs:
+      ref_to_merge:
+        description: Branch to merge into base
+        type: string
+        required: true
+      base_branch:
+        description: Base branch
+        type: string
+        required: true
+  workflow_call:
+    inputs:
+      # If another branch, it must be origin/<branch>
+      ref_to_merge:
+        type: string
+        required: true
+      base_branch:
+        type: string
+        required: true
+    secrets:
+      CLIENT_BOT_PAT:
+        required: true
+
+jobs:
+  merge:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # Fetch the whole history to prevent unrelated history errors
+          fetch-depth: "0"
+          ref: ${{ inputs.base_branch }}
+          token: ${{ secrets.CLIENT_BOT_PAT }}
+
+      - name: Debug stuff
+        run: |
+          git remote -vvv
+      - name: Fast forward
+        run: git merge --ff-only ${{ inputs.ref_to_merge }}
+
+      - name: Upload changes to remote head branch
+        run: git push

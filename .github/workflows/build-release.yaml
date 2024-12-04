@@ -1,0 +1,71 @@
+on:
+  workflow_call:
+    inputs:
+      base-branch:
+        type: string
+        required: true
+      java-version:
+        type: number
+        required: true
+      client-type:
+        type: string
+        required: true
+        description: "Crypto type. Can be be either bouncycastle or gnu."
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      BUILD_IDENTIFIER: "${{ inputs.base-branch }}-${{ inputs.java-version }}-${{ inputs.client-type }}"
+    steps:
+      - name: Checkout client
+        uses: actions/checkout@v2
+        with:
+          ref: ${{ inputs.base-branch }}
+
+      - name: Set crypto
+        if: ${{ inputs.client-type == 'gnu' || inputs.client-type == 'bouncycastle' }}
+        run: |
+          ./.github/workflows/scripts/set_crypto.sh ${{ inputs.client-type }}
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: "semeru" # See 'Supported distributions' for available options
+          java-version: ${{ inputs.java-version }}
+
+      - name: Echo new version to CI
+        id: get-new-version
+        run: echo new_version=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout) >> $GITHUB_OUTPUT
+
+      - name: Build
+        run: |
+          mvn clean install
+
+      - name: Build source jar
+        run: |
+          mvn source:jar
+        working-directory: client
+
+      - name: Build docs
+        run: |
+          mvn javadoc:jar
+        working-directory: client
+
+      - name: Package
+        uses: ./.github/actions/package-jar
+        with:
+          version: ${{ steps.get-new-version.outputs.new_version }}
+          jdk: ${{ inputs.java-version == 21 && 'jdk21' || 'jdk8' }}
+          extension: ${{ inputs.client-type == 'bouncycastle' && '-bc' || '' }}
+
+      - name: Debug list jars
+        run: |
+          ls -R | grep jar
+
+      - name: Upload jars to GitHub
+        uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          path: ./*.jar
+          name: ${{ env.BUILD_IDENTIFIER }}.build

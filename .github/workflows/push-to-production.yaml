@@ -1,0 +1,63 @@
+name: Production Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      major:
+        required: true
+        type: number
+        description: Semantic major version
+      minor:
+        required: true
+        type: number
+        description: Semantic minor version
+      patch:
+        required: true
+        type: number
+        description: Semantic patch version
+      create-tag:
+        type: boolean
+        required: false
+        default: false
+        description: Git tag for provided semantic version, `major.minor.path`.
+
+jobs:
+  ff-master-to-stage:
+    uses: ./.github/workflows/fast-forward-merge.yaml
+    with:
+      ref_to_merge: origin/stage
+      base_branch: master
+    secrets: inherit
+
+  build:
+    name: Build
+    needs: ff-master-to-stage
+    uses: ./.github/workflows/build-prod.yaml
+    with:
+      branch: master
+      major: ${{ fromJson(inputs.major) }}
+      minor: ${{ fromJson(inputs.minor) }}
+      patch: ${{ fromJson(inputs.patch) }}
+    secrets: inherit
+
+  upload-to-jfrog:
+    name: Upload artifacts to JFrog
+    needs: build
+    uses: ./.github/workflows/upload-to-jfrog.yaml
+    with:
+      version: ${{ needs.bump-dev-number.outputs.new_version }}
+    secrets: inherit
+
+  # Clean up after files artifacts have been uploaded to jfrog
+  delete-artifacts:
+    needs: ["upload-to-jfrog"]
+    name: Delete artifacts
+    uses: ./.github/workflows/delete-artifacts.yaml
+
+  fast-forward-stage-to-master:
+    needs: build
+    uses: ./.github/workflows/fast-forward-merge.yaml
+    with:
+      ref_to_merge: origin/master
+      base_branch: stage
+    secrets: inherit

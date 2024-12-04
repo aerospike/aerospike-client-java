@@ -1,0 +1,60 @@
+name: Build production (master)
+
+on:
+  workflow_call:
+    inputs:
+      major:
+        type: number
+        required: true
+        description: ""
+      minor:
+        type: number
+        required: true
+        description: ""
+      patch:
+        type: number
+        required: true
+        description: ""
+      branch:
+        type: string
+        required: true
+        description: input branch
+
+jobs:
+  bump-version:
+    uses: ./.github/workflows/bump-version.yaml
+    with:
+      base-branch: ${{ matrix.branch }}
+      major: ${{ inputs.major }}
+      minor: ${{ inputs.minor }}
+      patch: ${{ inputs.patch }}
+
+  build-java-21:
+    needs: bump-version
+    if: ${{ inputs.branch == 'master' }}
+    uses: ./.github/workflows/build-release.yaml
+    strategy:
+      matrix:
+        client-type: ["gnu", "bouncycastle"]
+        include:
+          - java-version: 21
+            branch: "master"
+    with:
+      java-version: ${{ matrix.java-version }}
+      base-branch: ${{ matrix.branch }}
+      client-type: ${{ matrix.client-type }}
+
+  build-java-8:
+    needs: bump-version
+    if: ${{ inputs.branch == 'jdk8' }}
+    uses: ./.github/workflows/build-release.yaml
+    strategy:
+      matrix:
+        client-type: ["gnu", "bouncycastle"]
+        include:
+          - java-version: 8
+            branch: "jdk8"
+    with:
+      java-version: ${{ matrix.java-version }}
+      base-branch: ${{ matrix.branch }}
+      client-type: ${{ matrix.client-type }}

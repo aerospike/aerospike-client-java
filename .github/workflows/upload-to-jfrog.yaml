@@ -1,0 +1,48 @@
+on:
+  workflow_call:
+    inputs:
+      version:
+        type: string
+        required: false
+      jdk-version:
+        type: string
+        required: false
+      jfrog-repo-name:
+        type: string
+        required: false
+        default: ${{ vars.JFROG_REPO_NAME || 'aerospike-maven-dev-local' }} # Could set this to vars coming from repo
+      jfrog-platform-url:
+        type: string
+        required: false
+        default: ${{ vars.FROG_PLATFORM_URL ||  'https://aerospike.jfrog.io/' }}
+    secrets:
+      JFROG_MAVEN_TOKEN:
+        required: true
+
+jobs:
+  upload-to-jfrog:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: "*.build"
+          merge-multiple: true
+          path: artifacts
+
+      - name: list content
+        run: ls -R
+        working-directory: artifacts
+
+      - name: Set up JFrog credentials
+        uses: jfrog/setup-jfrog-cli@v3
+        env:
+          JF_URL: ${{ inputs.jfrog-platform-url }}
+          JF_ACCESS_TOKEN: ${{ secrets.JFROG_MAVEN_TOKEN }}
+
+      - name: Upload from branches to JFrog
+        run: jf rt upload --regexp=true --dry-run "aerospike-(proxy-client|client-(jdk\d+))-\d+\.\d+\.\d+(-jar-with-dependencies)?\.jar" "${{ inputs.jfrog-repo-name }}"
+        working-directory: artifacts
+
+      - name: Publish build info
+        run: jf rt build-publish --dry-run ${{ inputs.jdk-version == 'jdk8' && 'aerospike-client-jdk8' || 'aerospike-client-jdk21' }} ${{ inputs.version }}

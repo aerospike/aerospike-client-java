@@ -1,0 +1,20 @@
+name: "Create release package"
+description: "Run EE server. Returns once server is ready. Only tested on Linux and macOS"
+
+inputs:
+  version:
+    description: Package version
+    required: true
+  jdk:
+    description: JDK version
+    required: true
+  extension:
+    description: Crypto type GNU (default) or bouncycastle
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - name: Log into Docker Hub to get server RC
+      run: ./.github/workflows/scripts/package.sh ${{ inputs.version }} ${{ inputs.jdk }} ${{ inputs.extension }}
+      shell: bash
