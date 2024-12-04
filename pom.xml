@@ -43,13 +43,14 @@
     <jbcrypt.version>0.4</jbcrypt.version>
     <commons-cli.version>1.9.0</commons-cli.version>
     <junit.version>4.13.1</junit.version>
+    <crypto.type></crypto.type>
   </properties>
 
   <dependencyManagement>
     <dependencies>
       <dependency>
         <groupId>com.aerospike</groupId>
-        <artifactId>aerospike-client-jdk21</artifactId>
+        <artifactId>aerospike-client${crypto.type}-jdk21</artifactId>
         <version>${project.version}</version>
       </dependency>
 
