@@ -149,7 +149,8 @@ public abstract class AsyncTxnMonitor {
 	}
 
 	void execute(Policy policy, Operation[] ops) {
-		Key tranKey = TxnMonitor.getTxnMonitorKey(policy.txn);
+		Txn txn = policy.txn;
+		Key tranKey = TxnMonitor.getTxnMonitorKey(txn);
 		WritePolicy wp = TxnMonitor.copyTimeoutPolicy(policy);
 
 		RecordListener tranListener = new RecordListener() {
@@ -175,7 +176,7 @@ public abstract class AsyncTxnMonitor {
 
 		// Add write key(s) to MRT monitor.
 		OperateArgs args = new OperateArgs(wp, null, null, ops);
-		AsyncTxnAddKeys tranCommand = new AsyncTxnAddKeys(cluster, tranListener, tranKey, args);
+		AsyncTxnAddKeys tranCommand = new AsyncTxnAddKeys(cluster, tranListener, tranKey, args, txn);
 		eventLoop.execute(cluster, tranCommand);
 	}
 

@@ -129,10 +129,11 @@ public final class TxnMonitor {
 	}
 
 	private static void addWriteKeys(Cluster cluster, Policy policy, Operation[] ops) {
-		Key txnKey = getTxnMonitorKey(policy.txn);
+		Txn txn = policy.txn;
+		Key txnKey = getTxnMonitorKey(txn);
 		WritePolicy wp = copyTimeoutPolicy(policy);
 		OperateArgs args = new OperateArgs(wp, null, null, ops);
-		TxnAddKeys cmd = new TxnAddKeys(cluster, txnKey, args);
+		TxnAddKeys cmd = new TxnAddKeys(cluster, txnKey, args, txn);
 		cmd.execute();
 	}
 
@@ -143,7 +144,6 @@ public final class TxnMonitor {
 	public static WritePolicy copyTimeoutPolicy(Policy policy) {
 		// Inherit some fields from the original command's policy.
 		WritePolicy wp = new WritePolicy();
-		wp.txn = policy.txn;
 		wp.connectTimeout = policy.connectTimeout;
 		wp.socketTimeout = policy.socketTimeout;
 		wp.totalTimeout = policy.totalTimeout;
