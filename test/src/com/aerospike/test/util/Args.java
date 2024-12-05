@@ -34,6 +34,7 @@ import com.aerospike.client.Log;
 import com.aerospike.client.Log.Level;
 import com.aerospike.client.async.EventLoopType;
 import com.aerospike.client.cluster.Node;
+import com.aerospike.client.cluster.Partitions;
 import com.aerospike.client.policy.AuthMode;
 import com.aerospike.client.policy.ClientPolicy;
 import com.aerospike.client.policy.Policy;
@@ -57,6 +58,7 @@ public class Args {
 	public int totalTimeout = 1000;
 	public boolean enterprise;
 	public boolean hasTtl;
+	public boolean scMode;
 
 	public Args() {
 		host = "127.0.0.1";
@@ -248,7 +250,14 @@ public class Args {
 	/**
 	 * Some database calls need to know how the server is configured.
 	 */
+	@SuppressWarnings("resource")
 	public void setServerSpecific(IAerospikeClient client) {
+		Partitions partitions = client.getCluster().partitionMap.get(namespace);
+
+		if (partitions != null) {
+			scMode = partitions.scMode;
+		}
+
 		Node node = client.getNodes()[0];
 		String editionFilter = "edition";
 		String namespaceFilter = "namespace/" + namespace;

@@ -16,8 +16,8 @@
  */
 package com.aerospike.test.async;
 
-import org.junit.Test;
 import org.junit.BeforeClass;
+import org.junit.Test;
 
 import com.aerospike.client.AbortStatus;
 import com.aerospike.client.AerospikeException;
@@ -31,13 +31,13 @@ import com.aerospike.client.Record;
 import com.aerospike.client.ResultCode;
 import com.aerospike.client.Txn;
 import com.aerospike.client.Value;
+import com.aerospike.client.listener.AbortListener;
 import com.aerospike.client.listener.BatchRecordArrayListener;
+import com.aerospike.client.listener.CommitListener;
 import com.aerospike.client.listener.DeleteListener;
 import com.aerospike.client.listener.ExecuteListener;
 import com.aerospike.client.listener.RecordArrayListener;
 import com.aerospike.client.listener.RecordListener;
-import com.aerospike.client.listener.AbortListener;
-import com.aerospike.client.listener.CommitListener;
 import com.aerospike.client.listener.WriteListener;
 import com.aerospike.client.policy.BatchPolicy;
 import com.aerospike.client.policy.Policy;
@@ -50,6 +50,8 @@ public class TestAsyncTxn extends TestAsync {
 
 	@BeforeClass
 	public static void register() {
+		// Multi-record transactions require strong consistency namespaces.
+		org.junit.Assume.assumeTrue(args.scMode);
 		RegisterTask task = client.register(null, TestUDF.class.getClassLoader(), "udf/record_example.lua", "record_example.lua", Language.LUA);
 		task.waitTillComplete();
 	}

@@ -45,6 +45,8 @@ public class TestTxn extends TestSync {
 
 	@BeforeClass
 	public static void register() {
+		// Multi-record transactions require strong consistency namespaces.
+		org.junit.Assume.assumeTrue(args.scMode);
 		RegisterTask task = client.register(null, TestUDF.class.getClassLoader(), "udf/record_example.lua", "record_example.lua", Language.LUA);
 		task.waitTillComplete();
 	}

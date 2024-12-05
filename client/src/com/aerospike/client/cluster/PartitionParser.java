@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -84,7 +84,7 @@ public final class PartitionParser extends Info {
 		while (offset < length) {
 			if (buffer[offset] == ':') {
 				// Parse namespace.
-				String namespace = Buffer.utf8ToString(buffer, begin, offset - begin, sb).trim();
+				String namespace = Buffer.utf8ToString(buffer, begin, offset - begin).trim();
 
 				if (namespace.length() <= 0 || namespace.length() >= 32) {
 					String response = getTruncatedResponse();
