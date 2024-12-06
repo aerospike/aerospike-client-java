@@ -19,6 +19,7 @@ package com.aerospike.client.async;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
 import com.aerospike.client.ResultCode;
+import com.aerospike.client.Txn;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.command.OperateArgs;
 import com.aerospike.client.command.RecordParser;
@@ -27,11 +28,13 @@ import com.aerospike.client.listener.RecordListener;
 public final class AsyncTxnAddKeys extends AsyncWriteBase {
 	private final RecordListener listener;
 	private final OperateArgs args;
+	private final Txn txn;
 
-	public AsyncTxnAddKeys(Cluster cluster, RecordListener listener, Key key, OperateArgs args) {
+	public AsyncTxnAddKeys(Cluster cluster, RecordListener listener, Key key, OperateArgs args, Txn txn) {
 		super(cluster, args.writePolicy, key);
 		this.listener = listener;
 		this.args = args;
+		this.txn = txn;
 	}
 
 	@Override
@@ -42,7 +45,7 @@ public final class AsyncTxnAddKeys extends AsyncWriteBase {
 	@Override
 	protected boolean parseResult() {
 		RecordParser rp = new RecordParser(dataBuffer, dataOffset, receiveSize);
-		rp.parseTranDeadline(policy.txn);
+		rp.parseTranDeadline(txn);
 
 		if (rp.resultCode == ResultCode.OK) {
 			return true;
