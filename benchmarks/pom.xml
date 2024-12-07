@@ -15,7 +15,7 @@
   <dependencies>
     <dependency>
       <groupId>com.aerospike</groupId>
-      <artifactId>aerospike-client-jdk21</artifactId>
+      <artifactId>aerospike-client${crypto.type}-jdk21</artifactId>
     </dependency>
 
     <dependency>
@@ -52,6 +52,34 @@
       <artifactId>commons-cli</artifactId>
     </dependency>
   </dependencies>
+
+  <profiles>
+    <profile>
+      <id>bouncycastle</id>
+
+      <activation>
+        <file>
+          <exists>../bouncycastle.config</exists>
+        </file>
+      </activation>
+
+      <properties>
+        <crypto.type>-bc</crypto.type>
+      </properties>
+    </profile>
+
+    <profile>
+      <id>gnu</id>
+
+      <activation>
+        <activeByDefault>true</activeByDefault>
+      </activation>
+
+      <properties>
+        <crypto.type></crypto.type>
+      </properties>
+    </profile>
+  </profiles>
 
   <build>
     <sourceDirectory>${project.basedir}/src</sourceDirectory>
