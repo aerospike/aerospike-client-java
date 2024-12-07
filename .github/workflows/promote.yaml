@@ -1,0 +1,60 @@
+name: Promote
+
+on:
+  workflow_call:
+    inputs:
+      build-number:
+        type: number
+        description: Build number used to build artifact to be promoted
+      target-repository:
+        type: string
+        description: Repository to promote to
+      target-branch:
+        type: string
+        description: Target branch to promote token
+    secrets:
+      CLIENT_BOT_PAT:
+        required: true
+
+jobs:
+  validate-build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup jfrog shell
+        uses: jfrog/setup-jfrog-cli@v4
+        env:
+          JF_URL: ${{ vars.JFROG_PLATFORM_URL }}
+        with:
+          oidc-provider-name: ${{ inputs.oidc-provider }}
+          oidc-audience: ${{ inputs.oidc-audience }}
+
+      - name: Get info
+        id: get-build-info
+        run: |
+          echo build-info=$(jf rt curl /api/build/clients-java-push-to-dev/${{ inputs.build-number }}) >> $GITHUB_OUTPUT
+
+      - name: Get commit hash from repo
+        id: get-commit-hash
+        run: |
+          echo commit-hash=$(steps.get-build-info.outputs.build-info | jq -r '.vcs[].revision') >> $GITHUB_OUTPUT
+
+      - name: Get commit hash from repo
+        id: get-build-name
+        run: |
+          echo build-name=$(steps.get-build-info.outputs.build-info | jq -r '.name') >> $GITHUB_OUTPUT
+
+      - name: Debug
+        run: |
+          echo ${{ steps.get-build-info.outputs.build-info }}
+          echo ${{ steps.get-build-info.outputs.build-name }}
+
+      - name: Merge commit hash from source to target branch
+        uses: ./github/actions/fast-forward-merge
+        with:
+          ref-to-merge: ${{ steps.get-build-info.outputs.build-info }}
+          base-branch: ${{ inputs.target-branch }}
+          git-bot-token: ${{ secrets.CLIENT_BOT_PAT }}
+
+      - name: Promote build
+        run: |
+          jf rt build-promote ${{ steps.get-build-info.outputs.build-name }} ${{ inputs.build-number }} ${{ inputs.target-repository }}

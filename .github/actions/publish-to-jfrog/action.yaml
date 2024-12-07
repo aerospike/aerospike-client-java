@@ -1,0 +1,52 @@
+name: Publish artifacts to JFrog
+description: "Publishes artifacts to JFrog"
+
+inputs:
+  jfrog-releases-repo-name:
+    description: ""
+    required: false
+    default: clients-maven-dev-local
+  jfrog-snapshots-repo-name:
+    description: ""
+    required: false
+    default: clients-maven-dev-local
+  jfrog-platform-url:
+    description: ""
+    required: false
+    default: https://aerospike.jfrog.io/
+  oidc-provider:
+    description: ""
+    required: false
+    default: gh-aerospike-clients
+  oidc-audience:
+    description: ""
+    required: false
+    default: aerospike/clients
+  crypto-type:
+    description: ""
+    required: false
+    default: gnu
+
+runs:
+  using: "composite"
+  steps:
+    - name: Set up JFrog credentials
+      uses: jfrog/setup-jfrog-cli@v4
+      env:
+        JF_URL: ${{ inputs.jfrog-platform-url }}
+      with:
+        oidc-provider-name: ${{ inputs.oidc-provider }}
+        oidc-audience: ${{ inputs.oidc-audience }}
+
+    - name: Set crypto dependency
+      shell: bash
+      run: |
+        ./set_crypto ${{ inputs.crypto-type }}
+
+    - name: Deploy release
+      shell: bash
+      working-directory: client
+      run: |
+        jf mvn-config --repo-deploy-releases=${{ inputs.jfrog-releases-repo-name }} --repo-deploy-snapshots=${{ inputs.jfrog-snapshots-repo-name }}
+        jf mvn source:jar javadoc:jar deploy -Dusername=${{ steps.setup-jfrog-cli.outputs.oidc-user }} ${{ steps.setup-jfrog-cli.outputs.oidc-token }}
+        jf rt bp

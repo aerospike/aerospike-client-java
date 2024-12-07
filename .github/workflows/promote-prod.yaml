@@ -1,0 +1,21 @@
+name: Promote to Prod
+
+permissions:
+  # This is required for requesting the OIDC token
+  id-token: write
+
+on:
+  workflow_dispatch:
+    inputs:
+      build-number:
+        type: number
+        description: Build number used to build artifact to be promoted
+
+jobs:
+  promote-from-stage-to-prod:
+    name: Promot from stage to prod
+    uses: ./.github/workflows/promote.yaml
+    with:
+      build-number: ${{  inputs.build-number }}
+      target-repository: client-maven-stage-local
+      target-branch: dev-stage
