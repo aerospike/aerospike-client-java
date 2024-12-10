@@ -21,6 +21,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * Multi-record transaction (MRT). Each command in the MRT must use the same namespace.
@@ -36,13 +37,13 @@ public final class Txn {
 		ABORTED;
 	}
 
-	private static AtomicLong randomState = new AtomicLong(System.nanoTime());
+	private static final AtomicLong randomState = new AtomicLong(System.nanoTime());
 
 	private final long id;
 	private final ConcurrentHashMap<Key,Long> reads;
 	private final Set<Key> writes;
+	private final AtomicReference<String> namespace = new AtomicReference<>();
 	private Txn.State state;
-	private String namespace;
 	private int timeout;
 	private int deadline;
 	private boolean writeInDoubt;
@@ -100,7 +101,7 @@ public final class Txn {
 			newState ^= newState >>> 27;
 		} while (!randomState.compareAndSet(oldState, newState));
 
-		return newState * 0x2545f4914f6cdd1dl;
+		return newState * 0x2545f4914f6cdd1dL;
 	}
 
 	/**
@@ -221,10 +222,7 @@ public final class Txn {
 	 * If namespace already exists, verify new namespace is the same.
 	 */
 	public void setNamespace(String ns) {
-		if (namespace == null) {
-			namespace = ns;
-		}
-		else if (! namespace.equals(ns)) {
+		if(!namespace.compareAndSet(null, ns) && !namespace.get().equals(ns)) {
 			throw new AerospikeException("Namespace must be the same for all commands in the MRT. orig: " +
 				namespace + " new: " + ns);
 		}
@@ -254,7 +252,7 @@ public final class Txn {
 	 * Return MRT namespace.
 	 */
 	public String getNamespace() {
-		return namespace;
+		return namespace.get();
 	}
 
 	/**
@@ -319,7 +317,7 @@ public final class Txn {
 	 * Clear MRT. Remove all tracked keys.
 	 */
 	public void clear() {
-		namespace = null;
+		namespace.set(null);
 		deadline = 0;
 		reads.clear();
 		writes.clear();
