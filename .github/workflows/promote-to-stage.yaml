@@ -20,14 +20,25 @@ jobs:
         env:
           JF_URL: ${{ vars.JFROG_PLATFORM_URL }}
         with:
-          oidc-provider-name: ${{ inputs.oidc-provider }}
-          oidc-audience: ${{ inputs.oidc-audience }}
+          oidc-provider-name: ${{ secrets.JFROG_OIDC_PROVIDER }}
+          oidc-audience: ${{ secrets.JFROG_OIDC_AUDIENCE }}
 
       - name: Get info
         id: get-build-info
         run: |
           echo build-info=$(jf rt curl /api/build/clients-java-push-to-dev/${{ inputs.build-number }}) >> $GITHUB_OUTPUT
 
+      - name: Get commit hash from repo
+        id: get-commit-hash
+        run: |
+          echo commit-hash=$(echo '${{ steps.get-build-info.outputs.build-info }}' | jq -r '.buildInfo.vcs[].revision') >> $GITHUB_OUTPUT
+
+      - name: Get build name
+        id: get-build-name
+        run: |
+          echo build-name=$(echo '${{ steps.get-build-info.outputs.build-info }}' | jq -r '.buildInfo.name') >> $GITHUB_OUTPUT
+
       - name: Debug
         run: |
-          echo ${{ steps.get-build-info.outputs.build-info }}
+          echo "commit-hash: '${{ steps.get-commit-hash.outputs.commit-hash }}'"
+          echo "build-name: '${{ steps.get-build-name.outputs.build-name }}'"

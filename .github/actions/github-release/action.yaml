@@ -1,0 +1,50 @@
+name: Create github release
+description: Creates a github release
+
+inputs:
+  artifact-version:
+    description: ""
+    required: true
+  github-token:
+    description:
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    - name: Get previous tag
+      shell: bash
+      id: get-prev-tag
+      run: |
+        # Fetch all tags
+        git fetch --tags
+        echo "previous-tag=$(git tag --sort=-creatordate | sed -n '1p')" >> $GITHUB_OUTPUT
+
+    # Extract commit messages between previous tag and the current tag.
+    - name: Get release notes
+      shell: bash
+      id: release-notes
+      run: |
+        notes=$(git log "${{steps.get-previous-tag.outputs.previous-tag }}..HEAD" --pretty=format:"%s" --no-merges)
+
+        # GitHub Actions requires that multiline output is escaped:
+        notes="${notes//'%'/'%25'}"
+        notes="${notes//$'\n'/'%0A'}"
+        notes="${notes//$'\r'/'%0D'}"
+
+        echo "notes=$notes" >> $GITHUB_OUTPUT
+
+    # Create a new release using GitHub's built-in action
+    - name: Create GitHub Release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ inputs.github-token }}
+      with:
+        tag_name: ${{ inputs.artifact-version }}
+        release_name: ${{ inputs.artifact-version }}
+        body: ${{ steps.release-notes.outputs.notes }}
+        draft: false
+        prerelease: false

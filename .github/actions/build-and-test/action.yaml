@@ -31,11 +31,11 @@ runs:
     - name: Stage crypto
       shell: bash
       run: |
-        ./set_cypto ${{ inputs.crypto-type }}
+        ./set_crypto ${{ inputs.crypto-type }}
 
     - name: Build
       shell: bash
-      run: mvn clean install -P ${{ inputs.crypto-type }}
+      run: mvn clean install
 
     - name: Run EE server
       if: ${{ inputs.run-tests == 'true' }}
