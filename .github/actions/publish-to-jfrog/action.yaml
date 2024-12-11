@@ -13,40 +13,77 @@ inputs:
   jfrog-platform-url:
     description: ""
     required: false
-    default: https://aerospike.jfrog.io/
+    default: https://aerospike.jfrog.io
   oidc-provider:
     description: ""
-    required: false
-    default: gh-aerospike-clients
+    required: true
   oidc-audience:
     description: ""
-    required: false
-    default: aerospike/clients
+    required: true
   crypto-type:
     description: ""
     required: false
-    default: gnu
+  artifact-name:
+    description: ""
+    required: true
+  artifact-id:
+    description: ""
+    required: true
+  artifact-version:
+    description: ""
+    required: true
+  deploy-spec-path:
+    description: ""
+    required: false
+    default: deploy-resources
 
 runs:
   using: "composite"
   steps:
     - name: Set up JFrog credentials
+      id: setup-jfrog-cli
       uses: jfrog/setup-jfrog-cli@v4
       env:
         JF_URL: ${{ inputs.jfrog-platform-url }}
       with:
+        version: 2.72.2
         oidc-provider-name: ${{ inputs.oidc-provider }}
         oidc-audience: ${{ inputs.oidc-audience }}
 
-    - name: Set crypto dependency
+    - uses: s4u/maven-settings-action@v3.1.0
+      with:
+        servers: '[{"id": "jfrog", "username": "${{ steps.setup-jfrog-cli.outputs.oidc-user }}", "password": "${{ steps.setup-jfrog-cli.outputs.oidc-token }}"}]'
+
+    - name: Configure jf cli
       shell: bash
       run: |
-        ./set_crypto ${{ inputs.crypto-type }}
+        jf mvn-config \
+        --repo-deploy-releases=${{ inputs.jfrog-releases-repo-name }} \
+        --repo-deploy-snapshots=${{ inputs.jfrog-snapshots-repo-name }}
 
-    - name: Deploy release
+    - name: Generate deploy spec
       shell: bash
       working-directory: client
       run: |
-        jf mvn-config --repo-deploy-releases=${{ inputs.jfrog-releases-repo-name }} --repo-deploy-snapshots=${{ inputs.jfrog-snapshots-repo-name }}
-        jf mvn source:jar javadoc:jar deploy -Dusername=${{ steps.setup-jfrog-cli.outputs.oidc-user }} ${{ steps.setup-jfrog-cli.outputs.oidc-token }}
-        jf rt bp
+        jq --arg targetPattern "${{ inputs.jfrog-releases-repo-name }}/com/aerospike/${{ inputs.artifact-id }}/${{ inputs.artifact-version }}/" \
+        --arg publicPomPattern "deploy-resources/${{ inputs.crypto-type }}_pom.xml" \
+        --arg publicPomTarget "${{ inputs.jfrog-releases-repo-name }}/com/aerospike/${{ inputs.artifact-id }}/${{ inputs.artifact-version }}/${{ inputs.artifact-name }}.pom" \
+        '
+        .files[0].target = $targetPattern |
+        .files[1].pattern = $publicPomPattern |
+        .files[1].target = $publicPomTarget
+        ' ${{ inputs.deploy-spec-path }}/publish-spec.json.template > ${{ inputs.deploy-spec-path }}/publish-spec.json
+
+    - name: Debug deploy spec
+      shell: bash
+      working-directory: client
+      run: |
+        cat ${{ inputs.deploy-spec-path }}/publish-spec.json
+
+    - name: Overwrite default pom with public release pom
+      shell: bash
+      working-directory: client
+      run: |
+        jf rt upload --spec=${{ inputs.deploy-spec-path }}/publish-spec.json \
+            --build-name=clients-java-push-to-dev \
+            --build-number=${{ github.run_number }}

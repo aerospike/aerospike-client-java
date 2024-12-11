@@ -1,4 +1,5 @@
 name: Build artifacts
+run-name: Build artifact for ${{ inputs.crypto-type }} ${{ inputs.java-version }}
 
 permissions:
   # This is required for requesting the OIDC token
@@ -41,12 +42,16 @@ on:
         required: true
       GPG_PASS:
         required: true
+      JFROG_OIDC_PROVIDER:
+        required: true
+      JFROG_OIDC_AUDIENCE:
+        required: true
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout client
+      - name: Checkout code
         uses: actions/checkout@v4
         with:
           ref: ${{ inputs.branch }}
@@ -66,8 +71,37 @@ jobs:
           server-tag: ${{ inputs.server-tag }}
           use-server-rc: ${{ inputs.use-server-rc }}
 
+      - name: Generate docs and sources if release
+        if: ${{ inputs.upload-artifacts == true }}
+        working-directory: client
+        run: |
+          mvn source:jar javadoc:jar
+
+      - name: Get artifact name
+        id: get-artifact-name
+        working-directory: client
+        run: |
+          echo artifact-name=$(mvn help:evaluate -Dexpression=project.build.finalName -q -DforceStdout) >> $GITHUB_OUTPUT
+
+      - name: Get artifact ID
+        id: get-artifact-id
+        working-directory: client
+        run: |
+          echo artifact-id="aerospike-client${{ inputs.crypto-type == 'bouncycastle' && '-bc' || '' }}-jdk${{ inputs.java-version }}" >> $GITHUB_OUTPUT
+
+      - name: Get artifact version
+        id: get-artifact-version
+        working-directory: client
+        run: |
+          echo artifact-version=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout) >> $GITHUB_OUTPUT
+
       - name: Publish to JFrog
         if: ${{ !cancelled() && inputs.upload-artifacts == true }}
         uses: ./.github/actions/publish-to-jfrog
         with:
           crypto-type: ${{ inputs.crypto-type }}
+          oidc-provider: ${{ secrets.JFROG_OIDC_PROVIDER }}
+          oidc-audience: ${{ secrets.JFROG_OIDC_AUDIENCE }}
+          artifact-name: ${{ steps.get-artifact-name.outputs.artifact-name }}
+          artifact-id: ${{ steps.get-artifact-id.outputs.artifact-id }}
+          artifact-version: ${{ steps.get-artifact-version.outputs.artifact-version }}
