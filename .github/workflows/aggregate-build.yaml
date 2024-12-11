@@ -1,0 +1,45 @@
+permissions:
+  # This is required for requesting the OIDC token
+  id-token: write
+
+on:
+  workflow_call:
+    inputs:
+      jfrog-platform-url:
+        type: string
+        description: ""
+        required: false
+        default: https://aerospike.jfrog.io
+      java-version:
+        type: string
+        required: true
+    secrets:
+      GPG_SECRET_KEY:
+        required: true
+      GPG_PASS:
+        required: true
+      JFROG_OIDC_PROVIDER:
+        required: true
+      JFROG_OIDC_AUDIENCE:
+        required: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up JFrog credentials l
+        id: setup-jfrog-cli
+        uses: jfrog/setup-jfrog-cli@v4
+        env:
+          JF_URL: ${{ inputs.jfrog-platform-url }}
+        with:
+          version: 2.72.2
+          oidc-provider-name: ${{ secrets.JFROG_OIDC_PROVIDER }}
+          oidc-audience: ${{ secrets.JFROG_OIDC_AUDIENCE }}
+
+      - name: Aggregate builds
+        run: |
+          jf rt ba clients-java-push-to-dev ${{ github.run_number }} clients-java-push-to-dev_aerospike-client-bc-jdk${{ inputs.java-version }} ${{ github.run_number }}
+          jf rt ba clients-java-push-to-dev ${{ github.run_number }} clients-java-push-to-dev_aerospike-client-jdk${{ inputs.java-version }} ${{ github.run_number }}
+
+          jf rt bp clients-java-push-to-dev ${{ github.run_number }}

@@ -1,0 +1,66 @@
+name: Publish artifacts to Sonatype
+description: "Publishes artifacts to Sonatype"
+
+inputs:
+  jfrog-releases-repo-name:
+    description: ""
+    required: false
+    default: clients-maven-dev-local
+  jfrog-snapshots-repo-name:
+    description: ""
+    required: false
+    default: clients-maven-dev-local
+  jfrog-platform-url:
+    description: ""
+    required: false
+    default: https://aerospike.jfrog.io
+  oidc-provider:
+    description: ""
+    required: true
+  oidc-audience:
+    description: ""
+    required: true
+  artifact-name:
+    description: ""
+    required: true
+  artifact-version:
+    description: ""
+    required: true
+  staging-folder:
+    description: ""
+    required: false
+    default: staging
+  target-repository:
+    description: ""
+    required: false
+    default: clients-maven-stage-local
+
+runs:
+  using: "composite"
+  steps:
+    - name: Set up JFrog credentials
+      id: setup-jfrog-cli
+      uses: jfrog/setup-jfrog-cli@v4
+      env:
+        JF_URL: ${{ inputs.jfrog-platform-url }}
+      with:
+        version: 2.72.2
+        oidc-provider-name: ${{ inputs.oidc-provider }}
+        oidc-audience: ${{ inputs.oidc-audience }}
+
+    - name: Create staging folder
+      shell: bash
+      run: |
+        mkdir -p ${{ inputs.staging-folder }}
+
+    - name: Download artifacts from JFrog
+      shell: bash
+      working-directory: ${{ inputs.staging-folder }}
+      run: |
+        jf rt dl "${{ inputs.target-repository }}/com/aerospike/${{ inputs.artifact-name }}/${{ inputs.artifact-version }}/*" .
+
+    - name: Debug list downloaded content
+      shell: bash
+      working-directory: ${{ inputs.staging-folder }}
+      run: |
+        ls -la

@@ -6,9 +6,9 @@
   <parent>
     <groupId>com.aerospike</groupId>
     <artifactId>aerospike-parent</artifactId>
-    <version>9.0.2</version>
+    <version>${revision}</version>
   </parent>
-  <artifactId>aerospike-client-jdk21</artifactId>
+  <artifactId>aerospike-client${crypto.type}-jdk21</artifactId>
   <packaging>jar</packaging>
 
   <name>aerospike-client-jdk21</name>
@@ -114,16 +114,17 @@
                 <phase>install</phase>
                 <goals>
                   <goal>install-file</goal>
-                  </goals>
+                </goals>
                 <configuration>
-                  <pomFile>${project.basedir}/src/resources/bouncy_pom.xml</pomFile>
+                  <pomFile>${project.basedir}/deploy-resources/bouncycastle_pom.xml</pomFile>
                   <file>target/${project.build.finalName}.jar</file>
                   <groupId>com.aerospike</groupId>
                   <artifactId>aerospike-client${crypto.type}-jdk21</artifactId>
-                  </configuration>
-                </execution>
-              </executions>
-            </plugin>
+                  <generatePom>true</generatePom>
+                </configuration>
+              </execution>
+            </executions>
+          </plugin>
         </plugins>
       </build>
     </profile>
@@ -183,15 +184,43 @@
                 <phase>install</phase>
                 <goals>
                   <goal>install-file</goal>
-                  </goals>
+                </goals>
                 <configuration>
-                  <pomFile>${project.basedir}/src/resources/gnu_pom.xml</pomFile>
+                  <pomFile>${project.basedir}/deploy-resources/gnu_pom.xml</pomFile>
                   <file>target/${project.build.finalName}.jar</file>
                   <groupId>com.aerospike</groupId>
                   <artifactId>aerospike-client${crypto.type}-jdk21</artifactId>
-                  </configuration>
+                  <generatePom>true</generatePom>
+                </configuration>
                 </execution>
               </executions>
+            </plugin>
+        </plugins>
+      </build>
+    </profile>
+    <profile>
+      <id>gpg</id>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-gpg-plugin</artifactId>
+            <version>3.1.0</version>
+            <executions>
+              <execution>
+                <id>sign-artifacts</id>
+                <phase>verify</phase>
+                <goals>
+                  <goal>sign</goal>
+                  </goals>
+                </execution>
+              </executions>
+            <configuration>
+              <gpgArguments>
+                <arg>--pinentry-mode</arg>
+                <arg>loopback</arg>
+                </gpgArguments>
+              </configuration>
             </plugin>
         </plugins>
       </build>
@@ -301,7 +330,6 @@
           </sourceFileIncludes>
           </configuration>
         </plugin>
-
     </plugins>
 
   </build>

@@ -1,4 +1,5 @@
 name: Promote to Prod
+run-name: promote-to-prod
 
 permissions:
   # This is required for requesting the OIDC token
@@ -16,6 +17,7 @@ jobs:
     name: Promot from stage to prod
     uses: ./.github/workflows/promote.yaml
     with:
-      build-number: ${{  inputs.build-number }}
-      target-repository: client-maven-stage-local
+      build-number: ${{ inputs.build-number }}
+      target-repository: clients-maven-stage-local
       target-branch: dev-stage
+    secrets: inherit

@@ -75,7 +75,7 @@ jobs:
     needs: java-version
     strategy:
       matrix:
-        crypto-type: ["bouncycastle", "gnu"]
+        crypto-type: [bouncycastle, gnu]
     with:
       java-version: ${{ needs.java-version.outputs.java-version }}
       branch: ${{ inputs.branch }}
