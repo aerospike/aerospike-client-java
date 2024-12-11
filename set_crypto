@@ -2,21 +2,35 @@
 # The default crypto library is gnu-crypto.
 # This script can change crypto library to bouncy castle's bcprov-jdk15on.
 
-cd `dirname $0`
+# Clean up old files
+function clean_up() {
+  if [ -f "gnu.config" ]; then
+    rm "gnu.config"
+  fi
+
+  if [ -f "bouncycastle.config" ]; then
+    rm "bouncycastle.config"
+  fi
+}
+
+cd $(dirname $0)
 
 case "$1" in
+
 gnu)
   set -x
-  cp client/crypto/gnu/Crypto.java client/src/com/aerospike/client/util
-  sed 's/org.bouncycastle/org.gnu/;s/bcprov-jdk15on/gnu-crypto/;s/1.69/2.0.1/' client/pom.xml > tmp.xml
-  mv tmp.xml client/pom.xml
+
+  clean_up
+
+  touch gnu.config
   ;;
 
 bouncycastle)
   set -x
-  cp client/crypto/bouncycastle/Crypto.java client/src/com/aerospike/client/util
-  sed 's/org.gnu/org.bouncycastle/;s/gnu-crypto/bcprov-jdk15on/;s/2.0.1/1.69/' client/pom.xml > tmp.xml
-  mv tmp.xml client/pom.xml
+
+  clean_up
+
+  touch bouncycastle.config
   ;;
 
 *)
