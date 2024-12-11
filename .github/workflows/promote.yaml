@@ -4,7 +4,7 @@ on:
   workflow_call:
     inputs:
       build-number:
-        type: number
+        type: string
         description: Build number used to build artifact to be promoted
       target-repository:
         type: string
@@ -25,8 +25,8 @@ jobs:
         env:
           JF_URL: ${{ vars.JFROG_PLATFORM_URL }}
         with:
-          oidc-provider-name: ${{ inputs.oidc-provider }}
-          oidc-audience: ${{ inputs.oidc-audience }}
+          oidc-provider-name: ${{ secrets.JFROG_OIDC_PROVIDER }}
+          oidc-audience: ${{ secrets.JFROG_OIDC_AUDIENCE }}
 
       - name: Get info
         id: get-build-info
@@ -36,25 +36,55 @@ jobs:
       - name: Get commit hash from repo
         id: get-commit-hash
         run: |
-          echo commit-hash=$(steps.get-build-info.outputs.build-info | jq -r '.vcs[].revision') >> $GITHUB_OUTPUT
+          echo commit-hash=$(echo '${{ steps.get-build-info.outputs.build-info }}' | jq -r '.buildInfo.vcs[].revision') >> $GITHUB_OUTPUT
 
-      - name: Get commit hash from repo
+      - name: Get build name
         id: get-build-name
         run: |
-          echo build-name=$(steps.get-build-info.outputs.build-info | jq -r '.name') >> $GITHUB_OUTPUT
+          echo build-name=$(echo '${{ steps.get-build-info.outputs.build-info }}' | jq -r '.buildInfo.name') >> $GITHUB_OUTPUT
 
       - name: Debug
         run: |
-          echo ${{ steps.get-build-info.outputs.build-info }}
-          echo ${{ steps.get-build-info.outputs.build-name }}
+          echo "commit-hash: '${{ steps.get-commit-hash.outputs.commit-hash }}'"
+          echo "build-name: '${{ steps.get-build-name.outputs.build-name }}'"
 
-      - name: Merge commit hash from source to target branch
-        uses: ./github/actions/fast-forward-merge
+      # Needed since we are using  actions which are part of the repository
+      - name: Checkout
+        uses: actions/checkout@v4
         with:
-          ref-to-merge: ${{ steps.get-build-info.outputs.build-info }}
-          base-branch: ${{ inputs.target-branch }}
-          git-bot-token: ${{ secrets.CLIENT_BOT_PAT }}
+          # Fetch the whole history to prevent unrelated history errors
+          fetch-depth: "0"
+          ref: ${{ inputs.target-branch }}
+          token: ${{ secrets.CLIENT_BOT_PAT }}
+
+      - name: Fast forward
+        shell: bash
+        run: git merge --ff-only ${{ inputs.ref-to-merge }}
+
+      - name: Add tagging message
+        uses: stefanzweifel/git-auto-commit-action@v4
+        with:
+          commit_message: "Promote to prod [skip ci]"
+          commit_author: github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>
+          tagging_message: Promote to PROD
+          branch: ${{ inputs.target-branch }}
+
+      - name: Upload changes to remote head branch
+        shell: bash
+        run: git push
 
       - name: Promote build
         run: |
-          jf rt build-promote ${{ steps.get-build-info.outputs.build-name }} ${{ inputs.build-number }} ${{ inputs.target-repository }}
+          jf rt build-promote ${{ steps.get-build-name.outputs.build-name }} ${{ inputs.build-number }} ${{ inputs.target-repository }}
+
+      - name: Get artifact version
+        id: get-artifact-version
+        working-directory: client
+        run: |
+          echo artifact-version=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout) >> $GITHUB_OUTPUT
+
+      - name: Create GitHub release
+        uses: ./.github/actions/github-release
+        with:
+          artifact-version: ${{ steps.get-artifact-version.outputs.artifact-version }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
