@@ -1,0 +1,82 @@
+name: Publish artifacts to github
+description: "Publish artifacts to github"
+
+inputs:
+  staging-folder:
+    description: ""
+    required: false
+    default: staging
+  target-folder:
+    description: ""
+    required: false
+    default: github
+  release-notes:
+    description: ""
+    required: true
+  github-token:
+    description: ""
+    required: true
+  artifact-version:
+    description: ""
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - name: Debug publish to github
+      shell: bash
+      run: |
+        echo "${{ inputs.staging-folder }}"
+        echo "${{ inputs.target-folder }}"
+        echo "${{ inputs.artifact-version }}"
+        echo "${{ inputs.release-notes }}"
+
+    - name: Create upload archive for github
+      id: create-artifact
+      shell: bash
+      run: |
+        src="${{ inputs.staging-folder }}"
+        dest="${{ inputs.target-folder }}"
+
+        find "$src" -type f \
+          -exec cp {} "$dest" \;
+
+    - id: get-github-release-artifact-names
+      working-directory: ${{ inputs.target-folder }}
+      shell: bash
+      run: |
+        ARTIFACTS=$(ls -l)
+
+        echo "release-artifacts<<EOF" >> $GITHUB_OUTPUT
+        echo "${ARTIFACTS}" >> $GITHUB_OUTPUT
+        echo "EOF" >> $GITHUB_OUTPUT
+
+    - name: Debug show content of the upload archive
+      shell: bash
+      run: |
+        pwd
+        ls -laR "${{ inputs.target-folder }}"
+
+    - name: Debug GitHub publish input
+      shell: bash
+      working-directory: ${{ inputs.target-folder }}
+      run: |
+        echo "working directory: ${{ inputs.target-folder }}"
+        echo "tag name: Release ${{ inputs.artifact-version }}"
+        echo "body: Changes for release ${{ inputs.artifact-version }}"
+        echo "body: ${{ inputs.release-notes }}"
+        echo "files: ${{ steps.get-github-release-artifact-names.outputs.release-artifacts }}"
+
+    # TODO: uncomment for production release 
+    #- name: Publish release to github
+    #  working-directory: ${{ inputs.target-folder }}
+    #  uses: softprops/action-gh-release@v2
+    #  with:
+    #    token: ${{ inputs.github-token }}
+    #    tag_name: Release ${{ inputs.artifact-version }}
+    #    body: |
+    #      Changes for release ${{ inputs.artifact-version }}
+    #      "${{ inputs.release-notes }}"
+    #    draft: false
+    #    prerelease: false
+    #    files: ${{ steps.get-github-release-artifact-names.outputs.release-artifacts }}
