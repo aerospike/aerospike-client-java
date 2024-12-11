@@ -6,9 +6,9 @@
   <parent>
     <groupId>com.aerospike</groupId>
     <artifactId>aerospike-parent</artifactId>
-    <version>9.0.2</version>
+    <version>${revision}</version>
   </parent>
-  <artifactId>aerospike-client-jdk21</artifactId>
+  <artifactId>aerospike-client${crypto.type}-jdk21</artifactId>
   <packaging>jar</packaging>
 
   <name>aerospike-client-jdk21</name>
@@ -114,16 +114,17 @@
                 <phase>install</phase>
                 <goals>
                   <goal>install-file</goal>
-                  </goals>
+                </goals>
                 <configuration>
-                  <pomFile>${project.basedir}/src/resources/bouncy_pom.xml</pomFile>
+                  <pomFile>${project.basedir}/deploy-resources/bouncycastle_pom.xml</pomFile>
                   <file>target/${project.build.finalName}.jar</file>
                   <groupId>com.aerospike</groupId>
                   <artifactId>aerospike-client${crypto.type}-jdk21</artifactId>
-                  </configuration>
-                </execution>
-              </executions>
-            </plugin>
+                  <generatePom>true</generatePom>
+                </configuration>
+              </execution>
+            </executions>
+          </plugin>
         </plugins>
       </build>
     </profile>
@@ -183,13 +184,14 @@
                 <phase>install</phase>
                 <goals>
                   <goal>install-file</goal>
-                  </goals>
+                </goals>
                 <configuration>
-                  <pomFile>${project.basedir}/src/resources/gnu_pom.xml</pomFile>
+                  <pomFile>${project.basedir}/deploy-resources/gnu_pom.xml</pomFile>
                   <file>target/${project.build.finalName}.jar</file>
                   <groupId>com.aerospike</groupId>
                   <artifactId>aerospike-client${crypto.type}-jdk21</artifactId>
-                  </configuration>
+                  <generatePom>true</generatePom>
+                </configuration>
                 </execution>
               </executions>
             </plugin>
@@ -301,7 +303,6 @@
           </sourceFileIncludes>
           </configuration>
         </plugin>
-
     </plugins>
 
   </build>

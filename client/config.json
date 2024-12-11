@@ -1,0 +1,12 @@
+{
+  "files": [
+    {
+      "pattern": "target/*.jar",
+      "target": "test"
+    },
+    {
+      "pattern": "one",
+      "target": "another"
+    }
+  ]
+}

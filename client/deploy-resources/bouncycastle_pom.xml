@@ -1,11 +1,11 @@
 <project>
   <modelVersion>4.0.0</modelVersion>
   <groupId>com.aerospike</groupId>
-  <artifactId>aerospike-client-jdk21</artifactId>
-  <version>9.0.1</version>
+  <artifactId>aerospike-client-bc-jdk21</artifactId>
+  <version>9.0.2</version>
   <packaging>jar</packaging>
-  <name>Aerospike Java Client</name>
-  <description>Aerospike Java client interface to Aerospike database server</description>
+  <name>Aerospike Java Client BC</name>
+  <description>Aerospike Java client interface to Aerospike database server. Uses Bouncy Castle crypto library for RIPEMD-160 hashing.</description>
   <url>https://github.com/aerospike/aerospike-client-java</url>
   <organization>
     <name>Aerospike Inc.</name>
@@ -23,11 +23,11 @@
   </scm>
   <dependencies>
     <dependency>
-      <groupId>org.gnu</groupId>
-      <artifactId>gnu-crypto</artifactId>
-      <version>2.0.1</version>
+      <groupId>org.bouncycastle</groupId>
+      <artifactId>bcprov-jdk15on</artifactId>
+      <version>1.69</version>
     </dependency>
-    <dependency> 
+    <dependency>
       <groupId>org.luaj</groupId>
       <artifactId>luaj-jse</artifactId>
       <version>3.0.1</version>
