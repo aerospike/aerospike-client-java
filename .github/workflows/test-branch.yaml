@@ -1,5 +1,4 @@
-name: Build artifacts
-run-name: Build artifact for ${{ inputs.crypto-type }} ${{ inputs.java-version }}
+name: Test and build on-demand
 
 permissions:
   # This is required for requesting the OIDC token
@@ -8,33 +7,17 @@ permissions:
 on:
   workflow_call:
     inputs:
-      branch:
+      source-branch:
         type: string
         required: true
-      java-version:
+        description: Branch to run test against
+      crypto-type:
         type: string
         required: true
       use-server-rc:
         type: boolean
-        required: false
-        default: false
-        description: "Test against server release candidate?"
+        required: true
       server-tag:
-        type: string
-        required: false
-        default: "latest"
-        description: "Server docker image tag"
-      upload-artifacts:
-        type: boolean
-        required: false
-        default: false
-        description: "Upload built artifacts to github?"
-      run-tests:
-        type: boolean
-        required: false
-        default: false
-        description: Spin up aerospike enterprise server and run tests
-      crypto-type:
         type: string
         required: true
     secrets:
@@ -50,13 +33,21 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.branch }}
+          fetch-depth: 0
+          ref: ${{ inputs.ref }}
 
+      - name: Get java version
+        id: get-java-version
+        run: |
+          echo java-version="$(grep '<java.version>' pom.xml | sed -e 's/<[^>]*>//g' | awk '{$1=$1};1')" >> $GITHUB_OUTPUT
+
+      # Java plugin will setup gpg but we are not using maven to deploy do JFrog.
+      # - jf mvn clean install on publish does not publish POM we would like to publish
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
-          distribution: "semeru" # See 'Supported distributions' for available options
-          java-version: ${{ inputs.java-version }}
+          distribution: "semeru"
+          java-version: ${{ steps.get-java-version.outputs.java-version }}
 
       - name: Build and test
         uses: ./.github/actions/build-and-test
