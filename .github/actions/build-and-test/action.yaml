@@ -14,10 +14,10 @@ inputs:
     required: false
     default: "latest"
     description: "Server docker image tag"
-  jfrog_docker_username:
+  jfrog-docker-username:
     required: true
     description: ""
-  jfrog_docker_token:
+  jfrog-docker-token:
     required: true
     description: ""
   run-tests:
@@ -28,14 +28,16 @@ inputs:
 runs:
   using: "composite"
   steps:
+    # Using script to set profile since we would like to have the sticky effect. Set it once and have it
+    # remain for remainder of the job
     - name: Stage crypto
       shell: bash
       run: |
-        ./set_cypto ${{ inputs.crypto-type }}
+        ./set_crypto ${{ inputs.crypto-type }}
 
     - name: Build
       shell: bash
-      run: mvn clean install -P ${{ inputs.crypto-type }}
+      run: mvn clean install
 
     - name: Run EE server
       if: ${{ inputs.run-tests == 'true' }}
@@ -43,10 +45,10 @@ runs:
       with:
         use-server-rc: ${{ inputs.use-server-rc }}
         server-tag: ${{ inputs.server-tag }}
-        docker-hub-username: ${{ inputs.jfrog_docker_username }}
-        docker-hub-password: ${{ inputs.jfrog_docker_token }}
+        docker-hub-username: ${{ inputs.jfrog-docker-username }}
+        docker-hub-password: ${{ inputs.jfrog-docker-token }}
 
-    - name: Test
+    - name: Run tests
       shell: bash
       if: ${{ inputs.run-tests == true }}
       working-directory: test
