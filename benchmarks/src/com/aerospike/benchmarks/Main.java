@@ -1240,6 +1240,7 @@ public class Main implements Log.Callback {
 							}
 						}
 					} finally {
+						abortRun.set(true);
 						openTelemetry.setDBConnectionState("Closed");
 						client.close();
 					}
