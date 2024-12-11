@@ -2,10 +2,10 @@ name: "Fast forward merge"
 description: Fast forward target branch to given commit hash
 
 inputs:
-  ref_to_merge:
+  ref-to-merge:
     description: Branch to merge into base
     required: true
-  base_branch:
+  base-branch:
     description: Base branch
     required: true
   git-bot-token:
@@ -20,16 +20,20 @@ runs:
       with:
         # Fetch the whole history to prevent unrelated history errors
         fetch-depth: "0"
-        ref: ${{ inputs.base_branch }}
+        ref: ${{ inputs.base-branch }}
         token: ${{ inputs.git-bot-token }}
 
-    - name: Debug stuff
-      shell: bash
-      run: |
-        git remote -vvv
     - name: Fast forward
       shell: bash
-      run: git merge --ff-only ${{ inputs.ref_to_merge }}
+      run: git merge --ff-only ${{ inputs.ref-to-merge }}
+
+    - name: Add tagging message
+      uses: stefanzweifel/git-auto-commit-action@v4
+      with:
+        commit_message: "Promote to prod [skip ci]"
+        commit_author: github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>
+        tagging_message: Promote to PROD
+        branch: ${{ inputs.base-branch }}
 
     - name: Upload changes to remote head branch
       shell: bash

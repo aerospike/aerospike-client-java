@@ -16,12 +16,10 @@ inputs:
     default: https://aerospike.jfrog.io/
   oidc-provider:
     description: ""
-    required: false
-    default: gh-aerospike-clients
+    required: true
   oidc-audience:
     description: ""
-    required: false
-    default: aerospike/clients
+    required: true
   crypto-type:
     description: ""
     required: false
@@ -38,15 +36,29 @@ runs:
         oidc-provider-name: ${{ inputs.oidc-provider }}
         oidc-audience: ${{ inputs.oidc-audience }}
 
+    - name: Debug
+      shell: bash
+      run: |
+        echo "${{ inputs.crypto-type }}" && \
+        ls -la
+
     - name: Set crypto dependency
       shell: bash
       run: |
         ./set_crypto ${{ inputs.crypto-type }}
 
+    - name: Debug
+      shell: bash
+      run: |
+        echo "${{ inputs.crypto-type }}" && \
+        ls -la
+
     - name: Deploy release
       shell: bash
       working-directory: client
       run: |
-        jf mvn-config --repo-deploy-releases=${{ inputs.jfrog-releases-repo-name }} --repo-deploy-snapshots=${{ inputs.jfrog-snapshots-repo-name }}
-        jf mvn source:jar javadoc:jar deploy -Dusername=${{ steps.setup-jfrog-cli.outputs.oidc-user }} ${{ steps.setup-jfrog-cli.outputs.oidc-token }}
+        jf mvn-config --repo-deploy-releases=${{ inputs.jfrog-releases-repo-name }} --repo-deploy-snapshots=${{ inputs.jfrog-snapshots-repo-name }} && \
+        jf mvn source:jar javadoc:jar deploy -Dusername=${{ steps.setup-jfrog-cli.outputs.oidc-user }} ${{ steps.setup-jfrog-cli.outputs.oidc-token }} && \
+        jf rt bce && \
+        jf rt bag && \
         jf rt bp

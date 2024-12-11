@@ -41,6 +41,10 @@ on:
         required: true
       GPG_PASS:
         required: true
+      JFROG_OIDC_PROVIDER:
+        required: true
+      JFROG_OIDC_AUDIENCE:
+        required: true
 
 jobs:
   build:
@@ -71,3 +75,5 @@ jobs:
         uses: ./.github/actions/publish-to-jfrog
         with:
           crypto-type: ${{ inputs.crypto-type }}
+          oidc-provider: ${{ secrets.JFROG_OIDC_PROVIDER }}
+          oidc-audience: ${{ secrets.JFROG_OIDC_AUDIENCE }}

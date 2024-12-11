@@ -4,7 +4,7 @@ on:
   workflow_call:
     inputs:
       build-number:
-        type: number
+        type: string
         description: Build number used to build artifact to be promoted
       target-repository:
         type: string
@@ -25,8 +25,8 @@ jobs:
         env:
           JF_URL: ${{ vars.JFROG_PLATFORM_URL }}
         with:
-          oidc-provider-name: ${{ inputs.oidc-provider }}
-          oidc-audience: ${{ inputs.oidc-audience }}
+          oidc-provider-name: ${{ secrets.JFROG_OIDC_PROVIDER }}
+          oidc-audience: ${{ inputs.JFROG_OIDC_AUDIENCE }}
 
       - name: Get info
         id: get-build-info
@@ -36,25 +36,25 @@ jobs:
       - name: Get commit hash from repo
         id: get-commit-hash
         run: |
-          echo commit-hash=$(steps.get-build-info.outputs.build-info | jq -r '.vcs[].revision') >> $GITHUB_OUTPUT
+          echo commit-hash=$(echo '${{ steps.get-build-info.outputs.build-info }}' | jq -r '.buildInfo.vcs[].revision') >> $GITHUB_OUTPUT
 
-      - name: Get commit hash from repo
+      - name: Get build name
         id: get-build-name
         run: |
-          echo build-name=$(steps.get-build-info.outputs.build-info | jq -r '.name') >> $GITHUB_OUTPUT
+          echo build-name=$(echo '${{ steps.get-build-info.outputs.build-info }}' | jq -r '.buildInfo.name') >> $GITHUB_OUTPUT
 
       - name: Debug
         run: |
-          echo ${{ steps.get-build-info.outputs.build-info }}
-          echo ${{ steps.get-build-info.outputs.build-name }}
+          echo "commit-hash: '${{ steps.get-commit-hash.outputs.commit-hash }}'"
+          echo "build-name: '${{ steps.get-build-name.outputs.build-name }}'"
 
       - name: Merge commit hash from source to target branch
         uses: ./github/actions/fast-forward-merge
         with:
-          ref-to-merge: ${{ steps.get-build-info.outputs.build-info }}
+          ref-to-merge: ${{ steps.get-commit-hash.outputs.commit-hash }}
           base-branch: ${{ inputs.target-branch }}
           git-bot-token: ${{ secrets.CLIENT_BOT_PAT }}
 
       - name: Promote build
         run: |
-          jf rt build-promote ${{ steps.get-build-info.outputs.build-name }} ${{ inputs.build-number }} ${{ inputs.target-repository }}
+          jf rt build-promote ${{ steps.get-build-name.outputs.build-name }} ${{ inputs.build-number }} ${{ inputs.target-repository }}
