@@ -48,6 +48,9 @@ public class RWTaskSync extends RWTask implements Runnable {
 		while (valid) {
 			runCommand(random);
 
+			if(Main.abortRun.get() || Main.terminateRun.get()){
+				break;
+			}
 			// Throttle throughput
 			if (args.throughput > 0) {
 				int transactions;

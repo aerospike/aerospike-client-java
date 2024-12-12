@@ -152,7 +152,7 @@
           "disableTextWrap": false,
           "editorMode": "builder",
           "exemplar": false,
-          "expr": "aerospike_benchmarks_mrt_stateinfo{instance=~\"$client\",cluster=~\"$cluster\",namespace=~\"$namespace\",setname=~\"$setname\",cluster=~\"$cluster\",namespace=~\"$namespace\",setname=~\"$setname\"}",
+          "expr": "aerospike_benchmarks_mrt_stateinfo{instance=~\"$client\"}",
           "format": "table",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
@@ -241,7 +241,7 @@
           "disableTextWrap": false,
           "editorMode": "builder",
           "exemplar": false,
-          "expr": "aerospike_benchmarks_mrt_stateinfo{instance=~\"$client\", namespace=~\"$namespace\", setname=~\"$setname\", type=\"static\"}",
+          "expr": "aerospike_benchmarks_mrt_stateinfo{instance=~\"$client\", type=\"static\"}",
           "format": "table",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
@@ -355,7 +355,7 @@
           "disableTextWrap": false,
           "editorMode": "builder",
           "exemplar": false,
-          "expr": "aerospike_benchmarks_mrt_stateinfo{instance=~\"$client\",cluster=~\"$cluster\",namespace=~\"$namespace\",setname=~\"$setname\",cluster=~\"$cluster\",namespace=~\"$namespace\",setname=~\"$setname\"}",
+          "expr": "aerospike_benchmarks_mrt_stateinfo{instance=~\"$client\"}",
           "format": "table",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
@@ -520,7 +520,7 @@
           "disableTextWrap": false,
           "editorMode": "builder",
           "exemplar": false,
-          "expr": "aerospike_benchmarks_mrt_stateinfo{instance=~\"$client\", namespace=~\"$namespace\", setname=~\"$setname\", type=\"static\"}",
+          "expr": "aerospike_benchmarks_mrt_stateinfo{instance=~\"$client\", type=\"static\"}",
           "format": "table",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
@@ -556,31 +556,42 @@
                 "value": null
               }
             ]
-          },
-          "unit": "string"
+          }
         },
         "overrides": [
           {
             "matcher": {
               "id": "byName",
-              "options": "startDateTime"
+              "options": "Duration"
             },
             "properties": [
               {
-                "id": "displayName",
-                "value": "Start"
+                "id": "unit",
+                "value": "dtdurationms"
               }
             ]
           },
           {
             "matcher": {
               "id": "byName",
-              "options": "endLocalDateTime"
+              "options": "Start"
             },
             "properties": [
               {
-                "id": "displayName",
-                "value": "End"
+                "id": "unit",
+                "value": "dateTimeAsSystem"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "End"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "dateTimeAsSystem"
               }
             ]
           }
@@ -621,7 +632,7 @@
           "disableTextWrap": false,
           "editorMode": "builder",
           "exemplar": false,
-          "expr": "aerospike_benchmarks_mrt_stateinfo{instance=~\"$client\", namespace=~\"$namespace\", setname=~\"$setname\", type=\"static\"}",
+          "expr": "aerospike_benchmarks_mrt_stateinfo{instance=~\"$client\", type=\"static\"}",
           "format": "table",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
@@ -639,7 +650,7 @@
           "disableTextWrap": false,
           "editorMode": "builder",
           "exemplar": false,
-          "expr": "aerospike_benchmarks_mrt_stateinfo{instance=~\"$client\", namespace=~\"$namespace\", setname=~\"$setname\"}",
+          "expr": "aerospike_benchmarks_mrt_stateinfo{instance=~\"$client\"}",
           "format": "table",
           "fullMetaSearch": false,
           "hide": false,
@@ -761,8 +772,79 @@
               "writeMultiBinPct 2": true
             },
             "includeByName": {},
-            "indexByName": {},
-            "renameByName": {}
+            "indexByName": {
+              "DBConnState 1": 4,
+              "DBConnState 2": 33,
+              "DBHost 1": 5,
+              "DBHost 2": 34,
+              "Time": 3,
+              "Value #A": 32,
+              "Value #B": 64,
+              "__name__ 1": 6,
+              "__name__ 2": 35,
+              "appversion 1": 7,
+              "appversion 2": 36,
+              "asyncEnabled 1": 8,
+              "asyncEnabled 2": 37,
+              "batchSize 1": 9,
+              "batchSize 2": 38,
+              "cluster": 62,
+              "commandlineargs 1": 10,
+              "commandlineargs 2": 39,
+              "endLocalDateTime": 1,
+              "endTimeMillis": 63,
+              "generalInfo 1": 11,
+              "generalInfo 2": 40,
+              "hbCount 1": 12,
+              "hbCount 2": 41,
+              "instance 1": 13,
+              "instance 2": 42,
+              "job 1": 14,
+              "job 2": 43,
+              "mrtSize 1": 15,
+              "mrtSize 2": 44,
+              "namespace 1": 16,
+              "namespace 2": 45,
+              "nbrMRTs 1": 17,
+              "nbrMRTs 2": 46,
+              "nkeys 1": 18,
+              "nkeys 2": 47,
+              "otel_scope_name 1": 19,
+              "otel_scope_name 2": 48,
+              "otherInfo 1": 20,
+              "otherInfo 2": 49,
+              "policies 1": 21,
+              "policies 2": 50,
+              "readMultiBinPct 1": 22,
+              "readMultiBinPct 2": 51,
+              "readPct 1": 23,
+              "readPct 2": 52,
+              "runDurationMillis": 2,
+              "setname 1": 24,
+              "setname 2": 53,
+              "startDateTime 1": 0,
+              "startDateTime 2": 54,
+              "startTimeMillis 1": 25,
+              "startTimeMillis 2": 55,
+              "threads 1": 26,
+              "threads 2": 56,
+              "throughputThrottle 1": 27,
+              "throughputThrottle 2": 57,
+              "transactionLimit 1": 28,
+              "transactionLimit 2": 58,
+              "type 1": 29,
+              "type 2": 59,
+              "workload 1": 30,
+              "workload 2": 60,
+              "writeMultiBinPct 1": 31,
+              "writeMultiBinPct 2": 61
+            },
+            "renameByName": {
+              "Time": "",
+              "endLocalDateTime": "End",
+              "runDurationMillis": "Duration",
+              "startDateTime 1": "Start"
+            }
           }
         }
       ],
@@ -843,7 +925,7 @@
           "disableTextWrap": false,
           "editorMode": "builder",
           "exemplar": false,
-          "expr": "aerospike_benchmarks_mrt_stateinfo{instance=~\"$client\", namespace=~\"$namespace\", setname=~\"$setname\", type=\"static\"}",
+          "expr": "aerospike_benchmarks_mrt_stateinfo{instance=~\"$client\", type=\"static\"}",
           "format": "table",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
@@ -918,7 +1000,7 @@
           "disableTextWrap": false,
           "editorMode": "builder",
           "exemplar": false,
-          "expr": "aerospike_benchmarks_mrt_stateinfo{instance=~\"$client\", namespace=~\"$namespace\", setname=~\"$setname\", type=\"static\"}",
+          "expr": "aerospike_benchmarks_mrt_stateinfo{instance=~\"$client\", type=\"static\"}",
           "format": "table",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
@@ -993,7 +1075,7 @@
           "disableTextWrap": false,
           "editorMode": "builder",
           "exemplar": false,
-          "expr": "aerospike_benchmarks_mrt_stateinfo{instance=~\"$client\", namespace=~\"$namespace\", setname=~\"$setname\", type=\"static\"}",
+          "expr": "aerospike_benchmarks_mrt_stateinfo{instance=~\"$client\", type=\"static\"}",
           "format": "table",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
@@ -1069,7 +1151,7 @@
           "disableTextWrap": false,
           "editorMode": "builder",
           "exemplar": false,
-          "expr": "aerospike_benchmarks_mrt_stateinfo{instance=~\"$client\", namespace=~\"$namespace\", setname=~\"$setname\", type=\"static\"}",
+          "expr": "aerospike_benchmarks_mrt_stateinfo{instance=~\"$client\", type=\"static\"}",
           "format": "table",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
@@ -1144,7 +1226,7 @@
           "disableTextWrap": false,
           "editorMode": "builder",
           "exemplar": false,
-          "expr": "aerospike_benchmarks_mrt_stateinfo{instance=~\"$client\", namespace=~\"$namespace\", setname=~\"$setname\", type=\"static\"}",
+          "expr": "aerospike_benchmarks_mrt_stateinfo{instance=~\"$client\", type=\"static\"}",
           "format": "table",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
@@ -1235,7 +1317,7 @@
           "disableTextWrap": false,
           "editorMode": "builder",
           "exemplar": false,
-          "expr": "aerospike_benchmarks_mrt_stateinfo{instance=~\"$client\", namespace=~\"$namespace\", setname=~\"$setname\", type=\"static\"}",
+          "expr": "aerospike_benchmarks_mrt_stateinfo{instance=~\"$client\", type=\"static\"}",
           "format": "table",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
@@ -1321,7 +1403,7 @@
           "disableTextWrap": false,
           "editorMode": "builder",
           "exemplar": false,
-          "expr": "aerospike_benchmarks_mrt_stateinfo{instance=~\"$client\", namespace=~\"$namespace\", setname=~\"$setname\", type=\"static\"}",
+          "expr": "aerospike_benchmarks_mrt_stateinfo{instance=~\"$client\", type=\"static\"}",
           "format": "table",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
@@ -1407,7 +1489,7 @@
           "disableTextWrap": false,
           "editorMode": "builder",
           "exemplar": false,
-          "expr": "aerospike_benchmarks_mrt_stateinfo{instance=~\"$client\", namespace=~\"$namespace\", setname=~\"$setname\", type=\"static\"}",
+          "expr": "aerospike_benchmarks_mrt_stateinfo{instance=~\"$client\", type=\"static\"}",
           "format": "table",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
@@ -1482,7 +1564,7 @@
           "disableTextWrap": false,
           "editorMode": "builder",
           "exemplar": false,
-          "expr": "aerospike_benchmarks_mrt_stateinfo{instance=~\"$client\", namespace=~\"$namespace\", setname=~\"$setname\", type=\"static\"}",
+          "expr": "aerospike_benchmarks_mrt_stateinfo{instance=~\"$client\", type=\"static\"}",
           "format": "table",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
@@ -1568,7 +1650,7 @@
           "disableTextWrap": false,
           "editorMode": "builder",
           "exemplar": false,
-          "expr": "aerospike_benchmarks_mrt_stateinfo{instance=~\"$client\", namespace=~\"$namespace\", setname=~\"$setname\", type=\"static\"}",
+          "expr": "aerospike_benchmarks_mrt_stateinfo{instance=~\"$client\", type=\"static\"}",
           "format": "table",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
@@ -1643,7 +1725,7 @@
           "disableTextWrap": false,
           "editorMode": "builder",
           "exemplar": false,
-          "expr": "aerospike_benchmarks_mrt_stateinfo{instance=~\"$client\", namespace=~\"$namespace\", setname=~\"$setname\", type=\"static\"}",
+          "expr": "aerospike_benchmarks_mrt_stateinfo{instance=~\"$client\", type=\"static\"}",
           "format": "table",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
@@ -1718,7 +1800,7 @@
           "disableTextWrap": false,
           "editorMode": "builder",
           "exemplar": false,
-          "expr": "aerospike_benchmarks_mrt_stateinfo{instance=~\"$client\", namespace=~\"$namespace\", setname=~\"$setname\", type=\"static\"}",
+          "expr": "aerospike_benchmarks_mrt_stateinfo{instance=~\"$client\", type=\"static\"}",
           "format": "table",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
@@ -1828,7 +1910,7 @@
           "disableTextWrap": false,
           "editorMode": "builder",
           "exemplar": false,
-          "expr": "aerospike_benchmarks_mrt_stateinfo{instance=~\"$client\", namespace=~\"$namespace\", setname=~\"$setname\", type=\"static\"}",
+          "expr": "aerospike_benchmarks_mrt_stateinfo{instance=~\"$client\", type=\"static\"}",
           "format": "table",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
@@ -1900,7 +1982,7 @@
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "aerospike_benchmarks_mrt_stateinfo{instance=~\"$client\", namespace=~\"$namespace\", setname=~\"$setname\", type=\"static\"}",
+          "expr": "aerospike_benchmarks_mrt_stateinfo{instance=~\"$client\", type=\"static\"}",
           "format": "table",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
@@ -1971,7 +2053,7 @@
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "aerospike_benchmarks_mrt_stateinfo{instance=~\"$client\", namespace=~\"$namespace\", setname=~\"$setname\", type=\"static\"}",
+          "expr": "aerospike_benchmarks_mrt_stateinfo{instance=~\"$client\", type=\"static\"}",
           "format": "table",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
@@ -1994,7 +2076,7 @@
       },
       "id": 13,
       "panels": [],
-      "title": "Global Counters",
+      "title": "Current/Last Counters",
       "type": "row"
     },
     {
@@ -2056,7 +2138,7 @@
           "disableTextWrap": false,
           "editorMode": "builder",
           "exemplar": false,
-          "expr": "sum(sum_over_time(aerospike_benchmarks_mrt_latency_microsecond_count{instance=~\"$client\", cluster=~\"$cluster\", namespace=~\"$namespace\", setname=~\"$setname\", type=~\"write|read|readnotfound\"}[$__interval]))",
+          "expr": "sum(last_over_time(aerospike_benchmarks_mrt_latency_microsecond_count{instance=~\"$client\", cluster=~\"$cluster\", namespace=~\"$namespace\", setname=~\"$setname\", type=~\"write|read|readnotfound\"}[$__interval]))",
           "format": "time_series",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
@@ -2074,7 +2156,7 @@
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "clamp_min(sum(sum_over_time(aerospike_benchmarks_mrt_transaction_total{instance=~\"$client\",cluster=~\"$cluster\",namespace=~\"$namespace\",setname=~\"$setname\",cluster=~\"$cluster\",namespace=~\"$namespace\",setname=~\"$setname\", type=~\"write|read|readnotfound\"}[$__interval])), 0)",
+          "expr": "sum(last_over_time(aerospike_benchmarks_mrt_transaction_total{instance=~\"$client\", cluster=~\"$cluster\", namespace=~\"$namespace\", setname=~\"$setname\", type=~\"write|read|readnotfound\"}[$__interval]))",
           "fullMetaSearch": false,
           "hide": false,
           "includeNullMetadata": true,
@@ -2157,7 +2239,7 @@
           "disableTextWrap": false,
           "editorMode": "builder",
           "exemplar": false,
-          "expr": "sum(sum_over_time(aerospike_benchmarks_mrt_latency_microsecond_count{instance=~\"$client\",cluster=~\"$cluster\",namespace=~\"$namespace\",setname=~\"$setname\",cluster=~\"$cluster\",namespace=~\"$namespace\",setname=~\"$setname\", type=\"write\"}[$__interval]))",
+          "expr": "sum(last_over_time(aerospike_benchmarks_mrt_latency_microsecond_count{instance=~\"$client\", cluster=~\"$cluster\", namespace=~\"$namespace\", setname=~\"$setname\", type=\"write\"}[$__interval]))",
           "format": "time_series",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
@@ -2175,7 +2257,7 @@
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "clamp_min(sum(sum_over_time(aerospike_benchmarks_mrt_transaction_total{instance=~\"$client\",cluster=~\"$cluster\",namespace=~\"$namespace\",setname=~\"$setname\",cluster=~\"$cluster\",namespace=~\"$namespace\",setname=~\"$setname\", type=\"write\"}[$__interval])), 0)",
+          "expr": "sum(last_over_time(aerospike_benchmarks_mrt_transaction_total{instance=~\"$client\", cluster=~\"$cluster\", namespace=~\"$namespace\", setname=~\"$setname\", type=\"write\"}[$__interval]))",
           "fullMetaSearch": false,
           "hide": false,
           "includeNullMetadata": true,
@@ -2258,7 +2340,7 @@
           "disableTextWrap": false,
           "editorMode": "builder",
           "exemplar": false,
-          "expr": "sum(sum_over_time(aerospike_benchmarks_mrt_latency_microsecond_count{instance=~\"$client\",cluster=~\"$cluster\",namespace=~\"$namespace\",setname=~\"$setname\",cluster=~\"$cluster\",namespace=~\"$namespace\",setname=~\"$setname\", type=~\"read|readnotfound\"}[$__interval]))",
+          "expr": "sum(last_over_time(aerospike_benchmarks_mrt_latency_microsecond_count{instance=~\"$client\", cluster=~\"$cluster\", namespace=~\"$namespace\", setname=~\"$setname\", type=~\"read|readnotfound\"}[$__interval]))",
           "format": "time_series",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
@@ -2276,7 +2358,7 @@
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "clamp_min(sum(sum_over_time(aerospike_benchmarks_mrt_transaction_total{instance=~\"$client\",cluster=~\"$cluster\",namespace=~\"$namespace\",setname=~\"$setname\", type=~\"read|readnotfound\"}[$__interval])), 0)",
+          "expr": "sum(last_over_time(aerospike_benchmarks_mrt_transaction_total{instance=~\"$client\", cluster=~\"$cluster\", namespace=~\"$namespace\", setname=~\"$setname\", type=~\"read|readnotfound\"}[$__interval]))",
           "fullMetaSearch": false,
           "hide": false,
           "includeNullMetadata": true,
@@ -2359,7 +2441,7 @@
           "disableTextWrap": false,
           "editorMode": "builder",
           "exemplar": false,
-          "expr": "sum(sum_over_time(aerospike_benchmarks_mrt_latency_microsecond_count{instance=~\"$client\",cluster=~\"$cluster\",namespace=~\"$namespace\",setname=~\"$setname\", type=~\"transaction\"}[$__interval]))",
+          "expr": "sum(last_over_time(aerospike_benchmarks_mrt_latency_microsecond_count{instance=~\"$client\", cluster=~\"$cluster\", namespace=~\"$namespace\", setname=~\"$setname\", type=~\"transaction\"}[$__interval]))",
           "format": "time_series",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
@@ -2377,7 +2459,7 @@
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "clamp_min(sum(sum_over_time(aerospike_benchmarks_mrt_transaction_total{instance=~\"$client\",cluster=~\"$cluster\",namespace=~\"$namespace\",setname=~\"$setname\", type=~\"transaction\"}[$__interval])), 0)",
+          "expr": "sum(last_over_time(aerospike_benchmarks_mrt_transaction_total{instance=~\"$client\", cluster=~\"$cluster\", namespace=~\"$namespace\", setname=~\"$setname\", type=~\"transaction\"}[$__interval]))",
           "fullMetaSearch": false,
           "hide": false,
           "includeNullMetadata": true,
@@ -2460,7 +2542,7 @@
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "sum(sum_over_time(aerospike_benchmarks_mrt_transaction_total{instance=~\"$client\",cluster=~\"$cluster\",namespace=~\"$namespace\",setname=~\"$setname\", type=~\"mrtuow|txnuow\"}[$__interval]))",
+          "expr": "sum(last_over_time(aerospike_benchmarks_mrt_transaction_total{instance=~\"$client\", cluster=~\"$cluster\", namespace=~\"$namespace\", setname=~\"$setname\", type=~\"mrtuow\"}[$__interval]))",
           "fullMetaSearch": false,
           "hide": false,
           "includeNullMetadata": true,
@@ -2477,7 +2559,7 @@
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "sum by(type) (sum_over_time(aerospike_benchmarks_mrt_latency_microsecond_count{instance=~\"$client\",cluster=~\"$cluster\",namespace=~\"$namespace\",setname=~\"$setname\", type=~\"mrtuow|txnuow\"}[$__interval]))",
+          "expr": "sum(last_over_time(aerospike_benchmarks_mrt_latency_microsecond_count{instance=~\"$client\", cluster=~\"$cluster\", namespace=~\"$namespace\", setname=~\"$setname\", type=~\"mrtuow\"}[$__interval]))",
           "fullMetaSearch": false,
           "hide": false,
           "includeNullMetadata": true,
@@ -2560,7 +2642,7 @@
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "sum(sum_over_time(aerospike_benchmarks_mrt_transaction_total{instance=~\"$client\",cluster=~\"$cluster\",namespace=~\"$namespace\",setname=~\"$setname\", type=~\"txncommit|mrtcommit\"}[$__interval]))",
+          "expr": "sum(last_over_time(aerospike_benchmarks_mrt_transaction_total{instance=~\"$client\", cluster=~\"$cluster\", namespace=~\"$namespace\", setname=~\"$setname\", type=~\"mrtcommit\"}[$__interval]))",
           "fullMetaSearch": false,
           "hide": false,
           "includeNullMetadata": true,
@@ -2577,7 +2659,7 @@
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "sum by(type) (sum_over_time(aerospike_benchmarks_mrt_latency_microsecond_count{instance=~\"$client\",cluster=~\"$cluster\",namespace=~\"$namespace\",setname=~\"$setname\", type=~\"txncommit|mrtcommit\"}[$__interval]))",
+          "expr": "sum(last_over_time(aerospike_benchmarks_mrt_latency_microsecond_count{instance=~\"$client\", cluster=~\"$cluster\", namespace=~\"$namespace\", setname=~\"$setname\", type=~\"mrtcommit\"}[$__interval]))",
           "fullMetaSearch": false,
           "hide": false,
           "includeNullMetadata": true,
@@ -2660,7 +2742,7 @@
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "sum(sum_over_time(aerospike_benchmarks_mrt_transaction_total{instance=~\"$client\",cluster=~\"$cluster\",namespace=~\"$namespace\",setname=~\"$setname\", type=~\"txnabort|mrtabort\"}[$__interval]))",
+          "expr": "sum(last_over_time(aerospike_benchmarks_mrt_transaction_total{instance=~\"$client\", cluster=~\"$cluster\", namespace=~\"$namespace\", setname=~\"$setname\", type=~\"mrtabort\"}[$__interval]))",
           "fullMetaSearch": false,
           "hide": false,
           "includeNullMetadata": true,
@@ -2677,7 +2759,7 @@
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "sum by(type) (sum_over_time(aerospike_benchmarks_mrt_latency_microsecond_count{instance=~\"$client\",cluster=~\"$cluster\",namespace=~\"$namespace\",setname=~\"$setname\", type=~\"txnabort|mrtabort\"}[$__interval]))",
+          "expr": "sum by(type) (last_over_time(aerospike_benchmarks_mrt_latency_microsecond_count{instance=~\"$client\", cluster=~\"$cluster\", namespace=~\"$namespace\", setname=~\"$setname\", type=~\"mrtabort\"}[$__interval]))",
           "fullMetaSearch": false,
           "hide": false,
           "includeNullMetadata": true,
@@ -2781,7 +2863,7 @@
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "clamp_min(sum(sum_over_time(aerospike_benchmarks_mrt_exception_total{instance=~\"$client\",cluster=~\"$cluster\",namespace=~\"$namespace\",setname=~\"$setname\"}[$__interval])), 0)",
+          "expr": "sum(last_over_time(aerospike_benchmarks_mrt_exception_total{instance=~\"$client\", cluster=~\"$cluster\", namespace=~\"$namespace\", setname=~\"$setname\"}[$__interval]))",
           "fullMetaSearch": false,
           "hide": false,
           "includeNullMetadata": true,
@@ -2803,6 +2885,810 @@
         "x": 0,
         "y": 21
       },
+      "id": 97,
+      "panels": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DATASOURCE}"
+          },
+          "description": "The total completed number of read and write operations",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "decimals": 0,
+              "mappings": [],
+              "noValue": "0",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green"
+                  }
+                ]
+              },
+              "unit": "locale"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 5,
+            "w": 3,
+            "x": 0,
+            "y": 22
+          },
+          "id": 89,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "none",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "percentChangeColorMode": "standard",
+            "reduceOptions": {
+              "calcs": [],
+              "fields": "",
+              "values": false
+            },
+            "showPercentChange": false,
+            "textMode": "auto",
+            "wideLayout": true
+          },
+          "pluginVersion": "11.3.0",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${DS_PROMETHEUS}"
+              },
+              "disableTextWrap": false,
+              "editorMode": "code",
+              "exemplar": false,
+              "expr": "sum(increase(aerospike_benchmarks_mrt_latency_microsecond_count{instance=~\"$client\", cluster=~\"$cluster\", namespace=~\"$namespace\", setname=~\"$setname\", type=~\"write|read|readnotfound\"}[$__range]))",
+              "format": "time_series",
+              "fullMetaSearch": false,
+              "includeNullMetadata": true,
+              "instant": false,
+              "interval": "",
+              "legendFormat": "Measured",
+              "range": true,
+              "refId": "A",
+              "useBackend": false
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${DATASOURCE}"
+              },
+              "disableTextWrap": false,
+              "editorMode": "code",
+              "expr": "sum(increase(aerospike_benchmarks_mrt_transaction_total{instance=~\"$client\", cluster=~\"$cluster\", namespace=~\"$namespace\", setname=~\"$setname\", type=~\"write|read|readnotfound\"}[$__range]))",
+              "fullMetaSearch": false,
+              "hide": false,
+              "includeNullMetadata": true,
+              "instant": false,
+              "legendFormat": "Not Measured",
+              "range": true,
+              "refId": "C",
+              "useBackend": false
+            },
+            {
+              "datasource": {
+                "type": "__expr__",
+                "uid": "${DS_EXPRESSION}"
+              },
+              "expression": "$A + $C",
+              "hide": false,
+              "refId": "Total",
+              "type": "math"
+            }
+          ],
+          "title": "Range Total Completed RW Count",
+          "type": "stat"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DATASOURCE}"
+          },
+          "description": "The total completed number of write actions across all types",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "decimals": 0,
+              "mappings": [],
+              "noValue": "0",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green"
+                  }
+                ]
+              },
+              "unit": "locale"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 5,
+            "w": 3,
+            "x": 3,
+            "y": 22
+          },
+          "id": 90,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "none",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "percentChangeColorMode": "standard",
+            "reduceOptions": {
+              "calcs": [],
+              "fields": "",
+              "values": false
+            },
+            "showPercentChange": false,
+            "textMode": "auto",
+            "wideLayout": true
+          },
+          "pluginVersion": "11.3.0",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${DS_PROMETHEUS}"
+              },
+              "disableTextWrap": false,
+              "editorMode": "code",
+              "exemplar": false,
+              "expr": "sum(increase(aerospike_benchmarks_mrt_latency_microsecond_count{instance=~\"$client\", cluster=~\"$cluster\", namespace=~\"$namespace\", setname=~\"$setname\", type=\"write\"}[$__range]))",
+              "format": "time_series",
+              "fullMetaSearch": false,
+              "includeNullMetadata": true,
+              "instant": false,
+              "interval": "",
+              "legendFormat": "Measured",
+              "range": true,
+              "refId": "A",
+              "useBackend": false
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${DATASOURCE}"
+              },
+              "disableTextWrap": false,
+              "editorMode": "code",
+              "expr": "sum(increase(aerospike_benchmarks_mrt_transaction_total{instance=~\"$client\", cluster=~\"$cluster\", namespace=~\"$namespace\", setname=~\"$setname\", type=\"write\"}[$__range]))",
+              "fullMetaSearch": false,
+              "hide": false,
+              "includeNullMetadata": true,
+              "instant": false,
+              "legendFormat": "Not Measured",
+              "range": true,
+              "refId": "C",
+              "useBackend": false
+            },
+            {
+              "datasource": {
+                "type": "__expr__",
+                "uid": "${DS_EXPRESSION}"
+              },
+              "expression": "$A + $C",
+              "hide": false,
+              "refId": "Total",
+              "type": "math"
+            }
+          ],
+          "title": "Range Total Completed Write Count",
+          "type": "stat"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DATASOURCE}"
+          },
+          "description": "The total completed number of read actions across all types",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "decimals": 0,
+              "mappings": [],
+              "noValue": "0",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green"
+                  }
+                ]
+              },
+              "unit": "locale"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 5,
+            "w": 3,
+            "x": 6,
+            "y": 22
+          },
+          "id": 91,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "none",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "percentChangeColorMode": "standard",
+            "reduceOptions": {
+              "calcs": [],
+              "fields": "",
+              "values": false
+            },
+            "showPercentChange": false,
+            "textMode": "auto",
+            "wideLayout": true
+          },
+          "pluginVersion": "11.3.0",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${DS_PROMETHEUS}"
+              },
+              "disableTextWrap": false,
+              "editorMode": "code",
+              "exemplar": false,
+              "expr": "sum(increase(aerospike_benchmarks_mrt_latency_microsecond_count{instance=~\"$client\", cluster=~\"$cluster\", namespace=~\"$namespace\", setname=~\"$setname\", type=~\"read|readnotfound\"}[$__range]))",
+              "format": "time_series",
+              "fullMetaSearch": false,
+              "includeNullMetadata": true,
+              "instant": false,
+              "interval": "",
+              "legendFormat": "Measured",
+              "range": true,
+              "refId": "A",
+              "useBackend": false
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${DATASOURCE}"
+              },
+              "disableTextWrap": false,
+              "editorMode": "code",
+              "expr": "sum(increase(aerospike_benchmarks_mrt_transaction_total{instance=~\"$client\", cluster=~\"$cluster\", namespace=~\"$namespace\", setname=~\"$setname\", type=~\"read|readnotfound\"}[$__range]))",
+              "fullMetaSearch": false,
+              "hide": false,
+              "includeNullMetadata": true,
+              "instant": false,
+              "legendFormat": "Not Measured",
+              "range": true,
+              "refId": "C",
+              "useBackend": false
+            },
+            {
+              "datasource": {
+                "type": "__expr__",
+                "uid": "${DS_EXPRESSION}"
+              },
+              "expression": "$A + $C",
+              "hide": false,
+              "refId": "Total",
+              "type": "math"
+            }
+          ],
+          "title": "Range Total Completed Read Count",
+          "type": "stat"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DATASOURCE}"
+          },
+          "description": "The total completed number of transaction actions across all types",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "decimals": 0,
+              "mappings": [],
+              "noValue": "0",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green"
+                  }
+                ]
+              },
+              "unit": "locale"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 5,
+            "w": 3,
+            "x": 9,
+            "y": 22
+          },
+          "id": 92,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "none",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "percentChangeColorMode": "standard",
+            "reduceOptions": {
+              "calcs": [],
+              "fields": "",
+              "values": false
+            },
+            "showPercentChange": false,
+            "textMode": "auto",
+            "wideLayout": true
+          },
+          "pluginVersion": "11.3.0",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${DS_PROMETHEUS}"
+              },
+              "disableTextWrap": false,
+              "editorMode": "code",
+              "exemplar": false,
+              "expr": "sum(increase(aerospike_benchmarks_mrt_latency_microsecond_count{instance=~\"$client\", cluster=~\"$cluster\", namespace=~\"$namespace\", setname=~\"$setname\", type=~\"transaction\"}[$__range]))",
+              "format": "time_series",
+              "fullMetaSearch": false,
+              "includeNullMetadata": true,
+              "instant": false,
+              "interval": "",
+              "legendFormat": "Measured",
+              "range": true,
+              "refId": "A",
+              "useBackend": false
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${DATASOURCE}"
+              },
+              "disableTextWrap": false,
+              "editorMode": "code",
+              "expr": "sum(increase(aerospike_benchmarks_mrt_transaction_total{instance=~\"$client\", cluster=~\"$cluster\", namespace=~\"$namespace\", setname=~\"$setname\", type=~\"transaction\"}[$__range]))",
+              "fullMetaSearch": false,
+              "hide": false,
+              "includeNullMetadata": true,
+              "instant": false,
+              "legendFormat": "Not Measured",
+              "range": true,
+              "refId": "C",
+              "useBackend": false
+            },
+            {
+              "datasource": {
+                "type": "__expr__",
+                "uid": "${DS_EXPRESSION}"
+              },
+              "expression": "$A + $C",
+              "hide": false,
+              "refId": "Total",
+              "type": "math"
+            }
+          ],
+          "title": "Range Total Completed Transaction Count",
+          "type": "stat"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DATASOURCE}"
+          },
+          "description": "The total number of Unit of Work (MRTs) that made it to either commit or abort point.",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "fixedColor": "dark-green",
+                "mode": "shades"
+              },
+              "decimals": 0,
+              "mappings": [],
+              "noValue": "0",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green"
+                  }
+                ]
+              },
+              "unit": "locale"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 5,
+            "w": 3,
+            "x": 12,
+            "y": 22
+          },
+          "id": 93,
+          "options": {
+            "colorMode": "background_solid",
+            "graphMode": "none",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "percentChangeColorMode": "standard",
+            "reduceOptions": {
+              "calcs": [],
+              "fields": "",
+              "values": false
+            },
+            "showPercentChange": false,
+            "textMode": "auto",
+            "wideLayout": true
+          },
+          "pluginVersion": "11.3.0",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${DS_PROMETHEUS}"
+              },
+              "disableTextWrap": false,
+              "editorMode": "code",
+              "expr": "sum(increase(aerospike_benchmarks_mrt_transaction_total{instance=~\"$client\", cluster=~\"$cluster\", namespace=~\"$namespace\", setname=~\"$setname\", type=~\"mrtuow\"}[$__range]))",
+              "fullMetaSearch": false,
+              "hide": false,
+              "includeNullMetadata": true,
+              "instant": false,
+              "legendFormat": "Not Measured",
+              "range": true,
+              "refId": "C",
+              "useBackend": false
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${DATASOURCE}"
+              },
+              "disableTextWrap": false,
+              "editorMode": "code",
+              "expr": "sum(increase(aerospike_benchmarks_mrt_latency_microsecond_count{instance=~\"$client\", cluster=~\"$cluster\", namespace=~\"$namespace\", setname=~\"$setname\", type=~\"mrtuow\"}[$__range]))",
+              "fullMetaSearch": false,
+              "hide": false,
+              "includeNullMetadata": true,
+              "instant": false,
+              "legendFormat": "Measured",
+              "range": true,
+              "refId": "A",
+              "useBackend": false
+            },
+            {
+              "datasource": {
+                "type": "__expr__",
+                "uid": "${DS_EXPRESSION}"
+              },
+              "expression": "$A + $C",
+              "hide": false,
+              "refId": "Total",
+              "type": "math"
+            }
+          ],
+          "title": "Range Total Unit of Work (MRTs) Transaction",
+          "type": "stat"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DATASOURCE}"
+          },
+          "description": "The total completed number of Commits",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "fixedColor": "dark-green",
+                "mode": "fixed"
+              },
+              "decimals": 0,
+              "mappings": [],
+              "noValue": "0",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green"
+                  }
+                ]
+              },
+              "unit": "locale"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 5,
+            "w": 3,
+            "x": 15,
+            "y": 22
+          },
+          "id": 94,
+          "options": {
+            "colorMode": "background_solid",
+            "graphMode": "none",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "percentChangeColorMode": "standard",
+            "reduceOptions": {
+              "calcs": [],
+              "fields": "",
+              "values": false
+            },
+            "showPercentChange": false,
+            "textMode": "auto",
+            "wideLayout": true
+          },
+          "pluginVersion": "11.3.0",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${DS_PROMETHEUS}"
+              },
+              "disableTextWrap": false,
+              "editorMode": "code",
+              "expr": "sum(increase(aerospike_benchmarks_mrt_transaction_total{instance=~\"$client\", cluster=~\"$cluster\", namespace=~\"$namespace\", setname=~\"$setname\", type=~\"mrtcommit\"}[$__range]))",
+              "fullMetaSearch": false,
+              "hide": false,
+              "includeNullMetadata": true,
+              "instant": false,
+              "legendFormat": "Not Measured",
+              "range": true,
+              "refId": "C",
+              "useBackend": false
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${DATASOURCE}"
+              },
+              "disableTextWrap": false,
+              "editorMode": "code",
+              "expr": "sum(increase(aerospike_benchmarks_mrt_latency_microsecond_count{instance=~\"$client\", cluster=~\"$cluster\", namespace=~\"$namespace\", setname=~\"$setname\", type=~\"mrtcommit\"}[$__range]))",
+              "fullMetaSearch": false,
+              "hide": false,
+              "includeNullMetadata": true,
+              "instant": false,
+              "legendFormat": "Measured",
+              "range": true,
+              "refId": "A",
+              "useBackend": false
+            },
+            {
+              "datasource": {
+                "type": "__expr__",
+                "uid": "${DS_EXPRESSION}"
+              },
+              "expression": "$A + $C",
+              "hide": false,
+              "refId": "Total",
+              "type": "math"
+            }
+          ],
+          "title": "Range Total Coimpleted Commits",
+          "type": "stat"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DATASOURCE}"
+          },
+          "description": "The total completed number of Aborts",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "fixedColor": "dark-green",
+                "mode": "fixed"
+              },
+              "decimals": 0,
+              "mappings": [],
+              "noValue": "0",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green"
+                  }
+                ]
+              },
+              "unit": "locale"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 5,
+            "w": 3,
+            "x": 18,
+            "y": 22
+          },
+          "id": 95,
+          "options": {
+            "colorMode": "background_solid",
+            "graphMode": "none",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "percentChangeColorMode": "standard",
+            "reduceOptions": {
+              "calcs": [],
+              "fields": "",
+              "values": false
+            },
+            "showPercentChange": false,
+            "textMode": "auto",
+            "wideLayout": true
+          },
+          "pluginVersion": "11.3.0",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${DS_PROMETHEUS}"
+              },
+              "disableTextWrap": false,
+              "editorMode": "code",
+              "expr": "sum(increase(aerospike_benchmarks_mrt_transaction_total{instance=~\"$client\", cluster=~\"$cluster\", namespace=~\"$namespace\", setname=~\"$setname\", type=~\"mrtabort\"}[$__range]))",
+              "fullMetaSearch": false,
+              "hide": false,
+              "includeNullMetadata": true,
+              "instant": false,
+              "legendFormat": "Not Measured",
+              "range": true,
+              "refId": "C",
+              "useBackend": false
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${DATASOURCE}"
+              },
+              "disableTextWrap": false,
+              "editorMode": "code",
+              "expr": "sum(increase(aerospike_benchmarks_mrt_latency_microsecond_count{instance=~\"$client\", cluster=~\"$cluster\", namespace=~\"$namespace\", setname=~\"$setname\", type=~\"mrtabort\"}[$__range]))",
+              "fullMetaSearch": false,
+              "hide": false,
+              "includeNullMetadata": true,
+              "instant": false,
+              "legendFormat": "Measured",
+              "range": true,
+              "refId": "A",
+              "useBackend": false
+            },
+            {
+              "datasource": {
+                "type": "__expr__",
+                "uid": "${DS_EXPRESSION}"
+              },
+              "expression": "$A + $C",
+              "hide": false,
+              "refId": "Total",
+              "type": "math"
+            }
+          ],
+          "title": "Range Total Completed Aborts",
+          "type": "stat"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DATASOURCE}"
+          },
+          "description": "The total number oferrors",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "decimals": 0,
+              "mappings": [],
+              "noValue": "0",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "light-purple"
+                  },
+                  {
+                    "color": "super-light-yellow",
+                    "value": 500
+                  },
+                  {
+                    "color": "yellow",
+                    "value": 1000
+                  },
+                  {
+                    "color": "orange",
+                    "value": 1500
+                  },
+                  {
+                    "color": "red",
+                    "value": 2000
+                  },
+                  {
+                    "color": "dark-red",
+                    "value": 3000
+                  }
+                ]
+              },
+              "unit": "locale"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 5,
+            "w": 3,
+            "x": 21,
+            "y": 22
+          },
+          "id": 96,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "none",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "percentChangeColorMode": "standard",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showPercentChange": false,
+            "textMode": "auto",
+            "wideLayout": true
+          },
+          "pluginVersion": "11.3.0",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${DS_PROMETHEUS}"
+              },
+              "disableTextWrap": false,
+              "editorMode": "code",
+              "expr": "sum(increase(aerospike_benchmarks_mrt_exception_total{instance=~\"$client\", cluster=~\"$cluster\", namespace=~\"$namespace\", setname=~\"$setname\"}[$__range]))",
+              "fullMetaSearch": false,
+              "hide": false,
+              "includeNullMetadata": true,
+              "instant": false,
+              "legendFormat": "Not Measured",
+              "range": true,
+              "refId": "C",
+              "useBackend": false
+            }
+          ],
+          "title": "Range Total Errors",
+          "type": "stat"
+        }
+      ],
+      "title": "Time Range Counter",
+      "type": "row"
+    },
+    {
+      "collapsed": true,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 22
+      },
       "id": 77,
       "panels": [
         {
@@ -2821,8 +3707,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   }
                 ]
               },
@@ -2834,7 +3719,7 @@
             "h": 4,
             "w": 24,
             "x": 0,
-            "y": 22
+            "y": 33
           },
           "id": 76,
           "options": {
@@ -2863,7 +3748,7 @@
               },
               "disableTextWrap": false,
               "editorMode": "builder",
-              "expr": "min by(type) (histogram_quantile(0.5, aerospike_benchmarks_mrt_latency_microsecond_bucket{instance=\"$client\", cluster=~\"$cluster\", type!~\"mrtuow|mrtuowtotal\"}))",
+              "expr": "min by(type) (histogram_quantile(0.5, aerospike_benchmarks_mrt_latency_microsecond_bucket{instance=\"$client\", cluster=~\"$cluster\", type!~\"mrtuow|mrtuowtotal\", namespace=~\"$namespace\", setname=~\"$setname\"}))",
               "format": "time_series",
               "fullMetaSearch": false,
               "includeNullMetadata": true,
@@ -2892,8 +3777,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   }
                 ]
               },
@@ -2905,7 +3789,7 @@
             "h": 4,
             "w": 24,
             "x": 0,
-            "y": 26
+            "y": 37
           },
           "id": 79,
           "options": {
@@ -2931,8 +3815,8 @@
                 "uid": "${DS_PROMETHEUS}"
               },
               "disableTextWrap": false,
-              "editorMode": "code",
-              "expr": "min by(type) (histogram_quantile(0.75, aerospike_benchmarks_mrt_latency_microsecond_bucket{instance=\"$client\", type!~\"mrtuow|mrtuowtotal\"}))",
+              "editorMode": "builder",
+              "expr": "min by(type) (histogram_quantile(0.75, aerospike_benchmarks_mrt_latency_microsecond_bucket{instance=\"$client\", type!~\"mrtuow|mrtuowtotal\", cluster=~\"$cluster\", namespace=~\"$namespace\", setname=~\"$setname\"}))",
               "format": "time_series",
               "fullMetaSearch": false,
               "hide": false,
@@ -2962,8 +3846,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   }
                 ]
               },
@@ -2975,7 +3858,7 @@
             "h": 4,
             "w": 24,
             "x": 0,
-            "y": 30
+            "y": 41
           },
           "id": 78,
           "options": {
@@ -3002,7 +3885,7 @@
               },
               "disableTextWrap": false,
               "editorMode": "builder",
-              "expr": "min by(type) (histogram_quantile(0.9, aerospike_benchmarks_mrt_latency_microsecond_bucket{instance=\"$client\", type!~\"mrtuow|mrtuowtotal\"}))",
+              "expr": "min by(type) (histogram_quantile(0.9, aerospike_benchmarks_mrt_latency_microsecond_bucket{instance=\"$client\", type!~\"mrtuow|mrtuowtotal\", cluster=~\"$cluster\", namespace=~\"$namespace\", setname=~\"$setname\"}))",
               "format": "time_series",
               "fullMetaSearch": false,
               "hide": false,
@@ -3032,8 +3915,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   }
                 ]
               },
@@ -3045,7 +3927,7 @@
             "h": 4,
             "w": 24,
             "x": 0,
-            "y": 34
+            "y": 45
           },
           "id": 80,
           "options": {
@@ -3072,7 +3954,7 @@
               },
               "disableTextWrap": false,
               "editorMode": "builder",
-              "expr": "min by(type) (histogram_quantile(0.95, aerospike_benchmarks_mrt_latency_microsecond_bucket{instance=\"$client\", type!~\"mrtuow|mrtuowtotal\"}))",
+              "expr": "min by(type) (histogram_quantile(0.95, aerospike_benchmarks_mrt_latency_microsecond_bucket{instance=\"$client\", type!~\"mrtuow|mrtuowtotal\", cluster=~\"$cluster\", namespace=~\"$namespace\", setname=~\"$setname\"}))",
               "format": "time_series",
               "fullMetaSearch": false,
               "hide": false,
@@ -3102,8 +3984,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   }
                 ]
               },
@@ -3115,7 +3996,7 @@
             "h": 4,
             "w": 24,
             "x": 0,
-            "y": 38
+            "y": 49
           },
           "id": 81,
           "options": {
@@ -3142,7 +4023,7 @@
               },
               "disableTextWrap": false,
               "editorMode": "builder",
-              "expr": "min by(type) (histogram_quantile(0.99, aerospike_benchmarks_mrt_latency_microsecond_bucket{instance=\"$client\", type!~\"mrtuow|mrtuowtotal\"}))",
+              "expr": "min by(type) (histogram_quantile(0.99, aerospike_benchmarks_mrt_latency_microsecond_bucket{instance=\"$client\", type!~\"mrtuow|mrtuowtotal\", cluster=~\"$cluster\", namespace=~\"$namespace\", setname=~\"$setname\"}))",
               "format": "time_series",
               "fullMetaSearch": false,
               "hide": false,
@@ -3166,7 +4047,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 22
+        "y": 23
       },
       "id": 83,
       "panels": [
@@ -3187,8 +4068,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   }
                 ]
               },
@@ -3200,7 +4080,7 @@
             "h": 4,
             "w": 24,
             "x": 0,
-            "y": 63
+            "y": 94
           },
           "id": 82,
           "options": {
@@ -3227,7 +4107,7 @@
               },
               "disableTextWrap": false,
               "editorMode": "code",
-              "expr": "avg by(type) (quantile_over_time(0.5, rate(aerospike_benchmarks_mrt_latency_microsecond_count{instance=\"$client\", type=~\"read|readnotfound|write\"}[$__rate_interval])[$__range:5s]))",
+              "expr": "avg by(type) (quantile_over_time(0.5, rate(aerospike_benchmarks_mrt_latency_microsecond_count{instance=\"$client\", type=~\"read|readnotfound|write\",cluster=~\"$cluster\", namespace=~\"$namespace\", setname=~\"$setname\"}[$__rate_interval])[$__range:5s]))",
               "format": "time_series",
               "fullMetaSearch": false,
               "hide": false,
@@ -3244,7 +4124,7 @@
               },
               "disableTextWrap": false,
               "editorMode": "code",
-              "expr": "avg by(type) (quantile_over_time(0.5, rate(aerospike_benchmarks_mrt_transaction_total{instance=\"$client\", type=~\"read|readnotfound|write\"}[$__rate_interval])[$__range:5s]))",
+              "expr": "avg by(type) (quantile_over_time(0.5, rate(aerospike_benchmarks_mrt_transaction_total{instance=\"$client\", type=~\"read|readnotfound|write\",cluster=~\"$cluster\", namespace=~\"$namespace\", setname=~\"$setname\"}[$__rate_interval])[$__range:5s]))",
               "format": "time_series",
               "fullMetaSearch": false,
               "hide": false,
@@ -3275,8 +4155,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   }
                 ]
               },
@@ -3288,7 +4167,7 @@
             "h": 4,
             "w": 24,
             "x": 0,
-            "y": 67
+            "y": 98
           },
           "id": 84,
           "options": {
@@ -3315,7 +4194,7 @@
               },
               "disableTextWrap": false,
               "editorMode": "code",
-              "expr": "avg by(type) (quantile_over_time(0.75, rate(aerospike_benchmarks_mrt_latency_microsecond_count{instance=\"$client\", type=~\"read|readnotfound|write\"}[$__rate_interval])[$__range:5s]))",
+              "expr": "avg by(type) (quantile_over_time(0.75, rate(aerospike_benchmarks_mrt_latency_microsecond_count{instance=\"$client\", type=~\"read|readnotfound|write\",cluster=~\"$cluster\", namespace=~\"$namespace\", setname=~\"$setname\"}[$__rate_interval])[$__range:5s]))",
               "format": "time_series",
               "fullMetaSearch": false,
               "hide": false,
@@ -3332,7 +4211,7 @@
               },
               "disableTextWrap": false,
               "editorMode": "code",
-              "expr": "avg by(type) (quantile_over_time(0.75, rate(aerospike_benchmarks_mrt_transaction_total{instance=\"$client\", type=~\"read|readnotfound|write\"}[$__rate_interval])[$__range:5s]))",
+              "expr": "avg by(type) (quantile_over_time(0.75, rate(aerospike_benchmarks_mrt_transaction_total{instance=\"$client\", type=~\"read|readnotfound|write\",cluster=~\"$cluster\", namespace=~\"$namespace\", setname=~\"$setname\"}[$__rate_interval])[$__range:5s]))",
               "format": "time_series",
               "fullMetaSearch": false,
               "hide": false,
@@ -3363,8 +4242,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   }
                 ]
               },
@@ -3376,7 +4254,7 @@
             "h": 4,
             "w": 24,
             "x": 0,
-            "y": 71
+            "y": 102
           },
           "id": 86,
           "options": {
@@ -3403,7 +4281,7 @@
               },
               "disableTextWrap": false,
               "editorMode": "code",
-              "expr": "avg by(type) (quantile_over_time(0.90, rate(aerospike_benchmarks_mrt_latency_microsecond_count{instance=\"$client\", type=~\"read|readnotfound|write\"}[$__rate_interval])[$__range:5s]))",
+              "expr": "avg by(type) (quantile_over_time(0.90, rate(aerospike_benchmarks_mrt_latency_microsecond_count{instance=\"$client\", type=~\"read|readnotfound|write\",cluster=~\"$cluster\", namespace=~\"$namespace\", setname=~\"$setname\"}[$__rate_interval])[$__range:5s]))",
               "format": "time_series",
               "fullMetaSearch": false,
               "hide": false,
@@ -3420,7 +4298,7 @@
               },
               "disableTextWrap": false,
               "editorMode": "code",
-              "expr": "avg by(type) (quantile_over_time(0.90, rate(aerospike_benchmarks_mrt_transaction_total{instance=\"$client\", type=~\"read|readnotfound|write\"}[$__rate_interval])[$__range:5s]))",
+              "expr": "avg by(type) (quantile_over_time(0.90, rate(aerospike_benchmarks_mrt_transaction_total{instance=\"$client\", type=~\"read|readnotfound|write\",cluster=~\"$cluster\", namespace=~\"$namespace\", setname=~\"$setname\"}[$__rate_interval])[$__range:5s]))",
               "format": "time_series",
               "fullMetaSearch": false,
               "hide": false,
@@ -3451,8 +4329,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   }
                 ]
               },
@@ -3464,7 +4341,7 @@
             "h": 4,
             "w": 24,
             "x": 0,
-            "y": 75
+            "y": 106
           },
           "id": 85,
           "options": {
@@ -3491,7 +4368,7 @@
               },
               "disableTextWrap": false,
               "editorMode": "code",
-              "expr": "avg by(type) (quantile_over_time(0.95, rate(aerospike_benchmarks_mrt_latency_microsecond_count{instance=\"$client\", type=~\"read|readnotfound|write\"}[$__rate_interval])[$__range:5s]))",
+              "expr": "avg by(type) (quantile_over_time(0.95, rate(aerospike_benchmarks_mrt_latency_microsecond_count{instance=\"$client\", type=~\"read|readnotfound|write\",cluster=~\"$cluster\", namespace=~\"$namespace\", setname=~\"$setname\"}[$__rate_interval])[$__range:5s]))",
               "format": "time_series",
               "fullMetaSearch": false,
               "hide": false,
@@ -3508,7 +4385,7 @@
               },
               "disableTextWrap": false,
               "editorMode": "code",
-              "expr": "avg by(type) (quantile_over_time(0.95, rate(aerospike_benchmarks_mrt_transaction_total{instance=\"$client\", type=~\"read|readnotfound|write\"}[$__rate_interval])[$__range:5s]))",
+              "expr": "avg by(type) (quantile_over_time(0.95, rate(aerospike_benchmarks_mrt_transaction_total{instance=\"$client\", type=~\"read|readnotfound|write\",cluster=~\"$cluster\", namespace=~\"$namespace\", setname=~\"$setname\"}[$__rate_interval])[$__range:5s]))",
               "format": "time_series",
               "fullMetaSearch": false,
               "hide": false,
@@ -3539,8 +4416,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   }
                 ]
               },
@@ -3552,7 +4428,7 @@
             "h": 4,
             "w": 24,
             "x": 0,
-            "y": 79
+            "y": 110
           },
           "id": 87,
           "options": {
@@ -3579,7 +4455,7 @@
               },
               "disableTextWrap": false,
               "editorMode": "code",
-              "expr": "avg by(type) (quantile_over_time(0.99, rate(aerospike_benchmarks_mrt_latency_microsecond_count{instance=\"$client\", type=~\"read|readnotfound|write\"}[$__rate_interval])[$__range:5s]))",
+              "expr": "avg by(type) (quantile_over_time(0.99, rate(aerospike_benchmarks_mrt_latency_microsecond_count{instance=\"$client\", type=~\"read|readnotfound|write\",cluster=~\"$cluster\", namespace=~\"$namespace\", setname=~\"$setname\"}[$__rate_interval])[$__range:5s]))",
               "format": "time_series",
               "fullMetaSearch": false,
               "hide": false,
@@ -3596,7 +4472,7 @@
               },
               "disableTextWrap": false,
               "editorMode": "code",
-              "expr": "avg by(type) (quantile_over_time(0.99, rate(aerospike_benchmarks_mrt_transaction_total{instance=\"$client\", type=~\"read|readnotfound|write\"}[$__rate_interval])[$__range:5s]))",
+              "expr": "avg by(type) (quantile_over_time(0.99, rate(aerospike_benchmarks_mrt_transaction_total{instance=\"$client\", type=~\"read|readnotfound|write\",cluster=~\"$cluster\", namespace=~\"$namespace\", setname=~\"$setname\"}[$__rate_interval])[$__range:5s]))",
               "format": "time_series",
               "fullMetaSearch": false,
               "hide": false,
@@ -3620,7 +4496,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 23
+        "y": 24
       },
       "id": 29,
       "panels": [],
@@ -3690,7 +4566,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 24
+        "y": 25
       },
       "id": 31,
       "options": {
@@ -3776,7 +4652,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 24
+        "y": 25
       },
       "id": 30,
       "options": {
@@ -3902,7 +4778,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 32
+        "y": 33
       },
       "id": 48,
       "options": {
@@ -3959,12 +4835,118 @@
       "type": "timeseries"
     },
     {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "description": "Average across all nodes counted into buckets from 0 to 2^16",
+      "fieldConfig": {
+        "defaults": {
+          "decimals": 0,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "#EAB839",
+                "value": 4000
+              },
+              {
+                "color": "#EF843C",
+                "value": 8000
+              },
+              {
+                "color": "red",
+                "value": 16000
+              }
+            ]
+          },
+          "unit": "µs"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 33
+      },
+      "id": 98,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "horizontal",
+        "percentChangeColorMode": "standard",
+        "reduceOptions": {
+          "calcs": [
+            "mean"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "text": {},
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "pluginVersion": "11.3.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DATASOURCE}"
+          },
+          "editorMode": "code",
+          "exemplar": true,
+          "expr": "avg by (namespace) (histogram_quantile(0.95, (aerospike_benchmarks_mrt_latency_microsecond_bucket{instance=\"$client\", cluster=~\"$cluster\", type=\"write\", namespace=~\"$namespace\", setname=~\"$setname\"})))",
+          "instant": false,
+          "interval": "",
+          "legendFormat": "p95",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "exemplar": true,
+          "expr": "avg by (namespace) (histogram_quantile(0.99, (aerospike_benchmarks_mrt_latency_microsecond_bucket{instance=\"$client\", cluster=~\"$cluster\", type=\"write\", namespace=~\"$namespace\", setname=~\"$setname\"})))",
+          "interval": "",
+          "legendFormat": "p99",
+          "range": true,
+          "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DATASOURCE}"
+          },
+          "editorMode": "code",
+          "exemplar": true,
+          "expr": "avg by (namespace) (histogram_quantile(0.999, (aerospike_benchmarks_mrt_latency_microsecond_bucket{instance=\"$client\", cluster=~\"$cluster\", type=\"write\", namespace=~\"$namespace\", setname=~\"$setname\"})))",
+          "hide": false,
+          "instant": false,
+          "interval": "",
+          "legendFormat": "p99.9",
+          "refId": "C"
+        }
+      ],
+      "title": "Percentiles",
+      "type": "stat"
+    },
+    {
       "collapsed": false,
       "gridPos": {
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 40
+        "y": 41
       },
       "id": 32,
       "panels": [],
@@ -4034,7 +5016,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 41
+        "y": 42
       },
       "id": 33,
       "options": {
@@ -4082,7 +5064,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "disableTextWrap": false,
-          "editorMode": "code",
+          "editorMode": "builder",
           "expr": "rate(aerospike_benchmarks_mrt_trnasaction_total{instance=~\"$client\",cluster=~\"$cluster\",namespace=~\"$namespace\",setname=~\"$setname\", type=~\"read|readnotfound\"}[$__rate_interval])",
           "fullMetaSearch": false,
           "hide": false,
@@ -4120,7 +5102,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 41
+        "y": 42
       },
       "id": 34,
       "options": {
@@ -4246,7 +5228,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 49
+        "y": 50
       },
       "id": 46,
       "options": {
@@ -4303,12 +5285,118 @@
       "type": "timeseries"
     },
     {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "description": "Average across all nodes counted into buckets from 0 to 2^16",
+      "fieldConfig": {
+        "defaults": {
+          "decimals": 0,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "#EAB839",
+                "value": 4000
+              },
+              {
+                "color": "#EF843C",
+                "value": 8000
+              },
+              {
+                "color": "red",
+                "value": 16000
+              }
+            ]
+          },
+          "unit": "µs"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 50
+      },
+      "id": 99,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "horizontal",
+        "percentChangeColorMode": "standard",
+        "reduceOptions": {
+          "calcs": [
+            "mean"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "text": {},
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "pluginVersion": "11.3.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DATASOURCE}"
+          },
+          "editorMode": "code",
+          "exemplar": true,
+          "expr": "avg by (namespace) (histogram_quantile(0.95, (aerospike_benchmarks_mrt_latency_microsecond_bucket{instance=\"$client\", cluster=~\"$cluster\", type=~\"read|readnotfound\", namespace=~\"$namespace\", setname=~\"$setname\"})))",
+          "instant": false,
+          "interval": "",
+          "legendFormat": "p95",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "exemplar": true,
+          "expr": "avg by (namespace) (histogram_quantile(0.99, (aerospike_benchmarks_mrt_latency_microsecond_bucket{instance=\"$client\", cluster=~\"$cluster\", type=~\"read|readnotfound\", namespace=~\"$namespace\", setname=~\"$setname\"})))",
+          "interval": "",
+          "legendFormat": "p99",
+          "range": true,
+          "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DATASOURCE}"
+          },
+          "editorMode": "code",
+          "exemplar": true,
+          "expr": "avg by (namespace) (histogram_quantile(0.999, (aerospike_benchmarks_mrt_latency_microsecond_bucket{instance=\"$client\", cluster=~\"$cluster\", type=~\"read|readnotfound\", namespace=~\"$namespace\", setname=~\"$setname\"})))",
+          "hide": false,
+          "instant": false,
+          "interval": "",
+          "legendFormat": "p99.9",
+          "refId": "C"
+        }
+      ],
+      "title": "Percentiles",
+      "type": "stat"
+    },
+    {
       "collapsed": true,
       "gridPos": {
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 57
+        "y": 58
       },
       "id": 72,
       "panels": [
@@ -4373,7 +5461,7 @@
             "h": 12,
             "w": 12,
             "x": 0,
-            "y": 867
+            "y": 1462
           },
           "id": 74,
           "options": {
@@ -4441,7 +5529,7 @@
             "h": 12,
             "w": 12,
             "x": 12,
-            "y": 867
+            "y": 1462
           },
           "id": 73,
           "options": {
@@ -4514,7 +5602,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 58
+        "y": 59
       },
       "id": 35,
       "panels": [],
@@ -4546,7 +5634,7 @@
         "h": 9,
         "w": 12,
         "x": 0,
-        "y": 59
+        "y": 60
       },
       "id": 37,
       "options": {
@@ -4596,7 +5684,7 @@
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "sum by(le) (aerospike_benchmarks_mrt_latency_microsecond_bucket{instance=~\"$client\",cluster=~\"$cluster\",namespace=~\"$namespace\",setname=~\"$setname\", type=~\"txncommit|mrtcommit\"})",
+          "expr": "sum by(le) (aerospike_benchmarks_mrt_latency_microsecond_bucket{instance=~\"$client\", cluster=~\"$cluster\", namespace=~\"$namespace\", setname=~\"$setname\", type=~\"mrtcommit\"})",
           "format": "heatmap",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
@@ -4634,7 +5722,7 @@
         "h": 9,
         "w": 12,
         "x": 12,
-        "y": 59
+        "y": 60
       },
       "id": 64,
       "options": {
@@ -4684,7 +5772,7 @@
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "sum by(le) (aerospike_benchmarks_mrt_latency_microsecond_bucket{instance=~\"$client\",cluster=~\"$cluster\",namespace=~\"$namespace\",setname=~\"$setname\", type=~\"txnabort|mrtabort\"})",
+          "expr": "sum by(le) (aerospike_benchmarks_mrt_latency_microsecond_bucket{instance=~\"$client\", cluster=~\"$cluster\", namespace=~\"$namespace\", setname=~\"$setname\", type=~\"mrtabort\"})",
           "format": "heatmap",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
@@ -4722,7 +5810,7 @@
         "h": 9,
         "w": 12,
         "x": 0,
-        "y": 68
+        "y": 69
       },
       "id": 67,
       "options": {
@@ -4811,7 +5899,7 @@
         "h": 9,
         "w": 12,
         "x": 12,
-        "y": 68
+        "y": 69
       },
       "id": 88,
       "options": {
@@ -4925,8 +6013,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               }
             ]
           },
@@ -4938,7 +6025,7 @@
         "h": 9,
         "w": 12,
         "x": 0,
-        "y": 77
+        "y": 78
       },
       "id": 50,
       "options": {
@@ -4966,7 +6053,7 @@
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "aerospike_benchmarks_mrt_latency_microsecond_count{instance=~\"$client\",cluster=~\"$cluster\",namespace=~\"$namespace\",setname=~\"$setname\", type=~\"txnuow|txncommit|txnabort|mrtuow|mrtcommit|mrtabort\"}",
+          "expr": "aerospike_benchmarks_mrt_latency_microsecond_count{instance=~\"$client\", cluster=~\"$cluster\", namespace=~\"$namespace\", setname=~\"$setname\", type=~\"mrtuow|mrtcommit|mrtabort|mrtuowtotal\"}",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
           "legendFormat": "{{type}}",
@@ -4981,11 +6068,11 @@
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "aerospike_benchmarks_mrt_transaction_total{instance=~\"$client\",cluster=~\"$cluster\",namespace=~\"$namespace\",setname=~\"$setname\", type=~\"txnuow|txncommit|txnabort|mrtuow|mrtcommit|mrtabort\"}",
+          "expr": "aerospike_benchmarks_mrt_transaction_total{instance=~\"$client\", cluster=~\"$cluster\", namespace=~\"$namespace\", setname=~\"$setname\", type=~\"mrtuow|mrtcommit|mrtabort|mrtuowtotal\"}",
           "fullMetaSearch": false,
           "hide": false,
           "includeNullMetadata": true,
-          "legendFormat": "NL {{type}",
+          "legendFormat": "NL {{type}}",
           "range": true,
           "refId": "B",
           "useBackend": false
@@ -4995,12 +6082,117 @@
       "type": "timeseries"
     },
     {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DATASOURCE}"
+      },
+      "description": "Average across all nodes counted into buckets from 0 to 2^16",
+      "fieldConfig": {
+        "defaults": {
+          "decimals": 0,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              },
+              {
+                "color": "#EAB839",
+                "value": 6000
+              },
+              {
+                "color": "#EF843C",
+                "value": 10000
+              },
+              {
+                "color": "red",
+                "value": 20000
+              }
+            ]
+          },
+          "unit": "µs"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 12,
+        "y": 78
+      },
+      "id": 100,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "horizontal",
+        "percentChangeColorMode": "standard",
+        "reduceOptions": {
+          "calcs": [
+            "mean"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "text": {},
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "pluginVersion": "11.3.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "exemplar": true,
+          "expr": "avg by (namespace) (histogram_quantile(0.95, (aerospike_benchmarks_mrt_latency_microsecond_bucket{instance=\"$client\", cluster=~\"$cluster\", type=~\"mrtcommit|mrtabort\", namespace=~\"$namespace\", setname=~\"$setname\"})))",
+          "instant": false,
+          "interval": "",
+          "legendFormat": "p95",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DATASOURCE}"
+          },
+          "editorMode": "code",
+          "exemplar": true,
+          "expr": "avg by (namespace) (histogram_quantile(0.99, (aerospike_benchmarks_mrt_latency_microsecond_bucket{instance=\"$client\", cluster=~\"$cluster\", type=~\"mrtcommit|mrtabort\", namespace=~\"$namespace\", setname=~\"$setname\"})))",
+          "interval": "",
+          "legendFormat": "p99",
+          "range": true,
+          "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "exemplar": true,
+          "expr": "avg by (namespace) (histogram_quantile(0.999, (aerospike_benchmarks_mrt_latency_microsecond_bucket{instance=\"$client\", cluster=~\"$cluster\", type=~\"mrtcommit|mrtabort\", namespace=~\"$namespace\", setname=~\"$setname\"})))",
+          "hide": false,
+          "instant": false,
+          "interval": "",
+          "legendFormat": "p99.9",
+          "refId": "C"
+        }
+      ],
+      "title": "Percentiles (Commit/Abort)",
+      "type": "stat"
+    },
+    {
       "collapsed": false,
       "gridPos": {
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 86
+        "y": 87
       },
       "id": 38,
       "panels": [],
@@ -5052,14 +6244,14 @@
             }
           },
           "decimals": 0,
+          "fieldMinMax": false,
           "mappings": [],
           "noValue": "No Errors Detected",
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               }
             ]
           },
@@ -5068,10 +6260,10 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 13,
+        "h": 11,
         "w": 24,
         "x": 0,
-        "y": 87
+        "y": 88
       },
       "id": 42,
       "options": {
@@ -5230,6 +6422,6 @@
   "timezone": "browser",
   "title": "Aerospike Benchmark MRT",
   "uid": "be423cq6i5dz4a",
-  "version": 5,
+  "version": 14,
   "weekStart": ""
 }

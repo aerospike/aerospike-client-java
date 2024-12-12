@@ -16,7 +16,10 @@ import io.opentelemetry.sdk.resources.Resource;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
+import java.util.Objects;
+import java.util.TimeZone;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -302,6 +305,7 @@ public final class OpenTelemetryExporter implements com.aerospike.benchmarks.Ope
         if(this.endTimeMillis != 0) {
             attributes.put("endTimeMillis", this.endTimeMillis);
             attributes.put("endLocalDateTime", this.endLocalDateTime.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
+            attributes.put("runDurationMillis", this.endTimeMillis - this.startTimeMillis);
         }
 
         this.openTelemetryInfoGauge.set(System.currentTimeMillis(), attributes.build());
@@ -329,6 +333,11 @@ public final class OpenTelemetryExporter implements com.aerospike.benchmarks.Ope
             if(pos != -1) {
                 message = message.substring(0, pos) + "partition";
             }
+        }
+
+        //Ignore Cluser Closed exceptions when the app is terminating
+        if((Main.terminateRun.get() || Main.abortRun.get()) && Objects.equals(message, "Cluster has been closed")) {
+            return;
         }
 
         AttributesBuilder attributes = Attributes.builder();

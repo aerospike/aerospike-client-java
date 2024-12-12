@@ -120,6 +120,7 @@ public class Main implements Log.Callback {
 	private int promCloseWaitMS = 15000;
 
 	public static final AtomicBoolean abortRun = new AtomicBoolean(false);
+	public static final AtomicBoolean terminateRun = new AtomicBoolean(false);
 
 	public Main(String[] commandLineArgs) throws Exception {
 		boolean hasTxns = false;
@@ -1240,8 +1241,8 @@ public class Main implements Log.Callback {
 							}
 						}
 					} finally {
-						abortRun.set(true);
 						openTelemetry.setDBConnectionState("Closed");
+						terminateRun.set(true);
 						client.close();
 					}
 				} finally {
@@ -1286,6 +1287,7 @@ public class Main implements Log.Callback {
 					}
 				} finally {
 					openTelemetry.setDBConnectionState("Closed");
+					terminateRun.set(true);
 					client.close();
 				}
 			}
@@ -1307,7 +1309,7 @@ public class Main implements Log.Callback {
 			InsertTaskSync it = new InsertTaskSync(client, args, counters, start, keyCount);
 			es.execute(it);
 			start += keyCount;
-			if(abortRun.get()) {
+			if(abortRun.get() || terminateRun.get()) {
 				break;
 			}
 		}
@@ -1331,7 +1333,7 @@ public class Main implements Log.Callback {
 			MRTInsertTaskSync it = new MRTInsertTaskSync(client, args, counters, start, keysPerMRT, nMrtsPerThread);
 			es.execute(it);
 			start += keysPerMRT * nMrtsPerThread;
-			if(abortRun.get()) {
+			if(abortRun.get() || terminateRun.get()) {
 				break;
 			}
 		}
@@ -1364,7 +1366,7 @@ public class Main implements Log.Callback {
 			InsertTaskAsync task = new InsertTaskAsync(client, eventLoop, args, counters, keyStart, keyCount);
 			task.runCommand();
 			keyStart += keyCount;
-			if(abortRun.get()) {
+			if(abortRun.get() || terminateRun.get()) {
 				break;
 			}
 		}
@@ -1424,7 +1426,7 @@ public class Main implements Log.Callback {
 			}
 
 			Thread.sleep(1000);
-			if(abortRun.get()) {
+			if(abortRun.get() || terminateRun.get()) {
 				break;
 			}
 		}
@@ -1496,7 +1498,7 @@ public class Main implements Log.Callback {
 			}
 
 			Thread.sleep(1000);
-			if(abortRun.get()) {
+			if(abortRun.get() || terminateRun.get()) {
 				break;
 			}
 		}
@@ -1524,7 +1526,7 @@ public class Main implements Log.Callback {
 			RWTaskSync rt = new RWTaskSync(client, args, counters, this.startKey, this.nKeys);
 			tasks[i] = rt;
 			es.execute(rt);
-			if(abortRun.get()) {
+			if(abortRun.get() || terminateRun.get()) {
 				break;
 			}
 		}
@@ -1546,7 +1548,7 @@ public class Main implements Log.Callback {
 					this.nKeys, this.keysPerMRT);
 			tasks[i] = rt;
 			es.execute(rt);
-			if(abortRun.get()) {
+			if(abortRun.get() || terminateRun.get()) {
 				break;
 			}
 		}
@@ -1577,7 +1579,7 @@ public class Main implements Log.Callback {
 		// Start seed commands.
 		for (RWTask task : tasks) {
 			task.runNextCommand();
-			if(abortRun.get()) {
+			if(abortRun.get() || terminateRun.get()) {
 				break;
 			}
 		}
@@ -1696,7 +1698,7 @@ public class Main implements Log.Callback {
 			}
 
 			Thread.sleep(1000);
-			if(abortRun.get()) {
+			if(abortRun.get() || terminateRun.get()) {
 				break;
 			}
 		}
@@ -1817,7 +1819,7 @@ public class Main implements Log.Callback {
 			}
 
 			Thread.sleep(1000);
-			if(abortRun.get()) {
+			if(abortRun.get() || terminateRun.get()) {
 				break;
 			}
 		}

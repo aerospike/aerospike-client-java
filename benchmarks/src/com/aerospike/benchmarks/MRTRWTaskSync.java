@@ -73,9 +73,16 @@ public class MRTRWTaskSync extends MRTRWTask implements Runnable {
 				writePolicy.txn = txn;
 				readPolicy.txn = txn;
 
+				if(Main.abortRun.get() || Main.terminateRun.get()) {
+					break;
+				}
+
 				try {
 					for (int k = 0; k < keysPerMRT; k++) {
 						runCommand(random);
+						if(Main.abortRun.get() || Main.terminateRun.get()) {
+							break;
+						}
 						// Throttle throughput
 						if (args.throughput > 0) {
 							int transactions;
@@ -93,6 +100,10 @@ public class MRTRWTaskSync extends MRTRWTask implements Runnable {
 								}
 							}
 						}
+					}
+
+					if(Main.abortRun.get() || Main.terminateRun.get()) {
+						break;
 					}
 
 					if(counters.mrtUnitOfWork.latency != null) {
@@ -159,6 +170,10 @@ public class MRTRWTaskSync extends MRTRWTask implements Runnable {
 				if(uowCompleted) {
 					counters.mrtUnitOfWork.recordElapsedTimeOTel(LatencyTypes.MRTUOWTOTAL, uowElapse);
 				}
+			}
+
+			if(Main.abortRun.get() || Main.terminateRun.get()) {
+				break;
 			}
 		}
 	}
