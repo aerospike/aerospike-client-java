@@ -31,18 +31,15 @@ import com.aerospike.client.util.RandomShift;
 /**
  * Random Read/Write workload task.
  */
-public abstract class MRTRWTask {
+public abstract class MRTRWTask extends MRTTask {
 
-	final Arguments args;
-	final CounterStore counters;
 	final WritePolicy writePolicyGeneration;
 	final long keyStart;
 	final long keyCount;
 	boolean valid;
 
 	public MRTRWTask(Arguments args, CounterStore counters, long keyStart, long keyCount) {
-		this.args = args;
-		this.counters = counters;
+		super(args, counters);
 		this.keyStart = keyStart;
 		this.keyCount = keyCount;
 		this.valid = true;

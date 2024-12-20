@@ -2,6 +2,7 @@ package com.aerospike.benchmarks;
 
 import static io.opentelemetry.semconv.resource.attributes.ResourceAttributes.SERVICE_NAME;
 
+import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Host;
 
 import io.opentelemetry.api.common.AttributeKey;
@@ -179,7 +180,7 @@ public final class OpenTelemetryExporter implements com.aerospike.benchmarks.Ope
         }
 
         this.hbAttributes = new Attributes[] {
-                //This is a collection of attributes common used for all events
+                //This are attributes commonly used for all events
                 Attributes.of(
                         //AttributeKey.stringKey("cluster", this.clusterName,
                         //AttributeKey.stringArrayKey("namespaces"), args.batchSize > 0 ? Arrays.asList(args.batchNamespaces) : Collections.singletonList(args.namespace),
@@ -214,6 +215,13 @@ public final class OpenTelemetryExporter implements com.aerospike.benchmarks.Ope
                         AttributeKey.longKey("nkeys"), nKeys <= 0 ? 0L : nKeys,
                         AttributeKey.stringKey("commandlineargs"), String.join(" ", args.commandLineArgs),
                         AttributeKey.stringKey("appversion"), Main.getAppVersion()[1]
+                ),
+                Attributes.of(
+                        AttributeKey.longKey("indoubtRetries"), (long) args.mrtInDoubtRetries,
+                        AttributeKey.longKey("indoubtSleep"), (long) args.mrtRetrySleepMS,
+                        AttributeKey.longKey("blockRetries"), (long) args.mrtBlockRetries,
+                        AttributeKey.longKey("blockSleep"), (long) args.mrtBlockSleepMS,
+                        AttributeKey.longKey("txnTimeout"), (long) args.mrtTimeoutSec
                 )};
 
         this.updateInfoGauge(true);
@@ -323,6 +331,7 @@ public final class OpenTelemetryExporter implements com.aerospike.benchmarks.Ope
         String exceptionType = exception.getClass().getName().replaceFirst("com\\.aerospike\\.client\\.AerospikeException\\$", "");
         exceptionType = exceptionType.replaceFirst("com\\.aerospike\\.client\\.", "");
 
+        String exception_subtype = null;
         String message = exception.getMessage();
         if(message != null) {
             int pos = message.indexOf("verify errors:");
@@ -334,6 +343,18 @@ public final class OpenTelemetryExporter implements com.aerospike.benchmarks.Ope
                 message = message.substring(0, pos) + "partition";
             }
         }
+
+        if(exception instanceof AerospikeException && ((AerospikeException) exception).getInDoubt()) {
+            exception_subtype = "inDoubt";
+        }
+
+        this.addException(exceptionType, exception_subtype, message, type);
+    }
+
+    @Override
+    public void addException(String exceptionType, String exception_subtype, String message, LatencyTypes type) {
+
+        if(this.closed.get()) { return; }
 
         //Ignore Cluser Closed exceptions when the app is terminating
         if((Main.terminateRun.get() || Main.abortRun.get()) && Objects.equals(message, "Cluster has been closed")) {
@@ -348,6 +369,10 @@ public final class OpenTelemetryExporter implements com.aerospike.benchmarks.Ope
                 AttributeKey.stringKey("type"), type.name().toLowerCase(),
                 AttributeKey.longKey("startTimeMillis"), this.startTimeMillis
         ));
+
+        if(exception_subtype != null) {
+            attributes.put("exception_subtype", exception_subtype);
+        }
 
         this.openTelemetryExceptionCounter.add(1, attributes.build());
 

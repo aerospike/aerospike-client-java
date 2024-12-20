@@ -57,19 +57,16 @@ public class MRTRWTaskSync extends MRTRWTask implements Runnable {
 		RandomShift random = new RandomShift();
 		long begin;
 		long uowElapse;
-		boolean withinCommit;
-		boolean withinAbort;
 		boolean uowCompleted;
 
 		//uow (Unit of Work) consist of the actions (get/puts) within a MRT.
 		while (valid) {
 			for (long i = 0; i < nMRTs; i++) {
-				withinCommit = false;
-				withinAbort = false;
 				uowCompleted = false;
 				begin = System.nanoTime();
 				uowElapse = 0;
 				Txn txn = new Txn();
+				txn.setTimeout(txnTimeoutSeconds);
 				writePolicy.txn = txn;
 				readPolicy.txn = txn;
 
@@ -102,72 +99,24 @@ public class MRTRWTaskSync extends MRTRWTask implements Runnable {
 						}
 					}
 
-					if(Main.abortRun.get() || Main.terminateRun.get()) {
+					if(Main.abortRun.get()) {
+						PerformMRTAbort(client, txn);
 						break;
 					}
 
-					if(counters.mrtUnitOfWork.latency != null) {
-						uowElapse = System.nanoTime() - begin;
-						counters.mrtUnitOfWork.count.getAndIncrement();
-						counters.mrtUnitOfWork.latency.add(uowElapse);
-					}
-					else {
-						counters.mrtUnitOfWork.count.getAndIncrement();
-						counters.mrtUnitOfWork.incrTransCountOTel(LatencyTypes.MRTUOW);
+					MRTHandleResult result = CompleteUoW(client, txn, begin, valid);
+					uowCompleted = result.successful;
+					uowElapse += result.totalElapseTime;
+
+					if(Main.terminateRun.get()) {
+						break;
 					}
 
-					if (valid) {
-						begin = System.nanoTime();
-						withinCommit = true;
-						client.commit(txn);
-						if(counters.mrtCommit.latency != null) {
-							long elapsed = System.nanoTime() - begin;
-							uowElapse += elapsed;
-							counters.mrtCommit.count.getAndIncrement();
-							counters.mrtCommit.latency.add(elapsed);
-						}
-						else {
-							counters.mrtCommit.count.getAndIncrement();
-							counters.mrtCommit.incrTransCountOTel(LatencyTypes.MRTCOMMIT);
-						}
-					} else {
-						begin = System.nanoTime();
-						withinAbort = true;
-						client.abort(txn);
-						if(counters.mrtAbort.latency != null) {
-							long elapsed = System.nanoTime() - begin;
-							uowElapse += elapsed;
-							counters.mrtAbort.count.getAndIncrement();
-							counters.mrtAbort.latency.add(elapsed);
-						}
-						else {
-							counters.mrtAbort.count.getAndIncrement();
-							counters.mrtAbort.incrTransCountOTel(LatencyTypes.MRTABORT);
-						}
-					}
-					uowCompleted = true;
-				} catch (AerospikeException e) {
-					if(withinAbort) {
-						counters.mrtAbort.errors.incrementAndGet();
-						counters.mrtAbort.addExceptionOTel(e, LatencyTypes.MRTABORT);
-					} else if (withinCommit) {
-						counters.mrtCommit.errors.incrementAndGet();
-						counters.mrtCommit.addExceptionOTel(e, LatencyTypes.MRTCOMMIT);
-					}
-					begin = System.nanoTime();
-					client.abort(txn);
-					if(counters.mrtAbort.latency != null) {
-						long elapsed = System.nanoTime() - begin;
-						uowElapse += elapsed;
-						counters.mrtAbort.count.getAndIncrement();
-						counters.mrtAbort.latency.add(elapsed);
-					}
-					else {
-						counters.mrtAbort.count.getAndIncrement();
-						counters.mrtAbort.incrTransCountOTel(LatencyTypes.MRTABORT);
-					}
+				} catch (Exception e) {
+					uowElapse += PerformMRTAbort(client, txn);
+					uowCompleted = false;
 				}
-				if(uowCompleted) {
+				if(uowCompleted && uowElapse > 0) {
 					counters.mrtUnitOfWork.recordElapsedTimeOTel(LatencyTypes.MRTUOWTOTAL, uowElapse);
 				}
 			}

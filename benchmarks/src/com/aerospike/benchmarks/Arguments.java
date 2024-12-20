@@ -54,6 +54,14 @@ public class Arguments {
 	public String udfPackageName;
 	public String udfFunctionName;
 	public Value[] udfValues;
+
+	public long mrtSize;
+	public int mrtInDoubtRetries = 3;
+	public int mrtRetrySleepMS = 100;
+	public int mrtBlockRetries = 3;
+	public int mrtBlockSleepMS = 100;
+	public int mrtTimeoutSec = 0;
+
 	public boolean opentelEnabled;
 
 	public void setFixedBins() {

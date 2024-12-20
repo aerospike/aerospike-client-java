@@ -448,7 +448,10 @@ public abstract class RWTask {
 	}
 
 	protected void writeFailure(AerospikeException ae) {
-		if (ae.getResultCode() == ResultCode.TIMEOUT) {
+		if(ae.getInDoubt()) {
+			counters.write.inDoubt.getAndIncrement();
+		}
+		else if (ae.getResultCode() == ResultCode.TIMEOUT) {
 			counters.write.timeouts.getAndIncrement();
 		}
 		else {
@@ -471,7 +474,10 @@ public abstract class RWTask {
 	}
 
 	protected void readFailure(AerospikeException ae) {
-		if (ae.getResultCode() == ResultCode.TIMEOUT) {
+		if(ae.getInDoubt()) {
+			counters.read.inDoubt.getAndIncrement();
+		}
+		else if (ae.getResultCode() == ResultCode.TIMEOUT) {
 			counters.read.timeouts.getAndIncrement();
 		}
 		else {
