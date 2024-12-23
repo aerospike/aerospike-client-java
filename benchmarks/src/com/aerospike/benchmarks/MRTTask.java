@@ -1,6 +1,10 @@
 package com.aerospike.benchmarks;
 
 import com.aerospike.client.*;
+import com.aerospike.client.policy.BatchPolicy;
+import com.aerospike.client.policy.Policy;
+import com.aerospike.client.policy.WritePolicy;
+import com.aerospike.client.Record;
 
 public abstract class MRTTask {
 
@@ -36,6 +40,209 @@ public abstract class MRTTask {
         }
     }
 
+    protected void putUoW(IAerospikeClient client, WritePolicy writePolicy, Key key, Bin[] bins)
+            throws AerospikeException {
+        putUoW(client, writePolicy, key, bins, 0);
+    }
+
+    protected void putUoW(IAerospikeClient client, WritePolicy writePolicy, Key key, Bin[] bins, int retry)
+            throws AerospikeException {
+
+        try{
+            if (counters.write.latency != null) {
+                long begin = System.nanoTime();
+                client.put(writePolicy, key, bins);
+                long elapsed = System.nanoTime() - begin;
+                counters.write.count.getAndIncrement();
+                counters.write.latency.add(elapsed);
+            } else {
+                client.put(writePolicy, key, bins);
+                counters.write.count.getAndIncrement();
+                counters.write.incrTransCountOTel(LatencyTypes.WRITE);
+            }
+        }
+        catch (AerospikeException ae) {
+            if(ae.getResultCode() == 120 && (args.mrtBlockRetries < 0 || retry < args.mrtBlockRetries)) {
+                counters.write.errors.getAndIncrement();
+                counters.write.addExceptionOTel(ae, LatencyTypes.WRITE);
+                counters.write.blocked.getAndIncrement();
+                putUoW(client, writePolicy, key, bins, retry + 1);
+                return;
+            }
+            throw ae;
+        }
+    }
+
+    protected void addUoW(IAerospikeClient client, WritePolicy writePolicy, Key key, Bin[] bins)
+            throws AerospikeException {
+        addUoW(client, writePolicy, key, bins, 0);
+    }
+
+    protected void addUoW(IAerospikeClient client, WritePolicy writePolicy, Key key, Bin[] bins, int retry)
+            throws AerospikeException {
+
+        try{
+            if (counters.write.latency != null) {
+                long begin = System.nanoTime();
+                client.add(writePolicy, key, bins);
+                long elapsed = System.nanoTime() - begin;
+                counters.write.count.getAndIncrement();
+                counters.write.latency.add(elapsed);
+            } else {
+                client.add(writePolicy, key, bins);
+                counters.write.count.getAndIncrement();
+                counters.write.incrTransCountOTel(LatencyTypes.WRITE);
+            }
+        }
+        catch (AerospikeException ae) {
+            if(ae.getResultCode() == 120 && (args.mrtBlockRetries < 0 || retry < args.mrtBlockRetries)) {
+                counters.write.errors.getAndIncrement();
+                counters.write.addExceptionOTel(ae, LatencyTypes.WRITE);
+                counters.write.blocked.getAndIncrement();
+                addUoW(client, writePolicy, key, bins, retry + 1);
+                return;
+            }
+            throw ae;
+        }
+    }
+
+    protected Record getUoW(IAerospikeClient client, Policy readPolicy, Key key, String binName)
+            throws AerospikeException {
+        return getUoW(client, readPolicy, key, binName, 0);
+    }
+
+    protected Record getUoW(IAerospikeClient client, Policy readPolicy, Key key, String binName, int retry)
+            throws AerospikeException {
+
+        Record record;
+        try{
+            if (counters.read.latency != null) {
+                long begin = System.nanoTime();
+                record = client.get(readPolicy, key, binName);
+                long elapsed = System.nanoTime() - begin;
+                counters.read.count.getAndIncrement();
+                counters.read.latency.add(elapsed);
+            } else {
+                record = client.get(readPolicy, key, binName);
+                counters.read.count.getAndIncrement();
+                counters.read.incrTransCountOTel(LatencyTypes.READ);
+            }
+        }
+        catch (AerospikeException ae) {
+            if(ae.getResultCode() == 120 && (args.mrtBlockRetries < 0 || retry < args.mrtBlockRetries)) {
+                counters.read.errors.getAndIncrement();
+                counters.read.addExceptionOTel(ae, LatencyTypes.READ);
+                counters.read.blocked.getAndIncrement();
+                return getUoW(client, readPolicy, key, binName, retry + 1);
+            }
+            throw ae;
+        }
+        return record;
+    }
+
+    protected Record getUoW(IAerospikeClient client, Policy readPolicy, Key key)
+            throws AerospikeException {
+        return getUoW(client, readPolicy, key, 0);
+    }
+
+    protected Record getUoW(IAerospikeClient client, Policy readPolicy, Key key, int retry)
+            throws AerospikeException {
+
+        Record record;
+        try{
+            if (counters.read.latency != null) {
+                long begin = System.nanoTime();
+                record = client.get(readPolicy, key);
+                long elapsed = System.nanoTime() - begin;
+                counters.read.count.getAndIncrement();
+                counters.read.latency.add(elapsed);
+            } else {
+                record = client.get(readPolicy, key);
+                counters.read.count.getAndIncrement();
+                counters.read.incrTransCountOTel(LatencyTypes.READ);
+            }
+        }
+        catch (AerospikeException ae) {
+            if(ae.getResultCode() == 120 && (args.mrtBlockRetries < 0 || retry < args.mrtBlockRetries)) {
+                counters.read.errors.getAndIncrement();
+                counters.read.addExceptionOTel(ae, LatencyTypes.READ);
+                counters.read.blocked.getAndIncrement();
+                return getUoW(client, readPolicy, key, retry + 1);
+            }
+            throw ae;
+        }
+        return record;
+    }
+
+    protected Record[] getUoW(IAerospikeClient client, BatchPolicy batchPolicy, Key[] keys, String binName)
+            throws AerospikeException {
+        return getUoW(client, batchPolicy, keys, binName, 0);
+    }
+
+    protected Record[] getUoW(IAerospikeClient client, BatchPolicy batchPolicy, Key[] keys, String binName, int retry)
+            throws AerospikeException {
+
+        Record[] records;
+        try{
+            if (counters.read.latency != null) {
+                long begin = System.nanoTime();
+                records = client.get(batchPolicy, keys, binName);
+                long elapsed = System.nanoTime() - begin;
+                counters.read.count.getAndIncrement();
+                counters.read.latency.add(elapsed);
+            } else {
+                records = client.get(batchPolicy, keys, binName);
+                counters.read.count.getAndIncrement();
+                counters.read.incrTransCountOTel(LatencyTypes.READ);
+            }
+        }
+        catch (AerospikeException ae) {
+            if(ae.getResultCode() == 120 && (args.mrtBlockRetries < 0 || retry < args.mrtBlockRetries)) {
+                counters.read.errors.getAndIncrement();
+                counters.read.addExceptionOTel(ae, LatencyTypes.READ);
+                counters.read.blocked.getAndIncrement();
+                return getUoW(client, batchPolicy, keys, binName, retry + 1);
+            }
+            throw ae;
+        }
+        return records;
+    }
+
+    protected Record[] getUoW(IAerospikeClient client, BatchPolicy batchPolicy, Key[] keys)
+            throws AerospikeException {
+        return getUoW(client, batchPolicy, keys, 0);
+    }
+
+    protected Record[] getUoW(IAerospikeClient client, BatchPolicy batchPolicy, Key[] keys, int retry)
+            throws AerospikeException {
+
+        Record[] records;
+        try{
+            if (counters.read.latency != null) {
+                long begin = System.nanoTime();
+                records = client.get(batchPolicy, keys);
+                long elapsed = System.nanoTime() - begin;
+                counters.read.count.getAndIncrement();
+                counters.read.latency.add(elapsed);
+            } else {
+                records = client.get(batchPolicy, keys);
+                counters.read.count.getAndIncrement();
+                counters.read.incrTransCountOTel(LatencyTypes.READ);
+            }
+        }
+        catch (AerospikeException ae) {
+            if(ae.getResultCode() == 120 && (args.mrtBlockRetries < 0 || retry < args.mrtBlockRetries)) {
+                counters.read.errors.getAndIncrement();
+                counters.read.addExceptionOTel(ae, LatencyTypes.READ);
+                counters.read.blocked.getAndIncrement();
+                return getUoW(client, batchPolicy, keys, retry + 1);
+            }
+            throw ae;
+        }
+        return records;
+    }
+
+
     public MRTHandleResult CompleteUoW(IAerospikeClient client,
                                        Txn txn,
                                        long beginTime,
@@ -69,7 +276,7 @@ public abstract class MRTTask {
     }
 
     public MRTHandleResult PerformMRTCommit(IAerospikeClient client, Txn txn) {
-        return PerformMRTCommit(client, txn, 1, null);
+        return PerformMRTCommit(client, txn, 0, null);
     }
 
     public MRTHandleResult PerformMRTCommit(IAerospikeClient client,

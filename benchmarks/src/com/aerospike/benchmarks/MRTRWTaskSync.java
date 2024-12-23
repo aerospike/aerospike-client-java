@@ -133,18 +133,11 @@ public class MRTRWTaskSync extends MRTRWTask implements Runnable {
 			counters.write.count.getAndIncrement();
 			return;
 		}
-
-		if (counters.write.latency != null) {
-			long begin = System.nanoTime();
-			client.put(this.writePolicy, key, bins);
-			long elapsed = System.nanoTime() - begin;
-			counters.write.count.getAndIncrement();
-			counters.write.latency.add(elapsed);
-		} else {
-			client.put(this.writePolicy, key, bins);
-			counters.write.count.getAndIncrement();
-			counters.write.incrTransCountOTel(LatencyTypes.WRITE);
+		if(writePolicy == null) {
+			writePolicy = this.writePolicy;
 		}
+
+		putUoW(client, this.writePolicy, key, bins);
 	}
 
 	@Override
@@ -154,17 +147,7 @@ public class MRTRWTaskSync extends MRTRWTask implements Runnable {
 			return;
 		}
 
-		if (counters.write.latency != null) {
-			long begin = System.nanoTime();
-			client.add(writePolicyGeneration, key, bins);
-			long elapsed = System.nanoTime() - begin;
-			counters.write.count.getAndIncrement();
-			counters.write.latency.add(elapsed);
-		} else {
-			client.add(writePolicyGeneration, key, bins);
-			counters.write.count.getAndIncrement();
-			counters.write.incrTransCountOTel(LatencyTypes.WRITE);
-		}
+		addUoW(client, writePolicyGeneration, key, bins);
 	}
 
 	@Override
@@ -174,18 +157,7 @@ public class MRTRWTaskSync extends MRTRWTask implements Runnable {
 			return;
 		}
 
-		Record record;
-
-		if (counters.read.latency != null) {
-			long begin = System.nanoTime();
-			record = client.get(this.readPolicy, key, binName);
-			long elapsed = System.nanoTime() - begin;
-			counters.read.latency.add(elapsed);
-		} else {
-			record = client.get(this.readPolicy, key, binName);
-			counters.read.incrTransCountOTel(LatencyTypes.READ);
-		}
-		processRead(key, record);
+		processRead(key, getUoW(client, writePolicyGeneration, key, binName));
 	}
 
 	@Override
@@ -195,18 +167,7 @@ public class MRTRWTaskSync extends MRTRWTask implements Runnable {
 			return;
 		}
 
-		Record record;
-
-		if (counters.read.latency != null) {
-			long begin = System.nanoTime();
-			record = client.get(this.readPolicy, key);
-			long elapsed = System.nanoTime() - begin;
-			counters.read.latency.add(elapsed);
-		} else {
-			record = client.get(this.readPolicy, key);
-			counters.read.incrTransCountOTel(LatencyTypes.READ);
-		}
-		processRead(key, record);
+		processRead(key, getUoW(client, writePolicyGeneration, key));
 	}
 
 	@Override
@@ -236,22 +197,12 @@ public class MRTRWTaskSync extends MRTRWTask implements Runnable {
 			keys = getFilteredKeys(keys);
 		}
 
-		Record[] records;
-
-		if (counters.read.latency != null) {
-			long begin = System.nanoTime();
-			records = client.get(args.batchPolicy, keys, binName);
-			long elapsed = System.nanoTime() - begin;
-			counters.read.latency.add(elapsed);
-		} else {
-			records = client.get(args.batchPolicy, keys, binName);
-			counters.read.incrTransCountOTel(LatencyTypes.READ);
-		}
+		final Record[] records = getUoW(client, args.batchPolicy, keys, binName);
 
 		if (records == null) {
 			System.out.println("Batch records returned is null");
 		}
-		processBatchRead();
+		//processBatchRead();
 	}
 
 	@Override
@@ -260,22 +211,12 @@ public class MRTRWTaskSync extends MRTRWTask implements Runnable {
 			keys = getFilteredKeys(keys);
 		}
 
-		Record[] records;
-
-		if (counters.read.latency != null) {
-			long begin = System.nanoTime();
-			records = client.get(args.batchPolicy, keys);
-			long elapsed = System.nanoTime() - begin;
-			counters.read.latency.add(elapsed);
-		} else {
-			records = client.get(args.batchPolicy, keys);
-			counters.read.incrTransCountOTel(LatencyTypes.READ);
-		}
+		final Record[] records = getUoW(client, args.batchPolicy, keys);
 
 		if (records == null) {
 			System.out.println("Batch records returned is null");
 		}
-		processBatchRead();
+		//processBatchRead();
 	}
 
 	private boolean skipKey(Key key) {

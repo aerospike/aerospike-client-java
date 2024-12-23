@@ -120,23 +120,12 @@ public final class MRTInsertTaskSync extends MRTInsertTask implements Runnable {
 	}
 
 	private void put(Key key, Bin[] bins) {
-		if (counters.write.latency != null) {
-			long begin = System.nanoTime();
 
-			if (!skipKey(key)) {
-				client.put(writePolicy, key, bins);
-			}
-
-			long elapsed = System.nanoTime() - begin;
-			counters.write.count.getAndIncrement();
-			counters.write.latency.add(elapsed);
-		} else {
-			if (!skipKey(key)) {
-				client.put(writePolicy, key, bins);
-				counters.write.incrTransCountOTel(LatencyTypes.WRITE);
-			}
+		if (skipKey(key)) {
 			counters.write.count.getAndIncrement();
 		}
+
+		putUoW(client, this.writePolicy, key, bins);
 	}
 
 	private boolean skipKey(Key key) {

@@ -467,7 +467,7 @@ public abstract class MRTRWTask extends MRTTask {
 		counters.read.addExceptionOTel(e, LatencyTypes.READ);
 	}
 
-	protected abstract void put(WritePolicy policy, Key key, Bin[] bins);
+	protected abstract void put(WritePolicy writePolicy, Key key, Bin[] bins);
 
 	protected abstract void add(Key key, Bin[] bins);
 

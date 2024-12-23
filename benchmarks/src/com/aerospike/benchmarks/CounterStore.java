@@ -70,6 +70,7 @@ public class CounterStore {
 		AtomicInteger timeouts = new AtomicInteger();
 		AtomicInteger errors = new AtomicInteger();
 		AtomicInteger inDoubt = new AtomicInteger();
+		AtomicInteger blocked = new AtomicInteger();
 		AtomicInteger min = new AtomicInteger(-1);
 		AtomicInteger max = new AtomicInteger(-1);
 		LatencyManager latency;

@@ -1411,6 +1411,7 @@ public class Main implements Log.Callback {
 			int timeoutWrites = this.counters.write.timeouts.getAndSet(0);
 			int errorWrites = this.counters.write.errors.getAndSet(0);
 			int inDoubtWrites = this.counters.write.inDoubt.getAndSet(0);
+			int blockedWrites = this.counters.write.blocked.getAndSet(0);
 
 			total += numWrites;
 
@@ -1418,7 +1419,7 @@ public class Main implements Log.Callback {
 
 			LocalDateTime dt = Instant.ofEpochMilli(time).atZone(ZoneId.systemDefault()).toLocalDateTime();
 			System.out.print(dt.format(TimeFormatter) + " write(count=" + total + " tps=" + numWrites +
-				" timeouts=" + timeoutWrites + " inDoubt=" + inDoubtWrites + " errors=" + errorWrites + ")");
+				" timeouts=" + timeoutWrites + " inDoubt=" + inDoubtWrites + " blocked=" + blockedWrites + " errors=" + errorWrites + ")");
 
 			if(this.mrtEnabled) {
 				int numUoW = this.counters.mrtUnitOfWork.count.getAndSet(0);
@@ -1487,6 +1488,7 @@ public class Main implements Log.Callback {
 			int timeoutWrites = this.counters.write.timeouts.getAndSet(0);
 			int errorWrites = this.counters.write.errors.getAndSet(0);
 			int inDoubtWrites = this.counters.write.inDoubt.getAndSet(0);
+			int blockedWrites = this.counters.write.blocked.getAndSet(0);
 
 			total += numWrites;
 
@@ -1494,7 +1496,7 @@ public class Main implements Log.Callback {
 
 			LocalDateTime dt = Instant.ofEpochMilli(time).atZone(ZoneId.systemDefault()).toLocalDateTime();
 			System.out.print(dt.format(TimeFormatter) + " write(count=" + total + " tps=" + numWrites + " timeouts="
-					+ timeoutWrites + " inDoubt=" + inDoubtWrites + " errors=" + errorWrites + ")");
+					+ timeoutWrites + " inDoubt=" + inDoubtWrites + " blocked=" + blockedWrites + " errors=" + errorWrites + ")");
 
 			if(this.mrtEnabled) {
 				int numUOW = this.counters.mrtUnitOfWork.count.getAndSet(0);
@@ -1631,34 +1633,41 @@ public class Main implements Log.Callback {
 
 			int totTimeOut = 0;
 			int totInDoubt = 0;
+			int totBlocked = 0;
 			int totError = 0;
 
 			int numWrites = this.counters.write.count.getAndSet(0);
 			int timeoutWrites = this.counters.write.timeouts.getAndSet(0);
 			int errorWrites = this.counters.write.errors.getAndSet(0);
 			int inDoubtWrites = this.counters.write.inDoubt.getAndSet(0);
+			int blockedWrites = this.counters.write.blocked.getAndSet(0);
 
 			totError += errorWrites;
 			totInDoubt += inDoubtWrites;
 			totTimeOut += timeoutWrites;
+			totBlocked += blockedWrites;
 
 			int numReads = this.counters.read.count.getAndSet(0);
 			int timeoutReads = this.counters.read.timeouts.getAndSet(0);
 			int errorReads = this.counters.read.errors.getAndSet(0);
 			int inDoubtReads = this.counters.read.inDoubt.getAndSet(0);
+			int blockedReads = this.counters.read.blocked.getAndSet(0);
 
 			totTimeOut += timeoutReads;
 			totInDoubt += inDoubtReads;
 			totError += errorReads;
+			totBlocked += blockedReads;
 
 			int numTxns = this.counters.transaction.count.getAndSet(0);
 			int timeoutTxns = this.counters.transaction.timeouts.getAndSet(0);
 			int errorTxns = this.counters.transaction.errors.getAndSet(0);
 			int inDoubtTxns = this.counters.transaction.inDoubt.getAndSet(0);
+			int blockedTxn = this.counters.transaction.blocked.getAndSet(0);
 
 			totTimeOut += timeoutTxns;
 			totInDoubt += inDoubtTxns;
 			totError += errorTxns;
+			totBlocked += blockedTxn;
 
 			int notFound = 0;
 
@@ -1669,10 +1678,10 @@ public class Main implements Log.Callback {
 
 			LocalDateTime dt = Instant.ofEpochMilli(time).atZone(ZoneId.systemDefault()).toLocalDateTime();
 			System.out.print(dt.format(TimeFormatter));
-			System.out.print(" write(tps=" + numWrites + " timeouts=" + timeoutWrites + " inDoubt=" + inDoubtWrites + " errors=" + errorWrites + ")");
-			System.out.print(" read(tps=" + numReads + " timeouts=" + timeoutReads + " inDoubt=" + inDoubtReads + " errors=" + errorReads);
+			System.out.print(" write(tps=" + numWrites + " timeouts=" + timeoutWrites + " inDoubt=" + inDoubtWrites + " blocked=" + blockedWrites + " errors=" + errorWrites + ")");
+			System.out.print(" read(tps=" + numReads + " timeouts=" + timeoutReads + " inDoubt=" + inDoubtReads + " blocked=" + blockedReads + " errors=" + errorReads);
 			if (this.counters.transaction.latency != null) {
-				System.out.print(" txn(tps=" + numTxns + " timeouts=" + timeoutTxns +" inDoubt=" + inDoubtTxns +  " errors=" + errorTxns);
+				System.out.print(" txn(tps=" + numTxns + " timeouts=" + timeoutTxns +" inDoubt=" + inDoubtTxns + " blocked=" + blockedTxn + " errors=" + errorTxns);
 			}
 			if (args.reportNotFound) {
 				System.out.print(" nf=" + notFound);
@@ -1712,7 +1721,7 @@ public class Main implements Log.Callback {
 				System.out.print(" mrtAbt(count=" + numMRTAbort + " timeouts=" + timeoutMRTAbort + " inDoubt=" + inDoubtMRTAbort + " errors=" + errorMRTAbort + ")");
 			}
 
-			System.out.print(" total(tps=" + (numWrites + numReads) + " timeouts=" + totTimeOut + " inDoubt=" + totInDoubt + " errors=" + totError + ")");
+			System.out.print(" total(tps=" + (numWrites + numReads) + " timeouts=" + totTimeOut + " inDoubt=" + totInDoubt + " blocked=" + totBlocked + " errors=" + totError + ")");
 			//System.out.print(" buffused=" + used
 			//System.out.print(" nodeused=" + ((AsyncNode)nodes[0]).openCount.get() + ',' + ((AsyncNode)nodes[1]).openCount.get() + ',' + ((AsyncNode)nodes[2]).openCount.get()
 			System.out.println();
@@ -1782,33 +1791,40 @@ public class Main implements Log.Callback {
 			int totTimeOut = 0;
 			int totInDoubt = 0;
 			int totError = 0;
+			int totBlocked = 0;
 
 			int numWrites = this.counters.write.count.getAndSet(0);
 			int timeoutWrites = this.counters.write.timeouts.getAndSet(0);
 			int errorWrites = this.counters.write.errors.getAndSet(0);
 			int inDoubtWrites = this.counters.write.inDoubt.getAndSet(0);
+			int blockedWrites = this.counters.write.blocked.getAndSet(0);
 
 			totError += errorWrites;
 			totInDoubt += inDoubtWrites;
 			totTimeOut += timeoutWrites;
+			totBlocked += blockedWrites;
 
 			int numReads = this.counters.read.count.getAndSet(0);
 			int timeoutReads = this.counters.read.timeouts.getAndSet(0);
 			int errorReads = this.counters.read.errors.getAndSet(0);
 			int inDoubtReads = this.counters.read.inDoubt.getAndSet(0);
+			int blockedReads = this.counters.read.blocked.getAndSet(0);
 
 			totTimeOut += timeoutReads;
 			totInDoubt += inDoubtReads;
 			totError += errorReads;
+			totBlocked += blockedReads;
 
 			int numTxns = this.counters.transaction.count.getAndSet(0);
 			int timeoutTxns = this.counters.transaction.timeouts.getAndSet(0);
 			int errorTxns = this.counters.transaction.errors.getAndSet(0);
 			int inDoubtTxns = this.counters.transaction.inDoubt.getAndSet(0);
+			int blockedTxns = this.counters.transaction.blocked.getAndSet(0);
 
 			totTimeOut += timeoutTxns;
 			totInDoubt += inDoubtTxns;
 			totError += errorTxns;
+			totBlocked += blockedTxns;
 
 			int notFound = 0;
 
@@ -1819,10 +1835,10 @@ public class Main implements Log.Callback {
 
 			LocalDateTime dt = Instant.ofEpochMilli(time).atZone(ZoneId.systemDefault()).toLocalDateTime();
 			System.out.print(dt.format(TimeFormatter));
-			System.out.print(" write(tps=" + numWrites + " timeouts=" + timeoutWrites + " inDoubt=" + inDoubtWrites + " errors=" + errorWrites + ")");
-			System.out.print(" read(tps=" + numReads + " timeouts=" + timeoutReads + " inDoubt=" + inDoubtReads + " errors=" + errorReads);
+			System.out.print(" write(tps=" + numWrites + " timeouts=" + timeoutWrites + " inDoubt=" + inDoubtWrites + " blocked=" + blockedWrites + " errors=" + errorWrites + ")");
+			System.out.print(" read(tps=" + numReads + " timeouts=" + timeoutReads + " inDoubt=" + inDoubtReads + " blocked=" + blockedReads + " errors=" + errorReads);
 			if (this.counters.transaction.latency != null) {
-				System.out.print(" txn(tps=" + numTxns + " timeouts=" + timeoutTxns + " inDoubt=" + inDoubtTxns + " errors=" + errorTxns);
+				System.out.print(" txn(tps=" + numTxns + " timeouts=" + timeoutTxns + " inDoubt=" + inDoubtTxns + " blocked=" + blockedTxns + " errors=" + errorTxns);
 			}
 			if (args.reportNotFound) {
 				System.out.print(" nf=" + notFound);
@@ -1863,7 +1879,7 @@ public class Main implements Log.Callback {
 			}
 
 			System.out.print(" total(tps=" + (numWrites + numReads) + " timeouts=" + totTimeOut
-					+ " inDoubt=" + totInDoubt +  " errors=" + totError + ")");
+					+ " inDoubt=" + totInDoubt + " blocked=" + totBlocked +  " errors=" + totError + ")");
 			// System.out.print(" buffused=" + used
 			// System.out.print(" nodeused=" + ((AsyncNode)nodes[0]).openCount.get() + ',' +
 			// ((AsyncNode)nodes[1]).openCount.get() + ',' +
@@ -2196,6 +2212,32 @@ public class Main implements Log.Callback {
 					break;
 			}
 			binCount++;
+		}
+
+		if(args.mrtSize > 0) {
+			argsHdrOther.append("MRT: ")
+					.append('\n');
+			argsHdrOther.append("    Size:")
+					.append(args.mrtSize)
+					.append('\n');
+			argsHdrOther.append("    Transaction Timeout:")
+					.append(args.mrtTimeoutSec)
+					.append(" seconds")
+					.append('\n');
+			argsHdrOther.append("    Indoubt Retries:")
+					.append(args.mrtInDoubtRetries)
+					.append('\n');
+			argsHdrOther.append("           Sleep:")
+					.append(args.mrtRetrySleepMS)
+					.append(" ms")
+					.append('\n');
+			argsHdrOther.append("    Blocked Retries:")
+					.append(args.mrtBlockRetries)
+					.append('\n');
+			argsHdrOther.append("            Sleep:")
+					.append(args.mrtBlockSleepMS)
+					.append(" ms")
+					.append('\n');
 		}
 
 		argsHdrOther.append("debug: ")

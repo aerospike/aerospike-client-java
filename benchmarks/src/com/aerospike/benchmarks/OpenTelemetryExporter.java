@@ -47,6 +47,7 @@ public final class OpenTelemetryExporter implements com.aerospike.benchmarks.Ope
     private final LongGauge openTelemetryInfoGauge;
     private final LongCounter openTelemetryExceptionCounter;
     private final LongCounter openTelemetryTransactionCounter;
+    private final LongCounter openTelemetryMRTErrorCounter;
     private final DoubleHistogram openTelemetryLatencyMSHistogram;
     private final DoubleHistogram openTelemetryLatencyUSHistogram;
 
@@ -137,20 +138,26 @@ public final class OpenTelemetryExporter implements com.aerospike.benchmarks.Ope
         this.openTelemetryExceptionCounter =
                 openTelemetryMeter
                     .counterBuilder(METRIC_NAME + ".exception")
-                        .setDescription("Aerospike Benchmark MRT Exception")
+                        .setDescription("Aerospike Benchmark Exception")
+                        .build();
+
+        this.openTelemetryMRTErrorCounter =
+                openTelemetryMeter
+                        .counterBuilder(METRIC_NAME + ".related.errors")
+                        .setDescription("Aerospike Benchmark MRT Related Errors")
                         .build();
 
         this.openTelemetryLatencyMSHistogram =
                 openTelemetryMeter
                         .histogramBuilder(METRIC_NAME + ".lng.latency")
-                        .setDescription("Aerospike Benchmark MRT Latencies")
+                        .setDescription("Aerospike Benchmark MRT Latencies (ms)")
                         .setUnit("ms")
                         .build();
 
         this.openTelemetryLatencyUSHistogram =
                 openTelemetryMeter
                         .histogramBuilder(METRIC_NAME + ".latency")
-                        .setDescription("Aerospike Benchmark MRT Latencies")
+                        .setDescription("Aerospike Benchmark MRT Latencies (us)")
                         .setUnit("microsecond")
                         .build();
 
@@ -344,8 +351,14 @@ public final class OpenTelemetryExporter implements com.aerospike.benchmarks.Ope
             }
         }
 
-        if(exception instanceof AerospikeException && ((AerospikeException) exception).getInDoubt()) {
-            exception_subtype = "inDoubt";
+        if(exception instanceof AerospikeException) {
+            AerospikeException ae = (AerospikeException) exception;
+            if(ae.getInDoubt()) {
+                exception_subtype = "inDoubt";
+            }
+            else if(ae.getResultCode() == 120) {
+                exception_subtype = "blocked";
+            }
         }
 
         this.addException(exceptionType, exception_subtype, message, type);
@@ -372,6 +385,17 @@ public final class OpenTelemetryExporter implements com.aerospike.benchmarks.Ope
 
         if(exception_subtype != null) {
             attributes.put("exception_subtype", exception_subtype);
+
+            AttributesBuilder attributesMRTErr = Attributes.builder();
+            attributesMRTErr.putAll(this.hbAttributes[0]);
+            attributesMRTErr.putAll(Attributes.of(
+                    AttributeKey.stringKey("error_type"), exception_subtype,
+                    AttributeKey.stringKey("type"), type.name().toLowerCase(),
+                    AttributeKey.longKey("startTimeMillis"), this.startTimeMillis
+            ));
+
+            this.openTelemetryMRTErrorCounter.add(1,
+                    attributesMRTErr.build());
         }
 
         this.openTelemetryExceptionCounter.add(1, attributes.build());
