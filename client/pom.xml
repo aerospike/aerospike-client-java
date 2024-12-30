@@ -119,6 +119,7 @@
                   <pomFile>${project.basedir}/deploy-resources/bouncycastle_pom.xml</pomFile>
                   <file>target/${project.build.finalName}.jar</file>
                   <groupId>com.aerospike</groupId>
+                  <version>${revision}</version>
                   <artifactId>aerospike-client${crypto.type}-jdk21</artifactId>
                   <generatePom>true</generatePom>
                 </configuration>
@@ -189,6 +190,7 @@
                   <pomFile>${project.basedir}/deploy-resources/gnu_pom.xml</pomFile>
                   <file>target/${project.build.finalName}.jar</file>
                   <groupId>com.aerospike</groupId>
+                  <version>${revision}</version>
                   <artifactId>aerospike-client${crypto.type}-jdk21</artifactId>
                   <generatePom>true</generatePom>
                 </configuration>
