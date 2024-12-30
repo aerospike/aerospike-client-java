@@ -15,6 +15,10 @@ inputs:
     required: false
     description: Container repo url
     default: aerospike.jfrog.io/docker/
+  jfrog-platform-url:
+    description: ""
+    required: false
+    default: https://aerospike.jfrog.io
   oidc-provider:
     description: ""
     required: false
@@ -23,6 +27,10 @@ inputs:
     description: ""
     required: false
     default: aerospike/clients
+  container-name:
+    default: aerospike
+    required: false
+    description: Name for test container
 
 runs:
   using: "composite"
@@ -35,18 +43,30 @@ runs:
         oidc-provider-name: ${{ inputs.oidc-provider }}
         oidc-audience: ${{ inputs.oidc-audience }}
 
-    - name: Log into Docker Hub to get server RC
-      if: ${{ inputs.use-server-rc == 'true' }}
+    - if: ${{ inputs.use-server-rc == 'true' }}
       run: docker login ${{ inputs.container-repo-url }} --username ${{ inputs.docker-hub-username }} --password ${{ inputs.docker-hub-password }}
       shell: bash
 
     - run: echo IMAGE_NAME=${{ inputs.use-server-rc == 'true' && inputs.container-repo-url || '' }}aerospike/aerospike-server-enterprise${{ inputs.use-server-rc == 'true' && '-rc' || '' }}:${{ inputs.server-tag }} >> $GITHUB_ENV
       shell: bash
 
-    - run: docker run -d --name aerospike -p 3000:3000 ${{ env.IMAGE_NAME }}
+    - run: docker run -d --name ${{ inputs.container-name }} -p 3000:3000 ${{ env.IMAGE_NAME }}
       shell: bash
 
     - uses: ./.github/actions/wait-for-as-server-to-start
       with:
-        container-name: aerospike
+        container-name: ${{ inputs.container-name }}
         is-security-enabled: true
+        is-strong-consistency-enabled: true
+
+    - run: docker exec ${{ inputs.container-name }} asadm --enable -e 'asinfo -v "roster-set:namespace=test;nodes=A1"'
+      shell: bash
+
+    - run: docker exec ${{ inputs.container-name }} asadm --enable -e 'asinfo -v revive:'
+      shell: bash
+
+    - run: docker exec ${{ inputs.container-name }} asadm --enable -e 'asinfo -v recluster:'
+      shell: bash
+
+    - run: docker logs ${{ inputs.container-name }}
+      shell: bash
