@@ -22,7 +22,7 @@ inputs:
     description: ""
   run-tests:
     required: true
-    default: "false"
+    default: "true"
     description: Spin up aerospike enterprise server and run tests
 
 runs:

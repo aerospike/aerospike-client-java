@@ -190,6 +190,7 @@
                   <file>target/${project.build.finalName}.jar</file>
                   <groupId>com.aerospike</groupId>
                   <artifactId>aerospike-client${crypto.type}-jdk21</artifactId>
+                  <version>${revision}</version>
                   <generatePom>true</generatePom>
                 </configuration>
                 </execution>
