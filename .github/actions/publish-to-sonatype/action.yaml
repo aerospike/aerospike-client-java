@@ -2,14 +2,6 @@ name: Publish artifacts to Sonatype
 description: "Publishes artifacts to Sonatype"
 
 inputs:
-  jfrog-releases-repo-name:
-    description: ""
-    required: false
-    default: clients-maven-dev-local
-  jfrog-snapshots-repo-name:
-    description: ""
-    required: false
-    default: clients-maven-dev-local
   jfrog-platform-url:
     description: ""
     required: false
@@ -20,12 +12,6 @@ inputs:
   oidc-audience:
     description: ""
     required: true
-  artifact-name:
-    description: ""
-    required: true
-  artifact-version:
-    description: ""
-    required: true
   staging-folder:
     description: ""
     required: false
@@ -34,6 +20,12 @@ inputs:
     description: ""
     required: false
     default: clients-maven-stage-local
+  build-name-number:
+    description: ""
+    required: true
+  artifact-version:
+    description: ""
+    required: true
 
 runs:
   using: "composite"
@@ -48,6 +40,24 @@ runs:
         oidc-provider-name: ${{ inputs.oidc-provider }}
         oidc-audience: ${{ inputs.oidc-audience }}
 
+    - name: Get info
+      shell: bash
+      id: get-build-info
+      run: |
+        INPUT=${{ inputs.build-name-number }}
+
+        BUILD_NAME="${INPUT%/*}" # Getting the build name
+        BUILD_NUMBER="${INPUT#*/}" # Getting build number
+
+        BUILD_INFO=$(jf rt curl "/api/build/${BUILD_NAME}/${BUILD_NUMBER}" | jq -c ".")
+        echo build-info="${BUILD_INFO}" >> $GITHUB_OUTPUT
+
+    - name: Get build name
+      shell: bash
+      id: get-build-name
+      run: |
+        echo build-name=$(echo '${{ steps.get-build-info.outputs.build-info }}' | jq -r '.buildInfo.modules[].id | sub("/[0-9]+$"; "")') >> $GITHUB_OUTPUT
+
     - name: Create staging folder
       shell: bash
       run: |
@@ -57,10 +67,10 @@ runs:
       shell: bash
       working-directory: ${{ inputs.staging-folder }}
       run: |
-        jf rt dl "${{ inputs.target-repository }}/com/aerospike/${{ inputs.artifact-name }}/${{ inputs.artifact-version }}/*" .
+        jf rt dl "${{ inputs.target-repository }}/com/aerospike/${{ steps.get-build-name.outputs.build-name }}/${{ inputs.artifact-version }}/*" .
 
     - name: Debug list downloaded content
       shell: bash
       working-directory: ${{ inputs.staging-folder }}
       run: |
-        ls -la
+        ls -laR
