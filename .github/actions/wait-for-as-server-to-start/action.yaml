@@ -8,6 +8,10 @@ inputs:
     description: Flag to toggle docker hub creds use. With this flag enabled before attempting to pull image we will attempt to log in do docker hub.
     required: false
     default: "false"
+  is-strong-consistency-enabled:
+    description: Flag to enable strong consistency
+    required: false
+    default: "false"
 
 runs:
   using: "composite"
@@ -18,5 +22,5 @@ runs:
     # Also, we don't want to fail if we timeout in case the server *did* finish starting up but the script couldn't detect it due to a bug
     # Effectively, this composite action is like calling "sleep" that is optimized to exit early when it detects an ok from the server
     - name: Wait for EE server to start
-      run: timeout 30 bash ./.github/workflows/scripts/wait-for-as-server-to-start.sh ${{ inputs.container-name }} ${{ inputs.is-security-enabled }} || true
+      run: timeout 30 bash ./.github/workflows/scripts/wait-for-as-server-to-start.sh ${{ inputs.container-name }} ${{ inputs.is-security-enabled }} ${{ inputs.is-strong-consistency-enabled }} || true
       shell: bash
