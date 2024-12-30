@@ -15,9 +15,9 @@ on:
         type: string
         required: true
     secrets:
-      GPG_SECRET_KEY:
+      GPG_SECRET_KEY_ORG:
         required: true
-      GPG_PASS:
+      GPG_PASS_ORG:
         required: true
       JFROG_OIDC_PROVIDER:
         required: true
@@ -26,7 +26,7 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.BUILD_CONTAINER_DISTRO_VERSION }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -40,7 +40,7 @@ jobs:
         with:
           distribution: "semeru"
           java-version: ${{ inputs.java-version }}
-          gpg-private-key: ${{ secrets.GPG_SECRET_KEY }}
+          gpg-private-key: ${{ secrets.GPG_SECRET_KEY_ORG }}
           gpg-passphrase: GPG_PASS
 
       - name: Build all modules
@@ -52,7 +52,7 @@ jobs:
         shell: bash
         run: mvn clean source:jar javadoc:jar install -P gpg -P ${{ inputs.crypto-type }} # The crypto profile is usually set with set_crypto but since we need to toggle multiple prfiles set_crypto option is not being picked up
         env:
-          GPG_PASS: ${{ secrets.GPG_PASS }}
+          GPG_PASS: ${{ secrets.GPG_PASS_ORG }}
 
       - name: Get artifact name
         id: get-artifact-name

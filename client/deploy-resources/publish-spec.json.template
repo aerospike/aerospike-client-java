@@ -1,11 +1,11 @@
 {
   "files": [
     {
-      "pattern": "target/*.asc",
+      "pattern": "",
       "target": ""
     },
     {
-      "pattern": "target/*.jar",
+      "pattern": "",
       "target": ""
     },
     {

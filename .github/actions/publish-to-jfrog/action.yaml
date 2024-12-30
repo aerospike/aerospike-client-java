@@ -36,6 +36,10 @@ inputs:
     description: ""
     required: false
     default: deploy-resources
+  package-install-location:
+    description: ""
+    required: false
+    default: ~/.m2/repository
 
 runs:
   using: "composite"
@@ -62,13 +66,16 @@ runs:
       working-directory: client
       run: |
         jq --arg targetPattern "${{ inputs.jfrog-releases-repo-name }}/com/aerospike/${{ inputs.artifact-id }}/${{ inputs.artifact-version }}/" \
-        --arg publicPomPattern "deploy-resources/${{ inputs.crypto-type }}_pom.xml" \
-        --arg publicPomTarget "${{ inputs.jfrog-releases-repo-name }}/com/aerospike/${{ inputs.artifact-id }}/${{ inputs.artifact-version }}/${{ inputs.artifact-name }}.pom" \
+        --arg publicPomPattern "${{ inputs.package-install-location }}/com/aerospike/${{ inputs.artifact-id }}/${{ inputs.artifact-version }}/*.pom" \
+        --arg jarPattern "${{ inputs.package-install-location }}/com/aerospike/${{ inputs.artifact-id }}/${{ inputs.artifact-version }}/*.jar" \
+        --arg ascPattern "${{ inputs.package-install-location }}/com/aerospike/${{ inputs.artifact-id }}/${{ inputs.artifact-version }}/*.asc" \
         '
+        .files[0].pattern = $jarPattern |
         .files[0].target = $targetPattern |
+        .files[1].pattern = $ascPattern |
         .files[1].target = $targetPattern |
         .files[2].pattern = $publicPomPattern |
-        .files[2].target = $publicPomTarget
+        .files[2].target = $targetPattern
         ' ${{ inputs.deploy-spec-path }}/publish-spec.json.template > ${{ inputs.deploy-spec-path }}/publish-spec.json
 
     - name: Debug deploy spec
