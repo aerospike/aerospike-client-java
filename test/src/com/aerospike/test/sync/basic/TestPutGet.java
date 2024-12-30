@@ -16,11 +16,15 @@
  */
 package com.aerospike.test.sync.basic;
 
+import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import com.aerospike.test.SuiteSync;
+import com.aerospike.test.util.Args;
+import org.junit.Assume;
 import org.junit.Test;
 
 import com.aerospike.client.Bin;
@@ -85,6 +89,7 @@ public class TestPutGet extends TestSync {
 
 	@Test
 	public void putGetCompress() {
+		Assume.assumeThat(args.enterprise, is(true));
 		Key key = new Key(args.namespace, args.set, "pgc");
 		byte[] bytes = new byte[2000];
 
