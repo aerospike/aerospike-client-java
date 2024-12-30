@@ -22,7 +22,7 @@ on:
 
 jobs:
   validate-build:
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.BUILD_CONTAINER_DISTRO_VERSION }}
     steps:
       - name: Setup jfrog shell
         uses: jfrog/setup-jfrog-cli@v4
