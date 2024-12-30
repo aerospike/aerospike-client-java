@@ -45,7 +45,7 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.BUILD_CONTAINER_DISTRO_VERSION }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -58,22 +58,11 @@ jobs:
           distribution: "semeru" # See 'Supported distributions' for available options
           java-version: ${{ inputs.java-version }}
 
-      # This is needed so we can authenticate and get the credentials to be able to pull AE RC from JFrog
-      - name: Set up JFrog credentials
-        id: setup-jfrog-cli
-        uses: jfrog/setup-jfrog-cli@v4
-        env:
-          JF_URL: ${{ inputs.jfrog-platform-url }}
-        with:
-          version: 2.72.2
-          oidc-provider-name: ${{ inputs.oidc-provider }}
-          oidc-audience: ${{ inputs.oidc-audience }}
-
       - name: Build and test
         uses: ./.github/actions/build-and-test
         with:
           crypto-type: ${{ inputs.crypto-type }}
           server-tag: ${{ inputs.server-tag }}
           use-server-rc: ${{ inputs.use-server-rc }}
-          jfrog-docker-username: ${{ steps.setup-jfrog-cli.outputs.oidc-user }}
-          jfrog-docker-token: ${{ steps.setup-jfrog-cli.outputs.oidc-token }}
+          oidc-provider: ${{ secrets.JFROG_OIDC_PROVIDER }}
+          oidc-audience: ${{ secrets.JFROG_OIDC_AUDIENCE }}

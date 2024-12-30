@@ -14,10 +14,6 @@ on:
         type: string
         required: true
     secrets:
-      GPG_SECRET_KEY:
-        required: true
-      GPG_PASS:
-        required: true
       JFROG_OIDC_PROVIDER:
         required: true
       JFROG_OIDC_AUDIENCE:
@@ -25,7 +21,7 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.BUILD_CONTAINER_DISTRO_VERSION }}
     steps:
       - name: Set up JFrog credentials l
         id: setup-jfrog-cli

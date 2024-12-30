@@ -7,7 +7,7 @@ on:
 
 jobs:
   debug-job:
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.BUILD_CONTAINER_DISTRO_VERSION }}
     steps:
       - name: debug
         run: |
@@ -16,7 +16,7 @@ jobs:
 
   java-version:
     needs: debug-job
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.BUILD_CONTAINER_DISTRO_VERSION }}
     outputs:
       java-version: ${{ steps.get-java-version.outputs.java-version }}
     steps:

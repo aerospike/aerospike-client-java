@@ -2,14 +2,6 @@ name: Publish artifacts to Sonatype
 description: "Publishes artifacts to Sonatype"
 
 inputs:
-  jfrog-releases-repo-name:
-    description: ""
-    required: false
-    default: clients-maven-dev-local
-  jfrog-snapshots-repo-name:
-    description: ""
-    required: false
-    default: clients-maven-dev-local
   jfrog-platform-url:
     description: ""
     required: false
@@ -20,12 +12,6 @@ inputs:
   oidc-audience:
     description: ""
     required: true
-  artifact-name:
-    description: ""
-    required: true
-  artifact-version:
-    description: ""
-    required: true
   staging-folder:
     description: ""
     required: false
@@ -34,6 +20,18 @@ inputs:
     description: ""
     required: false
     default: clients-maven-stage-local
+  build-name-number:
+    description: ""
+    required: true
+  artifact-version:
+    description: ""
+    required: true
+  publish-user:
+    description: ""
+    required: true
+  publish-password:
+    description: ""
+    required: true
 
 runs:
   using: "composite"
@@ -48,6 +46,24 @@ runs:
         oidc-provider-name: ${{ inputs.oidc-provider }}
         oidc-audience: ${{ inputs.oidc-audience }}
 
+    - name: Get info
+      shell: bash
+      id: get-build-info
+      run: |
+        INPUT=${{ inputs.build-name-number }}
+
+        BUILD_NAME="${INPUT%/*}" # Getting the build name
+        BUILD_NUMBER="${INPUT#*/}" # Getting build number
+
+        BUILD_INFO=$(jf rt curl "/api/build/${BUILD_NAME}/${BUILD_NUMBER}" | jq -c ".")
+        echo build-info="${BUILD_INFO}" >> $GITHUB_OUTPUT
+
+    - name: Get build name
+      shell: bash
+      id: get-build-name
+      run: |
+        echo build-name=$(echo '${{ steps.get-build-info.outputs.build-info }}' | jq -r '.buildInfo.modules[].id | sub("/[0-9]+$"; "")') >> $GITHUB_OUTPUT
+
     - name: Create staging folder
       shell: bash
       run: |
@@ -57,10 +73,60 @@ runs:
       shell: bash
       working-directory: ${{ inputs.staging-folder }}
       run: |
-        jf rt dl "${{ inputs.target-repository }}/com/aerospike/${{ inputs.artifact-name }}/${{ inputs.artifact-version }}/*" .
+        jf rt dl "${{ inputs.target-repository }}/com/aerospike/${{ steps.get-build-name.outputs.build-name }}/${{ inputs.artifact-version }}/*" .
 
     - name: Debug list downloaded content
       shell: bash
       working-directory: ${{ inputs.staging-folder }}
       run: |
-        ls -la
+        ls -laR
+ 
+    - name: Get hashes from build_info and generate files
+      shell: bash
+      working-directory: ${{ inputs.staging-folder }}
+      run: |
+        BUILD_INFO='${{ steps.get-build-info.outputs.build-info }}'
+        MODULES=$(echo "${BUILD_INFO}" | jq -c '.buildInfo.modules[].artifacts[]')
+        STAGE_DIR="$(find . -type f -name '*.jar' -exec realpath {} \; | head -n 1 | xargs dirname)"
+        
+        for MODULE in ${MODULES}; do
+          NAME=$(echo "${MODULE}" | jq -r ".name")
+          SHA1=$(echo "${MODULE}" | jq -r ".sha1")
+          SHA256=$(echo "${MODULE}" | jq -r ".sha256")
+          MD5=$(echo "${MODULE}" | jq -r ".md5")
+        
+          FILE_NAME="${STAGE_DIR}/${NAME}"
+          echo "$FILE_NAME"
+          echo "${SHA1}" >"${FILE_NAME}.sha1"
+          echo "${SHA256}" >"${FILE_NAME}.sha256"
+          echo "${MD5}" >"${FILE_NAME}.md5"
+        done
+
+    - name: Create upload archive
+      id: create-artifact
+      shell: bash
+      working-directory: ${{ inputs.staging-folder }}
+      run: |
+        ARTIFACT_NAME="$(echo '${{ steps.get-build-info.outputs.build-info }}' | jq -cr '.buildInfo.name | split("_")[1]').zip"
+
+        # adding output variable for debug step later
+        echo "artifact-name=${ARTIFACT_NAME}" >> $GITHUB_OUTPUT
+        zip -r "${ARTIFACT_NAME}" .
+      
+    - name: Debug show content of the upload archive
+      shell: bash
+      working-directory:  ${{ inputs.staging-folder }}
+      run: |
+        ARTIFACT_NAME='${{ steps.create-artifact.outputs.artifact-name }}'
+        unzip -l "${ARTIFACT_NAME}" | tail -n +4 | sort -k4,4 
+
+    #- name: Stage artifacts
+    #  working-directory: ${{ inputs.staging-folder }}
+    #  shell: bash
+    #  run: |
+    #    TOKEN=$(printf "${{ inputs.publish-user }}:${{ inputs.publish-password }}" | base64)
+    #    curl --request POST \
+    #      --verbose \
+    #      --header "Authorization: Bearer ${TOKEN}" \
+    #      --form bundle=@${{ steps.create-artifact.outputs.artifact-name }} \
+    #      https://central.sonatype.com/api/v1/publisher/upload

@@ -34,17 +34,8 @@ on:
         description: Spin up aerospike enterprise server and run tests
 
 jobs:
-  debug-job:
-    runs-on: ubuntu-latest
-    steps:
-      - name: debug
-        run: |
-          echo "${{ inputs.branch }}"
-          echo "${{ github.base_ref }}"
-
   java-version:
-    needs: debug-job
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.BUILD_CONTAINER_DISTRO_VERSION }}
     outputs:
       java-version: ${{ steps.get-java-version.outputs.java-version }}
     steps:
@@ -61,14 +52,6 @@ jobs:
       - name: debug - print java-version
         run: |
           echo ${{ steps.get-java-version.outputs.java-version }}
-
-  debug-java-version-job:
-    runs-on: ubuntu-latest
-    needs: java-version
-    steps:
-      - name: debug
-        run: |
-          echo "${{ needs.java-version.outputs.java-version }}"
 
   build:
     uses: ./.github/workflows/build.yaml
