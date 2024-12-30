@@ -113,13 +113,14 @@ import com.aerospike.test.util.Args;
 })
 public class SuiteSync {
 	public static IAerospikeClient client = null;
+	public static Args args = null;
 
 	@BeforeClass
 	public static void init() {
 		Log.setCallback(null);
 
 		System.out.println("Begin AerospikeClient");
-		Args args = Args.Instance;
+		args = Args.Instance;
 
 		ClientPolicy policy = new ClientPolicy();
 		args.setClientPolicy(policy);

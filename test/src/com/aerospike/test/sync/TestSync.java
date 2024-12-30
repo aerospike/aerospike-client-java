@@ -18,6 +18,7 @@ package com.aerospike.test.sync;
 
 import static org.junit.Assert.fail;
 
+import com.aerospike.test.util.Args;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 
@@ -30,6 +31,7 @@ import com.aerospike.test.util.TestBase;
 
 public class TestSync extends TestBase {
 	protected static IAerospikeClient client = SuiteSync.client;
+	protected static Args args = SuiteSync.args;
 	private static boolean DestroyClient = false;
 
 	@BeforeClass
