@@ -14,15 +14,15 @@ inputs:
     required: false
     default: "latest"
     description: "Server docker image tag"
-  jfrog-docker-username:
+  oidc-provider:
     required: true
     description: ""
-  jfrog-docker-token:
+  oidc-audience:
     required: true
     description: ""
   run-tests:
     required: true
-    default: "false"
+    default: "true"
     description: Spin up aerospike enterprise server and run tests
 
 runs:
@@ -45,8 +45,8 @@ runs:
       with:
         use-server-rc: ${{ inputs.use-server-rc }}
         server-tag: ${{ inputs.server-tag }}
-        docker-hub-username: ${{ inputs.jfrog-docker-username }}
-        docker-hub-password: ${{ inputs.jfrog-docker-token }}
+        oidc-provider: ${{ inputs.oidc-provider }}
+        oidc-audience: ${{ inputs.oidc-audience }}
 
     - name: Run tests
       shell: bash
