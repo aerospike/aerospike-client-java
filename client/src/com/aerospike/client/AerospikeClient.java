@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2024 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -670,7 +670,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 				return CommitStatus.ALREADY_COMMITTED;
 
 			case ABORTED:
-				return CommitStatus.ALREADY_ABORTED;
+				throw new AerospikeException(ResultCode.TXN_ALREADY_ABORTED, "Transaction already aborted");
 		}
 	}
 
@@ -715,8 +715,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 				break;
 
 			case ABORTED:
-				listener.onSuccess(CommitStatus.ALREADY_ABORTED);
-				break;
+				throw new AerospikeException(ResultCode.TXN_ALREADY_ABORTED, "Transaction already aborted");
 		}
 	}
 
@@ -738,7 +737,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 				return tr.abort(txnRollPolicyDefault);
 
 			case COMMITTED:
-				return AbortStatus.ALREADY_COMMITTED;
+				throw new AerospikeException(ResultCode.TXN_ALREADY_COMMITTED, "Transaction already committed");
 
 			case ABORTED:
 				return AbortStatus.ALREADY_ABORTED;
@@ -775,8 +774,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 				break;
 
 			case COMMITTED:
-				listener.onSuccess(AbortStatus.ALREADY_COMMITTED);
-				break;
+				throw new AerospikeException(ResultCode.TXN_ALREADY_COMMITTED, "Transaction already committed");
 
 			case ABORTED:
 				listener.onSuccess(AbortStatus.ALREADY_ABORTED);
