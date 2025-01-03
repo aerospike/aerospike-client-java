@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2024 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -22,7 +22,17 @@ package com.aerospike.client;
  */
 public final class ResultCode {
 	/**
-	 * Multi-record transaction failed
+	 * Multi-record transaction commit called, but the transaction was already aborted.
+	 */
+	public static final int TXN_ALREADY_ABORTED = -19;
+
+	/**
+	 * Multi-record transaction abort called, but the transaction was already committed.
+	 */
+	public static final int TXN_ALREADY_COMMITTED = -18;
+
+	/**
+	 * Multi-record transaction failed.
 	 */
 	public static final int TXN_FAILED = -17;
 
@@ -496,6 +506,12 @@ public final class ResultCode {
 	 */
 	public static String getResultString(int resultCode) {
 		switch (resultCode) {
+		case TXN_ALREADY_ABORTED:
+			return "Multi-record transaction already aborted";
+
+		case TXN_ALREADY_COMMITTED:
+			return "Multi-record transaction already committed";
+
 		case TXN_FAILED:
 			return "Multi-record transaction failed";
 
