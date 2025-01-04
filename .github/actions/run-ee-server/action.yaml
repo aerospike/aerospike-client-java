@@ -1,6 +1,10 @@
 name: "Run EE Server"
 description: "Run EE server. Returns once server is ready. Only tested on Linux and macOS"
 
+permissions:
+  # This is required for requesting the OIDC token
+  id-token: write
+
 inputs:
   # All inputs in composite actions are strings
   use-server-rc:

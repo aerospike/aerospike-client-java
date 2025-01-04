@@ -36,13 +36,11 @@ inputs:
 runs:
   using: "composite"
   steps:
-    - name: Set up JFrog credentials
-      id: setup-jfrog-cli
+    - name: Setup jfrog shell
       uses: jfrog/setup-jfrog-cli@v4
       env:
         JF_URL: ${{ inputs.jfrog-platform-url }}
       with:
-        version: 2.72.2
         oidc-provider-name: ${{ inputs.oidc-provider }}
         oidc-audience: ${{ inputs.oidc-audience }}
 
@@ -80,7 +78,7 @@ runs:
       working-directory: ${{ inputs.staging-folder }}
       run: |
         ls -laR
- 
+
     - name: Get hashes from build_info and generate files
       shell: bash
       working-directory: ${{ inputs.staging-folder }}
@@ -88,13 +86,13 @@ runs:
         BUILD_INFO='${{ steps.get-build-info.outputs.build-info }}'
         MODULES=$(echo "${BUILD_INFO}" | jq -c '.buildInfo.modules[].artifacts[]')
         STAGE_DIR="$(find . -type f -name '*.jar' -exec realpath {} \; | head -n 1 | xargs dirname)"
-        
+
         for MODULE in ${MODULES}; do
           NAME=$(echo "${MODULE}" | jq -r ".name")
           SHA1=$(echo "${MODULE}" | jq -r ".sha1")
           SHA256=$(echo "${MODULE}" | jq -r ".sha256")
           MD5=$(echo "${MODULE}" | jq -r ".md5")
-        
+
           FILE_NAME="${STAGE_DIR}/${NAME}"
           echo "$FILE_NAME"
           echo "${SHA1}" >"${FILE_NAME}.sha1"
@@ -112,13 +110,13 @@ runs:
         # adding output variable for debug step later
         echo "artifact-name=${ARTIFACT_NAME}" >> $GITHUB_OUTPUT
         zip -r "${ARTIFACT_NAME}" .
-      
+
     - name: Debug show content of the upload archive
       shell: bash
-      working-directory:  ${{ inputs.staging-folder }}
+      working-directory: ${{ inputs.staging-folder }}
       run: |
         ARTIFACT_NAME='${{ steps.create-artifact.outputs.artifact-name }}'
-        unzip -l "${ARTIFACT_NAME}" | tail -n +4 | sort -k4,4 
+        unzip -l "${ARTIFACT_NAME}" | tail -n +4 | sort -k4,4
 
     #- name: Stage artifacts
     #  working-directory: ${{ inputs.staging-folder }}
