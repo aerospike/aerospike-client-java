@@ -1,0 +1,21 @@
+name: create-release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        type: string
+        required: true
+        description: New version to set 
+
+jobs:
+  build-stage:
+    name: Build stage
+    uses: ./.github/workflows/release-stage.yaml
+    with:
+      # This will need to change to point to staging branch
+      ref: dev/dev-ci-fixes-stage 
+      version: ${{ inputs.version }}
+      build-number: ${{ github.run_number }}
+      is-snapshot: false
+    secrets: inherit

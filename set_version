@@ -1,0 +1,56 @@
+#!/usr/bin/env bash
+
+#
+# Function definitions
+#
+function update_version() {
+    VERSION="$1"
+    BUILD_TYPE=$2
+    PARENT_POM="pom.xml"
+    PUBLIC_POM="client/deploy-resources/${BUILD_TYPE}_pom.xml"
+
+    # Detecting host type. `sed` on bsd and linux are not the same
+    if [[ "$(uname)" == "Darwin" ]]; then
+        sed -i "" "s#<revision>[^<]*</revision>#<revision>${VERSION}</revision>#g" "$PARENT_POM"
+        sed -i "" "1,/<version>[^<]*<\/version>/ s#<version>[^<]*</version>#<version>${VERSION}</version>#" "$PUBLIC_POM"
+    else
+        sed -i "s#<revision>[^<]*</revision>#<revision>${VERSION}</revision>#g" "$PARENT_POM"
+        sed -i "0,/<version>[^<]*<\/version>/ s//<version>${VERSION}<\/version>/" "$PUBLIC_POM"
+    fi
+}
+
+function main() {
+    VERSION=$1
+    BUILD_TYPE=$2
+
+    # If version has been set using set_crypto we are honoring that setting
+    if [ -f "bouncycastle.config" ];then
+        BUILD_TYPE="bouncycastle"
+    elif [ -f "gnu.config" ];then
+        BUILD_TYPE="gnu"
+    fi
+
+    update_version $VERSION $BUILD_TYPE
+}
+
+#
+# Main entry
+#
+VERSION=$1
+BUILD_TYPE=${2:-"gnu"}
+REGEX="^[0-9]+\.[0-9]+\.[0-9]+(_[a-zA-Z0-9]+)?$"
+
+if [ -z $VERSION ];then
+    printf "Missing version ..."
+
+    exit 1
+elif [[ ! "$1" =~ $REGEX ]];then
+    printf "Version format not valid. Valid format are [0 - 9].[0 - 9].[0 - 9] | [0 - 9].[0 - 9].[0 - 9]_[git_sha]"
+
+    exit 1
+else 
+    # Call main
+    main $VERSION $BUILD_TYPE
+
+    exit 0
+fi
