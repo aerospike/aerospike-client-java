@@ -1,9 +1,19 @@
 on:
   workflow_call:
     inputs:
-      branch:
+      ref:
         type: string
         required: true
+      version:
+        type: string
+        required: false
+      build-number:
+        type: string
+        required: true
+      is-snapshot:
+        type: boolean
+        required: false
+        default: true
 
 jobs:
   debug-job:
@@ -11,7 +21,7 @@ jobs:
     steps:
       - name: debug
         run: |
-          echo "${{ inputs.branch }}"
+          echo "${{ inputs.ref }}"
           echo "${{ github.base_ref }}"
 
   java-version:
@@ -23,7 +33,7 @@ jobs:
       - name: Checkout client
         uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.branch }}
+          ref: ${{ inputs.ref }}
 
       - name: Get java version
         id: get-java-version
@@ -41,9 +51,11 @@ jobs:
       matrix:
         crypto-type: [bouncycastle, gnu]
     with:
+      ref: ${{ inputs.ref }}
       java-version: ${{ needs.java-version.outputs.java-version }}
-      branch: ${{ inputs.branch }}
       crypto-type: ${{ matrix.crypto-type }}
+      version: ${{ inputs.version }}
+      is-snapshot: ${{ inputs.is-snapshot }}
     secrets: inherit
 
   aggregate-published-artifacts:

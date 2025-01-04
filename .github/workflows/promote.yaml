@@ -12,6 +12,10 @@ on:
       target-branch:
         type: string
         description: Target branch to promote token
+      jf-target-build:
+        type: string
+        description: Target build name
+        default: create-release
     secrets:
       SONATYPE_MAVEN_USER:
         required: true
@@ -42,7 +46,7 @@ jobs:
       - name: Get info
         id: get-build-info
         run: |
-          echo build-info=$(jf rt curl /api/build/clients-java-push-to-dev/${{ inputs.build-number }}) >> $GITHUB_OUTPUT
+          echo build-info=$(jf rt curl /api/build/${{ inputs.jf-target-build }}/${{ inputs.build-number }}) >> $GITHUB_OUTPUT
 
       - name: Get commit hash from repo
         id: get-commit-hash
@@ -90,7 +94,7 @@ jobs:
           BUILD_NAMES=(${{ steps.get-build-name.outputs.build-names }})
 
           if [ ${#MODULES[@]} -eq 0 ];then
-            echo "Missing build names for modules in 'clients-java-push-to-dev'"
+            echo "Missing build names for modules in '${{ inputs.jf-target-build }}'"
           fi
 
           for BUILD_NAME in "${BUILD_NAMES[@]}"; do
