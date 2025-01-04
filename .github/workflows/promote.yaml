@@ -12,6 +12,10 @@ on:
       target-branch:
         type: string
         description: Target branch to promote token
+      jf-target-build:
+        type: string
+        description: Target build name
+        default: clients-java-push-to-dev
     secrets:
       SONATYPE_MAVEN_USER:
         required: true
@@ -39,10 +43,28 @@ jobs:
           oidc-provider-name: ${{ secrets.JFROG_OIDC_PROVIDER }}
           oidc-audience: ${{ secrets.JFROG_OIDC_AUDIENCE }}
 
+      # Needed since we are using actions which are part of the repository
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # Fetch the whole history to prevent unrelated history errors
+          fetch-depth: "0"
+          ref: ${{ inputs.target-branch }}
+          token: ${{ secrets.CLIENT_BOT_PAT }}
+
       - name: Get info
         id: get-build-info
         run: |
-          echo build-info=$(jf rt curl /api/build/clients-java-push-to-dev/${{ inputs.build-number }}) >> $GITHUB_OUTPUT
+          echo build-info=$(jf rt curl /api/build/${{ inputs.jf-target-build }}/${{ inputs.build-number }}) >> $GITHUB_OUTPUT
+
+      - name: Check if snapshot build
+        run: |
+          IS_SNAPSHOT=$(echo '${{ steps.get-build-info.outputs.build-info }}' | jq -cr '.buildInfo.properties."buildInfo.env.IS_SNAPSHOT"')
+          if [ $IS_SNAPSHOT == 'true' ];then
+            echo "Error build ${{ inputs.jf-target-build }} with build number ${{ inputs.build-number }} is a SNAPSHOT build. Snapshots are not promoted to production."
+
+            exit 1
+          fi
 
       - name: Get commit hash from repo
         id: get-commit-hash
@@ -59,38 +81,13 @@ jobs:
           echo "commit-hash: '${{ steps.get-commit-hash.outputs.commit-hash }}'"
           echo "build-names: '${{ steps.get-build-name.outputs.build-names }}'"
 
-      # Needed since we are using actions which are part of the repository
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          # Fetch the whole history to prevent unrelated history errors
-          fetch-depth: "0"
-          ref: ${{ inputs.target-branch }}
-          token: ${{ secrets.CLIENT_BOT_PAT }}
-
-      - name: Fast forward
-        shell: bash
-        run: git merge --ff-only ${{ inputs.ref-to-merge }}
-
-      - name: Add tagging message
-        uses: stefanzweifel/git-auto-commit-action@v4
-        with:
-          commit_message: "Promote to prod [skip ci]"
-          commit_author: github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>
-          tagging_message: Promote to PROD
-          branch: ${{ inputs.target-branch }}
-
-      - name: Upload changes to remote head branch
-        shell: bash
-        run: git push
-
       - name: Promote build
         shell: bash
         run: |
           BUILD_NAMES=(${{ steps.get-build-name.outputs.build-names }})
 
           if [ ${#MODULES[@]} -eq 0 ];then
-            echo "Missing build names for modules in 'clients-java-push-to-dev'"
+            echo "Missing build names for modules in '${{ inputs.jf-target-build }}'"
           fi
 
           for BUILD_NAME in "${BUILD_NAMES[@]}"; do
@@ -113,6 +110,46 @@ jobs:
         run: |
           echo "build-name-number: ${{ steps.get-build-name-number.outputs.build-name-number }}"
           echo "artifact-version: ${{ steps.get-artifact-version.output.artifact-version }}"
+
+      #- name: Generate release notes
+      #  id: get-release-notes
+      #  run: |
+      #    RELEASE_NOTES=$(git log $(git describe --tags --abbrev=0)..HEAD --pretty=format:"- %s")
+      #    echo "release_notes=$RELEASE_NOTES" >> $GITHUB_OUTPUT
+
+      - name: Debug print release notes
+        run: |
+          echo "Changes for release ${{ steps.get-artifact-version.output.artifact-version }}"
+          echo "${{ steps.get_commits.outputs.release_notes }}"
+
+      - name: Fast forward
+        shell: bash
+        run: git merge --ff-only ${{ inputs.ref-to-merge }}
+
+      - name: Add tagging message
+        uses: stefanzweifel/git-auto-commit-action@v4
+        with:
+          commit_message: "Promote to prod [skip ci]"
+          commit_author: github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>
+          tagging_message: Promote to PROD
+          branch: ${{ inputs.target-branch }}
+
+      - name: Upload changes to remote head branch
+        shell: bash
+        run: git push
+
+      #- name: Create Release
+      #  id: create_release
+      #  uses: actions/create-release@v1
+      #  env:
+      #    GITHUB_TOKEN: ${{ secrets.CLIENT_BOT_PAT }}
+      #  with:
+      #    tag_name: Release ${{ steps.get-artifact-version.output.artifact-version }}
+      #    body: |
+      #      Changes for release ${{ steps.get-artifact-version.output.artifact-version }}
+      #      "${{ steps.get_commits.outputs.release_notes }}"
+      #    draft: false
+      #    prerelease: false
 
   publish-to-sonatype:
     runs-on: ${{ vars.BUILD_CONTAINER_DISTRO_VERSION }}
