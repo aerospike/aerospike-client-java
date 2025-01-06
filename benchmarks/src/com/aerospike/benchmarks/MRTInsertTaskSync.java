@@ -47,13 +47,14 @@ public final class MRTInsertTaskSync extends MRTInsertTask implements Runnable {
 		RandomShift random = new RandomShift();
 		long begin;
 		long uowElapse;
-		boolean withinCommit;
+		boolean uowCompleted;
 
 		for (long i = 0; i < nMRTs; i++) {
-			withinCommit = false;
 			begin = System.nanoTime();
 			uowElapse = 0;
+			uowCompleted = false;
 			Txn txn = new Txn();
+			txn.setTimeout(txnTimeoutSeconds);
 			writePolicy.txn = txn;
 
 			long startKey = keyStart + keysPerMRT * i;
@@ -84,50 +85,29 @@ public final class MRTInsertTaskSync extends MRTInsertTask implements Runnable {
 					}
 				}
 
-				if(counters.mrtUnitOfWork.latency != null) {
-					uowElapse = System.nanoTime() - begin;
-					counters.mrtUnitOfWork.count.getAndIncrement();
-					counters.mrtUnitOfWork.latency.add(uowElapse);
-				}
-				else {
-					counters.mrtUnitOfWork.count.getAndIncrement();
-					counters.mrtUnitOfWork.incrTransCountOTel(LatencyTypes.MRTUOW);
+				if(Main.abortRun.get()) {
+					PerformMRTAbort(client, txn);
+					break;
 				}
 
-				begin = System.nanoTime();
-				withinCommit = true;
-				client.commit(txn);
-				if(counters.mrtCommit.latency != null) {
-					long elapsed = System.nanoTime() - begin;
-					uowElapse += elapsed;
-					counters.mrtCommit.count.getAndIncrement();
-					counters.mrtCommit.latency.add(elapsed);
+				MRTHandleResult result = CompleteUoW(client, txn, begin, true);
+				uowCompleted = result.successful;
+				uowElapse+= result.totalElapseTime;
+
+				if(Main.terminateRun.get()) {
+					break;
 				}
-				else {
-					counters.mrtCommit.count.getAndIncrement();
-					counters.mrtCommit.incrTransCountOTel(LatencyTypes.MRTCOMMIT);
-				}
+
 			} catch (Exception e) {
-				if (withinCommit) {
-					counters.mrtCommit.errors.incrementAndGet();
-					counters.mrtCommit.addExceptionOTel(e, LatencyTypes.MRTCOMMIT);
-				}
-				System.err.println("Transaction failed for MRT iteration: " + (i + 1) + " - " + e.getMessage());
-				begin = System.nanoTime();
-				client.abort(txn);
-				if(counters.mrtAbort.latency != null) {
-					long elapsed = System.nanoTime() - begin;
-					uowElapse += elapsed;
-					counters.mrtAbort.count.getAndIncrement();
-					counters.mrtAbort.latency.add(elapsed);
-				}
-				else {
-					counters.mrtAbort.count.getAndIncrement();
-					counters.mrtAbort.incrTransCountOTel(LatencyTypes.MRTABORT);
-				}
+				uowElapse += PerformMRTAbort(client, txn);
+				uowCompleted = false;
 			}
-			if(uowElapse > 0) {
+			if(uowCompleted && uowElapse > 0) {
 				counters.mrtUnitOfWork.recordElapsedTimeOTel(LatencyTypes.MRTUOWTOTAL, uowElapse);
+			}
+
+			if(Main.abortRun.get() || Main.terminateRun.get()) {
+				break;
 			}
 		}
 	}
@@ -140,23 +120,12 @@ public final class MRTInsertTaskSync extends MRTInsertTask implements Runnable {
 	}
 
 	private void put(Key key, Bin[] bins) {
-		if (counters.write.latency != null) {
-			long begin = System.nanoTime();
 
-			if (!skipKey(key)) {
-				client.put(writePolicy, key, bins);
-			}
-
-			long elapsed = System.nanoTime() - begin;
-			counters.write.count.getAndIncrement();
-			counters.write.latency.add(elapsed);
-		} else {
-			if (!skipKey(key)) {
-				client.put(writePolicy, key, bins);
-				counters.write.incrTransCountOTel(LatencyTypes.WRITE);
-			}
+		if (skipKey(key)) {
 			counters.write.count.getAndIncrement();
 		}
+
+		putUoW(client, this.writePolicy, key, bins);
 	}
 
 	private boolean skipKey(Key key) {

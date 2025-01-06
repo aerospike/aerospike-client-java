@@ -16,21 +16,20 @@
  */
 package com.aerospike.benchmarks;
 
-import com.aerospike.client.AerospikeException;
-import com.aerospike.client.ResultCode;
+import com.aerospike.client.*;
 
-public abstract class MRTInsertTask {
-
-	final Arguments args;
-	final CounterStore counters;
+public abstract class MRTInsertTask extends MRTTask {
 
 	public MRTInsertTask(Arguments args, CounterStore counters) {
-		this.args = args;
-		this.counters = counters;
+		super(args, counters);
 	}
 
 	protected void writeFailure(AerospikeException ae) {
-		if (ae.getResultCode() == ResultCode.TIMEOUT) {
+
+		if(ae.getInDoubt()) {
+			counters.write.inDoubt.getAndIncrement();
+		}
+		else if (ae.getResultCode() == ResultCode.TIMEOUT) {
 			counters.write.timeouts.getAndIncrement();
 		} else {
 			counters.write.errors.getAndIncrement();

@@ -307,6 +307,7 @@ public class Main implements Log.Callback {
 		if (line.hasOption("mrtSize")) {
 			this.mrtEnabled = true;
 			this.keysPerMRT = Long.parseLong(line.getOptionValue("mrtSize"));
+			this.args.mrtSize = this.keysPerMRT;
 			if (this.keysPerMRT < 1 || this.keysPerMRT > this.nKeys) {
 				throw new Exception("Invalid mrtSize value");
 			}
@@ -315,6 +316,26 @@ public class Main implements Log.Callback {
 				throw new Exception("Invalid key distribution per MRT");
 			}
 			this.nMRTs = this.nKeys / this.keysPerMRT;
+		}
+
+		if (line.hasOption("mrtCIDRetries")) {
+			this.args.mrtInDoubtRetries = Integer.parseInt(line.getOptionValue("mrtCIDRetries"));
+		}
+
+		if (line.hasOption("mrtRetrySleep")) {
+			this.args.mrtRetrySleepMS = Integer.parseInt(line.getOptionValue("mrtRetrySleep"));
+		}
+
+		if (line.hasOption("mrtBlockRetry")) {
+			this.args.mrtBlockRetries = Integer.parseInt(line.getOptionValue("mrtBlockRetry"));
+		}
+
+		if (line.hasOption("mrtBlockSleep")) {
+			this.args.mrtBlockSleepMS = Integer.parseInt(line.getOptionValue("mrtBlockSleep"));
+		}
+
+		if (line.hasOption("mrtTxnTimeout")) {
+			this.args.mrtTimeoutSec = Integer.parseInt(line.getOptionValue("mrtTxnTimeout"));
 		}
 
 		if (line.hasOption("startkey")) {
@@ -898,6 +919,12 @@ public class Main implements Log.Callback {
 			"Maximum number of async connections allowed per server node. Default: 100"
 			);
 		options.addOption("mrtSize", true, "Number of records per multi record transaction.");
+		options.addOption("mrtCIDRetries", true, "Number of Commit In-Doubt retries. If zero, no retry occurs. If -1, retries forever and zero is disabled. Default: 0 (disabled)");
+		options.addOption("mrtRetrySleep", true, "If a Commit retry occurs, this is the number of MS to sleep between retries. Can be zero. Default: 100ms");
+		options.addOption("mrtBlockRetry", true, "If an action is blocked by another MRT, that action will be retried. If -1, retries forever and zeros is disabled. Default: 0 (default)");
+		options.addOption("mrtBlockSleep", true, "If an action is blocked, this is the number of MS to sleep between retries. Can be zero. Default: 100ms");
+		options.addOption("mrtTxnTimeout", true, "The MRT Transaction Timeout value in Seconds. If a client does  not issue a Commit or Abort from when an action was performed within the MRT, the server will rollback the MRT. A value of Zero will use the server's MRT Timeout value. Default: 0 (use server's value))");
+
 		options.addOption("k", "keys", true,
 			"Set the number of keys the client is dealing with. " +
 			"If using an 'insert' workload (detailed below), the client will write this " +
@@ -1383,18 +1410,8 @@ public class Main implements Log.Callback {
 			int numWrites = this.counters.write.count.getAndSet(0);
 			int timeoutWrites = this.counters.write.timeouts.getAndSet(0);
 			int errorWrites = this.counters.write.errors.getAndSet(0);
-
-			int numTxns = this.counters.mrtUnitOfWork.count.getAndSet(0);
-			int timeoutTxns = this.counters.mrtUnitOfWork.timeouts.getAndSet(0);
-			int errorTxns = this.counters.mrtUnitOfWork.errors.getAndSet(0);
-
-			int numTxnsCommit = this.counters.mrtCommit.count.getAndSet(0);
-			int timeoutTxnsCommit = this.counters.mrtCommit.timeouts.getAndSet(0);
-			int errorTxnsCommit = this.counters.mrtCommit.errors.getAndSet(0);
-
-			int numTxnsAbort = this.counters.mrtAbort.count.getAndSet(0);
-			int timeoutTxnsAbort = this.counters.mrtAbort.timeouts.getAndSet(0);
-			int errorTxnsAbort = this.counters.mrtAbort.errors.getAndSet(0);
+			int inDoubtWrites = this.counters.write.inDoubt.getAndSet(0);
+			int blockedWrites = this.counters.write.blocked.getAndSet(0);
 
 			total += numWrites;
 
@@ -1402,12 +1419,27 @@ public class Main implements Log.Callback {
 
 			LocalDateTime dt = Instant.ofEpochMilli(time).atZone(ZoneId.systemDefault()).toLocalDateTime();
 			System.out.print(dt.format(TimeFormatter) + " write(count=" + total + " tps=" + numWrites +
-				" timeouts=" + timeoutWrites + " errors=" + errorWrites + ")");
+				" timeouts=" + timeoutWrites + " inDoubt=" + inDoubtWrites + " blocked=" + blockedWrites + " errors=" + errorWrites + ")");
 
 			if(this.mrtEnabled) {
-				System.out.print(" txns(count=" + numTxns + " timeouts=" + timeoutTxns + " errors=" + errorTxns + ")");
-				System.out.print(" txnCmts(count=" + numTxnsCommit + " timeouts=" + timeoutTxnsCommit + " errors=" + errorTxnsCommit + ")");
-				System.out.print(" txnAbts(count=" + numTxnsAbort + " timeouts=" + timeoutTxnsAbort + " errors=" + errorTxnsAbort + ")");
+				int numUoW = this.counters.mrtUnitOfWork.count.getAndSet(0);
+				int timeoutUoW = this.counters.mrtUnitOfWork.timeouts.getAndSet(0);
+				int errorUoW = this.counters.mrtUnitOfWork.errors.getAndSet(0);
+				int inDoubtUoW = this.counters.mrtUnitOfWork.inDoubt.getAndSet(0);
+
+				int numCommit = this.counters.mrtCommit.count.getAndSet(0);
+				int timeoutCommit = this.counters.mrtCommit.timeouts.getAndSet(0);
+				int errorCommit = this.counters.mrtCommit.errors.getAndSet(0);
+				int inDoubtCommit = this.counters.mrtCommit.inDoubt.getAndSet(0);
+
+				int numAbort = this.counters.mrtAbort.count.getAndSet(0);
+				int timeoutAbort = this.counters.mrtAbort.timeouts.getAndSet(0);
+				int errorAbort = this.counters.mrtAbort.errors.getAndSet(0);
+				int inDoubtAbort = this.counters.mrtAbort.inDoubt.getAndSet(0);
+
+				System.out.print(" mrtUOW(count=" + numUoW + " timeouts=" + timeoutUoW + " inDoubt=" + inDoubtUoW + " errors=" + errorUoW + ")");
+				System.out.print(" mrtCmt(count=" + numCommit + " timeouts=" + timeoutCommit + " inDoubt=" + inDoubtCommit + " errors=" + errorCommit + ")");
+				System.out.print(" mrtAbt(count=" + numAbort + " timeouts=" + timeoutAbort + " inDoubt=" + inDoubtAbort + " errors=" + errorAbort + ")");
 			}
 			System.out.println();
 
@@ -1415,13 +1447,13 @@ public class Main implements Log.Callback {
 				this.counters.write.latency.printHeader(System.out);
 				this.counters.write.latency.printResults(System.out, "write");
 				if (this.counters.mrtUnitOfWork.latency != null) {
-					this.counters.mrtUnitOfWork.latency.printResults(System.out, "txn");
+					this.counters.mrtUnitOfWork.latency.printResults(System.out, "mrtUOW");
 				}
 				if (this.counters.mrtCommit.latency != null) {
-					this.counters.mrtCommit.latency.printResults(System.out, "txnCmt");
+					this.counters.mrtCommit.latency.printResults(System.out, "mrtCmt");
 				}
 				if (this.counters.mrtAbort.latency != null) {
-					this.counters.mrtAbort.latency.printResults(System.out, "txnAbt");
+					this.counters.mrtAbort.latency.printResults(System.out, "mrtAbt");
 				}
 			}
 
@@ -1435,13 +1467,13 @@ public class Main implements Log.Callback {
 			this.counters.write.latency.printSummaryHeader(System.out);
 			this.counters.write.latency.printSummary(System.out, "write");
 			if (this.counters.mrtUnitOfWork.latency != null) {
-				this.counters.mrtUnitOfWork.latency.printResults(System.out, "txn");
+				this.counters.mrtUnitOfWork.latency.printResults(System.out, "mrtUOW");
 			}
 			if (this.counters.mrtCommit.latency != null) {
-				this.counters.mrtCommit.latency.printResults(System.out, "txnCmt");
+				this.counters.mrtCommit.latency.printResults(System.out, "mrtCmt");
 			}
 			if (this.counters.mrtAbort.latency != null) {
-				this.counters.mrtAbort.latency.printResults(System.out, "txnAbt");
+				this.counters.mrtAbort.latency.printResults(System.out, "mrtAbt");
 			}
 		}
 	}
@@ -1455,18 +1487,8 @@ public class Main implements Log.Callback {
 			int numWrites = this.counters.write.count.getAndSet(0);
 			int timeoutWrites = this.counters.write.timeouts.getAndSet(0);
 			int errorWrites = this.counters.write.errors.getAndSet(0);
-
-			int numTxnsUOW = this.counters.mrtUnitOfWork.count.getAndSet(0);
-			int timeoutTxnsUOW = this.counters.mrtUnitOfWork.timeouts.getAndSet(0);
-			int errorTxnsUOW = this.counters.mrtUnitOfWork.errors.getAndSet(0);
-
-			int numTxnsCommit = this.counters.mrtCommit.count.getAndSet(0);
-			int timeoutTxnsCommit = this.counters.mrtCommit.timeouts.getAndSet(0);
-			int errorTxnsCommit = this.counters.mrtCommit.errors.getAndSet(0);
-
-			int numTxnsAbort = this.counters.mrtAbort.count.getAndSet(0);
-			int timeoutTxnsAbort = this.counters.mrtAbort.timeouts.getAndSet(0);
-			int errorTxnsAbort = this.counters.mrtAbort.errors.getAndSet(0);
+			int inDoubtWrites = this.counters.write.inDoubt.getAndSet(0);
+			int blockedWrites = this.counters.write.blocked.getAndSet(0);
 
 			total += numWrites;
 
@@ -1474,12 +1496,27 @@ public class Main implements Log.Callback {
 
 			LocalDateTime dt = Instant.ofEpochMilli(time).atZone(ZoneId.systemDefault()).toLocalDateTime();
 			System.out.print(dt.format(TimeFormatter) + " write(count=" + total + " tps=" + numWrites + " timeouts="
-					+ timeoutWrites + " errors=" + errorWrites + ")");
+					+ timeoutWrites + " inDoubt=" + inDoubtWrites + " blocked=" + blockedWrites + " errors=" + errorWrites + ")");
 
 			if(this.mrtEnabled) {
-				System.out.print(" txns(count=" + numTxnsUOW + " timeouts=" + timeoutTxnsUOW + " errors=" + errorTxnsUOW + ")");
-				System.out.print(" txnCmts(count=" + numTxnsCommit + " timeouts=" + timeoutTxnsCommit + " errors=" + errorTxnsCommit + ")");
-				System.out.print(" txnAbts(count=" + numTxnsAbort + " timeouts=" + timeoutTxnsAbort + " errors=" + errorTxnsAbort + ")");
+				int numUOW = this.counters.mrtUnitOfWork.count.getAndSet(0);
+				int timeoutUOW = this.counters.mrtUnitOfWork.timeouts.getAndSet(0);
+				int errorUOW = this.counters.mrtUnitOfWork.errors.getAndSet(0);
+				int inDoubtUOW = this.counters.mrtUnitOfWork.inDoubt.getAndSet(0);
+
+				int numCommit = this.counters.mrtCommit.count.getAndSet(0);
+				int timeoutCommit = this.counters.mrtCommit.timeouts.getAndSet(0);
+				int errorCommit = this.counters.mrtCommit.errors.getAndSet(0);
+				int inDoubtCommit = this.counters.mrtCommit.inDoubt.getAndSet(0);
+
+				int numAbort = this.counters.mrtAbort.count.getAndSet(0);
+				int timeoutAbort = this.counters.mrtAbort.timeouts.getAndSet(0);
+				int errorAbort = this.counters.mrtAbort.errors.getAndSet(0);
+				int inDoubtAbort = this.counters.mrtAbort.inDoubt.getAndSet(0);
+
+				System.out.print(" mrtUOW(count=" + numUOW + " timeouts=" + timeoutUOW + " inDoubt=" + inDoubtUOW + " errors=" + errorUOW + ")");
+				System.out.print(" mrtCmt(count=" + numCommit + " timeouts=" + timeoutCommit + " inDoubt=" + inDoubtCommit + " errors=" + errorCommit + ")");
+				System.out.print(" mrtAbt(count=" + numAbort + " timeouts=" + timeoutAbort + " inDoubt=" + inDoubtAbort + " errors=" + errorAbort + ")");
 			}
 			System.out.println();
 
@@ -1487,13 +1524,13 @@ public class Main implements Log.Callback {
 				this.counters.write.latency.printHeader(System.out);
 				this.counters.write.latency.printResults(System.out, "write");
 				if (this.counters.mrtUnitOfWork.latency != null) {
-					this.counters.mrtUnitOfWork.latency.printResults(System.out, "txn");
+					this.counters.mrtUnitOfWork.latency.printResults(System.out, "mrtUOW");
 				}
 				if (this.counters.mrtCommit.latency != null) {
-					this.counters.mrtCommit.latency.printResults(System.out, "txnCmt");
+					this.counters.mrtCommit.latency.printResults(System.out, "mrtCmt");
 				}
 				if (this.counters.mrtAbort.latency != null) {
-					this.counters.mrtAbort.latency.printResults(System.out, "txnAbt");
+					this.counters.mrtAbort.latency.printResults(System.out, "mrtAbt");
 				}
 			}
 
@@ -1507,13 +1544,13 @@ public class Main implements Log.Callback {
 			this.counters.write.latency.printSummaryHeader(System.out);
 			this.counters.write.latency.printSummary(System.out, "write");
 			if (this.counters.mrtUnitOfWork.latency != null) {
-				this.counters.mrtUnitOfWork.latency.printResults(System.out, "txn");
+				this.counters.mrtUnitOfWork.latency.printResults(System.out, "mrtUOW");
 			}
 			if (this.counters.mrtCommit.latency != null) {
-				this.counters.mrtCommit.latency.printResults(System.out, "txnCmt");
+				this.counters.mrtCommit.latency.printResults(System.out, "mrtCmt");
 			}
 			if (this.counters.mrtAbort.latency != null) {
-				this.counters.mrtAbort.latency.printResults(System.out, "txnAbt");
+				this.counters.mrtAbort.latency.printResults(System.out, "mrtAbt");
 			}
 		}
 	}
@@ -1594,29 +1631,43 @@ public class Main implements Log.Callback {
 		while (true) {
 			long time = System.currentTimeMillis();
 
+			int totTimeOut = 0;
+			int totInDoubt = 0;
+			int totBlocked = 0;
+			int totError = 0;
+
 			int numWrites = this.counters.write.count.getAndSet(0);
 			int timeoutWrites = this.counters.write.timeouts.getAndSet(0);
 			int errorWrites = this.counters.write.errors.getAndSet(0);
+			int inDoubtWrites = this.counters.write.inDoubt.getAndSet(0);
+			int blockedWrites = this.counters.write.blocked.getAndSet(0);
+
+			totError += errorWrites;
+			totInDoubt += inDoubtWrites;
+			totTimeOut += timeoutWrites;
+			totBlocked += blockedWrites;
 
 			int numReads = this.counters.read.count.getAndSet(0);
 			int timeoutReads = this.counters.read.timeouts.getAndSet(0);
 			int errorReads = this.counters.read.errors.getAndSet(0);
+			int inDoubtReads = this.counters.read.inDoubt.getAndSet(0);
+			int blockedReads = this.counters.read.blocked.getAndSet(0);
+
+			totTimeOut += timeoutReads;
+			totInDoubt += inDoubtReads;
+			totError += errorReads;
+			totBlocked += blockedReads;
 
 			int numTxns = this.counters.transaction.count.getAndSet(0);
 			int timeoutTxns = this.counters.transaction.timeouts.getAndSet(0);
 			int errorTxns = this.counters.transaction.errors.getAndSet(0);
+			int inDoubtTxns = this.counters.transaction.inDoubt.getAndSet(0);
+			int blockedTxn = this.counters.transaction.blocked.getAndSet(0);
 
-			int numMRT = this.counters.mrtUnitOfWork.count.getAndSet(0);
-			int timeoutMRT = this.counters.mrtUnitOfWork.timeouts.getAndSet(0);
-			int errorMRT = this.counters.mrtUnitOfWork.errors.getAndSet(0);
-
-			int numMRTCommit = this.counters.mrtCommit.count.getAndSet(0);
-			int timeoutMRTCommit = this.counters.mrtCommit.timeouts.getAndSet(0);
-			int errorMRTCommit = this.counters.mrtCommit.errors.getAndSet(0);
-
-			int numMRTAbort = this.counters.mrtAbort.count.getAndSet(0);
-			int timeoutMRTAbort = this.counters.mrtAbort.timeouts.getAndSet(0);
-			int errorMRTAbort = this.counters.mrtAbort.errors.getAndSet(0);
+			totTimeOut += timeoutTxns;
+			totInDoubt += inDoubtTxns;
+			totError += errorTxns;
+			totBlocked += blockedTxn;
 
 			int notFound = 0;
 
@@ -1627,10 +1678,10 @@ public class Main implements Log.Callback {
 
 			LocalDateTime dt = Instant.ofEpochMilli(time).atZone(ZoneId.systemDefault()).toLocalDateTime();
 			System.out.print(dt.format(TimeFormatter));
-			System.out.print(" write(tps=" + numWrites + " timeouts=" + timeoutWrites + " errors=" + errorWrites + ")");
-			System.out.print(" read(tps=" + numReads + " timeouts=" + timeoutReads + " errors=" + errorReads);
+			System.out.print(" write(tps=" + numWrites + " timeouts=" + timeoutWrites + " inDoubt=" + inDoubtWrites + " blocked=" + blockedWrites + " errors=" + errorWrites + ")");
+			System.out.print(" read(tps=" + numReads + " timeouts=" + timeoutReads + " inDoubt=" + inDoubtReads + " blocked=" + blockedReads + " errors=" + errorReads);
 			if (this.counters.transaction.latency != null) {
-				System.out.print(" txns(tps=" + numTxns + " timeouts=" + timeoutTxns + " errors=" + errorTxns);
+				System.out.print(" txn(tps=" + numTxns + " timeouts=" + timeoutTxns +" inDoubt=" + inDoubtTxns + " blocked=" + blockedTxn + " errors=" + errorTxns);
 			}
 			if (args.reportNotFound) {
 				System.out.print(" nf=" + notFound);
@@ -1638,12 +1689,39 @@ public class Main implements Log.Callback {
 			System.out.print(")");
 
 			if(this.mrtEnabled) {
-				System.out.print(" mrt(count=" + numMRT + " timeouts=" + timeoutMRT + " errors=" + errorMRT + ")");
-				System.out.print(" mrtCmts(count=" + numMRTCommit + " timeouts=" + timeoutMRTCommit + " errors=" + errorMRTCommit + ")");
-				System.out.print(" mrtAbts(count=" + numMRTAbort + " timeouts=" + timeoutMRTAbort + " errors=" + errorMRTAbort + ")");
+				int numMRT = this.counters.mrtUnitOfWork.count.getAndSet(0);
+				int timeoutMRT = this.counters.mrtUnitOfWork.timeouts.getAndSet(0);
+				int errorMRT = this.counters.mrtUnitOfWork.errors.getAndSet(0);
+				int inDoubtMRT = this.counters.mrtUnitOfWork.inDoubt.getAndSet(0);
+
+				totTimeOut += timeoutMRT;
+				totInDoubt += inDoubtMRT;
+				totError += errorMRT;
+
+				int numMRTCommit = this.counters.mrtCommit.count.getAndSet(0);
+				int timeoutMRTCommit = this.counters.mrtCommit.timeouts.getAndSet(0);
+				int errorMRTCommit = this.counters.mrtCommit.errors.getAndSet(0);
+				int inDoubtMRTCommit = this.counters.mrtCommit.inDoubt.getAndSet(0);
+
+				totTimeOut += timeoutMRTCommit;
+				totInDoubt += inDoubtMRTCommit;
+				totError += errorMRTCommit;
+
+				int numMRTAbort = this.counters.mrtAbort.count.getAndSet(0);
+				int timeoutMRTAbort = this.counters.mrtAbort.timeouts.getAndSet(0);
+				int errorMRTAbort = this.counters.mrtAbort.errors.getAndSet(0);
+				int inDoubtMRTAbort = this.counters.mrtAbort.inDoubt.getAndSet(0);
+
+				totTimeOut += timeoutMRTAbort;
+				totInDoubt += inDoubtMRTAbort;
+				totError += errorMRTAbort;
+
+				System.out.print(" mrtUOW(count=" + numMRT + " timeouts=" + timeoutMRT + " inDoubt=" + inDoubtMRT + " errors=" + errorMRT + ")");
+				System.out.print(" mrtCmt(count=" + numMRTCommit + " timeouts=" + timeoutMRTCommit + " inDoubt=" + inDoubtMRTCommit + " errors=" + errorMRTCommit + ")");
+				System.out.print(" mrtAbt(count=" + numMRTAbort + " timeouts=" + timeoutMRTAbort + " inDoubt=" + inDoubtMRTAbort + " errors=" + errorMRTAbort + ")");
 			}
 
-			System.out.print(" total(tps=" + (numWrites + numReads) + " timeouts=" + (timeoutWrites + timeoutReads) + " errors=" + (errorWrites + errorReads) + ")");
+			System.out.print(" total(tps=" + (numWrites + numReads) + " timeouts=" + totTimeOut + " inDoubt=" + totInDoubt + " blocked=" + totBlocked + " errors=" + totError + ")");
 			//System.out.print(" buffused=" + used
 			//System.out.print(" nodeused=" + ((AsyncNode)nodes[0]).openCount.get() + ',' + ((AsyncNode)nodes[1]).openCount.get() + ',' + ((AsyncNode)nodes[2]).openCount.get()
 			System.out.println();
@@ -1656,7 +1734,7 @@ public class Main implements Log.Callback {
 					this.counters.transaction.latency.printResults(System.out, "txn");
 				}
 				if (this.counters.mrtUnitOfWork.latency != null) {
-					this.counters.mrtUnitOfWork.latency.printResults(System.out, "mrt");
+					this.counters.mrtUnitOfWork.latency.printResults(System.out, "mrtUOW");
 				}
 				if (this.counters.mrtCommit.latency != null) {
 					this.counters.mrtCommit.latency.printResults(System.out, "mrtCmt");
@@ -1682,7 +1760,7 @@ public class Main implements Log.Callback {
 							this.counters.transaction.latency.printSummary(System.out, "txn");
 						}
 						if (this.counters.mrtUnitOfWork != null && this.counters.mrtUnitOfWork.latency != null) {
-							this.counters.mrtUnitOfWork.latency.printSummary(System.out, "mrt");
+							this.counters.mrtUnitOfWork.latency.printSummary(System.out, "mrtUOM");
 						}
 						if (this.counters.mrtCommit != null && this.counters.mrtCommit.latency != null) {
 							this.counters.mrtCommit.latency.printSummary(System.out, "mrtCmt");
@@ -1710,29 +1788,43 @@ public class Main implements Log.Callback {
 		while (true) {
 			long time = System.currentTimeMillis();
 
+			int totTimeOut = 0;
+			int totInDoubt = 0;
+			int totError = 0;
+			int totBlocked = 0;
+
 			int numWrites = this.counters.write.count.getAndSet(0);
 			int timeoutWrites = this.counters.write.timeouts.getAndSet(0);
 			int errorWrites = this.counters.write.errors.getAndSet(0);
+			int inDoubtWrites = this.counters.write.inDoubt.getAndSet(0);
+			int blockedWrites = this.counters.write.blocked.getAndSet(0);
+
+			totError += errorWrites;
+			totInDoubt += inDoubtWrites;
+			totTimeOut += timeoutWrites;
+			totBlocked += blockedWrites;
 
 			int numReads = this.counters.read.count.getAndSet(0);
 			int timeoutReads = this.counters.read.timeouts.getAndSet(0);
 			int errorReads = this.counters.read.errors.getAndSet(0);
+			int inDoubtReads = this.counters.read.inDoubt.getAndSet(0);
+			int blockedReads = this.counters.read.blocked.getAndSet(0);
+
+			totTimeOut += timeoutReads;
+			totInDoubt += inDoubtReads;
+			totError += errorReads;
+			totBlocked += blockedReads;
 
 			int numTxns = this.counters.transaction.count.getAndSet(0);
 			int timeoutTxns = this.counters.transaction.timeouts.getAndSet(0);
 			int errorTxns = this.counters.transaction.errors.getAndSet(0);
+			int inDoubtTxns = this.counters.transaction.inDoubt.getAndSet(0);
+			int blockedTxns = this.counters.transaction.blocked.getAndSet(0);
 
-			int numMRT = this.counters.mrtUnitOfWork.count.getAndSet(0);
-			int timeoutMRT = this.counters.mrtUnitOfWork.timeouts.getAndSet(0);
-			int errorMRT = this.counters.mrtUnitOfWork.errors.getAndSet(0);
-
-			int numMRTCmt = this.counters.mrtCommit.count.getAndSet(0);
-			int timeoutMRTCmt = this.counters.mrtCommit.timeouts.getAndSet(0);
-			int errorMRTCmt = this.counters.mrtCommit.errors.getAndSet(0);
-
-			int numMRTAbt = this.counters.mrtAbort.count.getAndSet(0);
-			int timeoutMRTAbt = this.counters.mrtAbort.timeouts.getAndSet(0);
-			int errorMRTAbt = this.counters.mrtAbort.errors.getAndSet(0);
+			totTimeOut += timeoutTxns;
+			totInDoubt += inDoubtTxns;
+			totError += errorTxns;
+			totBlocked += blockedTxns;
 
 			int notFound = 0;
 
@@ -1743,10 +1835,10 @@ public class Main implements Log.Callback {
 
 			LocalDateTime dt = Instant.ofEpochMilli(time).atZone(ZoneId.systemDefault()).toLocalDateTime();
 			System.out.print(dt.format(TimeFormatter));
-			System.out.print(" write(tps=" + numWrites + " timeouts=" + timeoutWrites + " errors=" + errorWrites + ")");
-			System.out.print(" read(tps=" + numReads + " timeouts=" + timeoutReads + " errors=" + errorReads);
+			System.out.print(" write(tps=" + numWrites + " timeouts=" + timeoutWrites + " inDoubt=" + inDoubtWrites + " blocked=" + blockedWrites + " errors=" + errorWrites + ")");
+			System.out.print(" read(tps=" + numReads + " timeouts=" + timeoutReads + " inDoubt=" + inDoubtReads + " blocked=" + blockedReads + " errors=" + errorReads);
 			if (this.counters.transaction.latency != null) {
-				System.out.print(" txns(tps=" + numTxns + " timeouts=" + timeoutTxns + " errors=" + errorTxns);
+				System.out.print(" txn(tps=" + numTxns + " timeouts=" + timeoutTxns + " inDoubt=" + inDoubtTxns + " blocked=" + blockedTxns + " errors=" + errorTxns);
 			}
 			if (args.reportNotFound) {
 				System.out.print(" nf=" + notFound);
@@ -1754,13 +1846,40 @@ public class Main implements Log.Callback {
 			System.out.print(")");
 
 			if (this.mrtEnabled) {
-				System.out.print(" mrt(count=" + numMRT + " timeouts=" + timeoutMRT + " errors=" + errorMRT + ")");
-				System.out.print(" mrtCmts(count=" + numMRTCmt + " timeouts=" + timeoutMRTCmt + " errors=" + errorMRTCmt+ ")");
-				System.out.print(" mrtAbts(count=" + numMRTAbt + " timeouts=" + timeoutMRTAbt + " errors=" + errorMRTAbt + ")");
+				int numMRT = this.counters.mrtUnitOfWork.count.getAndSet(0);
+				int timeoutMRT = this.counters.mrtUnitOfWork.timeouts.getAndSet(0);
+				int errorMRT = this.counters.mrtUnitOfWork.errors.getAndSet(0);
+				int inDoubtMRT = this.counters.mrtUnitOfWork.inDoubt.getAndSet(0);
+
+				totTimeOut += timeoutMRT;
+				totInDoubt += inDoubtMRT;
+				totError += errorMRT;
+
+				int numMRTCmt = this.counters.mrtCommit.count.getAndSet(0);
+				int timeoutMRTCmt = this.counters.mrtCommit.timeouts.getAndSet(0);
+				int errorMRTCmt = this.counters.mrtCommit.errors.getAndSet(0);
+				int inDoubtMRTCmt = this.counters.mrtCommit.inDoubt.getAndSet(0);
+
+				totTimeOut += timeoutMRTCmt;
+				totInDoubt += inDoubtMRTCmt;
+				totError += errorMRTCmt;
+
+				int numMRTAbt = this.counters.mrtAbort.count.getAndSet(0);
+				int timeoutMRTAbt = this.counters.mrtAbort.timeouts.getAndSet(0);
+				int errorMRTAbt = this.counters.mrtAbort.errors.getAndSet(0);
+				int inDoubtMRTAbt = this.counters.mrtAbort.inDoubt.getAndSet(0);
+
+				totError += errorMRTAbt;
+				totInDoubt += inDoubtMRTAbt;
+				totTimeOut += timeoutMRTAbt;
+
+				System.out.print(" mrt(count=" + numMRT + " timeouts=" + timeoutMRT + " inDoubt=" + inDoubtMRT + " errors=" + errorMRT + ")");
+				System.out.print(" mrtCmts(count=" + numMRTCmt + " timeouts=" + timeoutMRTCmt + " inDoubt=" + inDoubtMRTCmt + " errors=" + errorMRTCmt+ ")");
+				System.out.print(" mrtAbts(count=" + numMRTAbt + " timeouts=" + timeoutMRTAbt + " inDoubt=" + inDoubtMRTAbt + " errors=" + errorMRTAbt + ")");
 			}
 
-			System.out.print(" total(tps=" + (numWrites + numReads) + " timeouts=" + (timeoutWrites + timeoutReads)
-					+ " errors=" + (errorWrites + errorReads + errorMRT + errorMRTAbt + errorMRTCmt) + ")");
+			System.out.print(" total(tps=" + (numWrites + numReads) + " timeouts=" + totTimeOut
+					+ " inDoubt=" + totInDoubt + " blocked=" + totBlocked +  " errors=" + totError + ")");
 			// System.out.print(" buffused=" + used
 			// System.out.print(" nodeused=" + ((AsyncNode)nodes[0]).openCount.get() + ',' +
 			// ((AsyncNode)nodes[1]).openCount.get() + ',' +
@@ -1775,7 +1894,7 @@ public class Main implements Log.Callback {
 					this.counters.transaction.latency.printResults(System.out, "txn");
 				}
 				if (this.counters.mrtUnitOfWork.latency != null) {
-					this.counters.mrtUnitOfWork.latency.printResults(System.out, "mrt");
+					this.counters.mrtUnitOfWork.latency.printResults(System.out, "mrtUOW");
 				}
 				if (this.counters.mrtCommit.latency != null) {
 					this.counters.mrtCommit.latency.printResults(System.out, "mrtCmt");
@@ -1803,7 +1922,7 @@ public class Main implements Log.Callback {
 							this.counters.transaction.latency.printSummary(System.out, "txn");
 						}
 						if (this.counters.mrtUnitOfWork.latency != null) {
-							this.counters.mrtUnitOfWork.latency.printSummary(System.out, "mrt");
+							this.counters.mrtUnitOfWork.latency.printSummary(System.out, "mrtUOW");
 						}
 						if (this.counters.mrtCommit.latency != null) {
 							this.counters.mrtCommit.latency.printSummary(System.out, "mrtCmt");
@@ -2093,6 +2212,32 @@ public class Main implements Log.Callback {
 					break;
 			}
 			binCount++;
+		}
+
+		if(args.mrtSize > 0) {
+			argsHdrOther.append("MRT: ")
+					.append('\n');
+			argsHdrOther.append("    Size:")
+					.append(args.mrtSize)
+					.append('\n');
+			argsHdrOther.append("    Transaction Timeout:")
+					.append(args.mrtTimeoutSec)
+					.append(" seconds")
+					.append('\n');
+			argsHdrOther.append("    Indoubt Retries:")
+					.append(args.mrtInDoubtRetries)
+					.append('\n');
+			argsHdrOther.append("           Sleep:")
+					.append(args.mrtRetrySleepMS)
+					.append(" ms")
+					.append('\n');
+			argsHdrOther.append("    Blocked Retries:")
+					.append(args.mrtBlockRetries)
+					.append('\n');
+			argsHdrOther.append("            Sleep:")
+					.append(args.mrtBlockSleepMS)
+					.append(" ms")
+					.append('\n');
 		}
 
 		argsHdrOther.append("debug: ")

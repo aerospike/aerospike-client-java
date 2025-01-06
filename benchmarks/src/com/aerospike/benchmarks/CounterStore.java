@@ -69,6 +69,8 @@ public class CounterStore {
 		AtomicInteger count = new AtomicInteger();
 		AtomicInteger timeouts = new AtomicInteger();
 		AtomicInteger errors = new AtomicInteger();
+		AtomicInteger inDoubt = new AtomicInteger();
+		AtomicInteger blocked = new AtomicInteger();
 		AtomicInteger min = new AtomicInteger(-1);
 		AtomicInteger max = new AtomicInteger(-1);
 		LatencyManager latency;
@@ -77,6 +79,11 @@ public class CounterStore {
 		public void addExceptionOTel(Exception e, LatencyTypes latencyType) {
 			if(openTelemetry != null) {
 				openTelemetry.addException(e, latencyType);
+			}
+		}
+		public void addExceptionOTel(String exceptionType, String exception_subtype, String message, LatencyTypes latencyType) {
+			if(openTelemetry != null) {
+				openTelemetry.addException(exceptionType, exception_subtype, message, latencyType);
 			}
 		}
 		public void incrTransCountOTel(LatencyTypes type) {

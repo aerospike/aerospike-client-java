@@ -2,6 +2,7 @@ package com.aerospike.benchmarks;
 
 import static io.opentelemetry.semconv.resource.attributes.ResourceAttributes.SERVICE_NAME;
 
+import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Host;
 
 import io.opentelemetry.api.common.AttributeKey;
@@ -46,6 +47,7 @@ public final class OpenTelemetryExporter implements com.aerospike.benchmarks.Ope
     private final LongGauge openTelemetryInfoGauge;
     private final LongCounter openTelemetryExceptionCounter;
     private final LongCounter openTelemetryTransactionCounter;
+    private final LongCounter openTelemetryMRTErrorCounter;
     private final DoubleHistogram openTelemetryLatencyMSHistogram;
     private final DoubleHistogram openTelemetryLatencyUSHistogram;
 
@@ -136,20 +138,26 @@ public final class OpenTelemetryExporter implements com.aerospike.benchmarks.Ope
         this.openTelemetryExceptionCounter =
                 openTelemetryMeter
                     .counterBuilder(METRIC_NAME + ".exception")
-                        .setDescription("Aerospike Benchmark MRT Exception")
+                        .setDescription("Aerospike Benchmark Exception")
+                        .build();
+
+        this.openTelemetryMRTErrorCounter =
+                openTelemetryMeter
+                        .counterBuilder(METRIC_NAME + ".related.errors")
+                        .setDescription("Aerospike Benchmark MRT Related Errors")
                         .build();
 
         this.openTelemetryLatencyMSHistogram =
                 openTelemetryMeter
                         .histogramBuilder(METRIC_NAME + ".lng.latency")
-                        .setDescription("Aerospike Benchmark MRT Latencies")
+                        .setDescription("Aerospike Benchmark MRT Latencies (ms)")
                         .setUnit("ms")
                         .build();
 
         this.openTelemetryLatencyUSHistogram =
                 openTelemetryMeter
                         .histogramBuilder(METRIC_NAME + ".latency")
-                        .setDescription("Aerospike Benchmark MRT Latencies")
+                        .setDescription("Aerospike Benchmark MRT Latencies (us)")
                         .setUnit("microsecond")
                         .build();
 
@@ -179,7 +187,7 @@ public final class OpenTelemetryExporter implements com.aerospike.benchmarks.Ope
         }
 
         this.hbAttributes = new Attributes[] {
-                //This is a collection of attributes common used for all events
+                //This are attributes commonly used for all events
                 Attributes.of(
                         //AttributeKey.stringKey("cluster", this.clusterName,
                         //AttributeKey.stringArrayKey("namespaces"), args.batchSize > 0 ? Arrays.asList(args.batchNamespaces) : Collections.singletonList(args.namespace),
@@ -214,6 +222,13 @@ public final class OpenTelemetryExporter implements com.aerospike.benchmarks.Ope
                         AttributeKey.longKey("nkeys"), nKeys <= 0 ? 0L : nKeys,
                         AttributeKey.stringKey("commandlineargs"), String.join(" ", args.commandLineArgs),
                         AttributeKey.stringKey("appversion"), Main.getAppVersion()[1]
+                ),
+                Attributes.of(
+                        AttributeKey.longKey("indoubtRetries"), (long) args.mrtInDoubtRetries,
+                        AttributeKey.longKey("indoubtSleep"), args.mrtInDoubtRetries == 0 ? 0L : (long) args.mrtRetrySleepMS,
+                        AttributeKey.longKey("blockRetries"), (long) args.mrtBlockRetries,
+                        AttributeKey.longKey("blockSleep"), args.mrtBlockRetries == 0 ? 0L : (long) args.mrtBlockSleepMS,
+                        AttributeKey.longKey("txnTimeout"), (long) args.mrtTimeoutSec
                 )};
 
         this.updateInfoGauge(true);
@@ -323,6 +338,7 @@ public final class OpenTelemetryExporter implements com.aerospike.benchmarks.Ope
         String exceptionType = exception.getClass().getName().replaceFirst("com\\.aerospike\\.client\\.AerospikeException\\$", "");
         exceptionType = exceptionType.replaceFirst("com\\.aerospike\\.client\\.", "");
 
+        String exception_subtype = null;
         String message = exception.getMessage();
         if(message != null) {
             int pos = message.indexOf("verify errors:");
@@ -334,6 +350,24 @@ public final class OpenTelemetryExporter implements com.aerospike.benchmarks.Ope
                 message = message.substring(0, pos) + "partition";
             }
         }
+
+        if(exception instanceof AerospikeException) {
+            AerospikeException ae = (AerospikeException) exception;
+            if(ae.getInDoubt()) {
+                exception_subtype = "inDoubt";
+            }
+            else if(ae.getResultCode() == 120) {
+                exception_subtype = "blocked";
+            }
+        }
+
+        this.addException(exceptionType, exception_subtype, message, type);
+    }
+
+    @Override
+    public void addException(String exceptionType, String exception_subtype, String message, LatencyTypes type) {
+
+        if(this.closed.get()) { return; }
 
         //Ignore Cluser Closed exceptions when the app is terminating
         if((Main.terminateRun.get() || Main.abortRun.get()) && Objects.equals(message, "Cluster has been closed")) {
@@ -348,6 +382,21 @@ public final class OpenTelemetryExporter implements com.aerospike.benchmarks.Ope
                 AttributeKey.stringKey("type"), type.name().toLowerCase(),
                 AttributeKey.longKey("startTimeMillis"), this.startTimeMillis
         ));
+
+        if(exception_subtype != null) {
+            attributes.put("exception_subtype", exception_subtype);
+
+            AttributesBuilder attributesMRTErr = Attributes.builder();
+            attributesMRTErr.putAll(this.hbAttributes[0]);
+            attributesMRTErr.putAll(Attributes.of(
+                    AttributeKey.stringKey("error_type"), exception_subtype,
+                    AttributeKey.stringKey("type"), type.name().toLowerCase(),
+                    AttributeKey.longKey("startTimeMillis"), this.startTimeMillis
+            ));
+
+            this.openTelemetryMRTErrorCounter.add(1,
+                    attributesMRTErr.build());
+        }
 
         this.openTelemetryExceptionCounter.add(1, attributes.build());
 

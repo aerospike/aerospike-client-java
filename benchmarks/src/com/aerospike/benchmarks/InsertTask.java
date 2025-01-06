@@ -30,12 +30,14 @@ public abstract class InsertTask {
 	}
 
 	protected void writeFailure(AerospikeException ae) {
-		if (ae.getResultCode() == ResultCode.TIMEOUT) {
+		if(ae.getInDoubt()) {
+			counters.write.inDoubt.getAndIncrement();
+		}
+		else if (ae.getResultCode() == ResultCode.TIMEOUT) {
 			counters.write.timeouts.getAndIncrement();
 		}
 		else {
 			counters.write.errors.getAndIncrement();
-
 			if (args.debug) {
 				ae.printStackTrace();
 			}
