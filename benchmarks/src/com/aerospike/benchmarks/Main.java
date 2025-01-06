@@ -919,9 +919,9 @@ public class Main implements Log.Callback {
 			"Maximum number of async connections allowed per server node. Default: 100"
 			);
 		options.addOption("mrtSize", true, "Number of records per multi record transaction.");
-		options.addOption("mrtCIDRetries", true, "Number of Commit In-Doubt retries. If zero, no retry occurs. If -1, retries forever and zero is disabled. Default: 3");
+		options.addOption("mrtCIDRetries", true, "Number of Commit In-Doubt retries. If zero, no retry occurs. If -1, retries forever and zero is disabled. Default: 0 (disabled)");
 		options.addOption("mrtRetrySleep", true, "If a Commit retry occurs, this is the number of MS to sleep between retries. Can be zero. Default: 100ms");
-		options.addOption("mrtBlockRetry", true, "If an action is blocked by another MRT, that action will be retried. If -1, retries forever and zeros is disabled. Default: 3");
+		options.addOption("mrtBlockRetry", true, "If an action is blocked by another MRT, that action will be retried. If -1, retries forever and zeros is disabled. Default: 0 (default)");
 		options.addOption("mrtBlockSleep", true, "If an action is blocked, this is the number of MS to sleep between retries. Can be zero. Default: 100ms");
 		options.addOption("mrtTxnTimeout", true, "The MRT Transaction Timeout value in Seconds. If a client does  not issue a Commit or Abort from when an action was performed within the MRT, the server will rollback the MRT. A value of Zero will use the server's MRT Timeout value. Default: 0 (use server's value))");
 

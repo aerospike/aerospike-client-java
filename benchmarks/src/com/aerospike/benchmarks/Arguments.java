@@ -56,9 +56,9 @@ public class Arguments {
 	public Value[] udfValues;
 
 	public long mrtSize;
-	public int mrtInDoubtRetries = 3;
+	public int mrtInDoubtRetries = 0;
 	public int mrtRetrySleepMS = 100;
-	public int mrtBlockRetries = 3;
+	public int mrtBlockRetries = 0;
 	public int mrtBlockSleepMS = 100;
 	public int mrtTimeoutSec = 0;
 

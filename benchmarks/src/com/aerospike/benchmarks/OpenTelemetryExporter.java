@@ -225,9 +225,9 @@ public final class OpenTelemetryExporter implements com.aerospike.benchmarks.Ope
                 ),
                 Attributes.of(
                         AttributeKey.longKey("indoubtRetries"), (long) args.mrtInDoubtRetries,
-                        AttributeKey.longKey("indoubtSleep"), (long) args.mrtRetrySleepMS,
+                        AttributeKey.longKey("indoubtSleep"), args.mrtInDoubtRetries == 0 ? 0L : (long) args.mrtRetrySleepMS,
                         AttributeKey.longKey("blockRetries"), (long) args.mrtBlockRetries,
-                        AttributeKey.longKey("blockSleep"), (long) args.mrtBlockSleepMS,
+                        AttributeKey.longKey("blockSleep"), args.mrtBlockRetries == 0 ? 0L : (long) args.mrtBlockSleepMS,
                         AttributeKey.longKey("txnTimeout"), (long) args.mrtTimeoutSec
                 )};
 
