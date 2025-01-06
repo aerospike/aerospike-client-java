@@ -33,7 +33,6 @@ import com.aerospike.client.util.RandomShift;
  */
 public abstract class MRTRWTask extends MRTTask {
 
-	final WritePolicy writePolicyGeneration;
 	final long keyStart;
 	final long keyCount;
 	boolean valid;
@@ -43,9 +42,6 @@ public abstract class MRTRWTask extends MRTTask {
 		this.keyStart = keyStart;
 		this.keyCount = keyCount;
 		this.valid = true;
-		writePolicyGeneration = new WritePolicy(args.writePolicy);
-		writePolicyGeneration.generationPolicy = GenerationPolicy.EXPECT_GEN_EQUAL;
-		writePolicyGeneration.generation = 0;
 	}
 
 	public void stop() {
@@ -110,7 +106,7 @@ public abstract class MRTRWTask extends MRTTask {
 
 				// Perform Single record write even if in batch mode.
 				long key = random.nextLong(keyCount);
-				doWrite(random, key, isMultiBin, null);
+				doWrite(random, key, isMultiBin, writePolicy);
 			}
 		} catch (AerospikeException ae) {
 			throw ae;
@@ -124,7 +120,7 @@ public abstract class MRTRWTask extends MRTTask {
 		// Read all bins.
 		doRead(key, true);
 		// Write one bin.
-		doWrite(random, key, false, null);
+		doWrite(random, key, false, writePolicy);
 	}
 
 	private void readModifyIncrement(RandomShift random) {
@@ -171,11 +167,11 @@ public abstract class MRTRWTask extends MRTTask {
 				break;
 			case MULTI_BIN_REPLACE:
 				key = random.nextLong(keyCount);
-				doWrite(random, key, true, args.replacePolicy);
+				doWrite(random, key, true, replacePolicy);
 				break;
 			case MULTI_BIN_UPDATE:
 				key = random.nextLong(keyCount);
-				doWrite(random, key, true, args.updatePolicy);
+				doWrite(random, key, true, updatePolicy);
 				break;
 			case SINGLE_BIN_INCREMENT:
 				key = random.nextLong(keyCount);
@@ -191,11 +187,11 @@ public abstract class MRTRWTask extends MRTTask {
 				break;
 			case SINGLE_BIN_REPLACE:
 				key = random.nextLong(keyCount);
-				doWrite(random, key, false, args.replacePolicy);
+				doWrite(random, key, false, replacePolicy);
 				break;
 			case SINGLE_BIN_UPDATE:
 				key = random.nextLong(keyCount);
-				doWrite(random, key, false, args.updatePolicy);
+				doWrite(random, key, false, updatePolicy);
 				break;
 			default:
 				break;

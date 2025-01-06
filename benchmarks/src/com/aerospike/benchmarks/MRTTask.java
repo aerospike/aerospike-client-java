@@ -2,9 +2,11 @@ package com.aerospike.benchmarks;
 
 import com.aerospike.client.*;
 import com.aerospike.client.policy.BatchPolicy;
+import com.aerospike.client.policy.GenerationPolicy;
 import com.aerospike.client.policy.Policy;
 import com.aerospike.client.policy.WritePolicy;
 import com.aerospike.client.Record;
+import com.aerospike.client.AerospikeException;
 
 public abstract class MRTTask {
 
@@ -14,12 +16,30 @@ public abstract class MRTTask {
     final int blockRetriesSleepMillis;
     final int txnTimeoutSeconds;
 
+    protected final WritePolicy writePolicy;
+    protected final Policy readPolicy;
+    protected final WritePolicy replacePolicy;
+    protected final WritePolicy updatePolicy;
+    protected final BatchPolicy batchPolicy;
+    protected final WritePolicy writePolicyGeneration;
+
+    //One instance per thread
     public MRTTask(Arguments args, CounterStore counters) {
         this.args = args;
         this.counters = counters;
         this.blockRetries = args.mrtBlockRetries;
         this.blockRetriesSleepMillis = args.mrtBlockSleepMS;
         this.txnTimeoutSeconds = args.mrtTimeoutSec;
+
+        this.writePolicy = new WritePolicy(args.writePolicy);
+        this.readPolicy = new Policy(args.readPolicy);
+        this.replacePolicy = new WritePolicy(args.replacePolicy);
+        this.updatePolicy = new WritePolicy(args.updatePolicy);
+        this.batchPolicy = new BatchPolicy(args.batchPolicy);
+
+        writePolicyGeneration = new WritePolicy(args.writePolicy);
+        writePolicyGeneration.generationPolicy = GenerationPolicy.EXPECT_GEN_EQUAL;
+        writePolicyGeneration.generation = 0;
     }
 
     public static final class MRTHandleResult {

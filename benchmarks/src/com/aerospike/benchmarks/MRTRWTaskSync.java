@@ -29,8 +29,6 @@ import com.aerospike.client.cluster.Partition;
 import com.aerospike.client.policy.WritePolicy;
 import com.aerospike.client.util.RandomShift;
 import com.aerospike.client.util.Util;
-import com.aerospike.client.policy.Policy;
-import com.aerospike.client.AerospikeException;
 
 /**
  * Synchronous read/write task.
@@ -38,16 +36,14 @@ import com.aerospike.client.AerospikeException;
 public class MRTRWTaskSync extends MRTRWTask implements Runnable {
 
 	private final IAerospikeClient client;
-	private final WritePolicy writePolicy;
-	private final Policy readPolicy;
+
 	private final long nMRTs;
 	private final long keysPerMRT;
 
 	public MRTRWTaskSync(IAerospikeClient client, Arguments args, CounterStore counters, long nMRTs, long keyStart,
 						 long keyCount, long keysPerMRT) {
 		super(args, counters, keyStart, keyCount);
-		this.writePolicy = new WritePolicy(args.writePolicy);
-		this.readPolicy = new Policy(args.readPolicy);
+
 		this.client = client;
 		this.nMRTs = nMRTs;
 		this.keysPerMRT = keysPerMRT;
@@ -62,13 +58,18 @@ public class MRTRWTaskSync extends MRTRWTask implements Runnable {
 		//uow (Unit of Work) consist of the actions (get/puts) within a MRT.
 		while (valid) {
 			for (long i = 0; i < nMRTs; i++) {
-				uowCompleted = false;
-				begin = System.nanoTime();
-				uowElapse = 0;
 				Txn txn = new Txn();
 				txn.setTimeout(txnTimeoutSeconds);
 				writePolicy.txn = txn;
 				readPolicy.txn = txn;
+				updatePolicy.txn = txn;
+				replacePolicy.txn = txn;
+				batchPolicy.txn = txn;
+				writePolicyGeneration.txn = txn;
+
+				begin = System.nanoTime();
+				uowElapse = 0;
+				uowCompleted = false;
 
 				if(Main.abortRun.get() || Main.terminateRun.get()) {
 					break;

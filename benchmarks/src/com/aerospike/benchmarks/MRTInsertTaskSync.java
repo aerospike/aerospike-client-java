@@ -28,7 +28,6 @@ import com.aerospike.client.util.Util;
 
 public final class MRTInsertTaskSync extends MRTInsertTask implements Runnable {
 	private final IAerospikeClient client;
-	private final WritePolicy writePolicy;
 	private final long keyStart;
 	private final long keysPerMRT;
 	private final long nMRTs;
@@ -37,7 +36,6 @@ public final class MRTInsertTaskSync extends MRTInsertTask implements Runnable {
 			long keysPerMRT, long nMRTs) {
 		super(args, counters);
 		this.client = client;
-		this.writePolicy = new WritePolicy(args.writePolicy);
 		this.keyStart = keyStart;
 		this.keysPerMRT = keysPerMRT;
 		this.nMRTs = nMRTs;
@@ -50,12 +48,12 @@ public final class MRTInsertTaskSync extends MRTInsertTask implements Runnable {
 		boolean uowCompleted;
 
 		for (long i = 0; i < nMRTs; i++) {
-			begin = System.nanoTime();
-			uowElapse = 0;
-			uowCompleted = false;
 			Txn txn = new Txn();
 			txn.setTimeout(txnTimeoutSeconds);
 			writePolicy.txn = txn;
+			begin = System.nanoTime();
+			uowElapse = 0;
+			uowCompleted = false;
 
 			long startKey = keyStart + keysPerMRT * i;
 
