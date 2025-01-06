@@ -2025,7 +2025,7 @@
         "type": "prometheus",
         "uid": "${DS_PROMETHEUS}"
       },
-      "description": "The number of actions per MRT unit of Work",
+      "description": "The number of actions per MRT (Unit of Work)",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -2869,7 +2869,101 @@
         "type": "prometheus",
         "uid": "${DATASOURCE}"
       },
-      "description": "The total number of Unit of Work (MRTs) that made it to either commit or abort point.",
+      "description": "The total number oferrors",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "decimals": 0,
+          "mappings": [],
+          "noValue": "0",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "light-purple",
+                "value": null
+              },
+              {
+                "color": "super-light-yellow",
+                "value": 500
+              },
+              {
+                "color": "yellow",
+                "value": 1000
+              },
+              {
+                "color": "orange",
+                "value": 1500
+              },
+              {
+                "color": "red",
+                "value": 2000
+              },
+              {
+                "color": "dark-red",
+                "value": 3000
+              }
+            ]
+          },
+          "unit": "locale"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 3,
+        "x": 9,
+        "y": 20
+      },
+      "id": 65,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "percentChangeColorMode": "standard",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "pluginVersion": "11.3.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "disableTextWrap": false,
+          "editorMode": "builder",
+          "expr": "sum(last_over_time(aerospike_benchmarks_mrt_exception_total{instance=~\"$client\", cluster=~\"$cluster\", namespace=~\"$namespace\", setname=~\"$setname\"}[$__interval]))",
+          "fullMetaSearch": false,
+          "hide": false,
+          "includeNullMetadata": true,
+          "instant": false,
+          "legendFormat": "Not Measured",
+          "range": true,
+          "refId": "C",
+          "useBackend": false
+        }
+      ],
+      "title": "Total Errors",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DATASOURCE}"
+      },
+      "description": "The total number of Unit of Work (MRTs) that made it to either commit or abort point. MRT size determines the number of actions within a Unit of Work.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -3069,7 +3163,7 @@
         "type": "prometheus",
         "uid": "${DATASOURCE}"
       },
-      "description": "The total completed number of Aborts",
+      "description": "The total completed number of Aborts. An abort can occur if an action (e.g., get or put) fails or the commit fails. ",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -3169,105 +3263,12 @@
         "type": "prometheus",
         "uid": "${DATASOURCE}"
       },
-      "description": "The total number oferrors",
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "decimals": 0,
-          "mappings": [],
-          "noValue": "0",
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "light-purple",
-                "value": null
-              },
-              {
-                "color": "super-light-yellow",
-                "value": 500
-              },
-              {
-                "color": "yellow",
-                "value": 1000
-              },
-              {
-                "color": "orange",
-                "value": 1500
-              },
-              {
-                "color": "red",
-                "value": 2000
-              },
-              {
-                "color": "dark-red",
-                "value": 3000
-              }
-            ]
-          },
-          "unit": "locale"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 3,
-        "w": 3,
-        "x": 21,
-        "y": 20
-      },
-      "id": 65,
-      "options": {
-        "colorMode": "value",
-        "graphMode": "none",
-        "justifyMode": "auto",
-        "orientation": "auto",
-        "percentChangeColorMode": "standard",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "showPercentChange": false,
-        "textMode": "auto",
-        "wideLayout": true
-      },
-      "pluginVersion": "11.3.0",
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
-          },
-          "disableTextWrap": false,
-          "editorMode": "builder",
-          "expr": "sum(last_over_time(aerospike_benchmarks_mrt_exception_total{instance=~\"$client\", cluster=~\"$cluster\", namespace=~\"$namespace\", setname=~\"$setname\"}[$__interval]))",
-          "fullMetaSearch": false,
-          "hide": false,
-          "includeNullMetadata": true,
-          "instant": false,
-          "legendFormat": "Not Measured",
-          "range": true,
-          "refId": "C",
-          "useBackend": false
-        }
-      ],
-      "title": "Total Errors",
-      "type": "stat"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${DATASOURCE}"
-      },
       "description": "The total number of MRT Related Errors",
       "fieldConfig": {
         "defaults": {
           "color": {
-            "mode": "thresholds"
+            "fixedColor": "dark-green",
+            "mode": "fixed"
           },
           "decimals": 0,
           "mappings": [],
@@ -3276,28 +3277,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "light-purple",
+                "color": "light-green",
                 "value": null
-              },
-              {
-                "color": "super-light-yellow",
-                "value": 500
-              },
-              {
-                "color": "yellow",
-                "value": 1000
-              },
-              {
-                "color": "orange",
-                "value": 1500
-              },
-              {
-                "color": "red",
-                "value": 2000
-              },
-              {
-                "color": "dark-red",
-                "value": 3000
               }
             ]
           },
@@ -3306,14 +3287,14 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 3,
+        "h": 6,
         "w": 3,
         "x": 21,
-        "y": 23
+        "y": 20
       },
       "id": 108,
       "options": {
-        "colorMode": "value",
+        "colorMode": "background_solid",
         "graphMode": "none",
         "justifyMode": "auto",
         "orientation": "auto",
@@ -3380,8 +3361,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   }
                 ]
               },
@@ -3481,8 +3461,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   }
                 ]
               },
@@ -3582,8 +3561,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   }
                 ]
               },
@@ -3684,8 +3662,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   }
                 ]
               },
@@ -3784,8 +3761,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   }
                 ]
               },
@@ -3884,8 +3860,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   }
                 ]
               },
@@ -3983,8 +3958,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "light-purple",
-                    "value": null
+                    "color": "light-purple"
                   },
                   {
                     "color": "super-light-yellow",
@@ -4077,8 +4051,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "light-purple",
-                    "value": null
+                    "color": "light-purple"
                   },
                   {
                     "color": "super-light-yellow",
@@ -4556,7 +4529,7 @@
             "h": 4,
             "w": 24,
             "x": 0,
-            "y": 205
+            "y": 251
           },
           "id": 82,
           "options": {
@@ -4643,7 +4616,7 @@
             "h": 4,
             "w": 24,
             "x": 0,
-            "y": 209
+            "y": 255
           },
           "id": 84,
           "options": {
@@ -4730,7 +4703,7 @@
             "h": 4,
             "w": 24,
             "x": 0,
-            "y": 213
+            "y": 259
           },
           "id": 86,
           "options": {
@@ -4817,7 +4790,7 @@
             "h": 4,
             "w": 24,
             "x": 0,
-            "y": 217
+            "y": 263
           },
           "id": 85,
           "options": {
@@ -4904,7 +4877,7 @@
             "h": 4,
             "w": 24,
             "x": 0,
-            "y": 221
+            "y": 267
           },
           "id": 87,
           "options": {
@@ -6062,7 +6035,7 @@
         "type": "prometheus",
         "uid": "${DS_PROMETHEUS}"
       },
-      "description": "The latency of a MRT Unit of Work which represents the DB actions (gets/outs) defined within the MRT. The number of these actions is defined by the MRTSize parameter. ",
+      "description": "The latency of a MRT Unit of Work which represents the DB actions (gets/outs) defined within the MRT. The number of these actions is defined by the MRTSize parameter.  This does NOT include the time taken to compete the commit or abort.",
       "fieldConfig": {
         "defaults": {
           "custom": {
@@ -6307,8 +6280,7 @@
           "calcs": [
             "max",
             "lastNotNull",
-            "range",
-            "sum"
+            "range"
           ],
           "displayMode": "table",
           "placement": "bottom",
@@ -6610,6 +6582,113 @@
         "type": "prometheus",
         "uid": "${DATASOURCE}"
       },
+      "description": "The total number of errors",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "decimals": 0,
+          "mappings": [],
+          "noValue": "0",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "light-purple",
+                "value": null
+              },
+              {
+                "color": "super-light-yellow",
+                "value": 500
+              },
+              {
+                "color": "yellow",
+                "value": 1000
+              },
+              {
+                "color": "orange",
+                "value": 1500
+              },
+              {
+                "color": "red",
+                "value": 2000
+              },
+              {
+                "color": "dark-red",
+                "value": 3000
+              }
+            ]
+          },
+          "unit": "locale"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 24,
+        "x": 0,
+        "y": 103
+      },
+      "id": 110,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "horizontal",
+        "percentChangeColorMode": "standard",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "pluginVersion": "11.3.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "disableTextWrap": false,
+          "editorMode": "builder",
+          "expr": "aerospike_benchmarks_mrt_exception_total{instance=~\"$client\", cluster=~\"$cluster\", namespace=~\"$namespace\", setname=~\"$setname\"}",
+          "fullMetaSearch": false,
+          "hide": false,
+          "includeNullMetadata": true,
+          "instant": false,
+          "legendFormat": "{{type}} - {{exception_type}}: {{exception}}",
+          "range": true,
+          "refId": "C",
+          "useBackend": false
+        }
+      ],
+      "title": "Total Error Counts",
+      "type": "stat"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 109
+      },
+      "id": 111,
+      "panels": [],
+      "title": "MRT Related Errors",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DATASOURCE}"
+      },
       "description": "Errors",
       "fieldConfig": {
         "defaults": {
@@ -6686,7 +6765,7 @@
         "h": 11,
         "w": 24,
         "x": 0,
-        "y": 103
+        "y": 110
       },
       "id": 107,
       "options": {
@@ -6725,6 +6804,81 @@
       ],
       "title": "MRT Related Errors",
       "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DATASOURCE}"
+      },
+      "description": "The total number of MRT Related Errors",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "dark-green",
+            "mode": "thresholds"
+          },
+          "decimals": 0,
+          "mappings": [],
+          "noValue": "0",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "light-green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "locale"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 24,
+        "x": 0,
+        "y": 121
+      },
+      "id": 112,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "horizontal",
+        "percentChangeColorMode": "standard",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "pluginVersion": "11.3.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "disableTextWrap": false,
+          "editorMode": "builder",
+          "expr": "aerospike_benchmarks_mrt_related_errors_total{instance=~\"$client\", cluster=~\"$cluster\", namespace=~\"$namespace\", setname=~\"$setname\"}",
+          "fullMetaSearch": false,
+          "hide": false,
+          "includeNullMetadata": true,
+          "instant": false,
+          "legendFormat": "{{error_type}} - {{type}}",
+          "range": true,
+          "refId": "C",
+          "useBackend": false
+        }
+      ],
+      "title": "Total MRT Related Error Counts",
+      "type": "stat"
     }
   ],
   "refresh": "5s",
@@ -6845,6 +6999,6 @@
   "timezone": "browser",
   "title": "Aerospike Benchmark MRT",
   "uid": "be423cq6i5dz4a",
-  "version": 23,
+  "version": 27,
   "weekStart": ""
 }

@@ -266,7 +266,7 @@ public abstract class MRTTask {
     public MRTHandleResult CompleteUoW(IAerospikeClient client,
                                        Txn txn,
                                        long beginTime,
-                                       boolean performCommit) throws Exception {
+                                       boolean performCommit) {
         long uowElapse = 0;
         boolean successful = false;
 

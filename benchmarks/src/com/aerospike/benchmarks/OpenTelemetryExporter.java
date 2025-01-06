@@ -341,6 +341,25 @@ public final class OpenTelemetryExporter implements com.aerospike.benchmarks.Ope
         String exception_subtype = null;
         String message = exception.getMessage();
         if(message != null) {
+            if(message.contains("MRT") && exception instanceof AerospikeException) {
+                AerospikeException ae = (AerospikeException) exception;
+                if(ae.getInDoubt()) {
+                    exception_subtype = "inDoubt";
+                }
+                else if(ae.getResultCode() == 120) {
+                    exception_subtype = "blocked";
+                }
+                else if(ae.getResultCode() == 121) {
+                    exception_subtype = "version mismatch";
+                }
+                else if(ae.getResultCode() == -17 && message.contains("verify")) {
+                    exception_subtype = "verify failed";
+                }
+                else {
+                    exception_subtype = "error code: " + ae.getResultCode();
+                }
+            }
+
             int pos = message.indexOf("verify errors:");
             if(pos != -1) {
                 message = message.substring(0, pos);
@@ -348,16 +367,6 @@ public final class OpenTelemetryExporter implements com.aerospike.benchmarks.Ope
             pos = message.indexOf("partition");
             if(pos != -1) {
                 message = message.substring(0, pos) + "partition";
-            }
-        }
-
-        if(exception instanceof AerospikeException) {
-            AerospikeException ae = (AerospikeException) exception;
-            if(ae.getInDoubt()) {
-                exception_subtype = "inDoubt";
-            }
-            else if(ae.getResultCode() == 120) {
-                exception_subtype = "blocked";
             }
         }
 
@@ -441,6 +450,7 @@ public final class OpenTelemetryExporter implements com.aerospike.benchmarks.Ope
         AttributesBuilder attributes = Attributes.builder();
         attributes.putAll(this.hbAttributes[0]);
         attributes.put("type", type.name().toLowerCase());
+        attributes.put("startTimeMillis", this.startTimeMillis);
 
         this.openTelemetryTransactionCounter.add(1, attributes.build());
 

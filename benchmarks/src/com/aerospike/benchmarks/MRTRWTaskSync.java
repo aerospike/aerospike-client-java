@@ -114,8 +114,9 @@ public class MRTRWTaskSync extends MRTRWTask implements Runnable {
 					}
 
 				} catch (Exception e) {
-					uowElapse += PerformMRTAbort(client, txn);
-					uowCompleted = false;
+					MRTHandleResult result = CompleteUoW(client, txn, begin, false);
+					uowCompleted = result.successful;
+					uowElapse += result.totalElapseTime;
 				}
 				if(uowCompleted && uowElapse > 0) {
 					counters.mrtUnitOfWork.recordElapsedTimeOTel(LatencyTypes.MRTUOWTOTAL, uowElapse);
