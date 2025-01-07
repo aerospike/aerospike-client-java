@@ -331,8 +331,7 @@ public final class OpenTelemetryExporter implements com.aerospike.benchmarks.Ope
     }
 
     @Override
-    public void addException(Exception exception, LatencyTypes type) {
-
+    public void addException(Exception exception, LatencyTypes type, boolean retry) {
         if(this.closed.get()) { return; }
 
         String exceptionType = exception.getClass().getName().replaceFirst("com\\.aerospike\\.client\\.AerospikeException\\$", "");
@@ -360,6 +359,10 @@ public final class OpenTelemetryExporter implements com.aerospike.benchmarks.Ope
                 }
             }
 
+            if(retry) {
+                exception_subtype += " retry";
+            }
+
             int pos = message.indexOf("verify errors:");
             if(pos != -1) {
                 message = message.substring(0, pos);
@@ -368,9 +371,16 @@ public final class OpenTelemetryExporter implements com.aerospike.benchmarks.Ope
             if(pos != -1) {
                 message = message.substring(0, pos) + "partition";
             }
+        } else if(retry) {
+            exceptionType += " retry";
         }
 
         this.addException(exceptionType, exception_subtype, message, type);
+    }
+
+    @Override
+    public void addException(Exception exception, LatencyTypes type) {
+        addException(exception, type, false);
     }
 
     @Override

@@ -81,6 +81,11 @@ public class CounterStore {
 				openTelemetry.addException(e, latencyType);
 			}
 		}
+		public void addExceptionOTel(Exception e, LatencyTypes latencyType, boolean retry) {
+			if(openTelemetry != null) {
+				openTelemetry.addException(e, latencyType, retry);
+			}
+		}
 		public void addExceptionOTel(String exceptionType, String exception_subtype, String message, LatencyTypes latencyType) {
 			if(openTelemetry != null) {
 				openTelemetry.addException(exceptionType, exception_subtype, message, latencyType);

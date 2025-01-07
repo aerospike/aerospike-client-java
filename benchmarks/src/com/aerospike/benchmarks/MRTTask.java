@@ -84,7 +84,7 @@ public abstract class MRTTask {
         catch (AerospikeException ae) {
             if(ae.getResultCode() == 120 && (args.mrtBlockRetries < 0 || retry < args.mrtBlockRetries)) {
                 counters.write.errors.getAndIncrement();
-                counters.write.addExceptionOTel(ae, LatencyTypes.WRITE);
+                counters.write.addExceptionOTel(ae, LatencyTypes.WRITE, true);
                 counters.write.blocked.getAndIncrement();
                 putUoW(client, writePolicy, key, bins, retry + 1);
                 return;
@@ -117,7 +117,7 @@ public abstract class MRTTask {
         catch (AerospikeException ae) {
             if(ae.getResultCode() == 120 && (args.mrtBlockRetries < 0 || retry < args.mrtBlockRetries)) {
                 counters.write.errors.getAndIncrement();
-                counters.write.addExceptionOTel(ae, LatencyTypes.WRITE);
+                counters.write.addExceptionOTel(ae, LatencyTypes.WRITE, true);
                 counters.write.blocked.getAndIncrement();
                 addUoW(client, writePolicy, key, bins, retry + 1);
                 return;
@@ -151,7 +151,7 @@ public abstract class MRTTask {
         catch (AerospikeException ae) {
             if(ae.getResultCode() == 120 && (args.mrtBlockRetries < 0 || retry < args.mrtBlockRetries)) {
                 counters.read.errors.getAndIncrement();
-                counters.read.addExceptionOTel(ae, LatencyTypes.READ);
+                counters.read.addExceptionOTel(ae, LatencyTypes.READ, true);
                 counters.read.blocked.getAndIncrement();
                 return getUoW(client, readPolicy, key, binName, retry + 1);
             }
@@ -185,7 +185,7 @@ public abstract class MRTTask {
         catch (AerospikeException ae) {
             if(ae.getResultCode() == 120 && (args.mrtBlockRetries < 0 || retry < args.mrtBlockRetries)) {
                 counters.read.errors.getAndIncrement();
-                counters.read.addExceptionOTel(ae, LatencyTypes.READ);
+                counters.read.addExceptionOTel(ae, LatencyTypes.READ, true);
                 counters.read.blocked.getAndIncrement();
                 return getUoW(client, readPolicy, key, retry + 1);
             }
@@ -219,7 +219,7 @@ public abstract class MRTTask {
         catch (AerospikeException ae) {
             if(ae.getResultCode() == 120 && (args.mrtBlockRetries < 0 || retry < args.mrtBlockRetries)) {
                 counters.read.errors.getAndIncrement();
-                counters.read.addExceptionOTel(ae, LatencyTypes.READ);
+                counters.read.addExceptionOTel(ae, LatencyTypes.READ, true);
                 counters.read.blocked.getAndIncrement();
                 return getUoW(client, batchPolicy, keys, binName, retry + 1);
             }
@@ -253,7 +253,7 @@ public abstract class MRTTask {
         catch (AerospikeException ae) {
             if(ae.getResultCode() == 120 && (args.mrtBlockRetries < 0 || retry < args.mrtBlockRetries)) {
                 counters.read.errors.getAndIncrement();
-                counters.read.addExceptionOTel(ae, LatencyTypes.READ);
+                counters.read.addExceptionOTel(ae, LatencyTypes.READ, true);
                 counters.read.blocked.getAndIncrement();
                 return getUoW(client, batchPolicy, keys, retry + 1);
             }
@@ -312,7 +312,7 @@ public abstract class MRTTask {
             }
 
             if (args.mrtInDoubtRetries == 0 || (args.mrtInDoubtRetries >= 1 && tryNum >= args.mrtInDoubtRetries)) {
-                counters.mrtCommit.addExceptionOTel(ae, LatencyTypes.MRTCOMMIT);
+                counters.mrtCommit.addExceptionOTel(ae, LatencyTypes.MRTCOMMIT, true);
                 counters.mrtCommit.errors.getAndIncrement();
                 return new MRTHandleResult(PerformMRTAbort(client, txn));
             }

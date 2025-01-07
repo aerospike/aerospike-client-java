@@ -33,6 +33,8 @@ public class OpenTelemetryDummy  implements OpenTelemetry {
     @Override
     public void addException(Exception exception, LatencyTypes type) {
     }
+    public  void addException(Exception exception, LatencyTypes type, boolean retry) {
+    }
 
     @SuppressWarnings("unused")
     @Override
