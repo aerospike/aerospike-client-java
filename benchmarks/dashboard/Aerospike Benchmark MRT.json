@@ -3361,7 +3361,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   }
                 ]
               },
@@ -3461,7 +3462,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   }
                 ]
               },
@@ -3561,7 +3563,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   }
                 ]
               },
@@ -3648,6 +3651,100 @@
             "type": "prometheus",
             "uid": "${DATASOURCE}"
           },
+          "description": "The total number oferrors",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "decimals": 0,
+              "mappings": [],
+              "noValue": "0",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "light-purple",
+                    "value": null
+                  },
+                  {
+                    "color": "super-light-yellow",
+                    "value": 500
+                  },
+                  {
+                    "color": "yellow",
+                    "value": 1000
+                  },
+                  {
+                    "color": "orange",
+                    "value": 1500
+                  },
+                  {
+                    "color": "red",
+                    "value": 2000
+                  },
+                  {
+                    "color": "dark-red",
+                    "value": 3000
+                  }
+                ]
+              },
+              "unit": "locale"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 6,
+            "w": 3,
+            "x": 9,
+            "y": 27
+          },
+          "id": 96,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "none",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "percentChangeColorMode": "standard",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showPercentChange": false,
+            "textMode": "auto",
+            "wideLayout": true
+          },
+          "pluginVersion": "11.3.0",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${DS_PROMETHEUS}"
+              },
+              "disableTextWrap": false,
+              "editorMode": "code",
+              "expr": "sum(increase(aerospike_benchmarks_mrt_exception_total{instance=~\"$client\", cluster=~\"$cluster\", namespace=~\"$namespace\", setname=~\"$setname\"}[$__range]))",
+              "fullMetaSearch": false,
+              "hide": false,
+              "includeNullMetadata": true,
+              "instant": false,
+              "legendFormat": "Not Measured",
+              "range": true,
+              "refId": "C",
+              "useBackend": false
+            }
+          ],
+          "title": "Range Total Errors",
+          "type": "stat"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DATASOURCE}"
+          },
           "description": "The total number of Unit of Work (MRTs) that made it to either commit or abort point.",
           "fieldConfig": {
             "defaults": {
@@ -3662,7 +3759,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   }
                 ]
               },
@@ -3761,7 +3859,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   }
                 ]
               },
@@ -3860,7 +3959,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   }
                 ]
               },
@@ -3949,7 +4049,8 @@
           "fieldConfig": {
             "defaults": {
               "color": {
-                "mode": "thresholds"
+                "fixedColor": "semi-dark-green",
+                "mode": "fixed"
               },
               "decimals": 0,
               "mappings": [],
@@ -3958,27 +4059,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "light-purple"
-                  },
-                  {
-                    "color": "super-light-yellow",
-                    "value": 500
-                  },
-                  {
-                    "color": "yellow",
-                    "value": 1000
-                  },
-                  {
-                    "color": "orange",
-                    "value": 1500
-                  },
-                  {
-                    "color": "red",
-                    "value": 2000
-                  },
-                  {
-                    "color": "dark-red",
-                    "value": 3000
+                    "color": "green",
+                    "value": null
                   }
                 ]
               },
@@ -3987,107 +4069,14 @@
             "overrides": []
           },
           "gridPos": {
-            "h": 3,
+            "h": 6,
             "w": 3,
             "x": 21,
             "y": 27
           },
-          "id": 96,
-          "options": {
-            "colorMode": "value",
-            "graphMode": "none",
-            "justifyMode": "auto",
-            "orientation": "auto",
-            "percentChangeColorMode": "standard",
-            "reduceOptions": {
-              "calcs": [
-                "lastNotNull"
-              ],
-              "fields": "",
-              "values": false
-            },
-            "showPercentChange": false,
-            "textMode": "auto",
-            "wideLayout": true
-          },
-          "pluginVersion": "11.3.0",
-          "targets": [
-            {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "${DS_PROMETHEUS}"
-              },
-              "disableTextWrap": false,
-              "editorMode": "code",
-              "expr": "sum(increase(aerospike_benchmarks_mrt_exception_total{instance=~\"$client\", cluster=~\"$cluster\", namespace=~\"$namespace\", setname=~\"$setname\"}[$__range]))",
-              "fullMetaSearch": false,
-              "hide": false,
-              "includeNullMetadata": true,
-              "instant": false,
-              "legendFormat": "Not Measured",
-              "range": true,
-              "refId": "C",
-              "useBackend": false
-            }
-          ],
-          "title": "Range Total Errors",
-          "type": "stat"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DATASOURCE}"
-          },
-          "description": "The total number oferrors",
-          "fieldConfig": {
-            "defaults": {
-              "color": {
-                "mode": "thresholds"
-              },
-              "decimals": 0,
-              "mappings": [],
-              "noValue": "0",
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "light-purple"
-                  },
-                  {
-                    "color": "super-light-yellow",
-                    "value": 500
-                  },
-                  {
-                    "color": "yellow",
-                    "value": 1000
-                  },
-                  {
-                    "color": "orange",
-                    "value": 1500
-                  },
-                  {
-                    "color": "red",
-                    "value": 2000
-                  },
-                  {
-                    "color": "dark-red",
-                    "value": 3000
-                  }
-                ]
-              },
-              "unit": "locale"
-            },
-            "overrides": []
-          },
-          "gridPos": {
-            "h": 3,
-            "w": 3,
-            "x": 21,
-            "y": 30
-          },
           "id": 109,
           "options": {
-            "colorMode": "value",
+            "colorMode": "background",
             "graphMode": "none",
             "justifyMode": "auto",
             "orientation": "auto",
@@ -4156,7 +4145,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   }
                 ]
               },
@@ -4168,7 +4158,7 @@
             "h": 4,
             "w": 24,
             "x": 0,
-            "y": 55
+            "y": 34
           },
           "id": 76,
           "options": {
@@ -4226,7 +4216,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   }
                 ]
               },
@@ -4238,7 +4229,7 @@
             "h": 4,
             "w": 24,
             "x": 0,
-            "y": 59
+            "y": 58
           },
           "id": 79,
           "options": {
@@ -4295,7 +4286,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   }
                 ]
               },
@@ -4307,7 +4299,7 @@
             "h": 4,
             "w": 24,
             "x": 0,
-            "y": 63
+            "y": 62
           },
           "id": 78,
           "options": {
@@ -4364,7 +4356,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   }
                 ]
               },
@@ -4376,7 +4369,7 @@
             "h": 4,
             "w": 24,
             "x": 0,
-            "y": 67
+            "y": 66
           },
           "id": 80,
           "options": {
@@ -4433,7 +4426,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   }
                 ]
               },
@@ -4445,7 +4439,7 @@
             "h": 4,
             "w": 24,
             "x": 0,
-            "y": 71
+            "y": 70
           },
           "id": 81,
           "options": {
@@ -4517,7 +4511,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   }
                 ]
               },
@@ -4529,7 +4524,7 @@
             "h": 4,
             "w": 24,
             "x": 0,
-            "y": 251
+            "y": 35
           },
           "id": 82,
           "options": {
@@ -4604,7 +4599,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   }
                 ]
               },
@@ -4616,7 +4612,7 @@
             "h": 4,
             "w": 24,
             "x": 0,
-            "y": 255
+            "y": 39
           },
           "id": 84,
           "options": {
@@ -4691,7 +4687,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   }
                 ]
               },
@@ -4703,7 +4700,7 @@
             "h": 4,
             "w": 24,
             "x": 0,
-            "y": 259
+            "y": 43
           },
           "id": 86,
           "options": {
@@ -4778,7 +4775,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   }
                 ]
               },
@@ -4790,7 +4788,7 @@
             "h": 4,
             "w": 24,
             "x": 0,
-            "y": 263
+            "y": 47
           },
           "id": 85,
           "options": {
@@ -4877,7 +4875,7 @@
             "h": 4,
             "w": 24,
             "x": 0,
-            "y": 267
+            "y": 51
           },
           "id": 87,
           "options": {
@@ -6999,6 +6997,6 @@
   "timezone": "browser",
   "title": "Aerospike Benchmark MRT",
   "uid": "be423cq6i5dz4a",
-  "version": 27,
+  "version": 28,
   "weekStart": ""
 }
