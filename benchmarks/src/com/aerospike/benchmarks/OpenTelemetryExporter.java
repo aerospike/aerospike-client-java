@@ -5,6 +5,7 @@ import static io.opentelemetry.semconv.resource.attributes.ResourceAttributes.SE
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Host;
 
+import com.aerospike.client.ResultCode;
 import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.api.common.Attributes;
 import io.opentelemetry.api.common.AttributesBuilder;
@@ -345,14 +346,17 @@ public final class OpenTelemetryExporter implements com.aerospike.benchmarks.Ope
                 if(ae.getInDoubt()) {
                     exception_subtype = "inDoubt";
                 }
-                else if(ae.getResultCode() == 120) {
+                else if(ae.getResultCode() == ResultCode.MRT_BLOCKED) {
                     exception_subtype = "blocked";
                 }
-                else if(ae.getResultCode() == 121) {
+                else if(ae.getResultCode() == ResultCode.MRT_VERSION_MISMATCH) {
                     exception_subtype = "version mismatch";
                 }
-                else if(ae.getResultCode() == -17 && message.contains("verify")) {
+                else if(ae.getResultCode() == ResultCode.TXN_FAILED) {
                     exception_subtype = "verify failed";
+                }
+                else if(ae.getResultCode() == ResultCode.MRT_EXPIRED) {
+                    exception_subtype = "Expired";
                 }
                 else {
                     exception_subtype = "error code: " + ae.getResultCode();

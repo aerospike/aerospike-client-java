@@ -82,7 +82,7 @@ public abstract class MRTTask {
             }
         }
         catch (AerospikeException ae) {
-            if(ae.getResultCode() == 120 && (args.mrtBlockRetries < 0 || retry < args.mrtBlockRetries)) {
+            if(ae.getResultCode() == ResultCode.MRT_BLOCKED && (args.mrtBlockRetries < 0 || retry < args.mrtBlockRetries)) {
                 counters.write.errors.getAndIncrement();
                 counters.write.addExceptionOTel(ae, LatencyTypes.WRITE, true);
                 counters.write.blocked.getAndIncrement();
@@ -115,7 +115,7 @@ public abstract class MRTTask {
             }
         }
         catch (AerospikeException ae) {
-            if(ae.getResultCode() == 120 && (args.mrtBlockRetries < 0 || retry < args.mrtBlockRetries)) {
+            if(ae.getResultCode() == ResultCode.MRT_BLOCKED && (args.mrtBlockRetries < 0 || retry < args.mrtBlockRetries)) {
                 counters.write.errors.getAndIncrement();
                 counters.write.addExceptionOTel(ae, LatencyTypes.WRITE, true);
                 counters.write.blocked.getAndIncrement();
@@ -149,7 +149,7 @@ public abstract class MRTTask {
             }
         }
         catch (AerospikeException ae) {
-            if(ae.getResultCode() == 120 && (args.mrtBlockRetries < 0 || retry < args.mrtBlockRetries)) {
+            if(ae.getResultCode() == ResultCode.MRT_BLOCKED && (args.mrtBlockRetries < 0 || retry < args.mrtBlockRetries)) {
                 counters.read.errors.getAndIncrement();
                 counters.read.addExceptionOTel(ae, LatencyTypes.READ, true);
                 counters.read.blocked.getAndIncrement();
@@ -183,7 +183,7 @@ public abstract class MRTTask {
             }
         }
         catch (AerospikeException ae) {
-            if(ae.getResultCode() == 120 && (args.mrtBlockRetries < 0 || retry < args.mrtBlockRetries)) {
+            if(ae.getResultCode() == ResultCode.MRT_BLOCKED && (args.mrtBlockRetries < 0 || retry < args.mrtBlockRetries)) {
                 counters.read.errors.getAndIncrement();
                 counters.read.addExceptionOTel(ae, LatencyTypes.READ, true);
                 counters.read.blocked.getAndIncrement();
@@ -217,7 +217,7 @@ public abstract class MRTTask {
             }
         }
         catch (AerospikeException ae) {
-            if(ae.getResultCode() == 120 && (args.mrtBlockRetries < 0 || retry < args.mrtBlockRetries)) {
+            if(ae.getResultCode() == ResultCode.MRT_BLOCKED && (args.mrtBlockRetries < 0 || retry < args.mrtBlockRetries)) {
                 counters.read.errors.getAndIncrement();
                 counters.read.addExceptionOTel(ae, LatencyTypes.READ, true);
                 counters.read.blocked.getAndIncrement();
@@ -251,7 +251,7 @@ public abstract class MRTTask {
             }
         }
         catch (AerospikeException ae) {
-            if(ae.getResultCode() == 120 && (args.mrtBlockRetries < 0 || retry < args.mrtBlockRetries)) {
+            if(ae.getResultCode() == ResultCode.MRT_BLOCKED && (args.mrtBlockRetries < 0 || retry < args.mrtBlockRetries)) {
                 counters.read.errors.getAndIncrement();
                 counters.read.addExceptionOTel(ae, LatencyTypes.READ, true);
                 counters.read.blocked.getAndIncrement();
