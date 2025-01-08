@@ -7,22 +7,10 @@
       "type": "datasource",
       "pluginId": "prometheus",
       "pluginName": "Prometheus"
-    },
-    {
-      "name": "DS_EXPRESSION",
-      "label": "Expression",
-      "description": "",
-      "type": "datasource",
-      "pluginId": "__expr__"
     }
   ],
   "__elements": {},
   "__requires": [
-    {
-      "type": "datasource",
-      "id": "__expr__",
-      "version": "1.0.0"
-    },
     {
       "type": "grafana",
       "id": "grafana",
@@ -1917,7 +1905,7 @@
       "type": "stat"
     },
     {
-      "collapsed": false,
+      "collapsed": true,
       "gridPos": {
         "h": 1,
         "w": 24,
@@ -1925,628 +1913,629 @@
         "y": 15
       },
       "id": 105,
-      "panels": [],
+      "panels": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "description": "The timeout of a MRT transaction. If reached the server will rollback the transaction.",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "mappings": [
+                {
+                  "options": {
+                    "0": {
+                      "color": "green",
+                      "index": 0,
+                      "text": "Server Default"
+                    },
+                    "-1": {
+                      "color": "red",
+                      "index": 1,
+                      "text": "Invalid"
+                    }
+                  },
+                  "type": "value"
+                }
+              ],
+              "noValue": "No Data",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "light-yellow",
+                    "value": null
+                  }
+                ]
+              },
+              "unit": "s"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 3,
+            "w": 3,
+            "x": 0,
+            "y": 16
+          },
+          "id": 103,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "area",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "percentChangeColorMode": "standard",
+            "reduceOptions": {
+              "calcs": [
+                "last"
+              ],
+              "fields": "/^txnTimeout$/",
+              "limit": 1,
+              "values": false
+            },
+            "showPercentChange": false,
+            "textMode": "value",
+            "wideLayout": true
+          },
+          "pluginVersion": "11.3.0",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${DATASOURCE}"
+              },
+              "disableTextWrap": false,
+              "editorMode": "builder",
+              "exemplar": false,
+              "expr": "aerospike_benchmarks_mrt_stateinfo{instance=~\"$client\", type=\"static\"}",
+              "format": "table",
+              "fullMetaSearch": false,
+              "includeNullMetadata": true,
+              "instant": false,
+              "legendFormat": "__auto",
+              "range": true,
+              "refId": "A",
+              "useBackend": false
+            }
+          ],
+          "title": "MRT Transaction Timeout",
+          "type": "stat"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "description": "The number of actions per MRT (Unit of Work)",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "mappings": [
+                {
+                  "options": {
+                    "0": {
+                      "color": "red",
+                      "index": 0,
+                      "text": "Disabled"
+                    }
+                  },
+                  "type": "value"
+                }
+              ],
+              "noValue": "No Data",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "blue",
+                    "value": null
+                  }
+                ]
+              },
+              "unit": "locale"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 3,
+            "w": 2,
+            "x": 3,
+            "y": 16
+          },
+          "id": 101,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "area",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "percentChangeColorMode": "standard",
+            "reduceOptions": {
+              "calcs": [
+                "last"
+              ],
+              "fields": "/^mrtSize$/",
+              "limit": 1,
+              "values": false
+            },
+            "showPercentChange": false,
+            "textMode": "value",
+            "wideLayout": true
+          },
+          "pluginVersion": "11.3.0",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${DATASOURCE}"
+              },
+              "disableTextWrap": false,
+              "editorMode": "builder",
+              "exemplar": false,
+              "expr": "aerospike_benchmarks_mrt_stateinfo{instance=~\"$client\", type=\"static\"}",
+              "format": "table",
+              "fullMetaSearch": false,
+              "includeNullMetadata": true,
+              "instant": false,
+              "legendFormat": "__auto",
+              "range": true,
+              "refId": "A",
+              "useBackend": false
+            }
+          ],
+          "title": "MRT Size",
+          "type": "stat"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "description": "The number of MRTs (Unit of Work) per task (thread). ",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "mappings": [
+                {
+                  "options": {
+                    "0": {
+                      "color": "red",
+                      "index": 0,
+                      "text": "Disabled"
+                    }
+                  },
+                  "type": "value"
+                }
+              ],
+              "noValue": "No Data",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "blue",
+                    "value": null
+                  }
+                ]
+              },
+              "unit": "locale"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 3,
+            "w": 2,
+            "x": 5,
+            "y": 16
+          },
+          "id": 60,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "area",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "percentChangeColorMode": "standard",
+            "reduceOptions": {
+              "calcs": [
+                "last"
+              ],
+              "fields": "/^nbrMRTs$/",
+              "limit": 1,
+              "values": false
+            },
+            "showPercentChange": false,
+            "textMode": "value",
+            "wideLayout": true
+          },
+          "pluginVersion": "11.3.0",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${DATASOURCE}"
+              },
+              "disableTextWrap": false,
+              "editorMode": "builder",
+              "exemplar": false,
+              "expr": "aerospike_benchmarks_mrt_stateinfo{instance=~\"$client\", type=\"static\"}",
+              "format": "table",
+              "fullMetaSearch": false,
+              "includeNullMetadata": true,
+              "instant": false,
+              "legendFormat": "__auto",
+              "range": true,
+              "refId": "A",
+              "useBackend": false
+            }
+          ],
+          "title": "MRT/Task",
+          "type": "stat"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "description": "The number of retries when a Commit is \"InDoubt\" state",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "mappings": [
+                {
+                  "options": {
+                    "0": {
+                      "color": "green",
+                      "index": 0,
+                      "text": "Disabled"
+                    },
+                    "-1": {
+                      "color": "red",
+                      "index": 1,
+                      "text": "Forever"
+                    }
+                  },
+                  "type": "value"
+                }
+              ],
+              "noValue": "No Data",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "blue",
+                    "value": null
+                  }
+                ]
+              },
+              "unit": "locale"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 3,
+            "w": 3,
+            "x": 7,
+            "y": 16
+          },
+          "id": 59,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "area",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "percentChangeColorMode": "standard",
+            "reduceOptions": {
+              "calcs": [
+                "last"
+              ],
+              "fields": "/^indoubtRetries$/",
+              "limit": 1,
+              "values": false
+            },
+            "showPercentChange": false,
+            "textMode": "value",
+            "wideLayout": true
+          },
+          "pluginVersion": "11.3.0",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${DATASOURCE}"
+              },
+              "disableTextWrap": false,
+              "editorMode": "builder",
+              "exemplar": false,
+              "expr": "aerospike_benchmarks_mrt_stateinfo{instance=~\"$client\", type=\"static\"}",
+              "format": "table",
+              "fullMetaSearch": false,
+              "includeNullMetadata": true,
+              "instant": false,
+              "legendFormat": "__auto",
+              "range": true,
+              "refId": "A",
+              "useBackend": false
+            }
+          ],
+          "title": "MRT InDoubt Retries",
+          "type": "stat"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "description": "The sleep time between InDoubt Commit Retries",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "decimals": 0,
+              "mappings": [
+                {
+                  "options": {
+                    "0": {
+                      "color": "green",
+                      "index": 0,
+                      "text": "N/A"
+                    }
+                  },
+                  "type": "value"
+                }
+              ],
+              "noValue": "No Data",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "blue",
+                    "value": null
+                  }
+                ]
+              },
+              "unit": "ms"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 3,
+            "w": 3,
+            "x": 10,
+            "y": 16
+          },
+          "id": 102,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "area",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "percentChangeColorMode": "standard",
+            "reduceOptions": {
+              "calcs": [
+                "last"
+              ],
+              "fields": "/^indoubtSleep$/",
+              "limit": 1,
+              "values": false
+            },
+            "showPercentChange": false,
+            "textMode": "value",
+            "wideLayout": true
+          },
+          "pluginVersion": "11.3.0",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${DATASOURCE}"
+              },
+              "disableTextWrap": false,
+              "editorMode": "builder",
+              "exemplar": false,
+              "expr": "aerospike_benchmarks_mrt_stateinfo{instance=~\"$client\", type=\"static\"}",
+              "format": "table",
+              "fullMetaSearch": false,
+              "includeNullMetadata": true,
+              "instant": false,
+              "legendFormat": "__auto",
+              "range": true,
+              "refId": "A",
+              "useBackend": false
+            }
+          ],
+          "title": "MRT InDoubt Sleep",
+          "type": "stat"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "description": "The number of retries when an action is blocked",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "mappings": [
+                {
+                  "options": {
+                    "0": {
+                      "color": "green",
+                      "index": 0,
+                      "text": "Disabled"
+                    },
+                    "-1": {
+                      "color": "red",
+                      "index": 1,
+                      "text": "Forever"
+                    }
+                  },
+                  "type": "value"
+                }
+              ],
+              "noValue": "No Data",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "blue",
+                    "value": null
+                  }
+                ]
+              },
+              "unit": "locale"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 3,
+            "w": 3,
+            "x": 13,
+            "y": 16
+          },
+          "id": 106,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "area",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "percentChangeColorMode": "standard",
+            "reduceOptions": {
+              "calcs": [
+                "last"
+              ],
+              "fields": "/^blockRetries$/",
+              "limit": 1,
+              "values": false
+            },
+            "showPercentChange": false,
+            "textMode": "value",
+            "wideLayout": true
+          },
+          "pluginVersion": "11.3.0",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${DATASOURCE}"
+              },
+              "disableTextWrap": false,
+              "editorMode": "builder",
+              "exemplar": false,
+              "expr": "aerospike_benchmarks_mrt_stateinfo{instance=~\"$client\", type=\"static\"}",
+              "format": "table",
+              "fullMetaSearch": false,
+              "includeNullMetadata": true,
+              "instant": false,
+              "legendFormat": "__auto",
+              "range": true,
+              "refId": "A",
+              "useBackend": false
+            }
+          ],
+          "title": "MRT Block Retries",
+          "type": "stat"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "description": "The sleep time between Block Retries",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "decimals": 0,
+              "mappings": [
+                {
+                  "options": {
+                    "0": {
+                      "color": "green",
+                      "index": 0,
+                      "text": "N/A"
+                    }
+                  },
+                  "type": "value"
+                }
+              ],
+              "noValue": "No Data",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "blue",
+                    "value": null
+                  }
+                ]
+              },
+              "unit": "ms"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 3,
+            "w": 3,
+            "x": 16,
+            "y": 16
+          },
+          "id": 104,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "area",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "percentChangeColorMode": "standard",
+            "reduceOptions": {
+              "calcs": [
+                "last"
+              ],
+              "fields": "/^blockSleep$/",
+              "limit": 1,
+              "values": false
+            },
+            "showPercentChange": false,
+            "textMode": "value",
+            "wideLayout": true
+          },
+          "pluginVersion": "11.3.0",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${DATASOURCE}"
+              },
+              "disableTextWrap": false,
+              "editorMode": "builder",
+              "exemplar": false,
+              "expr": "aerospike_benchmarks_mrt_stateinfo{instance=~\"$client\", type=\"static\"}",
+              "format": "table",
+              "fullMetaSearch": false,
+              "includeNullMetadata": true,
+              "instant": false,
+              "legendFormat": "__auto",
+              "range": true,
+              "refId": "A",
+              "useBackend": false
+            }
+          ],
+          "title": "MRT Block Sleep",
+          "type": "stat"
+        }
+      ],
       "title": "MRT Configuration",
       "type": "row"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
-      },
-      "description": "The timeout of a MRT transaction. If reached the server will rollback the transaction.",
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "mappings": [
-            {
-              "options": {
-                "0": {
-                  "color": "green",
-                  "index": 0,
-                  "text": "Server Default"
-                },
-                "-1": {
-                  "color": "red",
-                  "index": 1,
-                  "text": "Invalid"
-                }
-              },
-              "type": "value"
-            }
-          ],
-          "noValue": "No Data",
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "light-yellow",
-                "value": null
-              }
-            ]
-          },
-          "unit": "s"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 3,
-        "w": 3,
-        "x": 0,
-        "y": 16
-      },
-      "id": 103,
-      "options": {
-        "colorMode": "value",
-        "graphMode": "area",
-        "justifyMode": "auto",
-        "orientation": "auto",
-        "percentChangeColorMode": "standard",
-        "reduceOptions": {
-          "calcs": [
-            "last"
-          ],
-          "fields": "/^txnTimeout$/",
-          "limit": 1,
-          "values": false
-        },
-        "showPercentChange": false,
-        "textMode": "value",
-        "wideLayout": true
-      },
-      "pluginVersion": "11.3.0",
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DATASOURCE}"
-          },
-          "disableTextWrap": false,
-          "editorMode": "builder",
-          "exemplar": false,
-          "expr": "aerospike_benchmarks_mrt_stateinfo{instance=~\"$client\", type=\"static\"}",
-          "format": "table",
-          "fullMetaSearch": false,
-          "includeNullMetadata": true,
-          "instant": false,
-          "legendFormat": "__auto",
-          "range": true,
-          "refId": "A",
-          "useBackend": false
-        }
-      ],
-      "title": "MRT Transaction Timeout",
-      "type": "stat"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
-      },
-      "description": "The number of actions per MRT (Unit of Work)",
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "mappings": [
-            {
-              "options": {
-                "0": {
-                  "color": "red",
-                  "index": 0,
-                  "text": "Disabled"
-                }
-              },
-              "type": "value"
-            }
-          ],
-          "noValue": "No Data",
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "blue",
-                "value": null
-              }
-            ]
-          },
-          "unit": "locale"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 3,
-        "w": 2,
-        "x": 3,
-        "y": 16
-      },
-      "id": 101,
-      "options": {
-        "colorMode": "value",
-        "graphMode": "area",
-        "justifyMode": "auto",
-        "orientation": "auto",
-        "percentChangeColorMode": "standard",
-        "reduceOptions": {
-          "calcs": [
-            "last"
-          ],
-          "fields": "/^mrtSize$/",
-          "limit": 1,
-          "values": false
-        },
-        "showPercentChange": false,
-        "textMode": "value",
-        "wideLayout": true
-      },
-      "pluginVersion": "11.3.0",
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DATASOURCE}"
-          },
-          "disableTextWrap": false,
-          "editorMode": "builder",
-          "exemplar": false,
-          "expr": "aerospike_benchmarks_mrt_stateinfo{instance=~\"$client\", type=\"static\"}",
-          "format": "table",
-          "fullMetaSearch": false,
-          "includeNullMetadata": true,
-          "instant": false,
-          "legendFormat": "__auto",
-          "range": true,
-          "refId": "A",
-          "useBackend": false
-        }
-      ],
-      "title": "MRT Size",
-      "type": "stat"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
-      },
-      "description": "The number of MRTs (Unit of Work) per task (thread). ",
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "mappings": [
-            {
-              "options": {
-                "0": {
-                  "color": "red",
-                  "index": 0,
-                  "text": "Disabled"
-                }
-              },
-              "type": "value"
-            }
-          ],
-          "noValue": "No Data",
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "blue",
-                "value": null
-              }
-            ]
-          },
-          "unit": "locale"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 3,
-        "w": 2,
-        "x": 5,
-        "y": 16
-      },
-      "id": 60,
-      "options": {
-        "colorMode": "value",
-        "graphMode": "area",
-        "justifyMode": "auto",
-        "orientation": "auto",
-        "percentChangeColorMode": "standard",
-        "reduceOptions": {
-          "calcs": [
-            "last"
-          ],
-          "fields": "/^nbrMRTs$/",
-          "limit": 1,
-          "values": false
-        },
-        "showPercentChange": false,
-        "textMode": "value",
-        "wideLayout": true
-      },
-      "pluginVersion": "11.3.0",
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DATASOURCE}"
-          },
-          "disableTextWrap": false,
-          "editorMode": "builder",
-          "exemplar": false,
-          "expr": "aerospike_benchmarks_mrt_stateinfo{instance=~\"$client\", type=\"static\"}",
-          "format": "table",
-          "fullMetaSearch": false,
-          "includeNullMetadata": true,
-          "instant": false,
-          "legendFormat": "__auto",
-          "range": true,
-          "refId": "A",
-          "useBackend": false
-        }
-      ],
-      "title": "MRT/Task",
-      "type": "stat"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
-      },
-      "description": "The number of retries when a Commit is \"InDoubt\" state",
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "mappings": [
-            {
-              "options": {
-                "0": {
-                  "color": "green",
-                  "index": 0,
-                  "text": "Disabled"
-                },
-                "-1": {
-                  "color": "red",
-                  "index": 1,
-                  "text": "Forever"
-                }
-              },
-              "type": "value"
-            }
-          ],
-          "noValue": "No Data",
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "blue",
-                "value": null
-              }
-            ]
-          },
-          "unit": "locale"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 3,
-        "w": 3,
-        "x": 7,
-        "y": 16
-      },
-      "id": 59,
-      "options": {
-        "colorMode": "value",
-        "graphMode": "area",
-        "justifyMode": "auto",
-        "orientation": "auto",
-        "percentChangeColorMode": "standard",
-        "reduceOptions": {
-          "calcs": [
-            "last"
-          ],
-          "fields": "/^indoubtRetries$/",
-          "limit": 1,
-          "values": false
-        },
-        "showPercentChange": false,
-        "textMode": "value",
-        "wideLayout": true
-      },
-      "pluginVersion": "11.3.0",
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DATASOURCE}"
-          },
-          "disableTextWrap": false,
-          "editorMode": "builder",
-          "exemplar": false,
-          "expr": "aerospike_benchmarks_mrt_stateinfo{instance=~\"$client\", type=\"static\"}",
-          "format": "table",
-          "fullMetaSearch": false,
-          "includeNullMetadata": true,
-          "instant": false,
-          "legendFormat": "__auto",
-          "range": true,
-          "refId": "A",
-          "useBackend": false
-        }
-      ],
-      "title": "MRT InDoubt Retries",
-      "type": "stat"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
-      },
-      "description": "The sleep time between InDoubt Commit Retries",
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "decimals": 0,
-          "mappings": [
-            {
-              "options": {
-                "0": {
-                  "color": "green",
-                  "index": 0,
-                  "text": "N/A"
-                }
-              },
-              "type": "value"
-            }
-          ],
-          "noValue": "No Data",
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "blue",
-                "value": null
-              }
-            ]
-          },
-          "unit": "ms"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 3,
-        "w": 3,
-        "x": 10,
-        "y": 16
-      },
-      "id": 102,
-      "options": {
-        "colorMode": "value",
-        "graphMode": "area",
-        "justifyMode": "auto",
-        "orientation": "auto",
-        "percentChangeColorMode": "standard",
-        "reduceOptions": {
-          "calcs": [
-            "last"
-          ],
-          "fields": "/^indoubtSleep$/",
-          "limit": 1,
-          "values": false
-        },
-        "showPercentChange": false,
-        "textMode": "value",
-        "wideLayout": true
-      },
-      "pluginVersion": "11.3.0",
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DATASOURCE}"
-          },
-          "disableTextWrap": false,
-          "editorMode": "builder",
-          "exemplar": false,
-          "expr": "aerospike_benchmarks_mrt_stateinfo{instance=~\"$client\", type=\"static\"}",
-          "format": "table",
-          "fullMetaSearch": false,
-          "includeNullMetadata": true,
-          "instant": false,
-          "legendFormat": "__auto",
-          "range": true,
-          "refId": "A",
-          "useBackend": false
-        }
-      ],
-      "title": "MRT InDoubt Sleep",
-      "type": "stat"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
-      },
-      "description": "The number of retries when an action is blocked",
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "mappings": [
-            {
-              "options": {
-                "0": {
-                  "color": "green",
-                  "index": 0,
-                  "text": "Disabled"
-                },
-                "-1": {
-                  "color": "red",
-                  "index": 1,
-                  "text": "Forever"
-                }
-              },
-              "type": "value"
-            }
-          ],
-          "noValue": "No Data",
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "blue",
-                "value": null
-              }
-            ]
-          },
-          "unit": "locale"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 3,
-        "w": 3,
-        "x": 13,
-        "y": 16
-      },
-      "id": 106,
-      "options": {
-        "colorMode": "value",
-        "graphMode": "area",
-        "justifyMode": "auto",
-        "orientation": "auto",
-        "percentChangeColorMode": "standard",
-        "reduceOptions": {
-          "calcs": [
-            "last"
-          ],
-          "fields": "/^blockRetries$/",
-          "limit": 1,
-          "values": false
-        },
-        "showPercentChange": false,
-        "textMode": "value",
-        "wideLayout": true
-      },
-      "pluginVersion": "11.3.0",
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DATASOURCE}"
-          },
-          "disableTextWrap": false,
-          "editorMode": "builder",
-          "exemplar": false,
-          "expr": "aerospike_benchmarks_mrt_stateinfo{instance=~\"$client\", type=\"static\"}",
-          "format": "table",
-          "fullMetaSearch": false,
-          "includeNullMetadata": true,
-          "instant": false,
-          "legendFormat": "__auto",
-          "range": true,
-          "refId": "A",
-          "useBackend": false
-        }
-      ],
-      "title": "MRT Block Retries",
-      "type": "stat"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
-      },
-      "description": "The sleep time between Block Retries",
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "decimals": 0,
-          "mappings": [
-            {
-              "options": {
-                "0": {
-                  "color": "green",
-                  "index": 0,
-                  "text": "N/A"
-                }
-              },
-              "type": "value"
-            }
-          ],
-          "noValue": "No Data",
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "blue",
-                "value": null
-              }
-            ]
-          },
-          "unit": "ms"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 3,
-        "w": 3,
-        "x": 16,
-        "y": 16
-      },
-      "id": 104,
-      "options": {
-        "colorMode": "value",
-        "graphMode": "area",
-        "justifyMode": "auto",
-        "orientation": "auto",
-        "percentChangeColorMode": "standard",
-        "reduceOptions": {
-          "calcs": [
-            "last"
-          ],
-          "fields": "/^blockSleep$/",
-          "limit": 1,
-          "values": false
-        },
-        "showPercentChange": false,
-        "textMode": "value",
-        "wideLayout": true
-      },
-      "pluginVersion": "11.3.0",
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DATASOURCE}"
-          },
-          "disableTextWrap": false,
-          "editorMode": "builder",
-          "exemplar": false,
-          "expr": "aerospike_benchmarks_mrt_stateinfo{instance=~\"$client\", type=\"static\"}",
-          "format": "table",
-          "fullMetaSearch": false,
-          "includeNullMetadata": true,
-          "instant": false,
-          "legendFormat": "__auto",
-          "range": true,
-          "refId": "A",
-          "useBackend": false
-        }
-      ],
-      "title": "MRT Block Sleep",
-      "type": "stat"
     },
     {
       "collapsed": false,
@@ -2554,7 +2543,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 19
+        "y": 16
       },
       "id": 13,
       "panels": [],
@@ -2592,7 +2581,7 @@
         "h": 6,
         "w": 3,
         "x": 0,
-        "y": 20
+        "y": 17
       },
       "id": 51,
       "options": {
@@ -2619,25 +2608,6 @@
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "exemplar": false,
-          "expr": "sum(last_over_time(aerospike_benchmarks_mrt_latency_microsecond_count{instance=~\"$client\", cluster=~\"$cluster\", namespace=~\"$namespace\", setname=~\"$setname\", type=~\"write|read|readnotfound\"}[$__interval]))",
-          "format": "time_series",
-          "fullMetaSearch": false,
-          "includeNullMetadata": true,
-          "instant": false,
-          "interval": "",
-          "legendFormat": "Measured",
-          "range": true,
-          "refId": "A",
-          "useBackend": false
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
-          },
-          "disableTextWrap": false,
-          "editorMode": "builder",
           "expr": "sum(last_over_time(aerospike_benchmarks_mrt_transaction_total{instance=~\"$client\", cluster=~\"$cluster\", namespace=~\"$namespace\", setname=~\"$setname\", type=~\"write|read|readnotfound\"}[$__interval]))",
           "fullMetaSearch": false,
           "hide": false,
@@ -2647,16 +2617,6 @@
           "range": true,
           "refId": "C",
           "useBackend": false
-        },
-        {
-          "datasource": {
-            "type": "__expr__",
-            "uid": "${DS_EXPRESSION}"
-          },
-          "expression": "$A + $C",
-          "hide": false,
-          "refId": "Total",
-          "type": "math"
         }
       ],
       "title": "Total Completed RW Count",
@@ -2665,7 +2625,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DATASOURCE}"
+        "uid": "${DS_PROMETHEUS}"
       },
       "description": "The total completed number of write actions across all types",
       "fieldConfig": {
@@ -2693,7 +2653,7 @@
         "h": 6,
         "w": 3,
         "x": 3,
-        "y": 20
+        "y": 17
       },
       "id": 52,
       "options": {
@@ -2716,25 +2676,6 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
-          },
-          "disableTextWrap": false,
-          "editorMode": "builder",
-          "exemplar": false,
-          "expr": "sum(last_over_time(aerospike_benchmarks_mrt_latency_microsecond_count{instance=~\"$client\", cluster=~\"$cluster\", namespace=~\"$namespace\", setname=~\"$setname\", type=\"write\"}[$__interval]))",
-          "format": "time_series",
-          "fullMetaSearch": false,
-          "includeNullMetadata": true,
-          "instant": false,
-          "interval": "",
-          "legendFormat": "Measured",
-          "range": true,
-          "refId": "A",
-          "useBackend": false
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
             "uid": "${DATASOURCE}"
           },
           "disableTextWrap": false,
@@ -2748,16 +2689,6 @@
           "range": true,
           "refId": "C",
           "useBackend": false
-        },
-        {
-          "datasource": {
-            "type": "__expr__",
-            "uid": "${DS_EXPRESSION}"
-          },
-          "expression": "$A + $C",
-          "hide": false,
-          "refId": "Total",
-          "type": "math"
         }
       ],
       "title": "Total Completed Write Count",
@@ -2766,7 +2697,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DATASOURCE}"
+        "uid": "${DS_PROMETHEUS}"
       },
       "description": "The total completed number of read actions across all types",
       "fieldConfig": {
@@ -2794,7 +2725,7 @@
         "h": 6,
         "w": 3,
         "x": 6,
-        "y": 20
+        "y": 17
       },
       "id": 53,
       "options": {
@@ -2817,25 +2748,6 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
-          },
-          "disableTextWrap": false,
-          "editorMode": "builder",
-          "exemplar": false,
-          "expr": "sum(last_over_time(aerospike_benchmarks_mrt_latency_microsecond_count{instance=~\"$client\", cluster=~\"$cluster\", namespace=~\"$namespace\", setname=~\"$setname\", type=~\"read|readnotfound\"}[$__interval]))",
-          "format": "time_series",
-          "fullMetaSearch": false,
-          "includeNullMetadata": true,
-          "instant": false,
-          "interval": "",
-          "legendFormat": "Measured",
-          "range": true,
-          "refId": "A",
-          "useBackend": false
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
             "uid": "${DATASOURCE}"
           },
           "disableTextWrap": false,
@@ -2849,16 +2761,6 @@
           "range": true,
           "refId": "C",
           "useBackend": false
-        },
-        {
-          "datasource": {
-            "type": "__expr__",
-            "uid": "${DS_EXPRESSION}"
-          },
-          "expression": "$A + $C",
-          "hide": false,
-          "refId": "Total",
-          "type": "math"
         }
       ],
       "title": "Total Completed Read Count",
@@ -2867,7 +2769,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DATASOURCE}"
+        "uid": "${DS_PROMETHEUS}"
       },
       "description": "The total number oferrors",
       "fieldConfig": {
@@ -2915,7 +2817,7 @@
         "h": 6,
         "w": 3,
         "x": 9,
-        "y": 20
+        "y": 17
       },
       "id": 65,
       "options": {
@@ -2940,7 +2842,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "${DATASOURCE}"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
@@ -2961,7 +2863,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DATASOURCE}"
+        "uid": "${DS_PROMETHEUS}"
       },
       "description": "The total number of Unit of Work (MRTs) that made it to either commit or abort point. MRT size determines the number of actions within a Unit of Work.",
       "fieldConfig": {
@@ -2990,7 +2892,7 @@
         "h": 6,
         "w": 3,
         "x": 12,
-        "y": 20
+        "y": 17
       },
       "id": 69,
       "options": {
@@ -3013,7 +2915,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "${DATASOURCE}"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
@@ -3022,37 +2924,10 @@
           "hide": false,
           "includeNullMetadata": true,
           "instant": false,
-          "legendFormat": "Not Measured",
+          "legendFormat": "No Latency",
           "range": true,
           "refId": "C",
           "useBackend": false
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DATASOURCE}"
-          },
-          "disableTextWrap": false,
-          "editorMode": "builder",
-          "expr": "sum(last_over_time(aerospike_benchmarks_mrt_latency_microsecond_count{instance=~\"$client\", cluster=~\"$cluster\", namespace=~\"$namespace\", setname=~\"$setname\", type=~\"mrtuow\"}[$__interval]))",
-          "fullMetaSearch": false,
-          "hide": false,
-          "includeNullMetadata": true,
-          "instant": false,
-          "legendFormat": "Measured",
-          "range": true,
-          "refId": "A",
-          "useBackend": false
-        },
-        {
-          "datasource": {
-            "type": "__expr__",
-            "uid": "${DS_EXPRESSION}"
-          },
-          "expression": "$A + $C",
-          "hide": false,
-          "refId": "Total",
-          "type": "math"
         }
       ],
       "title": "Total Unit of Work (MRTs) Transaction",
@@ -3061,7 +2936,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DATASOURCE}"
+        "uid": "${DS_PROMETHEUS}"
       },
       "description": "The total completed number of Commits",
       "fieldConfig": {
@@ -3090,7 +2965,7 @@
         "h": 6,
         "w": 3,
         "x": 15,
-        "y": 20
+        "y": 17
       },
       "id": 54,
       "options": {
@@ -3113,7 +2988,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "${DATASOURCE}"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
@@ -3122,37 +2997,10 @@
           "hide": false,
           "includeNullMetadata": true,
           "instant": false,
-          "legendFormat": "Not Measured",
+          "legendFormat": "No Latency",
           "range": true,
           "refId": "C",
           "useBackend": false
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DATASOURCE}"
-          },
-          "disableTextWrap": false,
-          "editorMode": "builder",
-          "expr": "sum(last_over_time(aerospike_benchmarks_mrt_latency_microsecond_count{instance=~\"$client\", cluster=~\"$cluster\", namespace=~\"$namespace\", setname=~\"$setname\", type=~\"mrtcommit\"}[$__interval]))",
-          "fullMetaSearch": false,
-          "hide": false,
-          "includeNullMetadata": true,
-          "instant": false,
-          "legendFormat": "Measured",
-          "range": true,
-          "refId": "A",
-          "useBackend": false
-        },
-        {
-          "datasource": {
-            "type": "__expr__",
-            "uid": "${DS_EXPRESSION}"
-          },
-          "expression": "$A + $C",
-          "hide": false,
-          "refId": "Total",
-          "type": "math"
         }
       ],
       "title": "Total Coimpleted Commits",
@@ -3161,7 +3009,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DATASOURCE}"
+        "uid": "${DS_PROMETHEUS}"
       },
       "description": "The total completed number of Aborts. An abort can occur if an action (e.g., get or put) fails or the commit fails. ",
       "fieldConfig": {
@@ -3190,7 +3038,7 @@
         "h": 6,
         "w": 3,
         "x": 18,
-        "y": 20
+        "y": 17
       },
       "id": 68,
       "options": {
@@ -3213,7 +3061,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "${DATASOURCE}"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
@@ -3222,37 +3070,10 @@
           "hide": false,
           "includeNullMetadata": true,
           "instant": false,
-          "legendFormat": "Not Measured",
+          "legendFormat": "No Latency",
           "range": true,
           "refId": "C",
           "useBackend": false
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DATASOURCE}"
-          },
-          "disableTextWrap": false,
-          "editorMode": "builder",
-          "expr": "sum by(type) (last_over_time(aerospike_benchmarks_mrt_latency_microsecond_count{instance=~\"$client\", cluster=~\"$cluster\", namespace=~\"$namespace\", setname=~\"$setname\", type=~\"mrtabort\"}[$__interval]))",
-          "fullMetaSearch": false,
-          "hide": false,
-          "includeNullMetadata": true,
-          "instant": false,
-          "legendFormat": "Measured",
-          "range": true,
-          "refId": "A",
-          "useBackend": false
-        },
-        {
-          "datasource": {
-            "type": "__expr__",
-            "uid": "${DS_EXPRESSION}"
-          },
-          "expression": "$A + $C",
-          "hide": false,
-          "refId": "Total",
-          "type": "math"
         }
       ],
       "title": "Total Completed Aborts",
@@ -3261,7 +3082,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DATASOURCE}"
+        "uid": "${DS_PROMETHEUS}"
       },
       "description": "The total number of MRT Related Errors",
       "fieldConfig": {
@@ -3290,7 +3111,7 @@
         "h": 6,
         "w": 3,
         "x": 21,
-        "y": 20
+        "y": 17
       },
       "id": 108,
       "options": {
@@ -3315,7 +3136,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "${DATASOURCE}"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
@@ -3339,14 +3160,14 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 26
+        "y": 23
       },
       "id": 97,
       "panels": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DATASOURCE}"
+            "uid": "${DS_PROMETHEUS}"
           },
           "description": "The total completed number of read and write operations",
           "fieldConfig": {
@@ -3397,25 +3218,6 @@
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "${DS_PROMETHEUS}"
-              },
-              "disableTextWrap": false,
-              "editorMode": "code",
-              "exemplar": false,
-              "expr": "sum(increase(aerospike_benchmarks_mrt_latency_microsecond_count{instance=~\"$client\", cluster=~\"$cluster\", namespace=~\"$namespace\", setname=~\"$setname\", type=~\"write|read|readnotfound\"}[$__range]))",
-              "format": "time_series",
-              "fullMetaSearch": false,
-              "includeNullMetadata": true,
-              "instant": false,
-              "interval": "",
-              "legendFormat": "Measured",
-              "range": true,
-              "refId": "A",
-              "useBackend": false
-            },
-            {
-              "datasource": {
-                "type": "prometheus",
                 "uid": "${DATASOURCE}"
               },
               "disableTextWrap": false,
@@ -3429,16 +3231,6 @@
               "range": true,
               "refId": "C",
               "useBackend": false
-            },
-            {
-              "datasource": {
-                "type": "__expr__",
-                "uid": "${DS_EXPRESSION}"
-              },
-              "expression": "$A + $C",
-              "hide": false,
-              "refId": "Total",
-              "type": "math"
             }
           ],
           "title": "Range Total Completed RW Count",
@@ -3447,7 +3239,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DATASOURCE}"
+            "uid": "${DS_PROMETHEUS}"
           },
           "description": "The total completed number of write actions across all types",
           "fieldConfig": {
@@ -3498,25 +3290,6 @@
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "${DS_PROMETHEUS}"
-              },
-              "disableTextWrap": false,
-              "editorMode": "code",
-              "exemplar": false,
-              "expr": "sum(increase(aerospike_benchmarks_mrt_latency_microsecond_count{instance=~\"$client\", cluster=~\"$cluster\", namespace=~\"$namespace\", setname=~\"$setname\", type=\"write\"}[$__range]))",
-              "format": "time_series",
-              "fullMetaSearch": false,
-              "includeNullMetadata": true,
-              "instant": false,
-              "interval": "",
-              "legendFormat": "Measured",
-              "range": true,
-              "refId": "A",
-              "useBackend": false
-            },
-            {
-              "datasource": {
-                "type": "prometheus",
                 "uid": "${DATASOURCE}"
               },
               "disableTextWrap": false,
@@ -3530,16 +3303,6 @@
               "range": true,
               "refId": "C",
               "useBackend": false
-            },
-            {
-              "datasource": {
-                "type": "__expr__",
-                "uid": "${DS_EXPRESSION}"
-              },
-              "expression": "$A + $C",
-              "hide": false,
-              "refId": "Total",
-              "type": "math"
             }
           ],
           "title": "Range Total Completed Write Count",
@@ -3548,7 +3311,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DATASOURCE}"
+            "uid": "${DS_PROMETHEUS}"
           },
           "description": "The total completed number of read actions across all types",
           "fieldConfig": {
@@ -3599,25 +3362,6 @@
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "${DS_PROMETHEUS}"
-              },
-              "disableTextWrap": false,
-              "editorMode": "code",
-              "exemplar": false,
-              "expr": "sum(increase(aerospike_benchmarks_mrt_latency_microsecond_count{instance=~\"$client\", cluster=~\"$cluster\", namespace=~\"$namespace\", setname=~\"$setname\", type=~\"read|readnotfound\"}[$__range]))",
-              "format": "time_series",
-              "fullMetaSearch": false,
-              "includeNullMetadata": true,
-              "instant": false,
-              "interval": "",
-              "legendFormat": "Measured",
-              "range": true,
-              "refId": "A",
-              "useBackend": false
-            },
-            {
-              "datasource": {
-                "type": "prometheus",
                 "uid": "${DATASOURCE}"
               },
               "disableTextWrap": false,
@@ -3631,16 +3375,6 @@
               "range": true,
               "refId": "C",
               "useBackend": false
-            },
-            {
-              "datasource": {
-                "type": "__expr__",
-                "uid": "${DS_EXPRESSION}"
-              },
-              "expression": "$A + $C",
-              "hide": false,
-              "refId": "Total",
-              "type": "math"
             }
           ],
           "title": "Range Total Completed Read Count",
@@ -3649,7 +3383,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DATASOURCE}"
+            "uid": "${DS_PROMETHEUS}"
           },
           "description": "The total number oferrors",
           "fieldConfig": {
@@ -3722,7 +3456,7 @@
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "${DS_PROMETHEUS}"
+                "uid": "${DATASOURCE}"
               },
               "disableTextWrap": false,
               "editorMode": "code",
@@ -3743,7 +3477,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DATASOURCE}"
+            "uid": "${DS_PROMETHEUS}"
           },
           "description": "The total number of Unit of Work (MRTs) that made it to either commit or abort point.",
           "fieldConfig": {
@@ -3795,7 +3529,7 @@
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "${DS_PROMETHEUS}"
+                "uid": "${DATASOURCE}"
               },
               "disableTextWrap": false,
               "editorMode": "code",
@@ -3804,37 +3538,10 @@
               "hide": false,
               "includeNullMetadata": true,
               "instant": false,
-              "legendFormat": "Not Measured",
+              "legendFormat": "No Latency",
               "range": true,
               "refId": "C",
               "useBackend": false
-            },
-            {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "${DATASOURCE}"
-              },
-              "disableTextWrap": false,
-              "editorMode": "code",
-              "expr": "sum(increase(aerospike_benchmarks_mrt_latency_microsecond_count{instance=~\"$client\", cluster=~\"$cluster\", namespace=~\"$namespace\", setname=~\"$setname\", type=~\"mrtuow\"}[$__range]))",
-              "fullMetaSearch": false,
-              "hide": false,
-              "includeNullMetadata": true,
-              "instant": false,
-              "legendFormat": "Measured",
-              "range": true,
-              "refId": "A",
-              "useBackend": false
-            },
-            {
-              "datasource": {
-                "type": "__expr__",
-                "uid": "${DS_EXPRESSION}"
-              },
-              "expression": "$A + $C",
-              "hide": false,
-              "refId": "Total",
-              "type": "math"
             }
           ],
           "title": "Range Total Unit of Work (MRTs) Transaction",
@@ -3843,7 +3550,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DATASOURCE}"
+            "uid": "${DS_PROMETHEUS}"
           },
           "description": "The total completed number of Commits",
           "fieldConfig": {
@@ -3895,55 +3602,28 @@
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "${DS_PROMETHEUS}"
+                "uid": "${DATASOURCE}"
               },
               "disableTextWrap": false,
-              "editorMode": "code",
+              "editorMode": "builder",
               "expr": "sum(increase(aerospike_benchmarks_mrt_transaction_total{instance=~\"$client\", cluster=~\"$cluster\", namespace=~\"$namespace\", setname=~\"$setname\", type=~\"mrtcommit\"}[$__range]))",
               "fullMetaSearch": false,
               "hide": false,
               "includeNullMetadata": true,
               "instant": false,
-              "legendFormat": "Not Measured",
+              "legendFormat": "No Latency",
               "range": true,
               "refId": "C",
               "useBackend": false
-            },
-            {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "${DATASOURCE}"
-              },
-              "disableTextWrap": false,
-              "editorMode": "code",
-              "expr": "sum(increase(aerospike_benchmarks_mrt_latency_microsecond_count{instance=~\"$client\", cluster=~\"$cluster\", namespace=~\"$namespace\", setname=~\"$setname\", type=~\"mrtcommit\"}[$__range]))",
-              "fullMetaSearch": false,
-              "hide": false,
-              "includeNullMetadata": true,
-              "instant": false,
-              "legendFormat": "Measured",
-              "range": true,
-              "refId": "A",
-              "useBackend": false
-            },
-            {
-              "datasource": {
-                "type": "__expr__",
-                "uid": "${DS_EXPRESSION}"
-              },
-              "expression": "$A + $C",
-              "hide": false,
-              "refId": "Total",
-              "type": "math"
             }
           ],
-          "title": "Range Total Coimpleted Commits",
+          "title": "Range Total Completed Commits",
           "type": "stat"
         },
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DATASOURCE}"
+            "uid": "${DS_PROMETHEUS}"
           },
           "description": "The total completed number of Aborts",
           "fieldConfig": {
@@ -3995,7 +3675,7 @@
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "${DS_PROMETHEUS}"
+                "uid": "${DATASOURCE}"
               },
               "disableTextWrap": false,
               "editorMode": "code",
@@ -4004,37 +3684,10 @@
               "hide": false,
               "includeNullMetadata": true,
               "instant": false,
-              "legendFormat": "Not Measured",
+              "legendFormat": "No Latency",
               "range": true,
               "refId": "C",
               "useBackend": false
-            },
-            {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "${DATASOURCE}"
-              },
-              "disableTextWrap": false,
-              "editorMode": "code",
-              "expr": "sum(increase(aerospike_benchmarks_mrt_latency_microsecond_count{instance=~\"$client\", cluster=~\"$cluster\", namespace=~\"$namespace\", setname=~\"$setname\", type=~\"mrtabort\"}[$__range]))",
-              "fullMetaSearch": false,
-              "hide": false,
-              "includeNullMetadata": true,
-              "instant": false,
-              "legendFormat": "Measured",
-              "range": true,
-              "refId": "A",
-              "useBackend": false
-            },
-            {
-              "datasource": {
-                "type": "__expr__",
-                "uid": "${DS_EXPRESSION}"
-              },
-              "expression": "$A + $C",
-              "hide": false,
-              "refId": "Total",
-              "type": "math"
             }
           ],
           "title": "Range Total Completed Aborts",
@@ -4043,7 +3696,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DATASOURCE}"
+            "uid": "${DS_PROMETHEUS}"
           },
           "description": "The total number oferrors",
           "fieldConfig": {
@@ -4097,7 +3750,7 @@
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "${DS_PROMETHEUS}"
+                "uid": "${DATASOURCE}"
               },
               "disableTextWrap": false,
               "editorMode": "code",
@@ -4125,14 +3778,14 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 27
+        "y": 24
       },
       "id": 77,
       "panels": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DATASOURCE}"
+            "uid": "${DS_PROMETHEUS}"
           },
           "fieldConfig": {
             "defaults": {
@@ -4158,7 +3811,7 @@
             "h": 4,
             "w": 24,
             "x": 0,
-            "y": 34
+            "y": 28
           },
           "id": 76,
           "options": {
@@ -4183,7 +3836,7 @@
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "${DS_PROMETHEUS}"
+                "uid": "${DATASOURCE}"
               },
               "disableTextWrap": false,
               "editorMode": "builder",
@@ -4203,7 +3856,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DATASOURCE}"
+            "uid": "${DS_PROMETHEUS}"
           },
           "fieldConfig": {
             "defaults": {
@@ -4229,7 +3882,7 @@
             "h": 4,
             "w": 24,
             "x": 0,
-            "y": 58
+            "y": 32
           },
           "id": 79,
           "options": {
@@ -4252,7 +3905,7 @@
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "${DS_PROMETHEUS}"
+                "uid": "${DATASOURCE}"
               },
               "disableTextWrap": false,
               "editorMode": "builder",
@@ -4273,7 +3926,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DATASOURCE}"
+            "uid": "${DS_PROMETHEUS}"
           },
           "fieldConfig": {
             "defaults": {
@@ -4299,7 +3952,7 @@
             "h": 4,
             "w": 24,
             "x": 0,
-            "y": 62
+            "y": 36
           },
           "id": 78,
           "options": {
@@ -4322,7 +3975,7 @@
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "${DS_PROMETHEUS}"
+                "uid": "${DATASOURCE}"
               },
               "disableTextWrap": false,
               "editorMode": "builder",
@@ -4343,7 +3996,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DATASOURCE}"
+            "uid": "${DS_PROMETHEUS}"
           },
           "fieldConfig": {
             "defaults": {
@@ -4369,7 +4022,7 @@
             "h": 4,
             "w": 24,
             "x": 0,
-            "y": 66
+            "y": 40
           },
           "id": 80,
           "options": {
@@ -4392,7 +4045,7 @@
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "${DS_PROMETHEUS}"
+                "uid": "${DATASOURCE}"
               },
               "disableTextWrap": false,
               "editorMode": "builder",
@@ -4413,7 +4066,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DATASOURCE}"
+            "uid": "${DS_PROMETHEUS}"
           },
           "fieldConfig": {
             "defaults": {
@@ -4439,7 +4092,7 @@
             "h": 4,
             "w": 24,
             "x": 0,
-            "y": 70
+            "y": 44
           },
           "id": 81,
           "options": {
@@ -4462,7 +4115,7 @@
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "${DS_PROMETHEUS}"
+                "uid": "${DATASOURCE}"
               },
               "disableTextWrap": false,
               "editorMode": "builder",
@@ -4490,366 +4143,14 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 28
+        "y": 25
       },
       "id": 83,
       "panels": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DATASOURCE}"
-          },
-          "fieldConfig": {
-            "defaults": {
-              "color": {
-                "fixedColor": "dark-blue",
-                "mode": "fixed"
-              },
-              "decimals": 2,
-              "mappings": [],
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "green",
-                    "value": null
-                  }
-                ]
-              },
-              "unit": "reqps"
-            },
-            "overrides": []
-          },
-          "gridPos": {
-            "h": 4,
-            "w": 24,
-            "x": 0,
-            "y": 35
-          },
-          "id": 82,
-          "options": {
-            "colorMode": "background_solid",
-            "graphMode": "none",
-            "justifyMode": "auto",
-            "orientation": "auto",
-            "percentChangeColorMode": "standard",
-            "reduceOptions": {
-              "calcs": [],
-              "fields": "",
-              "values": false
-            },
-            "showPercentChange": false,
-            "textMode": "auto",
-            "wideLayout": true
-          },
-          "pluginVersion": "11.3.0",
-          "targets": [
-            {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "${DS_PROMETHEUS}"
-              },
-              "disableTextWrap": false,
-              "editorMode": "code",
-              "expr": "avg by(type) (quantile_over_time(0.5, rate(aerospike_benchmarks_mrt_latency_microsecond_count{instance=\"$client\", type=~\"read|readnotfound|write\",cluster=~\"$cluster\", namespace=~\"$namespace\", setname=~\"$setname\"}[$__rate_interval])[$__range:5s]))",
-              "format": "time_series",
-              "fullMetaSearch": false,
-              "hide": false,
-              "includeNullMetadata": true,
-              "legendFormat": "{{type}}",
-              "range": true,
-              "refId": "E",
-              "useBackend": false
-            },
-            {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "${DATASOURCE}"
-              },
-              "disableTextWrap": false,
-              "editorMode": "code",
-              "expr": "avg by(type) (quantile_over_time(0.5, rate(aerospike_benchmarks_mrt_transaction_total{instance=\"$client\", type=~\"read|readnotfound|write\",cluster=~\"$cluster\", namespace=~\"$namespace\", setname=~\"$setname\"}[$__rate_interval])[$__range:5s]))",
-              "format": "time_series",
-              "fullMetaSearch": false,
-              "hide": false,
-              "includeNullMetadata": true,
-              "legendFormat": "{{type}} NL",
-              "range": true,
-              "refId": "A",
-              "useBackend": false
-            }
-          ],
-          "title": "TPS Quantile P50",
-          "type": "stat"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
-          },
-          "fieldConfig": {
-            "defaults": {
-              "color": {
-                "fixedColor": "dark-purple",
-                "mode": "fixed"
-              },
-              "decimals": 2,
-              "mappings": [],
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "green",
-                    "value": null
-                  }
-                ]
-              },
-              "unit": "reqps"
-            },
-            "overrides": []
-          },
-          "gridPos": {
-            "h": 4,
-            "w": 24,
-            "x": 0,
-            "y": 39
-          },
-          "id": 84,
-          "options": {
-            "colorMode": "background_solid",
-            "graphMode": "none",
-            "justifyMode": "auto",
-            "orientation": "auto",
-            "percentChangeColorMode": "standard",
-            "reduceOptions": {
-              "calcs": [],
-              "fields": "",
-              "values": false
-            },
-            "showPercentChange": false,
-            "textMode": "auto",
-            "wideLayout": true
-          },
-          "pluginVersion": "11.3.0",
-          "targets": [
-            {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "${DATASOURCE}"
-              },
-              "disableTextWrap": false,
-              "editorMode": "code",
-              "expr": "avg by(type) (quantile_over_time(0.75, rate(aerospike_benchmarks_mrt_latency_microsecond_count{instance=\"$client\", type=~\"read|readnotfound|write\",cluster=~\"$cluster\", namespace=~\"$namespace\", setname=~\"$setname\"}[$__rate_interval])[$__range:5s]))",
-              "format": "time_series",
-              "fullMetaSearch": false,
-              "hide": false,
-              "includeNullMetadata": true,
-              "legendFormat": "{{type}}",
-              "range": true,
-              "refId": "E",
-              "useBackend": false
-            },
-            {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "${DS_PROMETHEUS}"
-              },
-              "disableTextWrap": false,
-              "editorMode": "code",
-              "expr": "avg by(type) (quantile_over_time(0.75, rate(aerospike_benchmarks_mrt_transaction_total{instance=\"$client\", type=~\"read|readnotfound|write\",cluster=~\"$cluster\", namespace=~\"$namespace\", setname=~\"$setname\"}[$__rate_interval])[$__range:5s]))",
-              "format": "time_series",
-              "fullMetaSearch": false,
-              "hide": false,
-              "includeNullMetadata": true,
-              "legendFormat": "{{type}} NL",
-              "range": true,
-              "refId": "A",
-              "useBackend": false
-            }
-          ],
-          "title": "TPS Quantile P75",
-          "type": "stat"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DATASOURCE}"
-          },
-          "fieldConfig": {
-            "defaults": {
-              "color": {
-                "fixedColor": "dark-blue",
-                "mode": "fixed"
-              },
-              "decimals": 2,
-              "mappings": [],
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "green",
-                    "value": null
-                  }
-                ]
-              },
-              "unit": "reqps"
-            },
-            "overrides": []
-          },
-          "gridPos": {
-            "h": 4,
-            "w": 24,
-            "x": 0,
-            "y": 43
-          },
-          "id": 86,
-          "options": {
-            "colorMode": "background_solid",
-            "graphMode": "none",
-            "justifyMode": "auto",
-            "orientation": "auto",
-            "percentChangeColorMode": "standard",
-            "reduceOptions": {
-              "calcs": [],
-              "fields": "",
-              "values": false
-            },
-            "showPercentChange": false,
-            "textMode": "auto",
-            "wideLayout": true
-          },
-          "pluginVersion": "11.3.0",
-          "targets": [
-            {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "${DS_PROMETHEUS}"
-              },
-              "disableTextWrap": false,
-              "editorMode": "code",
-              "expr": "avg by(type) (quantile_over_time(0.90, rate(aerospike_benchmarks_mrt_latency_microsecond_count{instance=\"$client\", type=~\"read|readnotfound|write\",cluster=~\"$cluster\", namespace=~\"$namespace\", setname=~\"$setname\"}[$__rate_interval])[$__range:5s]))",
-              "format": "time_series",
-              "fullMetaSearch": false,
-              "hide": false,
-              "includeNullMetadata": true,
-              "legendFormat": "{{type}}",
-              "range": true,
-              "refId": "E",
-              "useBackend": false
-            },
-            {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "${DATASOURCE}"
-              },
-              "disableTextWrap": false,
-              "editorMode": "code",
-              "expr": "avg by(type) (quantile_over_time(0.90, rate(aerospike_benchmarks_mrt_transaction_total{instance=\"$client\", type=~\"read|readnotfound|write\",cluster=~\"$cluster\", namespace=~\"$namespace\", setname=~\"$setname\"}[$__rate_interval])[$__range:5s]))",
-              "format": "time_series",
-              "fullMetaSearch": false,
-              "hide": false,
-              "includeNullMetadata": true,
-              "legendFormat": "{{type}} NL",
-              "range": true,
-              "refId": "A",
-              "useBackend": false
-            }
-          ],
-          "title": "TPS Quantile P90",
-          "type": "stat"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
-          },
-          "fieldConfig": {
-            "defaults": {
-              "color": {
-                "fixedColor": "dark-purple",
-                "mode": "fixed"
-              },
-              "decimals": 2,
-              "mappings": [],
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "green",
-                    "value": null
-                  }
-                ]
-              },
-              "unit": "reqps"
-            },
-            "overrides": []
-          },
-          "gridPos": {
-            "h": 4,
-            "w": 24,
-            "x": 0,
-            "y": 47
-          },
-          "id": 85,
-          "options": {
-            "colorMode": "background_solid",
-            "graphMode": "none",
-            "justifyMode": "auto",
-            "orientation": "auto",
-            "percentChangeColorMode": "standard",
-            "reduceOptions": {
-              "calcs": [],
-              "fields": "",
-              "values": false
-            },
-            "showPercentChange": false,
-            "textMode": "auto",
-            "wideLayout": true
-          },
-          "pluginVersion": "11.3.0",
-          "targets": [
-            {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "${DATASOURCE}"
-              },
-              "disableTextWrap": false,
-              "editorMode": "code",
-              "expr": "avg by(type) (quantile_over_time(0.95, rate(aerospike_benchmarks_mrt_latency_microsecond_count{instance=\"$client\", type=~\"read|readnotfound|write\",cluster=~\"$cluster\", namespace=~\"$namespace\", setname=~\"$setname\"}[$__rate_interval])[$__range:5s]))",
-              "format": "time_series",
-              "fullMetaSearch": false,
-              "hide": false,
-              "includeNullMetadata": true,
-              "legendFormat": "{{type}}",
-              "range": true,
-              "refId": "E",
-              "useBackend": false
-            },
-            {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "${DS_PROMETHEUS}"
-              },
-              "disableTextWrap": false,
-              "editorMode": "code",
-              "expr": "avg by(type) (quantile_over_time(0.95, rate(aerospike_benchmarks_mrt_transaction_total{instance=\"$client\", type=~\"read|readnotfound|write\",cluster=~\"$cluster\", namespace=~\"$namespace\", setname=~\"$setname\"}[$__rate_interval])[$__range:5s]))",
-              "format": "time_series",
-              "fullMetaSearch": false,
-              "hide": false,
-              "includeNullMetadata": true,
-              "legendFormat": "{{type}} NL",
-              "range": true,
-              "refId": "A",
-              "useBackend": false
-            }
-          ],
-          "title": "TPS Quantile P95",
-          "type": "stat"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DATASOURCE}"
           },
           "fieldConfig": {
             "defaults": {
@@ -4875,9 +4176,96 @@
             "h": 4,
             "w": 24,
             "x": 0,
-            "y": 51
+            "y": 55
           },
-          "id": 87,
+          "id": 82,
+          "options": {
+            "colorMode": "background_solid",
+            "graphMode": "none",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "percentChangeColorMode": "standard",
+            "reduceOptions": {
+              "calcs": [],
+              "fields": "",
+              "values": false
+            },
+            "showPercentChange": false,
+            "textMode": "auto",
+            "wideLayout": true
+          },
+          "pluginVersion": "11.3.0",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${DATASOURCE}"
+              },
+              "disableTextWrap": false,
+              "editorMode": "code",
+              "expr": "avg by(type) (quantile_over_time(0.5, rate(aerospike_benchmarks_mrt_latency_microsecond_count{instance=\"$client\", type=~\"read|readnotfound|write\",cluster=~\"$cluster\", namespace=~\"$namespace\", setname=~\"$setname\"}[$__rate_interval])[$__range:5s]))",
+              "format": "time_series",
+              "fullMetaSearch": false,
+              "hide": false,
+              "includeNullMetadata": true,
+              "legendFormat": "{{type}}",
+              "range": true,
+              "refId": "E",
+              "useBackend": false
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${DS_PROMETHEUS}"
+              },
+              "disableTextWrap": false,
+              "editorMode": "code",
+              "expr": "avg by(type) (quantile_over_time(0.5, rate(aerospike_benchmarks_mrt_transaction_total{instance=\"$client\", type=~\"read|readnotfound|write\",cluster=~\"$cluster\", namespace=~\"$namespace\", setname=~\"$setname\"}[$__rate_interval])[$__range:5s]))",
+              "format": "time_series",
+              "fullMetaSearch": false,
+              "hide": false,
+              "includeNullMetadata": true,
+              "legendFormat": "{{type}} NL",
+              "range": true,
+              "refId": "A",
+              "useBackend": false
+            }
+          ],
+          "title": "TPS Quantile P50",
+          "type": "stat"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DATASOURCE}"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "fixedColor": "dark-purple",
+                "mode": "fixed"
+              },
+              "decimals": 2,
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green"
+                  }
+                ]
+              },
+              "unit": "reqps"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 4,
+            "w": 24,
+            "x": 0,
+            "y": 59
+          },
+          "id": 84,
           "options": {
             "colorMode": "background_solid",
             "graphMode": "none",
@@ -4902,7 +4290,7 @@
               },
               "disableTextWrap": false,
               "editorMode": "code",
-              "expr": "avg by(type) (quantile_over_time(0.99, rate(aerospike_benchmarks_mrt_latency_microsecond_count{instance=\"$client\", type=~\"read|readnotfound|write\",cluster=~\"$cluster\", namespace=~\"$namespace\", setname=~\"$setname\"}[$__rate_interval])[$__range:5s]))",
+              "expr": "avg by(type) (quantile_over_time(0.75, rate(aerospike_benchmarks_mrt_latency_microsecond_count{instance=\"$client\", type=~\"read|readnotfound|write\",cluster=~\"$cluster\", namespace=~\"$namespace\", setname=~\"$setname\"}[$__rate_interval])[$__range:5s]))",
               "format": "time_series",
               "fullMetaSearch": false,
               "hide": false,
@@ -4916,6 +4304,267 @@
               "datasource": {
                 "type": "prometheus",
                 "uid": "${DATASOURCE}"
+              },
+              "disableTextWrap": false,
+              "editorMode": "code",
+              "expr": "avg by(type) (quantile_over_time(0.75, rate(aerospike_benchmarks_mrt_transaction_total{instance=\"$client\", type=~\"read|readnotfound|write\",cluster=~\"$cluster\", namespace=~\"$namespace\", setname=~\"$setname\"}[$__rate_interval])[$__range:5s]))",
+              "format": "time_series",
+              "fullMetaSearch": false,
+              "hide": false,
+              "includeNullMetadata": true,
+              "legendFormat": "{{type}} NL",
+              "range": true,
+              "refId": "A",
+              "useBackend": false
+            }
+          ],
+          "title": "TPS Quantile P75",
+          "type": "stat"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "fixedColor": "dark-blue",
+                "mode": "fixed"
+              },
+              "decimals": 2,
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green"
+                  }
+                ]
+              },
+              "unit": "reqps"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 4,
+            "w": 24,
+            "x": 0,
+            "y": 63
+          },
+          "id": 86,
+          "options": {
+            "colorMode": "background_solid",
+            "graphMode": "none",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "percentChangeColorMode": "standard",
+            "reduceOptions": {
+              "calcs": [],
+              "fields": "",
+              "values": false
+            },
+            "showPercentChange": false,
+            "textMode": "auto",
+            "wideLayout": true
+          },
+          "pluginVersion": "11.3.0",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${DATASOURCE}"
+              },
+              "disableTextWrap": false,
+              "editorMode": "code",
+              "expr": "avg by(type) (quantile_over_time(0.90, rate(aerospike_benchmarks_mrt_latency_microsecond_count{instance=\"$client\", type=~\"read|readnotfound|write\",cluster=~\"$cluster\", namespace=~\"$namespace\", setname=~\"$setname\"}[$__rate_interval])[$__range:5s]))",
+              "format": "time_series",
+              "fullMetaSearch": false,
+              "hide": false,
+              "includeNullMetadata": true,
+              "legendFormat": "{{type}}",
+              "range": true,
+              "refId": "E",
+              "useBackend": false
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${DS_PROMETHEUS}"
+              },
+              "disableTextWrap": false,
+              "editorMode": "code",
+              "expr": "avg by(type) (quantile_over_time(0.90, rate(aerospike_benchmarks_mrt_transaction_total{instance=\"$client\", type=~\"read|readnotfound|write\",cluster=~\"$cluster\", namespace=~\"$namespace\", setname=~\"$setname\"}[$__rate_interval])[$__range:5s]))",
+              "format": "time_series",
+              "fullMetaSearch": false,
+              "hide": false,
+              "includeNullMetadata": true,
+              "legendFormat": "{{type}} NL",
+              "range": true,
+              "refId": "A",
+              "useBackend": false
+            }
+          ],
+          "title": "TPS Quantile P90",
+          "type": "stat"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DATASOURCE}"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "fixedColor": "dark-purple",
+                "mode": "fixed"
+              },
+              "decimals": 2,
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green"
+                  }
+                ]
+              },
+              "unit": "reqps"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 4,
+            "w": 24,
+            "x": 0,
+            "y": 67
+          },
+          "id": 85,
+          "options": {
+            "colorMode": "background_solid",
+            "graphMode": "none",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "percentChangeColorMode": "standard",
+            "reduceOptions": {
+              "calcs": [],
+              "fields": "",
+              "values": false
+            },
+            "showPercentChange": false,
+            "textMode": "auto",
+            "wideLayout": true
+          },
+          "pluginVersion": "11.3.0",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${DS_PROMETHEUS}"
+              },
+              "disableTextWrap": false,
+              "editorMode": "code",
+              "expr": "avg by(type) (quantile_over_time(0.95, rate(aerospike_benchmarks_mrt_latency_microsecond_count{instance=\"$client\", type=~\"read|readnotfound|write\",cluster=~\"$cluster\", namespace=~\"$namespace\", setname=~\"$setname\"}[$__rate_interval])[$__range:5s]))",
+              "format": "time_series",
+              "fullMetaSearch": false,
+              "hide": false,
+              "includeNullMetadata": true,
+              "legendFormat": "{{type}}",
+              "range": true,
+              "refId": "E",
+              "useBackend": false
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${DATASOURCE}"
+              },
+              "disableTextWrap": false,
+              "editorMode": "code",
+              "expr": "avg by(type) (quantile_over_time(0.95, rate(aerospike_benchmarks_mrt_transaction_total{instance=\"$client\", type=~\"read|readnotfound|write\",cluster=~\"$cluster\", namespace=~\"$namespace\", setname=~\"$setname\"}[$__rate_interval])[$__range:5s]))",
+              "format": "time_series",
+              "fullMetaSearch": false,
+              "hide": false,
+              "includeNullMetadata": true,
+              "legendFormat": "{{type}} NL",
+              "range": true,
+              "refId": "A",
+              "useBackend": false
+            }
+          ],
+          "title": "TPS Quantile P95",
+          "type": "stat"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "fixedColor": "dark-blue",
+                "mode": "fixed"
+              },
+              "decimals": 2,
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green"
+                  }
+                ]
+              },
+              "unit": "reqps"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 4,
+            "w": 24,
+            "x": 0,
+            "y": 71
+          },
+          "id": 87,
+          "options": {
+            "colorMode": "background_solid",
+            "graphMode": "none",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "percentChangeColorMode": "standard",
+            "reduceOptions": {
+              "calcs": [],
+              "fields": "",
+              "values": false
+            },
+            "showPercentChange": false,
+            "textMode": "auto",
+            "wideLayout": true
+          },
+          "pluginVersion": "11.3.0",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${DATASOURCE}"
+              },
+              "disableTextWrap": false,
+              "editorMode": "code",
+              "expr": "avg by(type) (quantile_over_time(0.99, rate(aerospike_benchmarks_mrt_latency_microsecond_count{instance=\"$client\", type=~\"read|readnotfound|write\",cluster=~\"$cluster\", namespace=~\"$namespace\", setname=~\"$setname\"}[$__rate_interval])[$__range:5s]))",
+              "format": "time_series",
+              "fullMetaSearch": false,
+              "hide": false,
+              "includeNullMetadata": true,
+              "legendFormat": "{{type}}",
+              "range": true,
+              "refId": "E",
+              "useBackend": false
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${DS_PROMETHEUS}"
               },
               "disableTextWrap": false,
               "editorMode": "code",
@@ -4943,7 +4592,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 29
+        "y": 26
       },
       "id": 29,
       "panels": [],
@@ -4953,7 +4602,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "${DATASOURCE}"
       },
       "description": "A \"put\" action",
       "fieldConfig": {
@@ -5013,7 +4662,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 30
+        "y": 27
       },
       "id": 31,
       "options": {
@@ -5043,21 +4692,6 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DATASOURCE}"
-          },
-          "disableTextWrap": false,
-          "editorMode": "builder",
-          "expr": "rate(aerospike_benchmarks_mrt_latency_microsecond_count{instance=~\"$client\",cluster=~\"$cluster\",namespace=~\"$namespace\",setname=~\"$setname\", type=\"write\"}[$__rate_interval])",
-          "fullMetaSearch": false,
-          "includeNullMetadata": true,
-          "legendFormat": "{{type}}",
-          "range": true,
-          "refId": "A",
-          "useBackend": false
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
           "disableTextWrap": false,
@@ -5066,7 +4700,7 @@
           "fullMetaSearch": false,
           "hide": false,
           "includeNullMetadata": true,
-          "legendFormat": "NL {{type}}",
+          "legendFormat": "{{type}}",
           "range": true,
           "refId": "B",
           "useBackend": false
@@ -5099,7 +4733,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 30
+        "y": 27
       },
       "id": 30,
       "options": {
@@ -5226,7 +4860,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 38
+        "y": 35
       },
       "id": 48,
       "options": {
@@ -5254,26 +4888,11 @@
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "increase(aerospike_benchmarks_mrt_latency_microsecond_count{instance=~\"$client\", cluster=~\"$cluster\", namespace=~\"$namespace\", setname=~\"$setname\", type=\"write\"}[$__rate_interval])",
-          "fullMetaSearch": false,
-          "includeNullMetadata": true,
-          "legendFormat": "{{type}}",
-          "range": true,
-          "refId": "A",
-          "useBackend": false
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DATASOURCE}"
-          },
-          "disableTextWrap": false,
-          "editorMode": "builder",
           "expr": "increase(aerospike_benchmarks_mrt_transaction_total{instance=~\"$client\", cluster=~\"$cluster\", namespace=~\"$namespace\", setname=~\"$setname\", type=\"write\"}[$__rate_interval])",
           "fullMetaSearch": false,
           "hide": false,
           "includeNullMetadata": true,
-          "legendFormat": "NL {{type}}",
+          "legendFormat": "{{type}}",
           "range": true,
           "refId": "B",
           "useBackend": false
@@ -5285,7 +4904,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "${DATASOURCE}"
       },
       "description": "Average across all nodes counted into buckets from 0 to 2^16",
       "fieldConfig": {
@@ -5321,7 +4940,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 38
+        "y": 35
       },
       "id": 98,
       "options": {
@@ -5347,7 +4966,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DATASOURCE}"
+            "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
           "exemplar": true,
@@ -5360,7 +4979,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "${DATASOURCE}"
           },
           "editorMode": "code",
           "exemplar": true,
@@ -5373,7 +4992,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DATASOURCE}"
+            "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
           "exemplar": true,
@@ -5394,7 +5013,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 46
+        "y": 43
       },
       "id": 32,
       "panels": [],
@@ -5404,7 +5023,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "${DATASOURCE}"
       },
       "description": "A \"Get\" action",
       "fieldConfig": {
@@ -5464,7 +5083,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 47
+        "y": 44
       },
       "id": 33,
       "options": {
@@ -5494,30 +5113,15 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DATASOURCE}"
-          },
-          "disableTextWrap": false,
-          "editorMode": "builder",
-          "expr": "rate(aerospike_benchmarks_mrt_latency_microsecond_count{instance=~\"$client\",cluster=~\"$cluster\",namespace=~\"$namespace\",setname=~\"$setname\", type=~\"read|readnotfound\"}[$__rate_interval])",
-          "fullMetaSearch": false,
-          "includeNullMetadata": true,
-          "legendFormat": "{{type}}",
-          "range": true,
-          "refId": "A",
-          "useBackend": false
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "rate(aerospike_benchmarks_mrt_trnasaction_total{instance=~\"$client\",cluster=~\"$cluster\",namespace=~\"$namespace\",setname=~\"$setname\", type=~\"read|readnotfound\"}[$__rate_interval])",
+          "expr": "rate(aerospike_benchmarks_mrt_transaction_total{instance=~\"$client\", cluster=~\"$cluster\", namespace=~\"$namespace\", setname=~\"$setname\", type=~\"read|readnotfound\"}[$__rate_interval])",
           "fullMetaSearch": false,
           "hide": false,
           "includeNullMetadata": true,
-          "legendFormat": "NL {{type}}",
+          "legendFormat": "{{type}}",
           "range": true,
           "refId": "B",
           "useBackend": false
@@ -5550,7 +5154,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 47
+        "y": 44
       },
       "id": 34,
       "options": {
@@ -5677,7 +5281,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 55
+        "y": 52
       },
       "id": 46,
       "options": {
@@ -5705,26 +5309,11 @@
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "increase(aerospike_benchmarks_mrt_latency_microsecond_count{instance=~\"$client\", cluster=~\"$cluster\", namespace=~\"$namespace\", setname=~\"$setname\", type=~\"read|readnotfound\"}[$__rate_interval])",
-          "fullMetaSearch": false,
-          "includeNullMetadata": true,
-          "legendFormat": "{{type}}",
-          "range": true,
-          "refId": "A",
-          "useBackend": false
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DATASOURCE}"
-          },
-          "disableTextWrap": false,
-          "editorMode": "builder",
           "expr": "increase(aerospike_benchmarks_mrt_transaction_total{instance=~\"$client\", cluster=~\"$cluster\", namespace=~\"$namespace\", setname=~\"$setname\", type=~\"read|readnotfound\"}[$__rate_interval])",
           "fullMetaSearch": false,
           "hide": false,
           "includeNullMetadata": true,
-          "legendFormat": "NL {{type}}",
+          "legendFormat": "{{type}}",
           "range": true,
           "refId": "B",
           "useBackend": false
@@ -5736,7 +5325,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "${DATASOURCE}"
       },
       "description": "Average across all nodes counted into buckets from 0 to 2^16",
       "fieldConfig": {
@@ -5772,7 +5361,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 55
+        "y": 52
       },
       "id": 99,
       "options": {
@@ -5798,7 +5387,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DATASOURCE}"
+            "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
           "exemplar": true,
@@ -5811,7 +5400,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "${DATASOURCE}"
           },
           "editorMode": "code",
           "exemplar": true,
@@ -5824,7 +5413,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DATASOURCE}"
+            "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
           "exemplar": true,
@@ -5840,605 +5429,591 @@
       "type": "stat"
     },
     {
-      "collapsed": false,
+      "collapsed": true,
       "gridPos": {
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 63
+        "y": 60
       },
       "id": 35,
-      "panels": [],
+      "panels": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DATASOURCE}"
+          },
+          "description": "The latency of a MRT commit",
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "scaleDistribution": {
+                  "type": "linear"
+                }
+              }
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 9,
+            "w": 12,
+            "x": 0,
+            "y": 64
+          },
+          "id": 37,
+          "options": {
+            "calculate": false,
+            "cellGap": 1,
+            "cellValues": {
+              "unit": "locale"
+            },
+            "color": {
+              "exponent": 0.5,
+              "fill": "dark-orange",
+              "mode": "scheme",
+              "reverse": false,
+              "scale": "exponential",
+              "scheme": "RdYlBu",
+              "steps": 64
+            },
+            "exemplars": {
+              "color": "rgba(255,0,255,0.7)"
+            },
+            "filterValues": {
+              "le": 1e-9
+            },
+            "legend": {
+              "show": true
+            },
+            "rowsFrame": {
+              "layout": "auto"
+            },
+            "tooltip": {
+              "mode": "single",
+              "showColorScale": false,
+              "yHistogram": true
+            },
+            "yAxis": {
+              "axisPlacement": "left",
+              "reverse": false,
+              "unit": "µs"
+            }
+          },
+          "pluginVersion": "11.3.0",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${DS_PROMETHEUS}"
+              },
+              "disableTextWrap": false,
+              "editorMode": "builder",
+              "expr": "sum by(le) (aerospike_benchmarks_mrt_latency_microsecond_bucket{instance=~\"$client\", cluster=~\"$cluster\", namespace=~\"$namespace\", setname=~\"$setname\", type=~\"mrtcommit\"})",
+              "format": "heatmap",
+              "fullMetaSearch": false,
+              "includeNullMetadata": true,
+              "legendFormat": "__auto",
+              "range": true,
+              "refId": "A",
+              "useBackend": false
+            }
+          ],
+          "title": "MRT Latencies Commit",
+          "type": "heatmap"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DATASOURCE}"
+          },
+          "description": "The latency of a MRT abort",
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "scaleDistribution": {
+                  "type": "linear"
+                }
+              }
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 9,
+            "w": 12,
+            "x": 12,
+            "y": 64
+          },
+          "id": 64,
+          "options": {
+            "calculate": false,
+            "cellGap": 1,
+            "cellValues": {
+              "unit": "locale"
+            },
+            "color": {
+              "exponent": 0.5,
+              "fill": "dark-orange",
+              "mode": "scheme",
+              "reverse": false,
+              "scale": "exponential",
+              "scheme": "RdYlBu",
+              "steps": 64
+            },
+            "exemplars": {
+              "color": "rgba(255,0,255,0.7)"
+            },
+            "filterValues": {
+              "le": 1e-9
+            },
+            "legend": {
+              "show": true
+            },
+            "rowsFrame": {
+              "layout": "auto"
+            },
+            "tooltip": {
+              "mode": "single",
+              "showColorScale": false,
+              "yHistogram": true
+            },
+            "yAxis": {
+              "axisPlacement": "left",
+              "reverse": false,
+              "unit": "µs"
+            }
+          },
+          "pluginVersion": "11.3.0",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${DS_PROMETHEUS}"
+              },
+              "disableTextWrap": false,
+              "editorMode": "builder",
+              "expr": "sum by(le) (aerospike_benchmarks_mrt_latency_microsecond_bucket{instance=~\"$client\", cluster=~\"$cluster\", namespace=~\"$namespace\", setname=~\"$setname\", type=~\"mrtabort\"})",
+              "format": "heatmap",
+              "fullMetaSearch": false,
+              "includeNullMetadata": true,
+              "legendFormat": "__auto",
+              "range": true,
+              "refId": "A",
+              "useBackend": false
+            }
+          ],
+          "title": "MRT Latencies Abort",
+          "type": "heatmap"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DATASOURCE}"
+          },
+          "description": "The latency of a MRT Unit of Work which represents the DB actions (gets/outs) defined within the MRT. The number of these actions is defined by the MRTSize parameter.  This does NOT include the time taken to compete the commit or abort.",
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "scaleDistribution": {
+                  "type": "linear"
+                }
+              }
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 9,
+            "w": 12,
+            "x": 0,
+            "y": 73
+          },
+          "id": 67,
+          "options": {
+            "calculate": false,
+            "cellGap": 1,
+            "cellValues": {
+              "unit": "locale"
+            },
+            "color": {
+              "exponent": 0.5,
+              "fill": "dark-orange",
+              "mode": "scheme",
+              "reverse": false,
+              "scale": "exponential",
+              "scheme": "RdYlBu",
+              "steps": 64
+            },
+            "exemplars": {
+              "color": "rgba(255,0,255,0.7)"
+            },
+            "filterValues": {
+              "le": 1e-9
+            },
+            "legend": {
+              "show": true
+            },
+            "rowsFrame": {
+              "layout": "auto"
+            },
+            "tooltip": {
+              "mode": "single",
+              "showColorScale": false,
+              "yHistogram": true
+            },
+            "yAxis": {
+              "axisPlacement": "left",
+              "reverse": false,
+              "unit": "ms"
+            }
+          },
+          "pluginVersion": "11.3.0",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${DS_PROMETHEUS}"
+              },
+              "disableTextWrap": false,
+              "editorMode": "builder",
+              "expr": "sum by(le) (aerospike_benchmarks_mrt_lng_latency_milliseconds_bucket{instance=~\"$client\",cluster=~\"$cluster\",namespace=~\"$namespace\",setname=~\"$setname\", type=\"mrtuow\"})",
+              "format": "heatmap",
+              "fullMetaSearch": false,
+              "hide": false,
+              "includeNullMetadata": true,
+              "legendFormat": "__auto",
+              "range": true,
+              "refId": "B",
+              "useBackend": false
+            }
+          ],
+          "title": "MRT Latencies Unit of Work (MRT) in Milliseconds",
+          "type": "heatmap"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DATASOURCE}"
+          },
+          "description": "The latency of a MRT Unit of Work  plus the associated commit/abort.",
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "scaleDistribution": {
+                  "type": "linear"
+                }
+              }
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 9,
+            "w": 12,
+            "x": 12,
+            "y": 73
+          },
+          "id": 88,
+          "options": {
+            "calculate": false,
+            "cellGap": 1,
+            "cellValues": {
+              "unit": "locale"
+            },
+            "color": {
+              "exponent": 0.5,
+              "fill": "dark-orange",
+              "mode": "scheme",
+              "reverse": false,
+              "scale": "exponential",
+              "scheme": "RdYlBu",
+              "steps": 64
+            },
+            "exemplars": {
+              "color": "rgba(255,0,255,0.7)"
+            },
+            "filterValues": {
+              "le": 1e-9
+            },
+            "legend": {
+              "show": true
+            },
+            "rowsFrame": {
+              "layout": "auto"
+            },
+            "tooltip": {
+              "mode": "single",
+              "showColorScale": false,
+              "yHistogram": true
+            },
+            "yAxis": {
+              "axisPlacement": "left",
+              "reverse": false,
+              "unit": "ms"
+            }
+          },
+          "pluginVersion": "11.3.0",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${DS_PROMETHEUS}"
+              },
+              "disableTextWrap": false,
+              "editorMode": "builder",
+              "expr": "sum by(le) (aerospike_benchmarks_mrt_lng_latency_milliseconds_bucket{instance=~\"$client\",cluster=~\"$cluster\",namespace=~\"$namespace\",setname=~\"$setname\", type=~\"mrtuowtotal\"})",
+              "format": "heatmap",
+              "fullMetaSearch": false,
+              "hide": false,
+              "includeNullMetadata": true,
+              "legendFormat": "__auto",
+              "range": true,
+              "refId": "B",
+              "useBackend": false
+            }
+          ],
+          "title": "MRT Latencies Complete Unit of Work (MRT) in Milliseconds",
+          "type": "heatmap"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DATASOURCE}"
+          },
+          "description": "The number of MRT Action Counts (MRTs, Commits, and Aborts)",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisBorderShow": false,
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "barWidthFactor": 0.6,
+                "drawStyle": "line",
+                "fillOpacity": 0,
+                "gradientMode": "none",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "insertNulls": false,
+                "lineInterpolation": "linear",
+                "lineWidth": 1,
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "auto",
+                "spanNulls": false,
+                "stacking": {
+                  "group": "A",
+                  "mode": "none"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "decimals": 0,
+              "fieldMinMax": false,
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  }
+                ]
+              },
+              "unit": "locale"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 9,
+            "w": 12,
+            "x": 0,
+            "y": 82
+          },
+          "id": 50,
+          "options": {
+            "legend": {
+              "calcs": [
+                "max",
+                "lastNotNull",
+                "range"
+              ],
+              "displayMode": "table",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "single",
+              "sort": "none"
+            }
+          },
+          "pluginVersion": "11.3.0",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${DS_PROMETHEUS}"
+              },
+              "disableTextWrap": false,
+              "editorMode": "builder",
+              "expr": "increase(aerospike_benchmarks_mrt_transaction_total{instance=~\"$client\", cluster=~\"$cluster\", namespace=~\"$namespace\", setname=~\"$setname\", type=~\"mrtuow|mrtcommit|mrtabort|mrtuowtotal\"}[$__rate_interval])",
+              "fullMetaSearch": false,
+              "hide": false,
+              "includeNullMetadata": true,
+              "legendFormat": "{{type}}",
+              "range": true,
+              "refId": "B",
+              "useBackend": false
+            }
+          ],
+          "title": "MRT Counts",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DATASOURCE}"
+          },
+          "description": "Average across all nodes counted into buckets from 0 to 2^16",
+          "fieldConfig": {
+            "defaults": {
+              "decimals": 0,
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "#EAB839",
+                    "value": 6000
+                  },
+                  {
+                    "color": "#EF843C",
+                    "value": 10000
+                  },
+                  {
+                    "color": "red",
+                    "value": 20000
+                  }
+                ]
+              },
+              "unit": "µs"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 9,
+            "w": 12,
+            "x": 12,
+            "y": 82
+          },
+          "id": 100,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "none",
+            "justifyMode": "auto",
+            "orientation": "horizontal",
+            "percentChangeColorMode": "standard",
+            "reduceOptions": {
+              "calcs": [
+                "mean"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showPercentChange": false,
+            "text": {},
+            "textMode": "auto",
+            "wideLayout": true
+          },
+          "pluginVersion": "11.3.0",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${DS_PROMETHEUS}"
+              },
+              "editorMode": "code",
+              "exemplar": true,
+              "expr": "avg by (namespace) (histogram_quantile(0.95, (aerospike_benchmarks_mrt_latency_microsecond_bucket{instance=\"$client\", cluster=~\"$cluster\", type=~\"mrtcommit|mrtabort\", namespace=~\"$namespace\", setname=~\"$setname\"})))",
+              "instant": false,
+              "interval": "",
+              "legendFormat": "p95",
+              "refId": "A"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${DATASOURCE}"
+              },
+              "editorMode": "code",
+              "exemplar": true,
+              "expr": "avg by (namespace) (histogram_quantile(0.99, (aerospike_benchmarks_mrt_latency_microsecond_bucket{instance=\"$client\", cluster=~\"$cluster\", type=~\"mrtcommit|mrtabort\", namespace=~\"$namespace\", setname=~\"$setname\"})))",
+              "interval": "",
+              "legendFormat": "p99",
+              "range": true,
+              "refId": "B"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${DS_PROMETHEUS}"
+              },
+              "editorMode": "code",
+              "exemplar": true,
+              "expr": "avg by (namespace) (histogram_quantile(0.999, (aerospike_benchmarks_mrt_latency_microsecond_bucket{instance=\"$client\", cluster=~\"$cluster\", type=~\"mrtcommit|mrtabort\", namespace=~\"$namespace\", setname=~\"$setname\"})))",
+              "hide": false,
+              "instant": false,
+              "interval": "",
+              "legendFormat": "p99.9",
+              "refId": "C"
+            }
+          ],
+          "title": "Percentiles (Commit/Abort)",
+          "type": "stat"
+        }
+      ],
       "title": "MRTs",
       "type": "row"
     },
     {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
-      },
-      "description": "The latency of a MRT commit",
-      "fieldConfig": {
-        "defaults": {
-          "custom": {
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
-            "scaleDistribution": {
-              "type": "linear"
-            }
-          }
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 9,
-        "w": 12,
-        "x": 0,
-        "y": 64
-      },
-      "id": 37,
-      "options": {
-        "calculate": false,
-        "cellGap": 1,
-        "cellValues": {
-          "unit": "locale"
-        },
-        "color": {
-          "exponent": 0.5,
-          "fill": "dark-orange",
-          "mode": "scheme",
-          "reverse": false,
-          "scale": "exponential",
-          "scheme": "RdYlBu",
-          "steps": 64
-        },
-        "exemplars": {
-          "color": "rgba(255,0,255,0.7)"
-        },
-        "filterValues": {
-          "le": 1e-9
-        },
-        "legend": {
-          "show": true
-        },
-        "rowsFrame": {
-          "layout": "auto"
-        },
-        "tooltip": {
-          "mode": "single",
-          "showColorScale": false,
-          "yHistogram": true
-        },
-        "yAxis": {
-          "axisPlacement": "left",
-          "reverse": false,
-          "unit": "µs"
-        }
-      },
-      "pluginVersion": "11.3.0",
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DATASOURCE}"
-          },
-          "disableTextWrap": false,
-          "editorMode": "builder",
-          "expr": "sum by(le) (aerospike_benchmarks_mrt_latency_microsecond_bucket{instance=~\"$client\", cluster=~\"$cluster\", namespace=~\"$namespace\", setname=~\"$setname\", type=~\"mrtcommit\"})",
-          "format": "heatmap",
-          "fullMetaSearch": false,
-          "includeNullMetadata": true,
-          "legendFormat": "__auto",
-          "range": true,
-          "refId": "A",
-          "useBackend": false
-        }
-      ],
-      "title": "MRT Latencies Commit",
-      "type": "heatmap"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
-      },
-      "description": "The latency of a MRT abort",
-      "fieldConfig": {
-        "defaults": {
-          "custom": {
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
-            "scaleDistribution": {
-              "type": "linear"
-            }
-          }
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 9,
-        "w": 12,
-        "x": 12,
-        "y": 64
-      },
-      "id": 64,
-      "options": {
-        "calculate": false,
-        "cellGap": 1,
-        "cellValues": {
-          "unit": "locale"
-        },
-        "color": {
-          "exponent": 0.5,
-          "fill": "dark-orange",
-          "mode": "scheme",
-          "reverse": false,
-          "scale": "exponential",
-          "scheme": "RdYlBu",
-          "steps": 64
-        },
-        "exemplars": {
-          "color": "rgba(255,0,255,0.7)"
-        },
-        "filterValues": {
-          "le": 1e-9
-        },
-        "legend": {
-          "show": true
-        },
-        "rowsFrame": {
-          "layout": "auto"
-        },
-        "tooltip": {
-          "mode": "single",
-          "showColorScale": false,
-          "yHistogram": true
-        },
-        "yAxis": {
-          "axisPlacement": "left",
-          "reverse": false,
-          "unit": "µs"
-        }
-      },
-      "pluginVersion": "11.3.0",
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DATASOURCE}"
-          },
-          "disableTextWrap": false,
-          "editorMode": "builder",
-          "expr": "sum by(le) (aerospike_benchmarks_mrt_latency_microsecond_bucket{instance=~\"$client\", cluster=~\"$cluster\", namespace=~\"$namespace\", setname=~\"$setname\", type=~\"mrtabort\"})",
-          "format": "heatmap",
-          "fullMetaSearch": false,
-          "includeNullMetadata": true,
-          "legendFormat": "__auto",
-          "range": true,
-          "refId": "A",
-          "useBackend": false
-        }
-      ],
-      "title": "MRT Latencies Abort",
-      "type": "heatmap"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
-      },
-      "description": "The latency of a MRT Unit of Work which represents the DB actions (gets/outs) defined within the MRT. The number of these actions is defined by the MRTSize parameter.  This does NOT include the time taken to compete the commit or abort.",
-      "fieldConfig": {
-        "defaults": {
-          "custom": {
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
-            "scaleDistribution": {
-              "type": "linear"
-            }
-          }
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 9,
-        "w": 12,
-        "x": 0,
-        "y": 73
-      },
-      "id": 67,
-      "options": {
-        "calculate": false,
-        "cellGap": 1,
-        "cellValues": {
-          "unit": "locale"
-        },
-        "color": {
-          "exponent": 0.5,
-          "fill": "dark-orange",
-          "mode": "scheme",
-          "reverse": false,
-          "scale": "exponential",
-          "scheme": "RdYlBu",
-          "steps": 64
-        },
-        "exemplars": {
-          "color": "rgba(255,0,255,0.7)"
-        },
-        "filterValues": {
-          "le": 1e-9
-        },
-        "legend": {
-          "show": true
-        },
-        "rowsFrame": {
-          "layout": "auto"
-        },
-        "tooltip": {
-          "mode": "single",
-          "showColorScale": false,
-          "yHistogram": true
-        },
-        "yAxis": {
-          "axisPlacement": "left",
-          "reverse": false,
-          "unit": "ms"
-        }
-      },
-      "pluginVersion": "11.3.0",
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DATASOURCE}"
-          },
-          "disableTextWrap": false,
-          "editorMode": "builder",
-          "expr": "sum by(le) (aerospike_benchmarks_mrt_lng_latency_milliseconds_bucket{instance=~\"$client\",cluster=~\"$cluster\",namespace=~\"$namespace\",setname=~\"$setname\", type=\"mrtuow\"})",
-          "format": "heatmap",
-          "fullMetaSearch": false,
-          "hide": false,
-          "includeNullMetadata": true,
-          "legendFormat": "__auto",
-          "range": true,
-          "refId": "B",
-          "useBackend": false
-        }
-      ],
-      "title": "MRT Latencies Unit of Work (MRT) in Milliseconds",
-      "type": "heatmap"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
-      },
-      "description": "The latency of a MRT Unit of Work  plus the associated commit/abort.",
-      "fieldConfig": {
-        "defaults": {
-          "custom": {
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
-            "scaleDistribution": {
-              "type": "linear"
-            }
-          }
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 9,
-        "w": 12,
-        "x": 12,
-        "y": 73
-      },
-      "id": 88,
-      "options": {
-        "calculate": false,
-        "cellGap": 1,
-        "cellValues": {
-          "unit": "locale"
-        },
-        "color": {
-          "exponent": 0.5,
-          "fill": "dark-orange",
-          "mode": "scheme",
-          "reverse": false,
-          "scale": "exponential",
-          "scheme": "RdYlBu",
-          "steps": 64
-        },
-        "exemplars": {
-          "color": "rgba(255,0,255,0.7)"
-        },
-        "filterValues": {
-          "le": 1e-9
-        },
-        "legend": {
-          "show": true
-        },
-        "rowsFrame": {
-          "layout": "auto"
-        },
-        "tooltip": {
-          "mode": "single",
-          "showColorScale": false,
-          "yHistogram": true
-        },
-        "yAxis": {
-          "axisPlacement": "left",
-          "reverse": false,
-          "unit": "ms"
-        }
-      },
-      "pluginVersion": "11.3.0",
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DATASOURCE}"
-          },
-          "disableTextWrap": false,
-          "editorMode": "builder",
-          "expr": "sum by(le) (aerospike_benchmarks_mrt_lng_latency_milliseconds_bucket{instance=~\"$client\",cluster=~\"$cluster\",namespace=~\"$namespace\",setname=~\"$setname\", type=~\"mrtuowtotal\"})",
-          "format": "heatmap",
-          "fullMetaSearch": false,
-          "hide": false,
-          "includeNullMetadata": true,
-          "legendFormat": "__auto",
-          "range": true,
-          "refId": "B",
-          "useBackend": false
-        }
-      ],
-      "title": "MRT Latencies Complete Unit of Work (MRT) in Milliseconds",
-      "type": "heatmap"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
-      },
-      "description": "The number of MRT Action Counts (MRTs, Commits, and Aborts)",
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "axisBorderShow": false,
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "barWidthFactor": 0.6,
-            "drawStyle": "line",
-            "fillOpacity": 0,
-            "gradientMode": "none",
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
-            "insertNulls": false,
-            "lineInterpolation": "linear",
-            "lineWidth": 1,
-            "pointSize": 5,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "auto",
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
-          },
-          "decimals": 0,
-          "fieldMinMax": false,
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              }
-            ]
-          },
-          "unit": "locale"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 9,
-        "w": 12,
-        "x": 0,
-        "y": 82
-      },
-      "id": 50,
-      "options": {
-        "legend": {
-          "calcs": [
-            "max",
-            "lastNotNull",
-            "range"
-          ],
-          "displayMode": "table",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "mode": "single",
-          "sort": "none"
-        }
-      },
-      "pluginVersion": "11.3.0",
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DATASOURCE}"
-          },
-          "disableTextWrap": false,
-          "editorMode": "builder",
-          "expr": "increase(aerospike_benchmarks_mrt_latency_microsecond_count{instance=~\"$client\", cluster=~\"$cluster\", namespace=~\"$namespace\", setname=~\"$setname\", type=~\"mrtuow|mrtcommit|mrtabort|mrtuowtotal\"}[$__rate_interval])",
-          "fullMetaSearch": false,
-          "includeNullMetadata": true,
-          "legendFormat": "{{type}}",
-          "range": true,
-          "refId": "A",
-          "useBackend": false
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
-          },
-          "disableTextWrap": false,
-          "editorMode": "builder",
-          "expr": "increase(aerospike_benchmarks_mrt_transaction_total{instance=~\"$client\", cluster=~\"$cluster\", namespace=~\"$namespace\", setname=~\"$setname\", type=~\"mrtuow|mrtcommit|mrtabort|mrtuowtotal\"}[$__rate_interval])",
-          "fullMetaSearch": false,
-          "hide": false,
-          "includeNullMetadata": true,
-          "legendFormat": "NL {{type}}",
-          "range": true,
-          "refId": "B",
-          "useBackend": false
-        }
-      ],
-      "title": "MRT Counts",
-      "type": "timeseries"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${DATASOURCE}"
-      },
-      "description": "Average across all nodes counted into buckets from 0 to 2^16",
-      "fieldConfig": {
-        "defaults": {
-          "decimals": 0,
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "#EAB839",
-                "value": 6000
-              },
-              {
-                "color": "#EF843C",
-                "value": 10000
-              },
-              {
-                "color": "red",
-                "value": 20000
-              }
-            ]
-          },
-          "unit": "µs"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 9,
-        "w": 12,
-        "x": 12,
-        "y": 82
-      },
-      "id": 100,
-      "options": {
-        "colorMode": "value",
-        "graphMode": "none",
-        "justifyMode": "auto",
-        "orientation": "horizontal",
-        "percentChangeColorMode": "standard",
-        "reduceOptions": {
-          "calcs": [
-            "mean"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "showPercentChange": false,
-        "text": {},
-        "textMode": "auto",
-        "wideLayout": true
-      },
-      "pluginVersion": "11.3.0",
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
-          },
-          "editorMode": "code",
-          "exemplar": true,
-          "expr": "avg by (namespace) (histogram_quantile(0.95, (aerospike_benchmarks_mrt_latency_microsecond_bucket{instance=\"$client\", cluster=~\"$cluster\", type=~\"mrtcommit|mrtabort\", namespace=~\"$namespace\", setname=~\"$setname\"})))",
-          "instant": false,
-          "interval": "",
-          "legendFormat": "p95",
-          "refId": "A"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DATASOURCE}"
-          },
-          "editorMode": "code",
-          "exemplar": true,
-          "expr": "avg by (namespace) (histogram_quantile(0.99, (aerospike_benchmarks_mrt_latency_microsecond_bucket{instance=\"$client\", cluster=~\"$cluster\", type=~\"mrtcommit|mrtabort\", namespace=~\"$namespace\", setname=~\"$setname\"})))",
-          "interval": "",
-          "legendFormat": "p99",
-          "range": true,
-          "refId": "B"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
-          },
-          "editorMode": "code",
-          "exemplar": true,
-          "expr": "avg by (namespace) (histogram_quantile(0.999, (aerospike_benchmarks_mrt_latency_microsecond_bucket{instance=\"$client\", cluster=~\"$cluster\", type=~\"mrtcommit|mrtabort\", namespace=~\"$namespace\", setname=~\"$setname\"})))",
-          "hide": false,
-          "instant": false,
-          "interval": "",
-          "legendFormat": "p99.9",
-          "refId": "C"
-        }
-      ],
-      "title": "Percentiles (Commit/Abort)",
-      "type": "stat"
-    },
-    {
       "collapsed": false,
       "gridPos": {
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 91
+        "y": 61
       },
       "id": 38,
       "panels": [],
@@ -6535,7 +6110,7 @@
         "h": 11,
         "w": 24,
         "x": 0,
-        "y": 92
+        "y": 62
       },
       "id": 42,
       "options": {
@@ -6626,7 +6201,7 @@
         "h": 6,
         "w": 24,
         "x": 0,
-        "y": 103
+        "y": 73
       },
       "id": 110,
       "options": {
@@ -6670,213 +6245,214 @@
       "type": "stat"
     },
     {
-      "collapsed": false,
+      "collapsed": true,
       "gridPos": {
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 109
+        "y": 79
       },
       "id": 111,
-      "panels": [],
-      "title": "MRT Related Errors",
-      "type": "row"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${DATASOURCE}"
-      },
-      "description": "Errors",
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
+      "panels": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DATASOURCE}"
           },
-          "custom": {
-            "axisBorderShow": false,
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "barWidthFactor": 0.6,
-            "drawStyle": "line",
-            "fillOpacity": 0,
-            "gradientMode": "none",
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
+          "description": "Errors",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisBorderShow": false,
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "barWidthFactor": 0.6,
+                "drawStyle": "line",
+                "fillOpacity": 0,
+                "gradientMode": "none",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "insertNulls": false,
+                "lineInterpolation": "linear",
+                "lineWidth": 1,
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "auto",
+                "spanNulls": false,
+                "stacking": {
+                  "group": "A",
+                  "mode": "none"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "decimals": 0,
+              "fieldMinMax": false,
+              "mappings": [],
+              "noValue": "No Errors Detected",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  }
+                ]
+              },
+              "unit": "locale"
             },
-            "insertNulls": false,
-            "lineInterpolation": "linear",
-            "lineWidth": 1,
-            "pointSize": 5,
-            "scaleDistribution": {
-              "type": "linear"
+            "overrides": [
+              {
+                "__systemRef": "hideSeriesFrom",
+                "matcher": {
+                  "id": "byNames",
+                  "options": {
+                    "mode": "exclude",
+                    "names": [
+                      "write - AerospikeException: Error 120,1,0,30000,1000,0,2886905505 172.18.174.161 3000: MRT record blocked by a different transaction"
+                    ],
+                    "prefix": "All except:",
+                    "readOnly": true
+                  }
+                },
+                "properties": []
+              }
+            ]
+          },
+          "gridPos": {
+            "h": 11,
+            "w": 24,
+            "x": 0,
+            "y": 110
+          },
+          "id": 107,
+          "options": {
+            "legend": {
+              "calcs": [
+                "max",
+                "lastNotNull",
+                "range"
+              ],
+              "displayMode": "table",
+              "placement": "bottom",
+              "showLegend": true
             },
-            "showPoints": "auto",
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
+            "tooltip": {
+              "mode": "single",
+              "sort": "none"
             }
           },
-          "decimals": 0,
-          "fieldMinMax": false,
-          "mappings": [],
-          "noValue": "No Errors Detected",
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              }
-            ]
-          },
-          "unit": "locale"
-        },
-        "overrides": [
-          {
-            "__systemRef": "hideSeriesFrom",
-            "matcher": {
-              "id": "byNames",
-              "options": {
-                "mode": "exclude",
-                "names": [
-                  "write - AerospikeException: Error 120,1,0,30000,1000,0,2886905505 172.18.174.161 3000: MRT record blocked by a different transaction"
-                ],
-                "prefix": "All except:",
-                "readOnly": true
-              }
-            },
-            "properties": []
-          }
-        ]
-      },
-      "gridPos": {
-        "h": 11,
-        "w": 24,
-        "x": 0,
-        "y": 110
-      },
-      "id": 107,
-      "options": {
-        "legend": {
-          "calcs": [
-            "max",
-            "lastNotNull",
-            "range"
+          "pluginVersion": "11.3.0",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${DS_PROMETHEUS}"
+              },
+              "disableTextWrap": false,
+              "editorMode": "builder",
+              "expr": "increase(aerospike_benchmarks_mrt_related_errors_total{instance=~\"$client\", cluster=~\"$cluster\", namespace=~\"$namespace\", setname=~\"$setname\"}[$__rate_interval])",
+              "fullMetaSearch": false,
+              "includeNullMetadata": true,
+              "legendFormat": "{{error_type}} - {{type}}",
+              "range": true,
+              "refId": "A",
+              "useBackend": false
+            }
           ],
-          "displayMode": "table",
-          "placement": "bottom",
-          "showLegend": true
+          "title": "MRT Related Errors",
+          "type": "timeseries"
         },
-        "tooltip": {
-          "mode": "single",
-          "sort": "none"
-        }
-      },
-      "pluginVersion": "11.3.0",
-      "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "${DATASOURCE}"
           },
-          "disableTextWrap": false,
-          "editorMode": "builder",
-          "expr": "increase(aerospike_benchmarks_mrt_related_errors_total{instance=~\"$client\", cluster=~\"$cluster\", namespace=~\"$namespace\", setname=~\"$setname\"}[$__rate_interval])",
-          "fullMetaSearch": false,
-          "includeNullMetadata": true,
-          "legendFormat": "{{error_type}} - {{type}}",
-          "range": true,
-          "refId": "A",
-          "useBackend": false
+          "description": "The total number of MRT Related Errors",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "fixedColor": "dark-green",
+                "mode": "thresholds"
+              },
+              "decimals": 0,
+              "mappings": [],
+              "noValue": "0",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "light-green",
+                    "value": null
+                  }
+                ]
+              },
+              "unit": "locale"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 7,
+            "w": 24,
+            "x": 0,
+            "y": 121
+          },
+          "id": 112,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "none",
+            "justifyMode": "auto",
+            "orientation": "horizontal",
+            "percentChangeColorMode": "standard",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showPercentChange": false,
+            "textMode": "auto",
+            "wideLayout": true
+          },
+          "pluginVersion": "11.3.0",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${DS_PROMETHEUS}"
+              },
+              "disableTextWrap": false,
+              "editorMode": "builder",
+              "expr": "aerospike_benchmarks_mrt_related_errors_total{instance=~\"$client\", cluster=~\"$cluster\", namespace=~\"$namespace\", setname=~\"$setname\"}",
+              "fullMetaSearch": false,
+              "hide": false,
+              "includeNullMetadata": true,
+              "instant": false,
+              "legendFormat": "{{error_type}} - {{type}}",
+              "range": true,
+              "refId": "C",
+              "useBackend": false
+            }
+          ],
+          "title": "Total MRT Related Error Counts",
+          "type": "stat"
         }
       ],
       "title": "MRT Related Errors",
-      "type": "timeseries"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${DATASOURCE}"
-      },
-      "description": "The total number of MRT Related Errors",
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "fixedColor": "dark-green",
-            "mode": "thresholds"
-          },
-          "decimals": 0,
-          "mappings": [],
-          "noValue": "0",
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "light-green",
-                "value": null
-              }
-            ]
-          },
-          "unit": "locale"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 7,
-        "w": 24,
-        "x": 0,
-        "y": 121
-      },
-      "id": 112,
-      "options": {
-        "colorMode": "value",
-        "graphMode": "none",
-        "justifyMode": "auto",
-        "orientation": "horizontal",
-        "percentChangeColorMode": "standard",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "showPercentChange": false,
-        "textMode": "auto",
-        "wideLayout": true
-      },
-      "pluginVersion": "11.3.0",
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
-          },
-          "disableTextWrap": false,
-          "editorMode": "builder",
-          "expr": "aerospike_benchmarks_mrt_related_errors_total{instance=~\"$client\", cluster=~\"$cluster\", namespace=~\"$namespace\", setname=~\"$setname\"}",
-          "fullMetaSearch": false,
-          "hide": false,
-          "includeNullMetadata": true,
-          "instant": false,
-          "legendFormat": "{{error_type}} - {{type}}",
-          "range": true,
-          "refId": "C",
-          "useBackend": false
-        }
-      ],
-      "title": "Total MRT Related Error Counts",
-      "type": "stat"
+      "type": "row"
     }
   ],
   "refresh": "5s",
@@ -6997,6 +6573,6 @@
   "timezone": "browser",
   "title": "Aerospike Benchmark MRT",
   "uid": "be423cq6i5dz4a",
-  "version": 28,
+  "version": 31,
   "weekStart": ""
 }

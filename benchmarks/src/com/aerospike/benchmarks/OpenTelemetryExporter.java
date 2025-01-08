@@ -414,7 +414,8 @@ public final class OpenTelemetryExporter implements com.aerospike.benchmarks.Ope
             attributesMRTErr.putAll(Attributes.of(
                     AttributeKey.stringKey("error_type"), exception_subtype,
                     AttributeKey.stringKey("type"), type.name().toLowerCase(),
-                    AttributeKey.longKey("startTimeMillis"), this.startTimeMillis
+                    AttributeKey.longKey("startTimeMillis"), this.startTimeMillis,
+                    AttributeKey.booleanKey("retry"), exception_subtype.contains("retry")
             ));
 
             this.openTelemetryMRTErrorCounter.add(1,
@@ -445,6 +446,7 @@ public final class OpenTelemetryExporter implements com.aerospike.benchmarks.Ope
 
         this.openTelemetryLatencyMSHistogram.record((double) elapsedNanos / NS_TO_MS, attrsBuilt);
         this.openTelemetryLatencyUSHistogram.record((double) elapsedNanos / NS_TO_US, attrsBuilt);
+        this.openTelemetryTransactionCounter.add(1, attrsBuilt);
 
         if(this.debug) {
             this.printDebug("Elapsed Time Record  " + type, true);
