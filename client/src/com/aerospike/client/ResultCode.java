@@ -410,6 +410,16 @@ public final class ResultCode {
 	public static final int MRT_ABORTED = 125;
 
 	/**
+	 * This record has been locked by a previous update in this transaction.
+	 */
+	public static final int MRT_ALREADY_LOCKED = 126;
+
+	/**
+	 * This transaction has already started. Writing to the same transaction with independent threads is unsafe.
+	 */
+	public static final int MRT_MONITOR_EXISTS = 127;
+
+	/**
 	 * Batch functionality has been disabled.
 	 */
 	public static final int BATCH_DISABLED = 150;
@@ -736,6 +746,12 @@ public final class ResultCode {
 
 		case MRT_ABORTED:
 			return "MRT already aborted";
+
+		case MRT_ALREADY_LOCKED:
+			return "This record has been locked by a previous update in this transaction";
+
+		case MRT_MONITOR_EXISTS:
+			return "This transaction has already started. Writing to the same transaction with independent threads is unsafe";
 
 		case BATCH_DISABLED:
 			return "Batch functionality has been disabled";
