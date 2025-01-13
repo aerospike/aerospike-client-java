@@ -20,7 +20,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicLong;
+
+import com.aerospike.client.async.AsyncCommand;
 
 /**
  * Multi-record transaction (MRT). Each command in the MRT must use the same namespace.
@@ -41,10 +44,12 @@ public final class Txn {
 	private final long id;
 	private final ConcurrentHashMap<Key,Long> reads;
 	private final Set<Key> writes;
+	private ConcurrentLinkedQueue<AsyncCommand> commands;
 	private Txn.State state;
 	private String namespace;
 	private int timeout;
 	private int deadline;
+	private boolean monitorCreateInProgress;
 	private boolean writeInDoubt;
 	private boolean inDoubt;
 
@@ -60,6 +65,7 @@ public final class Txn {
 		reads = new ConcurrentHashMap<>();
 		writes = ConcurrentHashMap.newKeySet();
 		state = Txn.State.OPEN;
+		commands = new ConcurrentLinkedQueue<AsyncCommand>();
 	}
 
 	/**
@@ -127,6 +133,17 @@ public final class Txn {
 	 */
 	public int getTimeout() {
 		return timeout;
+	}
+
+	/**
+	 * Add commands to a queue. For internal use only.
+=	 */
+	public void addCommand(AsyncCommand command) {
+		commands.add(command);
+	}
+
+	public ConcurrentLinkedQueue<AsyncCommand> getCommands() {
+		return commands;
 	}
 
 	/**
@@ -299,6 +316,20 @@ public final class Txn {
 	 */
 	public Txn.State getState() {
 		return state;
+	}
+
+	/**
+	 * Set MRT monitor record create is in progress flag. For internal use only.
+	 */
+	public void setMonitorCreateInProgress(boolean inProgress) {
+		this.monitorCreateInProgress = inProgress;
+	}
+
+	/**
+	 * Return if MRT monitor record create is in progress.
+	 */
+	public boolean getMonitorCreateInProgress() {
+		return monitorCreateInProgress;
 	}
 
 	/**

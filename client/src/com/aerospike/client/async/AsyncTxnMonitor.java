@@ -33,6 +33,7 @@ import com.aerospike.client.policy.Policy;
 import com.aerospike.client.policy.WritePolicy;
 import com.aerospike.client.util.Util;
 import java.util.List;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 public abstract class AsyncTxnMonitor {
 	public static void execute(EventLoop eventLoop, Cluster cluster, WritePolicy policy, AsyncWriteBase command) {
@@ -52,9 +53,39 @@ public abstract class AsyncTxnMonitor {
 		}
 
 		// Add key to MRT monitor and then run original command.
-		Operation[] ops = TxnMonitor.getTranOps(txn, cmdKey);
-		AsyncTxnMonitor.Single ate = new AsyncTxnMonitor.Single(eventLoop, cluster, command);
-		ate.execute(policy, ops);
+		if (txn.monitorExists()) {
+			// Perform monitor record update.
+			Operation[] ops = TxnMonitor.getUpdateOps(txn, cmdKey);
+			AsyncTxnMonitor.Single ate = new AsyncTxnMonitor.Single(eventLoop, cluster, command, false);
+			ate.execute(policy, ops);
+			return;
+		}
+
+		boolean update = false;
+
+		// Ensure monitor record create occurs exactly once.
+		synchronized(txn) {
+			if (txn.monitorExists()) {
+				update = true;
+			}
+			else if (txn.getMonitorCreateInProgress()) {
+				txn.addCommand(command);  // TODO: May not need to be concurrent;
+				return;
+			}
+		}
+
+		if (update) {
+			// Perform monitor record update.
+			Operation[] ops = TxnMonitor.getUpdateOps(txn, cmdKey);
+			AsyncTxnMonitor.Single ate = new AsyncTxnMonitor.Single(eventLoop, cluster, command, false);
+			ate.execute(policy, ops);
+		}
+		else {
+			// Perform monitor record create.
+			Operation[] ops = TxnMonitor.getCreateOps(txn, cmdKey);
+			AsyncTxnMonitor.Single ate = new AsyncTxnMonitor.Single(eventLoop, cluster, command, true);
+			ate.execute(policy, ops);
+		}
 	}
 
 	public static void executeBatch(
@@ -70,9 +101,10 @@ public abstract class AsyncTxnMonitor {
 		}
 
 		// Add write keys to MRT monitor and then run original command.
+		/*
 		Operation[] ops = TxnMonitor.getTranOps(policy.txn, keys);
 		AsyncTxnMonitor.Batch ate = new AsyncTxnMonitor.Batch(executor, commands);
-		ate.execute(policy, ops);
+		ate.execute(policy, ops);*/
 	}
 
 	public static void executeBatch(
@@ -88,6 +120,7 @@ public abstract class AsyncTxnMonitor {
 		}
 
 		// Add write keys to MRT monitor and then run original command.
+		/*
 		Operation[] ops = TxnMonitor.getTranOps(policy.txn, records);
 
 		if (ops == null) {
@@ -97,14 +130,14 @@ public abstract class AsyncTxnMonitor {
 		}
 
 		AsyncTxnMonitor.Batch ate = new AsyncTxnMonitor.Batch(executor, commands);
-		ate.execute(policy, ops);
+		ate.execute(policy, ops);*/
 	}
 
 	private static class Single extends AsyncTxnMonitor {
 		private final AsyncWriteBase command;
 
-		private Single(EventLoop eventLoop, Cluster cluster, AsyncWriteBase command) {
-			super(eventLoop, cluster);
+		private Single(EventLoop eventLoop, Cluster cluster, AsyncWriteBase command, boolean isCreate) {
+			super(eventLoop, cluster, isCreate);
 			this.command = command;
 		}
 
@@ -124,7 +157,7 @@ public abstract class AsyncTxnMonitor {
 		private final AsyncCommand[] commands;
 
 		private Batch(AsyncBatchExecutor executor, AsyncCommand[] commands) {
-			super(executor.eventLoop, executor.cluster);
+			super(executor.eventLoop, executor.cluster, false);
 			this.executor = executor;
 			this.commands = commands;
 		}
@@ -142,10 +175,12 @@ public abstract class AsyncTxnMonitor {
 
 	final EventLoop eventLoop;
 	final Cluster cluster;
+	final boolean isCreate;
 
-	private AsyncTxnMonitor(EventLoop eventLoop, Cluster cluster) {
+	private AsyncTxnMonitor(EventLoop eventLoop, Cluster cluster, boolean isCreate) {
 		this.eventLoop = eventLoop;
 		this.cluster = cluster;
+		this.isCreate = isCreate;
 	}
 
 	void execute(Policy policy, Operation[] ops) {
@@ -157,6 +192,10 @@ public abstract class AsyncTxnMonitor {
 			@Override
 			public void onSuccess(Key key, Record record) {
 				try {
+					if (isCreate) {
+						monitorCreated(txn);
+					}
+
 					// Run original command.
 					runCommand();
 				}
@@ -178,6 +217,26 @@ public abstract class AsyncTxnMonitor {
 		OperateArgs args = new OperateArgs(wp, null, null, ops);
 		AsyncTxnAddKeys tranCommand = new AsyncTxnAddKeys(cluster, tranListener, tranKey, args, txn);
 		eventLoop.execute(cluster, tranCommand);
+	}
+
+	private void monitorCreated(Txn txn) {
+		synchronized(txn) {
+			txn.setMonitorCreateInProgress(false);
+		}
+
+		ConcurrentLinkedQueue<AsyncCommand> commands = txn.getCommands();
+/*
+		 for (AsyncCommand command : commands) {
+			 	if (command instanceof AsyncWriteBase) {
+			 		AsyncWriteBase cmd = (AsyncWriteBase)command;
+					Operation[] ops = TxnMonitor.getUpdateOps(txn, cmd.key);
+					AsyncTxnMonitor.Single ate = new AsyncTxnMonitor.Single(eventLoop, cluster, cmd);
+					ate.execute(policy, ops);
+			 	}
+			 	else {
+
+			 	}
+		 }*/
 	}
 
 	private void notifyFailure(AerospikeException ae) {

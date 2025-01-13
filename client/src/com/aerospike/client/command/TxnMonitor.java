@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2024 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -48,41 +48,62 @@ public final class TxnMonitor {
 			return;
 		}
 
-		Operation[] ops = getTranOps(txn, cmdKey);
-		addWriteKeys(cluster, policy, ops);
-	}
-
-	public static void addKeys(Cluster cluster, BatchPolicy policy, Key[] keys) {
-		Operation[] ops = getTranOps(policy.txn, keys);
-		addWriteKeys(cluster, policy, ops);
-	}
-
-	public static void addKeys(Cluster cluster, BatchPolicy policy, List<BatchRecord> records) {
-		Operation[] ops = getTranOps(policy.txn, records);
-
-		if (ops != null) {
+		if (! txn.monitorExists()) {
+			// Ensure monitor record create occurs exactly once.
+			synchronized(txn) {
+				Operation[] ops = getOps(txn, cmdKey);
+				addWriteKeys(cluster, policy, ops);
+			}
+		}
+		else {
+			Operation[] ops = getUpdateOps(txn, cmdKey);
 			addWriteKeys(cluster, policy, ops);
 		}
 	}
 
-	public static Operation[] getTranOps(Txn txn, Key cmdKey) {
-		txn.verifyCommand();
-		txn.setNamespace(cmdKey.namespace);
+	public static void addKeys(Cluster cluster, BatchPolicy policy, Key[] keys) {
+		Txn txn = policy.txn;
 
-		if (txn.monitorExists()) {
-			return new Operation[] {
-				ListOperation.append(OrderedListPolicy, BinNameDigests, Value.get(cmdKey.digest))
-			};
+		if (! txn.monitorExists()) {
+			// Ensure monitor record create occurs exactly once.
+			synchronized(txn) {
+				ArrayList<Value> digests = prepareDigests(txn, keys);
+				Operation[] ops = getOps(txn, digests);
+				addWriteKeys(cluster, policy, ops);
+			}
 		}
 		else {
-			return new Operation[] {
-				Operation.put(new Bin(BinNameId, txn.getId())),
-				ListOperation.append(OrderedListPolicy, BinNameDigests, Value.get(cmdKey.digest))
-			};
+			ArrayList<Value> digests = prepareDigests(txn, keys);
+			Operation[] ops = getUpdateOps(digests);
+			addWriteKeys(cluster, policy, ops);
 		}
 	}
 
-	public static Operation[] getTranOps(Txn txn, Key[] keys) {
+	public static void addKeys(Cluster cluster, BatchPolicy policy, List<BatchRecord> records) {
+		Txn txn = policy.txn;
+
+		if (! txn.monitorExists()) {
+			// Ensure monitor record create occurs exactly once.
+			synchronized(txn) {
+				ArrayList<Value> digests = prepareDigests(txn, records);
+
+				if (digests.size() > 0) {
+					Operation[] ops = getOps(txn, digests);
+					addWriteKeys(cluster, policy, ops);
+				}
+			}
+		}
+		else {
+			ArrayList<Value> digests = prepareDigests(txn, records);
+
+			if (digests.size() > 0) {
+				Operation[] ops = getUpdateOps(digests);
+				addWriteKeys(cluster, policy, ops);
+			}
+		}
+	}
+
+	private static ArrayList<Value> prepareDigests(Txn txn, Key[] keys) {
 		txn.verifyCommand();
 
 		ArrayList<Value> list = new ArrayList<>(keys.length);
@@ -91,10 +112,10 @@ public final class TxnMonitor {
 			txn.setNamespace(key.namespace);
 			list.add(Value.get(key.digest));
 		}
-		return getTranOps(txn, list);
+		return list;
 	}
 
-	public static Operation[] getTranOps(Txn txn, List<BatchRecord> records) {
+	private static ArrayList<Value> prepareDigests(Txn txn, List<BatchRecord> records) {
 		txn.verifyCommand();
 
 		ArrayList<Value> list = new ArrayList<>(records.size());
@@ -106,26 +127,57 @@ public final class TxnMonitor {
 				list.add(Value.get(br.key.digest));
 			}
 		}
-
-		if (list.size() == 0) {
-			// Readonly batch does not need to add key digests.
-			return null;
-		}
-		return getTranOps(txn, list);
+		return list;
 	}
 
-	private static Operation[] getTranOps(Txn txn, ArrayList<Value> list) {
-		if (txn.monitorExists()) {
-			return new Operation[] {
-				ListOperation.appendItems(OrderedListPolicy, BinNameDigests, list)
-			};
+	public static Operation[] getOps(Txn txn, Key cmdKey) {
+		if (! txn.monitorExists()) {
+			return getCreateOps(txn, cmdKey);
 		}
 		else {
-			return new Operation[] {
-				Operation.put(new Bin(BinNameId, txn.getId())),
-				ListOperation.appendItems(OrderedListPolicy, BinNameDigests, list)
-			};
+			return getUpdateOps(txn, cmdKey);
 		}
+	}
+
+	public static Operation[] getCreateOps(Txn txn, Key cmdKey) {
+		txn.verifyCommand();
+		txn.setNamespace(cmdKey.namespace);
+
+		return new Operation[] {
+			Operation.put(new Bin(BinNameId, txn.getId())),
+			ListOperation.append(OrderedListPolicy, BinNameDigests, Value.get(cmdKey.digest))
+		};
+	}
+
+	public static Operation[] getUpdateOps(Txn txn, Key cmdKey) {
+		txn.verifyCommand();
+		txn.setNamespace(cmdKey.namespace);
+
+		return new Operation[] {
+			ListOperation.append(OrderedListPolicy, BinNameDigests, Value.get(cmdKey.digest))
+		};
+	}
+
+	private static Operation[] getOps(Txn txn, ArrayList<Value> digests) {
+		if (! txn.monitorExists()) {
+			return getCreateOps(txn, digests);
+		}
+		else {
+			return getUpdateOps(digests);
+		}
+	}
+
+	private static Operation[] getCreateOps(Txn txn, List<Value> digests) {
+		return new Operation[] {
+			Operation.put(new Bin(BinNameId, txn.getId())),
+			ListOperation.appendItems(OrderedListPolicy, BinNameDigests, digests)
+		};
+	}
+
+	private static Operation[] getUpdateOps(List<Value> digests) {
+		return new Operation[] {
+			ListOperation.appendItems(OrderedListPolicy, BinNameDigests, digests)
+		};
 	}
 
 	private static void addWriteKeys(Cluster cluster, Policy policy, Operation[] ops) {
@@ -158,5 +210,27 @@ public final class TxnMonitor {
 		// updates.
 		wp.expiration = policy.txn.getTimeout();
 		return wp;
+	}
+
+	public static void runTest(Cluster cluster) {
+		Txn txn = new Txn();
+		txn.setNamespace("test");
+
+		Key key = new Key("test", "set", 1);
+		ArrayList<Value> digests = new ArrayList<Value>();
+		digests.add(Value.get(key.digest));
+		Operation[] ops = getCreateOps(txn, digests);
+
+		Key key2 = new Key("test", "set", 2);
+		ArrayList<Value> digests2 = new ArrayList<Value>();
+		digests2.add(Value.get(key2.digest));
+		Operation[] ops2 = getCreateOps(txn, digests2);
+
+		Policy p = new Policy();
+		p.txn = txn;
+
+		addWriteKeys(cluster, p, ops);
+		txn.setDeadline(0);
+		addWriteKeys(cluster, p, ops2);
 	}
 }

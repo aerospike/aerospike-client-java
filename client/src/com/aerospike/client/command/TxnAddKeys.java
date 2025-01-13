@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2024 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -43,9 +43,11 @@ public final class TxnAddKeys extends SyncWriteCommand {
 	@Override
 	protected void parseResult(Connection conn) throws IOException {
 		RecordParser rp = new RecordParser(conn, dataBuffer);
-		rp.parseTranDeadline(txn);
+		int deadline = rp.parseTranDeadline();
 
 		if (rp.resultCode == ResultCode.OK) {
+			// TODO: Do this in a lock.
+			txn.setDeadline(deadline);
 			return;
 		}
 

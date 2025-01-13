@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2024 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -186,7 +186,7 @@ public final class RecordParser {
 		}
 	}
 
-	public void parseTranDeadline(Txn txn) {
+	public int parseTranDeadline() {
 		for (int i = 0; i < fieldCount; i++) {
 			int len = Buffer.bytesToInt(dataBuffer, dataOffset);
 			dataOffset += 4;
@@ -195,11 +195,11 @@ public final class RecordParser {
 			int size = len - 1;
 
 			if (type == FieldType.MRT_DEADLINE) {
-				int deadline = Buffer.littleBytesToInt(dataBuffer, dataOffset);
-				txn.setDeadline(deadline);
+				return Buffer.littleBytesToInt(dataBuffer, dataOffset);
 			}
 			dataOffset += size;
 		}
+		return 0;
 	}
 
 	private void skipFields() {

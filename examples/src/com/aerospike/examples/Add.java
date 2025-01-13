@@ -21,6 +21,7 @@ import com.aerospike.client.IAerospikeClient;
 import com.aerospike.client.Key;
 import com.aerospike.client.Operation;
 import com.aerospike.client.Record;
+import com.aerospike.client.command.TxnMonitor;
 
 public class Add extends Example {
 
@@ -33,6 +34,9 @@ public class Add extends Example {
 	 */
 	@Override
 	public void runExample(IAerospikeClient client, Parameters params) throws Exception {
+		TxnMonitor.runTest(client.getCluster());
+
+		/*
 		Key key = new Key(params.namespace, params.set, "addkey");
 		String binName = "addbin";
 
@@ -83,6 +87,6 @@ public class Add extends Example {
 		}
 		else {
 			console.error("Add mismatch: Expected %d. Received %d.", expected, received);
-		}
+		}*/
 	}
 }
