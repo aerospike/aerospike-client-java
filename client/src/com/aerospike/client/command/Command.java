@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2024 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -100,9 +100,10 @@ public class Command {
 	//   1      0     allow replica
 	//   1      1     allow unavailable
 
-	public static final int INFO4_MRT_VERIFY_READ	= (1 << 0); // Send MRT version to the server to be verified.
-	public static final int INFO4_MRT_ROLL_FORWARD	= (1 << 1); // Roll forward MRT.
-	public static final int INFO4_MRT_ROLL_BACK		= (1 << 2); // Roll back MRT.
+	public static final int INFO4_MRT_VERIFY_READ		= (1 << 0); // Send MRT version to the server to be verified.
+	public static final int INFO4_MRT_ROLL_FORWARD		= (1 << 1); // Roll forward MRT.
+	public static final int INFO4_MRT_ROLL_BACK			= (1 << 2); // Roll back MRT.
+	public static final int INFO4_MRT_ON_LOCKING_ONLY	= (1 << 4); // Must be able to lock record in transaction.
 
 	public static final byte STATE_READ_AUTH_HEADER = 1;
 	public static final byte STATE_READ_HEADER = 2;
@@ -2260,6 +2261,7 @@ public class Command {
 		int generation = 0;
 		int readAttr = 0;
 		int infoAttr = 0;
+		int txnAttr = 0;
 
 		switch (policy.recordExistsAction) {
 		case UPDATE:
@@ -2299,6 +2301,10 @@ public class Command {
 			writeAttr |= Command.INFO2_DURABLE_DELETE;
 		}
 
+		if (policy.onLockingOnly) {
+			txnAttr |= Command.INFO4_MRT_ON_LOCKING_ONLY;
+		}
+
 		if (policy.xdr) {
 			readAttr |= Command.INFO1_XDR;
 		}
@@ -2308,7 +2314,7 @@ public class Command {
 		dataBuffer[9]  = (byte)readAttr;
 		dataBuffer[10] = (byte)writeAttr;
 		dataBuffer[11] = (byte)infoAttr;
-		dataBuffer[12] = 0;
+		dataBuffer[12] = (byte)txnAttr;;
 		dataBuffer[13] = 0; // clear the result code
 		Buffer.intToBytes(generation, dataBuffer, 14);
 		Buffer.intToBytes(policy.expiration, dataBuffer, 18);
@@ -2332,6 +2338,7 @@ public class Command {
 		int readAttr = args.readAttr;
 		int writeAttr = args.writeAttr;
 		int infoAttr = 0;
+		int txnAttr = 0;
 		int operationCount = args.operations.length;
 
 		switch (policy.recordExistsAction) {
@@ -2372,6 +2379,10 @@ public class Command {
 			writeAttr |= Command.INFO2_DURABLE_DELETE;
 		}
 
+		if (policy.onLockingOnly) {
+			txnAttr |= Command.INFO4_MRT_ON_LOCKING_ONLY;
+		}
+
 		if (policy.xdr) {
 			readAttr |= Command.INFO1_XDR;
 		}
@@ -2403,7 +2414,7 @@ public class Command {
 		dataBuffer[9]  = (byte)readAttr;
 		dataBuffer[10] = (byte)writeAttr;
 		dataBuffer[11] = (byte)infoAttr;
-		dataBuffer[12] = 0; // unused
+		dataBuffer[12] = (byte)txnAttr;
 		dataBuffer[13] = 0; // clear the result code
 		Buffer.intToBytes(generation, dataBuffer, 14);
 		Buffer.intToBytes(ttl, dataBuffer, 18);
@@ -2519,7 +2530,7 @@ public class Command {
 		dataBuffer[9]  = (byte)attr.readAttr;
 		dataBuffer[10] = (byte)attr.writeAttr;
 		dataBuffer[11] = (byte)attr.infoAttr;
-		dataBuffer[12] = 0; // unused
+		dataBuffer[12] = (byte)attr.txnAttr;
 		dataBuffer[13] = 0; // clear the result code
 		Buffer.intToBytes(attr.generation, dataBuffer, 14);
 		Buffer.intToBytes(attr.expiration, dataBuffer, 18);
