@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2024 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -15,6 +15,8 @@
  * the License.
  */
 package com.aerospike.client.policy;
+
+import java.util.Objects;
 
 /**
  * Container object for policy attributes used in write operations.
@@ -102,6 +104,19 @@ public final class WritePolicy extends Policy {
 	public boolean durableDelete;
 
 	/**
+	 * Execute the write command only if the record is not already locked by this transaction.
+	 * If this field is true and the record is already locked by this transaction, the command
+	 * will throw an exception with the {@link com.aerospike.client.ResultCode#MRT_ALREADY_LOCKED}
+	 * error code.
+	 * <p>
+	 * This field is useful for safely retrying non-idempotent writes as an alternative to simply
+	 * aborting the transaction. This field is not applicable to record delete commands.
+	 * <p>
+	 * Default: false.
+	 */
+	public boolean onLockingOnly;
+
+	/**
 	 * Operate in XDR mode.  Some external connectors may need to emulate an XDR client.
 	 * If enabled, an XDR bit is set for writes in the wire protocol.
 	 * <p>
@@ -121,6 +136,7 @@ public final class WritePolicy extends Policy {
 		this.expiration = other.expiration;
 		this.respondAllOps = other.respondAllOps;
 		this.durableDelete = other.durableDelete;
+		this.onLockingOnly = other.onLockingOnly;
 		this.xdr = other.xdr;
 	}
 
@@ -143,43 +159,28 @@ public final class WritePolicy extends Policy {
 	public int hashCode() {
 		final int prime = 31;
 		int result = super.hashCode();
-		result = prime * result + ((commitLevel == null) ? 0 : commitLevel.hashCode());
-		result = prime * result + (durableDelete ? 1231 : 1237);
-		result = prime * result + expiration;
-		result = prime * result + generation;
-		result = prime * result + ((generationPolicy == null) ? 0 : generationPolicy.hashCode());
-		result = prime * result + ((recordExistsAction == null) ? 0 : recordExistsAction.hashCode());
-		result = prime * result + (respondAllOps ? 1231 : 1237);
-		result = prime * result + (xdr ? 1231 : 1237);
+		result = prime * result + Objects.hash(commitLevel, durableDelete, expiration, onLockingOnly, generation,
+				generationPolicy, recordExistsAction, respondAllOps, xdr);
 		return result;
 	}
 
 	@Override
 	public boolean equals(Object obj) {
-		if (this == obj)
+		if (this == obj) {
 			return true;
-		if (!super.equals(obj))
+		}
+		if (!super.equals(obj)) {
 			return false;
-		if (getClass() != obj.getClass())
+		}
+		if (getClass() != obj.getClass()) {
 			return false;
+		}
 		WritePolicy other = (WritePolicy) obj;
-		if (commitLevel != other.commitLevel)
-			return false;
-		if (durableDelete != other.durableDelete)
-			return false;
-		if (expiration != other.expiration)
-			return false;
-		if (generation != other.generation)
-			return false;
-		if (generationPolicy != other.generationPolicy)
-			return false;
-		if (recordExistsAction != other.recordExistsAction)
-			return false;
-		if (respondAllOps != other.respondAllOps)
-			return false;
-		if (xdr != other.xdr)
-			return false;
-		return true;
+		return commitLevel == other.commitLevel && durableDelete == other.durableDelete
+				&& expiration == other.expiration && onLockingOnly == other.onLockingOnly
+				&& generation == other.generation && generationPolicy == other.generationPolicy
+				&& recordExistsAction == other.recordExistsAction && respondAllOps == other.respondAllOps
+				&& xdr == other.xdr;
 	}
 
 	// Include setters to facilitate Spring's ConfigurationProperties.
@@ -210,6 +211,10 @@ public final class WritePolicy extends Policy {
 
 	public void setDurableDelete(boolean durableDelete) {
 		this.durableDelete = durableDelete;
+	}
+
+	public void setOnLockingOnly(boolean onLockingOnly) {
+		this.onLockingOnly = onLockingOnly;
 	}
 
 	public void setXdr(boolean xdr) {
