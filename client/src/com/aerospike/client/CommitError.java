@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2024 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -17,13 +17,13 @@
 package com.aerospike.client;
 
 /**
- * Multi-record transaction (MRT) error status.
+ * Transaction error status.
  */
 public enum CommitError {
-	VERIFY_FAIL("MRT verify failed. MRT aborted."),
-	VERIFY_FAIL_CLOSE_ABANDONED("MRT verify failed. MRT aborted. MRT client close abandoned. Server will eventually close the MRT."),
-	VERIFY_FAIL_ABORT_ABANDONED("MRT verify failed. MRT client abort abandoned. Server will eventually abort the MRT."),
-	MARK_ROLL_FORWARD_ABANDONED("MRT client mark roll forward abandoned. Server will eventually abort the MRT.");
+	VERIFY_FAIL("Transaction verify failed. Transaction aborted."),
+	VERIFY_FAIL_CLOSE_ABANDONED("Transaction verify failed. Transaction aborted. Transaction client close abandoned. Server will eventually close the transaction."),
+	VERIFY_FAIL_ABORT_ABANDONED("Transaction verify failed. Transaction client abort abandoned. Server will eventually abort the transaction."),
+	MARK_ROLL_FORWARD_ABANDONED("Transaction client mark roll forward abandoned. Server will eventually abort the transaction.");
 
 	public final String str;
 

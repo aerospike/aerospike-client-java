@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2024 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -153,9 +153,9 @@ public final class TxnMonitor {
 		wp.compress = policy.compress;
 		wp.respondAllOps = true;
 
-		// Note that the server only accepts the timeout on MRT monitor record create.
-		// The server ignores the MRT timeout field on successive MRT monitor record
-		// updates.
+		// Note that the server only accepts the timeout on transaction monitor record create.
+		// The server ignores the transaction timeout field on successive transaction monitor
+		// record updates.
 		wp.expiration = policy.txn.getTimeout();
 		return wp;
 	}

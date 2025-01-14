@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2024 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -20,7 +20,7 @@ import com.aerospike.client.AerospikeException;
 import com.aerospike.client.CommitStatus;
 
 /**
- * Asynchronous result notifications for multi-record transaction (MRT) commits.
+ * Asynchronous result notifications for transaction commits.
  */
 public interface CommitListener {
 	/**

@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2024 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -40,19 +40,19 @@ public class AsyncTransaction extends AsyncExample {
 	@Override
 	public void runExample(IAerospikeClient client, EventLoop eventLoop) {
 		Txn txn = new Txn();
-		
+
 		console.info("Begin txn: " + txn.getId());
 		put(client, txn, eventLoop);
 	}
-	
+
 	public void put(IAerospikeClient client, Txn txn, EventLoop eventLoop) {
 		console.info("Run put");
-		
+
 		WritePolicy wp = client.copyWritePolicyDefault();
 		wp.txn = txn;
-		
+
 		Key key = new Key(params.namespace, params.set, 1);
-		
+
 		WriteListener wl = new WriteListener() {
 			public void onSuccess(final Key key) {
 				putAnother(client, txn, eventLoop);
@@ -65,17 +65,17 @@ public class AsyncTransaction extends AsyncExample {
 			}
 		};
 
-		client.put(eventLoop, wl, wp, key, new Bin("a", "val1"));		
+		client.put(eventLoop, wl, wp, key, new Bin("a", "val1"));
 	}
-	
+
 	public void putAnother(IAerospikeClient client, Txn txn, EventLoop eventLoop) {
 		console.info("Run another put");
-		
+
 		WritePolicy wp = client.copyWritePolicyDefault();
 		wp.txn = txn;
-		
+
 		Key key = new Key(params.namespace, params.set, 2);
-		
+
 		WriteListener wl = new WriteListener() {
 			public void onSuccess(final Key key) {
 				get(client, txn, eventLoop);
@@ -88,17 +88,17 @@ public class AsyncTransaction extends AsyncExample {
 			}
 		};
 
-		client.put(eventLoop, wl, wp, key, new Bin("b", "val2"));		
+		client.put(eventLoop, wl, wp, key, new Bin("b", "val2"));
 	}
-	
+
 	public void get(IAerospikeClient client, Txn txn, EventLoop eventLoop) {
 		console.info("Run get");
-		
+
 		Policy p = client.copyReadPolicyDefault();
 		p.txn = txn;
-		
+
 		Key key = new Key(params.namespace, params.set, 3);
-		
+
 		RecordListener rl = new RecordListener() {
 			public void onSuccess(Key key, Record record) {
 				delete(client, txn, eventLoop);
@@ -113,16 +113,16 @@ public class AsyncTransaction extends AsyncExample {
 
 		client.get(eventLoop, rl, p, key);
 	}
-	
+
 	public void delete(IAerospikeClient client, Txn txn, EventLoop eventLoop) {
 		console.info("Run delete");
-		
+
 		WritePolicy dp = client.copyWritePolicyDefault();
 		dp.txn = txn;
-		dp.durableDelete = true;  // Required when running delete in a MRT.
-		
+		dp.durableDelete = true;  // Required when running delete in a transaction.
+
 		Key key = new Key(params.namespace, params.set, 3);
-		
+
 		DeleteListener dl = new DeleteListener() {
 			public void onSuccess(final Key key, boolean existed) {
 				commit(client, txn, eventLoop);
@@ -137,10 +137,10 @@ public class AsyncTransaction extends AsyncExample {
 
 		client.delete(eventLoop, dl, dp, key);
 	}
-	
+
 	public void commit(IAerospikeClient client, Txn txn, EventLoop eventLoop) {
 		console.info("Run commit");
-		
+
 		CommitListener tcl = new CommitListener() {
 			public void onSuccess(CommitStatus status) {
 				console.info("Txn committed: " + txn.getId());
@@ -156,13 +156,13 @@ public class AsyncTransaction extends AsyncExample {
 
 	public void abort(IAerospikeClient client, Txn txn, EventLoop eventLoop) {
 		console.info("Run abort");
-		
+
 		AbortListener tal = new AbortListener() {
 			public void onSuccess(AbortStatus status) {
 				console.error("Txn aborted: " + txn.getId());
 			}
 		};
 
-		client.abort(eventLoop, tal, txn);		
+		client.abort(eventLoop, tal, txn);
 	}
 }

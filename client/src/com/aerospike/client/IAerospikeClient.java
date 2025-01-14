@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2024 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -188,23 +188,23 @@ public interface IAerospikeClient extends Closeable {
 	public InfoPolicy copyInfoPolicyDefault();
 
 	/**
-	 * Return MRT record version verify policy default. Use when the policy will not be modified.
+	 * Return transaction record version verify policy default. Use when the policy will not be modified.
 	 */
 	public TxnVerifyPolicy getTxnVerifyPolicyDefault();
 
 	/**
-	 * Copy MRT record version verify policy default. Use when the policy will be modified for use
+	 * Copy transaction record version verify policy default. Use when the policy will be modified for use
 	 * in a specific command.
 	 */
 	public TxnVerifyPolicy copyTxnVerifyPolicyDefault();
 
 	/**
-	 * Return MRT roll forward/back policy default. Use when the policy will not be modified.
+	 * Return transaction roll forward/back policy default. Use when the policy will not be modified.
 	 */
 	public TxnRollPolicy getTxnRollPolicyDefault();
 
 	/**
-	 * Copy MRT roll forward/back policy default. Use when the policy will be modified for use
+	 * Copy transaction roll forward/back policy default. Use when the policy will be modified for use
 	 * in a specific command.
 	 */
 	public TxnRollPolicy copyTxnRollPolicyDefault();
@@ -279,17 +279,17 @@ public interface IAerospikeClient extends Closeable {
 	public Cluster getCluster();
 
 	//-------------------------------------------------------
-	// Multi-Record Transactions
+	// Transaction
 	//-------------------------------------------------------
 
 	/**
-	 * Attempt to commit the given multi-record transaction. First, the expected record versions are
+	 * Attempt to commit the given transaction. First, the expected record versions are
 	 * sent to the server nodes for verification. If all nodes return success, the transaction is
 	 * committed. Otherwise, the transaction is aborted.
 	 * <p>
 	 * Requires server version 8.0+
 	 *
-	 * @param txn	multi-record transaction
+	 * @param txn	transaction
 	 * @return		status of the commit on success
 	 * @throws AerospikeException.Commit	if verify commit fails
 	 */
@@ -297,7 +297,7 @@ public interface IAerospikeClient extends Closeable {
 		throws AerospikeException.Commit;
 
 	/**
-	 * Asynchronously attempt to commit the given multi-record transaction. First, the expected
+	 * Asynchronously attempt to commit the given transaction. First, the expected
 	 * record versions are sent to the server nodes for verification. If all nodes return success,
 	 * the transaction is committed. Otherwise, the transaction is aborted.
 	 * <p>
@@ -309,24 +309,24 @@ public interface IAerospikeClient extends Closeable {
 	 * @param eventLoop		event loop that will process the command. If NULL, the event
 	 * 						loop will be chosen by round-robin.
 	 * @param listener		where to send results
-	 * @param txn			multi-record transaction
+	 * @param txn			transaction
 	 * @throws AerospikeException	if event loop registration fails
 	 */
 	void commit(EventLoop eventLoop, CommitListener listener, Txn txn)
 		throws AerospikeException;
 
 	/**
-	 * Abort and rollback the given multi-record transaction.
+	 * Abort and rollback the given transaction.
 	 * <p>
 	 * Requires server version 8.0+
 	 *
-	 * @param txn	multi-record transaction
+	 * @param txn	transaction
 	 * @return		status of the abort
 	 */
 	AbortStatus abort(Txn txn);
 
 	/**
-	 * Asynchronously abort and rollback the given multi-record transaction.
+	 * Asynchronously abort and rollback the given transaction.
 	 * <p>
 	 * This method registers the command with an event loop and returns.
 	 * The event loop thread will process the command and send the results to the listener.
@@ -336,7 +336,7 @@ public interface IAerospikeClient extends Closeable {
 	 * @param eventLoop		event loop that will process the command. If NULL, the event
 	 * 						loop will be chosen by round-robin.
 	 * @param listener		where to send results
-	 * @param txn			multi-record transaction
+	 * @param txn			transaction
 	 * @throws AerospikeException	if event loop registration fails
 	 */
 	void abort(EventLoop eventLoop, AbortListener listener, Txn txn)
