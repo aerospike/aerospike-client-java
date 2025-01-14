@@ -241,7 +241,7 @@ public final class BatchAttr {
 		}
 
 		if (wp.onLockingOnly) {
-			txnAttr |= Command.INFO4_MRT_ON_LOCKING_ONLY;
+			txnAttr |= Command.INFO4_TXN_ON_LOCKING_ONLY;
 		}
 
 		if (wp.commitLevel == CommitLevel.COMMIT_MASTER) {
@@ -284,7 +284,7 @@ public final class BatchAttr {
 		}
 
 		if (up.onLockingOnly) {
-			txnAttr |= Command.INFO4_MRT_ON_LOCKING_ONLY;
+			txnAttr |= Command.INFO4_TXN_ON_LOCKING_ONLY;
 		}
 
 		if (up.commitLevel == CommitLevel.COMMIT_MASTER) {

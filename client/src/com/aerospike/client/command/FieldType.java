@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2024 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -22,8 +22,8 @@ public final class FieldType {
 	public static final int KEY = 2;
 	public static final int RECORD_VERSION = 3;
 	public static final int DIGEST_RIPE = 4;
-	public static final int MRT_ID = 5;
-	public final static int MRT_DEADLINE = 6;
+	public static final int TXN_ID = 5;
+	public final static int TXN_DEADLINE = 6;
 	public final static int QUERY_ID = 7;
 	public final static int SOCKET_TIMEOUT = 9;
 	public final static int RECORDS_PER_SECOND = 10;

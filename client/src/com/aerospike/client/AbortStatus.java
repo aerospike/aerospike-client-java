@@ -17,13 +17,13 @@
 package com.aerospike.client;
 
 /**
- * Multi-record transaction (MRT) abort status code.
+ * Transaction abort status code.
  */
 public enum AbortStatus {
 	OK("Abort succeeded"),
 	ALREADY_ABORTED("Already aborted"),
-	ROLL_BACK_ABANDONED("MRT client roll back abandoned. Server will eventually abort the MRT."),
-	CLOSE_ABANDONED("MRT has been rolled back, but MRT client close was abandoned. Server will eventually close the MRT.");
+	ROLL_BACK_ABANDONED("Transaction client roll back abandoned. Server will eventually abort the transaction."),
+	CLOSE_ABANDONED("Transaction has been rolled back, but transaction client close was abandoned. Server will eventually close the transaction.");
 
 	public final String str;
 
