@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2024 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -101,9 +101,10 @@ public class Command {
 	//   1      0     allow replica
 	//   1      1     allow unavailable
 
-	public static final int INFO4_MRT_VERIFY_READ	= (1 << 0); // Send MRT version to the server to be verified.
-	public static final int INFO4_MRT_ROLL_FORWARD	= (1 << 1); // Roll forward MRT.
-	public static final int INFO4_MRT_ROLL_BACK		= (1 << 2); // Roll back MRT.
+	public static final int INFO4_TXN_VERIFY_READ		= (1 << 0); // Send transaction version to the server to be verified.
+	public static final int INFO4_TXN_ROLL_FORWARD		= (1 << 1); // Roll forward transaction.
+	public static final int INFO4_TXN_ROLL_BACK			= (1 << 2); // Roll back transaction.
+	public static final int INFO4_TXN_ON_LOCKING_ONLY	= (1 << 4); // Must be able to lock record in transaction.
 
 	public static final byte STATE_READ_AUTH_HEADER = 1;
 	public static final byte STATE_READ_HEADER = 2;
@@ -149,7 +150,7 @@ public class Command {
 	}
 
 	//--------------------------------------------------
-	// Multi-record Transactions
+	// Transaction
 	//--------------------------------------------------
 
 	public final void setTxnAddKeys(WritePolicy policy, Key key, OperateArgs args) {
@@ -194,7 +195,7 @@ public class Command {
 		dataBuffer[9] = (byte)(Command.INFO1_READ | Command.INFO1_NOBINDATA);
 		dataBuffer[10] = (byte)0;
 		dataBuffer[11] = (byte)Command.INFO3_SC_READ_TYPE;
-		dataBuffer[12] = (byte)Command.INFO4_MRT_VERIFY_READ;
+		dataBuffer[12] = (byte)Command.INFO4_TXN_VERIFY_READ;
 		dataBuffer[13] = 0;
 		Buffer.intToBytes(0, dataBuffer, 14);
 		Buffer.intToBytes(0, dataBuffer, 18);
@@ -284,7 +285,7 @@ public class Command {
 				dataBuffer[dataOffset++] = (byte)(Command.INFO1_READ | Command.INFO1_NOBINDATA);
 				dataBuffer[dataOffset++] = (byte)0;
 				dataBuffer[dataOffset++] = (byte)Command.INFO3_SC_READ_TYPE;
-				dataBuffer[dataOffset++] = (byte)Command.INFO4_MRT_VERIFY_READ;
+				dataBuffer[dataOffset++] = (byte)Command.INFO4_TXN_VERIFY_READ;
 
 				int fieldCount = 0;
 
@@ -1534,7 +1535,7 @@ public class Command {
 
 	private void sizeTxnBatch(Txn txn, Long ver, boolean hasWrite) {
 		if (txn != null) {
-			dataOffset++; // Add info4 byte for MRT.
+			dataOffset++; // Add info4 byte for transaction.
 			dataOffset += 8 + FIELD_HEADER_SIZE;
 
 			if (ver != null) {
@@ -1675,14 +1676,14 @@ public class Command {
 
 		writeBatchFields(key, fieldCount, opCount);
 
-		writeFieldLE(txn.getId(), FieldType.MRT_ID);
+		writeFieldLE(txn.getId(), FieldType.TXN_ID);
 
 		if (ver != null) {
 			writeFieldVersion(ver);
 		}
 
 		if (attr.hasWrite && txn.getDeadline() != 0) {
-			writeFieldLE(txn.getDeadline(), FieldType.MRT_DEADLINE);
+			writeFieldLE(txn.getDeadline(), FieldType.TXN_DEADLINE);
 		}
 
 		if (filter != null) {
@@ -2261,6 +2262,7 @@ public class Command {
 		int generation = 0;
 		int readAttr = 0;
 		int infoAttr = 0;
+		int txnAttr = 0;
 
 		switch (policy.recordExistsAction) {
 		case UPDATE:
@@ -2300,6 +2302,10 @@ public class Command {
 			writeAttr |= Command.INFO2_DURABLE_DELETE;
 		}
 
+		if (policy.onLockingOnly) {
+			txnAttr |= Command.INFO4_TXN_ON_LOCKING_ONLY;
+		}
+
 		if (policy.xdr) {
 			readAttr |= Command.INFO1_XDR;
 		}
@@ -2309,7 +2315,7 @@ public class Command {
 		dataBuffer[9]  = (byte)readAttr;
 		dataBuffer[10] = (byte)writeAttr;
 		dataBuffer[11] = (byte)infoAttr;
-		dataBuffer[12] = 0;
+		dataBuffer[12] = (byte)txnAttr;;
 		dataBuffer[13] = 0; // clear the result code
 		Buffer.intToBytes(generation, dataBuffer, 14);
 		Buffer.intToBytes(policy.expiration, dataBuffer, 18);
@@ -2333,6 +2339,7 @@ public class Command {
 		int readAttr = args.readAttr;
 		int writeAttr = args.writeAttr;
 		int infoAttr = 0;
+		int txnAttr = 0;
 		int operationCount = args.operations.length;
 
 		switch (policy.recordExistsAction) {
@@ -2373,6 +2380,10 @@ public class Command {
 			writeAttr |= Command.INFO2_DURABLE_DELETE;
 		}
 
+		if (policy.onLockingOnly) {
+			txnAttr |= Command.INFO4_TXN_ON_LOCKING_ONLY;
+		}
+
 		if (policy.xdr) {
 			readAttr |= Command.INFO1_XDR;
 		}
@@ -2404,7 +2415,7 @@ public class Command {
 		dataBuffer[9]  = (byte)readAttr;
 		dataBuffer[10] = (byte)writeAttr;
 		dataBuffer[11] = (byte)infoAttr;
-		dataBuffer[12] = 0; // unused
+		dataBuffer[12] = (byte)txnAttr;
 		dataBuffer[13] = 0; // clear the result code
 		Buffer.intToBytes(generation, dataBuffer, 14);
 		Buffer.intToBytes(ttl, dataBuffer, 18);
@@ -2520,7 +2531,7 @@ public class Command {
 		dataBuffer[9]  = (byte)attr.readAttr;
 		dataBuffer[10] = (byte)attr.writeAttr;
 		dataBuffer[11] = (byte)attr.infoAttr;
-		dataBuffer[12] = 0; // unused
+		dataBuffer[12] = (byte)attr.txnAttr;
 		dataBuffer[13] = 0; // clear the result code
 		Buffer.intToBytes(attr.generation, dataBuffer, 14);
 		Buffer.intToBytes(attr.expiration, dataBuffer, 18);
@@ -2659,14 +2670,14 @@ public class Command {
 
 	private void writeTxn(Txn txn, boolean sendDeadline) {
 		if (txn != null) {
-			writeFieldLE(txn.getId(), FieldType.MRT_ID);
+			writeFieldLE(txn.getId(), FieldType.TXN_ID);
 
 			if (version != null) {
 				writeFieldVersion(version);
 			}
 
 			if (sendDeadline && txn.getDeadline() != 0) {
-				writeFieldLE(txn.getDeadline(), FieldType.MRT_DEADLINE);
+				writeFieldLE(txn.getDeadline(), FieldType.TXN_DEADLINE);
 			}
 		}
 	}

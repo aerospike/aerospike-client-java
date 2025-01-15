@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2024 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -912,7 +912,7 @@ public final class AsyncBatchSingle {
 	}
 
 	//-------------------------------------------------------
-	// MRT
+	// Transaction
 	//-------------------------------------------------------
 
 	public static class TxnVerify extends AsyncBaseCommand {

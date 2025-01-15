@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2024 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -196,9 +196,7 @@ public class TestFilterExp extends TestSync {
 
 	@Test
 	public void durableDelete() {
-		if (! args.enterprise) {
-			return;
-		}
+		org.junit.Assume.assumeTrue(args.enterprise);
 
 		WritePolicy policy = new WritePolicy();
 		policy.filterExp = Exp.build(Exp.eq(Exp.intBin(binA), Exp.val(1)));
@@ -217,9 +215,7 @@ public class TestFilterExp extends TestSync {
 
 	@Test
 	public void durableDeleteExcept() {
-		if (! args.enterprise) {
-			return;
-		}
+		org.junit.Assume.assumeTrue(args.enterprise);
 
 		WritePolicy policy = new WritePolicy();
 		policy.filterExp = Exp.build(Exp.eq(Exp.intBin(binA), Exp.val(1)));

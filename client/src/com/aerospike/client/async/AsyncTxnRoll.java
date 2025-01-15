@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2024 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -144,7 +144,7 @@ public final class AsyncTxnRoll {
 			}
 		};
 
-		roll(rollListener, Command.INFO4_MRT_ROLL_BACK);
+		roll(rollListener, Command.INFO4_TXN_ROLL_BACK);
 	}
 
 	private void verify(BatchRecordArrayListener verifyListener) {
@@ -193,7 +193,7 @@ public final class AsyncTxnRoll {
 	}
 
 	private void markRollForward() {
-		// Tell MRT monitor that a roll-forward will commence.
+		// Tell transaction monitor that a roll-forward will commence.
 		try {
 			WriteListener writeListener = new WriteListener() {
 				@Override
@@ -239,7 +239,7 @@ public final class AsyncTxnRoll {
 				}
 			};
 
-			roll(rollListener, Command.INFO4_MRT_ROLL_FORWARD);
+			roll(rollListener, Command.INFO4_TXN_ROLL_FORWARD);
 		}
 		catch (Throwable t) {
 			notifyCommitSuccess(CommitStatus.ROLL_FORWARD_ABANDONED);
@@ -268,7 +268,7 @@ public final class AsyncTxnRoll {
 				}
 			};
 
-			roll(rollListener, Command.INFO4_MRT_ROLL_BACK);
+			roll(rollListener, Command.INFO4_TXN_ROLL_BACK);
 		}
 		catch (Throwable t) {
 			notifyCommitFailure(CommitError.VERIFY_FAIL_ABORT_ABANDONED, t);
@@ -316,12 +316,12 @@ public final class AsyncTxnRoll {
 
 	private void closeOnCommit(boolean verified) {
 		if (! txn.closeMonitor()) {
-			// There is no MRT monitor to remove.
+			// There is no transaction monitor to remove.
 			if (verified) {
 				notifyCommitSuccess(CommitStatus.OK);
 			}
 			else {
-				// Record verification failed and MRT was aborted.
+				// Record verification failed and transaction was aborted.
 				notifyCommitFailure(CommitError.VERIFY_FAIL, null);
 			}
 			return;
@@ -335,7 +335,7 @@ public final class AsyncTxnRoll {
 						notifyCommitSuccess(CommitStatus.OK);
 					}
 					else {
-						// Record verification failed and MRT was aborted.
+						// Record verification failed and transaction was aborted.
 						notifyCommitFailure(CommitError.VERIFY_FAIL, null);
 					}
 				}
@@ -366,7 +366,7 @@ public final class AsyncTxnRoll {
 
 	private void closeOnAbort() {
 		if (! txn.closeMonitor()) {
-			// There is no MRT monitor record to remove.
+			// There is no transaction monitor record to remove.
 			notifyAbortSuccess(AbortStatus.OK);
 			return;
 		}

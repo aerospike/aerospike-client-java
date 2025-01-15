@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2024 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -23,11 +23,11 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
- * Multi-record transaction (MRT). Each command in the MRT must use the same namespace.
+ * Multi-record transaction. Each command in the transaction must use the same namespace.
  */
 public final class Txn {
 	/**
-	 * MRT state.
+	 * Transaction state.
 	 */
 	public static enum State {
 		OPEN,
@@ -49,11 +49,11 @@ public final class Txn {
 	private boolean inDoubt;
 
 	/**
-	 * Create MRT, assign random transaction id and initialize reads/writes hashmaps with default
-	 * capacities.
+	 * Create transaction, assign random transaction id and initialize reads/writes hashmaps with
+	 * default capacities.
 	 * <p>
-	 * The default client MRT timeout is zero. This means use the server configuration mrt-duration
-	 * as the MRT timeout. The default mrt-duration is 10 seconds.
+	 * The default client transaction timeout is zero. This means use the server configuration
+	 * mrt-duration as the transaction timeout. The default mrt-duration is 10 seconds.
 	 */
 	public Txn() {
 		id = createId();
@@ -63,14 +63,14 @@ public final class Txn {
 	}
 
 	/**
-	 * Create MRT, assign random transaction id and initialize reads/writes hashmaps with given
-	 * capacities.
+	 * Create transaction, assign random transaction id and initialize reads/writes hashmaps with
+	 * given capacities.
 	 * <p>
-	 * The default client MRT timeout is zero. This means use the server configuration mrt-duration
-	 * as the MRT timeout. The default mrt-duration is 10 seconds.
+	 * The default client transaction timeout is zero. This means use the server configuration
+	 * mrt-duration as the transaction timeout. The default mrt-duration is 10 seconds.
 	 *
-	 * @param readsCapacity     expected number of record reads in the MRT. Minimum value is 16.
-	 * @param writesCapacity    expected number of record writes in the MRT. Minimum value is 16.
+	 * @param readsCapacity     expected number of record reads in the transaction. Minimum value is 16.
+	 * @param writesCapacity    expected number of record writes in the transaction. Minimum value is 16.
 	 */
 	public Txn(int readsCapacity, int writesCapacity) {
 		if (readsCapacity < 16) {
@@ -104,18 +104,19 @@ public final class Txn {
 	}
 
 	/**
-	 * Return MRT ID.
+	 * Return transaction ID.
 	 */
 	public long getId() {
 		return id;
 	}
 
 	/**
-	 * Set MRT timeout in seconds. The timer starts when the MRT monitor record is created.
-	 * This occurs when the first command in the MRT is executed. If the timeout is reached before
-	 * a commit or abort is called, the server will expire and rollback the MRT.
+	 * Set transaction timeout in seconds. The timer starts when the transaction monitor record is
+	 * created. This occurs when the first command in the transaction is executed. If the timeout
+	 * is reached before a commit or abort is called, the server will expire and rollback the
+	 * transaction.
 	 * <p>
-	 * If the MRT timeout is zero, the server configuration mrt-duration is used.
+	 * If the transaction timeout is zero, the server configuration mrt-duration is used.
 	 * The default mrt-duration is 10 seconds.
 	 */
 	public void setTimeout(int timeout) {
@@ -123,14 +124,14 @@ public final class Txn {
 	}
 
 	/**
-	 * Return MRT timeout in seconds.
+	 * Return transaction timeout in seconds.
 	 */
 	public int getTimeout() {
 		return timeout;
 	}
 
 	/**
-	 * Verify current MRT state and namespace for a future read command.
+	 * Verify current transactions state and namespace for a future read command.
 	 */
 	void prepareRead(String ns) {
 		verifyCommand();
@@ -138,7 +139,7 @@ public final class Txn {
 	}
 
 	/**
-	 * Verify current MRT state and namespaces for a future batch read command.
+	 * Verify current transaction state and namespaces for a future batch read command.
 	 */
 	void prepareRead(Key[] keys) {
 		verifyCommand();
@@ -146,7 +147,7 @@ public final class Txn {
 	}
 
 	/**
-	 * Verify current MRT state and namespaces for a future batch read command.
+	 * Verify current transaction state and namespaces for a future batch read command.
 	 */
 	void prepareRead(List<BatchRead> records) {
 		verifyCommand();
@@ -154,11 +155,11 @@ public final class Txn {
 	}
 
 	/**
-	 * Verify that the MRT state allows future commands.
+	 * Verify that the transaction state allows future commands.
 	 */
 	public void verifyCommand() {
 		if (state != Txn.State.OPEN) {
-			throw new AerospikeException("Command not allowed in current MRT state: " + state);
+			throw new AerospikeException("Command not allowed in current transaction state: " + state);
 		}
 	}
 
@@ -217,7 +218,7 @@ public final class Txn {
 	}
 
 	/**
-	 * Set MRT namespace only if doesn't already exist.
+	 * Set transaction namespace only if doesn't already exist.
 	 * If namespace already exists, verify new namespace is the same.
 	 */
 	public void setNamespace(String ns) {
@@ -225,13 +226,13 @@ public final class Txn {
 			namespace = ns;
 		}
 		else if (! namespace.equals(ns)) {
-			throw new AerospikeException("Namespace must be the same for all commands in the MRT. orig: " +
+			throw new AerospikeException("Namespace must be the same for all commands in the transaction. orig: " +
 				namespace + " new: " + ns);
 		}
 	}
 
 	/**
-	 * Set MRT namespaces for each key only if doesn't already exist.
+	 * Set transaction namespaces for each key only if doesn't already exist.
 	 * If namespace already exists, verify new namespace is the same.
 	 */
 	private void setNamespace(Key[] keys) {
@@ -241,7 +242,7 @@ public final class Txn {
 	}
 
 	/**
-	 * Set MRT namespaces for each key only if doesn't already exist.
+	 * Set transaction namespaces for each key only if doesn't already exist.
 	 * If namespace already exists, verify new namespace is the same.
 	 */
 	private void setNamespace(List<BatchRead> records) {
@@ -251,72 +252,72 @@ public final class Txn {
 	}
 
 	/**
-	 * Return MRT namespace.
+	 * Return transaction namespace.
 	 */
 	public String getNamespace() {
 		return namespace;
 	}
 
 	/**
-	 * Set MRT deadline. The deadline is a wall clock time calculated by the server from the
-	 * MRT timeout that is sent by the client when creating the MRT monitor record. This deadline
-	 * is used to avoid client/server clock skew issues. For internal use only.
+	 * Set transaction deadline. The deadline is a wall clock time calculated by the server from the
+	 * transaction timeout that is sent by the client when creating the transaction monitor record.
+	 * This deadline is used to avoid client/server clock skew issues. For internal use only.
 	 */
 	public void setDeadline(int deadline) {
 		this.deadline = deadline;
 	}
 
 	/**
-	 * Get MRT deadline. For internal use only.
+	 * Get transaction deadline. For internal use only.
 	 */
 	public int getDeadline() {
 		return deadline;
 	}
 
 	/**
-	 * Return if the MRT monitor record should be closed/deleted. For internal use only.
+	 * Return if the transaction monitor record should be closed/deleted. For internal use only.
 	 */
 	public boolean closeMonitor() {
 		return deadline != 0 && !writeInDoubt;
 	}
 
 	/**
-	 * Does MRT monitor record exist.
+	 * Does transaction monitor record exist.
 	 */
 	public boolean monitorExists() {
 		return deadline != 0;
 	}
 
 	/**
-	 * Set MRT state. For internal use only.
+	 * Set transaction state. For internal use only.
 	 */
 	public void setState(Txn.State state) {
 		this.state = state;
 	}
 
 	/**
-	 * Return MRT state.
+	 * Return transaction state.
 	 */
 	public Txn.State getState() {
 		return state;
 	}
 
 	/**
-	 * Set MRT inDoubt flag. For internal use only.
+	 * Set transaction inDoubt flag. For internal use only.
 	 */
 	public void setInDoubt(boolean inDoubt) {
 		this.inDoubt = inDoubt;
 	}
 
 	/**
-	 * Return if MRT is inDoubt.
+	 * Return if transaction is inDoubt.
 	 */
 	public boolean getInDoubt() {
 		return inDoubt;
 	}
 
 	/**
-	 * Clear MRT. Remove all tracked keys.
+	 * Clear transaction. Remove all tracked keys.
 	 */
 	public void clear() {
 		namespace = null;

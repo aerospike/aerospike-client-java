@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2024 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -496,7 +496,7 @@ public class AerospikeException extends RuntimeException {
 	}
 
 	/**
-	 * Exception thrown when a multi-record transaction commit fails.
+	 * Exception thrown when a transaction commit fails.
 	 */
 	public static final class Commit extends AerospikeException {
 		private static final long serialVersionUID = 1L;
@@ -507,13 +507,14 @@ public class AerospikeException extends RuntimeException {
 		public final CommitError error;
 
 		/**
-		 * Verify result for each read key in the MRT. May be null if failure occurred before verify.
+		 * Verify result for each read key in the transaction. May be null if failure occurred
+		 * before verify.
 		 */
 		public final BatchRecord[] verifyRecords;
 
 		/**
-		 * Roll forward/backward result for each write key in the MRT. May be null if failure occurred before
-		 * roll forward/backward.
+		 * Roll forward/backward result for each write key in the transaction. May be null if
+		 * failure occurred before roll forward/backward.
 		 */
 		public final BatchRecord[] rollRecords;
 

@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2024 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -133,6 +133,7 @@ public final class BatchAttr {
 			infoAttr = Command.INFO3_SC_READ_TYPE | Command.INFO3_SC_READ_RELAX;
 			break;
 		}
+		txnAttr = 0;
 		expiration = rp.readTouchTtlPercent;
 		generation = 0;
 		hasWrite = false;
@@ -164,6 +165,7 @@ public final class BatchAttr {
 			infoAttr = Command.INFO3_SC_READ_TYPE | Command.INFO3_SC_READ_RELAX;
 			break;
 		}
+		txnAttr = 0;
 		expiration = rp.readTouchTtlPercent;
 		generation = 0;
 		hasWrite = false;
@@ -197,6 +199,7 @@ public final class BatchAttr {
 		readAttr = 0;
 		writeAttr = Command.INFO2_WRITE | Command.INFO2_RESPOND_ALL_OPS;
 		infoAttr = 0;
+		txnAttr = 0;
 		expiration = wp.expiration;
 		hasWrite = true;
 		sendKey = wp.sendKey;
@@ -237,6 +240,10 @@ public final class BatchAttr {
 			writeAttr |= Command.INFO2_DURABLE_DELETE;
 		}
 
+		if (wp.onLockingOnly) {
+			txnAttr |= Command.INFO4_TXN_ON_LOCKING_ONLY;
+		}
+
 		if (wp.commitLevel == CommitLevel.COMMIT_MASTER) {
 			infoAttr |= Command.INFO3_COMMIT_MASTER;
 		}
@@ -266,6 +273,7 @@ public final class BatchAttr {
 		readAttr = 0;
 		writeAttr = Command.INFO2_WRITE;
 		infoAttr = 0;
+		txnAttr = 0;
 		expiration = up.expiration;
 		generation = 0;
 		hasWrite = true;
@@ -273,6 +281,10 @@ public final class BatchAttr {
 
 		if (up.durableDelete) {
 			writeAttr |= Command.INFO2_DURABLE_DELETE;
+		}
+
+		if (up.onLockingOnly) {
+			txnAttr |= Command.INFO4_TXN_ON_LOCKING_ONLY;
 		}
 
 		if (up.commitLevel == CommitLevel.COMMIT_MASTER) {
@@ -285,6 +297,7 @@ public final class BatchAttr {
 		readAttr = 0;
 		writeAttr = Command.INFO2_WRITE | Command.INFO2_RESPOND_ALL_OPS | Command.INFO2_DELETE;
 		infoAttr = 0;
+		txnAttr = 0;
 		expiration = 0;
 		hasWrite = true;
 		sendKey = dp.sendKey;

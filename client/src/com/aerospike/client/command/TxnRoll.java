@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2024 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -52,7 +52,7 @@ public final class TxnRoll {
 			txn.setState(Txn.State.ABORTED);
 
 			try {
-				roll(rollPolicy, Command.INFO4_MRT_ROLL_BACK);
+				roll(rollPolicy, Command.INFO4_TXN_ROLL_BACK);
 			}
 			catch (Throwable t2) {
 				// Throw combination of verify and roll exceptions.
@@ -85,7 +85,7 @@ public final class TxnRoll {
 		Key txnKey = TxnMonitor.getTxnMonitorKey(txn);
 
 		if (txn.monitorExists()) {
-			// Tell MRT monitor that a roll-forward will commence.
+			// Tell transaction monitor that a roll-forward will commence.
 			try {
 				markRollForward(writePolicy, txnKey);
 			}
@@ -124,14 +124,14 @@ public final class TxnRoll {
 
 		// Roll-forward writes in batch.
 		try {
-			roll(rollPolicy, Command.INFO4_MRT_ROLL_FORWARD);
+			roll(rollPolicy, Command.INFO4_TXN_ROLL_FORWARD);
 		}
 		catch (Throwable t) {
 			return CommitStatus.ROLL_FORWARD_ABANDONED;
 		}
 
 		if (txn.closeMonitor()) {
-			// Remove MRT monitor.
+			// Remove transaction monitor.
 			try {
 				close(writePolicy, txnKey);
 			}
@@ -159,7 +159,7 @@ public final class TxnRoll {
 		txn.setState(Txn.State.ABORTED);
 
 		try {
-			roll(rollPolicy, Command.INFO4_MRT_ROLL_BACK);
+			roll(rollPolicy, Command.INFO4_TXN_ROLL_BACK);
 		}
 		catch (Throwable t) {
 			return AbortStatus.ROLL_BACK_ABANDONED;
@@ -228,7 +228,7 @@ public final class TxnRoll {
 	}
 
 	private void markRollForward(WritePolicy writePolicy, Key txnKey) {
-		// Tell MRT monitor that a roll-forward will commence.
+		// Tell transaction monitor that a roll-forward will commence.
 		TxnMarkRollForward cmd = new TxnMarkRollForward(cluster, writePolicy, txnKey);
 		cmd.execute();
 	}
@@ -272,17 +272,17 @@ public final class TxnRoll {
 		BatchExecutor.execute(cluster, rollPolicy, commands, status);
 
 		if (!status.getStatus()) {
-			String rollString = txnAttr == Command.INFO4_MRT_ROLL_FORWARD? "commit" : "abort";
+			String rollString = txnAttr == Command.INFO4_TXN_ROLL_FORWARD? "commit" : "abort";
 			throw new RuntimeException("Failed to " + rollString + " one or more records");
 		}
 	}
 
 	private void close(WritePolicy writePolicy, Key txnKey) {
-		// Delete MRT monitor on server.
+		// Delete transaction monitor on server.
 		TxnClose cmd = new TxnClose(cluster, txn, writePolicy, txnKey);
 		cmd.execute();
 
-		// Reset MRT on client.
+		// Clear transaction fields on client.
 		txn.clear();
 	}
 }

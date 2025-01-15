@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2024 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -456,7 +456,7 @@ public final class Buffer {
 	//-------------------------------------------------------
 
 	/**
-	 * Convert long to a 7 byte record version for MRT.
+	 * Convert long to a 7 byte record version for transaction.
 	 */
 	public static void longToVersionBytes(long v, byte[] buf, int offset) {
 		buf[offset++] = (byte)(v >>> 0);
@@ -469,7 +469,7 @@ public final class Buffer {
 	}
 
 	/**
-	 * Convert 7 byte record version to a long for MRT.
+	 * Convert 7 byte record version to a long for transaction.
 	 */
 	public static long versionBytesToLong(byte[] buf, int offset) {
 		return (

@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2024 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -34,9 +34,7 @@ public class TestExpire extends TestSync {
 
 	@Test
 	public void expire() {
-		if (! args.hasTtl) {
-			return;
-		}
+		org.junit.Assume.assumeTrue(args.hasTtl);
 
 		Key key  = new Key(args.namespace, args.set, "expirekey1");
 		Bin bin  = new Bin(binName, "expirevalue");
@@ -79,9 +77,7 @@ public class TestExpire extends TestSync {
 
 	@Test
 	public void resetReadTtl() {
-		if (! args.hasTtl) {
-			return;
-		}
+		org.junit.Assume.assumeTrue(args.hasTtl);
 
 		Key key  = new Key(args.namespace, args.set, "expirekey3");
 		Bin bin  = new Bin(binName, "expirevalue");
