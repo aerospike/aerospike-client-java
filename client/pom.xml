@@ -8,7 +8,7 @@
     <artifactId>aerospike-parent</artifactId>
     <version>9.0.2</version>
   </parent>
-  <artifactId>aerospike-client-jdk8</artifactId>
+  <artifactId>aerospike-client${crypto.type}-jdk8</artifactId>
   <packaging>jar</packaging>
 
   <name>aerospike-client-jdk8</name>
