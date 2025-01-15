@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2024 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -392,11 +392,24 @@ public class TestBatch extends TestSync {
 		// Delete keys
 		BatchResults br = client.delete(null, null, keys);
 		assertTrue(br.status);
+		assertEquals(ResultCode.OK, br.records[0].resultCode);
+		assertEquals(ResultCode.OK, br.records[1].resultCode);
 
 		// Ensure keys do not exist
 		exists = client.exists(null, keys);
 		assertFalse(exists[0]);
 		assertFalse(exists[1]);
+	}
+
+	@Test
+	public void batchDeleteSingleNotFound() {
+		Key[] keys = new Key[] {
+			new Key(args.namespace, args.set, 989299023) // Should be not found.
+		};
+
+		BatchResults br = client.delete(null, null, keys);
+		assertFalse(br.status);
+		assertEquals(ResultCode.KEY_NOT_FOUND_ERROR, br.records[0].resultCode);
 	}
 
 	@Test

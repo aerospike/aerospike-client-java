@@ -278,10 +278,12 @@ public final class BatchSingle {
 			RecordParser rp = new RecordParser(conn, dataBuffer);
 			rp.parseFields(policy.txn, key, true);
 
-			if (rp.resultCode == ResultCode.OK || rp.resultCode == ResultCode.KEY_NOT_FOUND_ERROR) {
+			if (rp.resultCode == ResultCode.OK) {
 				record.setRecord(new Record(null, rp.generation, rp.expiration));
 			}
 			else {
+				// A KEY_NOT_FOUND_ERROR on a delete is benign, but still results in an overall
+				// batch status of false to be consistent with the original batch code.
 				record.setError(rp.resultCode, Command.batchInDoubt(true, commandSentCounter));
 				status.setRowError();
 			}
