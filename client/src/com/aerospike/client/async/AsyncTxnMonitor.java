@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2024 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -37,7 +37,7 @@ import java.util.List;
 public abstract class AsyncTxnMonitor {
 	public static void execute(EventLoop eventLoop, Cluster cluster, WritePolicy policy, AsyncWriteBase command) {
 		if (policy.txn == null) {
-			// Command is not run under a MRT monitor. Run original command.
+			// Command is not run under a transaction. Run original command.
 			eventLoop.execute(cluster, command);
 			return;
 		}
@@ -46,12 +46,12 @@ public abstract class AsyncTxnMonitor {
 		Key cmdKey = command.key;
 
 		if (txn.getWrites().contains(cmdKey)) {
-			// MRT monitor already contains this key. Run original command.
+			// Transaction already contains this key. Run original command.
 			eventLoop.execute(cluster, command);
 			return;
 		}
 
-		// Add key to MRT monitor and then run original command.
+		// Add key to transaction monitor and then run original command.
 		Operation[] ops = TxnMonitor.getTranOps(txn, cmdKey);
 		AsyncTxnMonitor.Single ate = new AsyncTxnMonitor.Single(eventLoop, cluster, command);
 		ate.execute(policy, ops);
@@ -64,12 +64,12 @@ public abstract class AsyncTxnMonitor {
 		Key[] keys
 	) {
 		if (policy.txn == null) {
-			// Command is not run under a MRT monitor. Run original command.
+			// Command is not run under a transaction. Run original command.
 			executor.execute(commands);
 			return;
 		}
 
-		// Add write keys to MRT monitor and then run original command.
+		// Add write keys to transaction monitor and then run original command.
 		Operation[] ops = TxnMonitor.getTranOps(policy.txn, keys);
 		AsyncTxnMonitor.Batch ate = new AsyncTxnMonitor.Batch(executor, commands);
 		ate.execute(policy, ops);
@@ -82,12 +82,12 @@ public abstract class AsyncTxnMonitor {
 		List<BatchRecord> records
 	) {
 		if (policy.txn == null) {
-			// Command is not run under a MRT monitor. Run original command.
+			// Command is not run under a transaction. Run original command.
 			executor.execute(commands);
 			return;
 		}
 
-		// Add write keys to MRT monitor and then run original command.
+		// Add write keys to transaction monitor and then run original command.
 		Operation[] ops = TxnMonitor.getTranOps(policy.txn, records);
 
 		if (ops == null) {
@@ -170,11 +170,11 @@ public abstract class AsyncTxnMonitor {
 
 			@Override
 			public void onFailure(AerospikeException ae) {
-				notifyFailure(new AerospikeException(ResultCode.TXN_FAILED, "Failed to add key(s) to MRT monitor", ae));
+				notifyFailure(new AerospikeException(ResultCode.TXN_FAILED, "Failed to add key(s) to transaction monitor", ae));
 			}
 		};
 
-		// Add write key(s) to MRT monitor.
+		// Add write key(s) to transaction monitor.
 		OperateArgs args = new OperateArgs(wp, null, null, ops);
 		AsyncTxnAddKeys tranCommand = new AsyncTxnAddKeys(cluster, tranListener, tranKey, args, txn);
 		eventLoop.execute(cluster, tranCommand);

@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2024 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -286,12 +286,12 @@ public class ClientPolicy {
 	public BatchUDFPolicy batchUDFPolicyDefault = new BatchUDFPolicy();
 
 	/**
-	 * Default multi-record transaction (MRT) policy when verifying record versions in a batch.
+	 * Default transaction policy when verifying record versions in a batch.
 	 */
 	public TxnVerifyPolicy txnVerifyPolicyDefault = new TxnVerifyPolicy();
 
 	/**
-	 * Default multi-record transaction (MRT) policy when rolling the transaction records forward (commit)
+	 * Default transaction policy when rolling the transaction records forward (commit)
 	 * or back (abort) in a batch.
 	 */
 	public TxnRollPolicy txnRollPolicyDefault = new TxnRollPolicy();

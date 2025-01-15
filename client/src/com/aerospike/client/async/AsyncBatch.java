@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2024 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -447,7 +447,7 @@ public final class AsyncBatch {
 
 				if (record.resultCode == ResultCode.NO_RESPONSE) {
 					record.inDoubt = record.hasWrite;
-					
+
 					if (record.inDoubt && policy.txn != null) {
 						policy.txn.onWriteInDoubt(record.key);
 					}
@@ -542,7 +542,7 @@ public final class AsyncBatch {
 					// Set inDoubt, but do not call onRecord() because user already has access to full
 					// BatchRecord list and can examine each record for inDoubt when the exception occurs.
 					record.inDoubt = record.hasWrite;
-					
+
 					if (record.inDoubt && policy.txn != null) {
 						policy.txn.onWriteInDoubt(record.key);
 					}
@@ -623,7 +623,7 @@ public final class AsyncBatch {
 
 				if (record.resultCode == ResultCode.NO_RESPONSE) {
 					record.inDoubt = true;
-					
+
 					if (policy.txn != null) {
 						policy.txn.onWriteInDoubt(record.key);
 					}
@@ -708,11 +708,11 @@ public final class AsyncBatch {
 					Key key = keys[index];
 					BatchRecord record = new BatchRecord(key, null, ResultCode.NO_RESPONSE, attr.hasWrite && inDoubt, attr.hasWrite);
 					sent[index] = true;
-					
+
 					if (record.inDoubt && policy.txn != null) {
 						policy.txn.onWriteInDoubt(key);
 					}
-					
+
 					AsyncBatch.onRecord(listener, record, index);
 				}
 			}
@@ -811,7 +811,7 @@ public final class AsyncBatch {
 
 				if (record.resultCode == ResultCode.NO_RESPONSE) {
 					record.inDoubt = true;
-					
+
 					if (policy.txn != null) {
 						policy.txn.onWriteInDoubt(record.key);
 					}
@@ -914,7 +914,7 @@ public final class AsyncBatch {
 					Key key = keys[index];
 					BatchRecord record = new BatchRecord(key, null, ResultCode.NO_RESPONSE, attr.hasWrite && inDoubt, attr.hasWrite);
 					sent[index] = true;
-					
+
 					if (record.inDoubt && policy.txn != null) {
 						policy.txn.onWriteInDoubt(record.key);
 					}
@@ -935,7 +935,7 @@ public final class AsyncBatch {
 	}
 
 	//-------------------------------------------------------
-	// MRT
+	// Transaction
 	//-------------------------------------------------------
 
 	public static final class TxnVerify extends AsyncBatchCommand {

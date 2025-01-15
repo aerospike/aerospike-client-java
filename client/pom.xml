@@ -6,9 +6,9 @@
   <parent>
     <groupId>com.aerospike</groupId>
     <artifactId>aerospike-parent</artifactId>
-    <version>9.0.2</version>
+    <version>9.0.3</version>
   </parent>
-  <artifactId>aerospike-client-jdk21</artifactId>
+  <artifactId>aerospike-client${crypto.type}-jdk21</artifactId>
   <packaging>jar</packaging>
 
   <name>aerospike-client-jdk21</name>

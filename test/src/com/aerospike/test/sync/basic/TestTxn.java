@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2024 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -45,7 +45,7 @@ public class TestTxn extends TestSync {
 
 	@BeforeClass
 	public static void register() {
-		// Multi-record transactions require strong consistency namespaces.
+		// Transactions require strong consistency namespaces.
 		org.junit.Assume.assumeTrue(args.scMode);
 		RegisterTask task = client.register(null, TestUDF.class.getClassLoader(), "udf/record_example.lua", "record_example.lua", Language.LUA);
 		task.waitTillComplete();

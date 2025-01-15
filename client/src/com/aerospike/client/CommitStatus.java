@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2024 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -17,14 +17,13 @@
 package com.aerospike.client;
 
 /**
- * Multi-record transaction (MRT) commit status code.
+ * Transaction commit status code.
  */
 public enum CommitStatus {
 	OK("Commit succeeded"),
 	ALREADY_COMMITTED("Already committed"),
-	ALREADY_ABORTED("Already aborted"),
-	ROLL_FORWARD_ABANDONED("MRT client roll forward abandoned. Server will eventually commit the MRT."),
-	CLOSE_ABANDONED("MRT has been rolled forward, but MRT client close was abandoned. Server will eventually close the MRT.");
+	ROLL_FORWARD_ABANDONED("Transaction client roll forward abandoned. Server will eventually commit the transaction."),
+	CLOSE_ABANDONED("Transaction has been rolled forward, but transaction client close was abandoned. Server will eventually close the transaction.");
 
 	public final String str;
 

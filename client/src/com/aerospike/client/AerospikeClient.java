@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2024 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -207,12 +207,12 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	public final InfoPolicy infoPolicyDefault;
 
 	/**
-	 * Default multi-record transaction (MRT) policy when verifying record versions in a batch on a commit.
+	 * Default transaction policy when verifying record versions in a batch on a commit.
 	 */
 	public final TxnVerifyPolicy txnVerifyPolicyDefault;
 
 	/**
-	 * Default multi-record transaction (MRT) policy when rolling the transaction records forward (commit)
+	 * Default transaction policy when rolling the transaction records forward (commit)
 	 * or back (abort) in a batch.
 	 */
 	public final TxnRollPolicy txnRollPolicyDefault;
@@ -513,14 +513,14 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	}
 
 	/**
-	 * Return MRT record version verify policy default. Use when the policy will not be modified.
+	 * Return transaction record version verify policy default. Use when the policy will not be modified.
 	 */
 	public final TxnVerifyPolicy getTxnVerifyPolicyDefault() {
 		return txnVerifyPolicyDefault;
 	}
 
 	/**
-	 * Copy MRT record version verify policy default. Use when the policy will be modified for use
+	 * Copy transaction record version verify policy default. Use when the policy will be modified for use
 	 * in a specific command.
 	 */
 	public final TxnVerifyPolicy copyTxnVerifyPolicyDefault() {
@@ -528,14 +528,14 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	}
 
 	/**
-	 * Return MRT roll forward/back policy default. Use when the policy will not be modified.
+	 * Return transaction roll forward/back policy default. Use when the policy will not be modified.
 	 */
 	public final TxnRollPolicy getTxnRollPolicyDefault() {
 		return txnRollPolicyDefault;
 	}
 
 	/**
-	 * Copy MRT roll forward/back policy default. Use when the policy will be modified for use
+	 * Copy transaction roll forward/back policy default. Use when the policy will be modified for use
 	 * in a specific command.
 	 */
 	public final TxnRollPolicy copyTxnRollPolicyDefault() {
@@ -638,17 +638,17 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	}
 
 	//-------------------------------------------------------
-	// Multi-Record Transactions
+	// Transaction
 	//-------------------------------------------------------
 
 	/**
-	 * Attempt to commit the given multi-record transaction. First, the expected record versions are
+	 * Attempt to commit the given transaction. First, the expected record versions are
 	 * sent to the server nodes for verification. If all nodes return success, the transaction is
 	 * committed. Otherwise, the transaction is aborted.
 	 * <p>
 	 * Requires server version 8.0+
 	 *
-	 * @param txn	multi-record transaction
+	 * @param txn	transaction
 	 * @return		status of the commit on success
 	 * @throws AerospikeException.Commit	if verify commit fails
 	 */
@@ -670,12 +670,12 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 				return CommitStatus.ALREADY_COMMITTED;
 
 			case ABORTED:
-				return CommitStatus.ALREADY_ABORTED;
+				throw new AerospikeException(ResultCode.TXN_ALREADY_ABORTED, "Transaction already aborted");
 		}
 	}
 
 	/**
-	 * Asynchronously attempt to commit the given multi-record transaction. First, the expected
+	 * Asynchronously attempt to commit the given transaction. First, the expected
 	 * record versions are sent to the server nodes for verification. If all nodes return success,
 	 * the transaction is committed. Otherwise, the transaction is aborted.
 	 * <p>
@@ -687,7 +687,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * @param eventLoop		event loop that will process the command. If NULL, the event
 	 * 						loop will be chosen by round-robin.
 	 * @param listener		where to send results
-	 * @param txn			multi-record transaction
+	 * @param txn			transaction
 	 * @throws AerospikeException	if event loop registration fails
 	 */
 	public final void commit(EventLoop eventLoop, CommitListener listener, Txn txn)
@@ -715,17 +715,16 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 				break;
 
 			case ABORTED:
-				listener.onSuccess(CommitStatus.ALREADY_ABORTED);
-				break;
+				throw new AerospikeException(ResultCode.TXN_ALREADY_ABORTED, "Transaction already aborted");
 		}
 	}
 
 	/**
-	 * Abort and rollback the given multi-record transaction.
+	 * Abort and rollback the given transaction.
 	 * <p>
 	 * Requires server version 8.0+
 	 *
-	 * @param txn	multi-record transaction
+	 * @param txn	transaction
 	 * @return		status of the abort
 	 */
 	public final AbortStatus abort(Txn txn) {
@@ -738,7 +737,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 				return tr.abort(txnRollPolicyDefault);
 
 			case COMMITTED:
-				return AbortStatus.ALREADY_COMMITTED;
+				throw new AerospikeException(ResultCode.TXN_ALREADY_COMMITTED, "Transaction already committed");
 
 			case ABORTED:
 				return AbortStatus.ALREADY_ABORTED;
@@ -746,7 +745,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	}
 
 	/**
-	 * Asynchronously abort and rollback the given multi-record transaction.
+	 * Asynchronously abort and rollback the given transaction.
 	 * <p>
 	 * This method registers the command with an event loop and returns.
 	 * The event loop thread will process the command and send the results to the listener.
@@ -756,7 +755,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * @param eventLoop		event loop that will process the command. If NULL, the event
 	 * 						loop will be chosen by round-robin.
 	 * @param listener		where to send results
-	 * @param txn			multi-record transaction
+	 * @param txn			transaction
 	 * @throws AerospikeException	if event loop registration fails
 	 */
 	public final void abort(EventLoop eventLoop, AbortListener listener, Txn txn)
@@ -775,8 +774,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 				break;
 
 			case COMMITTED:
-				listener.onSuccess(AbortStatus.ALREADY_COMMITTED);
-				break;
+				throw new AerospikeException(ResultCode.TXN_ALREADY_COMMITTED, "Transaction already committed");
 
 			case ABORTED:
 				listener.onSuccess(AbortStatus.ALREADY_ABORTED);

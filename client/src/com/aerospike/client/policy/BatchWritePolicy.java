@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2024 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -101,6 +101,19 @@ public final class BatchWritePolicy {
 	public boolean durableDelete;
 
 	/**
+	 * Execute the write command only if the record is not already locked by this transaction.
+	 * If this field is true and the record is already locked by this transaction, the command
+	 * will throw an exception with the {@link com.aerospike.client.ResultCode#MRT_ALREADY_LOCKED}
+	 * error code.
+	 * <p>
+	 * This field is useful for safely retrying non-idempotent writes as an alternative to simply
+	 * aborting the transaction.
+	 * <p>
+	 * Default: false.
+	 */
+	public boolean onLockingOnly;
+
+	/**
 	 * Send user defined key in addition to hash digest.
 	 * If true, the key will be stored with the record on the server.
 	 * <p>
@@ -119,6 +132,7 @@ public final class BatchWritePolicy {
 		this.generation = other.generation;
 		this.expiration = other.expiration;
 		this.durableDelete = other.durableDelete;
+		this.onLockingOnly = other.onLockingOnly;
 		this.sendKey = other.sendKey;
 	}
 
@@ -156,6 +170,10 @@ public final class BatchWritePolicy {
 
 	public void setDurableDelete(boolean durableDelete) {
 		this.durableDelete = durableDelete;
+	}
+
+	public void setOnLockingOnly(boolean onLockingOnly) {
+		this.onLockingOnly = onLockingOnly;
 	}
 
 	public void setSendKey(boolean sendKey) {
