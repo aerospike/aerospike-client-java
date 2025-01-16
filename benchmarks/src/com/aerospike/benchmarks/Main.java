@@ -305,8 +305,8 @@ public class Main implements Log.Callback {
 		}
 
 		if (line.hasOption("mrtSize")) {
-			this.mrtEnabled = true;
 			this.keysPerMRT = Long.parseLong(line.getOptionValue("mrtSize"));
+			this.mrtEnabled = this.keysPerMRT > 0;
 			this.args.mrtSize = this.keysPerMRT;
 			if (this.keysPerMRT < 1 || this.keysPerMRT > this.nKeys) {
 				throw new Exception("Invalid mrtSize value");
