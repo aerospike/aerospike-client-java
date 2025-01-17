@@ -15,7 +15,7 @@
       "type": "grafana",
       "id": "grafana",
       "name": "Grafana",
-      "version": "11.3.0"
+      "version": "11.4.0"
     },
     {
       "type": "panel",
@@ -33,6 +33,12 @@
       "type": "panel",
       "id": "stat",
       "name": "Stat",
+      "version": ""
+    },
+    {
+      "type": "panel",
+      "id": "table",
+      "name": "Table",
       "version": ""
     },
     {
@@ -58,7 +64,7 @@
       }
     ]
   },
-  "description": "Dashboard for the Aerospike MRT Benchmark application",
+  "description": "Dashboard for the Aerospike MRT Benchmark application where latency is measured in microseconds",
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
@@ -130,7 +136,7 @@
         "textMode": "value",
         "wideLayout": true
       },
-      "pluginVersion": "11.3.0",
+      "pluginVersion": "11.4.0",
       "targets": [
         {
           "datasource": {
@@ -219,7 +225,7 @@
         "textMode": "value",
         "wideLayout": true
       },
-      "pluginVersion": "11.3.0",
+      "pluginVersion": "11.4.0",
       "targets": [
         {
           "datasource": {
@@ -333,7 +339,7 @@
         "textMode": "value",
         "wideLayout": true
       },
-      "pluginVersion": "11.3.0",
+      "pluginVersion": "11.4.0",
       "targets": [
         {
           "datasource": {
@@ -422,7 +428,7 @@
         "textMode": "value",
         "wideLayout": true
       },
-      "pluginVersion": "11.3.0",
+      "pluginVersion": "11.4.0",
       "targets": [
         {
           "datasource": {
@@ -498,7 +504,7 @@
         "textMode": "value",
         "wideLayout": true
       },
-      "pluginVersion": "11.3.0",
+      "pluginVersion": "11.4.0",
       "targets": [
         {
           "datasource": {
@@ -622,7 +628,7 @@
         "textMode": "value_and_name",
         "wideLayout": false
       },
-      "pluginVersion": "11.3.0",
+      "pluginVersion": "11.4.0",
       "targets": [
         {
           "datasource": {
@@ -714,6 +720,8 @@
               "commandlineargs 1": true,
               "commandlineargs 2": true,
               "endTimeMillis": true,
+              "env 1": true,
+              "env 2": true,
               "generalInfo": true,
               "generalInfo 1": true,
               "generalInfo 2": true,
@@ -870,7 +878,6 @@
       },
       "id": 2,
       "panels": [],
-      "repeat": "client",
       "title": "Configuration",
       "type": "row"
     },
@@ -925,7 +932,7 @@
         "textMode": "value",
         "wideLayout": true
       },
-      "pluginVersion": "11.3.0",
+      "pluginVersion": "11.4.0",
       "targets": [
         {
           "datasource": {
@@ -1000,7 +1007,7 @@
         "textMode": "value",
         "wideLayout": true
       },
-      "pluginVersion": "11.3.0",
+      "pluginVersion": "11.4.0",
       "targets": [
         {
           "datasource": {
@@ -1075,7 +1082,7 @@
         "textMode": "value",
         "wideLayout": true
       },
-      "pluginVersion": "11.3.0",
+      "pluginVersion": "11.4.0",
       "targets": [
         {
           "datasource": {
@@ -1151,7 +1158,7 @@
         "textMode": "value",
         "wideLayout": true
       },
-      "pluginVersion": "11.3.0",
+      "pluginVersion": "11.4.0",
       "targets": [
         {
           "datasource": {
@@ -1237,7 +1244,7 @@
         "textMode": "value",
         "wideLayout": true
       },
-      "pluginVersion": "11.3.0",
+      "pluginVersion": "11.4.0",
       "targets": [
         {
           "datasource": {
@@ -1312,7 +1319,7 @@
         "textMode": "value",
         "wideLayout": true
       },
-      "pluginVersion": "11.3.0",
+      "pluginVersion": "11.4.0",
       "targets": [
         {
           "datasource": {
@@ -1387,7 +1394,7 @@
         "textMode": "value",
         "wideLayout": true
       },
-      "pluginVersion": "11.3.0",
+      "pluginVersion": "11.4.0",
       "targets": [
         {
           "datasource": {
@@ -1462,7 +1469,7 @@
         "textMode": "value",
         "wideLayout": true
       },
-      "pluginVersion": "11.3.0",
+      "pluginVersion": "11.4.0",
       "targets": [
         {
           "datasource": {
@@ -1537,7 +1544,7 @@
         "textMode": "value",
         "wideLayout": true
       },
-      "pluginVersion": "11.3.0",
+      "pluginVersion": "11.4.0",
       "targets": [
         {
           "datasource": {
@@ -1652,7 +1659,7 @@
         "textMode": "value",
         "wideLayout": true
       },
-      "pluginVersion": "11.3.0",
+      "pluginVersion": "11.4.0",
       "targets": [
         {
           "datasource": {
@@ -1738,7 +1745,7 @@
         "textMode": "value",
         "wideLayout": true
       },
-      "pluginVersion": "11.3.0",
+      "pluginVersion": "11.4.0",
       "targets": [
         {
           "datasource": {
@@ -1811,7 +1818,7 @@
         "textMode": "auto",
         "wideLayout": true
       },
-      "pluginVersion": "11.3.0",
+      "pluginVersion": "11.4.0",
       "targets": [
         {
           "datasource": {
@@ -1882,7 +1889,7 @@
         "textMode": "auto",
         "wideLayout": true
       },
-      "pluginVersion": "11.3.0",
+      "pluginVersion": "11.4.0",
       "targets": [
         {
           "datasource": {
@@ -1947,7 +1954,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "light-yellow"
+                    "color": "light-yellow",
+                    "value": null
                   }
                 ]
               },
@@ -1980,7 +1988,7 @@
             "textMode": "value",
             "wideLayout": true
           },
-          "pluginVersion": "11.3.0",
+          "pluginVersion": "11.4.0",
           "targets": [
             {
               "datasource": {
@@ -2032,7 +2040,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "blue"
+                    "color": "blue",
+                    "value": null
                   }
                 ]
               },
@@ -2065,7 +2074,7 @@
             "textMode": "value",
             "wideLayout": true
           },
-          "pluginVersion": "11.3.0",
+          "pluginVersion": "11.4.0",
           "targets": [
             {
               "datasource": {
@@ -2117,7 +2126,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "blue"
+                    "color": "blue",
+                    "value": null
                   }
                 ]
               },
@@ -2150,7 +2160,7 @@
             "textMode": "value",
             "wideLayout": true
           },
-          "pluginVersion": "11.3.0",
+          "pluginVersion": "11.4.0",
           "targets": [
             {
               "datasource": {
@@ -2207,7 +2217,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "blue"
+                    "color": "blue",
+                    "value": null
                   }
                 ]
               },
@@ -2240,7 +2251,7 @@
             "textMode": "value",
             "wideLayout": true
           },
-          "pluginVersion": "11.3.0",
+          "pluginVersion": "11.4.0",
           "targets": [
             {
               "datasource": {
@@ -2293,7 +2304,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "blue"
+                    "color": "blue",
+                    "value": null
                   }
                 ]
               },
@@ -2326,7 +2338,7 @@
             "textMode": "value",
             "wideLayout": true
           },
-          "pluginVersion": "11.3.0",
+          "pluginVersion": "11.4.0",
           "targets": [
             {
               "datasource": {
@@ -2383,7 +2395,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "blue"
+                    "color": "blue",
+                    "value": null
                   }
                 ]
               },
@@ -2416,7 +2429,7 @@
             "textMode": "value",
             "wideLayout": true
           },
-          "pluginVersion": "11.3.0",
+          "pluginVersion": "11.4.0",
           "targets": [
             {
               "datasource": {
@@ -2469,7 +2482,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "blue"
+                    "color": "blue",
+                    "value": null
                   }
                 ]
               },
@@ -2502,7 +2516,7 @@
             "textMode": "value",
             "wideLayout": true
           },
-          "pluginVersion": "11.3.0",
+          "pluginVersion": "11.4.0",
           "targets": [
             {
               "datasource": {
@@ -2592,7 +2606,7 @@
         "textMode": "auto",
         "wideLayout": true
       },
-      "pluginVersion": "11.3.0",
+      "pluginVersion": "11.4.0",
       "targets": [
         {
           "datasource": {
@@ -2664,7 +2678,7 @@
         "textMode": "auto",
         "wideLayout": true
       },
-      "pluginVersion": "11.3.0",
+      "pluginVersion": "11.4.0",
       "targets": [
         {
           "datasource": {
@@ -2736,7 +2750,7 @@
         "textMode": "auto",
         "wideLayout": true
       },
-      "pluginVersion": "11.3.0",
+      "pluginVersion": "11.4.0",
       "targets": [
         {
           "datasource": {
@@ -2830,7 +2844,7 @@
         "textMode": "auto",
         "wideLayout": true
       },
-      "pluginVersion": "11.3.0",
+      "pluginVersion": "11.4.0",
       "targets": [
         {
           "datasource": {
@@ -2903,7 +2917,7 @@
         "textMode": "auto",
         "wideLayout": true
       },
-      "pluginVersion": "11.3.0",
+      "pluginVersion": "11.4.0",
       "targets": [
         {
           "datasource": {
@@ -2976,7 +2990,7 @@
         "textMode": "auto",
         "wideLayout": true
       },
-      "pluginVersion": "11.3.0",
+      "pluginVersion": "11.4.0",
       "targets": [
         {
           "datasource": {
@@ -3049,7 +3063,7 @@
         "textMode": "auto",
         "wideLayout": true
       },
-      "pluginVersion": "11.3.0",
+      "pluginVersion": "11.4.0",
       "targets": [
         {
           "datasource": {
@@ -3124,7 +3138,7 @@
         "textMode": "auto",
         "wideLayout": true
       },
-      "pluginVersion": "11.3.0",
+      "pluginVersion": "11.4.0",
       "targets": [
         {
           "datasource": {
@@ -3175,7 +3189,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   }
                 ]
               },
@@ -3205,7 +3220,7 @@
             "textMode": "auto",
             "wideLayout": true
           },
-          "pluginVersion": "11.3.0",
+          "pluginVersion": "11.4.0",
           "targets": [
             {
               "datasource": {
@@ -3246,7 +3261,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   }
                 ]
               },
@@ -3276,7 +3292,7 @@
             "textMode": "auto",
             "wideLayout": true
           },
-          "pluginVersion": "11.3.0",
+          "pluginVersion": "11.4.0",
           "targets": [
             {
               "datasource": {
@@ -3317,7 +3333,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   }
                 ]
               },
@@ -3347,7 +3364,7 @@
             "textMode": "auto",
             "wideLayout": true
           },
-          "pluginVersion": "11.3.0",
+          "pluginVersion": "11.4.0",
           "targets": [
             {
               "datasource": {
@@ -3388,7 +3405,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "light-purple"
+                    "color": "light-purple",
+                    "value": null
                   },
                   {
                     "color": "super-light-yellow",
@@ -3440,7 +3458,7 @@
             "textMode": "auto",
             "wideLayout": true
           },
-          "pluginVersion": "11.3.0",
+          "pluginVersion": "11.4.0",
           "targets": [
             {
               "datasource": {
@@ -3482,7 +3500,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   }
                 ]
               },
@@ -3512,7 +3531,7 @@
             "textMode": "auto",
             "wideLayout": true
           },
-          "pluginVersion": "11.3.0",
+          "pluginVersion": "11.4.0",
           "targets": [
             {
               "datasource": {
@@ -3554,7 +3573,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   }
                 ]
               },
@@ -3584,7 +3604,7 @@
             "textMode": "auto",
             "wideLayout": true
           },
-          "pluginVersion": "11.3.0",
+          "pluginVersion": "11.4.0",
           "targets": [
             {
               "datasource": {
@@ -3626,7 +3646,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   }
                 ]
               },
@@ -3656,7 +3677,7 @@
             "textMode": "auto",
             "wideLayout": true
           },
-          "pluginVersion": "11.3.0",
+          "pluginVersion": "11.4.0",
           "targets": [
             {
               "datasource": {
@@ -3698,7 +3719,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   }
                 ]
               },
@@ -3730,7 +3752,7 @@
             "textMode": "auto",
             "wideLayout": true
           },
-          "pluginVersion": "11.3.0",
+          "pluginVersion": "11.4.0",
           "targets": [
             {
               "datasource": {
@@ -3783,7 +3805,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   }
                 ]
               },
@@ -3795,7 +3818,7 @@
             "h": 4,
             "w": 24,
             "x": 0,
-            "y": 28
+            "y": 43
           },
           "id": 76,
           "options": {
@@ -3815,7 +3838,7 @@
             "textMode": "auto",
             "wideLayout": true
           },
-          "pluginVersion": "11.3.0",
+          "pluginVersion": "11.4.0",
           "targets": [
             {
               "datasource": {
@@ -3824,7 +3847,7 @@
               },
               "disableTextWrap": false,
               "editorMode": "builder",
-              "expr": "min by(type) (histogram_quantile(0.5, aerospike_benchmarks_mrt_latency_microsecond_bucket{instance=\"$client\", cluster=~\"$cluster\", type!~\"mrtuow|mrtuowtotal\", namespace=~\"$namespace\", setname=~\"$setname\"}))",
+              "expr": "min by(type) (histogram_quantile(0.5, aerospike_benchmarks_mrt_latency_microsecond_bucket{instance=~\"$client\", cluster=~\"$cluster\", type!~\"mrtuow|mrtuowtotal\", namespace=~\"$namespace\", setname=~\"$setname\"}))",
               "format": "time_series",
               "fullMetaSearch": false,
               "includeNullMetadata": true,
@@ -3853,7 +3876,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   }
                 ]
               },
@@ -3865,7 +3889,7 @@
             "h": 4,
             "w": 24,
             "x": 0,
-            "y": 32
+            "y": 47
           },
           "id": 79,
           "options": {
@@ -3883,7 +3907,7 @@
             "textMode": "auto",
             "wideLayout": true
           },
-          "pluginVersion": "11.3.0",
+          "pluginVersion": "11.4.0",
           "targets": [
             {
               "datasource": {
@@ -3892,7 +3916,7 @@
               },
               "disableTextWrap": false,
               "editorMode": "builder",
-              "expr": "min by(type) (histogram_quantile(0.75, aerospike_benchmarks_mrt_latency_microsecond_bucket{instance=\"$client\", type!~\"mrtuow|mrtuowtotal\", cluster=~\"$cluster\", namespace=~\"$namespace\", setname=~\"$setname\"}))",
+              "expr": "min by(type) (histogram_quantile(0.75, aerospike_benchmarks_mrt_latency_microsecond_bucket{instance=~\"$client\", type!~\"mrtuow|mrtuowtotal\", cluster=~\"$cluster\", namespace=~\"$namespace\", setname=~\"$setname\"}))",
               "format": "time_series",
               "fullMetaSearch": false,
               "hide": false,
@@ -3922,7 +3946,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   }
                 ]
               },
@@ -3934,7 +3959,7 @@
             "h": 4,
             "w": 24,
             "x": 0,
-            "y": 36
+            "y": 51
           },
           "id": 78,
           "options": {
@@ -3952,7 +3977,7 @@
             "textMode": "auto",
             "wideLayout": true
           },
-          "pluginVersion": "11.3.0",
+          "pluginVersion": "11.4.0",
           "targets": [
             {
               "datasource": {
@@ -3961,7 +3986,7 @@
               },
               "disableTextWrap": false,
               "editorMode": "builder",
-              "expr": "min by(type) (histogram_quantile(0.9, aerospike_benchmarks_mrt_latency_microsecond_bucket{instance=\"$client\", type!~\"mrtuow|mrtuowtotal\", cluster=~\"$cluster\", namespace=~\"$namespace\", setname=~\"$setname\"}))",
+              "expr": "min by(type) (histogram_quantile(0.9, aerospike_benchmarks_mrt_latency_microsecond_bucket{instance=~\"$client\", type!~\"mrtuow|mrtuowtotal\", cluster=~\"$cluster\", namespace=~\"$namespace\", setname=~\"$setname\"}))",
               "format": "time_series",
               "fullMetaSearch": false,
               "hide": false,
@@ -3991,7 +4016,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   }
                 ]
               },
@@ -4003,7 +4029,7 @@
             "h": 4,
             "w": 24,
             "x": 0,
-            "y": 40
+            "y": 55
           },
           "id": 80,
           "options": {
@@ -4021,7 +4047,7 @@
             "textMode": "auto",
             "wideLayout": true
           },
-          "pluginVersion": "11.3.0",
+          "pluginVersion": "11.4.0",
           "targets": [
             {
               "datasource": {
@@ -4030,7 +4056,7 @@
               },
               "disableTextWrap": false,
               "editorMode": "builder",
-              "expr": "min by(type) (histogram_quantile(0.95, aerospike_benchmarks_mrt_latency_microsecond_bucket{instance=\"$client\", type!~\"mrtuow|mrtuowtotal\", cluster=~\"$cluster\", namespace=~\"$namespace\", setname=~\"$setname\"}))",
+              "expr": "min by(type) (histogram_quantile(0.95, aerospike_benchmarks_mrt_latency_microsecond_bucket{instance=~\"$client\", type!~\"mrtuow|mrtuowtotal\", cluster=~\"$cluster\", namespace=~\"$namespace\", setname=~\"$setname\"}))",
               "format": "time_series",
               "fullMetaSearch": false,
               "hide": false,
@@ -4060,7 +4086,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   }
                 ]
               },
@@ -4072,7 +4099,7 @@
             "h": 4,
             "w": 24,
             "x": 0,
-            "y": 44
+            "y": 59
           },
           "id": 81,
           "options": {
@@ -4090,7 +4117,7 @@
             "textMode": "auto",
             "wideLayout": true
           },
-          "pluginVersion": "11.3.0",
+          "pluginVersion": "11.4.0",
           "targets": [
             {
               "datasource": {
@@ -4099,7 +4126,7 @@
               },
               "disableTextWrap": false,
               "editorMode": "builder",
-              "expr": "min by(type) (histogram_quantile(0.99, aerospike_benchmarks_mrt_latency_microsecond_bucket{instance=\"$client\", type!~\"mrtuow|mrtuowtotal\", cluster=~\"$cluster\", namespace=~\"$namespace\", setname=~\"$setname\"}))",
+              "expr": "min by(type) (histogram_quantile(0.99, aerospike_benchmarks_mrt_latency_microsecond_bucket{instance=~\"$client\", type!~\"mrtuow|mrtuowtotal\", cluster=~\"$cluster\", namespace=~\"$namespace\", setname=~\"$setname\"}))",
               "format": "time_series",
               "fullMetaSearch": false,
               "hide": false,
@@ -4144,7 +4171,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   }
                 ]
               },
@@ -4156,7 +4184,7 @@
             "h": 4,
             "w": 24,
             "x": 0,
-            "y": 55
+            "y": 44
           },
           "id": 82,
           "options": {
@@ -4174,7 +4202,7 @@
             "textMode": "auto",
             "wideLayout": true
           },
-          "pluginVersion": "11.3.0",
+          "pluginVersion": "11.4.0",
           "targets": [
             {
               "datasource": {
@@ -4183,7 +4211,7 @@
               },
               "disableTextWrap": false,
               "editorMode": "code",
-              "expr": "avg by(type) (quantile_over_time(0.5, rate(aerospike_benchmarks_mrt_latency_microsecond_count{instance=\"$client\", type=~\"read|readnotfound|write\",cluster=~\"$cluster\", namespace=~\"$namespace\", setname=~\"$setname\"}[$__rate_interval])[$__range:5s]))",
+              "expr": "avg by(type) (quantile_over_time(0.5, rate(aerospike_benchmarks_mrt_latency_microsecond_count{instance=~\"$client\", type=~\"read|readnotfound|write\",cluster=~\"$cluster\", namespace=~\"$namespace\", setname=~\"$setname\"}[$__rate_interval])[$__range:5s]))",
               "format": "time_series",
               "fullMetaSearch": false,
               "hide": false,
@@ -4200,7 +4228,7 @@
               },
               "disableTextWrap": false,
               "editorMode": "code",
-              "expr": "avg by(type) (quantile_over_time(0.5, rate(aerospike_benchmarks_mrt_transaction_total{instance=\"$client\", type=~\"read|readnotfound|write\",cluster=~\"$cluster\", namespace=~\"$namespace\", setname=~\"$setname\"}[$__rate_interval])[$__range:5s]))",
+              "expr": "avg by(type) (quantile_over_time(0.5, rate(aerospike_benchmarks_mrt_transaction_total{instance=~\"$client\", type=~\"read|readnotfound|write\",cluster=~\"$cluster\", namespace=~\"$namespace\", setname=~\"$setname\"}[$__rate_interval])[$__range:5s]))",
               "format": "time_series",
               "fullMetaSearch": false,
               "hide": false,
@@ -4231,7 +4259,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   }
                 ]
               },
@@ -4243,7 +4272,7 @@
             "h": 4,
             "w": 24,
             "x": 0,
-            "y": 59
+            "y": 48
           },
           "id": 84,
           "options": {
@@ -4261,7 +4290,7 @@
             "textMode": "auto",
             "wideLayout": true
           },
-          "pluginVersion": "11.3.0",
+          "pluginVersion": "11.4.0",
           "targets": [
             {
               "datasource": {
@@ -4270,7 +4299,7 @@
               },
               "disableTextWrap": false,
               "editorMode": "code",
-              "expr": "avg by(type) (quantile_over_time(0.75, rate(aerospike_benchmarks_mrt_latency_microsecond_count{instance=\"$client\", type=~\"read|readnotfound|write\",cluster=~\"$cluster\", namespace=~\"$namespace\", setname=~\"$setname\"}[$__rate_interval])[$__range:5s]))",
+              "expr": "avg by(type) (quantile_over_time(0.75, rate(aerospike_benchmarks_mrt_latency_microsecond_count{instance=~\"$client\", type=~\"read|readnotfound|write\",cluster=~\"$cluster\", namespace=~\"$namespace\", setname=~\"$setname\"}[$__rate_interval])[$__range:5s]))",
               "format": "time_series",
               "fullMetaSearch": false,
               "hide": false,
@@ -4287,7 +4316,7 @@
               },
               "disableTextWrap": false,
               "editorMode": "code",
-              "expr": "avg by(type) (quantile_over_time(0.75, rate(aerospike_benchmarks_mrt_transaction_total{instance=\"$client\", type=~\"read|readnotfound|write\",cluster=~\"$cluster\", namespace=~\"$namespace\", setname=~\"$setname\"}[$__rate_interval])[$__range:5s]))",
+              "expr": "avg by(type) (quantile_over_time(0.75, rate(aerospike_benchmarks_mrt_transaction_total{instance=~\"$client\", type=~\"read|readnotfound|write\",cluster=~\"$cluster\", namespace=~\"$namespace\", setname=~\"$setname\"}[$__rate_interval])[$__range:5s]))",
               "format": "time_series",
               "fullMetaSearch": false,
               "hide": false,
@@ -4318,7 +4347,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   }
                 ]
               },
@@ -4330,7 +4360,7 @@
             "h": 4,
             "w": 24,
             "x": 0,
-            "y": 63
+            "y": 52
           },
           "id": 86,
           "options": {
@@ -4348,7 +4378,7 @@
             "textMode": "auto",
             "wideLayout": true
           },
-          "pluginVersion": "11.3.0",
+          "pluginVersion": "11.4.0",
           "targets": [
             {
               "datasource": {
@@ -4357,7 +4387,7 @@
               },
               "disableTextWrap": false,
               "editorMode": "code",
-              "expr": "avg by(type) (quantile_over_time(0.90, rate(aerospike_benchmarks_mrt_latency_microsecond_count{instance=\"$client\", type=~\"read|readnotfound|write\",cluster=~\"$cluster\", namespace=~\"$namespace\", setname=~\"$setname\"}[$__rate_interval])[$__range:5s]))",
+              "expr": "avg by(type) (quantile_over_time(0.90, rate(aerospike_benchmarks_mrt_latency_microsecond_count{instance=~\"$client\", type=~\"read|readnotfound|write\",cluster=~\"$cluster\", namespace=~\"$namespace\", setname=~\"$setname\"}[$__rate_interval])[$__range:5s]))",
               "format": "time_series",
               "fullMetaSearch": false,
               "hide": false,
@@ -4374,7 +4404,7 @@
               },
               "disableTextWrap": false,
               "editorMode": "code",
-              "expr": "avg by(type) (quantile_over_time(0.90, rate(aerospike_benchmarks_mrt_transaction_total{instance=\"$client\", type=~\"read|readnotfound|write\",cluster=~\"$cluster\", namespace=~\"$namespace\", setname=~\"$setname\"}[$__rate_interval])[$__range:5s]))",
+              "expr": "avg by(type) (quantile_over_time(0.90, rate(aerospike_benchmarks_mrt_transaction_total{instance=~\"$client\", type=~\"read|readnotfound|write\",cluster=~\"$cluster\", namespace=~\"$namespace\", setname=~\"$setname\"}[$__rate_interval])[$__range:5s]))",
               "format": "time_series",
               "fullMetaSearch": false,
               "hide": false,
@@ -4405,7 +4435,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   }
                 ]
               },
@@ -4417,7 +4448,7 @@
             "h": 4,
             "w": 24,
             "x": 0,
-            "y": 67
+            "y": 56
           },
           "id": 85,
           "options": {
@@ -4435,7 +4466,7 @@
             "textMode": "auto",
             "wideLayout": true
           },
-          "pluginVersion": "11.3.0",
+          "pluginVersion": "11.4.0",
           "targets": [
             {
               "datasource": {
@@ -4444,7 +4475,7 @@
               },
               "disableTextWrap": false,
               "editorMode": "code",
-              "expr": "avg by(type) (quantile_over_time(0.95, rate(aerospike_benchmarks_mrt_latency_microsecond_count{instance=\"$client\", type=~\"read|readnotfound|write\",cluster=~\"$cluster\", namespace=~\"$namespace\", setname=~\"$setname\"}[$__rate_interval])[$__range:5s]))",
+              "expr": "avg by(type) (quantile_over_time(0.95, rate(aerospike_benchmarks_mrt_latency_microsecond_count{instance=~\"$client\", type=~\"read|readnotfound|write\",cluster=~\"$cluster\", namespace=~\"$namespace\", setname=~\"$setname\"}[$__rate_interval])[$__range:5s]))",
               "format": "time_series",
               "fullMetaSearch": false,
               "hide": false,
@@ -4461,7 +4492,7 @@
               },
               "disableTextWrap": false,
               "editorMode": "code",
-              "expr": "avg by(type) (quantile_over_time(0.95, rate(aerospike_benchmarks_mrt_transaction_total{instance=\"$client\", type=~\"read|readnotfound|write\",cluster=~\"$cluster\", namespace=~\"$namespace\", setname=~\"$setname\"}[$__rate_interval])[$__range:5s]))",
+              "expr": "avg by(type) (quantile_over_time(0.95, rate(aerospike_benchmarks_mrt_transaction_total{instance=~\"$client\", type=~\"read|readnotfound|write\",cluster=~\"$cluster\", namespace=~\"$namespace\", setname=~\"$setname\"}[$__rate_interval])[$__range:5s]))",
               "format": "time_series",
               "fullMetaSearch": false,
               "hide": false,
@@ -4492,7 +4523,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   }
                 ]
               },
@@ -4504,7 +4536,7 @@
             "h": 4,
             "w": 24,
             "x": 0,
-            "y": 71
+            "y": 60
           },
           "id": 87,
           "options": {
@@ -4522,7 +4554,7 @@
             "textMode": "auto",
             "wideLayout": true
           },
-          "pluginVersion": "11.3.0",
+          "pluginVersion": "11.4.0",
           "targets": [
             {
               "datasource": {
@@ -4531,7 +4563,7 @@
               },
               "disableTextWrap": false,
               "editorMode": "code",
-              "expr": "avg by(type) (quantile_over_time(0.99, rate(aerospike_benchmarks_mrt_latency_microsecond_count{instance=\"$client\", type=~\"read|readnotfound|write\",cluster=~\"$cluster\", namespace=~\"$namespace\", setname=~\"$setname\"}[$__rate_interval])[$__range:5s]))",
+              "expr": "avg by(type) (quantile_over_time(0.99, rate(aerospike_benchmarks_mrt_latency_microsecond_count{instance=~\"$client\", type=~\"read|readnotfound|write\",cluster=~\"$cluster\", namespace=~\"$namespace\", setname=~\"$setname\"}[$__rate_interval])[$__range:5s]))",
               "format": "time_series",
               "fullMetaSearch": false,
               "hide": false,
@@ -4548,7 +4580,7 @@
               },
               "disableTextWrap": false,
               "editorMode": "code",
-              "expr": "avg by(type) (quantile_over_time(0.99, rate(aerospike_benchmarks_mrt_transaction_total{instance=\"$client\", type=~\"read|readnotfound|write\",cluster=~\"$cluster\", namespace=~\"$namespace\", setname=~\"$setname\"}[$__rate_interval])[$__range:5s]))",
+              "expr": "avg by(type) (quantile_over_time(0.99, rate(aerospike_benchmarks_mrt_transaction_total{instance=~\"$client\", type=~\"read|readnotfound|write\",cluster=~\"$cluster\", namespace=~\"$namespace\", setname=~\"$setname\"}[$__rate_interval])[$__range:5s]))",
               "format": "time_series",
               "fullMetaSearch": false,
               "hide": false,
@@ -4667,7 +4699,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "11.3.0",
+      "pluginVersion": "11.4.0",
       "targets": [
         {
           "datasource": {
@@ -4680,7 +4712,7 @@
           "fullMetaSearch": false,
           "hide": false,
           "includeNullMetadata": true,
-          "legendFormat": "{{type}}",
+          "legendFormat": "{{type}} - {{instance}}",
           "range": true,
           "refId": "B",
           "useBackend": false
@@ -4754,7 +4786,7 @@
           "unit": "µs"
         }
       },
-      "pluginVersion": "11.3.0",
+      "pluginVersion": "11.4.0",
       "targets": [
         {
           "datasource": {
@@ -4859,7 +4891,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "11.3.0",
+      "pluginVersion": "11.4.0",
       "targets": [
         {
           "datasource": {
@@ -4872,7 +4904,7 @@
           "fullMetaSearch": false,
           "hide": false,
           "includeNullMetadata": true,
-          "legendFormat": "{{type}}",
+          "legendFormat": "{{type}} - {{instance}}",
           "range": true,
           "refId": "B",
           "useBackend": false
@@ -4941,7 +4973,7 @@
         "textMode": "auto",
         "wideLayout": true
       },
-      "pluginVersion": "11.3.0",
+      "pluginVersion": "11.4.0",
       "targets": [
         {
           "datasource": {
@@ -4950,7 +4982,7 @@
           },
           "editorMode": "code",
           "exemplar": true,
-          "expr": "avg by (namespace) (histogram_quantile(0.95, (aerospike_benchmarks_mrt_latency_microsecond_bucket{instance=\"$client\", cluster=~\"$cluster\", type=\"write\", namespace=~\"$namespace\", setname=~\"$setname\"})))",
+          "expr": "avg by (namespace) (histogram_quantile(0.95, (aerospike_benchmarks_mrt_latency_microsecond_bucket{instance=~\"$client\", cluster=~\"$cluster\", type=\"write\", namespace=~\"$namespace\", setname=~\"$setname\"})))",
           "instant": false,
           "interval": "",
           "legendFormat": "p95",
@@ -4963,7 +4995,7 @@
           },
           "editorMode": "code",
           "exemplar": true,
-          "expr": "avg by (namespace) (histogram_quantile(0.99, (aerospike_benchmarks_mrt_latency_microsecond_bucket{instance=\"$client\", cluster=~\"$cluster\", type=\"write\", namespace=~\"$namespace\", setname=~\"$setname\"})))",
+          "expr": "avg by (namespace) (histogram_quantile(0.99, (aerospike_benchmarks_mrt_latency_microsecond_bucket{instance=~\"$client\", cluster=~\"$cluster\", type=\"write\", namespace=~\"$namespace\", setname=~\"$setname\"})))",
           "interval": "",
           "legendFormat": "p99",
           "range": true,
@@ -4976,7 +5008,7 @@
           },
           "editorMode": "code",
           "exemplar": true,
-          "expr": "avg by (namespace) (histogram_quantile(0.999, (aerospike_benchmarks_mrt_latency_microsecond_bucket{instance=\"$client\", cluster=~\"$cluster\", type=\"write\", namespace=~\"$namespace\", setname=~\"$setname\"})))",
+          "expr": "avg by (namespace) (histogram_quantile(0.999, (aerospike_benchmarks_mrt_latency_microsecond_bucket{instance=~\"$client\", cluster=~\"$cluster\", type=\"write\", namespace=~\"$namespace\", setname=~\"$setname\"})))",
           "hide": false,
           "instant": false,
           "interval": "",
@@ -5088,7 +5120,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "11.3.0",
+      "pluginVersion": "11.4.0",
       "targets": [
         {
           "datasource": {
@@ -5101,7 +5133,7 @@
           "fullMetaSearch": false,
           "hide": false,
           "includeNullMetadata": true,
-          "legendFormat": "{{type}}",
+          "legendFormat": "{{type}} - {{instance}}",
           "range": true,
           "refId": "B",
           "useBackend": false
@@ -5175,7 +5207,7 @@
           "unit": "µs"
         }
       },
-      "pluginVersion": "11.3.0",
+      "pluginVersion": "11.4.0",
       "targets": [
         {
           "datasource": {
@@ -5280,7 +5312,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "11.3.0",
+      "pluginVersion": "11.4.0",
       "targets": [
         {
           "datasource": {
@@ -5293,7 +5325,7 @@
           "fullMetaSearch": false,
           "hide": false,
           "includeNullMetadata": true,
-          "legendFormat": "{{type}}",
+          "legendFormat": "{{type}} - {{instance}}",
           "range": true,
           "refId": "B",
           "useBackend": false
@@ -5362,7 +5394,7 @@
         "textMode": "auto",
         "wideLayout": true
       },
-      "pluginVersion": "11.3.0",
+      "pluginVersion": "11.4.0",
       "targets": [
         {
           "datasource": {
@@ -5371,7 +5403,7 @@
           },
           "editorMode": "code",
           "exemplar": true,
-          "expr": "avg by (namespace) (histogram_quantile(0.95, (aerospike_benchmarks_mrt_latency_microsecond_bucket{instance=\"$client\", cluster=~\"$cluster\", type=~\"read|readnotfound\", namespace=~\"$namespace\", setname=~\"$setname\"})))",
+          "expr": "avg by (namespace) (histogram_quantile(0.95, (aerospike_benchmarks_mrt_latency_microsecond_bucket{instance=~\"$client\", cluster=~\"$cluster\", type=~\"read|readnotfound\", namespace=~\"$namespace\", setname=~\"$setname\"})))",
           "instant": false,
           "interval": "",
           "legendFormat": "p95",
@@ -5384,7 +5416,7 @@
           },
           "editorMode": "code",
           "exemplar": true,
-          "expr": "avg by (namespace) (histogram_quantile(0.99, (aerospike_benchmarks_mrt_latency_microsecond_bucket{instance=\"$client\", cluster=~\"$cluster\", type=~\"read|readnotfound\", namespace=~\"$namespace\", setname=~\"$setname\"})))",
+          "expr": "avg by (namespace) (histogram_quantile(0.99, (aerospike_benchmarks_mrt_latency_microsecond_bucket{instance=~\"$client\", cluster=~\"$cluster\", type=~\"read|readnotfound\", namespace=~\"$namespace\", setname=~\"$setname\"})))",
           "interval": "",
           "legendFormat": "p99",
           "range": true,
@@ -5397,7 +5429,7 @@
           },
           "editorMode": "code",
           "exemplar": true,
-          "expr": "avg by (namespace) (histogram_quantile(0.999, (aerospike_benchmarks_mrt_latency_microsecond_bucket{instance=\"$client\", cluster=~\"$cluster\", type=~\"read|readnotfound\", namespace=~\"$namespace\", setname=~\"$setname\"})))",
+          "expr": "avg by (namespace) (histogram_quantile(0.999, (aerospike_benchmarks_mrt_latency_microsecond_bucket{instance=~\"$client\", cluster=~\"$cluster\", type=~\"read|readnotfound\", namespace=~\"$namespace\", setname=~\"$setname\"})))",
           "hide": false,
           "instant": false,
           "interval": "",
@@ -5443,7 +5475,7 @@
             "h": 9,
             "w": 12,
             "x": 0,
-            "y": 64
+            "y": 79
           },
           "id": 37,
           "options": {
@@ -5484,7 +5516,7 @@
               "unit": "µs"
             }
           },
-          "pluginVersion": "11.3.0",
+          "pluginVersion": "11.4.0",
           "targets": [
             {
               "datasource": {
@@ -5531,7 +5563,7 @@
             "h": 9,
             "w": 12,
             "x": 12,
-            "y": 64
+            "y": 79
           },
           "id": 64,
           "options": {
@@ -5572,7 +5604,7 @@
               "unit": "µs"
             }
           },
-          "pluginVersion": "11.3.0",
+          "pluginVersion": "11.4.0",
           "targets": [
             {
               "datasource": {
@@ -5619,7 +5651,7 @@
             "h": 9,
             "w": 12,
             "x": 0,
-            "y": 73
+            "y": 88
           },
           "id": 67,
           "options": {
@@ -5660,7 +5692,7 @@
               "unit": "ms"
             }
           },
-          "pluginVersion": "11.3.0",
+          "pluginVersion": "11.4.0",
           "targets": [
             {
               "datasource": {
@@ -5708,7 +5740,7 @@
             "h": 9,
             "w": 12,
             "x": 12,
-            "y": 73
+            "y": 88
           },
           "id": 88,
           "options": {
@@ -5749,7 +5781,7 @@
               "unit": "ms"
             }
           },
-          "pluginVersion": "11.3.0",
+          "pluginVersion": "11.4.0",
           "targets": [
             {
               "datasource": {
@@ -5823,7 +5855,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   }
                 ]
               },
@@ -5835,7 +5868,7 @@
             "h": 9,
             "w": 12,
             "x": 0,
-            "y": 82
+            "y": 97
           },
           "id": 50,
           "options": {
@@ -5854,7 +5887,7 @@
               "sort": "none"
             }
           },
-          "pluginVersion": "11.3.0",
+          "pluginVersion": "11.4.0",
           "targets": [
             {
               "datasource": {
@@ -5867,7 +5900,7 @@
               "fullMetaSearch": false,
               "hide": false,
               "includeNullMetadata": true,
-              "legendFormat": "{{type}}",
+              "legendFormat": "{{type}} - {{instance}}",
               "range": true,
               "refId": "B",
               "useBackend": false
@@ -5890,7 +5923,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   },
                   {
                     "color": "#EAB839",
@@ -5914,7 +5948,7 @@
             "h": 9,
             "w": 12,
             "x": 12,
-            "y": 82
+            "y": 97
           },
           "id": 100,
           "options": {
@@ -5935,7 +5969,7 @@
             "textMode": "auto",
             "wideLayout": true
           },
-          "pluginVersion": "11.3.0",
+          "pluginVersion": "11.4.0",
           "targets": [
             {
               "datasource": {
@@ -5944,7 +5978,7 @@
               },
               "editorMode": "code",
               "exemplar": true,
-              "expr": "avg by (namespace) (histogram_quantile(0.95, (aerospike_benchmarks_mrt_latency_microsecond_bucket{instance=\"$client\", cluster=~\"$cluster\", type=~\"mrtcommit|mrtabort\", namespace=~\"$namespace\", setname=~\"$setname\"})))",
+              "expr": "avg by (namespace) (histogram_quantile(0.95, (aerospike_benchmarks_mrt_latency_microsecond_bucket{instance=~\"$client\", cluster=~\"$cluster\", type=~\"mrtcommit|mrtabort\", namespace=~\"$namespace\", setname=~\"$setname\"})))",
               "instant": false,
               "interval": "",
               "legendFormat": "p95",
@@ -5957,7 +5991,7 @@
               },
               "editorMode": "code",
               "exemplar": true,
-              "expr": "avg by (namespace) (histogram_quantile(0.99, (aerospike_benchmarks_mrt_latency_microsecond_bucket{instance=\"$client\", cluster=~\"$cluster\", type=~\"mrtcommit|mrtabort\", namespace=~\"$namespace\", setname=~\"$setname\"})))",
+              "expr": "avg by (namespace) (histogram_quantile(0.99, (aerospike_benchmarks_mrt_latency_microsecond_bucket{instance=~\"$client\", cluster=~\"$cluster\", type=~\"mrtcommit|mrtabort\", namespace=~\"$namespace\", setname=~\"$setname\"})))",
               "interval": "",
               "legendFormat": "p99",
               "range": true,
@@ -5970,7 +6004,7 @@
               },
               "editorMode": "code",
               "exemplar": true,
-              "expr": "avg by (namespace) (histogram_quantile(0.999, (aerospike_benchmarks_mrt_latency_microsecond_bucket{instance=\"$client\", cluster=~\"$cluster\", type=~\"mrtcommit|mrtabort\", namespace=~\"$namespace\", setname=~\"$setname\"})))",
+              "expr": "avg by (namespace) (histogram_quantile(0.999, (aerospike_benchmarks_mrt_latency_microsecond_bucket{instance=~\"$client\", cluster=~\"$cluster\", type=~\"mrtcommit|mrtabort\", namespace=~\"$namespace\", setname=~\"$setname\"})))",
               "hide": false,
               "instant": false,
               "interval": "",
@@ -6057,7 +6091,32 @@
           },
           "unit": "locale"
         },
-        "overrides": []
+        "overrides": [
+          {
+            "__systemRef": "hideSeriesFrom",
+            "matcher": {
+              "id": "byNames",
+              "options": {
+                "mode": "exclude",
+                "names": [
+                  "write - AerospikeException: Error 120,1,0,30000,1000,0,2886905505 172.18.174.161 3000: MRT record blocked by a different transaction"
+                ],
+                "prefix": "All except:",
+                "readOnly": true
+              }
+            },
+            "properties": [
+              {
+                "id": "custom.hideFrom",
+                "value": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": true
+                }
+              }
+            ]
+          }
+        ]
       },
       "gridPos": {
         "h": 11,
@@ -6082,7 +6141,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "11.3.0",
+      "pluginVersion": "11.4.0",
       "targets": [
         {
           "datasource": {
@@ -6094,7 +6153,7 @@
           "expr": "increase(aerospike_benchmarks_mrt_exception_total{instance=~\"$client\", cluster=~\"$cluster\", namespace=~\"$namespace\", setname=~\"$setname\"}[$__rate_interval])",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
-          "legendFormat": "{{type}} - {{exception_type}}: {{exception}}",
+          "legendFormat": "{{type}} - {{instance}} - {{exception_type}}: {{exception}}",
           "range": true,
           "refId": "A",
           "useBackend": false
@@ -6114,67 +6173,68 @@
           "color": {
             "mode": "thresholds"
           },
+          "custom": {
+            "align": "left",
+            "cellOptions": {
+              "type": "auto",
+              "wrapText": true
+            },
+            "filterable": true,
+            "inspect": false,
+            "minWidth": 50
+          },
           "decimals": 0,
+          "fieldMinMax": false,
           "mappings": [],
           "noValue": "0",
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
-                "color": "light-purple",
-                "value": null
-              },
-              {
-                "color": "super-light-yellow",
-                "value": 500
-              },
-              {
-                "color": "yellow",
-                "value": 1000
-              },
-              {
-                "color": "orange",
-                "value": 1500
-              },
-              {
                 "color": "red",
-                "value": 2000
-              },
-              {
-                "color": "dark-red",
-                "value": 3000
+                "value": null
               }
             ]
           },
           "unit": "locale"
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Time"
+            },
+            "properties": [
+              {
+                "id": "custom.hidden",
+                "value": true
+              }
+            ]
+          }
+        ]
       },
       "gridPos": {
-        "h": 6,
+        "h": 15,
         "w": 24,
         "x": 0,
         "y": 73
       },
       "id": 110,
       "options": {
-        "colorMode": "value",
-        "graphMode": "none",
-        "justifyMode": "auto",
-        "orientation": "horizontal",
-        "percentChangeColorMode": "standard",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "enablePagination": true,
+          "fields": [],
+          "reducer": [
+            "sum"
           ],
-          "fields": "",
-          "values": false
+          "show": true
         },
-        "showPercentChange": false,
-        "textMode": "auto",
-        "wideLayout": true
+        "frameIndex": 3,
+        "showHeader": true
       },
-      "pluginVersion": "11.3.0",
+      "pluginVersion": "11.4.0",
       "targets": [
         {
           "datasource": {
@@ -6183,7 +6243,9 @@
           },
           "disableTextWrap": false,
           "editorMode": "builder",
+          "exemplar": false,
           "expr": "aerospike_benchmarks_mrt_exception_total{instance=~\"$client\", cluster=~\"$cluster\", namespace=~\"$namespace\", setname=~\"$setname\"}",
+          "format": "table",
           "fullMetaSearch": false,
           "hide": false,
           "includeNullMetadata": true,
@@ -6195,7 +6257,70 @@
         }
       ],
       "title": "Total Error Counts",
-      "type": "stat"
+      "transformations": [
+        {
+          "id": "groupBy",
+          "options": {
+            "fields": {
+              "Value": {
+                "aggregations": [
+                  "sum"
+                ],
+                "operation": "aggregate"
+              },
+              "exception": {
+                "aggregations": [],
+                "operation": "groupby"
+              },
+              "exception_subtype": {
+                "aggregations": [],
+                "operation": "groupby"
+              },
+              "exception_type": {
+                "aggregations": [],
+                "operation": "groupby"
+              },
+              "type": {
+                "aggregations": [],
+                "operation": "groupby"
+              }
+            }
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {},
+            "includeByName": {},
+            "indexByName": {
+              "Value (sum)": 4,
+              "exception": 3,
+              "exception_subtype": 2,
+              "exception_type": 1,
+              "type": 0
+            },
+            "renameByName": {
+              "Value (sum)": "Number of Errors",
+              "exception": "Error",
+              "exception_subtype": "Error subtype",
+              "exception_type": "Error Type",
+              "type": "Action"
+            }
+          }
+        },
+        {
+          "id": "sortBy",
+          "options": {
+            "fields": {},
+            "sort": [
+              {
+                "field": "Action"
+              }
+            ]
+          }
+        }
+      ],
+      "type": "table"
     },
     {
       "collapsed": true,
@@ -6203,7 +6328,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 79
+        "y": 88
       },
       "id": 111,
       "panels": [
@@ -6259,7 +6384,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   }
                 ]
               },
@@ -6287,7 +6413,7 @@
             "h": 11,
             "w": 24,
             "x": 0,
-            "y": 110
+            "y": 104
           },
           "id": 107,
           "options": {
@@ -6306,7 +6432,7 @@
               "sort": "none"
             }
           },
-          "pluginVersion": "11.3.0",
+          "pluginVersion": "11.4.0",
           "targets": [
             {
               "datasource": {
@@ -6318,7 +6444,7 @@
               "expr": "increase(aerospike_benchmarks_mrt_related_errors_total{instance=~\"$client\", cluster=~\"$cluster\", namespace=~\"$namespace\", setname=~\"$setname\"}[$__rate_interval])",
               "fullMetaSearch": false,
               "includeNullMetadata": true,
-              "legendFormat": "{{error_type}} - {{type}}",
+              "legendFormat": "{{error_type}} - {{instance}} - {{type}}",
               "range": true,
               "refId": "A",
               "useBackend": false
@@ -6332,53 +6458,74 @@
             "type": "prometheus",
             "uid": "${DATASOURCE}"
           },
-          "description": "The total number of MRT Related Errors",
+          "description": "The total number of errors",
           "fieldConfig": {
             "defaults": {
               "color": {
-                "fixedColor": "dark-green",
                 "mode": "thresholds"
               },
+              "custom": {
+                "align": "left",
+                "cellOptions": {
+                  "type": "auto",
+                  "wrapText": true
+                },
+                "filterable": true,
+                "inspect": false,
+                "minWidth": 50
+              },
               "decimals": 0,
+              "fieldMinMax": false,
               "mappings": [],
               "noValue": "0",
               "thresholds": {
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "light-green"
+                    "color": "red",
+                    "value": null
                   }
                 ]
               },
               "unit": "locale"
             },
-            "overrides": []
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Time"
+                },
+                "properties": [
+                  {
+                    "id": "custom.hidden",
+                    "value": true
+                  }
+                ]
+              }
+            ]
           },
           "gridPos": {
-            "h": 7,
+            "h": 10,
             "w": 24,
             "x": 0,
-            "y": 121
+            "y": 115
           },
           "id": 112,
           "options": {
-            "colorMode": "value",
-            "graphMode": "none",
-            "justifyMode": "auto",
-            "orientation": "horizontal",
-            "percentChangeColorMode": "standard",
-            "reduceOptions": {
-              "calcs": [
-                "lastNotNull"
+            "cellHeight": "sm",
+            "footer": {
+              "countRows": false,
+              "enablePagination": true,
+              "fields": [],
+              "reducer": [
+                "sum"
               ],
-              "fields": "",
-              "values": false
+              "show": true
             },
-            "showPercentChange": false,
-            "textMode": "auto",
-            "wideLayout": true
+            "frameIndex": 3,
+            "showHeader": true
           },
-          "pluginVersion": "11.3.0",
+          "pluginVersion": "11.4.0",
           "targets": [
             {
               "datasource": {
@@ -6387,32 +6534,104 @@
               },
               "disableTextWrap": false,
               "editorMode": "builder",
+              "exemplar": false,
               "expr": "aerospike_benchmarks_mrt_related_errors_total{instance=~\"$client\", cluster=~\"$cluster\", namespace=~\"$namespace\", setname=~\"$setname\"}",
+              "format": "table",
               "fullMetaSearch": false,
               "hide": false,
               "includeNullMetadata": true,
               "instant": false,
-              "legendFormat": "{{error_type}} - {{type}}",
+              "legendFormat": "{{type}} - {{exception_type}}: {{exception}}",
               "range": true,
               "refId": "C",
               "useBackend": false
             }
           ],
-          "title": "Total MRT Related Error Counts",
-          "type": "stat"
+          "title": "Total Error Counts",
+          "transformations": [
+            {
+              "id": "groupBy",
+              "options": {
+                "fields": {
+                  "Value": {
+                    "aggregations": [
+                      "sum"
+                    ],
+                    "operation": "aggregate"
+                  },
+                  "env": {
+                    "aggregations": []
+                  },
+                  "error_type": {
+                    "aggregations": [],
+                    "operation": "groupby"
+                  },
+                  "exception": {
+                    "aggregations": [],
+                    "operation": "groupby"
+                  },
+                  "exception_subtype": {
+                    "aggregations": [],
+                    "operation": "groupby"
+                  },
+                  "exception_type": {
+                    "aggregations": [],
+                    "operation": "groupby"
+                  },
+                  "retry": {
+                    "aggregations": []
+                  },
+                  "type": {
+                    "aggregations": [],
+                    "operation": "groupby"
+                  }
+                }
+              }
+            },
+            {
+              "id": "organize",
+              "options": {
+                "excludeByName": {},
+                "includeByName": {},
+                "indexByName": {
+                  "Value (sum)": 2,
+                  "error_type": 1,
+                  "type": 0
+                },
+                "renameByName": {
+                  "Value (sum)": "Number of Errors",
+                  "error_type": "Error",
+                  "type": "Action"
+                }
+              }
+            },
+            {
+              "id": "sortBy",
+              "options": {
+                "fields": {},
+                "sort": [
+                  {
+                    "field": "Action"
+                  }
+                ]
+              }
+            }
+          ],
+          "type": "table"
         }
       ],
       "title": "MRT Related Errors",
       "type": "row"
     }
   ],
-  "refresh": "5s",
+  "refresh": "30m",
   "schemaVersion": 40,
   "tags": [
     "aerospike",
     "mrt",
     "monitor",
-    "benchmark"
+    "benchmark",
+    "microseconds"
   ],
   "templating": {
     "list": [
@@ -6517,13 +6736,13 @@
     ]
   },
   "time": {
-    "from": "now-5m",
-    "to": "now"
+    "from": "2025-01-17T00:10:23.494Z",
+    "to": "2025-01-17T00:20:59.753Z"
   },
   "timepicker": {},
   "timezone": "browser",
-  "title": "Aerospike Benchmark MRT",
+  "title": "Aerospike Benchmark MRT (us)",
   "uid": "be423cq6i5dz4a",
-  "version": 32,
+  "version": 6,
   "weekStart": ""
 }
