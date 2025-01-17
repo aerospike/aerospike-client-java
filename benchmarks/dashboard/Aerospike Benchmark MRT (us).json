@@ -5842,7 +5842,7 @@
             "h": 9,
             "w": 12,
             "x": 0,
-            "y": 118
+            "y": 139
           },
           "id": 50,
           "options": {
@@ -5921,7 +5921,7 @@
             "h": 9,
             "w": 12,
             "x": 12,
-            "y": 118
+            "y": 139
           },
           "id": 100,
           "options": {
@@ -6162,7 +6162,7 @@
         ]
       },
       "gridPos": {
-        "h": 15,
+        "h": 12,
         "w": 24,
         "x": 0,
         "y": 73
@@ -6217,8 +6217,7 @@
                 "operation": "aggregate"
               },
               "exception": {
-                "aggregations": [],
-                "operation": "groupby"
+                "aggregations": []
               },
               "exception_subtype": {
                 "aggregations": [],
@@ -6276,7 +6275,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 88
+        "y": 85
       },
       "id": 111,
       "panels": [
@@ -6361,7 +6360,7 @@
             "h": 11,
             "w": 24,
             "x": 0,
-            "y": 89
+            "y": 86
           },
           "id": 107,
           "options": {
@@ -6456,7 +6455,7 @@
             "h": 10,
             "w": 24,
             "x": 0,
-            "y": 100
+            "y": 97
           },
           "id": 112,
           "options": {
@@ -6691,6 +6690,6 @@
   "timezone": "browser",
   "title": "Aerospike Benchmark MRT (us)",
   "uid": "be423cq6i5dz4a",
-  "version": 10,
+  "version": 11,
   "weekStart": ""
 }

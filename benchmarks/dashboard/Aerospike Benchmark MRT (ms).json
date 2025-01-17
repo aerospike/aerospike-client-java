@@ -1954,8 +1954,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "light-yellow",
-                    "value": null
+                    "color": "light-yellow"
                   }
                 ]
               },
@@ -2040,8 +2039,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "blue",
-                    "value": null
+                    "color": "blue"
                   }
                 ]
               },
@@ -2126,8 +2124,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "blue",
-                    "value": null
+                    "color": "blue"
                   }
                 ]
               },
@@ -2217,8 +2214,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "blue",
-                    "value": null
+                    "color": "blue"
                   }
                 ]
               },
@@ -2304,8 +2300,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "blue",
-                    "value": null
+                    "color": "blue"
                   }
                 ]
               },
@@ -2395,8 +2390,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "blue",
-                    "value": null
+                    "color": "blue"
                   }
                 ]
               },
@@ -2482,8 +2476,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "blue",
-                    "value": null
+                    "color": "blue"
                   }
                 ]
               },
@@ -3189,8 +3182,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   }
                 ]
               },
@@ -3261,8 +3253,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   }
                 ]
               },
@@ -3333,8 +3324,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   }
                 ]
               },
@@ -3405,8 +3395,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "light-purple",
-                    "value": null
+                    "color": "light-purple"
                   },
                   {
                     "color": "super-light-yellow",
@@ -3500,8 +3489,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   }
                 ]
               },
@@ -3573,8 +3561,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   }
                 ]
               },
@@ -3646,8 +3633,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   }
                 ]
               },
@@ -3719,8 +3705,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   }
                 ]
               },
@@ -3805,8 +3790,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   }
                 ]
               },
@@ -3876,8 +3860,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   }
                 ]
               },
@@ -3946,8 +3929,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   }
                 ]
               },
@@ -4016,8 +3998,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   }
                 ]
               },
@@ -4086,8 +4067,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   }
                 ]
               },
@@ -4171,8 +4151,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   }
                 ]
               },
@@ -4259,8 +4238,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   }
                 ]
               },
@@ -4347,8 +4325,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   }
                 ]
               },
@@ -4435,8 +4412,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   }
                 ]
               },
@@ -4523,8 +4499,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   }
                 ]
               },
@@ -5855,8 +5830,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   }
                 ]
               },
@@ -5923,8 +5897,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   },
                   {
                     "color": "#EAB839",
@@ -6189,7 +6162,7 @@
         ]
       },
       "gridPos": {
-        "h": 15,
+        "h": 11,
         "w": 24,
         "x": 0,
         "y": 73
@@ -6244,8 +6217,7 @@
                 "operation": "aggregate"
               },
               "exception": {
-                "aggregations": [],
-                "operation": "groupby"
+                "aggregations": []
               },
               "exception_subtype": {
                 "aggregations": [],
@@ -6303,7 +6275,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 88
+        "y": 84
       },
       "id": 111,
       "panels": [
@@ -6359,8 +6331,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   }
                 ]
               },
@@ -6457,8 +6428,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "red",
-                    "value": null
+                    "color": "red"
                   }
                 ]
               },
@@ -6717,7 +6687,7 @@
   "timepicker": {},
   "timezone": "browser",
   "title": "Aerospike Benchmark MRT (ms)",
-  "uid": "be423cq6i5dz4a",
-  "version": 8,
+  "uid": "be423cq6i5dz4ams",
+  "version": 2,
   "weekStart": ""
 }
