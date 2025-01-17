@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2024 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -22,7 +22,17 @@ package com.aerospike.client;
  */
 public final class ResultCode {
 	/**
-	 * Multi-record transaction failed
+	 * Transaction commit called, but the transaction was already aborted.
+	 */
+	public static final int TXN_ALREADY_ABORTED = -19;
+
+	/**
+	 * Transaction abort called, but the transaction was already committed.
+	 */
+	public static final int TXN_ALREADY_COMMITTED = -18;
+
+	/**
+	 * Transaction failed.
 	 */
 	public static final int TXN_FAILED = -17;
 
@@ -239,35 +249,9 @@ public final class ResultCode {
 	public static final int LOST_CONFLICT = 28;
 
 	/**
-	 * MRT record blocked by a different transaction.
-	 */
-	public static final int MRT_BLOCKED = 29;
-
-	/**
-	 * MRT read version mismatch identified during commit.
-	 * Some other command changed the record outside of the transaction.
-	 */
-	public static final int MRT_VERSION_MISMATCH = 30;
-
-	/**
-	 * MRT deadline reached without a successful commit or abort.
-	 */
-	public static final int MRT_EXPIRED = 31;
-
-	/**
 	 * Write can't complete until XDR finishes shipping.
 	 */
 	public static final int XDR_KEY_BUSY = 32;
-
-	/**
-	 * MRT was already committed.
-	 */
-	public static final int MRT_COMMITTED = 33;
-
-	/**
-	 * MRT was already aborted.
-	 */
-	public static final int MRT_ABORTED = 34;
 
 	/**
 	 * There are no more records left for query.
@@ -395,6 +379,47 @@ public final class ResultCode {
 	public static final int UDF_BAD_RESPONSE = 100;
 
 	/**
+	 * Transaction record blocked by a different transaction.
+	 */
+	public static final int MRT_BLOCKED = 120;
+
+	/**
+	 * Transaction read version mismatch identified during commit.
+	 * Some other command changed the record outside of the transaction.
+	 */
+	public static final int MRT_VERSION_MISMATCH = 121;
+
+	/**
+	 * Transaction deadline reached without a successful commit or abort.
+	 */
+	public static final int MRT_EXPIRED = 122;
+
+	/**
+	 * Transaction write command limit (4096) exceeded.
+	 */
+	public static final int MRT_TOO_MANY_WRITES = 123;
+
+	/**
+	 * Transaction was already committed.
+	 */
+	public static final int MRT_COMMITTED = 124;
+
+	/**
+	 * Transaction was already aborted.
+	 */
+	public static final int MRT_ABORTED = 125;
+
+	/**
+	 * This record has been locked by a previous update in this transaction.
+	 */
+	public static final int MRT_ALREADY_LOCKED = 126;
+
+	/**
+	 * This transaction has already started. Writing to the same transaction with independent threads is unsafe.
+	 */
+	public static final int MRT_MONITOR_EXISTS = 127;
+
+	/**
 	 * Batch functionality has been disabled.
 	 */
 	public static final int BATCH_DISABLED = 150;
@@ -491,8 +516,14 @@ public final class ResultCode {
 	 */
 	public static String getResultString(int resultCode) {
 		switch (resultCode) {
+		case TXN_ALREADY_ABORTED:
+			return "Transaction already aborted";
+
+		case TXN_ALREADY_COMMITTED:
+			return "Transaction already committed";
+
 		case TXN_FAILED:
-			return "Multi-record transaction failed";
+			return "Transaction failed";
 
 		case BATCH_FAILED:
 			return "One or more keys failed in a batch";
@@ -620,24 +651,9 @@ public final class ResultCode {
 		case LOST_CONFLICT:
 			return "Command failed due to conflict with XDR";
 
-		case MRT_BLOCKED:
-			return "MRT record blocked by a different transaction";
-
-		case MRT_VERSION_MISMATCH:
-			return "MRT version mismatch";
-
-		case MRT_EXPIRED:
-			return "MRT expired";
-
 		case XDR_KEY_BUSY:
 			return "Write can't complete until XDR finishes shipping";
-			
-		case MRT_COMMITTED:
-			return "MRT already committed";
-			
-		case MRT_ABORTED:
-			return "MRT already aborted";
-			
+
 		case QUERY_END:
 			return "Query end";
 
@@ -712,6 +728,30 @@ public final class ResultCode {
 
 		case UDF_BAD_RESPONSE:
 			return "UDF returned error";
+
+		case MRT_BLOCKED:
+			return "Transaction record blocked by a different transaction";
+
+		case MRT_VERSION_MISMATCH:
+			return "Transaction version mismatch";
+
+		case MRT_EXPIRED:
+			return "Transaction expired";
+
+		case MRT_TOO_MANY_WRITES:
+			return "Transaction write command limit exceeded";
+
+		case MRT_COMMITTED:
+			return "Transaction already committed";
+
+		case MRT_ABORTED:
+			return "Transaction already aborted";
+
+		case MRT_ALREADY_LOCKED:
+			return "This record has been locked by a previous update in this transaction";
+
+		case MRT_MONITOR_EXISTS:
+			return "This transaction has already started. Writing to the same transaction with independent threads is unsafe";
 
 		case BATCH_DISABLED:
 			return "Batch functionality has been disabled";

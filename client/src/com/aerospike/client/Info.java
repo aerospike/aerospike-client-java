@@ -338,7 +338,6 @@ public class Info {
 	public byte[] buffer;
 	public int length;
 	public int offset;
-	public StringBuilder sb;
 
 	//-------------------------------------------------------
 	// Constructor
@@ -436,7 +435,6 @@ public class Info {
 	public Info(byte[] buffer, int length) {
 		this.buffer = buffer;
 		this.length = length;
-		this.sb = new StringBuilder(length);
 	}
 
 	/**
@@ -461,7 +459,6 @@ public class Info {
 			if (length > buffer.length) {
 				buffer = new byte[length];
 			}
-			sb = new StringBuilder(length);
 			conn.readFully(buffer, length);
 			conn.updateLastUsed();
 			offset = 0;
@@ -499,7 +496,7 @@ public class Info {
 			byte b = buffer[offset];
 
 			if (b == '\t') {
-				String name = Buffer.utf8ToString(buffer, begin, offset - begin, sb);
+				String name = Buffer.utf8ToString(buffer, begin, offset - begin);
 				offset++;
 				checkError();
 				begin = offset;
@@ -513,7 +510,7 @@ public class Info {
 				}
 
 				if (offset > begin) {
-					String value = Buffer.utf8ToString(buffer, begin, offset - begin, sb);
+					String value = Buffer.utf8ToString(buffer, begin, offset - begin);
 					responses.put(name, value);
 				}
 				else {
@@ -523,7 +520,7 @@ public class Info {
 			}
 			else if (b == '\n') {
 				if (offset > begin) {
-					String name = Buffer.utf8ToString(buffer, begin, offset - begin, sb);
+					String name = Buffer.utf8ToString(buffer, begin, offset - begin);
 					responses.put(name, null);
 				}
 				begin = ++offset;
@@ -534,7 +531,7 @@ public class Info {
 		}
 
 		if (offset > begin) {
-			String name = Buffer.utf8ToString(buffer, begin, offset - begin, sb);
+			String name = Buffer.utf8ToString(buffer, begin, offset - begin);
 			responses.put(name, null);
 		}
 		return responses;
@@ -548,7 +545,7 @@ public class Info {
 
 		while (offset < length) {
 			if (buffer[offset] == '\t') {
-				String s = Buffer.utf8ToString(buffer, begin, offset - begin, sb).trim();
+				String s = Buffer.utf8ToString(buffer, begin, offset - begin).trim();
 
 				if (name.equals(s)) {
 					offset++;

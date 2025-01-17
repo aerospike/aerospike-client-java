@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2024 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -194,7 +194,7 @@ public final class RecordParser {
 			int type = dataBuffer[dataOffset++];
 			int size = len - 1;
 
-			if (type == FieldType.MRT_DEADLINE) {
+			if (type == FieldType.TXN_DEADLINE) {
 				int deadline = Buffer.littleBytesToInt(dataBuffer, dataOffset);
 				txn.setDeadline(deadline);
 			}

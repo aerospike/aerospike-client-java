@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2024 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -129,10 +129,11 @@ public final class TxnMonitor {
 	}
 
 	private static void addWriteKeys(Cluster cluster, Policy policy, Operation[] ops) {
-		Key txnKey = getTxnMonitorKey(policy.txn);
+		Txn txn = policy.txn;
+		Key txnKey = getTxnMonitorKey(txn);
 		WritePolicy wp = copyTimeoutPolicy(policy);
 		OperateArgs args = new OperateArgs(wp, null, null, ops);
-		TxnAddKeys cmd = new TxnAddKeys(cluster, txnKey, args);
+		TxnAddKeys cmd = new TxnAddKeys(cluster, txnKey, args, txn);
 		cmd.execute();
 	}
 
@@ -143,7 +144,6 @@ public final class TxnMonitor {
 	public static WritePolicy copyTimeoutPolicy(Policy policy) {
 		// Inherit some fields from the original command's policy.
 		WritePolicy wp = new WritePolicy();
-		wp.txn = policy.txn;
 		wp.connectTimeout = policy.connectTimeout;
 		wp.socketTimeout = policy.socketTimeout;
 		wp.totalTimeout = policy.totalTimeout;
@@ -153,9 +153,9 @@ public final class TxnMonitor {
 		wp.compress = policy.compress;
 		wp.respondAllOps = true;
 
-		// Note that the server only accepts the timeout on MRT monitor record create.
-		// The server ignores the MRT timeout field on successive MRT monitor record
-		// updates.
+		// Note that the server only accepts the timeout on transaction monitor record create.
+		// The server ignores the transaction timeout field on successive transaction monitor
+		// record updates.
 		wp.expiration = policy.txn.getTimeout();
 		return wp;
 	}

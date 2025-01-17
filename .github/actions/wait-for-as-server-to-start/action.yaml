@@ -1,0 +1,22 @@
+name: "Wait for Aerospike server to start"
+description: Only tested on Linux and macOS
+inputs:
+  container-name:
+    description: Container name
+    required: true
+  is-security-enabled:
+    description: Flag to toggle docker hub creds use. With this flag enabled before attempting to pull image we will attempt to log in do docker hub.
+    required: false
+    default: "false"
+
+runs:
+  using: "composite"
+  steps:
+    # Composite actions doesn't support step-level timeout-minutes
+    # Use timeout command and store polling logic in file to make it easier to read
+    # Call bash shell explicitly since timeout uses "sh" shell by default, for some reason
+    # Also, we don't want to fail if we timeout in case the server *did* finish starting up but the script couldn't detect it due to a bug
+    # Effectively, this composite action is like calling "sleep" that is optimized to exit early when it detects an ok from the server
+    - name: Wait for EE server to start
+      run: timeout 30 bash ./.github/workflows/scripts/wait-for-as-server-to-start.sh ${{ inputs.container-name }} ${{ inputs.is-security-enabled }} || true
+      shell: bash

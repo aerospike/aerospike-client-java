@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2024 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -19,7 +19,6 @@ package com.aerospike.examples;
 import com.aerospike.client.Bin;
 import com.aerospike.client.IAerospikeClient;
 import com.aerospike.client.Key;
-import com.aerospike.client.Record;
 import com.aerospike.client.Txn;
 import com.aerospike.client.policy.Policy;
 import com.aerospike.client.policy.WritePolicy;
@@ -58,21 +57,23 @@ public class Transaction extends Example {
 			p.txn = txn;
 
 			Key key3 = new Key(params.namespace, params.set, 3);
-			Record rec = client.get(p, key3);
+			client.get(p, key3);
 
 			console.info("Run delete");
 			WritePolicy dp = client.copyWritePolicyDefault();
 			dp.txn = txn;
-			dp.durableDelete = true;  // Required when running delete in a MRT.
+			dp.durableDelete = true;  // Required when running delete in a transaction.
 			client.delete(dp, key3);
 		}
 		catch (Throwable t) {
-			// Abort and rollback MRT (multi-record transaction) if any errors occur.
+			// Abort and rollback transaction if any errors occur.
 			console.info("Abort txn: " + txn.getId());
 			client.abort(txn);
 			throw t;
 		}
 
+		// Commit transaction. If the verify step of the commit fails,
+		// the transaction is automatically aborted.
 		console.info("Commit txn: " + txn.getId());
 		client.commit(txn);
 	}

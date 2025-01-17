@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2024 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -392,6 +392,8 @@ public class TestBatch extends TestSync {
 		// Delete keys
 		BatchResults br = client.delete(null, null, keys);
 		assertTrue(br.status);
+		assertEquals(ResultCode.OK, br.records[0].resultCode);
+		assertEquals(ResultCode.OK, br.records[1].resultCode);
 
 		// Ensure keys do not exist
 		exists = client.exists(null, keys);
@@ -400,7 +402,20 @@ public class TestBatch extends TestSync {
 	}
 
 	@Test
+	public void batchDeleteSingleNotFound() {
+		Key[] keys = new Key[] {
+			new Key(args.namespace, args.set, 989299023) // Should be not found.
+		};
+
+		BatchResults br = client.delete(null, null, keys);
+		assertFalse(br.status);
+		assertEquals(ResultCode.KEY_NOT_FOUND_ERROR, br.records[0].resultCode);
+	}
+
+	@Test
 	public void batchReadTTL() {
+		org.junit.Assume.assumeTrue(args.hasTtl);
+
 		// WARNING: This test takes a long time to run due to sleeps.
 		// Define keys
 		Key key1 = new Key(args.namespace, args.set, 88888);
@@ -429,9 +444,9 @@ public class TestBatch extends TestSync {
 
 		boolean rv = client.operate(null, list);
 
-		assertTrue(rv);
 		assertEquals(ResultCode.OK, br1.resultCode);
 		assertEquals(ResultCode.OK, br2.resultCode);
+		assertTrue(rv);
 
 		// Read records again, but don't reset read ttl.
 		Util.sleep(3000);
@@ -455,6 +470,7 @@ public class TestBatch extends TestSync {
 		// Read  record after it expires, showing it's gone.
 		Util.sleep(8000);
 		rv = client.operate(null, list);
+
 		assertEquals(ResultCode.KEY_NOT_FOUND_ERROR, br1.resultCode);
 		assertEquals(ResultCode.KEY_NOT_FOUND_ERROR, br2.resultCode);
 		assertFalse(rv);

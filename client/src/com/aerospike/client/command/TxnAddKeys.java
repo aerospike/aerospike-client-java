@@ -21,15 +21,18 @@ import java.io.IOException;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
 import com.aerospike.client.ResultCode;
+import com.aerospike.client.Txn;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.Connection;
 
 public final class TxnAddKeys extends SyncWriteCommand {
 	private final OperateArgs args;
+	private final Txn txn;
 
-	public TxnAddKeys(Cluster cluster, Key key, OperateArgs args) {
+	public TxnAddKeys(Cluster cluster, Key key, OperateArgs args, Txn txn) {
 		super(cluster, args.writePolicy, key);
 		this.args = args;
+		this.txn = txn;
 	}
 
 	@Override
@@ -40,18 +43,12 @@ public final class TxnAddKeys extends SyncWriteCommand {
 	@Override
 	protected void parseResult(Connection conn) throws IOException {
 		RecordParser rp = new RecordParser(conn, dataBuffer);
-		rp.parseTranDeadline(policy.txn);
+		rp.parseTranDeadline(txn);
 
 		if (rp.resultCode == ResultCode.OK) {
 			return;
 		}
 
 		throw new AerospikeException(rp.resultCode);
-	}
-	
-	@Override
-	protected void onInDoubt() {
-		// The MRT monitor record might exist if TxnAddKeys command is inDoubt.
-		policy.txn.setMonitorInDoubt();
 	}
 }

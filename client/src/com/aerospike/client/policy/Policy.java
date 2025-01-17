@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2024 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -25,8 +25,8 @@ import java.util.Objects;
  */
 public class Policy {
 	/**
-	 * Multi-record transaction identifier (MRT). If this field is populated, the corresponding
-	 * command will be included in the MRT. This field is ignored for scan/query.
+	 * Multi-record transaction. If this field is populated, the corresponding
+	 * command will be included in the transaction. This field is ignored for scan/query.
 	 * <p>
 	 * Default: null
 	 */
@@ -234,10 +234,11 @@ public class Policy {
 
 	/**
 	 * Use zlib compression on command buffers sent to the server and responses received
-	 * from the server when the buffer size is greater than 128 bytes.
+	 * from the server when the buffer size is greater than 128 bytes. This option will
+	 * increase cpu and memory usage (for extra compressed buffers), but decrease the size
+	 * of data sent over the network.
 	 * <p>
-	 * This option will increase cpu and memory usage (for extra compressed buffers),but
-	 * decrease the size of data sent over the network.
+	 * This compression feature requires the Enterprise Edition Server.
 	 * <p>
 	 * Default: false
 	 */
@@ -368,8 +369,12 @@ public class Policy {
 
 	@Override
 	public boolean equals(Object o) {
-		if (this == o) return true;
-		if (o == null || getClass() != o.getClass()) return false;
+		if (this == o) {
+			return true;
+		}
+		if (o == null || getClass() != o.getClass()) {
+			return false;
+		}
 		Policy policy = (Policy) o;
 		return connectTimeout == policy.connectTimeout && socketTimeout == policy.socketTimeout && totalTimeout == policy.totalTimeout && timeoutDelay == policy.timeoutDelay && maxRetries == policy.maxRetries && sleepBetweenRetries == policy.sleepBetweenRetries && readTouchTtlPercent == policy.readTouchTtlPercent && sendKey == policy.sendKey && compress == policy.compress && failOnFilteredOut == policy.failOnFilteredOut && Objects.equals(txn, policy.txn) && readModeAP == policy.readModeAP && readModeSC == policy.readModeSC && replica == policy.replica && Objects.equals(filterExp, policy.filterExp);
 	}

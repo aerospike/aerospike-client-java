@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2024 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -207,12 +207,12 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	public final InfoPolicy infoPolicyDefault;
 
 	/**
-	 * Default multi-record transaction (MRT) policy when verifying record versions in a batch on a commit.
+	 * Default transaction policy when verifying record versions in a batch on a commit.
 	 */
 	public final TxnVerifyPolicy txnVerifyPolicyDefault;
 
 	/**
-	 * Default multi-record transaction (MRT) policy when rolling the transaction records forward (commit)
+	 * Default transaction policy when rolling the transaction records forward (commit)
 	 * or back (abort) in a batch.
 	 */
 	public final TxnRollPolicy txnRollPolicyDefault;
@@ -367,154 +367,176 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	//-------------------------------------------------------
 
 	/**
-	 * Copy read policy default to avoid problems if this shared instance is later modified.
+	 * Return read policy default. Use when the policy will not be modified.
 	 */
 	public final Policy getReadPolicyDefault() {
-		return new Policy(readPolicyDefault);
+		return readPolicyDefault;
 	}
 
 	/**
-	 * Copy read policy default.
+	 * Copy read policy default. Use when the policy will be modified for use in a specific command.
 	 */
 	public final Policy copyReadPolicyDefault() {
 		return new Policy(readPolicyDefault);
 	}
 
 	/**
-	 * Copy write policy default to avoid problems if this shared instance is later modified.
+	 * Return write policy default. Use when the policy will not be modified.
 	 */
 	public final WritePolicy getWritePolicyDefault() {
-		return new WritePolicy(writePolicyDefault);
+		return writePolicyDefault;
 	}
 
 	/**
-	 * Copy write policy default.
+	 * Copy write policy default. Use when the policy will be modified for use in a specific command.
 	 */
 	public final WritePolicy copyWritePolicyDefault() {
 		return new WritePolicy(writePolicyDefault);
 	}
 
 	/**
-	 * Copy scan policy default to avoid problems if this shared instance is later modified.
+	 * Return scan policy default. Use when the policy will not be modified.
 	 */
 	public final ScanPolicy getScanPolicyDefault() {
-		return new ScanPolicy(scanPolicyDefault);
+		return scanPolicyDefault;
 	}
 
 	/**
-	 * Copy scan policy default.
+	 * Copy scan policy default. Use when the policy will be modified for use in a specific command.
 	 */
 	public final ScanPolicy copyScanPolicyDefault() {
 		return new ScanPolicy(scanPolicyDefault);
 	}
 
 	/**
-	 * Copy query policy default to avoid problems if this shared instance is later modified.
+	 * Return query policy default. Use when the policy will not be modified.
 	 */
 	public final QueryPolicy getQueryPolicyDefault() {
-		return new QueryPolicy(queryPolicyDefault);
+		return queryPolicyDefault;
 	}
 
 	/**
-	 * Copy query policy default.
+	 * Copy query policy default. Use when the policy will be modified for use in a specific command.
 	 */
 	public final QueryPolicy copyQueryPolicyDefault() {
 		return new QueryPolicy(queryPolicyDefault);
 	}
 
 	/**
-	 * Copy batch header read policy default to avoid problems if this shared instance is later modified.
+	 * Return batch header read policy default. Use when the policy will not be modified.
 	 */
 	public final BatchPolicy getBatchPolicyDefault() {
-		return new BatchPolicy(batchPolicyDefault);
+		return batchPolicyDefault;
 	}
 
 	/**
-	 * Copy batch header read policy default.
+	 * Copy batch header read policy default. Use when the policy will be modified for use in a
+	 * specific command.
 	 */
 	public final BatchPolicy copyBatchPolicyDefault() {
 		return new BatchPolicy(batchPolicyDefault);
 	}
 
 	/**
-	 * Copy batch header write policy default to avoid problems if this shared instance is later modified.
+	 * Return batch header write policy default. Use when the policy will not be modified.
 	 */
 	public final BatchPolicy getBatchParentPolicyWriteDefault() {
-		return new BatchPolicy(batchParentPolicyWriteDefault);
+		return batchParentPolicyWriteDefault;
 	}
 
 	/**
-	 * Copy batch header write policy default.
+	 * Copy batch header write policy default. Use when the policy will be modified for use in a
+	 * specific command.
 	 */
 	public final BatchPolicy copyBatchParentPolicyWriteDefault() {
 		return new BatchPolicy(batchParentPolicyWriteDefault);
 	}
 
 	/**
-	 * Copy batch detail write policy default to avoid problems if this shared instance is later modified.
+	 * Return batch detail write policy default. Use when the policy will not be modified.
 	 */
 	public final BatchWritePolicy getBatchWritePolicyDefault() {
-		return new BatchWritePolicy(batchWritePolicyDefault);
+		return batchWritePolicyDefault;
 	}
 
 	/**
-	 * Copy batch detail write policy default.
+	 * Copy batch detail write policy default. Use when the policy will be modified for use in a
+	 * specific command.
 	 */
 	public final BatchWritePolicy copyBatchWritePolicyDefault() {
 		return new BatchWritePolicy(batchWritePolicyDefault);
 	}
 
 	/**
-	 * Copy batch detail delete policy default to avoid problems if this shared instance is later modified.
+	 * Return batch detail delete policy default. Use when the policy will not be modified.
 	 */
 	public final BatchDeletePolicy getBatchDeletePolicyDefault() {
-		return new BatchDeletePolicy(batchDeletePolicyDefault);
+		return batchDeletePolicyDefault;
 	}
 
 	/**
-	 * Copy batch detail delete policy default.
+	 * Copy batch detail delete policy default. Use when the policy will be modified for use in a
+	 * specific command.
 	 */
 	public final BatchDeletePolicy copyBatchDeletePolicyDefault() {
 		return new BatchDeletePolicy(batchDeletePolicyDefault);
 	}
 
 	/**
-	 * Copy batch detail UDF policy default to avoid problems if this shared instance is later modified.
+	 * Return batch detail UDF policy default. Use when the policy will not be modified.
 	 */
 	public final BatchUDFPolicy getBatchUDFPolicyDefault() {
-		return new BatchUDFPolicy(batchUDFPolicyDefault);
+		return batchUDFPolicyDefault;
 	}
 
 	/**
-	 * Copy batch detail UDF policy default.
+	 * Copy batch detail UDF policy default. Use when the policy will be modified for use in a
+	 * specific command.
 	 */
 	public final BatchUDFPolicy copyBatchUDFPolicyDefault() {
 		return new BatchUDFPolicy(batchUDFPolicyDefault);
 	}
 
 	/**
-	 * Copy info command policy default to avoid problems if this shared instance is later modified.
+	 * Return info command policy default. Use when the policy will not be modified.
 	 */
 	public final InfoPolicy getInfoPolicyDefault() {
-		return new InfoPolicy(infoPolicyDefault);
+		return infoPolicyDefault;
 	}
 
 	/**
-	 * Copy info command policy default.
+	 * Copy info command policy default. Use when the policy will be modified for use in a
+	 * specific command.
 	 */
 	public final InfoPolicy copyInfoPolicyDefault() {
 		return new InfoPolicy(infoPolicyDefault);
 	}
 
 	/**
-	 * Copy MRT record version verify policy default.
+	 * Return transaction record version verify policy default. Use when the policy will not be modified.
+	 */
+	public final TxnVerifyPolicy getTxnVerifyPolicyDefault() {
+		return txnVerifyPolicyDefault;
+	}
+
+	/**
+	 * Copy transaction record version verify policy default. Use when the policy will be modified for use
+	 * in a specific command.
 	 */
 	public final TxnVerifyPolicy copyTxnVerifyPolicyDefault() {
 		return new TxnVerifyPolicy(txnVerifyPolicyDefault);
 	}
 
 	/**
-	 * Copy MRT roll forward/back policy default.
+	 * Return transaction roll forward/back policy default. Use when the policy will not be modified.
+	 */
+	public final TxnRollPolicy getTxnRollPolicyDefault() {
+		return txnRollPolicyDefault;
+	}
+
+	/**
+	 * Copy transaction roll forward/back policy default. Use when the policy will be modified for use
+	 * in a specific command.
 	 */
 	public final TxnRollPolicy copyTxnRollPolicyDefault() {
 		return new TxnRollPolicy(txnRollPolicyDefault);
@@ -616,17 +638,17 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	}
 
 	//-------------------------------------------------------
-	// Multi-Record Transactions
+	// Transaction
 	//-------------------------------------------------------
 
 	/**
-	 * Attempt to commit the given multi-record transaction. First, the expected record versions are
+	 * Attempt to commit the given transaction. First, the expected record versions are
 	 * sent to the server nodes for verification. If all nodes return success, the transaction is
 	 * committed. Otherwise, the transaction is aborted.
 	 * <p>
 	 * Requires server version 8.0+
 	 *
-	 * @param txn	multi-record transaction
+	 * @param txn	transaction
 	 * @return		status of the commit on success
 	 * @throws AerospikeException.Commit	if verify commit fails
 	 */
@@ -648,12 +670,12 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 				return CommitStatus.ALREADY_COMMITTED;
 
 			case ABORTED:
-				return CommitStatus.ALREADY_ABORTED;
+				throw new AerospikeException(ResultCode.TXN_ALREADY_ABORTED, "Transaction already aborted");
 		}
 	}
 
 	/**
-	 * Asynchronously attempt to commit the given multi-record transaction. First, the expected
+	 * Asynchronously attempt to commit the given transaction. First, the expected
 	 * record versions are sent to the server nodes for verification. If all nodes return success,
 	 * the transaction is committed. Otherwise, the transaction is aborted.
 	 * <p>
@@ -665,7 +687,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * @param eventLoop		event loop that will process the command. If NULL, the event
 	 * 						loop will be chosen by round-robin.
 	 * @param listener		where to send results
-	 * @param txn			multi-record transaction
+	 * @param txn			transaction
 	 * @throws AerospikeException	if event loop registration fails
 	 */
 	public final void commit(EventLoop eventLoop, CommitListener listener, Txn txn)
@@ -693,17 +715,16 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 				break;
 
 			case ABORTED:
-				listener.onSuccess(CommitStatus.ALREADY_ABORTED);
-				break;
+				throw new AerospikeException(ResultCode.TXN_ALREADY_ABORTED, "Transaction already aborted");
 		}
 	}
 
 	/**
-	 * Abort and rollback the given multi-record transaction.
+	 * Abort and rollback the given transaction.
 	 * <p>
 	 * Requires server version 8.0+
 	 *
-	 * @param txn	multi-record transaction
+	 * @param txn	transaction
 	 * @return		status of the abort
 	 */
 	public final AbortStatus abort(Txn txn) {
@@ -716,7 +737,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 				return tr.abort(txnRollPolicyDefault);
 
 			case COMMITTED:
-				return AbortStatus.ALREADY_COMMITTED;
+				throw new AerospikeException(ResultCode.TXN_ALREADY_COMMITTED, "Transaction already committed");
 
 			case ABORTED:
 				return AbortStatus.ALREADY_ABORTED;
@@ -724,7 +745,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	}
 
 	/**
-	 * Asynchronously abort and rollback the given multi-record transaction.
+	 * Asynchronously abort and rollback the given transaction.
 	 * <p>
 	 * This method registers the command with an event loop and returns.
 	 * The event loop thread will process the command and send the results to the listener.
@@ -734,7 +755,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * @param eventLoop		event loop that will process the command. If NULL, the event
 	 * 						loop will be chosen by round-robin.
 	 * @param listener		where to send results
-	 * @param txn			multi-record transaction
+	 * @param txn			transaction
 	 * @throws AerospikeException	if event loop registration fails
 	 */
 	public final void abort(EventLoop eventLoop, AbortListener listener, Txn txn)
@@ -753,8 +774,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 				break;
 
 			case COMMITTED:
-				listener.onSuccess(AbortStatus.ALREADY_COMMITTED);
-				break;
+				throw new AerospikeException(ResultCode.TXN_ALREADY_COMMITTED, "Transaction already committed");
 
 			case ABORTED:
 				listener.onSuccess(AbortStatus.ALREADY_ABORTED);
@@ -1313,7 +1333,8 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 
 	/**
 	 * Reset record's time to expiration using the policy's expiration.
-	 * Fail if the record does not exist.
+	 * If the record does not exist, it can't be created because the server deletes empty records.
+	 * Throw an exception if the record does not exist.
 	 *
 	 * @param policy				write configuration parameters, pass in null for defaults
 	 * @param key					unique record identifier
@@ -1329,12 +1350,14 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			TxnMonitor.addKey(cluster, policy, key);
 		}
 
-		TouchCommand command = new TouchCommand(cluster, policy, key);
+		TouchCommand command = new TouchCommand(cluster, policy, key, true);
 		command.execute();
 	}
 
 	/**
 	 * Asynchronously reset record's time to expiration using the policy's expiration.
+	 * If the record does not exist, it can't be created because the server deletes empty records.
+	 * <p>
 	 * This method registers the command with an event loop and returns.
 	 * The event loop thread will process the command and send the results to the listener.
 	 * <p>
@@ -1348,6 +1371,61 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * @throws AerospikeException	if event loop registration fails
 	 */
 	public final void touch(EventLoop eventLoop, WriteListener listener, WritePolicy policy, Key key)
+		throws AerospikeException {
+		if (eventLoop == null) {
+			eventLoop = cluster.eventLoops.next();
+		}
+
+		if (policy == null) {
+			policy = writePolicyDefault;
+		}
+
+		AsyncTouch command = new AsyncTouch(cluster, listener, policy, key);
+		AsyncTxnMonitor.execute(eventLoop, cluster, policy, command);
+	}
+
+	/**
+	 * Reset record's time to expiration using the policy's expiration.
+	 * If the record does not exist, it can't be created because the server deletes empty records.
+	 * Return true if the record exists and is touched. Return false if the record does not exist.
+	 *
+	 * @param policy				write configuration parameters, pass in null for defaults
+	 * @param key					unique record identifier
+	 * @throws AerospikeException	if touch fails
+	 */
+	public final boolean touched(WritePolicy policy, Key key)
+		throws AerospikeException {
+		if (policy == null) {
+			policy = writePolicyDefault;
+		}
+
+		if (policy.txn != null) {
+			TxnMonitor.addKey(cluster, policy, key);
+		}
+
+		TouchCommand command = new TouchCommand(cluster, policy, key, false);
+		command.execute();
+		return command.getTouched();
+	}
+
+	/**
+	 * Asynchronously reset record's time to expiration using the policy's expiration.
+	 * If the record does not exist, it can't be created because the server deletes empty records.
+	 * <p>
+	 * This method registers the command with an event loop and returns.
+	 * The event loop thread will process the command and send the results to the listener.
+	 * <p>
+	 * If the record does not exist, send a value of false to
+	 * {@link com.aerospike.client.listener.ExistsListener#onSuccess(Key, boolean)}
+	 *
+	 * @param eventLoop				event loop that will process the command. If NULL, the event
+	 * 								loop will be chosen by round-robin.
+	 * @param listener				where to send results, pass in null for fire and forget
+	 * @param policy				write configuration parameters, pass in null for defaults
+	 * @param key					unique record identifier
+	 * @throws AerospikeException	if event loop registration fails
+	 */
+	public final void touched(EventLoop eventLoop, ExistsListener listener, WritePolicy policy, Key key)
 		throws AerospikeException {
 		if (eventLoop == null) {
 			eventLoop = cluster.eventLoops.next();
