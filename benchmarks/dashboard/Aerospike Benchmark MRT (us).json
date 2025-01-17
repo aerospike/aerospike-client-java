@@ -1954,8 +1954,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "light-yellow",
-                    "value": null
+                    "color": "light-yellow"
                   }
                 ]
               },
@@ -2040,8 +2039,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "blue",
-                    "value": null
+                    "color": "blue"
                   }
                 ]
               },
@@ -2126,8 +2124,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "blue",
-                    "value": null
+                    "color": "blue"
                   }
                 ]
               },
@@ -2217,8 +2214,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "blue",
-                    "value": null
+                    "color": "blue"
                   }
                 ]
               },
@@ -2304,8 +2300,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "blue",
-                    "value": null
+                    "color": "blue"
                   }
                 ]
               },
@@ -2395,8 +2390,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "blue",
-                    "value": null
+                    "color": "blue"
                   }
                 ]
               },
@@ -2482,8 +2476,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "blue",
-                    "value": null
+                    "color": "blue"
                   }
                 ]
               },
@@ -3189,8 +3182,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   }
                 ]
               },
@@ -3261,8 +3253,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   }
                 ]
               },
@@ -3333,8 +3324,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   }
                 ]
               },
@@ -3405,8 +3395,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "light-purple",
-                    "value": null
+                    "color": "light-purple"
                   },
                   {
                     "color": "super-light-yellow",
@@ -3500,8 +3489,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   }
                 ]
               },
@@ -3573,8 +3561,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   }
                 ]
               },
@@ -3646,8 +3633,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   }
                 ]
               },
@@ -3719,8 +3705,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   }
                 ]
               },
@@ -3805,8 +3790,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   }
                 ]
               },
@@ -3876,8 +3860,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   }
                 ]
               },
@@ -3946,8 +3929,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   }
                 ]
               },
@@ -4016,8 +3998,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   }
                 ]
               },
@@ -4086,8 +4067,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   }
                 ]
               },
@@ -4171,8 +4151,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   }
                 ]
               },
@@ -4259,8 +4238,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   }
                 ]
               },
@@ -4347,8 +4325,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   }
                 ]
               },
@@ -4435,8 +4412,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   }
                 ]
               },
@@ -4523,8 +4499,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   }
                 ]
               },
@@ -5855,8 +5830,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   }
                 ]
               },
@@ -5868,7 +5842,7 @@
             "h": 9,
             "w": 12,
             "x": 0,
-            "y": 97
+            "y": 118
           },
           "id": 50,
           "options": {
@@ -5923,8 +5897,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   },
                   {
                     "color": "#EAB839",
@@ -5948,7 +5921,7 @@
             "h": 9,
             "w": 12,
             "x": 12,
-            "y": 97
+            "y": 118
           },
           "id": 100,
           "options": {
@@ -6091,32 +6064,7 @@
           },
           "unit": "locale"
         },
-        "overrides": [
-          {
-            "__systemRef": "hideSeriesFrom",
-            "matcher": {
-              "id": "byNames",
-              "options": {
-                "mode": "exclude",
-                "names": [
-                  "write - AerospikeException: Error 120,1,0,30000,1000,0,2886905505 172.18.174.161 3000: MRT record blocked by a different transaction"
-                ],
-                "prefix": "All except:",
-                "readOnly": true
-              }
-            },
-            "properties": [
-              {
-                "id": "custom.hideFrom",
-                "value": {
-                  "legend": false,
-                  "tooltip": false,
-                  "viz": true
-                }
-              }
-            ]
-          }
-        ]
+        "overrides": []
       },
       "gridPos": {
         "h": 11,
@@ -6413,7 +6361,7 @@
             "h": 11,
             "w": 24,
             "x": 0,
-            "y": 104
+            "y": 89
           },
           "id": 107,
           "options": {
@@ -6508,7 +6456,7 @@
             "h": 10,
             "w": 24,
             "x": 0,
-            "y": 115
+            "y": 100
           },
           "id": 112,
           "options": {
@@ -6624,7 +6572,7 @@
       "type": "row"
     }
   ],
-  "refresh": "30m",
+  "refresh": "5s",
   "schemaVersion": 40,
   "tags": [
     "aerospike",
@@ -6736,13 +6684,13 @@
     ]
   },
   "time": {
-    "from": "2025-01-17T00:10:23.494Z",
-    "to": "2025-01-17T00:20:59.753Z"
+    "from": "now-5m",
+    "to": "now"
   },
   "timepicker": {},
   "timezone": "browser",
   "title": "Aerospike Benchmark MRT (us)",
   "uid": "be423cq6i5dz4a",
-  "version": 6,
+  "version": 10,
   "weekStart": ""
 }

@@ -3202,7 +3202,7 @@
             "h": 6,
             "w": 3,
             "x": 0,
-            "y": 94
+            "y": 115
           },
           "id": 89,
           "options": {
@@ -3274,7 +3274,7 @@
             "h": 6,
             "w": 3,
             "x": 3,
-            "y": 94
+            "y": 115
           },
           "id": 90,
           "options": {
@@ -3346,7 +3346,7 @@
             "h": 6,
             "w": 3,
             "x": 6,
-            "y": 94
+            "y": 115
           },
           "id": 91,
           "options": {
@@ -3438,7 +3438,7 @@
             "h": 6,
             "w": 3,
             "x": 9,
-            "y": 94
+            "y": 115
           },
           "id": 96,
           "options": {
@@ -3513,7 +3513,7 @@
             "h": 6,
             "w": 3,
             "x": 12,
-            "y": 94
+            "y": 115
           },
           "id": 93,
           "options": {
@@ -3586,7 +3586,7 @@
             "h": 6,
             "w": 3,
             "x": 15,
-            "y": 94
+            "y": 115
           },
           "id": 94,
           "options": {
@@ -3659,7 +3659,7 @@
             "h": 6,
             "w": 3,
             "x": 18,
-            "y": 94
+            "y": 115
           },
           "id": 95,
           "options": {
@@ -3732,7 +3732,7 @@
             "h": 6,
             "w": 3,
             "x": 21,
-            "y": 94
+            "y": 115
           },
           "id": 109,
           "options": {
@@ -4184,7 +4184,7 @@
             "h": 4,
             "w": 24,
             "x": 0,
-            "y": 111
+            "y": 132
           },
           "id": 82,
           "options": {
@@ -4272,7 +4272,7 @@
             "h": 4,
             "w": 24,
             "x": 0,
-            "y": 115
+            "y": 136
           },
           "id": 84,
           "options": {
@@ -4360,7 +4360,7 @@
             "h": 4,
             "w": 24,
             "x": 0,
-            "y": 119
+            "y": 140
           },
           "id": 86,
           "options": {
@@ -4448,7 +4448,7 @@
             "h": 4,
             "w": 24,
             "x": 0,
-            "y": 123
+            "y": 144
           },
           "id": 85,
           "options": {
@@ -4536,7 +4536,7 @@
             "h": 4,
             "w": 24,
             "x": 0,
-            "y": 127
+            "y": 148
           },
           "id": 87,
           "options": {
@@ -6091,32 +6091,7 @@
           },
           "unit": "locale"
         },
-        "overrides": [
-          {
-            "__systemRef": "hideSeriesFrom",
-            "matcher": {
-              "id": "byNames",
-              "options": {
-                "mode": "exclude",
-                "names": [
-                  "write - AerospikeException: Error 120,1,0,30000,1000,0,2886905505 172.18.174.161 3000: MRT record blocked by a different transaction"
-                ],
-                "prefix": "All except:",
-                "readOnly": true
-              }
-            },
-            "properties": [
-              {
-                "id": "custom.hideFrom",
-                "value": {
-                  "legend": false,
-                  "tooltip": false,
-                  "viz": true
-                }
-              }
-            ]
-          }
-        ]
+        "overrides": []
       },
       "gridPos": {
         "h": 11,
@@ -6413,7 +6388,7 @@
             "h": 11,
             "w": 24,
             "x": 0,
-            "y": 171
+            "y": 89
           },
           "id": 107,
           "options": {
@@ -6508,7 +6483,7 @@
             "h": 10,
             "w": 24,
             "x": 0,
-            "y": 182
+            "y": 100
           },
           "id": 112,
           "options": {
@@ -6743,6 +6718,6 @@
   "timezone": "browser",
   "title": "Aerospike Benchmark MRT (ms)",
   "uid": "be423cq6i5dz4a",
-  "version": 7,
+  "version": 8,
   "weekStart": ""
 }
