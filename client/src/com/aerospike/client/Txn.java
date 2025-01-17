@@ -123,6 +123,39 @@ public final class Txn {
 	}
 
 	/**
+	 * Verify current MRT state and namespace for a future read command.
+	 */
+	void prepareRead(String ns) {
+		verifyCommand();
+		setNamespace(ns);
+	}
+
+	/**
+	 * Verify current MRT state and namespaces for a future batch read command.
+	 */
+	void prepareRead(Key[] keys) {
+		verifyCommand();
+		setNamespace(keys);
+	}
+
+	/**
+	 * Verify current MRT state and namespaces for a future batch read command.
+	 */
+	void prepareRead(List<BatchRead> records) {
+		verifyCommand();
+		setNamespace(records);
+	}
+
+	/**
+	 * Verify that the MRT state allows future commands.
+	 */
+	public void verifyCommand() {
+		if (state != Txn.State.OPEN) {
+			throw new AerospikeException("Command not allowed in current MRT state: " + state);
+		}
+	}
+
+	/**
 	 * Process the results of a record read. For internal use only.
 	 */
 	public void onRead(Key key, Long version) {
@@ -193,7 +226,7 @@ public final class Txn {
 	 * Set MRT namespaces for each key only if doesn't already exist.
 	 * If namespace already exists, verify new namespace is the same.
 	 */
-	public void setNamespace(Key[] keys) {
+	private void setNamespace(Key[] keys) {
 		for (Key key : keys) {
 			setNamespace(key.namespace);
 		}
@@ -203,7 +236,7 @@ public final class Txn {
 	 * Set MRT namespaces for each key only if doesn't already exist.
 	 * If namespace already exists, verify new namespace is the same.
 	 */
-	public void setNamespace(List<BatchRead> records) {
+	private void setNamespace(List<BatchRead> records) {
 		for (BatchRead br : records) {
 			setNamespace(br.key.namespace);
 		}
