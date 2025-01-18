@@ -43,7 +43,7 @@
     <jbcrypt.version>0.4</jbcrypt.version>
     <commons-cli.version>1.9.0</commons-cli.version>
     <junit.version>4.13.1</junit.version>
-    <crypto.type></crypto.type>
+    <crypto.type/>
   </properties>
 
   <dependencyManagement>
@@ -78,7 +78,7 @@
         <groupId>io.netty.incubator</groupId>
         <artifactId>netty-incubator-transport-native-io_uring</artifactId>
         <classifier>linux-x86_64</classifier>
-        <version>0.0.25.Final</version>
+        <version>0.0.26.Final</version>
       </dependency>
 
       <dependency>
