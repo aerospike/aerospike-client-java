@@ -455,9 +455,10 @@ public class Node implements Closeable {
 						// Create new node.
 						Node node = cluster.createNode(nv);
 						peers.nodes.put(nv.name, node);
-						nodeValidated = true;							
+						nodeValidated = true;
 
 						if (peer.replaceNode != null) {
+							Log.info("Replace node: " + peer.replaceNode);
 							peers.removeList.add(peer.replaceNode);
 						}
 						break;
@@ -499,9 +500,11 @@ public class Node implements Closeable {
 				node.referenceCount++;
 				return true;
 			}
-			
+			Log.info("Peer node has failures: " + node);
+
 			// Match peer hosts with the node host.
 			for (Host h : peer.hosts) {
+				Log.info("Compare peer host '" + h + "' to node host '" + node.host + "'");
 				if (h.equals(node.host)) {
 					// Main node host is also the same as one of the peer hosts.
 					// Peer should not be added.

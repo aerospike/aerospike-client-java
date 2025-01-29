@@ -751,12 +751,13 @@ public class Cluster implements Runnable, Closeable {
 	}
 
 	private final void findNodesToRemove(Peers peers) {
-		int refreshCount = peers.refreshCount;	
+		int refreshCount = peers.refreshCount;
 		ArrayList<Node> removeList = peers.removeList;
 
 		for (Node node : nodes) {
 			if (! node.isActive()) {
 				// Inactive nodes must be removed.
+				Log.info("Remove inactive node: " + node);
 				removeList.add(node);
 				continue;
 			}
@@ -765,6 +766,7 @@ public class Cluster implements Runnable, Closeable {
 				// All node info requests failed and this node had 5 consecutive failures.
 				// Remove node.  If no nodes are left, seeds will be tried in next cluster
 				// tend iteration.
+				Log.info("Remove 5 failure node: " + node);
 				removeList.add(node);
 				continue;
 			}
@@ -777,11 +779,13 @@ public class Cluster implements Runnable, Closeable {
 					if (! findNodeInPartitionMap(node)) {
 						// Node doesn't have any partitions mapped to it.
 						// There is no point in keeping it in the cluster.
+						Log.info("Remove unmapped node: " + node);
 						removeList.add(node);
 					}
 				}
 				else {
 					// Node not responding. Remove it.
+					Log.info("Remove non-responding node: " + node);
 					removeList.add(node);
 				}
 			}
@@ -906,6 +910,7 @@ public class Cluster implements Runnable, Closeable {
 		// Since nodes are only marked for deletion using node references in the nodes array,
 		// and the tend thread is the only thread modifying nodes, we are guaranteed that nodes
 		// in nodesToRemove exist.  Therefore, we know the final array size.
+		Log.info("Remove nodes. nodes.length: " + nodes.length + " nodesToRemove: " + nodesToRemove.size());
 		Node[] nodeArray = new Node[nodes.length - nodesToRemove.size()];
 		int count = 0;
 
@@ -917,6 +922,7 @@ public class Cluster implements Runnable, Closeable {
 				}
 			}
 			else {
+				Log.info("Retain node: " + node);
 				nodeArray[count++] = node;
 			}
 		}
