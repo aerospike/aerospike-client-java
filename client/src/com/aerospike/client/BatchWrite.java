@@ -21,6 +21,9 @@ import com.aerospike.client.command.Command;
 import com.aerospike.client.policy.BatchWritePolicy;
 import com.aerospike.client.policy.Policy;
 
+import java.util.Arrays;
+import java.util.Objects;
+
 /**
  * Batch key and read/write operations with write policy.
  */
@@ -44,7 +47,7 @@ public final class BatchWrite extends BatchRecord {
 	 */
 	public BatchWrite(Key key, Operation[] ops) {
 		super(key, true);
-		this.ops = ops;
+		this.ops = Arrays.stream(ops).filter(Objects::nonNull).toArray(Operation[]::new);
 		this.policy = null;
 	}
 
@@ -57,7 +60,7 @@ public final class BatchWrite extends BatchRecord {
 	 */
 	public BatchWrite(BatchWritePolicy policy, Key key, Operation[] ops) {
 		super(key, true);
-		this.ops = ops;
+		this.ops = Arrays.stream(ops).filter(Objects::nonNull).toArray(Operation[]::new);
 		this.policy = policy;
 	}
 
