@@ -21,6 +21,9 @@ import com.aerospike.client.command.Command;
 import com.aerospike.client.policy.BatchReadPolicy;
 import com.aerospike.client.policy.Policy;
 
+import java.util.Arrays;
+import java.util.Objects;
+
 /**
  * Batch key and read only operations with default policy.
  * Used in batch read commands where different bins are needed for each key.
@@ -80,7 +83,7 @@ public final class BatchRead extends BatchRecord {
 		super(key, false);
 		this.policy = null;
 		this.binNames = null;
-		this.ops = ops;
+		this.ops = Arrays.stream(ops).filter(Objects::nonNull).toArray(Operation[]::new);
 		this.readAllBins = false;
 	}
 
@@ -113,7 +116,7 @@ public final class BatchRead extends BatchRecord {
 		super(key, false);
 		this.policy = policy;
 		this.binNames = null;
-		this.ops = ops;
+		this.ops = Arrays.stream(ops).filter(Objects::nonNull).toArray(Operation[]::new);
 		this.readAllBins = false;
 	}
 
