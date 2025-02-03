@@ -501,11 +501,9 @@ public class Node implements Closeable {
 				node.referenceCount++;
 				return true;
 			}
-			Log.info("Peer node has failures: " + node);
 
 			// Match peer hosts with the node host.
 			for (Host h : peer.hosts) {
-				Log.info("Compare peer host '" + h + "' to node host '" + node.host + "'");
 				if (h.port == node.host.port) {
 					// Check for IP address (node.host.name is an IP address) or hostname if it exists.
 					if (h.name.equals(node.host.name) || (node.hostname != null && h.name.equals(node.hostname))) {
