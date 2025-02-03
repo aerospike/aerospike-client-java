@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2024 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -20,6 +20,7 @@ import java.io.Closeable;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -66,10 +67,6 @@ public class Cluster implements Runnable, Closeable {
 
 	// Initial host nodes specified by user.
 	private volatile Host[] seeds;
-
-	// All host aliases for all nodes in cluster.
-	// Only accessed within cluster tend thread.
-	protected final HashMap<Host,Node> aliases;
 
 	// Map of active nodes in cluster.
 	// Only accessed within cluster tend thread.
@@ -314,7 +311,6 @@ public class Cluster implements Runnable, Closeable {
 			rackIds = new int[] {policy.rackId};
 		}
 
-		aliases = new HashMap<Host,Node>();
 		nodesMap = new HashMap<String,Node>();
 		nodes = new Node[0];
 		partitionMap = new HashMap<String,Partitions>();
@@ -560,8 +556,8 @@ public class Cluster implements Runnable, Closeable {
 				findNodesToRemove(peers);
 
 				// Remove nodes in a batch.
-				if (peers.removeList.size() > 0) {
-					removeNodes(peers.removeList);
+				if (peers.removeNodes.size() > 0) {
+					removeNodes(peers.removeNodes);
 				}
 			}
 
@@ -751,13 +747,13 @@ public class Cluster implements Runnable, Closeable {
 	}
 
 	private final void findNodesToRemove(Peers peers) {
-		int refreshCount = peers.refreshCount;	
-		ArrayList<Node> removeList = peers.removeList;
+		int refreshCount = peers.refreshCount;
+		HashSet<Node> removeNodes = peers.removeNodes;
 
 		for (Node node : nodes) {
 			if (! node.isActive()) {
 				// Inactive nodes must be removed.
-				removeList.add(node);
+				removeNodes.add(node);
 				continue;
 			}
 
@@ -765,7 +761,7 @@ public class Cluster implements Runnable, Closeable {
 				// All node info requests failed and this node had 5 consecutive failures.
 				// Remove node.  If no nodes are left, seeds will be tried in next cluster
 				// tend iteration.
-				removeList.add(node);
+				removeNodes.add(node);
 				continue;
 			}
 
@@ -777,12 +773,12 @@ public class Cluster implements Runnable, Closeable {
 					if (! findNodeInPartitionMap(node)) {
 						// Node doesn't have any partitions mapped to it.
 						// There is no point in keeping it in the cluster.
-						removeList.add(node);
+						removeNodes.add(node);
 					}
 				}
 				else {
 					// Node not responding. Remove it.
-					removeList.add(node);
+					removeNodes.add(node);
 				}
 			}
 		}
@@ -857,15 +853,9 @@ public class Cluster implements Runnable, Closeable {
 		}
 
 		nodesMap.put(node.getName(), node);
-
-		// Add node's aliases to global alias set.
-		// Aliases are only used in tend thread, so synchronization is not necessary.
-		for (Host alias : node.aliases) {
-			aliases.put(alias, node);
-		}
 	}
 
-	private final void removeNodes(List<Node> nodesToRemove) {
+	private final void removeNodes(HashSet<Node> nodesToRemove) {
 		// There is no need to delete nodes from partitionWriteMap because the nodes
 		// have already been set to inactive. Further connection requests will result
 		// in an exception and a different node will be tried.
@@ -874,13 +864,6 @@ public class Cluster implements Runnable, Closeable {
 		for (Node node : nodesToRemove) {
 			// Remove node from map.
 			nodesMap.remove(node.getName());
-
-			// Remove node's aliases from cluster alias set.
-			// Aliases are only used in tend thread, so synchronization is not necessary.
-			for (Host alias : node.aliases) {
-				// Log.debug("Remove alias " + alias);
-				aliases.remove(alias);
-			}
 
 			if (metricsEnabled) {
 				// Flush node metrics before removal.
@@ -901,7 +884,7 @@ public class Cluster implements Runnable, Closeable {
 	/**
 	 * Remove nodes using copy on write semantics.
 	 */
-	private final void removeNodesCopy(List<Node> nodesToRemove) {
+	private final void removeNodesCopy(HashSet<Node> nodesToRemove) {
 		// Create temporary nodes array.
 		// Since nodes are only marked for deletion using node references in the nodes array,
 		// and the tend thread is the only thread modifying nodes, we are guaranteed that nodes
@@ -911,7 +894,7 @@ public class Cluster implements Runnable, Closeable {
 
 		// Add nodes that are not in remove list.
 		for (Node node : nodes) {
-			if (findNode(node, nodesToRemove)) {
+			if (nodesToRemove.contains(node)) {
 				if (Log.infoEnabled()) {
 					Log.info("Remove node " + node);
 				}
@@ -935,15 +918,6 @@ public class Cluster implements Runnable, Closeable {
 
 		// Replace nodes with copy.
 		nodes = nodeArray;
-	}
-
-	private final static boolean findNode(Node search, List<Node> nodeList) {
-		for (Node node : nodeList) {
-			if (node.equals(search)) {
-				return true;
-			}
-		}
-		return false;
 	}
 
 	public final boolean isConnected() {
