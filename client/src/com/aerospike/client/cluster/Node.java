@@ -67,9 +67,9 @@ public class Node implements Closeable {
 
 	protected final Cluster cluster;
 	private final String name;
-	private final Host host;     // primary host with IP address name.
+	private String hostname; // Optional hostname.
+	private final Host host; // Host with IP address name.
 	protected final InetSocketAddress address;
-	private String peerHostname; // hostname provided by server peer.
 	private final Pool[] connectionPools;
 	private final AsyncPool[] asyncConnectionPools;
 	private Connection tendConnection;
@@ -508,7 +508,7 @@ public class Node implements Closeable {
 				Log.info("Compare peer host '" + h + "' to node host '" + node.host + "'");
 				if (h.port == node.host.port) {
 					// Check for IP address (node.host.name is an IP address) or hostname if it exists.
-					if (h.name.equals(node.host.name) || (node.peerHostname != null && h.name.equals(node.peerHostname))) {
+					if (h.name.equals(node.host.name) || (node.hostname != null && h.name.equals(node.hostname))) {
 						// Main node host is also the same as one of the peer hosts.
 						// Peer should not be added.
 						node.referenceCount++;
@@ -522,7 +522,7 @@ public class Node implements Closeable {
 						for (InetAddress address : addresses) {
 							if (address.equals(node.address.getAddress())) {
 								// Set peer hostname for faster future lookups.
-								node.peerHostname = h.name;
+								node.hostname = h.name;
 								node.referenceCount++;
 								return true;
 							}
