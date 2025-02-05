@@ -42,6 +42,7 @@ public final class TxnMonitor {
 
 	public static void addKey(Cluster cluster, WritePolicy policy, Key cmdKey) {
 		Txn txn = policy.txn;
+		txn.verifyCommand();
 
 		if (txn.getWrites().contains(cmdKey)) {
 			// Transaction monitor already contains this key.
@@ -66,7 +67,6 @@ public final class TxnMonitor {
 	}
 
 	public static Operation[] getTranOps(Txn txn, Key cmdKey) {
-		txn.verifyCommand();
 		txn.setNamespace(cmdKey.namespace);
 
 		if (txn.monitorExists()) {

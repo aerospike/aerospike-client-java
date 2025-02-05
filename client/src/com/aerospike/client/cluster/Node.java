@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2024 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -18,12 +18,12 @@ package com.aerospike.client.cluster;
 
 import java.io.Closeable;
 import java.io.IOException;
+import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.SocketTimeoutException;
 import java.nio.ByteBuffer;
 import java.util.ArrayDeque;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -67,8 +67,8 @@ public class Node implements Closeable {
 
 	protected final Cluster cluster;
 	private final String name;
-	private final Host host;
-	protected final List<Host> aliases;
+	private String hostname; // Optional hostname.
+	private final Host host; // Host with IP address name.
 	protected final InetSocketAddress address;
 	private final Pool[] connectionPools;
 	private final AsyncPool[] asyncConnectionPools;
@@ -104,7 +104,6 @@ public class Node implements Closeable {
 	public Node(Cluster cluster, NodeValidator nv) {
 		this.cluster = cluster;
 		this.name = nv.name;
-		this.aliases = nv.aliases;
 		this.host = nv.primaryHost;
 		this.address = nv.primaryAddress;
 		this.tendConnection = nv.primaryConn;
@@ -455,10 +454,13 @@ public class Node implements Closeable {
 						// Create new node.
 						Node node = cluster.createNode(nv);
 						peers.nodes.put(nv.name, node);
-						nodeValidated = true;							
+						nodeValidated = true;
 
 						if (peer.replaceNode != null) {
-							peers.removeList.add(peer.replaceNode);
+							if (Log.infoEnabled()) {
+								Log.info("Replace node: " + peer.replaceNode);
+							}
+							peers.removeNodes.add(peer.replaceNode);
 						}
 						break;
 					}
@@ -499,14 +501,37 @@ public class Node implements Closeable {
 				node.referenceCount++;
 				return true;
 			}
-			
+
 			// Match peer hosts with the node host.
 			for (Host h : peer.hosts) {
-				if (h.equals(node.host)) {
-					// Main node host is also the same as one of the peer hosts.
-					// Peer should not be added.
-					node.referenceCount++;
-					return true;
+				if (h.port == node.host.port) {
+					// Check for IP address (node.host.name is an IP address) or hostname if it exists.
+					if (h.name.equals(node.host.name) || (node.hostname != null && h.name.equals(node.hostname))) {
+						// Main node host is also the same as one of the peer hosts.
+						// Peer should not be added.
+						node.referenceCount++;
+						return true;
+					}
+
+					// Peer name might be a hostname. Get peer IP addresses and check with node IP address.
+					try {
+						InetAddress[] addresses = InetAddress.getAllByName(h.name);
+
+						for (InetAddress address : addresses) {
+							if (address.equals(node.address.getAddress()) ||
+								address.isLoopbackAddress()) {
+								// Set peer hostname for faster future lookups.
+								node.hostname = h.name;
+								node.referenceCount++;
+								return true;
+							}
+						}
+					}
+					catch (Throwable t) {
+						// Peer name is invalid. replaceNode may be set, but that node will
+						// not be replaced because NodeValidator will reject it.
+						Log.error("Invalid peer received by cluster tend: " + h.name);
+					}
 				}
 			}
 			peer.replaceNode = node;

@@ -43,6 +43,8 @@ public abstract class AsyncTxnMonitor {
 		}
 
 		Txn txn = policy.txn;
+		txn.verifyCommand();
+
 		Key cmdKey = command.key;
 
 		if (txn.getWrites().contains(cmdKey)) {
