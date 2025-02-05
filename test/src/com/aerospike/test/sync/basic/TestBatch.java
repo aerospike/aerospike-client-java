@@ -414,6 +414,8 @@ public class TestBatch extends TestSync {
 
 	@Test
 	public void batchReadTTL() {
+		org.junit.Assume.assumeTrue(args.hasTtl);
+
 		// WARNING: This test takes a long time to run due to sleeps.
 		// Define keys
 		Key key1 = new Key(args.namespace, args.set, 88888);
@@ -442,9 +444,9 @@ public class TestBatch extends TestSync {
 
 		boolean rv = client.operate(null, list);
 
-		assertTrue(rv);
 		assertEquals(ResultCode.OK, br1.resultCode);
 		assertEquals(ResultCode.OK, br2.resultCode);
+		assertTrue(rv);
 
 		// Read records again, but don't reset read ttl.
 		Util.sleep(3000);
@@ -468,6 +470,7 @@ public class TestBatch extends TestSync {
 		// Read  record after it expires, showing it's gone.
 		Util.sleep(8000);
 		rv = client.operate(null, list);
+
 		assertEquals(ResultCode.KEY_NOT_FOUND_ERROR, br1.resultCode);
 		assertEquals(ResultCode.KEY_NOT_FOUND_ERROR, br2.resultCode);
 		assertFalse(rv);

@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -34,7 +34,6 @@ import com.aerospike.client.util.Util;
 public final class NodeValidator {
 	Node fallback;
 	String name;
-	List<Host> aliases;
 	Host primaryHost;
 	InetSocketAddress primaryAddress;
 	Connection primaryConn;
@@ -49,7 +48,6 @@ public final class NodeValidator {
 	 */
 	public Node seedNode(Cluster cluster, Host host, Peers peers) throws Throwable {
 		name = null;
-		aliases = null;
 		primaryHost = null;
 		primaryAddress = null;
 		primaryConn = null;
@@ -63,11 +61,6 @@ public final class NodeValidator {
 		for (InetAddress address : addresses) {
 			try {
 				validateAddress(cluster, address, host.tlsName, host.port, true);
-
-				// Only add address alias when not set by load balancer detection logic.
-				if (this.aliases == null) {
-					setAliases(address, host.tlsName, host.port);
-				}
 
 				Node node = new Node(cluster, this);
 
@@ -144,7 +137,6 @@ public final class NodeValidator {
 		for (InetAddress address : addresses) {
 			try {
 				validateAddress(cluster, address, host.tlsName, host.port, false);
-				setAliases(address, host.tlsName, host.port);
 				return;
 			}
 			catch (Throwable e) {
@@ -399,7 +391,6 @@ public final class NodeValidator {
 							}
 
 							// Authenticated connection.  Set real host.
-							setAliases(address, tlsName, h.port);
 							this.primaryHost = new Host(address.getHostAddress(), tlsName, h.port);
 							this.primaryAddress = socketAddress;
 							this.primaryConn.close();
@@ -426,12 +417,6 @@ public final class NodeValidator {
 		if (Log.infoEnabled()) {
 			Log.info("Invalid address " + result + ". access-address is probably not configured on server.");
 		}
-	}
-
-	private void setAliases(InetAddress address, String tlsName, int port) {
-		// Add capacity for current address plus IPV6 address and hostname.
-		this.aliases = new ArrayList<Host>(3);
-		this.aliases.add(new Host(address.getHostAddress(), tlsName, port));
 	}
 
 	private static final class SwitchClear {
