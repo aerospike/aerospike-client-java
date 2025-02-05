@@ -518,7 +518,8 @@ public class Node implements Closeable {
 						InetAddress[] addresses = InetAddress.getAllByName(h.name);
 
 						for (InetAddress address : addresses) {
-							if (address.equals(node.address.getAddress())) {
+							if (address.equals(node.address.getAddress()) ||
+								address.isLoopbackAddress()) {
 								// Set peer hostname for faster future lookups.
 								node.hostname = h.name;
 								node.referenceCount++;
