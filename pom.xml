@@ -5,7 +5,7 @@
   <groupId>com.aerospike</groupId>
   <artifactId>aerospike-parent</artifactId>
   <name>aerospike-parent</name>
-  <version>8.1.4</version>
+  <version>8.1.5</version>
   <packaging>pom</packaging>
   <url>https://github.com/aerospike/aerospike-client-java</url>
 
