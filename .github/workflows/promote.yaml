@@ -17,9 +17,9 @@ on:
         description: Target build name
         default: clients-java-push-to-dev
     secrets:
-      SONATYPE_MAVEN_USER:
+      AEROSPIKE_SA_CICD_USERNAME:
         required: true
-      SONATYPE_MAVEN_PASSWORD:
+      AEROSPIKE_SA_CICD_PASSWORD:
         required: true
       CLIENT_BOT_PAT:
         required: true
@@ -173,5 +173,5 @@ jobs:
           target-repository: ${{ inputs.target-repository }}
           build-name-number: ${{ matrix.build-name-number }}
           artifact-version: ${{ matrix.artifact-version }}
-          publish-user: ${{ secrets.SONATYPE_USER }}
-          publish-password: ${{ secrets.SONATYPE_PASSWORD }}
+          publish-user: ${{ secrets.AEROSPIKE_SA_CICD_USERNAME }}
+          publish-password: ${{ secrets.AEROSPIKE_SA_CICD_PASSWORD }}

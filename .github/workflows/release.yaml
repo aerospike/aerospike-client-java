@@ -18,9 +18,9 @@ on:
         type: string
         required: true
     secrets:
-      GPG_SECRET_KEY_ORG:
+      AEROSPIKE_ECDSA_2025_001_PRIVATE_KEY:
         required: true
-      GPG_PASS_ORG:
+      AEROSPIKE_ECDSA_2025_001_PASS:
         required: true
       JFROG_OIDC_PROVIDER:
         required: true
@@ -44,7 +44,7 @@ jobs:
         with:
           distribution: "semeru"
           java-version: ${{ inputs.java-version }}
-          gpg-private-key: ${{ secrets.GPG_SECRET_KEY_ORG }}
+          gpg-private-key: ${{ secrets.AEROSPIKE_ECDSA_2025_001_PRIVATE_KEY }}
           gpg-passphrase: GPG_PASS
 
       - name: Get release or snapshot-version
@@ -72,7 +72,7 @@ jobs:
         shell: bash
         run: mvn clean source:jar javadoc:jar install -P gpg -P ${{ inputs.crypto-type }} # The crypto profile is usually set with set_crypto but since we need to toggle multiple prfiles set_crypto option is not being picked up
         env:
-          GPG_PASS: ${{ secrets.GPG_PASS_ORG }}
+          GPG_PASS: ${{ secrets.AEROSPIKE_ECDSA_2025_001_PASS }}
 
       - name: Get artifact name
         id: get-artifact-name
