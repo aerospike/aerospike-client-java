@@ -16,10 +16,15 @@ on:
         type: string
         description: Target build name
         default: clients-java-push-to-dev
+      source-branch:
+        type: string
+        required: false
+        default: dev/dev-ci-fixes-stage
+        description: Source branch to merge from
     secrets:
-      SONATYPE_MAVEN_USER:
+      AEROSPIKE_SA_CICD_USERNAME:
         required: true
-      SONATYPE_MAVEN_PASSWORD:
+      AEROSPIKE_SA_CICD_PASSWORD:
         required: true
       CLIENT_BOT_PAT:
         required: true
@@ -92,7 +97,7 @@ jobs:
 
           for BUILD_NAME in "${BUILD_NAMES[@]}"; do
             echo "Promoting '$BUILD_NAME'"
-            jf rt build-promote "$BUILD_NAME" ${{ inputs.build-number }} ${{ inputs.target-repository }}
+            jf rt build-promote --copy=true "$BUILD_NAME" ${{ inputs.build-number }} ${{ inputs.target-repository }}
           done
 
       - name: Get build name with build number
@@ -109,22 +114,23 @@ jobs:
       - name: Debug show 'build-name-numbers' and 'artifact-version'
         run: |
           echo "build-name-number: ${{ steps.get-build-name-number.outputs.build-name-number }}"
-          echo "artifact-version: ${{ steps.get-artifact-version.output.artifact-version }}"
+          echo "artifact-version: ${{ steps.get-artifact-version.outputs.artifact-version }}"
 
-      #- name: Generate release notes
-      #  id: get-release-notes
-      #  run: |
-      #    RELEASE_NOTES=$(git log $(git describe --tags --abbrev=0)..HEAD --pretty=format:"- %s")
-      #    echo "release_notes=$RELEASE_NOTES" >> $GITHUB_OUTPUT
+      - name: Generate release notes
+        id: get-release-notes
+        run: |
+          RELEASE_NOTES=$(git log $(git describe --tags --abbrev=0)..HEAD --pretty=format:"- %s")
+          echo "release_notes<<EOF" >> $GITHUB_OUTPUT
+          echo "${RELEASE_NOTES}" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
 
       - name: Debug print release notes
         run: |
-          echo "Changes for release ${{ steps.get-artifact-version.output.artifact-version }}"
-          echo "${{ steps.get_commits.outputs.release_notes }}"
+          echo "Changes for release ${{ steps.get-artifact-version.outputs.artifact-version }}"
 
       - name: Fast forward
         shell: bash
-        run: git merge --ff-only ${{ inputs.ref-to-merge }}
+        run: git merge --ff-only ${{ inputs.source-branch }}
 
       - name: Add tagging message
         uses: stefanzweifel/git-auto-commit-action@v4
@@ -138,7 +144,13 @@ jobs:
         shell: bash
         run: git push
 
-      #- name: Create Release
+      - name: Release debug
+        run: |
+          GIT_NOTES='${{ steps.get-release-notes.outputs.release_notes }}'
+          RELEASE_VERSION='${{steps.get-artifact-version.outputs.artifact-version }}'
+          echo "${RELEASE_VERSION}"
+          echo "${GIT_NOTES}"
+
       #  id: create_release
       #  uses: actions/create-release@v1
       #  env:
@@ -147,7 +159,7 @@ jobs:
       #    tag_name: Release ${{ steps.get-artifact-version.output.artifact-version }}
       #    body: |
       #      Changes for release ${{ steps.get-artifact-version.output.artifact-version }}
-      #      "${{ steps.get_commits.outputs.release_notes }}"
+      #      "${{ steps.get-release-notes.output.release_notes }}"
       #    draft: false
       #    prerelease: false
 
@@ -173,5 +185,5 @@ jobs:
           target-repository: ${{ inputs.target-repository }}
           build-name-number: ${{ matrix.build-name-number }}
           artifact-version: ${{ matrix.artifact-version }}
-          publish-user: ${{ secrets.SONATYPE_USER }}
-          publish-password: ${{ secrets.SONATYPE_PASSWORD }}
+          publish-user: ${{ secrets.AEROSPIKE_SA_CICD_USERNAME }}
+          publish-password: ${{ secrets.AEROSPIKE_SA_CICD_PASSWORD }}
