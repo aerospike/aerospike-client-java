@@ -1,0 +1,137 @@
+permissions:
+  # This is required for requesting the OIDC token
+  id-token: write
+
+on:
+  workflow_call:
+    inputs:
+      ref:
+        type: string
+        required: true
+      java-version:
+        type: string
+        required: true
+      crypto-type:
+        type: string
+        required: true
+      is-snapshot:
+        type: string
+        required: true
+    secrets:
+      GPG_SECRET_KEY_ORG:
+        required: true
+      GPG_PASS_ORG:
+        required: true
+      JFROG_OIDC_PROVIDER:
+        required: true
+      JFROG_OIDC_AUDIENCE:
+        required: true
+
+jobs:
+  build:
+    runs-on: ${{ vars.BUILD_CONTAINER_DISTRO_VERSION }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ inputs.ref }}
+
+      - name: Gpg debug step
+        shell: bash
+        run: |
+          gpg --version
+
+      # Java plugin will setup gpg but we are not using maven to deploy do JFrog.
+      # - jf mvn clean install on publish does not publish POM we would like to publish
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: "semeru"
+          java-version: ${{ inputs.java-version }}
+          gpg-private-key: ${{ secrets.GPG_SECRET_KEY_ORG }}
+          gpg-passphrase: GPG_PASS
+
+      - name: Get release or snapshot-version
+        id: get-release-version
+        shell: bash
+        run: |
+          IS_SNAPSHOT=${{ inputs.is-snapshot }}
+          if [ $IS_SNAPSHOT == 'true' ];then
+            echo release-version="$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)-SNAPSHOT_$GITHUB_SHA" >> $GITHUB_OUTPUT
+          else
+            echo release-version="$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)" >> $GITHUB_OUTPUT
+          fi
+
+      # Setting version based on release or snapshot. Snapshot version will have the commit sha appended to it.
+      - name: Set version
+        shell: bash
+        run: |
+          ./set_version ${{ steps.get-release-version.outputs.release-version }}
+
+      # Running build install with crypto profile. We are explicitly setting the crypto profile to ensure valid crypto is toggled.
+      - name: Build all modules
+        shell: bash
+        run: mvn clean install -P ${{ inputs.crypto-type }} # The crypto profile is usually set with set_crypto but since we need to toggle multiple profiles set_crypto option is not being picked up
+
+      # Creating docs, sources jars and installing them to local repo as well as siging them
+      - name: Stage artifacts for publish
+        working-directory: client
+        shell: bash
+        run: mvn clean source:jar javadoc:jar install -P ${{ inputs.crypto-type }} # The crypto profile is usually set with set_crypto but since we need to toggle multiple prfiles set_crypto option is not being picked up
+
+      - name: Get artifact name
+        id: get-artifact-name
+        working-directory: client
+        run: |
+          echo artifact-name=$(mvn help:evaluate -Dexpression=project.build.finalName -P ${{ inputs.crypto-type }} -q -DforceStdout) >> $GITHUB_OUTPUT
+
+      - name: Get artifact ID
+        id: get-artifact-id
+        working-directory: client
+        run: |
+          echo artifact-id="aerospike-client${{ inputs.crypto-type == 'bouncycastle' && '-bc' || '' }}-jdk${{ inputs.java-version }}" >> $GITHUB_OUTPUT
+
+      - name: Get artifact version
+        id: get-artifact-version
+        working-directory: client
+        run: |
+          echo artifact-version=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout) >> $GITHUB_OUTPUT
+
+      # Running deploy/install from using custom pom. This is needed since we need to stage/assemble a public facing release. The public facing release will NOT
+      # have the same pom as the pom that is used for builds and tests.
+      # If/when modifying the mvn deploy command be careful with types and classifiers. The order of the types and classifiers should match.
+      - name: Stage to local repo
+        working-directory: client
+        run: |
+          ls -la target
+          mkdir ${{ github.workspace }}/local_repo
+
+          mvn gpg:sign-and-deploy-file \
+            -DpomFile=deploy-resources/${{ inputs.crypto-type }}_pom.xml \
+            -DrepositoryId=local \
+            -Durl=file://${{ github.workspace }}/local_repo \
+            -Dfile=target/aerospike-client${{ inputs.crypto-type == 'bouncycastle' && '-bc' || '' }}-jdk${{ inputs.java-version == '1.8' && '8' || inputs.java-version }}-${{ steps.get-artifact-version.outputs.artifact-version }}.jar \
+            -DartifactId=aerospike-client${{ inputs.crypto-type == 'bouncycastle' && '-bc' || '' }}-jdk${{ inputs.java-version == '1.8' && '8' || inputs.java-version }} \
+            -Dversion=${{ steps.get-artifact-version.outputs.artifact-version }} \
+            -Dpackaging=jar \
+            -Dfiles=target/aerospike-client${{ inputs.crypto-type == 'bouncycastle' && '-bc' || '' }}-jdk${{ inputs.java-version == '1.8' && '8' || inputs.java-version }}-${{ steps.get-artifact-version.outputs.artifact-version }}-jar-with-dependencies.jar,target/aerospike-client${{ inputs.crypto-type == 'bouncycastle' && '-bc' || '' }}-jdk${{ inputs.java-version == '1.8' && '8' || inputs.java-version }}-${{ steps.get-artifact-version.outputs.artifact-version }}-sources.jar,target/aerospike-client${{ inputs.crypto-type == 'bouncycastle' && '-bc' || '' }}-jdk${{ inputs.java-version == '1.8' && '8' || inputs.java-version }}-${{ steps.get-artifact-version.outputs.artifact-version }}-javadoc.jar \
+            -Dclassifiers=jar-with-dependencies,sources,javadoc \
+            -Dtypes=jar,jar,jar \
+            -P gpg -P ${{ inputs.crypto-type }}
+
+          ls -laR ${{ github.workspace }}/local_repo
+        env:
+          GPG_PASS: ${{ secrets.GPG_PASS_ORG }}
+
+      # Publishing release to JFrog
+      - name: Publish to JFrog
+        uses: ./.github/actions/publish-to-jfrog
+        with:
+          crypto-type: ${{ inputs.crypto-type }}
+          oidc-provider: ${{ secrets.JFROG_OIDC_PROVIDER }}
+          oidc-audience: ${{ secrets.JFROG_OIDC_AUDIENCE }}
+          artifact-name: ${{ steps.get-artifact-name.outputs.artifact-name }}
+          artifact-id: ${{ steps.get-artifact-id.outputs.artifact-id }}
+          artifact-version: ${{ steps.get-artifact-version.outputs.artifact-version }}
+          package-install-location: ${{ github.workspace }}/local_repo

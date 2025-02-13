@@ -1,0 +1,114 @@
+name: Stage artifacts for release
+description: "Prepare aretifacts for publish to various portals"
+
+inputs:
+  jfrog-platform-url:
+    description: "JFrog platform URL"
+    required: false
+    default: https://aerospike.jfrog.io
+  oidc-provider:
+    description: "OIDC provider name"
+    required: true
+  oidc-audience:
+    description: "ODIC audience"
+    required: true
+  staging-folder:
+    description: "Staging folders. Input should be a JSON array of staging folders"
+    required: false
+    default: '["staging","github","sonatype"]'
+  target-repository:
+    description: "Target repository in JFROG"
+    required: false
+    default: clients-maven-stage-local # TODO update for production releases
+  build-name-number:
+    description: "Build name and number"
+    required: true
+  artifact-version:
+    description: "Artifact version"
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - name: Debug stage artifact to github
+      shell: bash
+      run: |
+        echo "${{ inputs.jfrog-platform-url }}"
+        echo "${{ inputs.artifact-id }}"
+        echo "${{ inputs.staging-folder }}"
+        echo "first element  ${{ fromJson(inputs.staging-folder)[0] }}"
+        echo "second element ${{ fromJson(inputs.staging-folder)[1] }}"
+        echo "third element  ${{ fromJson(inputs.staging-folder)[2] }}"
+        echo "${{ inputs.target-repository }}"
+        echo "${{ inputs.build-name-number }}"
+        echo "${{ inputs.artifact-version }}"
+
+    - name: Setup jfrog shell
+      uses: jfrog/setup-jfrog-cli@v4
+      env:
+        JF_URL: ${{ inputs.jfrog-platform-url }}
+      with:
+        oidc-provider-name: ${{ inputs.oidc-provider }}
+        oidc-audience: ${{ inputs.oidc-audience }}
+
+    - name: Get info
+      shell: bash
+      id: get-build-info
+      run: |
+        INPUT=${{ inputs.build-name-number }}
+
+        BUILD_NAME="${INPUT%/*}" # Getting the build name
+        BUILD_NUMBER="${INPUT#*/}" # Getting build number
+
+        BUILD_INFO=$(jf rt curl "/api/build/${BUILD_NAME}/${BUILD_NUMBER}" | jq -c ".")
+        echo build-info="${BUILD_INFO}" >> $GITHUB_OUTPUT
+
+    - name: Get build name
+      shell: bash
+      id: get-build-name
+      run: |
+        echo build-name=$(echo '${{ steps.get-build-info.outputs.build-info }}' | jq -r '.buildInfo.modules[].id | sub("/[0-9]+$"; "")') >> $GITHUB_OUTPUT
+
+    - name: Create staging folders
+      shell: bash
+      run: |
+        echo '${{ inputs.staging-folder }}' | jq -r '.[]' | while read FOLDER; do
+          mkdir -p "$FOLDER"
+        done
+
+    # Download artifacts from JFrog
+    - name: Download artifacts from JFrog
+      shell: bash
+      working-directory: ${{ fromJson(inputs.staging-folder)[0] }}
+      run: |
+        jf rt dl "${{ inputs.target-repository }}/com/aerospike/${{ steps.get-build-name.outputs.build-name }}/${{ inputs.artifact-version }}/*" .
+
+    - name: Debug list downloaded content
+      shell: bash
+      working-directory: ${{ fromJson(inputs.staging-folder)[0] }}
+      run: |
+        pwd
+        ls -laR
+
+    # The hashes are generated when the artifacts are published (not part of this build). When we promote or run releases we download the artifacts and take the hashes
+    # which are part of the build info. We don't have sha-512 at the moment.
+    - name: Get hashes from build_info and generate files
+      shell: bash
+      working-directory: ${{ fromJson(inputs.staging-folder)[0] }}
+      run: |
+        BUILD_INFO='${{ steps.get-build-info.outputs.build-info }}'
+        MODULES=$(echo "${BUILD_INFO}" | jq -c '.buildInfo.modules[].artifacts[]')
+        STAGE_DIR="$(find . -type f -name '*.jar' -exec realpath {} \; | head -n 1 | xargs dirname)"
+
+        for MODULE in ${MODULES}; do
+          NAME=$(echo "${MODULE}" | jq -r ".name")
+          SHA1=$(echo "${MODULE}" | jq -r ".sha1")
+          SHA256=$(echo "${MODULE}" | jq -r ".sha256")
+          MD5=$(echo "${MODULE}" | jq -r ".md5")
+
+          FILE_NAME="${STAGE_DIR}/${NAME}"
+          echo "$FILE_NAME"
+          echo "${SHA1}" >"${FILE_NAME}.sha1"
+          echo "${SHA256}" >"${FILE_NAME}.sha256"
+          echo "${MD5}" >"${FILE_NAME}.md5"
+        done
