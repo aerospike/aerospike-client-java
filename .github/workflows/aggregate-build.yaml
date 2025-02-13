@@ -7,7 +7,7 @@ on:
     inputs:
       jfrog-platform-url:
         type: string
-        description: ""
+        description: "JFrog platform URL"
         required: false
         default: https://aerospike.jfrog.io
       java-version:

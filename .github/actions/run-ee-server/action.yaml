@@ -13,21 +13,21 @@ inputs:
     default: "false"
   server-tag:
     description: Server version to use
-    required: true
+    required: false
     default: "latest"
   container-repo-url:
     required: false
     description: Container repo url
     default: aerospike.jfrog.io/docker/
   jfrog-platform-url:
-    description: ""
+    description: "JFrog platform url"
     required: false
     default: https://aerospike.jfrog.io
   oidc-provider:
-    description: ""
+    description: "OIDC provider name"
     required: true
   oidc-audience:
-    description: ""
+    description: "OIDC audience"
     required: true
   container-name:
     default: aerospike
@@ -62,6 +62,7 @@ runs:
         is-security-enabled: true
         is-strong-consistency-enabled: true
 
+    # Steps performed after server is ready. We should move this ideally to a file which can be read in the configure/stage database before running tests.
     - run: docker exec ${{ inputs.container-name }} asadm --enable -e 'asinfo -v "roster-set:namespace=test;nodes=A1"'
       shell: bash
 
