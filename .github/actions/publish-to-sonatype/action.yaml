@@ -3,25 +3,28 @@ description: "Publishes artifacts to Sonatype"
 
 inputs:
   staging-folder:
-    description: ""
+    description: "Folder to which the artifacts are copied"
     required: false
     default: staging
   target-folder:
-    description: ""
+    description: "Subfloder in the staging folder where the artifacts are copied"
     required: false
     default: sonatype
   publish-user:
-    description: ""
+    description: "Username for publishing to Sonatype"
     required: true
   publish-password:
-    description: ""
+    description: "Password for publishing to Sonatype"
     required: true
   validation-max-number-checks:
-    description: ""
+    description: "Number of checks we will conduct to check if the package is validated"
     required: true
   sonatype-domain-name:
-    description: ""
+    description: "Sonatype domain name"
     required: true
+  build-name-number:
+    required: true
+    description: "Build name and number"
 
 outputs:
   maven-central-release-id:
@@ -37,7 +40,10 @@ runs:
         echo "${{ inputs.staging-folder }}"
         echo "${{ inputs.target-folder }}"
         echo "${{ inputs.sonatype-domain-name }}"
+        echo "${{ inputs.build-name-number }}"
 
+    # For Maven Central we need to filter out the jar-with-dependencies
+    # as it is not allowed to be uploaded to Maven Central
     - name: Copy artifacts with filter to sonatype stage folder
       shell: bash
       working-directory: ${{ inputs.staging-folder }}
@@ -49,12 +55,15 @@ runs:
           \! \( -name "*jar-with-dependencies*" \) \
           -exec cp --parents {} "$dest" \;
 
+    # Creates uploadable archive
     - name: Create upload archive for sonatype
       id: create-artifact
       shell: bash
       working-directory: ${{ inputs.target-folder }}
       run: |
-        ARTIFACT_NAME="$(echo '${{ steps.get-build-info.outputs.build-info }}' | jq -cr '.buildInfo.name | split("_")[1]').zip"
+        RELEASE=$(echo "${{ inputs.build-name-number }}" | sed -E 's/.*_([^/]+)\/.*/\1/')
+        RELEASE_BUILD_NUMBER=$(echo  "${{ inputs.build-name-number }}" | sed -E 's/.*\/([^/]+)$/\1/')
+        ARTIFACT_NAME="${RELEASE}_${RELEASE_BUILD_NUMBER}"
 
         # adding output variable for debug step later
         echo "artifact-name=${ARTIFACT_NAME}" >> $GITHUB_OUTPUT
@@ -67,6 +76,7 @@ runs:
         ARTIFACT_NAME='${{ steps.create-artifact.outputs.artifact-name }}'
         unzip -l "${ARTIFACT_NAME}" | tail -n +4 | sort -k4,4
 
+    # Call to Maven Central to stage the release/artifact
     - name: Stage artifacts
       id: stage-release
       working-directory: ${{ inputs.target-folder }}
@@ -74,9 +84,10 @@ runs:
       run: |
         TOKEN=$(printf "${{ inputs.publish-user }}:${{ inputs.publish-password }}" | base64)
 
-        echo "curl --request POST --verbose --header 'Authorization: Bearer ${TOKEN}' --form bundle=@${{ steps.create-artifact.outputs.artifact-name }} ${{ inputs.sonatype-domain-name }}/api/v1/publisher/upload?publishingType=USER_MANAGED"
-        echo stage-release-id=$(curl --request POST --silent --header "Authorization: Bearer ${TOKEN}" --form bundle=@${{ steps.create-artifact.outputs.artifact-name }} ${{ inputs.sonatype-domain-name }}/api/v1/publisher/upload?publishingType=USER_MANAGED) >> $GITHUB_OUTPUT
+        echo "curl --request POST --verbose --header 'Authorization: Bearer ${TOKEN}' --form bundle=@${{ steps.create-artifact.outputs.artifact-name }}.zip ${{ inputs.sonatype-domain-name }}/api/v1/publisher/upload?publishingType=USER_MANAGED"
+        echo stage-release-id=$(curl --request POST --silent --header "Authorization: Bearer ${TOKEN}" --form bundle=@${{ steps.create-artifact.outputs.artifact-name }}.zip ${{ inputs.sonatype-domain-name }}/api/v1/publisher/upload?publishingType=USER_MANAGED) >> $GITHUB_OUTPUT
 
+    # Validation check loop
     - name: Check validation
       working-directory: ${{ inputs.target-folder }}
       shell: bash
@@ -94,7 +105,7 @@ runs:
             echo "Package validation failed. Check build package logs to determine potential reasons why the uploaded package is not valid."
             echo "Errors: ${ERRORS}"
 
-            #exit 1
+            exit 1
           elif [[ ${SONATYPE_RESPONSE} == 'VALIDATING' || ${SONATYPE_RESPONSE} == 'PENDING' ]]; then
             echo "Package validation is not done. Status: ${SONATYPE_RESPONSE}"
 
@@ -109,6 +120,7 @@ runs:
           fi
         done
 
+    # Peculating up the maven central release id
     - name: Maven Central release id
       working-directory: ${{ inputs.target-folder }}
       id: get-maven-central-release-id

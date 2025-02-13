@@ -11,12 +11,14 @@ on:
 jobs:
   build-and-test:
     uses: ./.github/workflows/test-branch.yaml
-    needs: pre-requisites
     strategy:
       matrix:
         crypto-type: [bouncycastle, gnu]
         use-server-rc: [true, false]
+      fail-fast: false
     with:
       source-branch: ${{ inputs.source-branch }}
       crypto-type: ${{ matrix.crypto-type }}
       use-server-rc: ${{ matrix.use-server-rc }}
+      server-tag: latest
+    secrets: inherit
