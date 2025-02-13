@@ -1,9 +1,14 @@
 name: PR open
 
+permissions:
+  # This is required for requesting the OIDC token
+  id-token: write
+
 on:
   pull_request:
     branches:
-      - "dev/*"
+      - stage
+      - stage-jdk8
     types:
       - opened
       - reopened
@@ -16,7 +21,7 @@ on:
 jobs:
   test-with-server-release:
     name: Build stage - Test with latest version of Aerospike Enterprise Server
-    uses: ./.github/workflows/build-dev.yaml
+    uses: ./.github/workflows/build-pr.yaml
     with:
       branch: ${{ github.ref }}
       source-branch: ${{ inputs.source-branch || github.base_ref }}
@@ -26,7 +31,7 @@ jobs:
 
   test-with-server-rc:
     name: Build stage - Test with latest RC version of Aerospike Enterprise Server
-    uses: ./.github/workflows/build-dev.yaml
+    uses: ./.github/workflows/build-pr.yaml
     with:
       branch: ${{ github.base_ref || inputs.branch }}
       source-branch: ${{ inputs.source-branch || github.base_ref }}

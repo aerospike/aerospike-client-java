@@ -1,0 +1,17 @@
+name: clients-java-push-to-dev
+
+on:
+  push:
+    branches:
+      - stage
+      - stage-jdk8
+  workflow_dispatch:
+
+jobs:
+  build-stage:
+    name: Build stage
+    uses: ./.github/workflows/release-stage.yaml
+    with:
+      ref: ${{ github.ref }}
+      build-number: ${{ github.run_number }}
+    secrets: inherit

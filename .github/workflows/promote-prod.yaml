@@ -10,12 +10,20 @@ on:
       build-number:
         type: number
         description: Build number used to build artifact to be promoted
+      target-branch:
+        type: choice
+        description: Target branch to promote to
+        options:
+          - master
+          - jdk8
 
 jobs:
   promote-from-stage-to-prod:
-    name: Promot from stage to prod
+    name: Promote from stage to prod
     uses: ./.github/workflows/promote.yaml
     with:
-      build-number: ${{  inputs.build-number }}
-      target-repository: client-maven-stage-local
-      target-branch: dev-stage
+      build-number: ${{ inputs.build-number }}
+      target-repository: clients-maven-stage-local
+      target-branch: ${{ inputs.target-branch }}
+      source-branch: ${{ inputs.target-branch == 'master' && 'stage' || 'stage-jdk8' }}
+    secrets: inherit
