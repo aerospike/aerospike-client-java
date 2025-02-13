@@ -1,0 +1,55 @@
+permissions:
+  # This is required for requesting the OIDC token
+  id-token: write
+
+on:
+  workflow_call:
+    inputs:
+      jfrog-platform-url:
+        type: string
+        description: ""
+        required: false
+        default: https://aerospike.jfrog.io
+      build-name-numbers:
+        type: string
+        description: ""
+        required: true
+    secrets:
+      JFROG_OIDC_PROVIDER:
+        required: true
+      JFROG_OIDC_AUDIENCE:
+        required: true
+
+jobs:
+  build:
+    runs-on: ${{ vars.BUILD_CONTAINER_DISTRO_VERSION }}
+    steps:
+      - name: Set up JFrog credentials l
+        id: setup-jfrog-cli
+        uses: jfrog/setup-jfrog-cli@v4
+        env:
+          JF_URL: ${{ inputs.jfrog-platform-url }}
+        with:
+          version: 2.72.2
+          oidc-provider-name: ${{ secrets.JFROG_OIDC_PROVIDER }}
+          oidc-audience: ${{ secrets.JFROG_OIDC_AUDIENCE }}
+
+      - name: Debug step
+        shell: bash
+        run: |
+          echo "${{ inputs.jfrog-platform-url }}"
+          echo "${{ inputs.build-name-numbers }}"
+
+      - name: Aggregate builds
+        run: |
+          ARTIFACT_IDS=($(echo '${{ inputs.build-name-numbers }}' | jq -r '.[]'))
+
+          # record env variables
+          jf rt bce promote-java-client ${{ github.run_number }}
+
+          for ARTIFACT_ID in "${ARTIFACT_IDS[@]}"; do
+            RELEASE=$(echo "$ARTIFACT_ID" | sed -E 's/.*_([^/]+)\/.*/\1/')
+            jf rt ba promote-java-client ${{ github.run_number }} promote_${RELEASE} ${{ github.run_number }}
+          done
+
+          jf rt bp promote-java-client ${{ github.run_number }}
