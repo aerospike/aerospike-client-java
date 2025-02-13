@@ -1,0 +1,91 @@
+on:
+  workflow_call:
+    inputs:
+      ref:
+        type: string
+        required: true
+      build-number:
+        type: string
+        required: true
+
+jobs:
+  debug-job:
+    runs-on: ${{ vars.BUILD_CONTAINER_DISTRO_VERSION }}
+    steps:
+      - name: debug
+        run: |
+          echo "${{ inputs.ref }}"
+          echo "${{ github.base_ref }}"
+
+  pre-requisites:
+    needs: debug-job
+    runs-on: ${{ vars.BUILD_CONTAINER_DISTRO_VERSION }}
+    outputs:
+      java-version: ${{ steps.get-java-version.outputs.java-version }}
+      is-snapshot: ${{ steps.get-is-snapshot.outputs.is-snapshot }}
+    steps:
+      - name: Checkout client
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ inputs.ref }}
+
+      # Fetching java version used in this build. The java version is set in pom file  and could vary between builds.
+      - name: Get java version
+        id: get-java-version
+        run: |
+          echo java-version="$(grep '<java.version>' pom.xml | sed -e 's/<[^>]*>//g' | awk '{$1=$1};1' | sed 's/^1\.8$/8/')"  >> $GITHUB_OUTPUT
+
+      - name: Debug - java-version
+        run: |
+          echo ${{ steps.get-java-version.outputs.java-version }}
+
+      # Checking if this particular build is a snapshot build
+      - name: Detect if snapshot
+        id: get-is-snapshot
+        shell: bash
+        run: |
+          # Getting previous commit
+          COMMIT_REF="HEAD~1"
+
+          # Checking if previous commit contains pom.xml. This should always return true
+          if ! git show "${COMMIT_REF}:pom.xml" &>/dev/null; then
+            echo "Error: pom.xml not found in commit ${COMMIT_REF}"
+            exit 1
+          fi
+
+          # Getting previous version
+          OLD_VERSIONS=$(git show "${COMMIT_REF}:pom.xml" |
+            sed -n '/<version>/ { s/.*<version>\([^<]*\)<\/version>.*/\1/p; q }')
+
+          # Getting current version
+          NEW_VERSIONS=$(sed -n 's/.*<revision>\([^<]*\)<\/revision>.*/\1/p' pom.xml)
+
+          echo "old versions: ${OLD_VERSIONS}, new versions: ${NEW_VERSIONS}"
+          # Compare the extracted versions. CI will not commit snapshot version.
+          if [[ "${OLD_VERSIONS}" != "${NEW_VERSIONS}" ]]; then
+            echo "is-snapshot='false'" >> $GITHUB_OUTPUT
+          else
+            echo "is-snapshot='true'" >> $GITHUB_OUTPUT
+          fi
+
+  build:
+    uses: ./.github/workflows/release.yaml
+    needs: pre-requisites
+    strategy:
+      matrix:
+        crypto-type: [bouncycastle, gnu]
+    with:
+      ref: ${{ inputs.ref }}
+      java-version: ${{ needs.pre-requisites.outputs.java-version }}
+      crypto-type: ${{ matrix.crypto-type }}
+      is-snapshot: ${{ needs.pre-requisites.outputs.is-snapshot }}
+    secrets: inherit
+
+  aggregate-published-artifacts:
+    uses: ./.github/workflows/aggregate-build.yaml
+    needs: [pre-requisites, build]
+    secrets: inherit
+    with:
+      java-version: ${{ needs.pre-requisites.outputs.java-version }}
+      is-snapshot: ${{ needs.pre-requisites.outputs.is-snapshot }}

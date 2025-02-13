@@ -1,0 +1,62 @@
+name: Publish build-info to JFrog
+description: "Publishes build-info to JFrog"
+
+inputs:
+  jfrog-platform-url:
+    description: "JFrog platform URL"
+    required: false
+    default: https://aerospike.jfrog.io
+  oidc-provider:
+    description: "OIDC provider name"
+    required: true
+  oidc-audience:
+    description: "ODIC audience"
+    required: true
+  build-path:
+    description: "Path to which build info is to be published"
+    required: true
+  variables:
+    description: "Any additional variables to be published as part of build. The input here should be valid JSON in the form {'env_variable_key': 'env_variable_value'}, .e.g {'SONATYPE_STAGING_BUILD_ID': '070c07e25e937888ed9740ee825afa24bf184722'}"
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - name: Debug publish to github
+      shell: bash
+      run: |
+        echo "${{ inputs.jfrog-platform-url }}"
+        echo "${{ inputs.build-path }}"
+
+    - name: Set up JFrog credentials
+      id: setup-jfrog-cli
+      uses: jfrog/setup-jfrog-cli@v4
+      env:
+        JF_URL: ${{ inputs.jfrog-platform-url }}
+      with:
+        version: 2.72.2
+        oidc-provider-name: ${{ inputs.oidc-provider }}
+        oidc-audience: ${{ inputs.oidc-audience }}
+
+    # Parsing out env variables and values and setting them in the environment
+    - name: Set env variables provided with variables
+      shell: bash
+      run: |
+        ENV_VARIABLES='${{ inputs.variables }}'
+        echo "$ENV_VARIABLES" | jq -r 'to_entries | .[] | "\(.key)=\(.value)"' >> $GITHUB_ENV
+
+    # Pushing build info to JFrog
+    - name: Upload artifacts
+      shell: bash
+      run: |
+        BUILD_ID=$(echo "${{ inputs.build-path }}" | sed 's/.*_\(.*\)\/.*/\1/')
+        BUILD_PATH="promote_${BUILD_ID}"
+
+        # record env variables 
+        jf rt bce ${BUILD_PATH} ${{ github.run_number }}
+
+        # record git info
+        jf rt bag ${BUILD_PATH} ${{ github.run_number }}
+
+        # publish build info
+        jf rt bp ${BUILD_PATH} ${{ github.run_number }}

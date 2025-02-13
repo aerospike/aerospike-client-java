@@ -1,10 +1,8 @@
-name: Promote
-
 on:
   workflow_call:
     inputs:
       build-number:
-        type: number
+        type: string
         description: Build number used to build artifact to be promoted
       target-repository:
         type: string
@@ -12,49 +10,225 @@ on:
       target-branch:
         type: string
         description: Target branch to promote token
+      jf-target-build:
+        type: string
+        description: Target build name
+        default: clients-java-push-to-dev
+      source-branch:
+        type: string
+        required: false
+        default: origin/dev/dev-ci-fixes-stage
+        description: Source branch to merge from
     secrets:
+      SONATYPE_MAVEN_USER:
+        required: true
+      SONATYPE_MAVEN_PASSWORD:
+        required: true
       CLIENT_BOT_PAT:
+        required: true
+      JFROG_OIDC_PROVIDER:
+        required: true
+      JFROG_OIDC_AUDIENCE:
         required: true
 
 jobs:
-  validate-build:
-    runs-on: ubuntu-latest
+  promote:
+    runs-on: ${{ vars.BUILD_CONTAINER_DISTRO_VERSION }}
+    outputs:
+      build-name-numbers: ${{ steps.get-build-name-number.outputs.build-name-numbers }}
+      artifact-version: ${{ steps.get-artifact-version.outputs.artifact-version }}
+      release-notes: ${{ steps.get-release-notes.outputs.release-notes }}
     steps:
+      - name: Debug step
+        run: |
+          echo "build-number: ${{ inputs.build-number }}"
+          echo "target-repository: ${{ inputs.target-repository }}"
+          echo "target-branch: ${{ inputs.target-branch }}"
+          echo "jf-target-build: ${{ inputs.jf-target-build }}"
+          echo "source-branch: ${{ inputs.source-branch }}"
+
+      # Setting up jfrog cli
       - name: Setup jfrog shell
         uses: jfrog/setup-jfrog-cli@v4
         env:
           JF_URL: ${{ vars.JFROG_PLATFORM_URL }}
         with:
-          oidc-provider-name: ${{ inputs.oidc-provider }}
-          oidc-audience: ${{ inputs.oidc-audience }}
+          oidc-provider-name: ${{ secrets.JFROG_OIDC_PROVIDER }}
+          oidc-audience: ${{ secrets.JFROG_OIDC_AUDIENCE }}
 
+      # Needed since we are using actions which are part of the repository
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # Fetch the whole history to prevent unrelated history errors
+          fetch-depth: "0"
+          ref: ${{ inputs.target-branch }}
+          token: ${{ secrets.CLIENT_BOT_PAT }}
+
+      # Getting build info which will allows us to get information about the build we are promoting
       - name: Get info
         id: get-build-info
         run: |
-          echo build-info=$(jf rt curl /api/build/clients-java-push-to-dev/${{ inputs.build-number }}) >> $GITHUB_OUTPUT
+          echo build-info=$(jf rt curl /api/build/${{ inputs.jf-target-build }}/${{ inputs.build-number }}) >> $GITHUB_OUTPUT
 
+      # Snapshot builds are not promoted to production. We consider a snapshot build if the version in pom has been updated/changed as part of changes
+      # we are promoting in the build
+      - name: Check if snapshot build
+        run: |
+          IS_SNAPSHOT=$(echo '${{ steps.get-build-info.outputs.build-info }}' | jq -cr '.buildInfo.properties."buildInfo.env.IS_SNAPSHOT"')
+          if [ $IS_SNAPSHOT == 'true' ];then
+            echo "Error build ${{ inputs.jf-target-build }} with build number ${{ inputs.build-number }} is a SNAPSHOT build. Snapshots are not promoted to production."
+
+            exit 1
+          fi
+
+      # Fetching commit hash from the build info. The commit has is used for SNAPSHOT builds
       - name: Get commit hash from repo
         id: get-commit-hash
         run: |
-          echo commit-hash=$(steps.get-build-info.outputs.build-info | jq -r '.vcs[].revision') >> $GITHUB_OUTPUT
+          echo commit-hash=$(echo '${{ steps.get-build-info.outputs.build-info }}' | jq -r '.buildInfo.vcs[].revision') >> $GITHUB_OUTPUT
 
-      - name: Get commit hash from repo
+      # Fetching build name for build promotion process. The build name will contain build numbers. This command parses json and pulls out the build name
+      - name: Get build name
         id: get-build-name
         run: |
-          echo build-name=$(steps.get-build-info.outputs.build-info | jq -r '.name') >> $GITHUB_OUTPUT
+          echo build-names=$(echo '${{ steps.get-build-info.outputs.build-info }}' | jq -r '.buildInfo.modules[].id | sub("/[0-9]+$"; "")') >> $GITHUB_OUTPUT
 
       - name: Debug
         run: |
-          echo ${{ steps.get-build-info.outputs.build-info }}
-          echo ${{ steps.get-build-info.outputs.build-name }}
+          echo "commit-hash: '${{ steps.get-commit-hash.outputs.commit-hash }}'"
+          echo "build-names: '${{ steps.get-build-name.outputs.build-names }}'"
 
-      - name: Merge commit hash from source to target branch
-        uses: ./github/actions/fast-forward-merge
-        with:
-          ref-to-merge: ${{ steps.get-build-info.outputs.build-info }}
-          base-branch: ${{ inputs.target-branch }}
-          git-bot-token: ${{ secrets.CLIENT_BOT_PAT }}
-
+      # Promoting build to production
       - name: Promote build
+        shell: bash
         run: |
-          jf rt build-promote ${{ steps.get-build-info.outputs.build-name }} ${{ inputs.build-number }} ${{ inputs.target-repository }}
+          BUILD_NAMES=(${{ steps.get-build-name.outputs.build-names }})
+
+          if [ ${#MODULES[@]} -eq 0 ];then
+            echo "Missing build names for modules in '${{ inputs.jf-target-build }}'"
+          fi
+
+          for BUILD_NAME in "${BUILD_NAMES[@]}"; do
+            echo "Promoting '$BUILD_NAME'"
+            jf rt build-promote --copy=true "$BUILD_NAME" ${{ inputs.build-number }} ${{ inputs.target-repository }}
+          done
+
+      # Fetching release notes from commit logs
+      - name: Generate release notes
+        id: get-release-notes
+        run: |
+          RELEASE_NOTES=$(git log $(git describe --tags --abbrev=0)..HEAD --pretty=format:"- %s")
+          echo "release-notes<<EOF" >> $GITHUB_OUTPUT
+          echo "${RELEASE_NOTES}" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Debug print release notes
+        run: |
+          echo "Changes for release ${{ steps.get-artifact-version.outputs.artifact-version }}"
+      
+      # Fast forward the target branch to the source branch.
+      - name: Fast forward
+        shell: bash
+        run: |
+          # Making sure we have latest history in place to be able to fast forward merge
+          git status
+          git checkout ${{ inputs.source-branch }}
+          git checkout ${{ inputs.target-branch }}
+          git merge --ff-only ${{ inputs.source-branch }}
+
+      # Adding commit message for promotion
+      - name: Add tagging message
+        uses: stefanzweifel/git-auto-commit-action@v4
+        with:
+          commit_message: "Promote to prod [skip ci]"
+          commit_author: github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>
+          tagging_message: Promote to PROD
+          branch: ${{ inputs.target-branch }}
+
+      # Pushing changes to remote head branch
+      - name: Upload changes to remote head branch
+        shell: bash
+        run: git push
+
+      # Passing build-name-numbers and artifact-version to the next job
+      - name: Get build name with build number
+        id: get-build-name-number
+        run: |
+          echo "build-name-numbers=$(echo '${{ steps.get-build-info.outputs.build-info }}' | jq -c '[.buildInfo.modules[].id]')" >> $GITHUB_OUTPUT
+
+      - name: Get artifact version
+        id: get-artifact-version
+        working-directory: client # The version will be the same for all the modules in the project. Taking client since this is the module that is released.
+        run: |
+          echo "artifact-version=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout | jq -Rc '[.]')" >> $GITHUB_OUTPUT
+
+      - name: Debug show 'build-name-numbers' and 'artifact-version'
+        run: |
+          echo "build-name-number: ${{ steps.get-build-name-number.outputs.build-name-numbers }}"
+          echo "artifact-version: ${{ steps.get-artifact-version.outputs.artifact-version }}"
+
+      - name: Release debug
+        run: |
+          GIT_NOTES='${{ steps.get-release-notes.outputs.release-notes }}'
+          RELEASE_VERSION='${{steps.get-artifact-version.outputs.artifact-version }}'
+          echo "${RELEASE_VERSION}"
+          echo "${GIT_NOTES}"
+
+  # Runs parallel jobs for bouncycastle and gnu builds
+  publish-releases:
+    runs-on: ${{ vars.BUILD_CONTAINER_DISTRO_VERSION }}
+    needs: promote
+    strategy:
+      matrix:
+        build-name-number: ${{ fromJson(needs.promote.outputs.build-name-numbers) }}
+        artifact-version: ${{ fromJson(needs.promote.outputs.artifact-version) }}
+    steps:
+      # Needed since we are using actions which are part of the repository
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.target-branch }}
+          token: ${{ secrets.CLIENT_BOT_PAT }}
+
+      # Pulling release from JFROG
+      - uses: ./.github/actions/stage-release-artifacts
+        with:
+          oidc-provider: ${{ secrets.JFROG_OIDC_PROVIDER }}
+          oidc-audience: ${{ secrets.JFROG_OIDC_AUDIENCE }}
+          target-repository: ${{ inputs.target-repository }}
+          build-name-number: ${{ matrix.build-name-number }}
+          artifact-version: ${{ matrix.artifact-version }}
+
+      # Publishing release to github
+      - uses: ./.github/actions/publish-to-github
+        with:
+          release-notes: ${{ needs.promote.outputs.release-notes }}
+          github-token: ${{ secrets.CLIENT_BOT_PAT }}
+          artifact-version: ${{ matrix.artifact-version }}
+
+      # Publishing release to Maven Central
+      - uses: ./.github/actions/publish-to-sonatype
+        id: publish-to-sonatype
+        with:
+          build-name-number: ${{ matrix.build-name-number }}
+          publish-user: ${{ secrets.SONATYPE_MAVEN_USER }}
+          publish-password: ${{ secrets.SONATYPE_MAVEN_PASSWORD }}
+          validation-max-number-checks: ${{ vars.VALIDATION_MAX_NUMBER_CHECKS }}
+          sonatype-domain-name: ${{ vars.SONATYPE_DOMAIN_NAME }}
+      
+      # Publishing release information to JFrog for aggregation. This information is used lated for final release step (acknowledgement) to Maven Central
+      - uses: ./.github/actions/publish-build-info-to-jfrog
+        with:
+          oidc-provider: ${{ secrets.JFROG_OIDC_PROVIDER }}
+          oidc-audience: ${{ secrets.JFROG_OIDC_AUDIENCE }}
+          build-path: ${{ matrix.build-name-number }}
+          variables: '{"SONATYPE_STAGING_BUILD_ID":"${{ steps.publish-to-sonatype.outputs.maven-central-release-id }}"}'
+
+  # Aggregated release job which will be triggered after all the releases have been published and will have build info for bouncycastle  and gnu builds
+  aggregated-release:
+    uses: ./.github/workflows/aggregated-release-build.yaml
+    needs: [promote, publish-releases]
+    with:
+      build-name-numbers: ${{ needs.promote.outputs.build-name-numbers }}
+    secrets: inherit

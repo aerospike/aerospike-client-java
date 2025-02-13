@@ -1,0 +1,19 @@
+name: Confirm release
+
+permissions:
+  # This is required for requesting the OIDC token
+  id-token: write
+
+on:
+  workflow_dispatch:
+    inputs:
+      build-number:
+        type: string
+        description: Build number used to build artifact to be promoted
+
+jobs:
+  confirm-release:
+    uses: ./.github/workflows/acknowledge.yaml
+    with:
+      build-number: ${{ inputs.build-number }}
+    secrets: inherit

@@ -3,50 +3,110 @@ description: "Publishes artifacts to JFrog"
 
 inputs:
   jfrog-releases-repo-name:
-    description: ""
+    description: "Jfrog releases repository name"
     required: false
     default: clients-maven-dev-local
   jfrog-snapshots-repo-name:
-    description: ""
+    description: "Jfrog snapshots repository name"
     required: false
     default: clients-maven-dev-local
   jfrog-platform-url:
-    description: ""
+    description: "JFrog platform URL"
     required: false
-    default: https://aerospike.jfrog.io/
+    default: https://aerospike.jfrog.io
   oidc-provider:
-    description: ""
-    required: false
-    default: gh-aerospike-clients
+    description: "OIDC provider name"
+    required: true
   oidc-audience:
-    description: ""
+    description: "OIDC audience"
+    required: true
+  artifact-id:
+    description: "Artifact ID"
+    required: true
+  artifact-version:
+    description: "Artifact version"
+    required: true
+  deploy-spec-path:
+    description: "Deploy spec path. This directory contains any resources needed for public releases, like public facing POMs"
     required: false
-    default: aerospike/clients
-  crypto-type:
-    description: ""
+    default: deploy-resources
+  package-install-location:
+    description: "Location where the artifacts are installed"
     required: false
-    default: gnu
+    default: ~/.m2/repository
 
 runs:
   using: "composite"
   steps:
+    - name: Debug publish to github
+      shell: bash
+      run: |
+        echo "${{ inputs.jfrog-releases-repo-name }}/github"
+        echo "${{ inputs.jfrog-snapshots-repo-name }}"
+        echo "${{ inputs.jfrog-platform-url }}"
+        echo "${{ inputs.artifact-id }}"
+        echo "${{ inputs.artifact-version }}"
+        echo "${{ inputs.deploy-spec-path }}"
+        echo "${{ inputs.package-install-location }}"
+
     - name: Set up JFrog credentials
+      id: setup-jfrog-cli
       uses: jfrog/setup-jfrog-cli@v4
       env:
         JF_URL: ${{ inputs.jfrog-platform-url }}
       with:
+        version: 2.72.2
         oidc-provider-name: ${{ inputs.oidc-provider }}
         oidc-audience: ${{ inputs.oidc-audience }}
 
-    - name: Set crypto dependency
+    - name: Configure jf cli
       shell: bash
       run: |
-        ./set_crypto ${{ inputs.crypto-type }}
+        jf mvn-config \
+        --repo-deploy-releases=${{ inputs.jfrog-releases-repo-name }} \
+        --repo-deploy-snapshots=${{ inputs.jfrog-snapshots-repo-name }}
 
-    - name: Deploy release
+    # Generating deploy spec to match the artifacts to be uploaded. Builds for java do not follow the standards since we have bouncycastle and gnu builds.
+    # Technically speaking we should have multiple modules looking at how Maven does things. But for practical reasons we don't since we would have duplicate 
+    # code to maintain.
+    - name: Generate deploy spec
       shell: bash
       working-directory: client
       run: |
-        jf mvn-config --repo-deploy-releases=${{ inputs.jfrog-releases-repo-name }} --repo-deploy-snapshots=${{ inputs.jfrog-snapshots-repo-name }}
-        jf mvn source:jar javadoc:jar deploy -Dusername=${{ steps.setup-jfrog-cli.outputs.oidc-user }} ${{ steps.setup-jfrog-cli.outputs.oidc-token }}
-        jf rt bp
+        jq --arg targetPattern "${{ inputs.jfrog-releases-repo-name }}/com/aerospike/${{ inputs.artifact-id }}/${{ inputs.artifact-version }}/" \
+        --arg publicPomPattern "${{ inputs.package-install-location }}/com/aerospike/${{ inputs.artifact-id }}/${{ inputs.artifact-version }}/*.pom" \
+        --arg jarPattern "${{ inputs.package-install-location }}/com/aerospike/${{ inputs.artifact-id }}/${{ inputs.artifact-version }}/*.jar" \
+        --arg ascPattern "${{ inputs.package-install-location }}/com/aerospike/${{ inputs.artifact-id }}/${{ inputs.artifact-version }}/*.asc" \
+        '
+        .files[0].pattern = $jarPattern |
+        .files[0].target = $targetPattern |
+        .files[1].pattern = $ascPattern |
+        .files[1].target = $targetPattern |
+        .files[2].pattern = $publicPomPattern |
+        .files[2].target = $targetPattern
+        ' ${{ inputs.deploy-spec-path }}/publish-spec.json.template > ${{ inputs.deploy-spec-path }}/publish-spec.json
+
+    - name: Debug deploy spec
+      shell: bash
+      working-directory: client
+      run: |
+        cat ${{ inputs.deploy-spec-path }}/publish-spec.json
+
+    # Publishing artifacts to JFrog
+    - name: Upload artifacts
+      shell: bash
+      working-directory: client
+      run: |
+        jf rt upload --spec=${{ inputs.deploy-spec-path }}/publish-spec.json \
+            --module=${{ inputs.artifact-id }} \
+            --build-name=clients-java-push-to-dev_${{ inputs.artifact-id }} \
+            --build-number=${{ github.run_number }}
+
+        # record env variables 
+        jf rt bce clients-java-push-to-dev_${{ inputs.artifact-id }} ${{ github.run_number }}
+
+        # record git info
+        jf rt bag clients-java-push-to-dev_${{ inputs.artifact-id }} ${{ github.run_number }}
+
+        # publish build info
+        jf rt bp clients-java-push-to-dev_${{ inputs.artifact-id }} ${{ github.run_number }}
