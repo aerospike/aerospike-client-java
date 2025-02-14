@@ -6,7 +6,7 @@
   <parent>
     <groupId>com.aerospike</groupId>
     <artifactId>aerospike-parent</artifactId>
-    <version>9.0.4</version>
+    <version>${revision}</version>
   </parent>
   <artifactId>aerospike-client-test</artifactId>
   <packaging>jar</packaging>
@@ -21,7 +21,7 @@
   <dependencies>
     <dependency>
       <groupId>com.aerospike</groupId>
-      <artifactId>aerospike-client${crypto.type}-jdk8</artifactId>
+      <artifactId>aerospike-client-jdk8</artifactId>
     </dependency>
 
     <dependency>
@@ -64,6 +64,7 @@
     </dependency>
   </dependencies>
 
+
   <profiles>
     <profile>
       <id>bouncycastle</id>
@@ -103,6 +104,10 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-compiler-plugin</artifactId>
+        <configuration>
+          <source>1.8</source>
+          <target>1.8</target>
+        </configuration>
       </plugin>
       <plugin>
         <artifactId>maven-assembly-plugin</artifactId>
