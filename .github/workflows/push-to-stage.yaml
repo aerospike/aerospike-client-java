@@ -9,8 +9,8 @@ on:
 jobs:
   build-stage:
     name: Build stage
-    uses: ./.github/workflows/build-dev.yaml
+    uses: ./.github/workflows/release-stage.yaml
     with:
-      branch: ${{ github.ref }}
-      upload-artifacts: true
+      ref: ${{ github.ref }}
+      build-number: ${{ github.run_number }}
     secrets: inherit
