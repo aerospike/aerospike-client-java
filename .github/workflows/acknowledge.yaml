@@ -1,0 +1,87 @@
+on:
+  workflow_call:
+    inputs:
+      build-number:
+        type: number
+        description: Build number used to build artifact to be promoted
+      target-build:
+        type: string
+        description: ""
+        required: false
+        default: promote-java-client
+    secrets:
+      SONATYPE_MAVEN_USER:
+        required: true
+      SONATYPE_MAVEN_PASSWORD:
+        required: true
+
+jobs:
+  confirm-release:
+    runs-on: ${{ vars.BUILD_CONTAINER_DISTRO_VERSION }}
+    steps:
+      - name: Get info
+        id: get-build-info
+        run: |
+          echo build-info=$(jf rt curl /api/build/${{ inputs.jf-target-build }}/${{ inputs.build-number }}) >> $GITHUB_OUTPUT
+
+      - name: Get build name
+        id: get-build-name
+        run: |
+          echo build-names=$(echo '${{ steps.get-build-info.outputs.build-info }}' | jq -r '.buildInfo.modules[].id | sub("/[0-9]+$"; "")') >> $GITHUB_OUTPUT
+
+      - name: Get sonatype release ids from build names
+        id: get-sonatype-release-ids
+        shell: bash
+        run: |
+          BUILD_NAMES=(${{ steps.get-build-name.outputs.build-names }})
+
+          if [ ${#MODULES[@]} -eq 0 ];then
+            echo "Missing build names for modules in '${{ inputs.jf-target-build }}'"
+          fi
+
+          for BUILD_NAME in "${BUILD_NAMES[@]}"; do
+            echo "Promoting '$BUILD_NAME'"
+            jf rt curl /api/build/${BUILD_NAME}/inputs.build-number | jq '.buildInfo.properties."buildInfo.env.SONATYPE_STAGING_BUILD_ID"'
+          done
+
+      - name: Check validation
+        shell: bash
+        run: |
+          TOKEN=$(printf "${{ inputs.publish-user }}:${{ inputs.publish-password }}" | base64)
+
+          NUMBER_OF_CHECKS=${{ inputs.validation-max-number-checks }}
+
+          for ((i = 1; i <= NUMBER_OF_CHECKS; i++)); do
+            RESPONSE=$(curl --request POST --silent --header "Authorization: Bearer ${TOKEN}" '${{ inputs.sonatype-domain-name }}/api/v1/publisher/status?id=${{ steps.stage-release.outputs.stage-release-id }}' | jq -cr '.')
+            SONATYPE_RESPONSE=$(echo "${RESPONSE}" | jq -cr '.deploymentState')
+
+            if [[ ${SONATYPE_RESPONSE} == 'FAILED' ]]; then
+              ERRORS=$(echo "${RESPONSE}" | jq '.errors')
+              echo "Package validation failed. Check build package logs to determine potential reasons why the uploaded package is not valid."
+              echo "Errors: ${ERRORS}"
+
+              exit 1
+            elif [[ ${SONATYPE_RESPONSE} == 'VALIDATING' || ${SONATYPE_RESPONSE} == 'PENDING' ]]; then
+              echo "Package validation is not done. Status: ${SONATYPE_RESPONSE}"
+
+              # Exponential backoff
+              sleep_time=$((2 ** (i - 1)))
+              echo "Next retry in ${sleep_time} second ...."
+              sleep "$sleep_time"
+            elif [[ "${SONATYPE_RESPONSE}" == 'VALIDATED' ]]; then
+              echo "Package is validated. Run release confirmation."
+
+              exit 0
+            fi
+          done
+
+      - name: Release
+        shell: bash
+        run: |
+          TOKEN=$(printf "${{ secrets.SONATYPE_MAVEN_USER }}:${{ secrets.SONATYPE_MAVEN_PASSWORD }}" | base64)
+          RELEASE_IDS=(${{ steps.get-release-ids-for-build.outputs.release-ids }})
+
+          for RELEASE_ID in "${RELEASE_IDS[@]}"; do
+            echo "curl --request POST --header 'Authorization: Bearer ${TOKEN}' ${{ vars.SONATYPE_DOMAIN_NAME }}/api/v1/publisher/deployment/$RELEASE_ID"
+            # "curl --request POST --header 'Authorization: Bearer ${TOKEN}' ${{ vars.SONATYPE_DOMAIN_NAME }}/api/v1/publisher/deployment/$RELEASE_ID"
+          done
