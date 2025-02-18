@@ -1,6 +1,6 @@
 #!/bin/bash -e
 # The default crypto library is gnu-crypto.
-# This script can change crypto library to bouncy castle's bcprov-jdk15on.
+# This script can change crypto library to bouncy castle's bcprov-jdk18on.
 
 # Clean up old files
 function clean_up() {
