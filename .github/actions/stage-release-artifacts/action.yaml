@@ -3,28 +3,28 @@ description: "Prepare aretifacts for publish to various portals"
 
 inputs:
   jfrog-platform-url:
-    description: ""
+    description: "JFrog platform URL"
     required: false
     default: https://aerospike.jfrog.io
   oidc-provider:
-    description: ""
+    description: "OIDC provider name"
     required: true
   oidc-audience:
-    description: ""
+    description: "ODIC audience"
     required: true
   staging-folder:
-    description: ""
+    description: "Staging folders. Input should be a JSON array of staging folders"
     required: false
     default: '["staging","github","sonatype"]'
   target-repository:
-    description: ""
+    description: "Target repository in JFROG"
     required: false
-    default: clients-maven-stage-local
+    default: clients-maven-stage-local # TODO update for production releases
   build-name-number:
-    description: ""
+    description: "Build name and number"
     required: true
   artifact-version:
-    description: ""
+    description: "Artifact version"
     required: true
 
 runs:
@@ -76,6 +76,7 @@ runs:
           mkdir -p "$FOLDER"
         done
 
+    # Download artifacts from JFrog
     - name: Download artifacts from JFrog
       shell: bash
       working-directory: ${{ fromJson(inputs.staging-folder)[0] }}
@@ -89,6 +90,8 @@ runs:
         pwd
         ls -laR
 
+    # The hashes are generated when the artifacts are published (not part of this build). When we promote or run releases we download the artifacts and take the hashes
+    # which are part of the build info. We don't have sha-512 at the moment.
     - name: Get hashes from build_info and generate files
       shell: bash
       working-directory: ${{ fromJson(inputs.staging-folder)[0] }}

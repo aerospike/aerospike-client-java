@@ -3,7 +3,8 @@ name: clients-java-push-to-dev
 on:
   push:
     branches:
-      - dev/*
+      - stage
+      - stage-jdk8
   workflow_dispatch:
 
 jobs:

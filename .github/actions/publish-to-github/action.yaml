@@ -61,21 +61,21 @@ runs:
       shell: bash
       working-directory: ${{ inputs.target-folder }}
       run: |
-        echo "workind directory: ${{ inputs.target-folder }}"
+        echo "working directory: ${{ inputs.target-folder }}"
         echo "tag name: Release ${{ inputs.artifact-version }}"
         echo "body: Changes for release ${{ inputs.artifact-version }}"
         echo "body: ${{ inputs.release-notes }}"
         echo "files: ${{ steps.get-github-release-artifact-names.outputs.release-artifacts }}"
 
-    #- name: Publish release to github
-    #  working-directory: ${{ inputs.target-folder }}
-    #  uses: softprops/action-gh-release@v2
-    #  with:
-    #    token: ${{ inputs.github-token }}
-    #    tag_name: Release ${{ inputs.artifact-version }}
-    #    body: |
-    #      Changes for release ${{ inputs.artifact-version }}
-    #      "${{ inputs.release-notes }}"
-    #    draft: false
-    #    prerelease: false
-    #    files: ${{ steps.get-github-release-artifact-names.outputs.release-artifacts }}
+    - name: Publish release to github
+      working-directory: ${{ inputs.target-folder }}
+      uses: softprops/action-gh-release@v2
+      with:
+        token: ${{ inputs.github-token }}
+        tag_name: Release ${{ inputs.artifact-version }}
+        body: |
+          Changes for release ${{ inputs.artifact-version }}
+          "${{ inputs.release-notes }}"
+        draft: false
+        prerelease: false
+        files: ${{ steps.get-github-release-artifact-names.outputs.release-artifacts }}
