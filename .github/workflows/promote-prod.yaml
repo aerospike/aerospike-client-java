@@ -14,7 +14,8 @@ on:
         type: choice
         description: Target branch to promote to
         options:
-          - dev-stage
+          - master
+          - jdk8
 
 jobs:
   promote-from-stage-to-prod:
@@ -24,4 +25,5 @@ jobs:
       build-number: ${{ inputs.build-number }}
       target-repository: clients-maven-stage-local
       target-branch: ${{ inputs.target-branch }}
+      source-branch: ${{ inputs.target-branch == 'master' && 'stage' || 'stage-jdk8' }}
     secrets: inherit

@@ -30,15 +30,17 @@ jobs:
           fetch-depth: 0
           ref: ${{ inputs.ref }}
 
+      # Fetching java version used in this build. The java version is set in pom file  and could vary between builds.
       - name: Get java version
         id: get-java-version
         run: |
-          echo java-version="$(grep '<java.version>' pom.xml | sed -e 's/<[^>]*>//g' | awk '{$1=$1};1')" >> $GITHUB_OUTPUT
+          echo java-version="$(grep '<java.version>' pom.xml | sed -e 's/<[^>]*>//g' | awk '{$1=$1};1' | sed 's/^1\.8$/8/')"  >> $GITHUB_OUTPUT
 
       - name: Debug - java-version
         run: |
           echo ${{ steps.get-java-version.outputs.java-version }}
 
+      # Checking if this particular build is a snapshot build
       - name: Detect if snapshot
         id: get-is-snapshot
         shell: bash
@@ -54,11 +56,12 @@ jobs:
 
           # Getting previous version
           OLD_VERSIONS=$(git show "${COMMIT_REF}:pom.xml" |
-            sed -n 's/.*<revision>\([^<]*\)<\/revision>.*/\1/p')
+            sed -n '/<version>/ { s/.*<version>\([^<]*\)<\/version>.*/\1/p; q }')
 
           # Getting current version
           NEW_VERSIONS=$(sed -n 's/.*<revision>\([^<]*\)<\/revision>.*/\1/p' pom.xml)
 
+          echo "old versions: ${OLD_VERSIONS}, new versions: ${NEW_VERSIONS}"
           # Compare the extracted versions. CI will not commit snapshot version.
           if [[ "${OLD_VERSIONS}" != "${NEW_VERSIONS}" ]]; then
             echo "is-snapshot='false'" >> $GITHUB_OUTPUT
