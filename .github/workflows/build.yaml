@@ -1,4 +1,3 @@
-name: Build artifacts
 run-name: Build artifact for ${{ inputs.crypto-type }} ${{ inputs.java-version }}
 
 permissions:
