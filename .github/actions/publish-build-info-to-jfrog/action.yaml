@@ -3,20 +3,20 @@ description: "Publishes build-info to JFrog"
 
 inputs:
   jfrog-platform-url:
-    description: ""
+    description: "JFrog platform URL"
     required: false
     default: https://aerospike.jfrog.io
   oidc-provider:
-    description: ""
+    description: "OIDC provider name"
     required: true
   oidc-audience:
-    description: ""
+    description: "ODIC audience"
     required: true
   build-path:
-    description: ""
+    description: "Path to which build info is to be published"
     required: true
   variables:
-    description: ""
+    description: "Any additional variables to be published as part of build. The input here should be valid JSON in the form {'env_variable_key': 'env_variable_value'}, .e.g {'SONATYPE_STAGING_BUILD_ID': '070c07e25e937888ed9740ee825afa24bf184722'}"
     required: true
 
 runs:
@@ -38,12 +38,14 @@ runs:
         oidc-provider-name: ${{ inputs.oidc-provider }}
         oidc-audience: ${{ inputs.oidc-audience }}
 
+    # Parsing out env variables and values and setting them in the environment
     - name: Set env variables provided with variables
       shell: bash
       run: |
         ENV_VARIABLES='${{ inputs.variables }}'
         echo "$ENV_VARIABLES" | jq -r 'to_entries | .[] | "\(.key)=\(.value)"' >> $GITHUB_ENV
 
+    # Pushing build info to JFrog
     - name: Upload artifacts
       shell: bash
       run: |

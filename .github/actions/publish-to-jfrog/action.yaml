@@ -3,35 +3,35 @@ description: "Publishes artifacts to JFrog"
 
 inputs:
   jfrog-releases-repo-name:
-    description: ""
+    description: "Jfrog releases repository name"
     required: false
     default: clients-maven-dev-local
   jfrog-snapshots-repo-name:
-    description: ""
+    description: "Jfrog snapshots repository name"
     required: false
     default: clients-maven-dev-local
   jfrog-platform-url:
-    description: ""
+    description: "JFrog platform URL"
     required: false
     default: https://aerospike.jfrog.io
   oidc-provider:
-    description: ""
+    description: "OIDC provider name"
     required: true
   oidc-audience:
-    description: ""
+    description: "OIDC audience"
     required: true
   artifact-id:
-    description: ""
+    description: "Artifact ID"
     required: true
   artifact-version:
-    description: ""
+    description: "Artifact version"
     required: true
   deploy-spec-path:
-    description: ""
+    description: "Deploy spec path. This directory contains any resources needed for public releases, like public facing POMs"
     required: false
     default: deploy-resources
   package-install-location:
-    description: ""
+    description: "Location where the artifacts are installed"
     required: false
     default: ~/.m2/repository
 
@@ -66,6 +66,9 @@ runs:
         --repo-deploy-releases=${{ inputs.jfrog-releases-repo-name }} \
         --repo-deploy-snapshots=${{ inputs.jfrog-snapshots-repo-name }}
 
+    # Generating deploy spec to match the artifacts to be uploaded. Builds for java do not follow the standards since we have bouncycastle and gnu builds.
+    # Technically speaking we should have multiple modules looking at how Maven does things. But for practical reasons we don't since we would have duplicate 
+    # code to maintain.
     - name: Generate deploy spec
       shell: bash
       working-directory: client
@@ -89,6 +92,7 @@ runs:
       run: |
         cat ${{ inputs.deploy-spec-path }}/publish-spec.json
 
+    # Publishing artifacts to JFrog
     - name: Upload artifacts
       shell: bash
       working-directory: client

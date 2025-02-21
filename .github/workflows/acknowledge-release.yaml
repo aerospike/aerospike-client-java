@@ -8,12 +8,12 @@ on:
   workflow_dispatch:
     inputs:
       build-number:
-        type: number
+        type: string
         description: Build number used to build artifact to be promoted
 
 jobs:
   confirm-release:
     uses: ./.github/workflows/acknowledge.yaml
     with:
-      build-number: ${{ github.run_number }}
+      build-number: ${{ inputs.build-number }}
     secrets: inherit
