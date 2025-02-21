@@ -1,5 +1,3 @@
-name: Test and build on-demand
-
 permissions:
   # This is required for requesting the OIDC token
   id-token: write
@@ -17,6 +15,9 @@ on:
       use-server-rc:
         type: boolean
         required: true
+      server-tag:
+        type: string
+        required: true
     secrets:
       JFROG_OIDC_PROVIDER:
         required: true
@@ -31,17 +32,12 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          ref: ${{ inputs.ref }}
-
-      - name: Gpg debug step
-        shell: bash
-        run: |
-          gpg --version
+          ref: ${{ inputs.source-branch }}
 
       - name: Get java version
         id: get-java-version
         run: |
-          echo java-version="$(grep '<java.version>' pom.xml | sed -e 's/<[^>]*>//g' | awk '{$1=$1};1')" >> $GITHUB_OUTPUT
+          echo java-version="$(grep '<java.version>' pom.xml | sed -e 's/<[^>]*>//g' | awk '{$1=$1};1' | sed 's/^1\.8$/8/')"  >> $GITHUB_OUTPUT
 
       # Java plugin will setup gpg but we are not using maven to deploy do JFrog.
       # - jf mvn clean install on publish does not publish POM we would like to publish
@@ -51,6 +47,7 @@ jobs:
           distribution: "semeru"
           java-version: ${{ steps.get-java-version.outputs.java-version }}
 
+      # Running build followed by tests
       - name: Build and test
         uses: ./.github/actions/build-and-test
         with:
