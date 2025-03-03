@@ -876,10 +876,19 @@ public class Main implements Log.Callback {
 
 		if (line.hasOption("batchSize")) {
 			args.batchSize = Integer.parseInt(line.getOptionValue("batchSize"));
+
+			if(mrtEnabled) {
+				throw new Exception("MRT not supporting for batch size.");
+			}
+
 		}
 
 		if (line.hasOption("batchShowNodes")) {
 			this.batchShowNodes = true;
+
+			if(mrtEnabled) {
+				throw new Exception("MRT not supporting for batch show nodes.");
+			}
 		}
 
 		if (line.hasOption("asyncMaxCommands")) {
@@ -1228,7 +1237,10 @@ public class Main implements Log.Callback {
 				try {
 					if (mrtEnabled) {
 						if (initialize) {
-							// TODO
+							throw new Exception("MRT does not support asynchronous insertion during initialization.");
+						}
+						else {
+							throw new Exception("MRT does not support asynchronous batch and RU workload.");
 						}
 					} 
 					else {

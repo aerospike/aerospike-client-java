@@ -16,9 +16,6 @@
  */
 package com.aerospike.benchmarks;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import com.aerospike.client.Bin;
 import com.aerospike.client.IAerospikeClient;
 import com.aerospike.client.Key;
@@ -44,7 +41,7 @@ public class MRTRWTaskSync extends MRTRWTask implements Runnable {
 	private final long keysPerMRT;
 
 	public MRTRWTaskSync(IAerospikeClient client, Arguments args, CounterStore counters, long nMRTs, long keyStart,
-						 long keyCount, long keysPerMRT) {
+			long keyCount, long keysPerMRT) {
 		super(args, counters, keyStart, keyCount);
 		this.writePolicy = new WritePolicy(args.writePolicy);
 		this.readPolicy = new Policy(args.readPolicy);
@@ -195,65 +192,8 @@ public class MRTRWTaskSync extends MRTRWTask implements Runnable {
 		processRead(key, udfReturnObj);
 	}
 
-	@Override
-	protected void get(Key[] keys, String binName) {
-		if (args.partitionIds != null) {
-			keys = getFilteredKeys(keys);
-		}
-
-		Record[] records;
-
-		if (counters.read.latency != null) {
-			long begin = System.nanoTime();
-			records = client.get(args.batchPolicy, keys, binName);
-			long elapsed = System.nanoTime() - begin;
-			counters.read.latency.add(elapsed);
-		} else {
-			records = client.get(args.batchPolicy, keys, binName);
-		}
-
-		if (records == null) {
-			System.out.println("Batch records returned is null");
-		}
-		processBatchRead();
-	}
-
-	@Override
-	protected void get(Key[] keys) {
-		if (args.partitionIds != null) {
-			keys = getFilteredKeys(keys);
-		}
-
-		Record[] records;
-
-		if (counters.read.latency != null) {
-			long begin = System.nanoTime();
-			records = client.get(args.batchPolicy, keys);
-			long elapsed = System.nanoTime() - begin;
-			counters.read.latency.add(elapsed);
-		} else {
-			records = client.get(args.batchPolicy, keys);
-		}
-
-		if (records == null) {
-			System.out.println("Batch records returned is null");
-		}
-		processBatchRead();
-	}
-
 	private boolean skipKey(Key key) {
 		return args.partitionIds != null && !args.partitionIds.contains(Partition.getPartitionId(key.digest));
 	}
 
-	private Key[] getFilteredKeys(Key[] keys) {
-		List<Key> filteredKeys = new ArrayList<>();
-
-		for (Key key : keys) {
-			if (!skipKey(key)) {
-				filteredKeys.add(key);
-			}
-		}
-
-		return filteredKeys.toArray(new Key[0]);
-	}
 }

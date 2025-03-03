@@ -16,7 +16,6 @@
  */
 package com.aerospike.benchmarks;
 
-import java.util.Iterator;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Bin;
@@ -64,24 +63,11 @@ public abstract class MRTRWTask {
 				break;
 
 			case READ_MODIFY_UPDATE:
-				readModifyUpdate(random);
-				break;
-
 			case READ_MODIFY_INCREMENT:
-				readModifyIncrement(random);
-				break;
-
 			case READ_MODIFY_DECREMENT:
-				readModifyDecrement(random);
-				break;
-
 			case READ_FROM_FILE:
-				readFromFile(random);
-				break;
-
 			case TRANSACTION:
-				runTransaction(random);
-				break;
+				throw new Exception("MRT does not support for workload "+args.workload);
 
 			default:
 				break;
@@ -90,7 +76,7 @@ public abstract class MRTRWTask {
 			if (args.debug) {
 				e.printStackTrace();
 			}
-			throw e;
+
 		}
 	}
 
@@ -101,13 +87,8 @@ public abstract class MRTRWTask {
 		try {
 			if (random.nextInt(100) < args.readPct) {
 				boolean isMultiBin = random.nextInt(100) < args.readMultiBinPct;
-
-				if (args.batchSize <= 1) {
-					long key = random.nextLong(keyCount);
-					doRead(key, isMultiBin);
-				} else {
-					doReadBatch(random, isMultiBin);
-				}
+				long key = random.nextLong(keyCount);
+				doRead(key, isMultiBin);
 			} else {
 				boolean isMultiBin = random.nextInt(100) < args.writeMultiBinPct;
 
@@ -121,108 +102,7 @@ public abstract class MRTRWTask {
 
 	}
 
-	private void readModifyUpdate(RandomShift random) {
-		long key = random.nextLong(keyCount);
 
-		// Read all bins.
-		doRead(key, true);
-		// Write one bin.
-		doWrite(random, key, false, null);
-	}
-
-	private void readModifyIncrement(RandomShift random) {
-		long key = random.nextLong(keyCount);
-
-		// Read all bins.
-		doRead(key, true);
-		// Increment one bin.
-		doIncrement(key, 1);
-	}
-
-	private void readModifyDecrement(RandomShift random) {
-		long key = random.nextLong(keyCount);
-
-		// Read all bins.
-		doRead(key, true);
-		// Decrement one bin.
-		doIncrement(key, -1);
-	}
-
-	private void readFromFile(RandomShift random) {
-		long key = random.nextLong(keyCount);
-
-		if (args.keyType == KeyType.STRING) {
-			doReadString(key, true);
-		} else if (args.keyType == KeyType.INTEGER) {
-			doReadLong(key, true);
-		}
-	}
-
-	private void runTransaction(RandomShift random) {
-		long key;
-		Iterator<TransactionalItem> iterator = args.transactionalWorkload.iterator(random);
-		long begin = System.nanoTime();
-		while (iterator.hasNext()) {
-			TransactionalItem thisItem = iterator.next();
-			switch (thisItem.getType()) {
-			case MULTI_BIN_READ:
-				key = random.nextLong(keyCount);
-				doRead(key, true);
-				break;
-			case MULTI_BIN_BATCH_READ:
-				doRead(getKeys(random, thisItem.getRepetitions()), true);
-				break;
-			case MULTI_BIN_REPLACE:
-				key = random.nextLong(keyCount);
-				doWrite(random, key, true, args.replacePolicy);
-				break;
-			case MULTI_BIN_UPDATE:
-				key = random.nextLong(keyCount);
-				doWrite(random, key, true, args.updatePolicy);
-				break;
-			case SINGLE_BIN_INCREMENT:
-				key = random.nextLong(keyCount);
-				// Increment one bin.
-				doIncrement(key, 1);
-				break;
-			case SINGLE_BIN_READ:
-				key = random.nextLong(keyCount);
-				doRead(key, false);
-				break;
-			case SINGLE_BIN_BATCH_READ:
-				doRead(getKeys(random, thisItem.getRepetitions()), false);
-				break;
-			case SINGLE_BIN_REPLACE:
-				key = random.nextLong(keyCount);
-				doWrite(random, key, false, args.replacePolicy);
-				break;
-			case SINGLE_BIN_UPDATE:
-				key = random.nextLong(keyCount);
-				doWrite(random, key, false, args.updatePolicy);
-				break;
-			default:
-				break;
-			}
-		}
-
-		if (counters.transaction.latency != null) {
-			long elapsed = System.nanoTime() - begin;
-			counters.transaction.count.getAndIncrement();
-			counters.transaction.latency.add(elapsed);
-		}
-	}
-
-	private long[] getKeys(RandomShift random, int count) {
-		long[] keys = new long[count];
-		for (int i = 0; i < count; i++) {
-			keys[i] = random.nextLong(keyCount);
-		}
-		return keys;
-	}
-
-	/**
-	 * Write the key at the given index
-	 */
 	protected void doWrite(RandomShift random, long keyIdx, boolean multiBin, WritePolicy writePolicy)
 			throws AerospikeException {
 		Key key = new Key(args.namespace, args.setName, keyStart + keyIdx);
@@ -235,25 +115,6 @@ public abstract class MRTRWTask {
 			writeFailure(ae);
 			runNextCommand();
 			throw ae;
-		} catch (Exception e) {
-			writeFailure(e);
-			runNextCommand();
-		}
-	}
-
-	/**
-	 * Increment (or decrement, if incrValue is negative) the key at the given
-	 * index.
-	 */
-	protected void doIncrement(long keyIdx, int incrValue) {
-		// set up bin for increment
-		Bin[] bins = new Bin[] { new Bin("", incrValue) };
-
-		try {
-			add(new Key(args.namespace, args.setName, keyStart + keyIdx), bins);
-		} catch (AerospikeException ae) {
-			writeFailure(ae);
-			runNextCommand();
 		} catch (Exception e) {
 			writeFailure(e);
 			runNextCommand();
@@ -286,125 +147,6 @@ public abstract class MRTRWTask {
 		}
 	}
 
-	/**
-	 * Read the keys at the given indexex.
-	 */
-	protected void doRead(long[] keyIdxs, boolean multiBin) {
-		try {
-			Key[] keys = new Key[keyIdxs.length];
-			for (int i = 0; i < keyIdxs.length; i++) {
-				keys[i] = new Key(args.namespace, args.setName, keyStart + keyIdxs[i]);
-			}
-
-			if (multiBin) {
-				// Read all bins, maybe validate
-				get(keys);
-			} else {
-				// Read one bin, maybe validate
-				get(keys, "0");
-			}
-		} catch (AerospikeException ae) {
-			readFailure(ae);
-			runNextCommand();
-		} catch (Exception e) {
-			readFailure(e);
-			runNextCommand();
-		}
-	}
-
-	/**
-	 * Read batch of keys in one call.
-	 */
-	protected void doReadBatch(RandomShift random, boolean multiBin) {
-		Key[] keys = new Key[args.batchSize];
-
-		if (args.batchNamespaces == null) {
-			for (int i = 0; i < keys.length; i++) {
-				long keyIdx = random.nextLong(keyCount);
-				keys[i] = new Key(args.namespace, args.setName, keyStart + keyIdx);
-			}
-		} else {
-			int nslen = args.batchNamespaces.length;
-
-			for (int i = 0; i < keys.length; i++) {
-				long keyIdx = random.nextLong(keyCount);
-				keys[i] = new Key(args.batchNamespaces[i % nslen], args.setName, keyStart + keyIdx);
-			}
-		}
-
-		try {
-			if (multiBin) {
-				// Read all bins, maybe validate
-				get(keys);
-			} else {
-				// Read one bin, maybe validate
-				get(keys, "0");
-			}
-		} catch (AerospikeException ae) {
-			readFailure(ae);
-			runNextCommand();
-		} catch (Exception e) {
-			readFailure(e);
-			runNextCommand();
-		}
-	}
-
-	/**
-	 * Read the keys of type Integer from the file supplied.
-	 */
-	protected void doReadLong(long keyIdx, boolean multiBin) {
-		// Warning: read from file only works when keyStart + keyIdx <
-		// Integer.MAX_VALUE.
-		long numKey = Long.parseLong(Main.keyList.get((int) (keyStart + keyIdx)));
-
-		try {
-			// if udf has been chosen call udf
-			if (args.udfValues != null) {
-				get(new Key(args.namespace, args.setName, numKey), args.udfPackageName, args.udfFunctionName,
-						args.udfValues);
-			} else if (multiBin) {
-				// Read all bins, maybe validate
-				get(new Key(args.namespace, args.setName, numKey));
-			} else {
-				// Read one bin, maybe validate
-				get(new Key(args.namespace, args.setName, numKey), "0");
-			}
-		} catch (AerospikeException ae) {
-			readFailure(ae);
-			runNextCommand();
-		} catch (Exception e) {
-			readFailure(e);
-			runNextCommand();
-		}
-	}
-
-	/**
-	 * Read the keys of type String from the file supplied.
-	 */
-	protected void doReadString(long keyIdx, boolean multiBin) {
-		// Warning: read from file only works when keyStart + keyIdx <
-		// Integer.MAX_VALUE.
-		String strKey = Main.keyList.get((int) (keyStart + keyIdx));
-
-		try {
-			if (args.udfValues != null) {
-				get(new Key(args.namespace, args.setName, strKey), args.udfPackageName, args.udfFunctionName,
-						args.udfValues);
-			} else if (multiBin) {
-				// Read all bins, maybe validate
-				get(new Key(args.namespace, args.setName, strKey));
-			} else {
-				// Read one bin, maybe validate
-				get(new Key(args.namespace, args.setName, strKey), "0");
-			}
-		} catch (AerospikeException ae) {
-			readFailure(ae);
-			runNextCommand();
-		} catch (Exception e) {
-			readFailure(e);
-			runNextCommand();
-		}
-	}
 
 	protected void processRead(Key key, Record record) {
 		if (record == null && args.reportNotFound) {
@@ -475,8 +217,4 @@ public abstract class MRTRWTask {
 	protected abstract void get(Key key);
 
 	protected abstract void get(Key key, String udfPackageName, String udfFunctionName, Value[] udfValues);
-
-	protected abstract void get(Key[] keys);
-
-	protected abstract void get(Key[] keys, String binName);
 }
