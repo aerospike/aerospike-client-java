@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -148,7 +148,8 @@ public final class Statement {
 	/**
 	 * Limit returned records per second (rps) rate for each server.
 	 * Do not apply rps limit if recordsPerSecond is zero (default).
-	 * Currently only applicable to a query without a defined filter.
+	 * Currently only applicable to a query without a secondary index
+	 * filter (scan).
 	 */
 	public void setRecordsPerSecond(int recordsPerSecond) {
 		this.recordsPerSecond = recordsPerSecond;
