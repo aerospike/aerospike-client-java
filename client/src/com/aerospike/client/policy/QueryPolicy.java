@@ -82,8 +82,8 @@ public class QueryPolicy extends Policy {
 	public boolean includeBinData = true;
 
 	/**
-	 * Terminate query if cluster is in migration state. If the server supports partition
-	 * queries or the query filter is null (scan), this field is ignored.
+	 * Terminate query if cluster is in migration state. This field is ignored in server
+	 * versions 6.0+.
 	 * <p>
 	 * Default: false
 	 */

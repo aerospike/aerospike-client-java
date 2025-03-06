@@ -148,8 +148,10 @@ public final class Statement {
 	/**
 	 * Limit returned records per second (rps) rate for each server.
 	 * Do not apply rps limit if recordsPerSecond is zero (default).
-	 * Currently only applicable to a query without a secondary index
-	 * filter (scan).
+	 * <p>
+	 * recordsPerSecond is supported in all primary and secondary index
+	 * queries in server versions 6.0+. For background queries, recordsPerSecond
+	 * is bounded by the server config background-query-max-rps.
 	 */
 	public void setRecordsPerSecond(int recordsPerSecond) {
 		this.recordsPerSecond = recordsPerSecond;
