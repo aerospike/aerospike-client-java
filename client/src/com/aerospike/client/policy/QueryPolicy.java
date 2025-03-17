@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2024 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -39,10 +39,6 @@ public class QueryPolicy extends Policy {
 	 * number of nodes involved in the query.  The actual number of records returned
 	 * may be less than maxRecords if node record counts are small and unbalanced across
 	 * nodes.
-	 * <p>
-	 * maxRecords is only supported when query filter is null.  maxRecords
-	 * exists here because query methods will convert into a scan when the query
-	 * filter is null.  maxRecords is ignored when the query contains a filter.
 	 * <p>
 	 * Default: 0 (do not limit record count)
 	 */
@@ -86,8 +82,8 @@ public class QueryPolicy extends Policy {
 	public boolean includeBinData = true;
 
 	/**
-	 * Terminate query if cluster is in migration state. If the server supports partition
-	 * queries or the query filter is null (scan), this field is ignored.
+	 * Terminate query if cluster is in migration state. This field is ignored in server
+	 * versions 6.0+.
 	 * <p>
 	 * Default: false
 	 */

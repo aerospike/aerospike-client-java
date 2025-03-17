@@ -23,7 +23,8 @@ runs:
         git fetch --tags
         echo "previous-tag=$(git tag --sort=-creatordate | sed -n '1p')" >> $GITHUB_OUTPUT
 
-    # Extract commit messages between previous tag and the current tag.
+    # Extract commit messages between previous tag and the current tag. This ensures that the messages is 
+    # in multiple lines and follows nicely formatted release notes.
     - name: Get release notes
       shell: bash
       id: release-notes

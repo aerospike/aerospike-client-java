@@ -10,6 +10,10 @@ on:
         description: ""
         required: false
         default: https://aerospike.jfrog.io
+      build-name-numbers:
+        type: string
+        description: ""
+        required: true
     secrets:
       JFROG_OIDC_PROVIDER:
         required: true
@@ -30,12 +34,22 @@ jobs:
           oidc-provider-name: ${{ secrets.JFROG_OIDC_PROVIDER }}
           oidc-audience: ${{ secrets.JFROG_OIDC_AUDIENCE }}
 
+      - name: Debug step
+        shell: bash
+        run: |
+          echo "${{ inputs.jfrog-platform-url }}"
+          echo "${{ inputs.build-name-numbers }}"
+
       - name: Aggregate builds
         run: |
-          # record env variables 
+          ARTIFACT_IDS=($(echo '${{ inputs.build-name-numbers }}' | jq -r '.[]'))
+
+          # record env variables
           jf rt bce promote-java-client ${{ github.run_number }}
 
-          jf rt ba promote-java-client ${{ github.run_number }} promote_aerospike-client-bc-jdk ${{ github.run_number }}
-          jf rt ba promote-java-client ${{ github.run_number }} promote_aerospike-client-jdk ${{ github.run_number }}
+          for ARTIFACT_ID in "${ARTIFACT_IDS[@]}"; do
+            RELEASE=$(echo "$ARTIFACT_ID" | sed -E 's/.*_([^/]+)\/.*/\1/')
+            jf rt ba promote-java-client ${{ github.run_number }} promote_${RELEASE} ${{ github.run_number }}
+          done
 
           jf rt bp promote-java-client ${{ github.run_number }}
