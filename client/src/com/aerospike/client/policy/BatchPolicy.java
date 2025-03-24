@@ -16,6 +16,10 @@
  */
 package com.aerospike.client.policy;
 
+import com.aerospike.client.configuration.ConfigurationProvider;
+import com.aerospike.client.configuration.serializers.Configuration;
+import com.aerospike.client.configuration.serializers.dynamicconfig.DynamicBatchReadConfig;
+
 /**
  * Batch parent policy.
  */
@@ -27,12 +31,12 @@ public class BatchPolicy extends Policy {
 	 * aerospike-client-jdk8 packages.
 	 */
 	@Deprecated
-	public int maxConcurrentThreads = 1;
+	public int maxConcurrentThreads = PolicyDefaultValues.MAX_CONCURRENT_THREADS;
 
 	/**
-	 * Allow batch to be processed immediately in the server's receiving thread for in-memory
-	 * namespaces. If false, the batch will always be processed in separate service threads.
-	 * <p>
+	 * Allow batch to amespaces. If false, the batch will always be processed in separate service threads.
+	 * 	 * <p>be processed immediately in the server's receiving thread for in-memory
+	 * n
 	 * For batch commands with smaller sized records (&lt;= 1K per record), inline
 	 * processing will be significantly faster on in-memory namespaces.
 	 * <p>
@@ -41,7 +45,7 @@ public class BatchPolicy extends Policy {
 	 * <p>
 	 * Default: true
 	 */
-	public boolean allowInline = true;
+	public boolean allowInline = PolicyDefaultValues.ALLOW_INLINE;
 
 	/**
 	 * Allow batch to be processed immediately in the server's receiving thread for SSD
@@ -53,7 +57,7 @@ public class BatchPolicy extends Policy {
 	 * <p>
 	 * Default: false
 	 */
-	public boolean allowInlineSSD = false;
+	public boolean allowInlineSSD = PolicyDefaultValues.ALLOW_INLINE_SSD;
 
 	/**
 	 * Should all batch keys be attempted regardless of errors. This field is used on both
@@ -73,7 +77,7 @@ public class BatchPolicy extends Policy {
 	 * <p>
 	 * Default: true
 	 */
-	public boolean respondAllKeys = true;
+	public boolean respondAllKeys = PolicyDefaultValues.RESPOND_ALL_KEYS;
 
 	/**
 	 * This method is deprecated and will eventually be removed.
@@ -145,5 +149,30 @@ public class BatchPolicy extends Policy {
 
 	public void setRespondAllKeys(boolean respondAllKeys) {
 		this.respondAllKeys = respondAllKeys;
+	}
+
+
+	/**
+	 * Override certain policy attributes if they exist in the configProvider.
+	 */
+	public void applyConfigOverrides(ConfigurationProvider configProvider) {
+		Configuration config = configProvider.fetchConfiguration();
+		DynamicBatchReadConfig dynBRC = config.dynamicConfiguration.dynamicBatchReadConfig;
+
+		// Dynamic Batch Read
+		if (dynBRC.readModeAP != null ) this.readModeAP = dynBRC.readModeAP;
+		if (dynBRC.readModeSC != null ) this.readModeSC = dynBRC.readModeSC;
+		if (dynBRC.connectTimeout != null ) this.connectTimeout = dynBRC.connectTimeout.value;
+		if (dynBRC.replica != null ) this.replica = dynBRC.replica;
+		if (dynBRC.sleepBetweenRetries != null ) this.sleepBetweenRetries = dynBRC.sleepBetweenRetries.value;
+		if (dynBRC.socketTimeout != null ) this.socketTimeout = dynBRC.socketTimeout.value;
+		if (dynBRC.timeoutDelay != null ) this.timeoutDelay = dynBRC.timeoutDelay.value;
+		if (dynBRC.totalTimeout != null ) this.totalTimeout = dynBRC.totalTimeout.value;
+		if (dynBRC.maxRetries != null ) this.maxRetries = dynBRC.maxRetries.value;
+		if (dynBRC.maxConcurrentThreads != null ) this.maxConcurrentThreads = dynBRC.maxConcurrentThreads.value;
+		if (dynBRC.allowInline != null ) this.allowInline = dynBRC.allowInline.value;
+		if (dynBRC.allowInlineSSD != null ) this.allowInlineSSD = dynBRC.allowInlineSSD.value;
+		if (dynBRC.respondAllKeys != null ) this.respondAllKeys = dynBRC.respondAllKeys.value;
+
 	}
 }

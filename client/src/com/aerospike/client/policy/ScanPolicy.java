@@ -16,6 +16,11 @@
  */
 package com.aerospike.client.policy;
 
+import com.aerospike.client.configuration.ConfigurationProvider;
+import com.aerospike.client.configuration.serializers.Configuration;
+import com.aerospike.client.configuration.serializers.dynamicconfig.DynamicQueryConfig;
+import com.aerospike.client.configuration.serializers.dynamicconfig.DynamicScanConfig;
+
 /**
  * Container object for optional parameters used in scan operations.
  * <p>
@@ -58,7 +63,7 @@ public final class ScanPolicy extends Policy {
 	 * <p>
 	 * Default: true
 	 */
-	public boolean concurrentNodes = true;
+	public boolean concurrentNodes = PolicyDefaultValues.CONCURRENT_NODES;
 
 	/**
 	 * Should bin data be retrieved. If false, only record digests (and user keys
@@ -101,8 +106,8 @@ public final class ScanPolicy extends Policy {
 	 * all scan results because a single partition was missed.
 	 */
 	public ScanPolicy() {
-		super.totalTimeout = 0;
-		super.maxRetries = 5;
+		super.totalTimeout = PolicyDefaultValues.TOTAL_TIMEOUT_SCAN;
+		super.maxRetries = PolicyDefaultValues.TOTAL_TIMEOUT_SCAN;
 	}
 
 	// Include setters to facilitate Spring's ConfigurationProperties.
@@ -125,5 +130,25 @@ public final class ScanPolicy extends Policy {
 
 	public void setIncludeBinData(boolean includeBinData) {
 		this.includeBinData = includeBinData;
+	}
+
+	/**
+	 * Override certain policy attributes if they exist in the configProvider.
+	 */
+	public void applyConfigOverrides( ConfigurationProvider configProvider) {
+		Configuration config = configProvider.fetchConfiguration();
+		DynamicScanConfig dynSC = config.dynamicConfiguration.dynamicScanConfig;
+
+		if (dynSC.readModeAP != null) this.readModeAP = dynSC.readModeAP;
+		if (dynSC.readModeSC != null) this.readModeSC = dynSC.readModeSC;
+		if (dynSC.connectTimeout != null) this.connectTimeout = dynSC.connectTimeout.value;
+		if (dynSC.replica != null) this.replica = dynSC.replica;
+		if (dynSC.sleepBetweenRetries != null) this.sleepBetweenRetries = dynSC.sleepBetweenRetries.value;
+		if (dynSC.socketTimeout != null) this.socketTimeout = dynSC.socketTimeout.value;
+		if (dynSC.timeoutDelay != null) this.timeoutDelay = dynSC.timeoutDelay.value;
+		if (dynSC.totalTimeout != null) this.totalTimeout = dynSC.totalTimeout.value;
+		if (dynSC.maxRetries != null) this.maxRetries = dynSC.maxRetries.value;
+		if (dynSC.concurrentNodes != null) this.concurrentNodes = dynSC.concurrentNodes.value;
+		if (dynSC.maxConcurrentNodes != null) this.maxConcurrentNodes = dynSC.maxConcurrentNodes.value;
 	}
 }

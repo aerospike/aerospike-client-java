@@ -16,6 +16,10 @@
  */
 package com.aerospike.client.policy;
 
+import com.aerospike.client.configuration.ConfigurationProvider;
+import com.aerospike.client.configuration.serializers.Configuration;
+import com.aerospike.client.configuration.serializers.dynamicconfig.DynamicWriteConfig;
+
 import java.util.Objects;
 
 /**
@@ -23,6 +27,8 @@ import java.util.Objects;
  * This object is passed into methods where database writes can occur.
  */
 public final class WritePolicy extends Policy {
+	public ConfigurationProvider configProvider;
+
 	/**
 	 * Qualify how to handle writes where the record already exists.
 	 * <p>
@@ -152,7 +158,7 @@ public final class WritePolicy extends Policy {
 	 */
 	public WritePolicy() {
 		// Writes are not retried by default.
-		super.maxRetries = 0;
+		super.maxRetries = PolicyDefaultValues.MAX_RETRIES_WRITE;
 	}
 
 	@Override
@@ -220,4 +226,24 @@ public final class WritePolicy extends Policy {
 	public void setXdr(boolean xdr) {
 		this.xdr = xdr;
 	}
+
+	/**
+	 * Override certain policy attributes if they exist in the configProvider.
+	 */
+	public void applyConfigOverrides( ConfigurationProvider configProvider) {
+		Configuration config = configProvider.fetchConfiguration();
+		DynamicWriteConfig dynWC = config.dynamicConfiguration.dynamicWriteConfig;
+
+		if (dynWC.connectTimeout != null) this.connectTimeout = dynWC.connectTimeout.value;
+		if (dynWC.failOnFilteredOut != null) this.failOnFilteredOut = dynWC.failOnFilteredOut.value;
+		if (dynWC.replica != null) this.replica = dynWC.replica;
+		if (dynWC.sendKey != null) this.sendKey = dynWC.sendKey.value;
+		if (dynWC.sleepBetweenRetries != null) this.sleepBetweenRetries = dynWC.sleepBetweenRetries.value;
+		if (dynWC.socketTimeout != null) this.socketTimeout = dynWC.socketTimeout.value;
+		if (dynWC.timeoutDelay != null) this.timeoutDelay = dynWC.timeoutDelay.value;
+		if (dynWC.totalTimeout != null) this.totalTimeout = dynWC.totalTimeout.value;
+		if (dynWC.maxRetries != null) this.maxRetries = dynWC.maxRetries.value;;
+	}
+
+
 }

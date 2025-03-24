@@ -16,6 +16,9 @@
  */
 package com.aerospike.client.policy;
 
+import com.aerospike.client.configuration.ConfigurationProvider;
+import com.aerospike.client.configuration.serializers.Configuration;
+import com.aerospike.client.configuration.serializers.dynamicconfig.DynamicReadConfig;
 import com.aerospike.client.exp.Expression;
 import com.aerospike.client.Txn;
 import java.util.Objects;
@@ -24,6 +27,9 @@ import java.util.Objects;
  * Command policy attributes used in all database commands.
  */
 public class Policy {
+
+	public ConfigurationProvider configProvider;
+
 	/**
 	 * Multi-record transaction. If this field is populated, the corresponding
 	 * command will be included in the transaction. This field is ignored for scan/query.
@@ -37,14 +43,14 @@ public class Policy {
 	 * <p>
 	 * Default: {@link ReadModeAP#ONE}
 	 */
-	public ReadModeAP readModeAP = ReadModeAP.ONE;
+	public ReadModeAP readModeAP = PolicyDefaultValues.READ_MODE_AP;
 
 	/**
 	 * Read policy for SC (strong consistency) namespaces.
 	 * <p>
 	 * Default: {@link ReadModeSC#SESSION}
 	 */
-	public ReadModeSC readModeSC = ReadModeSC.SESSION;
+	public ReadModeSC readModeSC = PolicyDefaultValues.READ_MODE_SC;
 
 	/**
 	 * Replica algorithm used to determine the target node for a partition derived from a key
@@ -52,7 +58,7 @@ public class Policy {
 	 * <p>
 	 * Default: {@link Replica#SEQUENCE}
 	 */
-	public Replica replica = Replica.SEQUENCE;
+	public Replica replica = PolicyDefaultValues.REPLICA;
 
 	/**
 	 * Optional expression filter. If filterExp exists and evaluates to false, the
@@ -100,7 +106,7 @@ public class Policy {
 	 * <p>
 	 * Default: 30000ms
 	 */
-	public int socketTimeout = 30000;
+	public int socketTimeout = PolicyDefaultValues.SOCKET_TIMEOUT;
 
 	/**
 	 * Total command timeout in milliseconds.
@@ -119,7 +125,7 @@ public class Policy {
 	 * <p>
 	 * Default for all other commands: 1000ms
 	 */
-	public int totalTimeout = 1000;
+	public int totalTimeout = PolicyDefaultValues.TOTAL_TIMEOUT;
 
 	/**
 	 * Delay milliseconds after socket read timeout in an attempt to recover the socket
@@ -383,4 +389,23 @@ public class Policy {
 	public int hashCode() {
 		return Objects.hash(txn, readModeAP, readModeSC, replica, filterExp, connectTimeout, socketTimeout, totalTimeout, timeoutDelay, maxRetries, sleepBetweenRetries, readTouchTtlPercent, sendKey, compress, failOnFilteredOut);
 	}
+
+	/**
+	 * Override certain policy attributes if they exist in the configProvider.
+	 */
+    public void applyConfigOverrides(ConfigurationProvider configProvider) {
+		Configuration config = configProvider.fetchConfiguration();
+		DynamicReadConfig dynRC = config.dynamicConfiguration.dynamicReadConfig;
+
+		if (dynRC.readModeAP != null ) this.readModeAP = dynRC.readModeAP;
+		if (dynRC.readModeSC != null ) this.readModeSC = dynRC.readModeSC;
+		if (dynRC.connectTimeout != null ) this.connectTimeout = dynRC.connectTimeout.value;
+		if (dynRC.failOnFilteredOut != null ) this.failOnFilteredOut = dynRC.failOnFilteredOut.value;
+		if (dynRC.replica != null ) this.replica = dynRC.replica;
+		if (dynRC.sleepBetweenRetries != null ) this.sleepBetweenRetries = dynRC.sleepBetweenRetries.value;
+		if (dynRC.socketTimeout != null ) this.socketTimeout = dynRC.socketTimeout.value;
+		if (dynRC.timeoutDelay != null ) this.timeoutDelay = dynRC.timeoutDelay.value;
+		if (dynRC.totalTimeout != null ) this.totalTimeout = dynRC.totalTimeout.value;
+		if (dynRC.maxRetries != null ) this.maxRetries = dynRC.maxRetries.value;
+    }
 }

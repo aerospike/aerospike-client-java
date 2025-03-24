@@ -39,6 +39,7 @@
     <maven-surefire-plugin.version>2.18.1</maven-surefire-plugin.version>
     <maven-javadoc-plugin.version>3.2.0</maven-javadoc-plugin.version>
 
+    <snakeyaml.version>2.4</snakeyaml.version>
     <netty.version>4.1.117.Final</netty.version>
     <luaj-jse.version>3.0.1</luaj-jse.version>
     <jbcrypt.version>0.4</jbcrypt.version>
@@ -100,6 +101,12 @@
         <artifactId>jbcrypt</artifactId>
         <version>${jbcrypt.version}</version>
       </dependency>
+
+    <dependency>
+      <groupId>org.yaml</groupId>
+      <artifactId>snakeyaml</artifactId>
+      <version>${snakeyaml.version}</version>
+    </dependency>
 
       <dependency>
         <groupId>commons-cli</groupId>

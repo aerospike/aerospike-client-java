@@ -22,11 +22,21 @@ import java.util.Map;
 import java.util.concurrent.ExecutorService;
 
 import com.aerospike.client.async.EventLoops;
+import com.aerospike.client.configuration.ConfigurationProvider;
+import com.aerospike.client.configuration.serializers.Configuration;
+import com.aerospike.client.configuration.serializers.dynamicconfig.*;
+import com.aerospike.client.configuration.serializers.dynamicconfig.DynamicClientConfig;
+import com.aerospike.client.configuration.serializers.dynamicconfig.DynamicReadConfig;
+import com.aerospike.client.configuration.serializers.dynamicconfig.DynamicWriteConfig;
+import com.aerospike.client.configuration.serializers.staticconfig.StaticClientConfig;
 
 /**
  * Container object for client policy Command.
  */
 public class ClientPolicy {
+
+	public ConfigurationProvider configProvider;
+
 	/**
 	 * Optional event loops to use in asynchronous commands.
 	 * <p>
@@ -72,7 +82,7 @@ public class ClientPolicy {
 	 * <p>
 	 * Default: 1000
 	 */
-	public int timeout = 1000;
+	public int timeout = PolicyDefaultValues.TIMEOUT;
 
 	/**
 	 * Login timeout in milliseconds.  The timeout is used when user authentication is enabled and
@@ -80,7 +90,7 @@ public class ClientPolicy {
 	 * <p>
 	 * Default: 5000
 	 */
-	public int loginTimeout = 5000;
+	public int loginTimeout = PolicyDefaultValues.LOGIN_TIMEOUT;
 
 	/**
 	 * Cluster close timeout in milliseconds. Time to wait for pending async commands to complete
@@ -120,7 +130,7 @@ public class ClientPolicy {
 	 * <p>
 	 * Default: 100
 	 */
-	public int maxConnsPerNode = 100;
+	public int maxConnsPerNode = PolicyDefaultValues.MAX_CONNECTIONS_PER_NODE;
 
 	/**
 	 * Minimum number of asynchronous connections allowed per server node.  Preallocate min connections
@@ -181,7 +191,7 @@ public class ClientPolicy {
 	 * <p>
 	 * Default: 0
 	 */
-	public int maxSocketIdle = 0;
+	public int maxSocketIdle = PolicyDefaultValues.MAX_SOCKET_IDLE;
 
 	/**
 	 * Maximum number of errors allowed per node per {@link #errorRateWindow} before backoff
@@ -194,7 +204,7 @@ public class ClientPolicy {
 	 * <p>
 	 * Default: 100
 	 */
-	public int maxErrorRate = 100;
+	public int maxErrorRate = PolicyDefaultValues.MAX_ERROR_RATE;
 
 	/**
 	 * The number of cluster tend iterations that defines the window for {@link #maxErrorRate}.
@@ -204,14 +214,14 @@ public class ClientPolicy {
 	 * <p>
 	 * Default: 1
 	 */
-	public int errorRateWindow = 1;
+	public int errorRateWindow = PolicyDefaultValues.ERROR_RATE_WINDOW;
 
 	/**
 	 * Interval in milliseconds between cluster tends by maintenance thread.
 	 * <p>
 	 * Default: 1000
 	 */
-	public int tendInterval = 1000;
+	public int tendInterval = PolicyDefaultValues.TEND_INTERVAL;
 
 	/**
 	 * Should cluster instantiation fail if the client fails to connect to a seed or
@@ -225,7 +235,7 @@ public class ClientPolicy {
 	 * <p>
 	 * Default: true
 	 */
-	public boolean failIfNotConnected = true;
+	public boolean failIfNotConnected = PolicyDefaultValues.FAIL_IF_NOT_CONNECTED;
 
 	/**
 	 * When validateClusterName is true and {@link #clusterName} is populated, verify that
@@ -616,5 +626,60 @@ public class ClientPolicy {
 
 	public void setRackIds(List<Integer> rackIds) {
 		this.rackIds = rackIds;
+	}
+
+	/**
+	 * Override certain policy attributes if they exist in the configProvider.
+	 */
+	public void applyConfigOverrides() {
+		Configuration config = configProvider.fetchConfiguration();
+
+		// Static client
+		StaticClientConfig staCC = config.staticConfiguration.staticClientConfig;
+		if (staCC.maxConnectionsPerNode != null) this.maxConnsPerNode = staCC.maxConnectionsPerNode.value;
+		if (staCC.minConnectionsPerNode != null) this.minConnsPerNode = staCC.minConnectionsPerNode.value;
+		if (staCC.asyncMaxConnectionsPerNode != null) this.asyncMaxConnsPerNode = staCC.asyncMaxConnectionsPerNode.value;
+		if (staCC.asyncMinConnectionsPerNode != null) this.asyncMinConnsPerNode = staCC.asyncMinConnectionsPerNode.value;
+
+		// Dynamic client
+		DynamicClientConfig dynCC = config.dynamicConfiguration.dynamicClientConfig;
+		if (dynCC.timeout != null) this.timeout = dynCC.timeout.value;
+		if (dynCC.errorRateWindow != null) this.errorRateWindow = dynCC.errorRateWindow.value;
+		if (dynCC.maxErrorRate != null) this.maxErrorRate = dynCC.maxErrorRate.value;
+		if (dynCC.failIfNotConnected != null) this.failIfNotConnected = dynCC.failIfNotConnected.value;
+		if (dynCC.loginTimeout != null) this.loginTimeout = dynCC.loginTimeout.value;
+		if (dynCC.maxSocketIdle != null) this.maxSocketIdle = dynCC.maxSocketIdle.value;
+		if (dynCC.rackAware != null) this.rackAware = dynCC.rackAware.value;
+		if (dynCC.timeout != null) this.rackIds = dynCC.rackIds;
+		if (dynCC.tendInterval != null) this.tendInterval = dynCC.tendInterval.value;
+		if (dynCC.useServiceAlternative != null) this.useServicesAlternate = dynCC.useServiceAlternative.value;
+
+
+		//Dynamic Batch UDF
+		DynamicBatchUDFconfig dynBUC = config.dynamicConfiguration.dynamicBatchUDFconfig;
+		this.batchUDFPolicyDefault.sendKey = dynBUC.sendKey.value;
+		this.batchUDFPolicyDefault.durableDelete = dynBUC.durableDelete.value;
+
+		//Dynamic Batch Delete
+		DynamicBatchDeleteConfig dynBDC = config.dynamicConfiguration.dynamicBatchDeleteConfig;
+		this.batchDeletePolicyDefault.sendKey = dynBDC.sendKey.value;
+		this.batchDeletePolicyDefault.durableDelete = dynBDC.durableDelete.value;
+
+		//Dynamic Batch TXN Roll
+		DynamicTxnRollConfig dynBTRC = config.dynamicConfiguration.dynamicTxnRollConfig;
+		this.txnRollPolicyDefault.readModeAP = dynBTRC.readModeAP;
+		this.txnRollPolicyDefault.readModeSC = dynBTRC.readModeSC;
+		this.txnRollPolicyDefault.connectTimeout = dynBTRC.connectTimeout.value;
+		this.txnRollPolicyDefault.replica = dynBTRC.replica;
+		this.txnRollPolicyDefault.sleepBetweenRetries = dynBTRC.sleepBetweenRetries.value;
+		this.txnRollPolicyDefault.socketTimeout = dynBTRC.socketTimeout.value;
+		this.txnRollPolicyDefault.timeoutDelay = dynBTRC.timeoutDelay.value;
+		this.txnRollPolicyDefault.totalTimeout = dynBTRC.totalTimeout.value;
+		this.txnRollPolicyDefault.maxRetries = dynBTRC.maxRetries.value;
+		this.txnRollPolicyDefault.maxConcurrentThreads = dynBTRC.maxConcurrentThreads.value;
+		this.txnRollPolicyDefault.allowInline = dynBTRC.allowInline.value;
+		this.txnRollPolicyDefault.allowInlineSSD = dynBTRC.allowInlineSSD.value;
+		this.txnRollPolicyDefault.respondAllKeys = dynBTRC.respondAllKeys.value;
+
 	}
 }

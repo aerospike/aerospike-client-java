@@ -47,14 +47,13 @@ import com.aerospike.client.async.NettyTlsContext;
 import com.aerospike.client.async.NioEventLoops;
 import com.aerospike.client.cluster.Node.AsyncPool;
 import com.aerospike.client.command.Buffer;
+import com.aerospike.client.configuration.ConfigurationProvider;
+import com.aerospike.client.configuration.serializers.Configuration;
 import com.aerospike.client.listener.ClusterStatsListener;
 import com.aerospike.client.metrics.MetricsListener;
 import com.aerospike.client.metrics.MetricsPolicy;
 import com.aerospike.client.metrics.MetricsWriter;
-import com.aerospike.client.policy.AuthMode;
-import com.aerospike.client.policy.ClientPolicy;
-import com.aerospike.client.policy.TCPKeepAlive;
-import com.aerospike.client.policy.TlsPolicy;
+import com.aerospike.client.policy.*;
 import com.aerospike.client.util.ThreadLocalData;
 import com.aerospike.client.util.Util;
 
@@ -123,6 +122,7 @@ public class Cluster implements Runnable, Closeable {
 	// Extra event loop state for this cluster.
 	public final EventState[] eventState;
 
+
 	// Maximum socket idle to validate connections in command.
 	private final long maxSocketIdleNanosTran;
 
@@ -130,10 +130,10 @@ public class Cluster implements Runnable, Closeable {
 	private final long maxSocketIdleNanosTrim;
 
 	// Minimum sync connections per node.
-	protected final int minConnsPerNode;
+	protected int minConnsPerNode;
 
 	// Maximum sync connections per node.
-	protected final int maxConnsPerNode;
+	protected int maxConnsPerNode;
 
 	// Minimum async connections per node.
 	protected final int asyncMinConnsPerNode;
@@ -170,6 +170,9 @@ public class Cluster implements Runnable, Closeable {
 
 	// Cluster tend counter
 	private int tendCount;
+
+	// YAML config file monitor frequency - expressed as a multiple of the tendInterval
+	public int configInterval;
 
 	// Has cluster instance been closed.
 	private AtomicBoolean closed;
@@ -208,6 +211,13 @@ public class Cluster implements Runnable, Closeable {
 		this.validateClusterName = policy.validateClusterName;
 		this.tlsPolicy = policy.tlsPolicy;
 		this.authMode = policy.authMode;
+
+		if (client.configProvider != null) {
+			Configuration config = this.client.configProvider.fetchConfiguration();
+			this.configInterval = config.staticConfiguration.staticClientConfig.configInterval.value;
+		} else {
+			configInterval = -1;
+		}
 
 		// Default TLS names when TLS enabled.
 		if (tlsPolicy != null) {
@@ -611,6 +621,14 @@ public class Cluster implements Runnable, Closeable {
 					});
 				}
 			}
+		}
+
+		// Check YAML config file for updates.
+		if (this.configInterval > -1 && tendCount % this.configInterval == 0) {
+			this.client.configProvider.loadConfiguration();
+			Log.debug("Config successfully updated.");
+			Configuration config = client.configProvider.fetchConfiguration();
+			Log.debug("ERW: "  + config.dynamicConfiguration.dynamicClientConfig.errorRateWindow.value);
 		}
 
 		// Reset connection error window for all nodes every connErrorWindow tend iterations.

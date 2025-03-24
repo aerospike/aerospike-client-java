@@ -79,6 +79,7 @@ import com.aerospike.client.command.TouchCommand;
 import com.aerospike.client.command.TxnMonitor;
 import com.aerospike.client.command.TxnRoll;
 import com.aerospike.client.command.WriteCommand;
+import com.aerospike.client.configuration.ConfigurationProvider;
 import com.aerospike.client.exp.Expression;
 import com.aerospike.client.listener.BatchListListener;
 import com.aerospike.client.listener.BatchOperateListListener;
@@ -150,6 +151,8 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	//-------------------------------------------------------
 	// Member variables.
 	//-------------------------------------------------------
+
+	public ConfigurationProvider configProvider;
 
 	protected Cluster cluster;
 
@@ -298,7 +301,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		if (! Log.isSet()) {
 			throw new AerospikeException(
 				"Log.setCallback() or Log.setCallbackStandard() must be called." + System.lineSeparator() +
-				"See https://developer.aerospike.com/client/java/usage/logging for details.");
+				"See https://aerospike.com/developer/client/logging?client=java for details.");
 		}
 		*/
 
@@ -319,7 +322,13 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		this.txnRollPolicyDefault = policy.txnRollPolicyDefault;
 		this.operatePolicyReadDefault = new WritePolicy(this.readPolicyDefault);
 
-		cluster = new Cluster(this, policy, hosts);
+		if (policy.configProvider != null) {
+			this.configProvider = policy.configProvider;
+			policy.applyConfigOverrides();
+			cluster = new Cluster(this, policy, hosts);
+		} else {
+			cluster = new Cluster(this, policy, hosts);
+		}
 	}
 
 	//-------------------------------------------------------
@@ -802,6 +811,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			policy = writePolicyDefault;
 		}
 
+		if (configProvider != null) {
+			policy.applyConfigOverrides(configProvider);
+		}
+
 		if (policy.txn != null) {
 			TxnMonitor.addKey(cluster, policy, key);
 		}
@@ -865,6 +878,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			TxnMonitor.addKey(cluster, policy, key);
 		}
 
+		if (configProvider != null) {
+			policy.applyConfigOverrides(configProvider);
+		}
+
 		WriteCommand command = new WriteCommand(cluster, policy, key, bins, Operation.Type.APPEND);
 		command.execute();
 	}
@@ -896,6 +913,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			policy = writePolicyDefault;
 		}
 
+		if (configProvider != null) {
+			policy.applyConfigOverrides(configProvider);
+		}
+
 		AsyncWrite command = new AsyncWrite(cluster, listener, policy, key, bins, Operation.Type.APPEND);
 		AsyncTxnMonitor.execute(eventLoop, cluster, policy, command);
 	}
@@ -919,6 +940,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 
 		if (policy.txn != null) {
 			TxnMonitor.addKey(cluster, policy, key);
+		}
+
+		if (configProvider != null) {
+			policy.applyConfigOverrides(configProvider);
 		}
 
 		WriteCommand command = new WriteCommand(cluster, policy, key, bins, Operation.Type.PREPEND);
@@ -952,6 +977,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			policy = writePolicyDefault;
 		}
 
+		if (configProvider != null) {
+			policy.applyConfigOverrides(configProvider);
+		}
+
 		AsyncWrite command = new AsyncWrite(cluster, listener, policy, key, bins, Operation.Type.PREPEND);
 		AsyncTxnMonitor.execute(eventLoop, cluster, policy, command);
 	}
@@ -975,6 +1004,14 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		throws AerospikeException {
 		if (policy == null) {
 			policy = writePolicyDefault;
+		}
+
+		if (configProvider != null) {
+			policy.applyConfigOverrides(configProvider);
+		}
+
+		if (configProvider != null) {
+			policy.applyConfigOverrides(configProvider);
 		}
 
 		if (policy.txn != null) {
@@ -1012,6 +1049,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			policy = writePolicyDefault;
 		}
 
+		if (configProvider != null) {
+			policy.applyConfigOverrides(configProvider);
+		}
+
 		AsyncWrite command = new AsyncWrite(cluster, listener, policy, key, bins, Operation.Type.ADD);
 		AsyncTxnMonitor.execute(eventLoop, cluster, policy, command);
 	}
@@ -1033,6 +1074,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		throws AerospikeException {
 		if (policy == null) {
 			policy = writePolicyDefault;
+		}
+
+		if (configProvider != null) {
+			policy.applyConfigOverrides(configProvider);
 		}
 
 		if (policy.txn != null) {
@@ -1066,6 +1111,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 
 		if (policy == null) {
 			policy = writePolicyDefault;
+		}
+
+		if (configProvider != null) {
+			policy.applyConfigOverrides(configProvider);
 		}
 
 		AsyncDelete command = new AsyncDelete(cluster, listener, policy, key);
@@ -1350,6 +1399,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			TxnMonitor.addKey(cluster, policy, key);
 		}
 
+		if (configProvider != null) {
+			policy.applyConfigOverrides(configProvider);
+		}
+
 		TouchCommand command = new TouchCommand(cluster, policy, key, true);
 		command.execute();
 	}
@@ -1380,6 +1433,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			policy = writePolicyDefault;
 		}
 
+		if (configProvider != null) {
+			policy.applyConfigOverrides(configProvider);
+		}
+
 		AsyncTouch command = new AsyncTouch(cluster, listener, policy, key);
 		AsyncTxnMonitor.execute(eventLoop, cluster, policy, command);
 	}
@@ -1401,6 +1458,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 
 		if (policy.txn != null) {
 			TxnMonitor.addKey(cluster, policy, key);
+		}
+
+		if (configProvider != null) {
+			policy.applyConfigOverrides(configProvider);
 		}
 
 		TouchCommand command = new TouchCommand(cluster, policy, key, false);
@@ -1435,6 +1496,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			policy = writePolicyDefault;
 		}
 
+		if (configProvider != null) {
+			policy.applyConfigOverrides(configProvider);
+		}
+
 		AsyncTouch command = new AsyncTouch(cluster, listener, policy, key);
 		AsyncTxnMonitor.execute(eventLoop, cluster, policy, command);
 	}
@@ -1456,6 +1521,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		throws AerospikeException {
 		if (policy == null) {
 			policy = readPolicyDefault;
+		}
+
+		if (configProvider != null) {
+			policy.applyConfigOverrides(configProvider);
 		}
 
 		if (policy.txn != null) {
@@ -1491,6 +1560,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			policy = readPolicyDefault;
 		}
 
+		if (configProvider != null) {
+			policy.applyConfigOverrides(configProvider);
+		}
+
 		if (policy.txn != null) {
 			policy.txn.prepareRead(key.namespace);
 		}
@@ -1516,6 +1589,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 
 		if (policy == null) {
 			policy = batchPolicyDefault;
+		}
+
+		if (configProvider != null) {
+			policy.applyConfigOverrides(configProvider);
 		}
 
 		if (policy.txn != null) {
@@ -1578,6 +1655,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			policy = batchPolicyDefault;
 		}
 
+		if (configProvider != null) {
+			policy.applyConfigOverrides(configProvider);
+		}
+
 		if (policy.txn != null) {
 			policy.txn.prepareRead(keys);
 		}
@@ -1632,6 +1713,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			policy = batchPolicyDefault;
 		}
 
+		if (configProvider != null) {
+			policy.applyConfigOverrides(configProvider);
+		}
+
 		if (policy.txn != null) {
 			policy.txn.prepareRead(keys);
 		}
@@ -1675,6 +1760,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			policy = readPolicyDefault;
 		}
 
+		if (configProvider != null) {
+			policy.applyConfigOverrides(configProvider);
+		}
+
 		if (policy.txn != null) {
 			policy.txn.prepareRead(key.namespace);
 		}
@@ -1708,6 +1797,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			policy = readPolicyDefault;
 		}
 
+		if (configProvider != null) {
+			policy.applyConfigOverrides(configProvider);
+		}
+
 		if (policy.txn != null) {
 			policy.txn.prepareRead(key.namespace);
 		}
@@ -1730,6 +1823,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		throws AerospikeException {
 		if (policy == null) {
 			policy = readPolicyDefault;
+		}
+
+		if (configProvider != null) {
+			policy.applyConfigOverrides(configProvider);
 		}
 
 		if (policy.txn != null) {
@@ -1766,6 +1863,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			policy = readPolicyDefault;
 		}
 
+		if (configProvider != null) {
+			policy.applyConfigOverrides(configProvider);
+		}
+
 		if (policy.txn != null) {
 			policy.txn.prepareRead(key.namespace);
 		}
@@ -1787,6 +1888,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		throws AerospikeException {
 		if (policy == null) {
 			policy = readPolicyDefault;
+		}
+
+		if (configProvider != null) {
+			policy.applyConfigOverrides(configProvider);
 		}
 
 		if (policy.txn != null) {
@@ -1822,6 +1927,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			policy = readPolicyDefault;
 		}
 
+		if (configProvider != null) {
+			policy.applyConfigOverrides(configProvider);
+		}
+
 		if (policy.txn != null) {
 			policy.txn.prepareRead(key.namespace);
 		}
@@ -1854,6 +1963,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 
 		if (policy == null) {
 			policy = batchPolicyDefault;
+		}
+
+		if (configProvider != null) {
+			policy.applyConfigOverrides(configProvider);
 		}
 
 		if (policy.txn != null) {
@@ -1910,6 +2023,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			policy = batchPolicyDefault;
 		}
 
+		if (configProvider != null) {
+			policy.applyConfigOverrides(configProvider);
+		}
+
 		if (policy.txn != null) {
 			policy.txn.prepareRead(records);
 		}
@@ -1963,6 +2080,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			policy = batchPolicyDefault;
 		}
 
+		if (configProvider != null) {
+			policy.applyConfigOverrides(configProvider);
+		}
+
 		if (policy.txn != null) {
 			policy.txn.prepareRead(records);
 		}
@@ -2004,6 +2125,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 
 		if (policy == null) {
 			policy = batchPolicyDefault;
+		}
+
+		if (configProvider != null) {
+			policy.applyConfigOverrides(configProvider);
 		}
 
 		if (policy.txn != null) {
@@ -2068,6 +2193,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			policy = batchPolicyDefault;
 		}
 
+		if (configProvider != null) {
+			policy.applyConfigOverrides(configProvider);
+		}
+
 		if (policy.txn != null) {
 			policy.txn.prepareRead(keys);
 		}
@@ -2123,6 +2252,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			policy = batchPolicyDefault;
 		}
 
+		if (configProvider != null) {
+			policy.applyConfigOverrides(configProvider);
+		}
+
 		if (policy.txn != null) {
 			policy.txn.prepareRead(keys);
 		}
@@ -2166,6 +2299,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 
 		if (policy == null) {
 			policy = batchPolicyDefault;
+		}
+
+		if (configProvider != null) {
+			policy.applyConfigOverrides(configProvider);
 		}
 
 		if (policy.txn != null) {
@@ -2233,6 +2370,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			policy = batchPolicyDefault;
 		}
 
+		if (configProvider != null) {
+			policy.applyConfigOverrides(configProvider);
+		}
+
 		if (policy.txn != null) {
 			policy.txn.prepareRead(keys);
 		}
@@ -2292,6 +2433,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			policy = batchPolicyDefault;
 		}
 
+		if (configProvider != null) {
+			policy.applyConfigOverrides(configProvider);
+		}
+
 		if (policy.txn != null) {
 			policy.txn.prepareRead(keys);
 		}
@@ -2337,6 +2482,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 
 		if (policy == null) {
 			policy = batchPolicyDefault;
+		}
+
+		if (configProvider != null) {
+			policy.applyConfigOverrides(configProvider);
 		}
 
 		if (policy.txn != null) {
@@ -2401,6 +2550,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			policy = batchPolicyDefault;
 		}
 
+		if (configProvider != null) {
+			policy.applyConfigOverrides(configProvider);
+		}
+
 		if (policy.txn != null) {
 			policy.txn.prepareRead(keys);
 		}
@@ -2457,6 +2610,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			policy = batchPolicyDefault;
 		}
 
+		if (configProvider != null) {
+			policy.applyConfigOverrides(configProvider);
+		}
+
 		if (policy.txn != null) {
 			policy.txn.prepareRead(keys);
 		}
@@ -2498,6 +2655,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 
 		if (policy == null) {
 			policy = batchPolicyDefault;
+		}
+
+		if (configProvider != null) {
+			policy.applyConfigOverrides(configProvider);
 		}
 
 		if (policy.txn != null) {
@@ -2562,6 +2723,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			policy = batchPolicyDefault;
 		}
 
+		if (configProvider != null) {
+			policy.applyConfigOverrides(configProvider);
+		}
+
 		if (policy.txn != null) {
 			policy.txn.prepareRead(keys);
 		}
@@ -2616,6 +2781,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 
 		if (policy == null) {
 			policy = batchPolicyDefault;
+		}
+
+		if (configProvider != null) {
+			policy.applyConfigOverrides(configProvider);
 		}
 
 		if (policy.txn != null) {
@@ -2764,6 +2933,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			policy = batchParentPolicyWriteDefault;
 		}
 
+		if (configProvider != null) {
+			policy.applyConfigOverrides(configProvider);
+		}
+
 		if (policy.txn != null) {
 			TxnMonitor.addKeys(cluster, policy, records);
 		}
@@ -2872,6 +3045,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			policy = batchParentPolicyWriteDefault;
 		}
 
+		if (configProvider != null) {
+			policy.applyConfigOverrides(configProvider);
+		}
+
 		AsyncBatchExecutor.OperateList executor = new AsyncBatchExecutor.OperateList(
 			eventLoop, cluster, listener, records);
 		List<BatchNode> bns = BatchNodeList.generate(cluster, policy, records, executor);
@@ -2974,6 +3151,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			policy = batchParentPolicyWriteDefault;
 		}
 
+		if (configProvider != null) {
+			policy.applyConfigOverrides(configProvider);
+		}
+
 		AsyncBatchExecutor.OperateSequence executor = new AsyncBatchExecutor.OperateSequence(
 			eventLoop, cluster, listener);
 		List<BatchNode> bns = BatchNodeList.generate(cluster, policy, records, executor);
@@ -3073,6 +3254,11 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			writePolicy = batchWritePolicyDefault;
 		}
 
+		if (configProvider != null) {
+			batchPolicy.applyConfigOverrides(configProvider);
+			writePolicy.applyConfigOverrides(configProvider);
+		}
+
 		if (batchPolicy.txn != null) {
 			TxnMonitor.addKeys(cluster, batchPolicy, keys);
 		}
@@ -3162,6 +3348,11 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			writePolicy = batchWritePolicyDefault;
 		}
 
+		if (configProvider != null) {
+			batchPolicy.applyConfigOverrides(configProvider);
+			writePolicy.applyConfigOverrides(configProvider);
+		}
+
 		BatchAttr attr = new BatchAttr(batchPolicy, writePolicy, ops);
 		BatchRecord[] records = new BatchRecord[keys.length];
 
@@ -3237,6 +3428,11 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			writePolicy = batchWritePolicyDefault;
 		}
 
+		if (configProvider != null) {
+			batchPolicy.applyConfigOverrides(configProvider);
+			writePolicy.applyConfigOverrides(configProvider);
+		}
+
 		BatchAttr attr = new BatchAttr(batchPolicy, writePolicy, ops);
 		boolean[] sent = new boolean[keys.length];
 		AsyncBatchExecutor.BatchRecordSequence executor = new AsyncBatchExecutor.BatchRecordSequence(
@@ -3284,6 +3480,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			policy = scanPolicyDefault;
 		}
 
+		if (configProvider != null) {
+			policy.applyConfigOverrides(configProvider);
+		}
+
 		Node[] nodes = cluster.validateNodes();
 		PartitionTracker tracker = new PartitionTracker(policy, nodes);
 		ScanExecutor.scanPartitions(cluster, policy, namespace, setName, binNames, callback, tracker);
@@ -3314,6 +3514,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 
 		if (policy == null) {
 			policy = scanPolicyDefault;
+		}
+
+		if (configProvider != null) {
+			policy.applyConfigOverrides(configProvider);
 		}
 
 		Node[] nodes = cluster.validateNodes();
@@ -3362,6 +3566,14 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			policy = scanPolicyDefault;
 		}
 
+		if (configProvider != null) {
+			policy.applyConfigOverrides(configProvider);
+		}
+
+		if (configProvider != null) {
+			policy.applyConfigOverrides(configProvider);
+		}
+
 		PartitionTracker tracker = new PartitionTracker(policy, node);
 		ScanExecutor.scanPartitions(cluster, policy, namespace, setName, binNames, callback, tracker);
 	}
@@ -3384,6 +3596,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		throws AerospikeException {
 		if (policy == null) {
 			policy = scanPolicyDefault;
+		}
+
+		if (configProvider != null) {
+			policy.applyConfigOverrides(configProvider);
 		}
 
 		Node[] nodes = cluster.validateNodes();
@@ -3417,6 +3633,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			policy = scanPolicyDefault;
 		}
 
+		if (configProvider != null) {
+			policy.applyConfigOverrides(configProvider);
+		}
+
 		Node[] nodes = cluster.validateNodes();
 		PartitionTracker tracker = new PartitionTracker(policy, nodes, partitionFilter);
 		new AsyncScanPartitionExecutor(eventLoop, cluster, policy, listener, namespace, setName, binNames, tracker);
@@ -3443,6 +3663,11 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		if (policy == null) {
 			policy = writePolicyDefault;
 		}
+
+		if (configProvider != null) {
+			policy.applyConfigOverrides(configProvider);
+		}
+
 		File file = new File(clientPath);
 		byte[] bytes = Util.readFile(file);
 		return RegisterCommand.register(cluster, policy, bytes, serverPath, language);
@@ -3466,6 +3691,11 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		if (policy == null) {
 			policy = writePolicyDefault;
 		}
+
+		if (configProvider != null) {
+			policy.applyConfigOverrides(configProvider);
+		}
+
 		byte[] bytes = Util.readResource(resourceLoader, resourcePath);
 		return RegisterCommand.register(cluster, policy, bytes, serverPath, language);
 	}
@@ -3505,6 +3735,11 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		if (policy == null) {
 			policy = writePolicyDefault;
 		}
+
+		if (configProvider != null) {
+			policy.applyConfigOverrides(configProvider);
+		}
+
 		byte[] bytes = Buffer.stringToUtf8(code);
 		return RegisterCommand.register(cluster, policy, bytes, serverPath, language);
 	}
@@ -3556,6 +3791,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		throws AerospikeException {
 		if (policy == null) {
 			policy = writePolicyDefault;
+		}
+
+		if (configProvider != null) {
+			policy.applyConfigOverrides(configProvider);
 		}
 
 		if (policy.txn != null) {
@@ -3627,6 +3866,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 
 		if (policy == null) {
 			policy = writePolicyDefault;
+		}
+
+		if (configProvider != null) {
+			policy.applyConfigOverrides(configProvider);
 		}
 
 		AsyncExecute command = new AsyncExecute(cluster, listener, policy, key, packageName, functionName, functionArgs);
@@ -3895,6 +4138,11 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		if (policy == null) {
 			policy = writePolicyDefault;
 		}
+
+		if (configProvider != null) {
+			policy.applyConfigOverrides(configProvider);
+		}
+
 		statement.setAggregateFunction(packageName, functionName, functionArgs);
 
 		cluster.addCommandCount();
@@ -3930,6 +4178,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	) throws AerospikeException {
 		if (policy == null) {
 			policy = writePolicyDefault;
+		}
+
+		if (configProvider != null) {
+			policy.applyConfigOverrides(configProvider);
 		}
 
 		if (operations.length > 0) {
@@ -3976,6 +4228,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			policy = queryPolicyDefault;
 		}
 
+		if (configProvider != null) {
+			policy.applyConfigOverrides(configProvider);
+		}
+
 		Node[] nodes = cluster.validateNodes();
 
 		if (cluster.hasPartitionQuery || statement.getFilter() == null) {
@@ -4014,6 +4270,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			policy = queryPolicyDefault;
 		}
 
+		if (configProvider != null) {
+			policy.applyConfigOverrides(configProvider);
+		}
+
 		Node[] nodes = cluster.validateNodes();
 
 		if (cluster.hasPartitionQuery || statement.getFilter() == null) {
@@ -4047,6 +4307,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	) throws AerospikeException {
 		if (policy == null) {
 			policy = queryPolicyDefault;
+		}
+
+		if (configProvider != null) {
+			policy.applyConfigOverrides(configProvider);
 		}
 
 		Node[] nodes = cluster.validateNodes();
@@ -4091,6 +4355,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			policy = queryPolicyDefault;
 		}
 
+		if (configProvider != null) {
+			policy.applyConfigOverrides(configProvider);
+		}
+
 		Node[] nodes = cluster.validateNodes();
 
 		if (cluster.hasPartitionQuery || statement.getFilter() == null) {
@@ -4117,6 +4385,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		throws AerospikeException {
 		if (policy == null) {
 			policy = queryPolicyDefault;
+		}
+
+		if (configProvider != null) {
+			policy.applyConfigOverrides(configProvider);
 		}
 
 		if (cluster.hasPartitionQuery || statement.getFilter() == null) {
@@ -4150,6 +4422,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	) throws AerospikeException {
 		if (policy == null) {
 			policy = queryPolicyDefault;
+		}
+
+		if (configProvider != null) {
+			policy.applyConfigOverrides(configProvider);
 		}
 
 		Node[] nodes = cluster.validateNodes();
@@ -4194,6 +4470,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 
 		if (policy == null) {
 			policy = queryPolicyDefault;
+		}
+
+		if (configProvider != null) {
+			policy.applyConfigOverrides(configProvider);
 		}
 
 		Node[] nodes = cluster.validateNodes();
@@ -4257,6 +4537,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			policy = queryPolicyDefault;
 		}
 
+		if (configProvider != null) {
+			policy.applyConfigOverrides(configProvider);
+		}
+
 		Node[] nodes = cluster.validateNodes();
 		QueryAggregateExecutor executor = new QueryAggregateExecutor(cluster, policy, statement, nodes);
 		return executor.getResultSet();
@@ -4283,6 +4567,11 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		if (policy == null) {
 			policy = queryPolicyDefault;
 		}
+
+		if (configProvider != null) {
+			policy.applyConfigOverrides(configProvider);
+		}
+
 		QueryAggregateExecutor executor = new QueryAggregateExecutor(cluster, policy, statement, new Node[] {node});
 		return executor.getResultSet();
 	}
@@ -4346,6 +4635,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			policy = writePolicyDefault;
 		}
 
+		if (configProvider != null) {
+			policy.applyConfigOverrides(configProvider);
+		}
+
 		String command = buildCreateIndexInfoCommand(namespace, setName, indexName, binName, indexType, indexCollectionType, ctx);
 
 		// Send index command to one node. That node will distribute the command to other nodes.
@@ -4398,6 +4691,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			policy = writePolicyDefault;
 		}
 
+		if (configProvider != null) {
+			policy.applyConfigOverrides(configProvider);
+		}
+
 		String command = buildCreateIndexInfoCommand(namespace, setName, indexName, binName, indexType, indexCollectionType, ctx);
 		sendIndexInfoCommand(eventLoop, listener, policy, namespace, indexName, command, true);
 	}
@@ -4422,6 +4719,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	) throws AerospikeException {
 		if (policy == null) {
 			policy = writePolicyDefault;
+		}
+
+		if (configProvider != null) {
+			policy.applyConfigOverrides(configProvider);
 		}
 
 		String command = buildDropIndexInfoCommand(namespace, setName, indexName);
@@ -4465,6 +4766,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 
 		if (policy == null) {
 			policy = writePolicyDefault;
+		}
+
+		if (configProvider != null) {
+			policy.applyConfigOverrides(configProvider);
 		}
 
 		String command = buildDropIndexInfoCommand(namespace, setName, indexName);
