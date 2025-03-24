@@ -34,9 +34,9 @@ public class BatchPolicy extends Policy {
 	public int maxConcurrentThreads = PolicyDefaultValues.MAX_CONCURRENT_THREADS;
 
 	/**
-	 * Allow batch to amespaces. If false, the batch will always be processed in separate service threads.
-	 * 	 * <p>be processed immediately in the server's receiving thread for in-memory
-	 * n
+	 * Allow batch to be processed immediately in the server's receiving thread for in-memory
+	 * namespaces. If false, the batch will always be processed in separate service threads.
+	 * <p>
 	 * For batch commands with smaller sized records (&lt;= 1K per record), inline
 	 * processing will be significantly faster on in-memory namespaces.
 	 * <p>
