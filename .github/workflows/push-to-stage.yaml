@@ -5,6 +5,8 @@ on:
     branches:
       - stage
       - stage-jdk8
+      - dev-stage
+      - dev/versioning-from-ci
   workflow_dispatch:
 
 jobs:
