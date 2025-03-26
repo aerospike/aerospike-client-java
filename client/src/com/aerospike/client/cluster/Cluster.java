@@ -52,7 +52,10 @@ import com.aerospike.client.listener.ClusterStatsListener;
 import com.aerospike.client.metrics.MetricsListener;
 import com.aerospike.client.metrics.MetricsPolicy;
 import com.aerospike.client.metrics.MetricsWriter;
-import com.aerospike.client.policy.*;
+import com.aerospike.client.policy.AuthMode;
+import com.aerospike.client.policy.ClientPolicy;
+import com.aerospike.client.policy.TCPKeepAlive;
+import com.aerospike.client.policy.TlsPolicy;
 import com.aerospike.client.util.ThreadLocalData;
 import com.aerospike.client.util.Util;
 
