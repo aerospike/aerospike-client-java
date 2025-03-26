@@ -37,7 +37,9 @@ public class YamlConfigProvider implements ConfigurationProvider {
     }
 
     public Configuration fetchDynamicConfiguration() {
-        configuration.staticConfiguration = null;
+        if (configuration.staticConfiguration != null) {
+           configuration.staticConfiguration = null;
+        };
         return configuration;
     }
 
