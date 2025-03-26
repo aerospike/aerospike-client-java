@@ -12,14 +12,14 @@ import com.aerospike.client.configuration.serializers.dynamicconfig.DynamicWrite
 import org.yaml.snakeyaml.TypeDescription;
 
 import com.aerospike.client.configuration.serializers.DynamicConfiguration;
+import com.aerospike.client.configuration.serializers.dynamicconfig.*;
 import com.aerospike.client.configuration.serializers.StaticConfiguration;
 import com.aerospike.client.configuration.serializers.staticconfig.StaticClientConfig;
-import com.aerospike.client.configuration.serializers.dynamicconfig.*;
 import com.aerospike.client.configuration.util.YamlFieldNameStrategies;
 
 public class ConfigurationTypeDescription {
-    private Map<Class<?>, TypeDescription> cache;
-    private Set<Class<?>> visited;
+    private final Map<Class<?>, TypeDescription> cache;
+    private final Set<Class<?>> visited;
 
     ConfigurationTypeDescription() {
         this.cache = new HashMap<>();

@@ -36,6 +36,11 @@ public class YamlConfigProvider implements ConfigurationProvider {
         return configuration;
     }
 
+    public Configuration fetchDynamicConfiguration() {
+        configuration.staticConfiguration = null;
+        return configuration;
+    }
+
     public void loadConfiguration() {
         ConfigurationTypeDescription configurationTypeDescription = new ConfigurationTypeDescription();
         LoaderOptions yamlLoaderOptions = new LoaderOptions();

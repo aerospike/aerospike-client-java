@@ -26,8 +26,6 @@ import com.aerospike.client.configuration.ConfigurationProvider;
 import com.aerospike.client.configuration.serializers.Configuration;
 import com.aerospike.client.configuration.serializers.dynamicconfig.*;
 import com.aerospike.client.configuration.serializers.dynamicconfig.DynamicClientConfig;
-import com.aerospike.client.configuration.serializers.dynamicconfig.DynamicReadConfig;
-import com.aerospike.client.configuration.serializers.dynamicconfig.DynamicWriteConfig;
 import com.aerospike.client.configuration.serializers.staticconfig.StaticClientConfig;
 
 /**
@@ -82,7 +80,7 @@ public class ClientPolicy {
 	 * <p>
 	 * Default: 1000
 	 */
-	public int timeout = PolicyDefaultValues.TIMEOUT;
+	public int timeout = 1000;
 
 	/**
 	 * Login timeout in milliseconds.  The timeout is used when user authentication is enabled and
@@ -90,7 +88,7 @@ public class ClientPolicy {
 	 * <p>
 	 * Default: 5000
 	 */
-	public int loginTimeout = PolicyDefaultValues.LOGIN_TIMEOUT;
+	public int loginTimeout = 5000;
 
 	/**
 	 * Cluster close timeout in milliseconds. Time to wait for pending async commands to complete
@@ -130,7 +128,7 @@ public class ClientPolicy {
 	 * <p>
 	 * Default: 100
 	 */
-	public int maxConnsPerNode = PolicyDefaultValues.MAX_CONNECTIONS_PER_NODE;
+	public int maxConnsPerNode = 100;
 
 	/**
 	 * Minimum number of asynchronous connections allowed per server node.  Preallocate min connections
@@ -191,7 +189,7 @@ public class ClientPolicy {
 	 * <p>
 	 * Default: 0
 	 */
-	public int maxSocketIdle = PolicyDefaultValues.MAX_SOCKET_IDLE;
+	public int maxSocketIdle = 0;
 
 	/**
 	 * Maximum number of errors allowed per node per {@link #errorRateWindow} before backoff
@@ -204,7 +202,7 @@ public class ClientPolicy {
 	 * <p>
 	 * Default: 100
 	 */
-	public int maxErrorRate = PolicyDefaultValues.MAX_ERROR_RATE;
+	public int maxErrorRate = 100;
 
 	/**
 	 * The number of cluster tend iterations that defines the window for {@link #maxErrorRate}.
@@ -214,14 +212,14 @@ public class ClientPolicy {
 	 * <p>
 	 * Default: 1
 	 */
-	public int errorRateWindow = PolicyDefaultValues.ERROR_RATE_WINDOW;
+	public int errorRateWindow = 1;
 
 	/**
 	 * Interval in milliseconds between cluster tends by maintenance thread.
 	 * <p>
 	 * Default: 1000
 	 */
-	public int tendInterval = PolicyDefaultValues.TEND_INTERVAL;
+	public int tendInterval = 1000;
 
 	/**
 	 * Should cluster instantiation fail if the client fails to connect to a seed or
@@ -235,7 +233,7 @@ public class ClientPolicy {
 	 * <p>
 	 * Default: true
 	 */
-	public boolean failIfNotConnected = PolicyDefaultValues.FAIL_IF_NOT_CONNECTED;
+	public boolean failIfNotConnected = true;
 
 	/**
 	 * When validateClusterName is true and {@link #clusterName} is populated, verify that

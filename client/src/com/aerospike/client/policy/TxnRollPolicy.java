@@ -32,10 +32,10 @@ public class TxnRollPolicy extends BatchPolicy {
 	 * Default constructor.
 	 */
 	public TxnRollPolicy() {
-		replica = PolicyDefaultValues.REPLICA_TXN;
-		maxRetries = PolicyDefaultValues.MAX_RETRIES_TXN;
-		socketTimeout = PolicyDefaultValues.SOCKET_TIMEOUT_TXN;
-		totalTimeout = PolicyDefaultValues.TOTAL_TIMEOUT_TXN;
-		sleepBetweenRetries = PolicyDefaultValues.SLEEP_BETWEEN_RETRIES;
+		replica = Replica.MASTER;
+		maxRetries = 5;
+		socketTimeout = 3000;
+		totalTimeout = 10000;
+		sleepBetweenRetries = 1000;
 	}
 }

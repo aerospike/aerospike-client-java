@@ -19,7 +19,6 @@ package com.aerospike.client.policy;
 import com.aerospike.client.configuration.ConfigurationProvider;
 import com.aerospike.client.configuration.serializers.Configuration;
 import com.aerospike.client.configuration.serializers.dynamicconfig.DynamicQueryConfig;
-import com.aerospike.client.configuration.serializers.dynamicconfig.DynamicWriteConfig;
 
 /**
  * Container object for policy attributes used in query operations.
@@ -72,7 +71,7 @@ public class QueryPolicy extends Policy {
 	 * <p>
 	 * Default: 5000
 	 */
-	public int recordQueueSize = PolicyDefaultValues.RECORD_QUEUE_SIZE;
+	public int recordQueueSize = 5000;
 
 	/**
 	 * Timeout in milliseconds for "cluster-stable" info command that is run when
@@ -80,7 +79,7 @@ public class QueryPolicy extends Policy {
 	 * <p>
 	 * Default: 1000
 	 */
-	public int infoTimeout = PolicyDefaultValues.INFO_TIMEOUT;
+	public int infoTimeout = 1000;
 
 	/**
 	 * Should bin data be retrieved. If false, only record digests (and user keys
@@ -88,7 +87,7 @@ public class QueryPolicy extends Policy {
 	 * <p>
 	 * Default: true
 	 */
-	public boolean includeBinData = PolicyDefaultValues.INCLUDE_BIN_DATA;
+	public boolean includeBinData = true;
 
 	/**
 	 * Terminate query if cluster is in migration state. If the server supports partition
@@ -151,7 +150,7 @@ public class QueryPolicy extends Policy {
 	 * all query results because a single partition was missed.
 	 */
 	public QueryPolicy() {
-		super.totalTimeout = PolicyDefaultValues.TOTAL_TIMEOUT_QUERY;
+		super.totalTimeout = 0;
 		super.maxRetries = 5;
 	}
 

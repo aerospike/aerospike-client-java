@@ -31,7 +31,7 @@ public class BatchPolicy extends Policy {
 	 * aerospike-client-jdk8 packages.
 	 */
 	@Deprecated
-	public int maxConcurrentThreads = PolicyDefaultValues.MAX_CONCURRENT_THREADS;
+	public int maxConcurrentThreads = 1;
 
 	/**
 	 * Allow batch to be processed immediately in the server's receiving thread for in-memory
@@ -45,7 +45,7 @@ public class BatchPolicy extends Policy {
 	 * <p>
 	 * Default: true
 	 */
-	public boolean allowInline = PolicyDefaultValues.ALLOW_INLINE;
+	public boolean allowInline = true;
 
 	/**
 	 * Allow batch to be processed immediately in the server's receiving thread for SSD
@@ -57,7 +57,7 @@ public class BatchPolicy extends Policy {
 	 * <p>
 	 * Default: false
 	 */
-	public boolean allowInlineSSD = PolicyDefaultValues.ALLOW_INLINE_SSD;
+	public boolean allowInlineSSD = false;
 
 	/**
 	 * Should all batch keys be attempted regardless of errors. This field is used on both
@@ -77,7 +77,7 @@ public class BatchPolicy extends Policy {
 	 * <p>
 	 * Default: true
 	 */
-	public boolean respondAllKeys = PolicyDefaultValues.RESPOND_ALL_KEYS;
+	public boolean respondAllKeys = true;
 
 	/**
 	 * This method is deprecated and will eventually be removed.

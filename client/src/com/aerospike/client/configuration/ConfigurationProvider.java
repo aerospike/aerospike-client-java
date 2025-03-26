@@ -6,4 +6,5 @@ public interface ConfigurationProvider {
     void loadConfiguration();
 
     Configuration fetchConfiguration();
+    Configuration fetchDynamicConfiguration();
 }

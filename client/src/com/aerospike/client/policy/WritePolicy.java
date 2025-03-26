@@ -158,7 +158,7 @@ public final class WritePolicy extends Policy {
 	 */
 	public WritePolicy() {
 		// Writes are not retried by default.
-		super.maxRetries = PolicyDefaultValues.MAX_RETRIES_WRITE;
+		super.maxRetries = 0;
 	}
 
 	@Override

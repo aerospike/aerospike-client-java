@@ -43,14 +43,14 @@ public final class BatchReadPolicy {
 	 * <p>
 	 * Default: {@link ReadModeAP#ONE}
 	 */
-	public ReadModeAP readModeAP = PolicyDefaultValues.READ_MODE_AP_BATCH_READ;
+	public ReadModeAP readModeAP = ReadModeAP.ONE;
 
 	/**
 	 * Read policy for SC (strong consistency) namespaces.
 	 * <p>
 	 * Default: {@link ReadModeSC#SESSION}
 	 */
-	public ReadModeSC readModeSC = PolicyDefaultValues.READ_MODE_SC_BATCH_READ;
+	public ReadModeSC readModeSC = ReadModeSC.SESSION;
 
 	/**
 	 * Determine how record TTL (time to live) is affected on reads. When enabled, the server can

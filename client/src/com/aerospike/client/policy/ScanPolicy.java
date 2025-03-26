@@ -18,7 +18,6 @@ package com.aerospike.client.policy;
 
 import com.aerospike.client.configuration.ConfigurationProvider;
 import com.aerospike.client.configuration.serializers.Configuration;
-import com.aerospike.client.configuration.serializers.dynamicconfig.DynamicQueryConfig;
 import com.aerospike.client.configuration.serializers.dynamicconfig.DynamicScanConfig;
 
 /**
@@ -63,7 +62,7 @@ public final class ScanPolicy extends Policy {
 	 * <p>
 	 * Default: true
 	 */
-	public boolean concurrentNodes = PolicyDefaultValues.CONCURRENT_NODES;
+	public boolean concurrentNodes = true;
 
 	/**
 	 * Should bin data be retrieved. If false, only record digests (and user keys
@@ -106,8 +105,8 @@ public final class ScanPolicy extends Policy {
 	 * all scan results because a single partition was missed.
 	 */
 	public ScanPolicy() {
-		super.totalTimeout = PolicyDefaultValues.TOTAL_TIMEOUT_SCAN;
-		super.maxRetries = PolicyDefaultValues.TOTAL_TIMEOUT_SCAN;
+		super.totalTimeout = 0;
+		super.maxRetries = 5;
 	}
 
 	// Include setters to facilitate Spring's ConfigurationProperties.

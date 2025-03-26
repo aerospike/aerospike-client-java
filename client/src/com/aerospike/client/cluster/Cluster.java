@@ -47,7 +47,6 @@ import com.aerospike.client.async.NettyTlsContext;
 import com.aerospike.client.async.NioEventLoops;
 import com.aerospike.client.cluster.Node.AsyncPool;
 import com.aerospike.client.command.Buffer;
-import com.aerospike.client.configuration.ConfigurationProvider;
 import com.aerospike.client.configuration.serializers.Configuration;
 import com.aerospike.client.listener.ClusterStatsListener;
 import com.aerospike.client.metrics.MetricsListener;
@@ -216,7 +215,7 @@ public class Cluster implements Runnable, Closeable {
 			Configuration config = this.client.configProvider.fetchConfiguration();
 			this.configInterval = config.staticConfiguration.staticClientConfig.configInterval.value;
 		} else {
-			configInterval = -1;
+			this.configInterval = -1;
 		}
 
 		// Default TLS names when TLS enabled.
@@ -627,7 +626,7 @@ public class Cluster implements Runnable, Closeable {
 		if (this.configInterval > -1 && tendCount % this.configInterval == 0) {
 			this.client.configProvider.loadConfiguration();
 			Log.debug("Config successfully updated.");
-			Configuration config = client.configProvider.fetchConfiguration();
+			Configuration config = client.configProvider.fetchDynamicConfiguration();
 			Log.debug("ERW: "  + config.dynamicConfiguration.dynamicClientConfig.errorRateWindow.value);
 		}
 

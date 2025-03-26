@@ -43,14 +43,14 @@ public class Policy {
 	 * <p>
 	 * Default: {@link ReadModeAP#ONE}
 	 */
-	public ReadModeAP readModeAP = PolicyDefaultValues.READ_MODE_AP;
+	public ReadModeAP readModeAP = ReadModeAP.ONE;
 
 	/**
 	 * Read policy for SC (strong consistency) namespaces.
 	 * <p>
 	 * Default: {@link ReadModeSC#SESSION}
 	 */
-	public ReadModeSC readModeSC = PolicyDefaultValues.READ_MODE_SC;
+	public ReadModeSC readModeSC = ReadModeSC.SESSION;
 
 	/**
 	 * Replica algorithm used to determine the target node for a partition derived from a key
@@ -58,7 +58,7 @@ public class Policy {
 	 * <p>
 	 * Default: {@link Replica#SEQUENCE}
 	 */
-	public Replica replica = PolicyDefaultValues.REPLICA;
+	public Replica replica = Replica.SEQUENCE;
 
 	/**
 	 * Optional expression filter. If filterExp exists and evaluates to false, the
@@ -106,7 +106,7 @@ public class Policy {
 	 * <p>
 	 * Default: 30000ms
 	 */
-	public int socketTimeout = PolicyDefaultValues.SOCKET_TIMEOUT;
+	public int socketTimeout = 30000;
 
 	/**
 	 * Total command timeout in milliseconds.
@@ -125,7 +125,7 @@ public class Policy {
 	 * <p>
 	 * Default for all other commands: 1000ms
 	 */
-	public int totalTimeout = PolicyDefaultValues.TOTAL_TIMEOUT;
+	public int totalTimeout = 1000;
 
 	/**
 	 * Delay milliseconds after socket read timeout in an attempt to recover the socket
