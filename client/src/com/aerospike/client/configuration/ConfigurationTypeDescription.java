@@ -40,7 +40,6 @@ public class ConfigurationTypeDescription {
         TypeDescription typeDescription = new TypeDescription(clazz);
         for (Field field : clazz.getDeclaredFields()) {
             Class<?> fieldType = field.getType();
-            //System.out.println("field name: " + field.getName());
 
             switch (field.getName()) {
                 case "staticConfiguration" ->

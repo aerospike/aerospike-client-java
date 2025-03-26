@@ -29,4 +29,3 @@ public class BooleanProperty {
         this.value = value;
     }
 }
-

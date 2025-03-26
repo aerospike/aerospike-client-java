@@ -29,4 +29,3 @@ public class IntProperty {
         this.value = value;
     }
 }
-

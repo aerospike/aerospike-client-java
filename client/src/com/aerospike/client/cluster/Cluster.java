@@ -121,7 +121,6 @@ public class Cluster implements Runnable, Closeable {
 	// Extra event loop state for this cluster.
 	public final EventState[] eventState;
 
-
 	// Maximum socket idle to validate connections in command.
 	private final long maxSocketIdleNanosTran;
 
