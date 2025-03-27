@@ -652,32 +652,5 @@ public class ClientPolicy {
 		if (dynCC.tendInterval != null) this.tendInterval = dynCC.tendInterval.value;
 		if (dynCC.useServiceAlternative != null) this.useServicesAlternate = dynCC.useServiceAlternative.value;
 
-
-		//Dynamic Batch UDF
-		DynamicBatchUDFconfig dynBUC = config.dynamicConfiguration.dynamicBatchUDFconfig;
-		this.batchUDFPolicyDefault.sendKey = dynBUC.sendKey.value;
-		this.batchUDFPolicyDefault.durableDelete = dynBUC.durableDelete.value;
-
-		//Dynamic Batch Delete
-		DynamicBatchDeleteConfig dynBDC = config.dynamicConfiguration.dynamicBatchDeleteConfig;
-		this.batchDeletePolicyDefault.sendKey = dynBDC.sendKey.value;
-		this.batchDeletePolicyDefault.durableDelete = dynBDC.durableDelete.value;
-
-		//Dynamic Batch TXN Roll
-		DynamicTxnRollConfig dynBTRC = config.dynamicConfiguration.dynamicTxnRollConfig;
-		this.txnRollPolicyDefault.readModeAP = dynBTRC.readModeAP;
-		this.txnRollPolicyDefault.readModeSC = dynBTRC.readModeSC;
-		this.txnRollPolicyDefault.connectTimeout = dynBTRC.connectTimeout.value;
-		this.txnRollPolicyDefault.replica = dynBTRC.replica;
-		this.txnRollPolicyDefault.sleepBetweenRetries = dynBTRC.sleepBetweenRetries.value;
-		this.txnRollPolicyDefault.socketTimeout = dynBTRC.socketTimeout.value;
-		this.txnRollPolicyDefault.timeoutDelay = dynBTRC.timeoutDelay.value;
-		this.txnRollPolicyDefault.totalTimeout = dynBTRC.totalTimeout.value;
-		this.txnRollPolicyDefault.maxRetries = dynBTRC.maxRetries.value;
-		this.txnRollPolicyDefault.maxConcurrentThreads = dynBTRC.maxConcurrentThreads.value;
-		this.txnRollPolicyDefault.allowInline = dynBTRC.allowInline.value;
-		this.txnRollPolicyDefault.allowInlineSSD = dynBTRC.allowInlineSSD.value;
-		this.txnRollPolicyDefault.respondAllKeys = dynBTRC.respondAllKeys.value;
-
 	}
 }

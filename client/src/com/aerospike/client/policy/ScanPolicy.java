@@ -16,6 +16,7 @@
  */
 package com.aerospike.client.policy;
 
+import com.aerospike.client.Log;
 import com.aerospike.client.configuration.ConfigurationProvider;
 import com.aerospike.client.configuration.serializers.Configuration;
 import com.aerospike.client.configuration.serializers.dynamicconfig.DynamicScanConfig;
@@ -149,5 +150,7 @@ public final class ScanPolicy extends Policy {
 		if (dynSC.maxRetries != null) this.maxRetries = dynSC.maxRetries.value;
 		if (dynSC.concurrentNodes != null) this.concurrentNodes = dynSC.concurrentNodes.value;
 		if (dynSC.maxConcurrentNodes != null) this.maxConcurrentNodes = dynSC.maxConcurrentNodes.value;
+
+		Log.debug("ScanPolicy has been aligned with config properties.");
 	}
 }

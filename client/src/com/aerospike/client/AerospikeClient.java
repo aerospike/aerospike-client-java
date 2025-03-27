@@ -666,6 +666,11 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 
 		TxnRoll tr = new TxnRoll(cluster, txn);
 
+		if (configProvider != null) {
+			txnVerifyPolicyDefault.applyConfigOverrides(configProvider);
+			txnRollPolicyDefault.applyConfigOverrides(configProvider);
+		}
+
 		switch (txn.getState()) {
 			default:
 			case OPEN:
@@ -705,6 +710,11 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			eventLoop = cluster.eventLoops.next();
 		}
 
+		if (configProvider != null) {
+			txnVerifyPolicyDefault.applyConfigOverrides(configProvider);
+			txnRollPolicyDefault.applyConfigOverrides(configProvider);
+		}
+
 		AsyncTxnRoll atr = new AsyncTxnRoll(
 			cluster, eventLoop, txnVerifyPolicyDefault, txnRollPolicyDefault, txn
 			);
@@ -739,6 +749,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	public final AbortStatus abort(Txn txn) {
 		TxnRoll tr = new TxnRoll(cluster, txn);
 
+		if (configProvider != null) {
+			txnRollPolicyDefault.applyConfigOverrides(configProvider);
+		}
+
 		switch (txn.getState()) {
 			default:
 			case OPEN:
@@ -771,6 +785,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		throws AerospikeException {
 		if (eventLoop == null) {
 			eventLoop = cluster.eventLoops.next();
+		}
+
+		if (configProvider != null) {
+			txnRollPolicyDefault.applyConfigOverrides(configProvider);
 		}
 
 		AsyncTxnRoll atr = new AsyncTxnRoll(cluster, eventLoop, null, txnRollPolicyDefault, txn);
@@ -812,6 +830,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		}
 
 		if (configProvider != null) {
+
 			policy.applyConfigOverrides(configProvider);
 		}
 
@@ -1150,6 +1169,11 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			TxnMonitor.addKeys(cluster, batchPolicy, keys);
 		}
 
+		if (configProvider != null) {
+			batchPolicy.applyConfigOverrides(configProvider);
+			deletePolicy.applyConfigOverrides(configProvider);
+		}
+
 		BatchAttr attr = new BatchAttr();
 		attr.setDelete(deletePolicy);
 
@@ -1227,6 +1251,11 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			deletePolicy = batchDeletePolicyDefault;
 		}
 
+		if (configProvider != null) {
+			batchPolicy.applyConfigOverrides(configProvider);
+			deletePolicy.applyConfigOverrides(configProvider);
+		}
+
 		BatchAttr attr = new BatchAttr();
 		attr.setDelete(deletePolicy);
 
@@ -1297,6 +1326,11 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 
 		if (deletePolicy == null) {
 			deletePolicy = batchDeletePolicyDefault;
+		}
+
+		if (configProvider != null) {
+			batchPolicy.applyConfigOverrides(configProvider);
+			deletePolicy.applyConfigOverrides(configProvider);
 		}
 
 		BatchAttr attr = new BatchAttr();
@@ -2838,6 +2872,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		OperateArgs args = new OperateArgs(policy, writePolicyDefault, operatePolicyReadDefault, operations);
 		policy = args.writePolicy;
 
+		if (configProvider != null) {
+			policy.applyConfigOverrides(configProvider);
+		}
+
 		if (args.hasWrite) {
 			if (policy.txn != null) {
 				TxnMonitor.addKey(cluster, policy, key);
@@ -2889,6 +2927,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 
 		OperateArgs args = new OperateArgs(policy, writePolicyDefault, operatePolicyReadDefault, operations);
 		policy = args.writePolicy;
+
+		if (configProvider != null) {
+			policy.applyConfigOverrides(configProvider);
+		}
 
 		if (args.hasWrite) {
 			AsyncOperateWrite command = new AsyncOperateWrite(cluster, listener, key, args);
@@ -4003,6 +4045,11 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			udfPolicy = batchUDFPolicyDefault;
 		}
 
+		if (configProvider != null) {
+			batchPolicy.applyConfigOverrides(configProvider);
+			udfPolicy.applyConfigOverrides(configProvider);
+		}
+
 		byte[] argBytes = Packer.pack(functionArgs);
 
 		BatchAttr attr = new BatchAttr();
@@ -4082,6 +4129,11 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 
 		if (udfPolicy == null) {
 			udfPolicy = batchUDFPolicyDefault;
+		}
+
+		if (configProvider != null) {
+			batchPolicy.applyConfigOverrides(configProvider);
+			udfPolicy.applyConfigOverrides(configProvider);
 		}
 
 		byte[] argBytes = Packer.pack(functionArgs);

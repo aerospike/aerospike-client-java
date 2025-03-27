@@ -16,6 +16,11 @@
  */
 package com.aerospike.client.policy;
 
+import com.aerospike.client.Log;
+import com.aerospike.client.configuration.ConfigurationProvider;
+import com.aerospike.client.configuration.serializers.Configuration;
+import com.aerospike.client.configuration.serializers.dynamicconfig.DynamicBatchDeleteConfig;
+import com.aerospike.client.configuration.serializers.dynamicconfig.DynamicBatchUDFconfig;
 import com.aerospike.client.exp.Expression;
 
 /**
@@ -120,5 +125,18 @@ public final class BatchDeletePolicy {
 
 	public void setSendKey(boolean sendKey) {
 		this.sendKey = sendKey;
+	}
+
+	/**
+	 * Override certain policy attributes if they exist in the configProvider.
+	 */
+	public void applyConfigOverrides(ConfigurationProvider configProvider) {
+		Configuration config = configProvider.fetchConfiguration();
+		DynamicBatchDeleteConfig dynBDC = config.dynamicConfiguration.dynamicBatchDeleteConfig;
+
+		if (dynBDC.sendKey != null) this.sendKey = dynBDC.sendKey.value;
+		if (dynBDC.durableDelete != null) this.durableDelete = dynBDC.durableDelete.value;
+
+		Log.debug("BatchDeletePolicy has been aligned with config properties.");
 	}
 }

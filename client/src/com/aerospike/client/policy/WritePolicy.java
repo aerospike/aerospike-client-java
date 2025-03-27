@@ -16,6 +16,7 @@
  */
 package com.aerospike.client.policy;
 
+import com.aerospike.client.Log;
 import com.aerospike.client.configuration.ConfigurationProvider;
 import com.aerospike.client.configuration.serializers.Configuration;
 import com.aerospike.client.configuration.serializers.dynamicconfig.DynamicWriteConfig;
@@ -243,6 +244,8 @@ public final class WritePolicy extends Policy {
 		if (dynWC.timeoutDelay != null) this.timeoutDelay = dynWC.timeoutDelay.value;
 		if (dynWC.totalTimeout != null) this.totalTimeout = dynWC.totalTimeout.value;
 		if (dynWC.maxRetries != null) this.maxRetries = dynWC.maxRetries.value;;
+
+		Log.debug("WritePolicy has been aligned with config properties.");
 	}
 
 

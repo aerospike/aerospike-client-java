@@ -16,9 +16,11 @@
  */
 package com.aerospike.client.policy;
 
+import com.aerospike.client.Log;
 import com.aerospike.client.configuration.ConfigurationProvider;
 import com.aerospike.client.configuration.serializers.Configuration;
 import com.aerospike.client.configuration.serializers.dynamicconfig.DynamicBatchReadConfig;
+import com.aerospike.client.configuration.serializers.dynamicconfig.DynamicTxnRollConfig;
 
 /**
  * Batch parent policy.
@@ -153,13 +155,12 @@ public class BatchPolicy extends Policy {
 
 
 	/**
-	 * Override certain policy attributes if they exist in the configProvider.
+	 * Override certain policy attributes if they exist in the configProvider (BatchRead).
 	 */
 	public void applyConfigOverrides(ConfigurationProvider configProvider) {
 		Configuration config = configProvider.fetchConfiguration();
 		DynamicBatchReadConfig dynBRC = config.dynamicConfiguration.dynamicBatchReadConfig;
 
-		// Dynamic Batch Read
 		if (dynBRC.readModeAP != null ) this.readModeAP = dynBRC.readModeAP;
 		if (dynBRC.readModeSC != null ) this.readModeSC = dynBRC.readModeSC;
 		if (dynBRC.connectTimeout != null ) this.connectTimeout = dynBRC.connectTimeout.value;
@@ -174,5 +175,6 @@ public class BatchPolicy extends Policy {
 		if (dynBRC.allowInlineSSD != null ) this.allowInlineSSD = dynBRC.allowInlineSSD.value;
 		if (dynBRC.respondAllKeys != null ) this.respondAllKeys = dynBRC.respondAllKeys.value;
 
+		Log.debug("BatchPolicy has been aligned with config properties.");
 	}
 }

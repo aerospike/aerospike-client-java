@@ -16,6 +16,7 @@
  */
 package com.aerospike.client.policy;
 
+import com.aerospike.client.Log;
 import com.aerospike.client.configuration.ConfigurationProvider;
 import com.aerospike.client.configuration.serializers.Configuration;
 import com.aerospike.client.configuration.serializers.dynamicconfig.DynamicReadConfig;
@@ -407,5 +408,7 @@ public class Policy {
 		if (dynRC.timeoutDelay != null ) this.timeoutDelay = dynRC.timeoutDelay.value;
 		if (dynRC.totalTimeout != null ) this.totalTimeout = dynRC.totalTimeout.value;
 		if (dynRC.maxRetries != null ) this.maxRetries = dynRC.maxRetries.value;
+
+		Log.debug("(read) Policy has been aligned with config properties.");
     }
 }

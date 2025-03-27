@@ -16,6 +16,7 @@
  */
 package com.aerospike.client.policy;
 
+import com.aerospike.client.Log;
 import com.aerospike.client.configuration.ConfigurationProvider;
 import com.aerospike.client.configuration.serializers.Configuration;
 import com.aerospike.client.configuration.serializers.dynamicconfig.DynamicBatchWriteConfig;
@@ -183,7 +184,9 @@ public final class BatchWritePolicy {
 		this.sendKey = sendKey;
 	}
 
-
+	/**
+	 * Override certain policy attributes if they exist in the configProvider.
+	 */
 	public void applyConfigOverrides(ConfigurationProvider configProvider) {
 		Configuration config = configProvider.fetchConfiguration();
 		DynamicBatchWriteConfig dynBWC = config.dynamicConfiguration.dynamicBatchWriteConfig;
@@ -192,15 +195,17 @@ public final class BatchWritePolicy {
 		//this.connectTimeout = dynBWC.connectTimeout.value;
 		//this.failOnFilteredOut = dynBWC.failOnFilteredOut.value;
 		//this.replica = dynBWC.replica;
-		this.sendKey = dynBWC.sendKey.value;
+		if (dynBWC.sendKey != null) this.sendKey = dynBWC.sendKey.value;
 		//this.sleepBetweenRetries = dynBWC.sleepBetweenRetries.value;
 		//this.socketTimeout = dynBWC.socketTimeout.value;
 		//this.timeoutDelay = dynBWC.timeoutDelay.value;
 		//this.totalTimeout = dynBWC.totalTimeout.value;
 		//this.maxRetries = dynBWC.maxRetries.value;
-		this.durableDelete = dynBWC.durableDelete.value;
+		if (dynBWC.durableDelete != null) this.durableDelete = dynBWC.durableDelete.value;
 		//this.maxConcurrentThreads = dynBWC.maxConcurrentThreads.value;
 		//this.allowInline = dynBWC.allowInline.value;
 		//this.batchParentPolicyWriteDefault.allowInlineSSD = dynBWC.allowInlineSSD.value;
+
+		Log.debug("BatchWritePolicy has been aligned with config properties.");
 	}
 }

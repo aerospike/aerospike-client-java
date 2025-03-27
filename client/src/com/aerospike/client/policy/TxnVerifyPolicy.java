@@ -16,6 +16,11 @@
  */
 package com.aerospike.client.policy;
 
+import com.aerospike.client.Log;
+import com.aerospike.client.configuration.ConfigurationProvider;
+import com.aerospike.client.configuration.serializers.Configuration;
+import com.aerospike.client.configuration.serializers.dynamicconfig.DynamicTxnVerifyConfig;
+
 /**
  * Transaction policy fields used to batch verify record versions on commit.
  * Used a placeholder for now as there are no additional fields beyond BatchPolicy.
@@ -38,5 +43,29 @@ public class TxnVerifyPolicy extends BatchPolicy {
 		socketTimeout = 3000;
 		totalTimeout = 10000;
 		sleepBetweenRetries = 1000;
+	}
+
+	/**
+	 * Override certain policy attributes if they exist in the configProvider
+	 */
+	public void applyConfigOverrides(ConfigurationProvider configProvider) {
+		Configuration config = configProvider.fetchConfiguration();
+		DynamicTxnVerifyConfig dynTVC = config.dynamicConfiguration.dynamicTxnVerifyConfig;
+
+		if (dynTVC.readModeAP != null ) this.readModeAP = dynTVC.readModeAP;
+		if (dynTVC.readModeSC != null ) this.readModeSC = dynTVC.readModeSC;
+		if (dynTVC.connectTimeout != null ) this.connectTimeout = dynTVC.connectTimeout.value;
+		if (dynTVC.replica != null ) this.replica = dynTVC.replica;
+		if (dynTVC.sleepBetweenRetries != null ) this.sleepBetweenRetries = dynTVC.sleepBetweenRetries.value;
+		if (dynTVC.socketTimeout != null ) this.socketTimeout = dynTVC.socketTimeout.value;
+		if (dynTVC.timeoutDelay != null ) this.timeoutDelay = dynTVC.timeoutDelay.value;
+		if (dynTVC.totalTimeout != null ) this.totalTimeout = dynTVC.totalTimeout.value;
+		if (dynTVC.maxRetries != null ) this.maxRetries = dynTVC.maxRetries.value;
+		if (dynTVC.maxConcurrentThreads != null ) this.maxConcurrentThreads = dynTVC.maxConcurrentThreads.value;
+		if (dynTVC.allowInline != null ) this.allowInline = dynTVC.allowInline.value;
+		if (dynTVC.allowInlineSSD != null ) this.allowInlineSSD = dynTVC.allowInlineSSD.value;
+		if (dynTVC.respondAllKeys != null ) this.respondAllKeys = dynTVC.respondAllKeys.value;
+
+		Log.debug("TxnVerifyPolicy has been aligned with config properties.");
 	}
 }

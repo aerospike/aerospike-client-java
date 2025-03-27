@@ -16,6 +16,7 @@
  */
 package com.aerospike.client.policy;
 
+import com.aerospike.client.Log;
 import com.aerospike.client.configuration.ConfigurationProvider;
 import com.aerospike.client.configuration.serializers.Configuration;
 import com.aerospike.client.configuration.serializers.dynamicconfig.DynamicQueryConfig;
@@ -208,5 +209,7 @@ public class QueryPolicy extends Policy {
 		if (dynQC.infoTimeout != null) this.infoTimeout = dynQC.infoTimeout.value;
 		if (dynQC.recordQueueSize != null) this.recordQueueSize = dynQC.recordQueueSize.value;
 		if (dynQC.expectedDuration != null) this.expectedDuration = dynQC.expectedDuration;
+
+		Log.debug("QueryPolicy has been aligned with config properties.");
 	}
 }

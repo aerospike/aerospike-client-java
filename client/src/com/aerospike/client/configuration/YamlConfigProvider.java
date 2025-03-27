@@ -56,8 +56,12 @@ public class YamlConfigProvider implements ConfigurationProvider {
             File file = new File(configurationPath);
             long newLastModified = file.lastModified();
             if (newLastModified > lastModified) {
+                if (lastModified == 0) {
+                    Log.debug("Initial read of YAML config file...");
+                } else {
+                    Log.debug("YAML config file has been modified.  Loading...");
+                }
                 lastModified = newLastModified;
-                Log.debug("YAML config file has been modified.  Loading...");
                 configuration = yaml.load(fileInputStream);
             }
             else {
