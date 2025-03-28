@@ -39,7 +39,7 @@ runs:
       shell: bash
       run: |
         # Building array from json input
-        JDK_VERSIONS=($(echo "${{ inputs.build-name-number }}" | jq -r '.[] | match("jdk[^/]+").string'))
+        JDK_VERSIONS=($(echo '${{ inputs.build-name-number }}' | jq -r '.[] | match("jdk[^/]+").string'))
 
         # Creating count of number of unique jdk versions
         UNIQUE_COUNT=$(printf "%s\n" "${JDK_VERSIONS[@]}" | sort -u | wc -l)
@@ -91,8 +91,8 @@ runs:
       working-directory: ${{ inputs.target-folder }}
       run: |
         echo "working directory: ${{ inputs.target-folder }}"
-        echo "tag name: Release ${{ inputs.artifact-version }}"
-        echo "body: Changes for release ${{ inputs.artifact-version }}"
+        echo "tag name: Release ${{ steps.get-artifact-version.outputs.artifact-version }}"
+        echo "body: Changes for release ${{ steps.get-artifact-version.outputs.artifact-version }}"
         echo "body: ${{ inputs.release-notes }}"
         echo "files: ${{ steps.get-github-release-artifact-names.outputs.release-artifacts }}"
 
@@ -100,9 +100,9 @@ runs:
       uses: softprops/action-gh-release@v2
       with:
         token: ${{ inputs.github-token }}
-        tag_name: Release ${{ inputs.artifact-version }}${{ steps.get-jdk-version.outputs.jdk-version == 'jdk8' && '-jdk8' || '' }}
+        tag_name: ${{ steps.get-artifact-version.outputs.artifact-version }}${{ steps.get-jdk-version.outputs.jdk-version == 'jdk8' && '-jdk8' || '' }}
         body: |
-          Changes for release ${{ inputs.artifact-version }}
+          Changes for release ${{ steps.get-artifact-version.outputs.artifact-version }}
           "${{ inputs.release-notes }}"
         draft: false
         prerelease: false
