@@ -42,6 +42,7 @@ runs:
       uses: jfrog/setup-jfrog-cli@v4
       env:
         JF_URL: ${{ inputs.jfrog-platform-url }}
+        JF_PROJECT: clients
       with:
         oidc-provider-name: ${{ inputs.oidc-provider }}
         oidc-audience: ${{ inputs.oidc-audience }}

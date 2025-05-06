@@ -128,10 +128,8 @@ jobs:
       - name: Publish to JFrog
         uses: ./.github/actions/publish-to-jfrog
         with:
-          crypto-type: ${{ inputs.crypto-type }}
           oidc-provider: ${{ secrets.JFROG_OIDC_PROVIDER }}
           oidc-audience: ${{ secrets.JFROG_OIDC_AUDIENCE }}
-          artifact-name: ${{ steps.get-artifact-name.outputs.artifact-name }}
           artifact-id: ${{ steps.get-artifact-id.outputs.artifact-id }}
           artifact-version: ${{ steps.get-artifact-version.outputs.artifact-version }}
           package-install-location: ${{ github.workspace }}/local_repo
