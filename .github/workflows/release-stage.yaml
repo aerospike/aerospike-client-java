@@ -23,6 +23,7 @@ jobs:
     outputs:
       java-version: ${{ steps.get-java-version.outputs.java-version }}
       is-snapshot: ${{ steps.get-is-snapshot.outputs.is-snapshot }}
+      release-version: ${{ steps.get-release-version.outputs.release-version }}
     steps:
       - name: Checkout client
         uses: actions/checkout@v4
@@ -69,6 +70,17 @@ jobs:
             echo "is-snapshot='true'" >> $GITHUB_OUTPUT
           fi
 
+      - name: Get release or snapshot-version
+        id: get-release-version
+        shell: bash
+        run: |
+          IS_SNAPSHOT=${{ steps.get-is-snapshot.outputs.is-snapshot }}
+          if [ $IS_SNAPSHOT == 'true' ];then
+            echo release-version="$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)-SNAPSHOT_$GITHUB_SHA" >> $GITHUB_OUTPUT
+          else
+            echo release-version="$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)" >> $GITHUB_OUTPUT
+          fi
+
   build:
     uses: ./.github/workflows/release.yaml
     needs: pre-requisites
@@ -89,3 +101,4 @@ jobs:
     with:
       java-version: ${{ needs.pre-requisites.outputs.java-version }}
       is-snapshot: ${{ needs.pre-requisites.outputs.is-snapshot }}
+      release-version: ${{ needs.pre-requisites.outputs.release-version }}

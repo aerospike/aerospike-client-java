@@ -3,8 +3,8 @@ name: clients-java-push-to-dev
 on:
   push:
     branches:
-      - stage
-      - stage-jdk8
+      - dev/versioning-from-ci
+      #- stage-jdk8
   workflow_dispatch:
 
 jobs:

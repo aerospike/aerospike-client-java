@@ -16,6 +16,9 @@ on:
       is-snapshot:
         type: string
         required: true
+      release-version:
+        type: string
+        required: true
     secrets:
       JFROG_OIDC_PROVIDER:
         required: true
@@ -26,11 +29,18 @@ jobs:
   build:
     runs-on: ${{ vars.BUILD_CONTAINER_DISTRO_VERSION }}
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ inputs.ref }}
+
       - name: Set up JFrog credentials l
         id: setup-jfrog-cli
         uses: jfrog/setup-jfrog-cli@v4
         env:
           JF_URL: ${{ inputs.jfrog-platform-url }}
+          JF_PROJECT: clients
         with:
           version: 2.72.2
           oidc-provider-name: ${{ secrets.JFROG_OIDC_PROVIDER }}
@@ -49,3 +59,21 @@ jobs:
           jf rt ba clients-java-push-to-dev ${{ github.run_number }} clients-java-push-to-dev_aerospike-client-jdk${{ inputs.java-version }} ${{ github.run_number }}
 
           jf rt bp clients-java-push-to-dev ${{ github.run_number }}
+
+      - name: Install sponge
+        run: sudo apt install -y moreutils
+
+      - name: Create file spec for release bundle
+        shell: bash
+        working-directory: .github/workflows
+        run: | 
+          cat ./rb-spec.json | jq '.files[0].build = "clients-java-push-to-dev/${{ github.run_number }}"' | sponge ./rb-spec.json
+
+      - name: Create release bundle from JFrog build
+        working-directory: ./.github/workflows
+        run: | 
+          jf rbc --spec=./rb-spec.json clients-java-jdk${{ inputs.java-version }} ${{ inputs.release-version}}
+
+      - name: Promote release bundle to DEV stage
+        run: | 
+          jf rbp --signing-key=aerospike clients-java-jdk${{ inputs.java-version }} ${{ inputs.release-version}} STAGE
