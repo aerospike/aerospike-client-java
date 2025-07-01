@@ -60,7 +60,7 @@ jobs:
       - name: debug - print input variables
         run: |
           echo ${{ steps.get-java-version.outputs.java-version }}
-          echo ${{ steps.get-java-version.outputs.matrix }}
+          echo ${{ steps.get-java-version.outputs.input-matrix }}
 
   build:
     uses: ./.github/workflows/build-pr.yaml
