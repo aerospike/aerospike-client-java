@@ -24,12 +24,11 @@ jobs:
   build:
     uses: ./.github/workflows/build.yaml
     strategy:
-      matrix:
-        crypto-type: ${{ fromJson(inputs.crypto-type )}}
-    name: build-${{ matrix.crypto-type }}-${{ inputs.server-tag }}-${{ inputs.java-version }}
+      matrix: ${{ fromJson(inputs.crypto-type) }}
+    name: build-${{ matrix.crypto }}-${{ inputs.server-tag }}-${{ inputs.java-version }}
     with:
       java-version: ${{ inputs.java-version }}
       run-tests: ${{ inputs.run-tests }}
       server-tag: ${{ inputs.server-tag }}
-      crypto-type: ${{ matrix.crypto-type }}
+      crypto-type:  ${{ matrix.crypto }}     
     secrets: inherit

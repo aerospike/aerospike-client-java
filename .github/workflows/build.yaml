@@ -33,6 +33,10 @@ jobs:
   build:
     runs-on: ${{ vars.BUILD_CONTAINER_DISTRO_VERSION }}
     steps:
+      - uses: actions/checkout@v4       # brings versions.json into the workspace
+        with:
+          ref: ${{ github.ref }}
+
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
