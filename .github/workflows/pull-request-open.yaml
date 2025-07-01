@@ -24,7 +24,7 @@ jobs:
   make-matrix:
     runs-on: ${{ vars.BUILD_CONTAINER_DISTRO_VERSION }}
     outputs:
-      matrix: ${{ steps.set.outputs.matrix }}
+      input-matrix: ${{ steps.set.outputs.input-matrix }}
       java-version: ${{ steps.get-java-version.outputs.java-version }}
     steps:
       - uses: actions/checkout@v4       # brings versions.json into the workspace
@@ -33,31 +33,50 @@ jobs:
 
       - id: set                         # create the matrix (compact JSON string)
         shell: bash
+        env:
+            DEFAULT_JSON: ${{ vars.DEFAULT_SERVER_VERSIONS }}
         run: |
-          MATRIX=$(jq -c '
-              to_entries
-              | map({channel: .key, version: .value.version})
-          ' test_servers.json)              # → [{"server":"rc","version":"8.1.0"}, …]
-          echo "matrix=$MATRIX" >>"$GITHUB_OUTPUT"
+          FILE=test_servers.json
+
+          if [[ -s "$FILE" ]]; then
+            echo "⚙️  Using $FILE from repository"
+            JSON=$(cat "$FILE")
+          else
+            echo "⚠️  $FILE missing or empty – using DEFAULT_SERVER_VERSIONS"
+            JSON="$DEFAULT_JSON"
+          fi
+
+          MATRIX=$(echo "$JSON" | jq -c '
+            to_entries
+            | map({
+                server:  .key,
+                version: .value.version,
+                crypto:  .value.crypto   # ← no hyphen
+              })
+          ')
+
+          echo input-matrix="$MATRIX" >> $GITHUB_OUTPUT
 
       - name: Get java version
         id: get-java-version
         run: |
           echo java-version="$(grep '<java.version>' pom.xml | sed -e 's/<[^>]*>//g' | awk '{$1=$1};1' | sed 's/^1\.8$/8/')"  >> $GITHUB_OUTPUT
 
-      - name: debug - print java-version
+      - name: debug - print input variables
         run: |
           echo ${{ steps.get-java-version.outputs.java-version }}
+          echo ${{ steps.set.outputs.input-matrix }}
 
   build:
     uses: ./.github/workflows/build-pr.yaml
     needs: make-matrix
     strategy:
-      matrix: ${{ fromJson(needs.make-matrix.outputs.matrix) }}
-    name: build-${{ matrix.server }}-${{ matrix.version }}-${{ needs.make-matrix.outputs.java-version }}
+      matrix: 
+        include: ${{ fromJson(needs.make-matrix.outputs.input-matrix) }}
+    name: build-${{ matrix.server }}-${{ matrix.version }}
     with:
       java-version: ${{ needs.make-matrix.outputs.java-version }}
       run-tests: true 
       server-tag: ${{ matrix.version }}
-      crypto-type: ${{ matrix.crypto-type }}
+      crypto-type: ${{ toJson(matrix.crypto) }}
     secrets: inherit
