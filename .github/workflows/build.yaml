@@ -23,6 +23,9 @@ on:
       crypto-type:
         type: string
         required: true
+      server-type:
+        type: string
+        required: true
     secrets:
       JFROG_OIDC_PROVIDER:
         required: true
@@ -33,6 +36,10 @@ jobs:
   build:
     runs-on: ${{ vars.BUILD_CONTAINER_DISTRO_VERSION }}
     steps:
+      - uses: actions/checkout@v4       # brings versions.json into the workspace
+        with:
+          ref: ${{ github.ref }}
+
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
@@ -44,5 +51,6 @@ jobs:
         with:
           crypto-type: ${{ inputs.crypto-type }}
           server-tag: ${{ inputs.server-tag }}
+          server-type: ${{ inputs.server-type }}
           oidc-provider: ${{ secrets.JFROG_OIDC_PROVIDER }}
           oidc-audience: ${{ secrets.JFROG_OIDC_AUDIENCE }}

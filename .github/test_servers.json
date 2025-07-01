@@ -1,0 +1,6 @@
+{
+  "stable": {
+    "version": "latest",
+    "type": "aerospike-enterprise-server"
+  }
+}
