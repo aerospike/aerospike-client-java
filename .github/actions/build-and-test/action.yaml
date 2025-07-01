@@ -24,6 +24,9 @@ inputs:
     required: true
     default: "true"
     description: Spin up aerospike enterprise server and run tests
+  server-type:
+    required: true
+    description: Server type `aerospike-server` or `aerospike-enterprise-server` 
 
 runs:
   using: "composite"
@@ -47,6 +50,7 @@ runs:
       with:
         use-server-rc: ${{ inputs.use-server-rc }}
         server-tag: ${{ inputs.server-tag }}
+        server-type: ${{ inputs.server-type }}
         oidc-provider: ${{ inputs.oidc-provider }}
         oidc-audience: ${{ inputs.oidc-audience }}
 
