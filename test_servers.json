@@ -1,0 +1,10 @@
+{
+  "rc": {
+    "version": "8.1.0.0-rc2_1",
+    "crypto": ["bouncycastle", "gnu"]
+  },
+  "stable": {
+    "version": "latest",
+    "crypto": ["bouncycastle", "gnu"]
+  }
+}
