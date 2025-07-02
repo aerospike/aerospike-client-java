@@ -3,32 +3,17 @@ run-name: Build artifact for ${{ github.event.pull_request.head.ref }} - ${{ git
 on:
   workflow_call:
     inputs:
-      branch:
+      server-type:
         type: string
         required: true
-      source-branch:
+      java-version:
         type: string
-        required: false
-      use-server-rc:
-        type: boolean
-        required: false
-        default: false
-        description: "Test against server release candidate?"
+        required: true
       server-tag:
         type: string
         required: false
         default: "latest"
         description: "Server docker image tag"
-      upload-artifacts:
-        type: boolean
-        required: false
-        default: false
-        description: "Upload built artifacts to github?"
-      bump-version:
-        type: boolean
-        required: false
-        default: false
-        description: "Bump artifact version"
       run-tests:
         type: boolean
         required: false
@@ -36,37 +21,16 @@ on:
         description: Spin up aerospike enterprise server and run tests
 
 jobs:
-  java-version:
-    runs-on: ${{ vars.BUILD_CONTAINER_DISTRO_VERSION }}
-    outputs:
-      java-version: ${{ steps.get-java-version.outputs.java-version }}
-    steps:
-      - name: Checkout client
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ inputs.branch }}
-
-      - name: Get java version
-        id: get-java-version
-        run: |
-          echo java-version="$(grep '<java.version>' pom.xml | sed -e 's/<[^>]*>//g' | awk '{$1=$1};1' | sed 's/^1\.8$/8/')"  >> $GITHUB_OUTPUT
-
-      - name: debug - print java-version
-        run: |
-          echo ${{ steps.get-java-version.outputs.java-version }}
-
   build:
     uses: ./.github/workflows/build.yaml
-    needs: java-version
     strategy:
       matrix:
-        crypto-type: [bouncycastle, gnu]
+        crypto: [bouncycastle, gnu]
+    name: build-${{ matrix.crypto }}-${{ inputs.server-tag }}-${{ inputs.java-version }}
     with:
-      java-version: ${{ needs.java-version.outputs.java-version }}
-      branch: ${{ inputs.branch }}
-      use-server-rc: ${{ inputs.use-server-rc }}
+      java-version: ${{ inputs.java-version }}
       run-tests: ${{ inputs.run-tests }}
       server-tag: ${{ inputs.server-tag }}
-      upload-artifacts: ${{ inputs.upload-artifacts }}
-      crypto-type: ${{ matrix.crypto-type }}
+      crypto-type:  ${{ matrix.crypto }}
+      server-type: ${{ inputs.server-type }}
     secrets: inherit
