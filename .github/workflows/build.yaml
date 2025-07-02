@@ -7,33 +7,23 @@ permissions:
 on:
   workflow_call:
     inputs:
-      branch:
-        type: string
-        required: true
       java-version:
         type: string
         required: true
-      use-server-rc:
-        type: boolean
-        required: false
-        default: false
-        description: "Test against server release candidate?"
       server-tag:
         type: string
         required: false
         default: "latest"
         description: "Server docker image tag"
-      upload-artifacts:
-        type: boolean
-        required: false
-        default: false
-        description: "Upload built artifacts to github?"
       run-tests:
         type: boolean
         required: false
         default: false
         description: Spin up aerospike enterprise server and run tests
       crypto-type:
+        type: string
+        required: true
+      server-type:
         type: string
         required: true
     secrets:
@@ -46,15 +36,14 @@ jobs:
   build:
     runs-on: ${{ vars.BUILD_CONTAINER_DISTRO_VERSION }}
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4       # brings versions.json into the workspace
         with:
-          ref: ${{ inputs.branch }}
+          ref: ${{ github.ref }}
 
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
-          distribution: "semeru" # See 'Supported distributions' for available options
+          distribution: ${{ vars.JAVA_PROVIDER }} # See 'Supported distributions' for available options
           java-version: ${{ inputs.java-version }}
 
       - name: Build and test
@@ -62,6 +51,6 @@ jobs:
         with:
           crypto-type: ${{ inputs.crypto-type }}
           server-tag: ${{ inputs.server-tag }}
-          use-server-rc: ${{ inputs.use-server-rc }}
+          server-type: ${{ inputs.server-type }}
           oidc-provider: ${{ secrets.JFROG_OIDC_PROVIDER }}
           oidc-audience: ${{ secrets.JFROG_OIDC_AUDIENCE }}

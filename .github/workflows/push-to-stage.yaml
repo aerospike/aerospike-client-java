@@ -3,7 +3,7 @@ name: clients-java-push-to-dev
 on:
   push:
     branches:
-      - dev/versioning-from-ci
+      - dev/versioning-from-ci # TODO: used to test the workflow. Removed this line at some point int time.
       - stage
       - stage-jdk8
   workflow_dispatch:

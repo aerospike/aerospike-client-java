@@ -1,0 +1,6 @@
+{
+  "stable": {
+    "version": "8.1.0.0-rc2_1",
+    "type": "aerospike-server-enterprise"
+  }
+}

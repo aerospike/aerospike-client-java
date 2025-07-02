@@ -9,9 +9,11 @@ on:
     branches:
       - stage
       - stage-jdk8
+      - dev/*
     types:
       - opened
       - reopened
+      - synchronize
   workflow_dispatch:
     inputs:
       source-branch:
@@ -19,23 +21,63 @@ on:
         description: Base branch to use if manually starting. By default base_ref will empty if triggering manually hence base_ref is only available on PRs.
 
 jobs:
-  test-with-server-release:
-    name: Build stage - Test with latest version of Aerospike Enterprise Server
-    uses: ./.github/workflows/build-pr.yaml
-    with:
-      branch: ${{ github.ref }}
-      source-branch: ${{ inputs.source-branch || github.base_ref }}
-      use-server-rc: false
-      upload-artifacts: false
-    secrets: inherit
+  make-matrix:
+    runs-on: ${{ vars.BUILD_CONTAINER_DISTRO_VERSION }}
+    outputs:
+      input-matrix: ${{ steps.set.outputs.input-matrix }}
+      java-version: ${{ steps.get-java-version.outputs.java-version }}
+    steps:
+      - uses: actions/checkout@v4       # brings versions.json into the workspace
+        with:
+          ref: ${{ github.ref }}
 
-  test-with-server-rc:
-    name: Build stage - Test with latest RC version of Aerospike Enterprise Server
+      - id: set                         # create the matrix (compact JSON string)
+        shell: bash
+        env:
+            DEFAULT_JSON: ${{ vars.DEFAULT_SERVER_VERSIONS }}
+            TEST_SERVERS_FILE_PATH: ${{ vars.TEST_SERVERS_FILE_PATH }}
+        run: |
+          FILE=${TEST_SERVERS_FILE_PATH}
+
+          if [[ -s "$FILE" ]]; then
+            echo "Using $FILE from repository"
+            JSON=$(cat "$FILE")
+          else
+            echo "$FILE missing or empty – using DEFAULT_SERVER_VERSIONS"
+            JSON="$DEFAULT_JSON"
+          fi
+
+          MATRIX=$(echo "$JSON" | jq -c '
+            to_entries
+            | map({
+                server:  .key,
+                version: .value.version,
+                type: .value.type,
+              })
+          ')
+
+          echo input-matrix="$MATRIX" >> $GITHUB_OUTPUT
+
+      - name: Get java version
+        id: get-java-version
+        run: |
+          echo java-version="$(grep '<java.version>' pom.xml | sed -e 's/<[^>]*>//g' | awk '{$1=$1};1' | sed 's/^1\.8$/8/')"  >> $GITHUB_OUTPUT
+
+      - name: debug - print input variables
+        run: |
+          echo ${{ steps.get-java-version.outputs.java-version }}
+          echo ${{ steps.set.outputs.input-matrix }}
+
+  build:
     uses: ./.github/workflows/build-pr.yaml
+    needs: make-matrix
+    strategy:
+      matrix: 
+        include: ${{ fromJson(needs.make-matrix.outputs.input-matrix) }}
+    name: build-${{ matrix.server }}-${{ matrix.version }}
     with:
-      branch: ${{ github.ref }}
-      source-branch: ${{ inputs.source-branch || github.base_ref }}
-      use-server-rc: true
-      upload-artifacts: false
-      run-tests: true
+      java-version: ${{ needs.make-matrix.outputs.java-version }}
+      run-tests: true 
+      server-tag: ${{ matrix.version }}
+      server-type: ${{ matrix.type }}
     secrets: inherit

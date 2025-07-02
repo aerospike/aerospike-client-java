@@ -1,16 +1,8 @@
 name: "Run EE Server"
 description: "Run EE server. Returns once server is ready. Only tested on Linux and macOS"
 
-permissions:
-  # This is required for requesting the OIDC token
-  id-token: write
-
 inputs:
   # All inputs in composite actions are strings
-  use-server-rc:
-    description: Flag for rc candidates
-    required: true
-    default: "false"
   server-tag:
     description: Server version to use
     required: false
@@ -33,6 +25,10 @@ inputs:
     default: aerospike
     required: false
     description: Name for test container
+  server-type:
+    required: true
+    default: aerospike-enterprise-server
+    description: Server type `aerospike-server` or `aerospike-enterprise-server` 
 
 runs:
   using: "composite"
@@ -47,11 +43,10 @@ runs:
         oidc-provider-name: ${{ inputs.oidc-provider }}
         oidc-audience: ${{ inputs.oidc-audience }}
 
-    - if: ${{ inputs.use-server-rc == 'true' }}
-      run: docker login ${{ inputs.container-repo-url }} --username ${{ steps.setup-jfrog-cli.outputs.oidc-user }} --password ${{ steps.setup-jfrog-cli.outputs.oidc-token }}
+    - run: docker login ${{ inputs.container-repo-url }} --username ${{ steps.setup-jfrog-cli.outputs.oidc-user }} --password ${{ steps.setup-jfrog-cli.outputs.oidc-token }}
       shell: bash
 
-    - run: echo IMAGE_NAME=${{ inputs.use-server-rc == 'true' && inputs.container-repo-url || '' }}aerospike/aerospike-server-enterprise:${{ inputs.use-server-rc == 'true' && '8.1.0.0-rc2_1'  || inputs.server-tag }} >> $GITHUB_ENV
+    - run: echo IMAGE_NAME=${{ inputs.container-repo-url }}aerospike/${{ inputs.server-type }}:${{ inputs.server-tag }} >> $GITHUB_ENV
       shell: bash
 
     - run: docker run -d --name ${{ inputs.container-name }} -p 3000:3000 ${{ env.IMAGE_NAME }}
