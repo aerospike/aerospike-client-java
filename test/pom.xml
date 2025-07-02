@@ -94,7 +94,7 @@
   </profiles>
 
   <build>
-    <testSourceDirectory>${project.basedir}/src/com</testSourceDirectory>
+    <testSourceDirectory>${project.basedir}/src</testSourceDirectory>
     <testResources>
       <testResource>
         <directory>${project.basedir}/src/resources</directory>
