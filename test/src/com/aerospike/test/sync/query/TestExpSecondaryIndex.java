@@ -17,6 +17,7 @@
 
 package com.aerospike.test.sync.query;
 
+import java.util.Arrays;
 import java.util.List;
 import org.junit.AfterClass;
 import org.junit.Assert;
@@ -45,7 +46,7 @@ import com.aerospike.test.sync.TestSync;
 public class TestExpSecondaryIndex extends TestSync {
 	private static final String setName = "exp_SI_test_set";
 	private static final String indexName = "εχπ_ΣΙ_τεστ_ιδχ";
-	private static final List<String> countries =  List.of("Australia", "Canada", "USA");
+	private static final List<String> countries =  Arrays.asList("Australia", "Canada", "USA");
 	private static final Expression exp = Exp.build(
 		// IF (age >= 18 AND country IN ["Australia, "Canada", "USA"])
 		Exp.cond(

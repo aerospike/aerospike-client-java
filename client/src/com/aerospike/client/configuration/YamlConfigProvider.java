@@ -21,6 +21,7 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.net.URI;
 import java.nio.file.Paths;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -40,7 +41,7 @@ public class YamlConfigProvider implements ConfigurationProvider {
 	private static final String CONFIG_PATH_SYS_PROP = "AEROSPIKE_CLIENT_CONFIG_SYS_PROP";
 	private static final String YAML_SERIALIZERS_PATH = "com.aerospike.client.configuration.serializers.";
 	private static final String DEFAULT_CONFIG_URL_PREFIX = "file://";
-	private static final List<String> SUPPORTED_SCHEMA_VERSIONS = List.of("1.0.0");
+	private static final List<String> SUPPORTED_SCHEMA_VERSIONS = Collections.singletonList("1.0.0");
 
 	public static List<String> getSupportedVersions() {
 		return SUPPORTED_SCHEMA_VERSIONS;
