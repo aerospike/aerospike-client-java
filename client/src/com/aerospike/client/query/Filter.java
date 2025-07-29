@@ -541,7 +541,7 @@ public final class Filter {
 	 * @param ctx			optional context for elements within a CDT
 	 * @return				filter instance
 	 */
-	public static Filter geoWithinRadius(String indexName, IndexCollectionType type, double lng, double lat, double radius) {
+	public static Filter geoWithinRadiusByIndex(String indexName, IndexCollectionType type, double lng, double lat, double radius) {
 		String rgnstr =
 				String.format("{ \"type\": \"AeroCircle\", "
 							  + "\"coordinates\": [[%.8f, %.8f], %f] }",
@@ -581,7 +581,7 @@ public final class Filter {
 	 * @param ctx			optional context for elements within a CDT
 	 * @return				filter instance
 	 */
-	public static Filter geoContains(String indexName, String point) {
+	public static Filter geoContainsByIndex(String indexName, String point) {
 		return new Filter(indexName, null, IndexCollectionType.DEFAULT, ParticleType.GEOJSON, Value.get(point), Value.get(point));
 	}
 
@@ -625,7 +625,7 @@ public final class Filter {
 	}
 
 	private final String name;
-	private final String index_name;
+	private final String indexName;
 	private final IndexCollectionType colType;
 	private final byte[] packedCtx;
 	private final int valType;
@@ -636,14 +636,14 @@ public final class Filter {
 	private Filter(String name, IndexCollectionType colType, int valType, Value begin, Value end, CTX[] ctx) {
 		this(name, null, colType, valType, begin, end, (ctx != null && ctx.length > 0) ? Pack.pack(ctx) : null, null);
 	}
-	private Filter(String index_name, byte[] exp, IndexCollectionType colType, int valType, Value begin, Value end) {
-		this(null, index_name, colType, valType, begin, end, null, exp);
+	private Filter(String indexName, byte[] exp, IndexCollectionType colType, int valType, Value begin, Value end) {
+		this(null, indexName, colType, valType, begin, end, null, exp);
 	}
 
-	Filter(String name, String index_name, IndexCollectionType colType, int valType, Value begin, Value end,
+	Filter(String name, String indexName, IndexCollectionType colType, int valType, Value begin, Value end,
 		   byte[] packedCtx, byte[] packedExp) {
 		this.name = name;
-		this.index_name = index_name;
+		this.indexName = indexName;
 		this.colType = colType;
 		this.valType = valType;
 		this.begin = begin;
@@ -708,7 +708,7 @@ public final class Filter {
 	 * For internal use only.
 	 */
 	public String getIndexName() {
-		return index_name;
+		return indexName;
 	}
 
 	/**
