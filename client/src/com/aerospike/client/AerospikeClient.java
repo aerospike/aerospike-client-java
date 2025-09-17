@@ -23,6 +23,7 @@ import java.util.Arrays;
 import java.util.Calendar;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import com.aerospike.client.admin.AdminCommand;
 import com.aerospike.client.admin.Privilege;
@@ -368,11 +369,9 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			mergePoliciesWithConfig();
 		}
 
-		version = this.getClass().getPackage().getImplementationVersion();
-
-		if (version == null) {
-			version = "development";
-		}
+		version = Optional.ofNullable(getClass().getPackage())
+				.map(Package::getImplementationVersion)
+				.orElse("n/a");
 
 		cluster = new Cluster(this, mergedClientPolicy, configPath, hosts);
 	}
