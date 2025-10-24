@@ -114,6 +114,10 @@ public final class Version implements Comparable<Version> {
         return this.compareTo(otherVersion) < 0;
     }
 
+    public boolean isLessThanOrEqual(Version otherVersion) {
+        return this.compareTo(otherVersion) <= 0;
+    }
+
     public boolean isGreaterOrEqual(int major, int minor, int patch, int build) {
         return this.compareTo(new Version(major, minor, patch, build)) >= 0;
     }
