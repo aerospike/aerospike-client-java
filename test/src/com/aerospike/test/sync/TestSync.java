@@ -18,7 +18,10 @@ package com.aerospike.test.sync;
 
 import static org.junit.Assert.fail;
 
+import com.aerospike.client.cluster.Node;
+import com.aerospike.client.util.Version;
 import org.junit.AfterClass;
+import org.junit.Assume;
 import org.junit.BeforeClass;
 
 import com.aerospike.client.Bin;
@@ -30,6 +33,7 @@ import com.aerospike.test.util.TestBase;
 
 public class TestSync extends TestBase {
 	protected static IAerospikeClient client = SuiteSync.client;
+	protected static Version serverVersion;
 	private static boolean DestroyClient = false;
 
 	@BeforeClass
@@ -39,6 +43,13 @@ public class TestSync extends TestBase {
 			client = SuiteSync.client;
 			DestroyClient = true;
 		}
+
+        Node[] nodes = client.getNodes();
+        Assume.assumeTrue("No Aerospike server nodes available", nodes.length > 0);
+
+        if (serverVersion == null) {
+            serverVersion = nodes[0].getServerVersion();
+        }
 	}
 
 	@AfterClass
