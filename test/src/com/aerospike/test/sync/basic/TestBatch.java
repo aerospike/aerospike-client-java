@@ -416,7 +416,7 @@ public class TestBatch extends TestSync {
 	@Test
 	public void batchReadTTL() {
 		org.junit.Assume.assumeTrue(args.hasTtl);
-        org.junit.Assume.assumeTrue("Skipping for server version less than 7.0", serverVersion.isGreaterThan(new Version(7, 0, 0, 0)));
+        org.junit.Assume.assumeTrue("Skipping for server version less than 7.0", args.serverVersion.isGreaterThan(new Version(7, 0, 0, 0)));
 
 		// WARNING: This test takes a long time to run due to sleeps.
 		// Define keys

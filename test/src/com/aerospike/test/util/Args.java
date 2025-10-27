@@ -60,6 +60,7 @@ public class Args {
 	public boolean enterprise;
 	public boolean hasTtl;
 	public boolean scMode;
+	public Version serverVersion;
 
 	public Args() {
 		host = "127.0.0.1";
@@ -260,7 +261,8 @@ public class Args {
 		}
 
 		Node node = client.getNodes()[0];
-		String editionFilter = node.serverVersion.isGreaterOrEqual(Version.SERVER_VERSION_8_1) ? "release" : "edition";
+		serverVersion = node.getServerVersion();
+		String editionFilter = serverVersion.isGreaterOrEqual(Version.SERVER_VERSION_8_1) ? "release" : "edition";
 		String namespaceFilter = "namespace/" + namespace;
 		Map<String,String> map = Info.request(null, node, editionFilter, namespaceFilter);
 
