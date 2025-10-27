@@ -417,7 +417,7 @@ public class TestBatch extends TestSync {
 	@Test
 	public void batchReadTTL() {
 		org.junit.Assume.assumeTrue(args.hasTtl);
-        org.junit.Assume.assumeTrue("Skipping for server version less than 7.0", !isServerVersionGreaterThan7_0());
+        org.junit.Assume.assumeFalse("Skipping for server version less than 7.0", isServerVersionLessThan(new Version(7, 0, 0, 0)));
 
 		// WARNING: This test takes a long time to run due to sleeps.
 		// Define keys
@@ -479,11 +479,11 @@ public class TestBatch extends TestSync {
 		assertFalse(rv);
 	}
 
-    private boolean isServerVersionGreaterThan7_0() {
+    private boolean isServerVersionLessThan(Version version) {
         Node[] nodes = client.getNodes();
         org.junit.Assume.assumeTrue(nodes.length > 0);
         Version serverVersion = nodes[0].getServerVersion();
-        return !serverVersion.isLessThanOrEqual(new Version(7, 0, 0, 0));
+        return serverVersion.isLessThanOrEqual(version);
     }
 
     private void assertBatchBinEqual(List<BatchRead> list, String binName, int i) {
