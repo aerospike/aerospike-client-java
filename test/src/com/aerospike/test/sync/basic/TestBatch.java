@@ -26,7 +26,6 @@ import static org.junit.Assert.fail;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.aerospike.client.cluster.Node;
 import com.aerospike.client.util.Version;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -478,13 +477,6 @@ public class TestBatch extends TestSync {
 		assertEquals(ResultCode.KEY_NOT_FOUND_ERROR, br2.resultCode);
 		assertFalse(rv);
 	}
-
-    private boolean isServerVersionLessThan(Version version) {
-        Node[] nodes = client.getNodes();
-        org.junit.Assume.assumeTrue(nodes.length > 0);
-        Version serverVersion = nodes[0].getServerVersion();
-        return serverVersion.isLessThanOrEqual(version);
-    }
 
     private void assertBatchBinEqual(List<BatchRead> list, String binName, int i) {
 		BatchRead batch = list.get(i);
