@@ -19,6 +19,7 @@ package com.aerospike.client.command;
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
+import java.util.HexFormat;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Value;
@@ -235,21 +236,11 @@ public final class Buffer {
 		if (buf == null || buf.length == 0) {
 			return "";
 		}
-		StringBuilder sb = new StringBuilder(buf.length * 2);
-
-		for (int i = 0; i < buf.length; i++) {
-			sb.append(String.format("%02x", buf[i]));
-		}
-		return sb.toString();
+		return HexFormat.of().formatHex(buf);
 	}
 
 	public static String bytesToHexString(byte[] buf, int offset, int length) {
-		StringBuilder sb = new StringBuilder(length * 2);
-
-		for (int i = offset; i < length; i++) {
-			sb.append(String.format("%02x", buf[i]));
-		}
-		return sb.toString();
+		return HexFormat.of().formatHex(buf, offset, offset + length);
 	}
 
 	public static Value bytesToLongValue(byte[] buf, int offset, int len) {
