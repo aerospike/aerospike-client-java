@@ -19,6 +19,7 @@ package com.aerospike.test.sync.basic;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.fail;
 
 import com.aerospike.test.sync.TestSync;
 import org.junit.Test;
@@ -115,6 +116,45 @@ public class TestTxn extends TestSync {
 		Record record = client.get(null, key);
 		assertBinEqual(key, record, binName, "val1");
 	}
+	
+	@Test
+	public void txnReadFailsForAllStatesExceptOpen() {
+		Object[][] testCases = new Object[][] {
+				{ Txn.State.OPEN, null },
+				{ Txn.State.COMMITTED, ResultCode.TXN_ALREADY_COMMITTED },
+				{ Txn.State.ABORTED, ResultCode.TXN_ALREADY_ABORTED },
+				{ Txn.State.VERIFIED, ResultCode.TXN_FAILED }
+		};
+		Key key = new Key(args.namespace, args.set, "mrtkey21");
+
+		for (Object[] testCase : testCases) {
+			Txn.State state = (Txn.State) testCase[0];
+			Integer expectedCode = (Integer) testCase[1];
+
+			Txn txn = new Txn();
+			txn.setState(state);
+
+			Policy policy = new Policy();
+			policy.txn = txn;
+
+			if (expectedCode == null) {
+				try {
+					client.get(policy, key);
+				} catch (AerospikeException ex) {
+					fail("Did not expect exception for state " + state + " but got " + ex);
+				}
+			} else {
+				try {
+					client.get(policy, key);
+					fail("Expected AerospikeException for state " + state);
+				} catch (AerospikeException ex) {
+					assertEquals("ResultCode mismatch for state " + state,
+							(int) expectedCode, ex.getResultCode());
+				}
+			}
+		}
+	}
+
 
 	@Test
 	public void txnWriteBlock() {
