@@ -158,8 +158,18 @@ public final class Txn {
 	 * Verify that the transaction state allows future commands.
 	 */
 	public void verifyCommand() {
-		if (state != Txn.State.OPEN) {
-			throw new AerospikeException("Command not allowed in current transaction state: " + state);
+		switch (state) {
+	    		case OPEN:
+	        		return;
+	    		case COMMITTED:
+	        		throw new AerospikeException(ResultCode.TXN_ALREADY_COMMITTED,
+	                		"Issuing commands to this transaction is forbidden because it has been committed.");
+	    		case ABORTED:
+	        		throw new AerospikeException(ResultCode.TXN_ALREADY_ABORTED,
+	                		"Issuing commands to this transaction is forbidden because it has been aborted.");
+	    		case VERIFIED:
+	        		throw new AerospikeException(ResultCode.TXN_FAILED,
+	                		"Issuing commands to this transaction is forbidden because it is currently being committed.");
 		}
 	}
 
