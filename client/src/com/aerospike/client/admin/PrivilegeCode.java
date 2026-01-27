@@ -16,7 +16,7 @@
  */
 package com.aerospike.client.admin;
 
-import com.aerospike.client.Log;
+import com.aerospike.client.AerospikeException;
 
 /**
  * Permission codes define the type of permission granted for a user's role.
@@ -93,14 +93,7 @@ public enum PrivilegeCode {
 	/**
 	 * User can write masked data only.
 	 */
-	WRITE_MASKED(17, Role.WriteMasked),
-
-	/**
-	 * Unknown privilege code from server.
-	 * This is used for forward compatibility when the server sends
-	 * privilege codes that are not yet known to this client version.
-	 */
-	UNKNOWN(-1, "unknown");
+	WRITE_MASKED(17, Role.WriteMasked);
 
 	/**
 	 * Privilege code ID used in wire protocol.
@@ -117,10 +110,7 @@ public enum PrivilegeCode {
 	 * Can privilege be scoped with namespace and set.
 	 */
 	public boolean canScope() {
-		// Unknown privileges cannot be scoped since we don't know their characteristics
-		// MaskingAdmin (15) is global only
-		// Data privileges (id >= 10) can be scoped except MaskingAdmin
-		return id >= 10 && id != 15;
+		return id >= 10;
 	}
 
 	/**
@@ -170,13 +160,7 @@ public enum PrivilegeCode {
 			return WRITE_MASKED;
 
 		default:
-			// Return UNKNOWN for forward compatibility with new privilege codes
-			// from future server versions. This allows the client to work with
-			// newer servers without breaking when new privileges are added.
-			if (Log.warnEnabled()) {
-				Log.warn("Unknown privilege code received from server: " + id + ". Using UNKNOWN.");
-			}
-			return UNKNOWN;
+			throw new AerospikeException("Invalid privilege code: " + id);
 		}
 	}
 
