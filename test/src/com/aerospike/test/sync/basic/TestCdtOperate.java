@@ -2309,4 +2309,88 @@ public class TestCdtOperate extends TestSync {
         Exp hllLoopExp = Exp.hllLoopVar(LoopVarPart.VALUE);
         assertNotNull("hllLoopVar expression should be created", hllLoopExp);
     }
+
+    @Test
+    public void testSelectByPathWithNullBinName() {
+        CTX ctx1 = CTX.mapKey(Value.get("test"));
+
+        try {
+             CdtOperation.selectByPath(null, Exp.SELECT_VALUE, ctx1);
+            assertTrue("Should throw AerospikeException with PARAMETER_ERROR", false);
+        } catch (com.aerospike.client.AerospikeException e) {
+            assertEquals("Should be PARAMETER_ERROR", com.aerospike.client.ResultCode.PARAMETER_ERROR, e.getResultCode());
+            assertTrue("Error message should mention binName", e.getMessage().contains("binName"));
+        }
+    }
+
+    @Test
+    public void testSelectByPathWithEmptyBinName() {
+        CTX ctx1 = CTX.mapKey(Value.get("test"));
+
+        try {
+            CdtOperation.selectByPath("", Exp.SELECT_VALUE, ctx1);
+            assertTrue("Should throw AerospikeException with PARAMETER_ERROR", false);
+        } catch (com.aerospike.client.AerospikeException e) {
+            assertEquals("Should be PARAMETER_ERROR", com.aerospike.client.ResultCode.PARAMETER_ERROR, e.getResultCode());
+            assertTrue("Error message should mention binName", e.getMessage().contains("binName"));
+        }
+    }
+
+    @Test
+    public void testModifyByPathWithNullBinName() {
+        CTX ctx1 = CTX.mapKey(Value.get("test"));
+        Expression modifyExp = Exp.build(Exp.val(100));
+
+        try {
+            CdtOperation.modifyByPath(null, Exp.MODIFY_DEFAULT, modifyExp, ctx1);
+            assertTrue("Should throw AerospikeException with PARAMETER_ERROR", false);
+        } catch (com.aerospike.client.AerospikeException e) {
+            assertEquals("Should be PARAMETER_ERROR", com.aerospike.client.ResultCode.PARAMETER_ERROR, e.getResultCode());
+            assertTrue("Error message should mention binName", e.getMessage().contains("binName"));
+        }
+    }
+
+    @Test
+    public void testModifyByPathWithEmptyBinName() {
+        CTX ctx1 = CTX.mapKey(Value.get("test"));
+        Expression modifyExp = Exp.build(Exp.val(100));
+
+        try {
+            CdtOperation.modifyByPath("", Exp.MODIFY_DEFAULT, modifyExp, ctx1);
+            assertTrue("Should throw AerospikeException with PARAMETER_ERROR", false);
+        } catch (com.aerospike.client.AerospikeException e) {
+            assertEquals("Should be PARAMETER_ERROR", com.aerospike.client.ResultCode.PARAMETER_ERROR, e.getResultCode());
+            assertTrue("Error message should mention binName", e.getMessage().contains("binName"));
+        }
+    }
+
+    @Test
+    public void testSelectByPathWithBinNameTooLong() {
+        CTX ctx1 = CTX.mapKey(Value.get("test"));
+        String longBinName = "1234567890123456"; // 16 characters, exceeds limit of 15
+
+        try {
+            CdtOperation.selectByPath(longBinName, Exp.SELECT_VALUE, ctx1);
+            assertTrue("Should throw AerospikeException with PARAMETER_ERROR", false);
+        } catch (com.aerospike.client.AerospikeException e) {
+            assertEquals("Should be PARAMETER_ERROR", com.aerospike.client.ResultCode.PARAMETER_ERROR, e.getResultCode());
+            assertTrue("Error message should mention character limit", e.getMessage().contains("15") || e.getMessage().contains("exceed"));
+        }
+    }
+
+    @Test
+    public void testModifyByPathWithBinNameTooLong() {
+        CTX ctx1 = CTX.mapKey(Value.get("test"));
+        Expression modifyExp = Exp.build(Exp.val(100));
+        String longBinName = "1234567890123456"; // 16 characters, exceeds limit of 15
+
+        try {
+            CdtOperation.modifyByPath(longBinName, Exp.MODIFY_DEFAULT, modifyExp, ctx1);
+            assertTrue("Should throw AerospikeException with PARAMETER_ERROR", false);
+        } catch (com.aerospike.client.AerospikeException e) {
+            assertEquals("Should be PARAMETER_ERROR", com.aerospike.client.ResultCode.PARAMETER_ERROR, e.getResultCode());
+            assertTrue("Error message should mention character limit", e.getMessage().contains("15") || e.getMessage().contains("exceed"));
+        }
+    }
+
 }

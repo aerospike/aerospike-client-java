@@ -27,6 +27,7 @@ import com.aerospike.client.cdt.MapOrder;
  * Column name/value pair.
  */
 public final class Bin {
+	public static final int MAX_BIN_NAME_LENGTH = 15;
 	/**
 	 * Bin name. Current limit is 15 characters.
 	 */
