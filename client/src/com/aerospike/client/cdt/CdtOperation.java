@@ -16,7 +16,10 @@
  */
 package com.aerospike.client.cdt;
 
+import com.aerospike.client.AerospikeException;
+import com.aerospike.client.Bin;
 import com.aerospike.client.Operation;
+import com.aerospike.client.ResultCode;
 import com.aerospike.client.Value;
 import com.aerospike.client.command.ParticleType;
 import com.aerospike.client.util.Pack;
@@ -33,6 +36,9 @@ public class CdtOperation {
      */
     public static Operation selectByPath(String binName, int flags, CTX... ctx) {
         byte[] packedBytes;
+        if (binName == null || binName.isEmpty() || binName.length() > Bin.MAX_BIN_NAME_LENGTH) {
+            throw new AerospikeException(ResultCode.PARAMETER_ERROR, "binName cannot be null, empty, or exceed " + Bin.MAX_BIN_NAME_LENGTH + " characters");
+        }
         if (ctx == null || ctx.length == 0) { 
             packedBytes = Pack.pack(CDT.Type.SELECT.value, flags);
         } else {
@@ -52,6 +58,9 @@ public class CdtOperation {
      */
     public static Operation modifyByPath(String binName, int flags, Expression modifyExp, CTX... ctx) {
         byte[] packedBytes;
+        if (binName == null || binName.isEmpty() || binName.length() > Bin.MAX_BIN_NAME_LENGTH) {
+            throw new AerospikeException(ResultCode.PARAMETER_ERROR, "binName cannot be null, empty, or exceed " + Bin.MAX_BIN_NAME_LENGTH + " characters");
+        }
         if (ctx == null || ctx.length == 0) { 
             packedBytes = Pack.pack(CDT.Type.SELECT.value, flags, modifyExp);
         } else {
