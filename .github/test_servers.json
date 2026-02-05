@@ -1,6 +1,10 @@
 {
   "stable": {
     "version": "8.1.0.0-rc2_1",
-    "type": "aerospike-server-enterprise"
+    "type": "docker/aerospike/aerospike-server-enterprise"
+  },
+  "8.1.1-rc30": {
+    "version": "8.1.1.0-rc30_1",
+    "type": "database-docker-dev-local/aerospike-server-enterprise"
   }
 }

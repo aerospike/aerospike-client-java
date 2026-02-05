@@ -10,7 +10,7 @@ inputs:
   container-repo-url:
     required: false
     description: Container repo url
-    default: aerospike.jfrog.io/docker/
+    default: aerospike.jfrog.io
   jfrog-platform-url:
     description: "JFrog platform url"
     required: false
@@ -46,7 +46,7 @@ runs:
     - run: docker login ${{ inputs.container-repo-url }} --username ${{ steps.setup-jfrog-cli.outputs.oidc-user }} --password ${{ steps.setup-jfrog-cli.outputs.oidc-token }}
       shell: bash
 
-    - run: echo IMAGE_NAME=${{ inputs.container-repo-url }}aerospike/${{ inputs.server-type }}:${{ inputs.server-tag }} >> $GITHUB_ENV
+    - run: echo IMAGE_NAME=${{ inputs.container-repo-url }}/${{ inputs.server-type }}:${{ inputs.server-tag }} >> $GITHUB_ENV
       shell: bash
 
     - run: docker run -d --name ${{ inputs.container-name }} -p 3000:3000 ${{ env.IMAGE_NAME }}
