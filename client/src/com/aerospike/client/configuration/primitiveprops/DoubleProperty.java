@@ -1,15 +1,15 @@
 package com.aerospike.client.configuration.primitiveprops;
 
 public class DoubleProperty {
-    public int value;
+    public double value;
 
     public DoubleProperty() {}
 
-    public DoubleProperty(int value) {
+    public DoubleProperty(double value) {
         this.value = value;
     }
 
-    public void setValue(int value) {
+    public void setValue(double value) {
         this.value = value;
     }
 }
