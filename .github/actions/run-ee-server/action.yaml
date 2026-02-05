@@ -10,7 +10,7 @@ inputs:
   container-repo-url:
     required: false
     description: Container repo url
-    default: aerospike.jfrog.io/docker/
+    default: aerospike.jfrog.io
   jfrog-platform-url:
     description: "JFrog platform url"
     required: false
