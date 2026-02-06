@@ -2,7 +2,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>com.aerospike</groupId>
   <artifactId>aerospike-client-jdk8</artifactId>
-  <version>9.3.0-alpha.3</version>
+  <version>9.3.0</version>
   <packaging>jar</packaging>
   <name>Aerospike Java Client</name>
   <description>Aerospike Java client interface to Aerospike database server</description>
