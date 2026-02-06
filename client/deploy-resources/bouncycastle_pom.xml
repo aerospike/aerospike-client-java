@@ -2,7 +2,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>com.aerospike</groupId>
   <artifactId>aerospike-client-bc-jdk21</artifactId>
-  <version>9.3.0-alpha.6</version>
+  <version>9.3.0</version>
   <packaging>jar</packaging>
   <name>Aerospike Java Client BC</name>
   <description>Aerospike Java client interface to Aerospike database server. Uses Bouncy Castle crypto library for RIPEMD-160 hashing.</description>
