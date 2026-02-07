@@ -45,40 +45,144 @@ jobs:
           echo "${{ inputs.build-number }}"
           echo "${{ inputs.target-build }}"
 
-      # Fetching build info from JFrog
-      - name: Get info
+      - name: Get build info
         id: get-build-info
+        shell: bash
+        env:
+          BUILD_INFO_REPO: clients-build-info
+          BUILD_NAME: ${{ inputs.target-build }}
+          BUILD_NUMBER: ${{ inputs.build-number }}
+          OUT_FILE: build-info.json
         run: |
-          echo build-info=$(jf rt curl /api/build/${{ inputs.target-build }}/${{ inputs.build-number }}) >> $GITHUB_OUTPUT
+          set -euo pipefail
+
+          # Find newest build-info JSON (suffix unknown)
+          PATH_MATCH=$(jf rt s "${BUILD_INFO_REPO}/${BUILD_NAME}/${BUILD_NUMBER}-*.json" \
+            --sort-by=created --sort-order=desc --limit=1 \
+            | jq -r '.[0].path')
+
+          [[ -n "$PATH_MATCH" && "$PATH_MATCH" != "null" ]] \
+            || { echo "No build-info found for ${BUILD_NAME} #${BUILD_NUMBER}" >&2; exit 1; }
+
+          # Download JSON
+          jf rt curl -X GET "$PATH_MATCH" > build-info.json
+
+          # Validate JSON
+          jq -e . build-info.json >/dev/null
+
+          # Outputs for downstream steps
+          {
+            echo "build_info_path=$PATH_MATCH"
+            echo "build_info_file=build-info.json"
+          } >> "$GITHUB_OUTPUT"
 
       # Fetching build names from build info
       - name: Get build name
         id: get-build-name
-        run: |
-          echo build-names=$(echo '${{ steps.get-build-info.outputs.build-info }}' | jq -r '.buildInfo.modules[].id | sub("/[0-9]+$"; "")') >> $GITHUB_OUTPUT
-
-      # For each build fetching Maven Central release id and appending to the list which will be used for validation
-      - name: Get sonatype release ids from build names
-        id: get-sonatype-release-ids
         shell: bash
         run: |
-          BUILD_NAMES=(${{ steps.get-build-name.outputs.build-names }})
+          set -euo pipefail
+          
+          BUILD_INFO_FILE="build-info.json"
+          [[ -f "$BUILD_INFO_FILE" ]] || { echo "Missing build info file: $BUILD_INFO_FILE" >&2; exit 1; }
+          
+          BUILD_NAMES=$(
+            jq -r '.modules[].id | sub("/[0-9]+$"; "")' "$BUILD_INFO_FILE" \
+            | sort -u \
+            | tr '\n' ' ' \
+            | sed 's/[[:space:]]*$//'
+          )
+          
+          echo "build-names=$BUILD_NAMES" >> "$GITHUB_OUTPUT"
 
-          if [ ${#MODULES[@]} -eq 0 ];then
-            echo "Missing build names for modules in '${{ inputs.target-build }}'"
-          fi
+      - name  : Debug step
+        shell: bash
+        run: |
+          echo BUILD_INFO_REPO: clients-build-info
+          echo "Build names: ${{ steps.get-build-name.outputs.build-names }}"
+          echo BUILD_NUMBER: ${{ inputs.build-number }}
 
+      # For each build fetching Maven Central release id and appending to the list which will be used for validation
+      - name: Get Sonatype staging build IDs
+        id: get-sonatype-ids
+        shell: bash
+        env:
+          BUILD_INFO_REPO: clients-build-info
+          BUILD_NUMBER: ${{ inputs.build-number }}
+        run: |
+          set -euo pipefail
+          
+          : "${BUILD_INFO_REPO:?}"
+          read -r -a BUILD_NAMES <<< "${{ steps.get-build-name.outputs.build-names }}"
+          
           SONATYPE_RELEASE_IDS=()
-
+          
           for BUILD_NAME in "${BUILD_NAMES[@]}"; do
-            SONATYPE_ID=$(jf rt curl /api/build/${BUILD_NAME}/${{ inputs.build-number }} | jq '.buildInfo.properties."buildInfo.env.SONATYPE_STAGING_BUILD_ID"')
-            SONATYPE_RELEASE_IDS+=("$SONATYPE_ID")
+            echo "Searching latest build-info for $BUILD_NAME with build number $BUILD_NUMBER" >&2
+          
+            AQL=$(cat <<EOF
+          items.find({
+            "repo": "$BUILD_INFO_REPO",
+            "path": "$BUILD_NAME",
+            "name": {"\$match": "$BUILD_NUMBER-*.json"}
+          }).sort({"\$desc": ["created"]}).limit(1)
+          EOF
+          )
+          
+            SEARCH_JSON=$(jf rt curl -X POST api/search/aql \
+              -H "Content-Type: text/plain" \
+              -d "$AQL")
+          
+            # Debug: show search results
+            echo "DEBUG: AQL search results:" >&2
+            echo "$SEARCH_JSON" | jq -r '.results[0] // "No results"' >&2
+          
+            PATH_MATCH=$(echo "$SEARCH_JSON" | jq -r '.results[0].path + "/" + .results[0].name // empty')
+          
+            if [[ -z "$PATH_MATCH" || "$PATH_MATCH" == "/" ]]; then
+              echo "WARN: No build-info JSON found for $BUILD_NAME in $BUILD_INFO_REPO" >&2
+              echo "DEBUG: Full search response:" >&2
+              echo "$SEARCH_JSON" | jq '.' >&2
+              SONATYPE_RELEASE_IDS+=("null")
+              continue
+            fi
+          
+            # Prepend repository name to path for download
+            FULL_PATH="${BUILD_INFO_REPO}/${PATH_MATCH}"
+            echo "DEBUG: Downloading from $FULL_PATH" >&2
+            BUILD_JSON=$(jf rt curl -X GET "$FULL_PATH")
+          
+            # Validate JSON before processing
+            if ! echo "$BUILD_JSON" | jq -e . >/dev/null 2>&1; then
+              echo "ERROR: Invalid JSON received from $FULL_PATH" >&2
+              echo "Response:" >&2
+              echo "$BUILD_JSON" | head -20 >&2
+              SONATYPE_RELEASE_IDS+=("null")
+              continue
+            fi
+          
+            # Debug: show if Sonatype ID exists
+            echo "DEBUG: Found Sonatype ID in properties:" >&2
+            echo "$BUILD_JSON" | jq -r '.properties["buildInfo.env.SONATYPE_STAGING_BUILD_ID"] // "NOT FOUND"' >&2
+          
+            # Extract Sonatype ID from properties
+            SONATYPE_ID=$(echo "$BUILD_JSON" | jq -r '.properties["buildInfo.env.SONATYPE_STAGING_BUILD_ID"] // empty')
+          
+            if [[ -z "$SONATYPE_ID" ]]; then
+              echo "WARN: No SONATYPE_STAGING_BUILD_ID found in build-info for $BUILD_NAME #$BUILD_NUMBER" >&2
+              SONATYPE_RELEASE_IDS+=("null")
+            else
+              echo "Found Sonatype ID: $SONATYPE_ID" >&2
+              SONATYPE_RELEASE_IDS+=("$SONATYPE_ID")
+            fi
           done
+          
+          echo "sonatype-release-ids=${SONATYPE_RELEASE_IDS[*]}" >> "$GITHUB_OUTPUT"
 
-          RELEASE_IDS_STRING="${SONATYPE_RELEASE_IDS[*]}"
-
-          # Output the string so it can be used in later steps.
-          echo "sonatype-release-ids=${RELEASE_IDS_STRING}" >> "$GITHUB_OUTPUT"
+      - name: Debug step
+        shell: bash
+        run: |
+          echo "Sonatype release ids: ${{ steps.get-sonatype-ids.outputs.sonatype-release-ids }}"
 
       # Checking to ensure staged releases have passed validation
       - name: Check validation
@@ -87,7 +191,7 @@ jobs:
           TOKEN=$(printf "${{ secrets.AEROSPIKE_SA_CICD_USERNAME }}:${{ secrets.AEROSPIKE_SA_CICD_PASSWORD }}" | base64)
 
           NUMBER_OF_CHECKS=${{ vars.VALIDATION_MAX_NUMBER_CHECKS }}
-          SONATYPE_RELEASE_IDS=(${{ steps.get-sonatype-release-ids.outputs.sonatype-release-ids }})
+          SONATYPE_RELEASE_IDS=(${{ steps.get-sonatype-ids.outputs.sonatype-release-ids }})
 
           for RELEASE_ID in "${SONATYPE_RELEASE_IDS[@]}"; do
             for ((i = 1; i <= NUMBER_OF_CHECKS; i++)); do
@@ -120,7 +224,7 @@ jobs:
         shell: bash
         run: |
           TOKEN=$(printf "${{ secrets.AEROSPIKE_SA_CICD_USERNAME }}:${{ secrets.AEROSPIKE_SA_CICD_PASSWORD }}" | base64)
-          RELEASE_IDS=(${{ steps.get-sonatype-release-ids.outputs.sonatype-release-ids }})
+          RELEASE_IDS=(${{ steps.get-sonatype-ids.outputs.sonatype-release-ids }})
 
           for RELEASE_ID in "${RELEASE_IDS[@]}"; do
             echo "curl --request POST --header 'Authorization: Bearer ${TOKEN}' ${{ vars.SONATYPE_DOMAIN_NAME }}/api/v1/publisher/deployment/$RELEASE_ID"
