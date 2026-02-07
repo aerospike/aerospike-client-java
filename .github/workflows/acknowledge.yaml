@@ -228,5 +228,5 @@ jobs:
 
           for RELEASE_ID in "${RELEASE_IDS[@]}"; do
             echo "curl --request POST --header 'Authorization: Bearer ${TOKEN}' ${{ vars.SONATYPE_DOMAIN_NAME }}/api/v1/publisher/deployment/$RELEASE_ID"
-            curl --request POST --header 'Authorization: Bearer ${TOKEN}' ${{ vars.SONATYPE_DOMAIN_NAME }}/api/v1/publisher/deployment/$RELEASE_ID
+            curl --request POST --header "Authorization: Bearer ${TOKEN}" ${{ vars.SONATYPE_DOMAIN_NAME }}/api/v1/publisher/deployment/$RELEASE_ID
           done
