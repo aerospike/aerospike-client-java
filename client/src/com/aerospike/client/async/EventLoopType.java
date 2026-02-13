@@ -17,7 +17,13 @@
 package com.aerospike.client.async;
 
 /**
- * Type of async event loop used.
+ * Type of async event loop used. Used by {@link NettyEventLoops} to select transport (NIO, epoll, kqueue, io_uring).
+ * <p>Pass EventLoopType when creating NettyEventLoops to choose transport.</p>
+ * <pre>{@code
+ * EventLoopGroup group = new NioEventLoopGroup(4);
+ * EventLoops eventLoops = new NettyEventLoops(new EventPolicy(), group, EventLoopType.NETTY_NIO);
+ * IAerospikeClient client = new AerospikeClient(new ClientPolicy(), new Host("localhost", 3000), eventLoops);
+ * }</pre>
  */
 public enum EventLoopType {
 	/**

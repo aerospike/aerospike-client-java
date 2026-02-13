@@ -21,6 +21,18 @@ import com.aerospike.client.CommitStatus;
 
 /**
  * Asynchronous result notifications for transaction commits.
+ * <p>
+ * No built-in implementations; implement this interface in application code and pass to
+ * {@link com.aerospike.client.IAerospikeClient#commit(com.aerospike.client.async.EventLoop, CommitListener, com.aerospike.client.policy.CommitPolicy, com.aerospike.client.Txn) commit(EventLoop, CommitListener, ...)}.
+ * <p>Implement and pass to async commit to receive CommitStatus on success or Commit exception on failure.</p>
+ * <pre>{@code
+ * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+ * client.commit(eventLoop, new CommitListener() {
+ *   public void onSuccess(CommitStatus status) { // use status
+ *   }
+ *   public void onFailure(AerospikeException.Commit ae) { ae.printStackTrace(); }
+ * }, null, txn);
+ * }</pre>
  */
 public interface CommitListener {
 	/**

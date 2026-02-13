@@ -17,11 +17,20 @@
 package com.aerospike.client;
 
 /**
- * User defined function languages.
+ * Language for user-defined functions (UDFs) registered with the server.
+ *
+ * <p>Register a UDF with Language.LUA and wait for completion.</p>
+ * <pre>{@code
+ * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+ * try {
+ *     RegisterTask task = client.register(null, "myudf.lua", "myudf.lua", Language.LUA);
+ *     task.waitTillComplete();
+ * } finally { client.close(); }
+ * }</pre>
+ *
+ * @see com.aerospike.client.AerospikeClient#register(com.aerospike.client.policy.Policy, String, String, Language)
  */
 public enum Language {
-	/**
-	 * Lua embedded programming language.
-	 */
+	/** Lua; the supported UDF language for Aerospike. */
 	LUA;
 }

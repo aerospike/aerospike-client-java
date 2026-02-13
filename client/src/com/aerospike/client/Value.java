@@ -39,7 +39,40 @@ import com.aerospike.client.lua.LuaInstance;
 import com.aerospike.client.util.Packer;
 
 /**
- * Polymorphic value classes used to efficiently serialize objects into the wire protocol.
+ * Polymorphic value types used to serialize and deserialize data for the Aerospike wire protocol.
+ *
+ * <p>Use the static {@link #get(Object)} and typed {@code get(type)} methods to obtain {@code Value} instances
+ * for bin values and keys. {@code null} inputs yield {@link #NULL}. Supported types include String, numeric,
+ * byte[], list, map, and GeoJSON.
+ *
+ * <p>Example using Value.get() for string and integer in a client put.</p>
+ * <pre>{@code
+ * client.put(writePolicy, key, new Bin("name", Value.get("Alice")), new Bin("count", Value.get(42)));
+ * }</pre>
+ *
+ * @see #get(String)
+ * @see #get(long)
+ * @see #NULL
+ * @see NullValue
+ * @see BytesValue
+ * @see ByteSegmentValue
+ * @see ByteValue
+ * @see StringValue
+ * @see ShortValue
+ * @see IntegerValue
+ * @see LongValue
+ * @see DoubleValue
+ * @see FloatValue
+ * @see BooleanValue
+ * @see BoolIntValue
+ * @see GeoJSONValue
+ * @see HLLValue
+ * @see ValueArray
+ * @see ListValue
+ * @see MapValue
+ * @see SortedMapValue
+ * @see InfinityValue
+ * @see WildcardValue
  */
 public abstract class Value {
 	/**
@@ -352,7 +385,7 @@ public abstract class Value {
 
 	/**
 	 * Validate if value type can be used as a key.
-	 * @throws AerospikeException	if type can't be used as a key.
+	 * @throws AerospikeException	when the type cannot be used as a key (e.g. list or map type).
 	 */
 	public void validateKeyType() throws AerospikeException {
 	}
@@ -388,6 +421,12 @@ public abstract class Value {
 
 	/**
 	 * Empty value.
+	 *
+	 * <p>Example creating and using this value type with a client put/get.</p>
+	 * <pre>{@code
+	 * Value v = Value.NULL;
+	 * Value v2 = Value.get((String) null);
+	 * }</pre>
 	 */
 	public static final class NullValue extends Value {
 		public static final NullValue INSTANCE = new NullValue();
@@ -448,6 +487,11 @@ public abstract class Value {
 
 	/**
 	 * Byte array value.
+	 *
+	 * <p>Example creating and using this value type with a client put/get.</p>
+	 * <pre>{@code
+	 * Value v = Value.get(new byte[] { 1, 2, 3 });
+	 * }</pre>
 	 */
 	public static final class BytesValue extends Value {
 		private final byte[] bytes;
@@ -514,6 +558,12 @@ public abstract class Value {
 
 	/**
 	 * Byte segment value.
+	 *
+	 * <p>Example creating and using this value type with a client put/get.</p>
+	 * <pre>{@code
+	 * byte[] buf = new byte[] { 1, 2, 3, 4, 5 };
+	 * Value v = Value.get(buf, 1, 3);
+	 * }</pre>
 	 */
 	public static final class ByteSegmentValue extends Value {
 		private final byte[] bytes;
@@ -610,6 +660,11 @@ public abstract class Value {
 
 	/**
 	 * Byte value.
+	 *
+	 * <p>Example creating and using this value type with a client put/get.</p>
+	 * <pre>{@code
+	 * Value v = Value.get((byte) 42);
+	 * }</pre>
 	 */
 	public static final class ByteValue extends Value {
 		private final byte value;
@@ -680,6 +735,11 @@ public abstract class Value {
 
 	/**
 	 * String value.
+	 *
+	 * <p>Example creating and using this value type with a client put/get.</p>
+	 * <pre>{@code
+	 * Value v = Value.get("hello");
+	 * }</pre>
 	 */
 	public static final class StringValue extends Value {
 		private final String value;
@@ -738,6 +798,11 @@ public abstract class Value {
 
 	/**
 	 * Short value.
+	 *
+	 * <p>Example creating and using this value type with a client put/get.</p>
+	 * <pre>{@code
+	 * Value v = Value.get((short) 100);
+	 * }</pre>
 	 */
 	public static final class ShortValue extends Value {
 		private final short value;
@@ -807,6 +872,11 @@ public abstract class Value {
 
 	/**
 	 * Integer value.
+	 *
+	 * <p>Example creating and using this value type with a client put/get.</p>
+	 * <pre>{@code
+	 * Value v = Value.get(42);
+	 * }</pre>
 	 */
 	public static final class IntegerValue extends Value {
 		private final int value;
@@ -876,6 +946,11 @@ public abstract class Value {
 
 	/**
 	 * Long value.
+	 *
+	 * <p>Example creating and using this value type with a client put/get.</p>
+	 * <pre>{@code
+	 * Value v = Value.get(42L);
+	 * }</pre>
 	 */
 	public static final class LongValue extends Value {
 		private final long value;
@@ -945,6 +1020,11 @@ public abstract class Value {
 
 	/**
 	 * Double value.
+	 *
+	 * <p>Example creating and using this value type with a client put/get.</p>
+	 * <pre>{@code
+	 * Value v = Value.get(3.14);
+	 * }</pre>
 	 */
 	public static final class DoubleValue extends Value {
 		private final double value;
@@ -1015,6 +1095,11 @@ public abstract class Value {
 
 	/**
 	 * Float value.
+	 *
+	 * <p>Example creating and using this value type with a client put/get.</p>
+	 * <pre>{@code
+	 * Value v = Value.get(3.14f);
+	 * }</pre>
 	 */
 	public static final class FloatValue extends Value {
 		private final float value;
@@ -1084,6 +1169,11 @@ public abstract class Value {
 
 	/**
 	 * Boolean value.
+	 *
+	 * <p>Example creating and using this value type with a client put/get.</p>
+	 * <pre>{@code
+	 * Value v = Value.get(true);
+	 * }</pre>
 	 */
 	public static final class BooleanValue extends Value {
 		private final boolean value;
@@ -1160,6 +1250,11 @@ public abstract class Value {
 	 * Boolean value that converts to integer when sending a bin to the server.
 	 * This class will be deleted once full conversion to boolean particle type
 	 * is complete.
+	 *
+	 * <p>Example creating and using this value type with a client put/get.</p>
+	 * <pre>{@code
+	 * Value v = new Value.BoolIntValue(true);
+	 * }</pre>
 	 */
 	public static final class BoolIntValue extends Value {
 		private final boolean value;
@@ -1235,6 +1330,11 @@ public abstract class Value {
 
 	/**
 	 * GeoJSON value.
+	 *
+	 * <p>Example creating and using this value type with a client put/get.</p>
+	 * <pre>{@code
+	 * Value v = Value.getAsGeoJSON("{\"type\":\"Point\",\"coordinates\":[0.0,0.0]}");
+	 * }</pre>
 	 */
 	public static final class GeoJSONValue extends Value {
 		private final String value;
@@ -1301,6 +1401,12 @@ public abstract class Value {
 
 	/**
 	 * HyperLogLog value.
+	 *
+	 * <p>Example creating and using this value type with a client put/get.</p>
+	 * <pre>{@code
+	 * byte[] hllBytes = new byte[] { 0, 1, 2 };
+	 * Value v = new Value.HLLValue(hllBytes);
+	 * }</pre>
 	 */
 	public static final class HLLValue extends Value {
 		private final byte[] bytes;
@@ -1369,6 +1475,11 @@ public abstract class Value {
 
 	/**
 	 * Value array.
+	 *
+	 * <p>Example creating and using this value type with a client put/get.</p>
+	 * <pre>{@code
+	 * Value v = Value.get(new Value[] { Value.get(1), Value.get("a") });
+	 * }</pre>
 	 */
 	public static final class ValueArray extends Value {
 		private final Value[] array;
@@ -1435,6 +1546,11 @@ public abstract class Value {
 
 	/**
 	 * List value.
+	 *
+	 * <p>Example creating and using this value type with a client put/get.</p>
+	 * <pre>{@code
+	 * Value v = Value.get(java.util.Arrays.asList(1, "a", true));
+	 * }</pre>
 	 */
 	public static final class ListValue extends Value {
 		private final List<?> list;
@@ -1501,6 +1617,13 @@ public abstract class Value {
 
 	/**
 	 * Map value.
+	 *
+	 * <p>Example creating and using this value type with a client put/get.</p>
+	 * <pre>{@code
+	 * java.util.Map<String,Object> m = new java.util.HashMap<>();
+	 * m.put("k", 1);
+	 * Value v = Value.get(m);
+	 * }</pre>
 	 */
 	public static final class MapValue extends Value {
 		private final Map<?,?> map;
@@ -1582,6 +1705,13 @@ public abstract class Value {
 
 	/**
 	 * Sorted map value.
+	 *
+	 * <p>Example creating and using this value type with a client put/get.</p>
+	 * <pre>{@code
+	 * List<Entry<Value,Value>> entries = new java.util.ArrayList<>();
+	 * entries.add(new java.util.AbstractMap.SimpleEntry<>(Value.get("k"), Value.get(1)));
+	 * Value v = Value.get(entries, MapOrder.KEY_ORDERED);
+	 * }</pre>
 	 */
 	public static final class SortedMapValue extends Value {
 		private final List<? extends Entry<?,?>> list;
@@ -1652,6 +1782,11 @@ public abstract class Value {
 
 	/**
 	 * Infinity value.
+	 *
+	 * <p>Example creating and using this value type with a client put/get.</p>
+	 * <pre>{@code
+	 * Value v = Value.INFINITY;
+	 * }</pre>
 	 */
 	public static final class InfinityValue extends Value {
 		@Override
@@ -1708,6 +1843,11 @@ public abstract class Value {
 
 	/**
 	 * Wildcard value.
+	 *
+	 * <p>Example creating and using this value type with a client put/get.</p>
+	 * <pre>{@code
+	 * Value v = Value.WILDCARD;
+	 * }</pre>
 	 */
 	public static final class WildcardValue extends Value {
 		@Override

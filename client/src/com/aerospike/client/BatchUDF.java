@@ -25,7 +25,22 @@ import com.aerospike.client.policy.Policy;
 import com.aerospike.client.util.Packer;
 
 /**
- * Batch user defined functions.
+ * Batch user-defined function (UDF) execute. Extends {@link BatchRecord}; each record specifies
+ * a key, package/module name, function name, and optional arguments. Pass a list of {@code BatchUDF}
+ * to {@link IAerospikeClient#execute}.
+ * <p>Build a list of BatchUDF with keys and UDF package/function/args, then call execute.</p>
+ * <pre>{@code
+ * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+ * List&lt;BatchRecord&gt; records = new ArrayList&lt;&gt;();
+ * records.add(new BatchUDF(new Key("test", "set1", "id1"), "mymodule", "myfunc", new Value[] { Value.get(1) }));
+ * client.execute(new BatchPolicy(), records);
+ * for (BatchRecord br : records) {
+ *   if (br.resultCode == ResultCode.OK && br.record != null) { /* use br.record *\/ }
+ * }
+ * }</pre>
+ *
+ * @see BatchRecord
+ * @see IAerospikeClient#execute
  */
 public final class BatchUDF extends BatchRecord {
 	/**

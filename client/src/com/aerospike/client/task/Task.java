@@ -25,11 +25,46 @@ import com.aerospike.client.policy.Policy;
 import com.aerospike.client.util.Util;
 
 /**
- * Task used to poll for server task completion.
+ * Base type for server tasks (index creation, UDF registration, background query/scan execution) that complete asynchronously.
+ *
+ * <p>Use {@link #waitTillComplete()} or {@link #waitTillComplete(int)} to block until the task finishes, or
+ * {@link #isDone()} to poll. Status is one of {@link #NOT_FOUND}, {@link #IN_PROGRESS}, or {@link #COMPLETE}.
+ *
+ * <p>Index creation task: create a secondary index and block until the server reports completion.</p>
+ * <pre>{@code
+ * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+ * IndexTask task = client.createIndex(null, "test", "users", "idx_status", "status", IndexType.STRING);
+ * task.waitTillComplete();
+ * }</pre>
+ *
+ * <p>UDF registration task: register a UDF package and poll with isDone() or waitTillComplete.</p>
+ * <pre>{@code
+ * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+ * RegisterTask task = client.register(null, "udf/myudfs.lua", "myudfs.lua", Language.LUA);
+ * if (!task.isDone()) {
+ *   task.waitTillComplete(10);
+ * }
+ * }</pre>
+ *
+ * <p>Background query/scan execute task: run a background query or scan and wait for completion.</p>
+ * <pre>{@code
+ * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+ * ExecuteTask task = client.execute(writePolicy, stmt, Operation.put(new Bin("processed", true)));
+ * task.waitTillComplete();
+ * }</pre>
+ *
+ * @see com.aerospike.client.task.IndexTask
+ * @see com.aerospike.client.task.RegisterTask
+ * @see com.aerospike.client.task.ExecuteTask
  */
 public abstract class Task {
+	/** Task status: task not found (may mean not started or already removed by server). */
 	public static final int NOT_FOUND = 0;
+
+	/** Task status: task is still running. */
 	public static final int IN_PROGRESS = 1;
+
+	/** Task status: task completed successfully. */
 	public static final int COMPLETE = 2;
 
 	protected final Cluster cluster;
@@ -37,7 +72,10 @@ public abstract class Task {
 	private boolean done;
 
 	/**
-	 * Initialize task with fields needed to query server nodes.
+	 * Constructs a task that will poll the given cluster for completion using the given policy (timeout, etc.).
+	 *
+	 * @param cluster the cluster to query for task status; must not be {@code null}
+	 * @param policy policy for info commands used to poll (timeout, etc.); must not be {@code null}
 	 */
 	public Task(Cluster cluster, Policy policy) {
 		this.cluster = cluster;
@@ -46,7 +84,7 @@ public abstract class Task {
 	}
 
 	/**
-	 * Initialize task that has already completed.
+	 * Constructs a task that is already considered complete (e.g. for testing or no-op).
 	 */
 	public Task() {
 		this.cluster = null;
@@ -55,27 +93,32 @@ public abstract class Task {
 	}
 
 	/**
-	 * Wait for asynchronous task to complete using default sleep interval (1 second).
-	 * The timeout is passed from the original task policy. If task is not complete by timeout,
-	 * an exception is thrown.  Do not timeout if timeout set to zero.
+	 * Blocks until the task completes or the policy timeout is reached (sleep interval 1 second).
+	 *
+	 * <p>Uses the timeout from the policy passed to the task constructor. If policy timeout is 0, waits indefinitely.
+	 *
+	 * @throws AerospikeException.Timeout	when the task does not complete before the policy timeout.
 	 */
 	public final void waitTillComplete() {
 		taskWait(1000);
 	}
 
 	/**
-	 * Wait for asynchronous task to complete using given sleep interval in milliseconds.
-	 * The timeout is passed from the original task policy. If task is not complete by timeout,
-	 * an exception is thrown.  Do not timeout if policy timeout set to zero.
+	 * Blocks until the task completes or the policy timeout is reached.
+	 *
+	 * @param sleepInterval milliseconds to sleep between status polls
+	 * @throws AerospikeException.Timeout	when the task does not complete before the policy timeout.
 	 */
 	public final void waitTillComplete(int sleepInterval) {
 		taskWait(sleepInterval);
 	}
 
 	/**
-	 * Wait for asynchronous task to complete using given sleep interval and timeout in milliseconds.
-	 * If task is not complete by timeout, an exception is thrown.  Do not timeout if timeout set to
-	 * zero.
+	 * Blocks until the task completes or the given timeout is reached.
+	 *
+	 * @param sleepInterval milliseconds to sleep between status polls
+	 * @param timeout maximum time to wait in milliseconds; 0 to wait indefinitely
+	 * @throws AerospikeException.Timeout	when the task does not complete before the timeout.
 	 */
 	public final void waitTillComplete(int sleepInterval, int timeout) {
 		policy = new InfoPolicy();
@@ -134,7 +177,9 @@ public abstract class Task {
 	}
 
 	/**
-	 * Has task completed.
+	 * Returns whether the task has completed (or is considered complete, e.g. NOT_FOUND after polling).
+	 *
+	 * @return {@code true} if the task is done, {@code false} if still in progress
 	 */
 	public final boolean isDone() {
 		if (done) {
@@ -157,7 +202,9 @@ public abstract class Task {
 	}
 
 	/**
-	 * Query all nodes for task completion status.
+	 * Queries the cluster for this task's completion status.
+	 *
+	 * @return {@link #NOT_FOUND}, {@link #IN_PROGRESS}, or {@link #COMPLETE}
 	 */
 	public abstract int queryStatus();
 }

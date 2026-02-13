@@ -105,9 +105,9 @@ public final class MapReturnType {
 	public static final int ORDERED_MAP = 17;
 
 	/**
-	 * Invert meaning of map command and return values.  For example:
+	 * Invert meaning of map command and return values.
+	 * <p>With INVERTED, keys outside the specified key range are removed and returned.</p>
 	 * <pre>{@code MapOperation.removeByKeyRange(binName, keyBegin, keyEnd, MapReturnType.KEY | MapReturnType.INVERTED);}</pre>
-	 * With the INVERTED flag enabled, the keys outside of the specified key range will be removed and returned.
 	 */
 	public static final int INVERTED = 0x10000;
 }

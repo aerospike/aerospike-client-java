@@ -17,23 +17,39 @@
 package com.aerospike.client.admin;
 
 /**
- * User privilege.
+ * User privilege defining a permission and optional namespace/set scope.
+ * Used with role administration APIs such as {@link com.aerospike.client.AerospikeClient#createRole createRole}
+ * and {@link com.aerospike.client.AerospikeClient#grantPrivileges grantPrivileges}.
+ *
+ * <p>Create a privilege for read-write on namespace "test" and set "users", then create a role with that privilege.</p>
+ * <pre>{@code
+ * Privilege p = new Privilege();
+ * p.code = PrivilegeCode.READ_WRITE;
+ * p.namespace = "test";
+ * p.setName = "users";
+ * List<Privilege> privileges = Collections.singletonList(p);
+ * client.createRole(null, "myrole", privileges);
+ * }</pre>
+ *
+ * @see PrivilegeCode
+ * @see com.aerospike.client.AerospikeClient#createRole
+ * @see com.aerospike.client.AerospikeClient#grantPrivileges
  */
 public final class Privilege {
 	/**
-	 * Privilege code.
+	 * Privilege code; must not be null.
 	 */
 	public PrivilegeCode code;
 
 	/**
-	 *	Namespace scope. Apply permission to this namespace only.
-	 *	If namespace is null, the privilege applies to all namespaces.
+	 * Namespace scope. Apply permission to this namespace only.
+	 * If null, the privilege applies to all namespaces.
 	 */
 	public String namespace;
 
 	/**
-	 *	Set name scope. Apply permission to this set within namespace only.
-	 *	If set is null, the privilege applies to all sets within namespace.
+	 * Set name scope. Apply permission to this set within namespace only.
+	 * If null, the privilege applies to all sets within namespace.
 	 */
 	public String setName;
 }

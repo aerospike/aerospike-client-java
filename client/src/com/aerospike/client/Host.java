@@ -20,26 +20,41 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Host name/port of database server.
+ * Represents a database server endpoint by host name (or IP) and port, with optional TLS name.
+ *
+ * <p>Used as seed nodes when constructing {@link com.aerospike.client.AerospikeClient}. Parse from a string
+ * using {@link #parseHosts(String, int)} or {@link #parseServiceHosts(String)}.
+ *
+ * <p>Parse hosts from a string and create a client with the Host array.</p>
+ * <pre>{@code
+ * Host[] hosts = Host.parseHosts("192.168.1.10:3000,192.168.1.11:3000", 3000);
+ * IAerospikeClient client = new AerospikeClient(clientPolicy, hosts);
+ * }</pre>
+ *
+ * @see #parseHosts(String, int)
+ * @see #parseServiceHosts(String)
  */
 public final class Host {
 	/**
-	 * Host name or IP address of database server.
+	 * Host name or IP address of the server; never {@code null}.
 	 */
 	public final String name;
 
 	/**
-	 * TLS certificate name used for secure connections.
+	 * TLS certificate name for secure connections; {@code null} for non-TLS.
 	 */
 	public final String tlsName;
 
 	/**
-	 * Port of database server.
+	 * Port number of the server.
 	 */
 	public final int port;
 
 	/**
-	 * Initialize host.
+	 * Constructs a host with the given name and port (no TLS).
+	 *
+	 * @param name host name or IP address; must not be {@code null}
+	 * @param port port number
 	 */
 	public Host(String name, int port) {
 		this.name = name;
@@ -48,7 +63,11 @@ public final class Host {
 	}
 
 	/**
-	 * Initialize host.
+	 * Constructs a host with the given name, optional TLS name, and port.
+	 *
+	 * @param name host name or IP address; must not be {@code null}
+	 * @param tlsName TLS certificate name for secure connections, or {@code null}
+	 * @param port port number
 	 */
 	public Host(String name, String tlsName, int port) {
 		this.name = name;
@@ -85,7 +104,8 @@ public final class Host {
 	}
 
 	/**
-	 * Parse command-line hosts from string format: hostname1[:tlsname1][:port1],...
+	 * Parses a comma-separated list of hosts from the format: hostname1[:tlsname1][:port1],...
+	 *
 	 * <p>
 	 * Hostname may also be an IP address in the following formats.
 	 * <ul>
@@ -94,7 +114,12 @@ public final class Host {
 	 * <li>IPv6: [xxxx::xxxx]</li>
 	 * </ul>
 	 * IPv6 addresses must be enclosed by brackets.
-	 * tlsname and port are optional.
+	 * TLS name and port are optional; if port is omitted, {@code defaultPort} is used.
+	 *
+	 * @param str the host string (e.g. "host1:3000,host2:3000"); must not be {@code null}
+	 * @param defaultPort port to use when not specified in the string
+	 * @return array of parsed hosts
+	 * @throws AerospikeException	when the string format is invalid (e.g. missing host:port or bad port).
 	 */
 	public static Host[] parseHosts(String str, int defaultPort) {
 		try {
@@ -106,7 +131,7 @@ public final class Host {
 	}
 
 	/**
-	 * Parse server service hosts from string format: hostname1:port1,...
+	 * Parses a comma-separated list of service hosts from the format: hostname1:port1,...
 	 * <p>
 	 * Hostname may also be an IP address in the following formats.
 	 * <ul>
@@ -115,6 +140,10 @@ public final class Host {
 	 * <li>IPv6: [xxxx::xxxx]</li>
 	 * </ul>
 	 * IPv6 addresses must be enclosed by brackets.
+	 *
+	 * @param str the service host string (e.g. "host1:3000,host2:3000"); must not be {@code null}
+	 * @return list of parsed hosts
+	 * @throws AerospikeException	when the string format is invalid (e.g. missing host:port or bad port).
 	 */
 	public static List<Host> parseServiceHosts(String str) {
 		try {

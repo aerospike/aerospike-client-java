@@ -47,12 +47,20 @@ public class CdtExp {
     }
 
     /**
-     * Create a CDT select expression.
-     * @param returnType
-     * @param flags
-     * @param bin
-     * @param ctx
-     * @return
+     * Create a CDT select expression that selects values at the given context path.
+     * Use with {@link Exp#build} and filter/expression policies or secondary index expressions.
+     * <p>Select list element at index 0 from bin "tags" for use in a filter or policy.</p>
+     * <pre>{@code
+     * // Select list element at index 0 from bin "tags"
+     * Exp exp = CdtExp.selectByPath(Exp.Type.LIST, Exp.SELECT_LIST_VALUE, Exp.bin("tags", Exp.Type.LIST), CTX.listIndex(0));
+     * Expression filter = Exp.build(exp);
+     * }</pre>
+     *
+     * @param returnType	type of the selected value (e.g. {@link Exp.Type#INT}, {@link Exp.Type#LIST})
+     * @param flags		select flags (e.g. {@link Exp#SELECT_LIST_VALUE}, {@link Exp#SELECT_MAP_KEY_VALUE})
+     * @param bin		bin expression (e.g. {@link Exp#bin}); must not be null
+     * @param ctx		context path into nested CDT (e.g. {@link CTX#listIndex}); may be empty for top-level
+     * @return		expression that selects by path
      */
     public static Exp selectByPath(Exp.Type returnType, int flags, Exp bin, CTX... ctx) {
         byte[] bytes = packCdtSelect(Type.SELECT, flags, ctx);
@@ -61,13 +69,21 @@ public class CdtExp {
     }
 
     /**
-     * Create a CDT modify expression.
-     * @param returnType
-     * @param flags
-     * @param modifyExp
-     * @param bin
-     * @param ctx
-     * @return
+     * Create a CDT modify expression that modifies values at the given context path.
+     * Use with {@link Exp#build} in write/expression policies.
+     * <p>Increment integer at map key "count" in bin "stats" with a modify expression.</p>
+     * <pre>{@code
+     * // Increment integer at map key "count" in bin "stats"
+     * Exp modExp = CdtExp.modifyByPath(Exp.Type.INT, CdtExp.MODIFY, Exp.add(Exp.val(1)), Exp.bin("stats", Exp.Type.MAP), CTX.mapKey(com.aerospike.client.Value.get("count")));
+     * Expression exp = Exp.build(modExp);
+     * }</pre>
+     *
+     * @param returnType	type of the modified value
+     * @param modifyFlag	modify flag (e.g. {@link #MODIFY}, {@link Exp#MODIFY_APPLY})
+     * @param modifyExp	expression to apply at the path (e.g. {@link Exp#add}); must not be null
+     * @param bin		bin expression (e.g. {@link Exp#bin}); must not be null
+     * @param ctx		context path into nested CDT; may be empty for top-level
+     * @return		expression that modifies by path
      */
     public static Exp modifyByPath(Exp.Type returnType, int modifyFlag, Exp modifyExp, Exp bin, CTX... ctx) {
         byte[] bytes = packCdtModify(Type.SELECT, modifyFlag, modifyExp, ctx);

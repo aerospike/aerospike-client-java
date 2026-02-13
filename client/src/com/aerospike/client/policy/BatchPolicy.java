@@ -26,7 +26,27 @@ import com.aerospike.client.configuration.serializers.dynamicconfig.DynamicBatch
 import java.util.Objects;
 
 /**
- * Batch parent policy.
+ * Base policy for batch operations (batch get, batch exists, batch write, batch UDF, etc.).
+ *
+ * <p>Defines concurrency (maxConcurrentThreads), allowInline, and other batch-level options. Subclasses
+ * and companion policies (e.g. {@link BatchWritePolicy}, {@link BatchDeletePolicy}) add operation-specific options.
+ * Pass to {@link com.aerospike.client.AerospikeClient#get(Policy, List)} and other batch methods.
+ *
+ * <p>Set maxConcurrentThreads, allowInline and pass to batch get or other batch methods.</p>
+ * <pre>{@code
+ * BatchPolicy policy = new BatchPolicy();
+ * policy.maxConcurrentThreads = 0;   // 0=parallel, 1=sequential (default), >1=cap
+ * policy.allowInline = true;         // inline for in-memory (default)
+ * policy.allowInlineSSD = false;     // no inline for SSD (default)
+ * policy.respondAllKeys = true;      // attempt all keys despite errors (default)
+ * policy.totalTimeout = 5000;       // from Policy: total batch timeout
+ * policy.socketTimeout = 2000;       // from Policy: per-socket timeout
+ * client.get(policy, keys);
+ * }</pre>
+ *
+ * @see Policy
+ * @see BatchWritePolicy
+ * @see BatchDeletePolicy
  */
 public class BatchPolicy extends Policy {
 	/**

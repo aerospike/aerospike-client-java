@@ -25,11 +25,30 @@ import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Log;
 
 /**
- * This class manages result retrieval from queries.
- * Multiple threads will retrieve results from the server nodes and put these results on the queue.
- * The single user thread consumes these results from the queue.
+ * Iterable stream of aggregation results from a query that uses an aggregation UDF.
+ *
+ * <p>Producer threads fill an internal queue with results from the server; the consumer thread calls
+ * {@link #next()} to block until the next result is available, then {@link #getObject()} to access it.
+ * Call {@link #close()} when done to release resources and optionally terminate the query early.
+ *
+ * <p>Call queryAggregate then iterate with next() and getObject(); close the ResultSet when done.</p>
+ * <pre>{@code
+ * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+ * ResultSet rs = client.queryAggregate(queryPolicy, stmt);
+ * try {
+ *     while (rs.next()) {
+ *         Object result = rs.getObject();
+ *         // process aggregation result
+ *     }
+ * } finally {
+ *     rs.close();
+ * }
+ * }</pre>
+ *
+ * @see RecordSet for query results that return full records
  */
 public class ResultSet implements Iterable<Object>, Closeable {
+	/** Sentinel value placed on the queue when no more results are available. */
 	public static final Object END = new Object();
 
 	private final QueryAggregateExecutor executor;
@@ -58,10 +77,10 @@ public class ResultSet implements Iterable<Object>, Closeable {
 	//-------------------------------------------------------
 
 	/**
-	 * Retrieve next result.  This method will block until a result is retrieved
-	 * or the query is cancelled.
+	 * Advances to the next result, blocking until one is available or the query ends.
 	 *
-	 * @return whether result exists - if false, no more results are available
+	 * @return {@code true} if a result is available (use {@link #getObject()}), {@code false} if no more results or query was closed
+	 * @throws AerospikeException	when the query failed on the server (e.g. timeout, connection error, or invalid statement).
 	 */
 	public boolean next() throws AerospikeException {
 		if (!valid) {
@@ -90,7 +109,9 @@ public class ResultSet implements Iterable<Object>, Closeable {
 	}
 
 	/**
-	 * Close query.
+	 * Closes this result set and releases resources; may signal the server to stop the query.
+	 *
+	 * <p>Call in a {@code finally} block to ensure resources are released. After close, {@link #next()} returns {@code false}.
 	 */
 	public void close() {
 		valid = false;
@@ -103,7 +124,9 @@ public class ResultSet implements Iterable<Object>, Closeable {
 	}
 
 	/**
-	 * Provide Iterator for RecordSet.
+	 * Returns an iterator over the results in this set.
+	 *
+	 * @return an iterator over the aggregation result objects
 	 */
 	@Override
 	public Iterator<Object> iterator() {
@@ -115,7 +138,9 @@ public class ResultSet implements Iterable<Object>, Closeable {
 	//-------------------------------------------------------
 
 	/**
-	 * Get result.
+	 * Returns the current aggregation result (valid after {@link #next()} returns {@code true}).
+	 *
+	 * @return the current result object (type depends on the UDF)
 	 */
 	public Object getObject() {
 		return row;

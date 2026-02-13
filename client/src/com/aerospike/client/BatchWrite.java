@@ -24,7 +24,23 @@ import com.aerospike.client.policy.BatchWritePolicy;
 import com.aerospike.client.policy.Policy;
 
 /**
- * Batch key and read/write operations with write policy.
+ * Batch key and read/write operations with optional per-key write policy. Extends {@link BatchRecord};
+ * used in batch operate commands where each key has a list of {@link Operation}s (e.g. put, add, get).
+ * Pass a list of {@code BatchWrite} to {@link IAerospikeClient#operate}.
+ * <p>Build a list of BatchWrite with keys and operations, then call operate.</p>
+ * <pre>{@code
+ * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+ * List&lt;BatchRecord&gt; records = new ArrayList&lt;&gt;();
+ * Key key = new Key("test", "set1", "id1");
+ * records.add(new BatchWrite(key, Operation.put(new Bin("name", "x")), Operation.get("name")));
+ * client.operate(BatchPolicy.WriteDefault(), records);
+ * for (BatchRecord br : records) {
+ *   if (br.record != null) { /* use br.record *\/ }
+ * }
+ * }</pre>
+ *
+ * @see BatchRecord
+ * @see IAerospikeClient#operate
  */
 public final class BatchWrite extends BatchRecord {
 	/**

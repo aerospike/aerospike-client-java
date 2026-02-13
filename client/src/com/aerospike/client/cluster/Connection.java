@@ -326,14 +326,49 @@ public final class Connection implements Closeable {
 		}
 	}
 
+	/**
+	 * Thrown when a read from the server connection does not complete within the socket timeout.
+	 *
+	 * <p>Holds the buffer state at the time of timeout for debugging. This is a low-level exception
+	 * typically wrapped or translated by the client; application code usually catches
+	 * {@link com.aerospike.client.AerospikeException.Timeout} instead.
+	 * <p>Catch {@link com.aerospike.client.AerospikeException.Timeout} in application code; the cause may be ReadTimeout with buffer state for debugging.</p>
+	 * <pre>{@code
+	 * try {
+	 *   client.get(null, key);
+	 * } catch (com.aerospike.client.AerospikeException.Timeout e) {
+	 *   if (e.getCause() instanceof Connection.ReadTimeout) {
+	 *     Connection.ReadTimeout rt = (Connection.ReadTimeout) e.getCause();
+	 *     // rt.buffer, rt.offset, rt.length, rt.state for debugging
+	 *   }
+	 * }
+	 * }</pre>
+	 *
+	 * @see com.aerospike.client.AerospikeException.Timeout
+	 */
 	public static final class ReadTimeout extends RuntimeException {
 		private static final long serialVersionUID = 1L;
 
+		/** Buffer containing partial read data at timeout. */
 		public final byte[] buffer;
+
+		/** Offset into buffer of the partial read. */
 		public final int offset;
+
+		/** Length of data read so far. */
 		public final int length;
+
+		/** Protocol state at timeout. */
 		public final byte state;
 
+		/**
+		 * Constructs a read timeout with the given buffer state.
+		 *
+		 * @param buffer the buffer containing partial read data; may be {@code null}
+		 * @param offset offset into the buffer
+		 * @param length number of bytes read
+		 * @param state protocol state byte
+		 */
 		public ReadTimeout(byte[] buffer, int offset, int length, byte state)  {
 			super("timeout");
 			this.buffer = buffer;

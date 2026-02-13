@@ -20,6 +20,18 @@ import com.aerospike.client.AerospikeException;
 
 /**
  * Asynchronous result notifications for index status command.
+ * <p>
+ * No built-in implementations; implement this interface in application code and pass to
+ * {@link com.aerospike.client.IAerospikeClient#indexStatus(com.aerospike.client.async.EventLoop, TaskStatusListener, com.aerospike.client.policy.InfoPolicy, com.aerospike.client.task.Task) indexStatus(EventLoop, TaskStatusListener, ...)}.
+ * <p>Implement and pass to async indexStatus to receive status on success or exception on failure.</p>
+ * <pre>{@code
+ * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+ * client.indexStatus(eventLoop, new TaskStatusListener() {
+ *   public void onSuccess(int status) { // use status
+ *   }
+ *   public void onFailure(AerospikeException ae) { ae.printStackTrace(); }
+ * }, null, task);
+ * }</pre>
  */
 public interface TaskStatusListener {
 	/**

@@ -21,6 +21,18 @@ import com.aerospike.client.Key;
 
 /**
  * Asynchronous result notifications for execute commands.
+ * <p>
+ * No built-in implementations; implement this interface in application code and pass to
+ * {@link com.aerospike.client.IAerospikeClient#execute(com.aerospike.client.async.EventLoop, ExecuteListener, com.aerospike.client.policy.WritePolicy, com.aerospike.client.Key, java.lang.String, java.lang.String, com.aerospike.client.Value[]) execute(EventLoop, ExecuteListener, ...)}.
+ * <p>Implement and pass to async execute to receive key and result object on success or exception on failure.</p>
+ * <pre>{@code
+ * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+ * client.execute(eventLoop, new ExecuteListener() {
+ *   public void onSuccess(Key key, Object obj) { // use obj
+ *   }
+ *   public void onFailure(AerospikeException ae) { ae.printStackTrace(); }
+ * }, null, key, "module", "function", args);
+ * }</pre>
  */
 public interface ExecuteListener {
 	/**

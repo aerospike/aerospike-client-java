@@ -19,7 +19,17 @@ package com.aerospike.client.policy;
 import com.aerospike.client.exp.Expression;
 
 /**
- * Policy attributes used in batch read commands.
+ * Policy attributes used in batch read commands. Used with {@link BatchPolicy} and
+ * {@link com.aerospike.client.AerospikeClient#get(com.aerospike.client.policy.BatchPolicy, java.util.List)}
+ * when a per-key or default batch read policy is needed (filterExp, readModeAP, readModeSC).
+ * <p>Set filterExp or replica read mode and use as batch read default or per-key policy.</p>
+ * <pre>{@code
+ * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+ * BatchReadPolicy policy = new BatchReadPolicy();
+ * policy.filterExp = Exp.build(Exp.eq(Exp.intBin("a"), Exp.val(1)));
+ * BatchPolicy batchPolicy = BatchPolicy.ReadDefault();
+ * client.get(batchPolicy, keys);
+ * }</pre>
  */
 public final class BatchReadPolicy {
 	/**

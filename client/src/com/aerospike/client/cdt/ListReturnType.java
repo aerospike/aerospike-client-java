@@ -80,9 +80,9 @@ public final class ListReturnType {
 	public static final int EXISTS = 13;
 
 	/**
-	 * Invert meaning of list command and return values.  For example:
+	 * Invert meaning of list command and return values.
+	 * <p>With INVERTED, items outside the specified index range are removed and returned.</p>
 	 * <pre>{@code ListOperation.removeByIndexRange(binName, index, count, ListReturnType.VALUE | ListReturnType.INVERTED);}</pre>
-	 * With the INVERTED flag enabled, the items outside of the specified index range will be removed and returned.
 	 */
 	public static final int INVERTED = 0x10000;
 }

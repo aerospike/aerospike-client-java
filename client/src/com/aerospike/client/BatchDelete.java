@@ -23,7 +23,23 @@ import com.aerospike.client.policy.BatchDeletePolicy;
 import com.aerospike.client.policy.Policy;
 
 /**
- * Batch delete operation.
+ * Batch delete operation. Extends {@link BatchRecord}; each record specifies a key and optional
+ * {@link BatchDeletePolicy}. Pass a list of {@code BatchDelete} to
+ * {@link IAerospikeClient#delete}.
+ * <p>Build a list of BatchDelete with keys, then call delete.</p>
+ * <pre>{@code
+ * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+ * List&lt;BatchRecord&gt; records = new ArrayList&lt;&gt;();
+ * records.add(new BatchDelete(new Key("test", "set1", "id1")));
+ * records.add(new BatchDelete(new Key("test", "set1", "id2")));
+ * client.delete(new BatchPolicy(), records);
+ * for (BatchRecord br : records) {
+ *   if (br.resultCode == ResultCode.OK) { /* delete succeeded *\/ }
+ * }
+ * }</pre>
+ *
+ * @see BatchRecord
+ * @see IAerospikeClient#delete
  */
 public final class BatchDelete extends BatchRecord {
 	/**

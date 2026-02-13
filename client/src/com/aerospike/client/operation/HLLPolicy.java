@@ -17,7 +17,14 @@
 package com.aerospike.client.operation;
 
 /**
- * HyperLogLog operation policy.
+ * HyperLogLog operation policy. Use with {@link HLLOperation} (init, add, setUnion, count, etc.);
+ * pass {@link #Default} or construct with {@link HLLWriteFlags}.
+ * <p>Use default policy or custom flags when performing HLL operations.</p>
+ * <pre>{@code
+ * HLLPolicy policy = HLLPolicy.Default;
+ * client.operate(null, key, HLLOperation.init(policy, "hll", 14));
+ * HLLPolicy custom = new HLLPolicy(HLLWriteFlags.CREATE_ONLY | HLLWriteFlags.ALLOW_FOLD);
+ * }</pre>
  */
 public final class HLLPolicy {
 	/**

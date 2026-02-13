@@ -36,8 +36,18 @@ import io.netty.incubator.channel.uring.IOUringSocketChannel;
 import io.netty.util.concurrent.EventExecutor;
 
 /**
- * Aerospike wrapper around netty event loops.
- * Implements the Aerospike EventLoops interface.
+ * Aerospike wrapper around Netty event loops. Implements {@link EventLoops}; create from a
+ * Netty {@link io.netty.channel.EventLoopGroup} and pass to
+ * {@link com.aerospike.client.AerospikeClient}.
+ * <p>Wrap an existing Netty EventLoopGroup and use with AerospikeClient for async operations.</p>
+ * <pre>{@code
+ * EventLoopGroup group = new NioEventLoopGroup(4);
+ * EventLoops eventLoops = new NettyEventLoops(group);
+ * IAerospikeClient client = new AerospikeClient(new ClientPolicy(), new Host("localhost", 3000), eventLoops);
+ * EventLoop loop = eventLoops.next();
+ * client.get(loop, recordListener, null, key);
+ * eventLoops.close();
+ * }</pre>
  */
 public final class NettyEventLoops implements EventLoops {
 

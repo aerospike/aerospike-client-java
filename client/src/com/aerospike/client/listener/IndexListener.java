@@ -21,6 +21,19 @@ import com.aerospike.client.async.AsyncIndexTask;
 
 /**
  * Asynchronous result notifications for create/drop index commands.
+ * <p>
+ * No built-in implementations; implement this interface in application code and pass to
+ * {@link com.aerospike.client.IAerospikeClient#createIndex(com.aerospike.client.async.EventLoop, IndexListener, com.aerospike.client.policy.InfoPolicy, java.lang.String, java.lang.String, java.lang.String, java.lang.String, com.aerospike.client.query.IndexType, com.aerospike.client.query.IndexCollectionType) createIndex(EventLoop, IndexListener, ...)}
+ * or dropIndex async methods.
+ * <p>Implement and pass to async createIndex/dropIndex to receive AsyncIndexTask on success or exception on failure.</p>
+ * <pre>{@code
+ * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+ * client.createIndex(eventLoop, new IndexListener() {
+ *   public void onSuccess(com.aerospike.client.async.AsyncIndexTask indexTask) { // poll task
+ *   }
+ *   public void onFailure(AerospikeException ae) { ae.printStackTrace(); }
+ * }, null, "ns", "set", "idxName", "bin", IndexType.STRING, IndexCollectionType.DEFAULT);
+ * }</pre>
  */
 public interface IndexListener {
 	/**

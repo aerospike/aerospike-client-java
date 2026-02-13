@@ -22,13 +22,26 @@ import com.aerospike.client.Key;
 import com.aerospike.client.cluster.Partition;
 
 /**
- * Partition filter used in scan/query. This filter is also used as a cursor.
+ * Partition filter used in scan/query. This filter is also used as a cursor. Pass to
+ * {@link com.aerospike.client.AerospikeClient#query(com.aerospike.client.policy.QueryPolicy, Statement, PartitionFilter)}
+ * or overloads with PartitionFilter to limit partitions or resume from a digest.
  * <p>
  * If a previous scan/query returned all records specified by a PartitionFilter instance, a
  * future scan/query using the same PartitionFilter instance will only return new records added
  * after the last record read (in digest order) in each partition in the previous scan/query.
  * To reset the cursor of an existing PartitionFilter instance, call
  * {@link #setPartitions(PartitionStatus[])} with a null argument.
+ * <p>Query all partitions, or a partition range, or records after a key for resumable scan.</p>
+ * <pre>{@code
+ * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+ * Statement stmt = new Statement();
+ * stmt.setNamespace("test");
+ * stmt.setSetName("users");
+ * PartitionFilter pf = PartitionFilter.all();
+ * client.query(queryPolicy, stmt, pf, queryListener);
+ * PartitionFilter range = PartitionFilter.range(0, 100);
+ * client.query(queryPolicy, stmt, range, queryListener);
+ * }</pre>
  */
 public final class PartitionFilter implements Serializable {
 	private static final long serialVersionUID = 4L;

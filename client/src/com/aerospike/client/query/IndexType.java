@@ -17,7 +17,13 @@
 package com.aerospike.client.query;
 
 /**
- * Underlying data type of secondary index.
+ * Underlying data type of secondary index. Use when creating an index via
+ * {@link com.aerospike.client.IAerospikeClient#createIndex} or in {@link Filter} expressions.
+ * <p>Specify index type (NUMERIC, STRING, GEO2DSPHERE, etc.) when creating a secondary index.</p>
+ * <pre>{@code
+ * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+ * client.createIndex(null, "ns", "set", "idx_status", "status", IndexType.STRING, IndexCollectionType.DEFAULT);
+ * }</pre>
  */
 public enum IndexType {
 	/**

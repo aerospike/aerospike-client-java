@@ -25,8 +25,31 @@ import com.aerospike.client.configuration.serializers.DynamicConfiguration;
 import com.aerospike.client.configuration.serializers.dynamicconfig.DynamicWriteConfig;
 
 /**
- * Container object for policy attributes used in write operations.
- * This object is passed into methods where database writes can occur.
+ * Policy for write operations (put, delete, operate write, UDF execute, etc.).
+ *
+ * <p>Extends {@link com.aerospike.client.policy.Policy} with record-exists action, generation policy,
+ * expiration (TTL), commit level, and optional send-key/durable-delete options. Pass to
+ * {@link com.aerospike.client.AerospikeClient#put}, {@link com.aerospike.client.AerospikeClient#operate},
+ * and other write methods.
+ *
+ * <p>Set record-exists action, generation policy, commit level, TTL and pass to put or operate write.</p>
+ * <pre>{@code
+ * WritePolicy policy = new WritePolicy();
+ * policy.recordExistsAction = RecordExistsAction.UPDATE;  // UPDATE/REPLACE/CREATE_ONLY/REPLACE_ONLY. What to do when record exists
+ * policy.generationPolicy = GenerationPolicy.NONE;         // NONE/EXPECT_GEN_EQUAL/EXPECT_GEN_GT. Intent: optimistic concurrency
+ * policy.commitLevel = CommitLevel.COMMIT_ALL;            // COMMIT_ALL/COMMIT_MASTER. When server returns success (all replicas vs master only)
+ * policy.generation = 0;                                 // Expected gen; used when generationPolicy not NONE (0 for create). Intent: detect concurrent updates
+ * policy.expiration = 0;                                  // TTL seconds: -2=no change, -1=never, 0=server default, >0=ttl. Intent: record lifetime
+ * policy.respondAllOps = false;                           // Operate: return result for every op (true helps with result offsets). Intent: easier operate result indexing
+ * policy.durableDelete = false;                           // Leave tombstone on delete (EE 3.10+). Intent: prevent deleted record from reappearing after node failure
+ * policy.onLockingOnly = false;                           // Execute write only if record not locked by this txn. Intent: safe retry of non-idempotent writes
+ * policy.xdr = false;                                     // Set XDR bit in wire protocol (for XDR emulation). Intent: external connector compatibility
+ * client.put(policy, key, bins);
+ * }</pre>
+ *
+ * @see com.aerospike.client.policy.Policy
+ * @see com.aerospike.client.policy.RecordExistsAction
+ * @see com.aerospike.client.policy.GenerationPolicy
  */
 public final class WritePolicy extends Policy {
 	/**

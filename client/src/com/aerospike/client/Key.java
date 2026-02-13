@@ -22,68 +22,57 @@ import com.aerospike.client.command.Buffer;
 import com.aerospike.client.util.Crypto;
 
 /**
- * Unique record identifier. Records can be identified using a specified namespace,
- * an optional set name, and a user defined key which must be unique within a set.
- * Records can also be identified by namespace/digest which is the combination used
- * on the server.
+ * Unique record identifier combining namespace, optional set name, and a user-defined key (or digest).
+ *
+ * <p>The server identifies records by namespace and a digest (hash of set name + user key). The user key
+ * is not stored or returned by the server unless {@link com.aerospike.client.policy.WritePolicy#sendKey} is {@code true} or you store
+ * it in a bin. Key size is limited by the thread's buffer (min 8KB); see constructors for large-key handling.
+ *
+ * <p><b>Example:</b>
+ * <pre>{@code
+ * Key key = new Key("test", "users", "user-123");
+ * Record rec = client.get(policy, key);
+ * }</pre>
+ *
+ * @see com.aerospike.client.policy.WritePolicy#sendKey
+ * @see #computeDigest(String, Value)
  */
 public final class Key {
 	/**
-	 * Namespace. Equivalent to database name.
+	 * Namespace name (equivalent to database name); must not be {@code null}.
 	 */
 	public final String namespace;
 
 	/**
-	 * Optional set name. Equivalent to database table.
+	 * Optional set name (equivalent to database table); {@code null} when the set does not exist.
 	 */
 	public final String setName;
 
 	/**
-	 * Unique server hash value generated from set name and user key.
+	 * Unique server hash (digest) computed from set name and user key; used by the server to identify the record.
 	 */
 	public final byte[] digest;
 
 	/**
-	 * Original user key. This key is immediately converted to a hash digest.
-	 * This key is not used or returned by the server by default. If the user key needs
-	 * to persist on the server, use one of the following methods:
-	 * <ul>
-	 * <li>Set "WritePolicy.sendKey" to true. In this case, the key will be sent to the server for storage on writes
-	 * and retrieved on multi-record scans and queries.</li>
-	 * <li>Explicitly store and retrieve the key in a bin.</li>
-	 * </ul>
+	 * Original user key; converted to {@link #digest} for the server.
+	 *
+ * <p>Not stored or returned by the server unless {@link com.aerospike.client.policy.WritePolicy#sendKey} is {@code true} or the key
+ * is stored in a bin explicitly.
 	 */
 	public final Value userKey;
 
 	/**
-	 * Initialize key from namespace, optional set name and user key.
-	 * The set name and user defined key are converted to a digest before sending to the server.
-	 * The user key is not used or returned by the server by default. If the user key needs
-	 * to persist on the server, use one of the following methods:
-	 * <ul>
-	 * <li>Set "WritePolicy.sendKey" to true. In this case, the key will be sent to the server for storage on writes
-	 * and retrieved on multi-record scans and queries.</li>
-	 * <li>Explicitly store and retrieve the key in a bin.</li>
-	 * </ul>
-	 * <p>
-	 * The key is converted to bytes to compute the digest.  The key's byte size is
-	 * limited to the current thread's buffer size (min 8KB).  To store keys &gt; 8KB, do one of the
-	 * following:
-	 * <ul>
-	 * <li>Set once: <pre>{@code ThreadLocalData.DefaultBufferSize = maxKeySize + maxSetNameSize + 1;}</pre></li>
-	 * <li>Or for every key:
-	 * <pre>
-	 * {@code int len = key.length() + setName.length() + 1;
-	 * if (len > ThreadLocalData.getBuffer().length))
-	 *     ThreadLocalData.resizeBuffer(len);}
-	 * </pre>
-	 * </li>
-	 * </ul>
+	 * Initializes a key from namespace, optional set name, and string user key.
 	 *
-	 * @param namespace				namespace
-	 * @param setName				optional set name, enter null when set does not exist
-	 * @param key					user defined unique identifier within set.
-	 * @throws AerospikeException	if digest computation fails
+	 * <p>The user key is hashed into {@link #digest}; it is not stored or returned by the server unless
+	 * {@link com.aerospike.client.policy.WritePolicy#sendKey} is {@code true} or you store it in a bin. Key byte size is limited by the
+	 * thread buffer (min 8KB). For keys &gt; 8KB, set {@code ThreadLocalData.DefaultBufferSize} or call
+	 * {@code ThreadLocalData.resizeBuffer(len)} before creating the key.
+	 *
+	 * @param namespace namespace name; must not be {@code null}
+	 * @param setName set name, or {@code null} when the set does not exist
+	 * @param key user-defined unique identifier within the set; must not be {@code null}
+	 * @throws AerospikeException	when digest computation fails (e.g. unsupported or invalid key type).
 	 */
 	public Key(String namespace, String setName, String key) throws AerospikeException {
 		this.namespace = namespace;
@@ -93,33 +82,16 @@ public final class Key {
 	}
 
 	/**
-	 * Initialize key from namespace, optional set name and user key.
-	 * The set name and user defined key are converted to a digest before sending to the server.
-	 * The user key is not used or returned by the server by default. If the user key needs
-	 * to persist on the server, use one of the following methods:
-	 * <ul>
-	 * <li>Set "WritePolicy.sendKey" to true. In this case, the key will be sent to the server for storage on writes
-	 * and retrieved on multi-record scans and queries.</li>
-	 * <li>Explicitly store and retrieve the key in a bin.</li>
-	 * </ul>
-	 * <p>
-	 * The key's byte size is limited to the current thread's buffer size (min 8KB).  To store keys &gt; 8KB, do one of the
-	 * following:
-	 * <ul>
-	 * <li>Set once: <pre>{@code ThreadLocalData.DefaultBufferSize = maxKeySize + maxSetNameSize + 1;}</pre></li>
-	 * <li>Or for every key:
-	 * <pre>
-	 * {@code int len = key.length + setName.length() + 1;
-	 * if (len > ThreadLocalData.getBuffer().length))
-	 *     ThreadLocalData.resizeBuffer(len);}
-	 * </pre>
-	 * </li>
-	 * </ul>
+	 * Initializes a key from namespace, optional set name, and byte-array user key.
 	 *
-	 * @param namespace				namespace
-	 * @param setName				optional set name, enter null when set does not exist
-	 * @param key					user defined unique identifier within set.
-	 * @throws AerospikeException	if digest computation fails
+	 * <p>The user key is hashed into {@link #digest}; it is not stored or returned by the server unless
+	 * {@link com.aerospike.client.policy.WritePolicy#sendKey} is {@code true} or you store it in a bin. Key byte size is limited by the
+	 * thread buffer (min 8KB). For larger keys, resize the buffer before creating the key.
+	 *
+	 * @param namespace namespace name; must not be {@code null}
+	 * @param setName set name, or {@code null} when the set does not exist
+	 * @param key user-defined unique identifier within the set; must not be {@code null}
+	 * @throws AerospikeException	when digest computation fails (e.g. unsupported or invalid key type).
 	 */
 	public Key(String namespace, String setName, byte[] key) throws AerospikeException {
 		this.namespace = namespace;
@@ -129,35 +101,16 @@ public final class Key {
 	}
 
 	/**
-	 * Initialize key from namespace, optional set name and user key.
-	 * The set name and user defined key are converted to a digest before sending to the server.
-	 * The user key is not used or returned by the server by default. If the user key needs
-	 * to persist on the server, use one of the following methods:
-	 * <ul>
-	 * <li>Set "WritePolicy.sendKey" to true. In this case, the key will be sent to the server for storage on writes
-	 * and retrieved on multi-record scans and queries.</li>
-	 * <li>Explicitly store and retrieve the key in a bin.</li>
-	 * </ul>
-	 * <p>
-	 * The key's byte size is limited to the current thread's buffer size (min 8KB).  To store keys &gt; 8KB, do one of the
-	 * following:
-	 * <ul>
-	 * <li>Set once: <pre>{@code ThreadLocalData.DefaultBufferSize = maxKeySize + maxSetNameSize + 1;}</pre></li>
-	 * <li>Or for every key:
-	 * <pre>
-	 * {@code int len = length + setName.length() + 1;
-	 * if (len > ThreadLocalData.getBuffer().length))
-	 *     ThreadLocalData.resizeBuffer(len);}
-	 * </pre>
-	 * </li>
-	 * </ul>
+	 * Initializes a key from namespace, optional set name, and a segment of a byte array as user key.
 	 *
-	 * @param namespace				namespace
-	 * @param setName				optional set name, enter null when set does not exist
-	 * @param key					user defined unique identifier within set.
-	 * @param offset				byte array segment offset
-	 * @param length				byte array segment length
-	 * @throws AerospikeException	if digest computation fails
+	 * <p>The user key segment is hashed into {@link #digest}. Key byte size is limited by the thread buffer (min 8KB).
+	 *
+	 * @param namespace namespace name; must not be {@code null}
+	 * @param setName set name, or {@code null} when the set does not exist
+	 * @param key byte array containing the user key; must not be {@code null}
+	 * @param offset offset into {@code key} of the segment
+	 * @param length length of the segment in bytes
+	 * @throws AerospikeException	when digest computation fails (e.g. unsupported or invalid key type).
 	 */
 	public Key(String namespace, String setName, byte[] key, int offset, int length) throws AerospikeException {
 		this.namespace = namespace;
@@ -167,20 +120,12 @@ public final class Key {
 	}
 
 	/**
-	 * Initialize key from namespace, optional set name and user key.
-	 * The set name and user defined key are converted to a digest before sending to the server.
-	 * The user key is not used or returned by the server by default. If the user key needs
-	 * to persist on the server, use one of the following methods:
-	 * <ul>
-	 * <li>Set "WritePolicy.sendKey" to true. In this case, the key will be sent to the server for storage on writes
-	 * and retrieved on multi-record scans and queries.</li>
-	 * <li>Explicitly store and retrieve the key in a bin.</li>
-	 * </ul>
+	 * Initializes a key from namespace, optional set name, and integer user key.
 	 *
-	 * @param namespace				namespace
-	 * @param setName				optional set name, enter null when set does not exist
-	 * @param key					user defined unique identifier within set.
-	 * @throws AerospikeException	if digest computation fails
+	 * @param namespace namespace name; must not be {@code null}
+	 * @param setName set name, or {@code null} when the set does not exist
+	 * @param key user-defined unique identifier within the set
+	 * @throws AerospikeException	when digest computation fails (e.g. unsupported or invalid key type).
 	 */
 	public Key(String namespace, String setName, int key) throws AerospikeException {
 		this.namespace = namespace;
@@ -190,20 +135,12 @@ public final class Key {
 	}
 
 	/**
-	 * Initialize key from namespace, optional set name and user key.
-	 * The set name and user defined key are converted to a digest before sending to the server.
-	 * The user key is not used or returned by the server by default. If the user key needs
-	 * to persist on the server, use one of the following methods:
-	 * <ul>
-	 * <li>Set "WritePolicy.sendKey" to true. In this case, the key will be sent to the server for storage on writes
-	 * and retrieved on multi-record scans and queries.</li>
-	 * <li>Explicitly store and retrieve the key in a bin.</li>
-	 * </ul>
+	 * Initializes a key from namespace, optional set name, and long user key.
 	 *
-	 * @param namespace				namespace
-	 * @param setName				optional set name, enter null when set does not exist
-	 * @param key					user defined unique identifier within set.
-	 * @throws AerospikeException	if digest computation fails
+	 * @param namespace namespace name; must not be {@code null}
+	 * @param setName set name, or {@code null} when the set does not exist
+	 * @param key user-defined unique identifier within the set
+	 * @throws AerospikeException	when digest computation fails (e.g. unsupported or invalid key type).
 	 */
 	public Key(String namespace, String setName, long key) throws AerospikeException {
 		this.namespace = namespace;
@@ -213,20 +150,14 @@ public final class Key {
 	}
 
 	/**
-	 * Initialize key from namespace, optional set name and user key.
-	 * The set name and user defined key are converted to a digest before sending to the server.
-	 * The user key is not used or returned by the server by default. If the user key needs
-	 * to persist on the server, use one of the following methods:
-	 * <ul>
-	 * <li>Set "WritePolicy.sendKey" to true. In this case, the key will be sent to the server for storage on writes
-	 * and retrieved on multi-record scans and queries.</li>
-	 * <li>Explicitly store and retrieve the key in a bin.</li>
-	 * </ul>
+	 * Initializes a key from namespace, optional set name, and {@link Value} user key.
 	 *
-	 * @param namespace				namespace
-	 * @param setName				optional set name, enter null when set does not exist
-	 * @param key					user defined unique identifier within set.
-	 * @throws AerospikeException	if digest computation fails
+	 * <p>Only key-capable value types are allowed (e.g. string, long, bytes); list, map, and null are not valid.
+	 *
+	 * @param namespace namespace name; must not be {@code null}
+	 * @param setName set name, or {@code null} when the set does not exist
+	 * @param key user-defined key as a Value; must not be {@code null} and must be a valid key type
+	 * @throws AerospikeException	when digest computation fails or the key type is invalid (e.g. unsupported type such as list or map).
 	 */
 	public Key(String namespace, String setName, Value key) throws AerospikeException {
 		this.namespace = namespace;
@@ -256,12 +187,12 @@ public final class Key {
 	} */
 
 	/**
-	 * Initialize key from namespace, digest, optional set name and optional userKey.
+	 * Initializes a key from namespace, digest, optional set name, and optional user key (e.g. when reconstructing from scan/query).
 	 *
-	 * @param namespace				namespace
-	 * @param digest				unique server hash value
-	 * @param setName				optional set name, enter null when set does not exist
-	 * @param userKey				optional original user key (not hash digest).
+	 * @param namespace namespace name; must not be {@code null}
+	 * @param digest unique server hash (digest) for the record; must not be {@code null}
+	 * @param setName set name, or {@code null} when the set does not exist
+	 * @param userKey original user key if known, or {@code null}
 	 */
 	public Key(String namespace, byte[] digest, String setName, Value userKey) {
 		this.namespace = namespace;
@@ -272,7 +203,9 @@ public final class Key {
 	}
 
 	/**
-	 * Hash lookup uses namespace and digest.
+	 * Returns a hash code based on namespace and digest (for use in hash-based collections).
+	 *
+	 * @return the hash code
 	 */
 	@Override
 	public int hashCode() {
@@ -283,7 +216,10 @@ public final class Key {
 	}
 
 	/**
-	 * Equality uses namespace and digest.
+	 * Compares this key to the specified object for equality (namespace and digest).
+	 *
+	 * @param obj the object to compare to
+	 * @return {@code true} if equal, {@code false} otherwise
 	 */
 	@Override
 	public boolean equals(Object obj) {
@@ -304,13 +240,15 @@ public final class Key {
 	}
 
 	/**
-	 * Generate unique server hash value from set name, key type and user defined key.
-	 * The hash function is RIPEMD-160 (a 160 bit hash).
+	 * Computes the unique server digest (RIPEMD-160 hash) from set name and user key.
 	 *
-	 * @param setName				optional set name, enter null when set does not exist
-	 * @param key					record identifier, unique within set
-	 * @return						unique server hash value
-	 * @throws AerospikeException	if digest computation fails
+	 * <p>Used when you need the digest without constructing a full {@link Key} (e.g. for custom partitioning).
+	 *
+	 * @param setName set name, or {@code null} when the set does not exist
+	 * @param key record identifier as a Value; must not be {@code null} and must be a valid key type
+	 * @return 20-byte digest used by the server to identify the record
+	 * @throws AerospikeException	when digest computation fails (e.g. unsupported or invalid key type).
+	 * @see Key
 	 */
 	public static byte[] computeDigest(String setName, Value key) throws AerospikeException {
 		return Crypto.computeDigest(setName, key);

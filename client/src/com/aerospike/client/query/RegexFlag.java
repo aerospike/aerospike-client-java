@@ -17,8 +17,8 @@
 package com.aerospike.client.query;
 
 /**
- * Regex bit flags. Use BITWISE OR to combine flags. Example:
- * 
+ * Regex bit flags. Use BITWISE OR to combine flags.
+ * <p>Combine flags with bitwise OR for regex matching (e.g. in Filter.regex).</p>
  * <pre>{@code 
  * int flags = RegexFlag.ICASE | RegexFlag.NEWLINE;
  * }</pre>

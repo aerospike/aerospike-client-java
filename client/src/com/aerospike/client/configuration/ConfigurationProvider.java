@@ -19,6 +19,30 @@ package com.aerospike.client.configuration;
 
 import com.aerospike.client.configuration.serializers.Configuration;
 
+/**
+ * Supplies client configuration (static and dynamic). Used by policies and the client to load
+ * and fetch configuration.
+ * <p>
+ * Implementations: {@link YamlConfigProvider} (YAML-based). Application code may implement this
+ * interface for custom configuration sources.
+ * <p>Use YamlConfigProvider from a file path, or implement a custom provider that returns Configuration from another source.</p>
+ * <pre>{@code
+ * // Built-in YAML provider (e.g. from env AEROSPIKE_CLIENT_CONFIG_URL or path)
+ * ConfigurationProvider provider = YamlConfigProvider.getConfigProvider("/path/to/config.yaml");
+ * if (provider != null && provider.loadConfiguration()) {
+ *   Configuration config = provider.fetchConfiguration();
+ * }
+ *
+ * // Custom provider (e.g. from remote or in-memory)
+ * ConfigurationProvider custom = new ConfigurationProvider() {
+ *   public boolean loadConfiguration() { return true; }
+ *   public Configuration fetchConfiguration() { return myConfig; }
+ *   public Configuration fetchDynamicConfiguration() { return myDynamicConfig; }
+ * };
+ * }</pre>
+ *
+ * @see YamlConfigProvider
+ */
 public interface ConfigurationProvider {
     boolean loadConfiguration();
 

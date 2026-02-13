@@ -25,53 +25,58 @@ import com.aerospike.client.util.Pack;
 import com.aerospike.client.util.Packer;
 
 /**
- * Map bin operations. Create map operations used by the client operate command.
- * The default unique key map is unordered. Valid map key types are:
+ * Map bin operations for the client operate command. Default unique-key map is unordered. Valid
+ * map key types: String, Integer, byte[] (server will validate in an upcoming release). Maps have
+ * index (item offset) and rank (sorted index of value component); both support negative indexing.
+ * Use optional {@link CTX} for nested CDT paths.
+ * <p>
+ * Index (item offset from start; negative = from end):
  * <ul>
- * <li>String</li>
- * <li>Integer</li>
- * <li>byte[]</li>
+ * <li>Index 0: first item; 4: fifth item; -1: last item; -3: third to last.</li>
+ * <li>Index 1 Count 2: second and third items; Index -3 Count 3: last three items.</li>
+ * <li>Index -5 Count 4: range from fifth-to-last to second-to-last inclusive.</li>
  * </ul>
- * <p>
- * The server will validate map key types in an upcoming release.
- * <p>
- * All maps maintain an index and a rank.  The index is the item offset from the start of the map,
- * for both unordered and ordered maps.  The rank is the sorted index of the value component.
- * Map supports negative indexing for index and rank.
- * <p>
- * Index examples:
+ * Rank (sorted index of value; negative = from highest):
  * <ul>
- * <li>Index 0: First item in map.</li>
- * <li>Index 4: Fifth item in map.</li>
- * <li>Index -1: Last item in map.</li>
- * <li>Index -3: Third to last item in map.</li>
- * <li>Index 1 Count 2: Second and third items in map.</li>
- * <li>Index -3 Count 3: Last three items in map.</li>
- * <li>Index -5 Count 4: Range between fifth to last item to second to last item inclusive.</li>
+ * <li>Rank 0: lowest ranked value; 4: fifth lowest; -1: highest ranked; -3: third highest.</li>
+ * <li>Rank 1 Count 2: second and third lowest; Rank -3 Count 3: top three ranked.</li>
  * </ul>
- * <p>
- * Rank examples:
- * <ul>
- * <li>Rank 0: Item with lowest value rank in map.</li>
- * <li>Rank 4: Fifth lowest ranked item in map.</li>
- * <li>Rank -1: Item with highest ranked value in map.</li>
- * <li>Rank -3: Item with third highest ranked value in map.</li>
- * <li>Rank 1 Count 2: Second and third lowest ranked items in map.</li>
- * <li>Rank -3 Count 3: Top three ranked items in map.</li>
- * </ul>
- * <p>
- * Nested CDT operations are supported by optional CTX context arguments.  Examples:
- * <ul>
- * <li>bin = {key1={key11=9,key12=4}, key2={key21=3,key22=5}}</li>
- * <li>Set map value to 11 for map key "key21" inside of map key "key2".</li>
- * <li>MapOperation.put(MapPolicy.Default, "bin", Value.get("key21"), Value.get(11), CTX.mapKey(Value.get("key2")))</li>
- * <li>bin result = {key1={key11=9,key12=4},key2={key21=11,key22=5}}</li>
- * <li></li>
- * <li>bin = {key1={key11={key111=1},key12={key121=5}}, key2={key21={"key211",7}}}</li>
- * <li>Set map value to 11 in map key "key121" for highest ranked map ("key12") inside of map key "key1".</li>
- * <li>MapOperation.put(MapPolicy.Default, "bin", Value.get("key121"), Value.get(11), CTX.mapKey(Value.get("key1")), CTX.mapRank(-1))</li>
- * <li>bin result = {key1={key11={key111=1},key12={key121=11}}, key2={key21={"key211",7}}}</li>
- * </ul>
+ * <p>Put, getByKey, size, putItems; get by index/rank; nested put with CTX.</p>
+ * <pre>{@code
+ * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+ * Key key = new Key("ns", "set", "mapkey");
+ * client.delete(null, key);
+ *
+ * client.operate(null, key,
+ *     MapOperation.put(MapPolicy.Default, "bin", Value.get("name"), Value.get("Alice")),
+ *     MapOperation.put(MapPolicy.Default, "bin", Value.get("score"), Value.get(100)));
+ * Record rec = client.operate(null, key,
+ *     MapOperation.getByKey("bin", Value.get("name"), MapReturnType.VALUE),
+ *     MapOperation.size("bin"));
+ * String name = (String) rec.getList("bin").get(0);
+ * long size = (Long) rec.getList("bin").get(1);
+ *
+ * java.util.Map<Value, Value> items = new java.util.HashMap<>();
+ * items.put(Value.get("a"), Value.get(1));
+ * items.put(Value.get("b"), Value.get(2));
+ * client.operate(null, key, MapOperation.putItems(MapPolicy.Default, "bin", items));
+ *
+ * // Index/rank: get by index 0 or -1, by rank 0 or -1
+ * client.operate(null, key, MapOperation.getByIndex("bin", 0, MapReturnType.VALUE));
+ * client.operate(null, key, MapOperation.getByIndex("bin", -1, MapReturnType.VALUE));
+ * client.operate(null, key, MapOperation.getByRank("bin", 0, MapReturnType.VALUE));
+ * client.operate(null, key, MapOperation.getByRank("bin", -1, MapReturnType.VALUE));
+ *
+ * // Nested: put value 11 at key "key21" inside map key "key2"
+ * client.operate(null, key, MapOperation.put(MapPolicy.Default, "bin", Value.get("key21"), Value.get(11), CTX.mapKey(Value.get("key2"))));
+ * // Nested with rank: put 11 at "key121" in highest-ranked map in "key1"
+ * client.operate(null, key, MapOperation.put(MapPolicy.Default, "bin", Value.get("key121"), Value.get(11), CTX.mapKey(Value.get("key1")), CTX.mapRank(-1)));
+ * }</pre>
+ *
+ * @see com.aerospike.client.AerospikeClient#operate
+ * @see CTX
+ * @see MapPolicy
+ * @see MapReturnType
  */
 public class MapOperation {
 	private static final int SET_TYPE = 64;

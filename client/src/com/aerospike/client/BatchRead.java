@@ -23,8 +23,24 @@ import com.aerospike.client.policy.BatchReadPolicy;
 import com.aerospike.client.policy.Policy;
 
 /**
- * Batch key and read only operations with default policy.
- * Used in batch read commands where different bins are needed for each key.
+ * Batch key and read-only operations with optional per-key policy. Extends {@link BatchRecord};
+ * used in batch read commands where different bins or operations are needed for each key.
+ * Pass a list of {@code BatchRead} to {@link IAerospikeClient#get}.
+ * <p>Build a list of BatchRead with keys and bin names or operations, then call get.</p>
+ * <pre>{@code
+ * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+ * List&lt;BatchRecord&gt; records = new ArrayList&lt;&gt;();
+ * records.add(new BatchRead(new Key("test", "set1", "id1"), new String[] {"a", "b"}));
+ * records.add(new BatchRead(new Key("test", "set1", "id2"), true)); // read all bins
+ * client.get(BatchPolicy.ReadDefault(), records);
+ * for (BatchRecord br : records) {
+ *   BatchRead r = (BatchRead) br;
+ *   if (r.record != null) { /* use r.record *\/ }
+ * }
+ * }</pre>
+ *
+ * @see BatchRecord
+ * @see IAerospikeClient#get
  */
 public final class BatchRead extends BatchRecord {
 	/**

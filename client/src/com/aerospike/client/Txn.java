@@ -23,16 +23,39 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
- * Multi-record transaction. Each command in the transaction must use the same namespace.
+ * Multi-record transaction context for grouping read and write commands into a single logical transaction.
+ *
+ * <p>Attach a {@code Txn} to a policy ({@link com.aerospike.client.policy.Policy#txn}) so that get/put/operate commands participate in the
+ * same transaction. All commands in the transaction must use the same namespace. Commit or abort via batch APIs.
+ *
+ * <p>Create a transaction, attach to a write policy, perform get/put, then commit.</p>
+ * <pre>{@code
+ * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+ * try {
+ *     Txn txn = new Txn();
+ *     WritePolicy policy = new WritePolicy(); policy.txn = txn;
+ *     Key key1 = new Key("test", "set1", "id1");
+ *     Key key2 = new Key("test", "set1", "id2");
+ *     client.get(policy, key1);
+ *     client.put(policy, key2, new Bin("name", "value"));
+ *     CommitStatus status = client.commit(txn);
+ * } finally { client.close(); }
+ * }</pre>
+ *
+ * @see com.aerospike.client.policy.Policy#txn
  */
 public final class Txn {
 	/**
-	 * Transaction state.
+	 * Current state of the transaction.
 	 */
 	public static enum State {
+		/** Transaction is open; reads and writes can be added. */
 		OPEN,
+		/** Reads have been verified; commit or abort can proceed. */
 		VERIFIED,
+		/** Transaction has been committed. */
 		COMMITTED,
+		/** Transaction has been aborted. */
 		ABORTED;
 	}
 
@@ -49,11 +72,9 @@ public final class Txn {
 	private boolean inDoubt;
 
 	/**
-	 * Create transaction, assign random transaction id and initialize reads/writes hashmaps with
-	 * default capacities.
-	 * <p>
-	 * The default client transaction timeout is zero. This means use the server configuration
-	 * mrt-duration as the transaction timeout. The default mrt-duration is 10 seconds.
+	 * Constructs a new transaction with default capacities for read and write sets.
+	 *
+	 * <p>Client transaction timeout defaults to 0 (use server mrt-duration, typically 10 seconds).
 	 */
 	public Txn() {
 		id = createId();
@@ -63,14 +84,12 @@ public final class Txn {
 	}
 
 	/**
-	 * Create transaction, assign random transaction id and initialize reads/writes hashmaps with
-	 * given capacities.
-	 * <p>
-	 * The default client transaction timeout is zero. This means use the server configuration
-	 * mrt-duration as the transaction timeout. The default mrt-duration is 10 seconds.
+	 * Constructs a new transaction with the given initial capacities for the read and write sets.
 	 *
-	 * @param readsCapacity     expected number of record reads in the transaction. Minimum value is 16.
-	 * @param writesCapacity    expected number of record writes in the transaction. Minimum value is 16.
+	 * <p>Minimum capacity for each is 16. Client transaction timeout defaults to 0 (use server mrt-duration).
+	 *
+	 * @param readsCapacity expected number of record reads; minimum 16
+	 * @param writesCapacity expected number of record writes; minimum 16
 	 */
 	public Txn(int readsCapacity, int writesCapacity) {
 		if (readsCapacity < 16) {
@@ -105,6 +124,8 @@ public final class Txn {
 
 	/**
 	 * Return transaction ID.
+	 *
+	 * @return the unique transaction ID
 	 */
 	public long getId() {
 		return id;
@@ -118,6 +139,8 @@ public final class Txn {
 	 * <p>
 	 * If the transaction timeout is zero, the server configuration mrt-duration is used.
 	 * The default mrt-duration is 10 seconds.
+	 *
+	 * @param timeout timeout in seconds; 0 for server default (mrt-duration)
 	 */
 	public void setTimeout(int timeout) {
 		this.timeout = timeout;
@@ -125,6 +148,8 @@ public final class Txn {
 
 	/**
 	 * Return transaction timeout in seconds.
+	 *
+	 * @return timeout in seconds; 0 means use server mrt-duration
 	 */
 	public int getTimeout() {
 		return timeout;
@@ -184,6 +209,9 @@ public final class Txn {
 
 	/**
 	 * Get record version for a given key.
+	 *
+	 * @param key the key to look up
+	 * @return the read version for the key, or null if not present
 	 */
 	public Long getReadVersion(Key key) {
 		return reads.get(key);
@@ -191,6 +219,8 @@ public final class Txn {
 
 	/**
 	 * Get all read keys and their versions.
+	 *
+	 * @return the set of read key/version entries
 	 */
 	public Set<Map.Entry<Key,Long>> getReads() {
 		return reads.entrySet();
@@ -222,6 +252,8 @@ public final class Txn {
 
 	/**
 	 * Get all write keys and their versions.
+	 *
+	 * @return the set of keys written in this transaction
 	 */
 	public Set<Key> getWrites() {
 		return writes;
@@ -263,6 +295,8 @@ public final class Txn {
 
 	/**
 	 * Return transaction namespace.
+	 *
+	 * @return the namespace for this transaction, or null if not yet set
 	 */
 	public String getNamespace() {
 		return namespace;
@@ -279,6 +313,8 @@ public final class Txn {
 
 	/**
 	 * Get transaction deadline. For internal use only.
+	 *
+	 * @return the server-calculated deadline
 	 */
 	public int getDeadline() {
 		return deadline;
@@ -286,6 +322,8 @@ public final class Txn {
 
 	/**
 	 * Return if the transaction monitor record should be closed/deleted. For internal use only.
+	 *
+	 * @return true if the monitor record should be closed
 	 */
 	public boolean closeMonitor() {
 		return deadline != 0 && !writeInDoubt;
@@ -293,6 +331,8 @@ public final class Txn {
 
 	/**
 	 * Does transaction monitor record exist.
+	 *
+	 * @return true if the transaction monitor record exists on the server
 	 */
 	public boolean monitorExists() {
 		return deadline != 0;
@@ -307,6 +347,8 @@ public final class Txn {
 
 	/**
 	 * Return transaction state.
+	 *
+	 * @return the current transaction state (OPEN, VERIFIED, COMMITTED, or ABORTED)
 	 */
 	public Txn.State getState() {
 		return state;
@@ -321,6 +363,8 @@ public final class Txn {
 
 	/**
 	 * Return if transaction is inDoubt.
+	 *
+	 * @return true if the transaction outcome is in doubt (e.g. after timeout before commit/abort)
 	 */
 	public boolean getInDoubt() {
 		return inDoubt;

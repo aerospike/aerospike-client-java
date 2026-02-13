@@ -24,34 +24,54 @@ import com.aerospike.client.util.Pack;
 import com.aerospike.client.util.Packer;
 
 /**
- * List bin operations. Create list operations used by client operate command.
+ * List bin operations for the client operate command. List operations support negative indexing.
+ * Index out of bounds returns a parameter error; a range partially out of bounds returns the valid
+ * part. Use optional {@link CTX} for nested list/map paths. Prefer {@link #appendItems} over
+ * multiple {@link #append} for better performance.
  * <p>
- * List operations support negative indexing.  If the index is negative, the
- * resolved index starts backwards from end of list. If an index is out of bounds,
- * a parameter error will be returned. If a range is partially out of bounds, the
- * valid part of the range will be returned. Index/Range examples:
+ * Index (item offset from start; negative = from end):
  * <ul>
- * <li>Index 0: First item in list.</li>
- * <li>Index 4: Fifth item in list.</li>
- * <li>Index -1: Last item in list.</li>
- * <li>Index -3: Third to last item in list.</li>
- * <li>Index 1 Count 2: Second and third items in list.</li>
- * <li>Index -3 Count 3: Last three items in list.</li>
- * <li>Index -5 Count 4: Range between fifth to last item to second to last item inclusive.</li>
+ * <li>Index 0: first item; 4: fifth item; -1: last item; -3: third to last.</li>
+ * <li>Index 1 Count 2: second and third items; Index -3 Count 3: last three items.</li>
+ * <li>Index -5 Count 4: range from fifth-to-last to second-to-last inclusive.</li>
  * </ul>
- * <p>
- * Nested CDT operations are supported by optional CTX context arguments.  Examples:
- * <ul>
- * <li>bin = [[7,9,5],[1,2,3],[6,5,4,1]]</li>
- * <li>Append 11 to last list.</li>
- * <li>ListOperation.append("bin", Value.get(11), CTX.listIndex(-1))</li>
- * <li>bin result = [[7,9,5],[1,2,3],[6,5,4,1,11]]</li>
- * <li></li>
- * <li>bin = {key1=[[7,9,5],[13]], key2=[[9],[2,4],[6,1,9]], key3=[[6,5]]}</li>
- * <li>Append 11 to lowest ranked list in map identified by "key2".</li>
- * <li>ListOperation.append("bin", Value.get(11), CTX.mapKey(Value.get("key2")), CTX.listRank(0))</li>
- * <li>bin result = {key1=[[7,9,5],[13]], key2=[[9],[2,4,11],[6,1,9]], key3=[[6,5]]}</li>
- * </ul>
+ * <p>Append, pop, size, appendItems, getRange; get by index/range; nested append with CTX.</p>
+ * <pre>{@code
+ * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+ * Key key = new Key("ns", "set", "listkey");
+ * client.delete(null, key);
+ *
+ * Record rec = client.operate(null, key,
+ *     ListOperation.append("bin", Value.get(55)),
+ *     ListOperation.append("bin", Value.get(77)),
+ *     ListOperation.pop("bin", -1),
+ *     ListOperation.size("bin"));
+ * long size = (Long) rec.getList("bin").get(3);
+ *
+ * java.util.List<Value> itemList = new java.util.ArrayList<>();
+ * itemList.add(Value.get(12));
+ * itemList.add(Value.get("my string"));
+ * client.operate(null, key, ListOperation.appendItems("bin", itemList));
+ * rec = client.operate(null, key, ListOperation.getRange("bin", 0, 4));
+ * java.util.List<?> range = (java.util.List<?>) rec.getList("bin").get(0);
+ *
+ * // Index/range: get by index 0 or -1, range (1, 2), last three (-3, 3), -5 count 4
+ * client.operate(null, key, ListOperation.getByIndex("bin", 0, ListReturnType.VALUE));
+ * client.operate(null, key, ListOperation.getByIndex("bin", -1, ListReturnType.VALUE));
+ * client.operate(null, key, ListOperation.getByIndexRange("bin", 1, 2, ListReturnType.VALUE));
+ * client.operate(null, key, ListOperation.getByIndexRange("bin", -3, 3, ListReturnType.VALUE));
+ * client.operate(null, key, ListOperation.getByIndexRange("bin", -5, 4, ListReturnType.VALUE));
+ *
+ * // Nested: append 11 to last list (bin = [[7,9,5],[1,2,3],[6,5,4,1]] -> last list gets 11)
+ * client.operate(null, key, ListOperation.append("bin", Value.get(11), CTX.listIndex(-1)));
+ * // Nested with map: append 11 to lowest-ranked list in map "key2"
+ * client.operate(null, key, ListOperation.append("bin", Value.get(11), CTX.mapKey(Value.get("key2")), CTX.listRank(0)));
+ * }</pre>
+ *
+ * @see com.aerospike.client.AerospikeClient#operate
+ * @see CTX
+ * @see ListPolicy
+ * @see ListReturnType
  */
 public class ListOperation {
 	private static final int SET_TYPE = 0;

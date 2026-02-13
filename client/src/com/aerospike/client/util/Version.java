@@ -18,12 +18,26 @@ package com.aerospike.client.util;
 
 import java.net.InetSocketAddress;
 
+import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.IAerospikeClient;
 import com.aerospike.client.Info;
 import com.aerospike.client.cluster.Node;
 import com.aerospike.client.policy.InfoPolicy;
 
+/**
+ * Server or client version representation; supports comparison and constants for feature checks.
+ * Use {@link #getServerVersion(IAerospikeClient, InfoPolicy)} or
+ * {@link #getServerVersion(InfoPolicy, Node)} to obtain server version.
+ * <p>Obtain server version from a connected client and compare to version constants.</p>
+ * <pre>{@code
+ * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+ * Version serverVer = Version.getServerVersion(client, new InfoPolicy());
+ * if (serverVer.isGreaterOrEqual(Version.SERVER_VERSION_8_1)) {
+ *   // use 8.1+ feature
+ * }
+ * }</pre>
+ */
 public final class Version implements Comparable<Version> {
 	public static final Version SERVER_VERSION_8_1 = new Version(8, 1, 0, 0);
 	public static final Version SERVER_VERSION_PSCAN = new Version(4, 9, 0, 3);

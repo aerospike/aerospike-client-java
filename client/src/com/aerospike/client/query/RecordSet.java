@@ -26,11 +26,33 @@ import com.aerospike.client.Key;
 import com.aerospike.client.Record;
 
 /**
- * This class manages record retrieval from queries.
- * Multiple threads will retrieve records from the server nodes and put these records on the queue.
- * The single user thread consumes these records from the queue.
+ * Iterable stream of {@link KeyRecord} results from a secondary index query.
+ *
+ * <p>Producer threads fill an internal queue with records from the server; the single user thread calls
+ * {@link #next()} to block until the next record is available, then {@link #getRecord()} to access it.
+ * Call {@link #close()} when done to release resources and optionally terminate the query early.
+ *
+ * <p>Call query with Statement then iterate with next() and getRecord(); close the RecordSet when done.</p>
+ * <pre>{@code
+ * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+ * RecordSet rs = client.query(queryPolicy, stmt);
+ * try {
+ *     while (rs.next()) {
+ *         KeyRecord kr = rs.getRecord();
+ *         Key key = kr.key;
+ *         Record rec = kr.record;
+ *         // process key, rec
+ *     }
+ * } finally {
+ *     rs.close();
+ * }
+ * }</pre>
+ *
+ * @see com.aerospike.client.AerospikeClient#query(com.aerospike.client.policy.QueryPolicy, Statement)
+ * @see KeyRecord
  */
 public class RecordSet implements Iterable<KeyRecord>, Closeable {
+	/** Sentinel value placed on the queue when no more records are available. */
 	public static final KeyRecord END = new KeyRecord(null, null);
 
 	private final IQueryExecutor executor;
@@ -59,10 +81,10 @@ public class RecordSet implements Iterable<KeyRecord>, Closeable {
 	//-------------------------------------------------------
 
 	/**
-	 * Retrieve next record.  This method will block until a record is retrieved
-	 * or the query is cancelled.
+	 * Advances to the next record, blocking until one is available or the query ends.
 	 *
-	 * @return whether record exists - if false, no more records are available
+	 * @return {@code true} if a record is available (use {@link #getRecord()}), {@code false} if no more records or query was closed
+	 * @throws AerospikeException	when the query failed on the server (e.g. timeout, connection error, or invalid statement).
 	 */
 	public boolean next() throws AerospikeException {
 		if (! valid) {
@@ -93,7 +115,9 @@ public class RecordSet implements Iterable<KeyRecord>, Closeable {
 	}
 
 	/**
-	 * Close query.
+	 * Closes this record set and releases resources; may signal the server to stop the query.
+	 *
+	 * <p>Call in a {@code finally} block to ensure resources are released. After close, {@link #next()} returns {@code false}.
 	 */
 	public void close() {
 		valid = false;
@@ -106,7 +130,9 @@ public class RecordSet implements Iterable<KeyRecord>, Closeable {
 	}
 
 	/**
-	 * Provide Iterator for RecordSet.
+	 * Returns an iterator over the records in this set.
+	 *
+	 * @return an iterator over {@link KeyRecord} elements
 	 */
 	@Override
 	public Iterator<KeyRecord> iterator() {
@@ -118,21 +144,27 @@ public class RecordSet implements Iterable<KeyRecord>, Closeable {
 	//-------------------------------------------------------
 
 	/**
-	 * Get record's unique identifier.
+	 * Returns the key of the current record (valid after {@link #next()} returns {@code true}).
+	 *
+	 * @return the key of the current record
 	 */
 	public Key getKey() {
 		return record.key;
 	}
 
 	/**
-	 * Get record's header and bin data.
+	 * Returns the record (bins, generation, expiration) of the current record (valid after {@link #next()} returns {@code true}).
+	 *
+	 * @return the record data for the current record
 	 */
 	public Record getRecord() {
 		return record.record;
 	}
 
 	/**
-	 * Get key and record.
+	 * Returns the current {@link KeyRecord} (key and record together).
+	 *
+	 * @return the key and record for the current record
 	 */
 	public KeyRecord getKeyRecord() {
 		return record;

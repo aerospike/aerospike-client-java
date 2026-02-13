@@ -22,6 +22,19 @@ import com.aerospike.client.Record;
 
 /**
  * Asynchronous result notifications for get or operate commands.
+ * <p>
+ * No built-in implementations; implement this interface in application code and pass to
+ * {@link com.aerospike.client.IAerospikeClient#get(com.aerospike.client.async.EventLoop, RecordListener, com.aerospike.client.policy.Policy, com.aerospike.client.Key) get(EventLoop, RecordListener, ...)}
+ * or operate async methods.
+ * <p>Implement and pass to async get to receive key and record on success or exception on failure.</p>
+ * <pre>{@code
+ * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+ * client.get(eventLoop, new RecordListener() {
+ *   public void onSuccess(Key key, Record record) { // use record
+ *   }
+ *   public void onFailure(AerospikeException ae) { ae.printStackTrace(); }
+ * }, null, key);
+ * }</pre>
  */
 public interface RecordListener {
 	/**

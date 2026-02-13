@@ -17,7 +17,16 @@
 package com.aerospike.client.policy;
 
 /**
- * Policy attributes used for user administration commands.
+ * Policy attributes used for user administration commands (create user, drop user, grant roles, etc.).
+ * Pass to {@link com.aerospike.client.AerospikeClient#createUser}, {@link com.aerospike.client.AerospikeClient#dropUser}
+ * and other admin methods.
+ * <p>Set timeout and pass to user administration commands.</p>
+ * <pre>{@code
+ * AdminPolicy policy = new AdminPolicy();
+ * policy.timeout = 5000;
+ * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+ * client.createUser(policy, "newuser", "password", java.util.Collections.emptyList());
+ * }</pre>
  */
 public final class AdminPolicy {
 	/**

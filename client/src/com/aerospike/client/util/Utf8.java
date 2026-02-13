@@ -39,7 +39,7 @@ public final class Utf8 {
 	 * method is equivalent to {@code string.getBytes(UTF_8).length}, but is more efficient in both
 	 * time and space.
 	 *
-	 * @throws IllegalArgumentException if {@code sequence} contains ill-formed UTF-16 (unpaired
+	 * @throws IllegalArgumentException	when {@code sequence} contains ill-formed UTF-16 (unpaired
 	 *     surrogates)
 	 */
 	public static int encodedLength(CharSequence sequence) {

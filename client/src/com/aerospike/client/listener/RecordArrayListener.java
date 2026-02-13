@@ -23,6 +23,18 @@ import com.aerospike.client.Record;
 /**
  * Asynchronous result notifications for batch get commands.
  * The result is sent in a single array.
+ * <p>
+ * No built-in implementations; implement this interface in application code and pass to
+ * {@link com.aerospike.client.IAerospikeClient#get(com.aerospike.client.async.EventLoop, RecordArrayListener, com.aerospike.client.policy.BatchPolicy, com.aerospike.client.Key[]) get(EventLoop, RecordArrayListener, ...)}.
+ * <p>Implement and pass to async batch get to receive keys and records array on success or exception on failure.</p>
+ * <pre>{@code
+ * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+ * client.get(eventLoop, new RecordArrayListener() {
+ *   public void onSuccess(Key[] keys, Record[] records) { // use records
+ *   }
+ *   public void onFailure(AerospikeException ae) { ae.printStackTrace(); }
+ * }, null, keys);
+ * }</pre>
  */
 public interface RecordArrayListener {
 	/**

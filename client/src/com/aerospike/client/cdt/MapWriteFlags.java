@@ -17,8 +17,8 @@
 package com.aerospike.client.cdt;
 
 /**
- * Map write bit flags. Use BITWISE OR to combine flags. Example:
- * 
+ * Map write bit flags. Use BITWISE OR to combine flags.
+ * <p>Combine flags with bitwise OR for map operations.</p>
  * <pre>{@code 
  * int flags = MapWriteFlags.UPDATE_ONLY | MapWriteFlags.NO_FAIL | MapWriteFlags.PARTIAL;
  * }</pre>

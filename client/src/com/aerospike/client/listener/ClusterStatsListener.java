@@ -21,6 +21,18 @@ import com.aerospike.client.cluster.ClusterStats;
 
 /**
  * Asynchronous result notifications for cluster statistics.
+ * <p>
+ * No built-in implementations; implement this interface in application code and pass to
+ * {@link com.aerospike.client.IAerospikeClient#getClusterStats(com.aerospike.client.async.EventLoop, ClusterStatsListener, com.aerospike.client.policy.InfoPolicy) getClusterStats(EventLoop, ClusterStatsListener, ...)}.
+ * <p>Implement and pass to async getClusterStats to receive ClusterStats on success or exception on failure.</p>
+ * <pre>{@code
+ * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+ * client.getClusterStats(eventLoop, new ClusterStatsListener() {
+ *   public void onSuccess(com.aerospike.client.cluster.ClusterStats stats) { // use stats
+ *   }
+ *   public void onFailure(AerospikeException ae) { ae.printStackTrace(); }
+ * }, null);
+ * }</pre>
  */
 public interface ClusterStatsListener {
 	/**

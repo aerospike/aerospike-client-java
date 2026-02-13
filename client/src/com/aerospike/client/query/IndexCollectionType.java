@@ -17,7 +17,13 @@
 package com.aerospike.client.query;
 
 /**
- * Secondary index collection type.
+ * Secondary index collection type. Use when creating an index or building {@link Filter}
+ * (DEFAULT for scalar bin, LIST/MAPKEYS/MAPVALUES for CDT).
+ * <p>Specify collection type when creating a secondary index on list or map bins.</p>
+ * <pre>{@code
+ * client.createIndex(null, "ns", "set", "idx_tags", "tags", IndexType.STRING, IndexCollectionType.LIST);
+ * Filter f = Filter.contains("tags", IndexCollectionType.LIST, "v");
+ * }</pre>
  */
 public enum IndexCollectionType {
 	/**

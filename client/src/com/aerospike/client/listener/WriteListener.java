@@ -21,6 +21,19 @@ import com.aerospike.client.Key;
 
 /**
  * Asynchronous result notifications for put, append, prepend, add, delete and touch commands.
+ * <p>
+ * No built-in implementations; implement this interface in application code and pass to
+ * {@link com.aerospike.client.IAerospikeClient#put(com.aerospike.client.async.EventLoop, WriteListener, com.aerospike.client.policy.WritePolicy, com.aerospike.client.Key, com.aerospike.client.Bin[]) put(EventLoop, WriteListener, ...)}
+ * or other write async methods.
+ * <p>Implement and pass to async put to receive key on success or exception on failure.</p>
+ * <pre>{@code
+ * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+ * client.put(eventLoop, new WriteListener() {
+ *   public void onSuccess(Key key) { // done
+ *   }
+ *   public void onFailure(AerospikeException ae) { ae.printStackTrace(); }
+ * }, null, key, bins);
+ * }</pre>
  */
 public interface WriteListener {
 	/**

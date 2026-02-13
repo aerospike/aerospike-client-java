@@ -29,7 +29,23 @@ import com.aerospike.client.listener.TaskStatusListener;
 import com.aerospike.client.policy.InfoPolicy;
 
 /**
- * Async index task monitor.
+ * Async index task monitor. Returned from
+ * {@link com.aerospike.client.IAerospikeClient#createIndex}
+ * or dropIndex; use {@link #queryStatus} to poll for completion.
+ * <p>Create index asynchronously and poll task status until complete.</p>
+ * <pre>{@code
+ * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+ * client.createIndex(eventLoop, new IndexListener() {
+ *   public void onSuccess(AsyncIndexTask task) {
+ *     task.queryStatus(eventLoop, null, client.getNodes()[0], new TaskStatusListener() {
+ *       public void onSuccess(int status) { // 100 = done
+ *       }
+ *       public void onFailure(AerospikeException ae) { }
+ *     });
+ *   }
+ *   public void onFailure(AerospikeException ae) { }
+ * }, null, "ns", "set", "idx1", "bin1", IndexType.STRING, IndexCollectionType.DEFAULT);
+ * }</pre>
  */
 public class AsyncIndexTask {
 	private final IAerospikeClient client;

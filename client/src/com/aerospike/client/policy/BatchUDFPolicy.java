@@ -24,7 +24,16 @@ import com.aerospike.client.configuration.serializers.dynamicconfig.DynamicBatch
 import com.aerospike.client.exp.Expression;
 
 /**
- * Policy attributes used in batch UDF execute commands.
+ * Policy attributes used in batch UDF execute commands. Used with {@link BatchPolicy} and
+ * {@link com.aerospike.client.AerospikeClient#execute(com.aerospike.client.policy.BatchPolicy, java.util.List)};
+ * defines filterExp, commitLevel, etc.
+ * <p>Set commit level or filterExp and use as batch UDF default or per-key policy.</p>
+ * <pre>{@code
+ * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+ * BatchUDFPolicy policy = new BatchUDFPolicy();
+ * BatchPolicy batchPolicy = new BatchPolicy();
+ * client.execute(batchPolicy, batchRecords);
+ * }</pre>
  */
 public final class BatchUDFPolicy {
 	/**

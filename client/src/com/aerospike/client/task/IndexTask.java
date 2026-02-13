@@ -25,7 +25,37 @@ import com.aerospike.client.policy.Policy;
 import com.aerospike.client.util.Version;
 
 /**
- * Task used to poll for long running create index completion.
+ * Task that polls for completion of a secondary index create or drop started by
+ * {@link com.aerospike.client.AerospikeClient#createIndex} or
+ * {@link com.aerospike.client.AerospikeClient#dropIndex}.
+ *
+ * <p>Use {@link #waitTillComplete()} to block until the index operation finishes on all nodes, or
+ * {@link #queryStatus()} / {@link com.aerospike.client.task.Task#isDone()} to poll.
+ *
+ * <p><b>Example (create index, wait for completion):</b>
+ * <pre>{@code
+ * IndexTask task = client.createIndex(null, "test", "users", "idx_status", "status", IndexType.STRING);
+ * task.waitTillComplete();  // blocks until index is built on all nodes
+ * }</pre>
+ *
+ * <p><b>Example (create index with collection type, poll status):</b>
+ * <pre>{@code
+ * IndexTask task = client.createIndex(null, "test", "events", "idx_tags", "tags", IndexType.STRING, IndexCollectionType.LIST);
+ * while (!task.isDone()) {
+ *     int status = task.queryStatus();  // NOT_FOUND, IN_PROGRESS, or COMPLETE
+ *     Thread.sleep(500);
+ * }
+ * }</pre>
+ *
+ * <p><b>Example (drop index):</b>
+ * <pre>{@code
+ * IndexTask task = client.dropIndex(null, "test", "users", "idx_status");
+ * task.waitTillComplete();
+ * }</pre>
+ *
+ * @see com.aerospike.client.task.Task
+ * @see com.aerospike.client.AerospikeClient#createIndex
+ * @see com.aerospike.client.AerospikeClient#dropIndex
  */
 public final class IndexTask extends Task {
 	private final String namespace;
@@ -35,7 +65,13 @@ public final class IndexTask extends Task {
 	private String existsCommand;
 
 	/**
-	 * Initialize task with fields needed to query server nodes.
+	 * Constructs an index task for the given namespace and index name.
+	 *
+	 * @param cluster the cluster; must not be {@code null}
+	 * @param policy policy for polling (timeout, etc.); must not be {@code null}
+	 * @param namespace the namespace of the index
+	 * @param indexName the name of the index
+	 * @param isCreate {@code true} for create, {@code false} for drop
 	 */
 	public IndexTask(Cluster cluster, Policy policy, String namespace, String indexName, boolean isCreate) {
 		super(cluster, policy);
@@ -45,7 +81,9 @@ public final class IndexTask extends Task {
 	}
 
 	/**
-	 * Query all nodes for task completion status.
+	 * Queries the cluster for this index task's completion status.
+	 *
+	 * @return {@link Task#NOT_FOUND}, {@link Task#IN_PROGRESS}, or {@link Task#COMPLETE}
 	 */
 	@Override
 	public int queryStatus() {

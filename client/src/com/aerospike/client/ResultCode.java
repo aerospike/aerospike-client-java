@@ -17,8 +17,29 @@
 package com.aerospike.client;
 
 /**
- * Database operation error codes.  The positive numbers align with the server
- * side file proto.h.
+ * Integer result codes returned by the server or set by the client for failed operations.
+ *
+ * <p>Positive values align with server-defined codes (see server proto.h); negative values denote
+ * client-side errors. Use {@link #getResultString(int)} for a human-readable message and
+ * {@link AerospikeException#getResultCode()} to obtain the code from an exception.
+ *
+ * <p>Catch AerospikeException and use getResultCode() with ResultCode constants.</p>
+ * <pre>{@code
+ * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+ * try {
+ *     client.get(policy, key);
+ * } catch (AerospikeException e) {
+ *     int code = e.getResultCode();
+ *     if (code == ResultCode.KEY_NOT_FOUND_ERROR) {
+ *         // handle missing key
+ *     }
+ *     String msg = ResultCode.getResultString(code);
+ * }
+ * }</pre>
+ *
+ * @see AerospikeException#getResultCode()
+ * @see #getResultString(int)
+ * @see #keepConnection(int)
  */
 public final class ResultCode {
 	/**
@@ -439,7 +460,11 @@ public final class ResultCode {
 	 * Secondary index already exists.
 	 */
 	public static final int INDEX_ALREADY_EXISTS = 200;
-	public static final int INDEX_FOUND = 200;  // For legacy reasons.
+
+	/**
+	 * Same value as {@link #INDEX_ALREADY_EXISTS}; retained for legacy compatibility.
+	 */
+	public static final int INDEX_FOUND = 200;
 
 	/**
 	 * Requested secondary index does not exist.
@@ -492,7 +517,14 @@ public final class ResultCode {
 	public static final int QUERY_GENERIC = 213;
 
 	/**
-	 * Should connection be put back into pool.
+	 * Returns whether the connection used for the command that returned this result code should be returned to the pool.
+	 *
+	 * <p>Client errors (resultCode &le; 0) and certain server codes (e.g. {@link #SCAN_ABORT}, {@link #QUERY_ABORTED})
+	 * return {@code false}; the connection should be discarded. Other server errors return {@code true}.
+	 *
+	 * @param resultCode the result code from the failed or completed operation
+	 * @return {@code true} if the connection can be reused, {@code false} if it should be discarded
+	 * @see AerospikeException#keepConnection()
 	 */
 	public static boolean keepConnection(int resultCode) {
 		if (resultCode <= 0) {
@@ -513,7 +545,11 @@ public final class ResultCode {
 	}
 
 	/**
-	 * Return result code as a string.
+	 * Returns a human-readable string for the given result code.
+	 *
+	 * @param resultCode the result code (e.g. from {@link AerospikeException#getResultCode()} or this class's constants)
+	 * @return a short description of the result, or an empty string for unknown codes
+	 * @see AerospikeException#getBaseMessage()
 	 */
 	public static String getResultString(int resultCode) {
 		switch (resultCode) {

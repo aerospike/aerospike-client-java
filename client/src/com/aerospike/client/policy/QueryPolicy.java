@@ -23,10 +23,30 @@ import com.aerospike.client.configuration.serializers.DynamicConfiguration;
 import com.aerospike.client.configuration.serializers.dynamicconfig.DynamicQueryConfig;
 
 /**
- * Container object for policy attributes used in query operations.
- * <p>
- * Inherited Policy fields {@link Policy#txn} and {@link Policy#failOnFilteredOut} are ignored
- * in query commands.
+ * Policy for query operations (secondary index and aggregation queries).
+ *
+ * <p>Extends {@link com.aerospike.client.policy.Policy} with query-specific options (expected duration,
+ * record queue size, includeBinData, etc.). Inherited fields {@link com.aerospike.client.policy.Policy#txn}
+ * and {@link com.aerospike.client.policy.Policy#failOnFilteredOut} are ignored for query commands.
+ * Pass to {@link com.aerospike.client.AerospikeClient#query} and
+ * {@link com.aerospike.client.AerospikeClient#queryAggregate}.
+ *
+ * <p>Set expectedDuration, recordQueueSize, includeBinData and pass to query.</p>
+ * <pre>{@code
+ * QueryPolicy policy = new QueryPolicy();
+ * policy.expectedDuration = QueryDuration.LONG;  // LONG/SHORT; server optimizes (SHORT = small result set). Ignored for agg/background and server version before 6.0
+ * policy.maxRecords = 0;                         // Deprecated: use Statement.setMaxRecords(long) instead. Approx record limit (0 = no limit)
+ * policy.maxConcurrentNodes = 0;                 // Max nodes queried in parallel; 0 = all in parallel (intent: throttle concurrency)
+ * policy.recordQueueSize = 5000;                // Records buffered before blocking producer (intent: balance memory vs throughput)
+ * policy.infoTimeout = 1000;                     // Timeout (ms) for cluster-stable info call; used only when failOnClusterChange is true on server before 6.0
+ * policy.includeBinData = true;                 // true = return bins; false = return only digests and keys (use false to reduce payload when bins not needed)
+ * policy.failOnClusterChange = false;           // Abort if cluster migrating; ignored on server 6.0+
+ * policy.shortQuery = false;                     // Deprecated: use expectedDuration (e.g. QueryDuration.SHORT) instead. true = server optimizes for under 100 records per node
+ * client.query(policy, stmt);
+ * }</pre>
+ *
+ * @see com.aerospike.client.policy.Policy
+ * @see com.aerospike.client.query.Statement
  */
 public class QueryPolicy extends Policy {
 	/**
@@ -113,8 +133,10 @@ public class QueryPolicy extends Policy {
 	public boolean shortQuery;
 
 	/**
-	 * Copy query policy from another query policy AND override certain policy attributes if they exist in the
-	 * configProvider.  Any policy overrides will not get logged.
+	 * Copies a query policy from another and applies overrides from the configuration provider (overrides not logged).
+	 *
+	 * @param other the policy to copy from; must not be {@code null}
+	 * @param configProvider the provider of overrides; may be {@code null}
 	 */
 	public QueryPolicy(QueryPolicy other, ConfigurationProvider configProvider) {
 		this(other);
@@ -122,8 +144,11 @@ public class QueryPolicy extends Policy {
 	}
 
 	/**
-	 * Copy query policy from another query policy AND override certain policy attributes if they exist in the
-	 * configProvider.  Any default policy overrides will get logged.
+	 * Copies a query policy from another and applies overrides from the configuration provider.
+	 *
+	 * @param other the policy to copy from; must not be {@code null}
+	 * @param configProvider the provider of overrides; may be {@code null}
+	 * @param isDefaultPolicy {@code true} to log default policy overrides
 	 */
 	public QueryPolicy(QueryPolicy other, ConfigurationProvider configProvider, boolean isDefaultPolicy) {
 		this(other);
@@ -131,7 +156,9 @@ public class QueryPolicy extends Policy {
 	}
 
 	/**
-	 * Copy query policy from another query policy.
+	 * Copies all fields from another query policy.
+	 *
+	 * @param other the policy to copy from; must not be {@code null}
 	 */
 	public QueryPolicy(QueryPolicy other) {
 		super(other);
@@ -146,24 +173,19 @@ public class QueryPolicy extends Policy {
 	}
 
 	/**
-	 * Copy query policy from another policy.
+	 * Copies base policy fields from another policy; query-specific fields use defaults.
+	 *
+	 * @param other the policy to copy from; must not be {@code null}
 	 */
 	public QueryPolicy(Policy other) {
 		super(other);
 	}
 
 	/**
-	 * Default constructor. Disable totalTimeout and set maxRetries.
-	 * <p>
-	 * The latest servers support retries on individual data partitions.
-	 * This feature is useful when a cluster is migrating and partition(s)
-	 * are missed or incomplete on the first query attempt.
-	 * <p>
-	 * If the first query attempt misses 2 of 4096 partitions, then only
-	 * those 2 partitions are retried in the next query attempt from the
-	 * last key digest received for each respective partition. A higher
-	 * default maxRetries is used because it's wasteful to invalidate
-	 * all query results because a single partition was missed.
+	 * Constructs a query policy with totalTimeout disabled and maxRetries set to 5.
+	 *
+	 * <p>Servers support retries on individual partitions; a higher maxRetries allows retrying only
+	 * missed partitions without invalidating the entire query result.
 	 */
 	public QueryPolicy() {
 		super.totalTimeout = 0;

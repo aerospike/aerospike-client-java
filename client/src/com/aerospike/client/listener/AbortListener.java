@@ -20,6 +20,17 @@ import com.aerospike.client.AbortStatus;
 
 /**
  * Asynchronous result notifications for transaction aborts.
+ * <p>
+ * No built-in implementations; implement this interface in application code and pass to
+ * {@link com.aerospike.client.IAerospikeClient#abort(com.aerospike.client.async.EventLoop, AbortListener, com.aerospike.client.Txn) abort(EventLoop, AbortListener, ...)}.
+ * <p>Implement and pass to async abort to receive AbortStatus on success.</p>
+ * <pre>{@code
+ * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+ * client.abort(eventLoop, new AbortListener() {
+ *   public void onSuccess(AbortStatus status) { // done
+ *   }
+ * }, txn);
+ * }</pre>
  */
 public interface AbortListener {
 	/**

@@ -24,7 +24,12 @@ import com.aerospike.client.configuration.serializers.dynamicconfig.DynamicTxnVe
 
 /**
  * Transaction policy fields used to batch verify record versions on commit.
- * Used a placeholder for now as there are no additional fields beyond BatchPolicy.
+ * Extends {@link BatchPolicy}; pass to transaction verify batch operations.
+ * <p>Use as default or per-request policy for transaction verify (version check) batch operations.</p>
+ * <pre>{@code
+ * TxnVerifyPolicy policy = new TxnVerifyPolicy();
+ * client.commit(commitPolicy, txn);
+ * }</pre>
  */
 public class TxnVerifyPolicy extends BatchPolicy {
 	/**

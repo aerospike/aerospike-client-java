@@ -17,7 +17,13 @@
 package com.aerospike.client.operation;
 
 /**
- * Action to take when bitwise add/subtract results in overflow/underflow.
+ * Action to take when bitwise add/subtract results in overflow/underflow. Use with
+ * {@link BitOperation#add} and
+ * {@link BitOperation#subtract}.
+ * <p>Use FAIL, SATURATE, or WRAP when adding/subtracting integer values in bit bins.</p>
+ * <pre>{@code
+ * client.operate(null, key, BitOperation.add(BitPolicy.Default, "bits", 0, 64, true, BitOverflowAction.SATURATE));
+ * }</pre>
  */
 public enum BitOverflowAction {
 	/**

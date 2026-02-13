@@ -24,17 +24,34 @@ import java.util.SortedMap;
 import com.aerospike.client.cdt.MapOrder;
 
 /**
- * Column name/value pair.
+ * A named bin (column) and its value for use in put and operate calls.
+ *
+ * <p>Bin names are limited to {@link #MAX_BIN_NAME_LENGTH} characters. Use the constructors or
+ * static helpers ({@link #asNull}, {@link #asGeoJSON}) to create bins; the server accepts string,
+ * numeric, blob, list, map, and GeoJSON values.
+ *
+ * <p><b>Example:</b>
+ * <pre>{@code
+ * client.put(writePolicy, key,
+ *     new Bin("name", "Alice"),
+ *     new Bin("count", 42),
+ *     new Bin("tags", Arrays.asList("a", "b")));
+ * }</pre>
+ *
+ * @see Value
+ * @see com.aerospike.client.AerospikeClient#put(com.aerospike.client.policy.WritePolicy, Key, Bin...)
  */
 public final class Bin {
+	/** Maximum allowed length for a bin name (15 characters). */
 	public static final int MAX_BIN_NAME_LENGTH = 15;
+
 	/**
-	 * Bin name. Current limit is 15 characters.
+	 * Bin name; must not exceed {@link #MAX_BIN_NAME_LENGTH} characters.
 	 */
 	public final String name;
 
 	/**
-	 * Bin value.
+	 * Bin value (string, number, blob, list, map, GeoJSON, etc.).
 	 */
 	public final Value value;
 
@@ -231,10 +248,10 @@ public final class Bin {
 	}
 
 	/**
-	 * Constructor, specifying bin name and value.
+	 * Constructs a bin with the given name and Value.
 	 *
-	 * @param name		bin name, current limit is 15 characters
-	 * @param value		bin value
+	 * @param name bin name; must not exceed {@link #MAX_BIN_NAME_LENGTH} characters
+	 * @param value the value; may be {@code null} (use {@link #asNull} for explicit null)
 	 */
 	public Bin(String name, Value value) {
 		this.name = name;
@@ -242,26 +259,30 @@ public final class Bin {
 	}
 
 	/**
-	 * Create bin with a null value. This is useful for bin deletions within a record.
+	 * Creates a bin with a null value, used for bin deletions within a record.
 	 *
-	 * @param name		bin name, current limit is 15 characters
+	 * @param name bin name; must not exceed {@link #MAX_BIN_NAME_LENGTH} characters
+	 * @return a bin whose value is null
 	 */
 	public static Bin asNull(String name) {
 		return new Bin(name, Value.getAsNull());
 	}
 
 	/**
-	 * Create bin with a GeoJSON value.
+	 * Creates a bin with a GeoJSON string value.
 	 *
-	 * @param name		bin name, current limit is 15 characters
-	 * @param value		bin value
+	 * @param name bin name; must not exceed {@link #MAX_BIN_NAME_LENGTH} characters
+	 * @param value GeoJSON string (e.g. point, polygon)
+	 * @return a bin with the given GeoJSON value
 	 */
 	public static Bin asGeoJSON(String name, String value) {
 		return new Bin(name, Value.getAsGeoJSON(value));
 	}
 
 	/**
-	 * Return string representation of bin.
+	 * Returns a string representation of this bin (name:value).
+	 *
+	 * @return string representation
 	 */
 	@Override
 	public String toString() {
@@ -269,7 +290,10 @@ public final class Bin {
 	}
 
 	/**
-	 * Compare Bin for equality.
+	 * Compares this bin to the specified object for equality (name and value).
+	 *
+	 * @param obj the object to compare to
+	 * @return {@code true} if equal, {@code false} otherwise
 	 */
 	@Override
 	public boolean equals(Object obj) {
@@ -294,7 +318,9 @@ public final class Bin {
 	}
 
 	/**
-	 * Return hash code for Bin.
+	 * Returns a hash code for this bin (based on name and value).
+	 *
+	 * @return the hash code
 	 */
 	@Override
 	public int hashCode() {

@@ -26,18 +26,32 @@ import com.aerospike.client.exp.Expression;
 import com.aerospike.client.util.Pack;
 
 /**
- * Query filter definition.
+ * Defines a filter for secondary index queries; only one filter is allowed per {@link Statement} and must reference a bin which has a secondary index defined.
  *
- * Currently, only one filter is allowed in a Statement, and must be on bin which has a secondary index defined.
+ * <p>Use the static factory methods ({@link #equal}, {@link #range}, {@link #contains}, {@link #geoWithinRegion}, etc.)
+ * to create filters by bin name, by index name, or by expression. Pass the result to {@link Statement#setFilter(Filter)}.
+ *
+ * <p>Create an equality filter on an indexed bin and set it on a Statement for query.</p>
+ * <pre>{@code
+ * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+ * Statement stmt = new Statement();
+ * stmt.setNamespace("test");
+ * stmt.setSetName("users");
+ * stmt.setFilter(Filter.equal("status", "active"));
+ * RecordSet rs = client.query(queryPolicy, stmt);
+ * }</pre>
+ *
+ * @see Statement#setFilter(Filter)
+ * @see IndexCollectionType
  */
 public final class Filter {
 	/**
-	 * Create long equality filter for query.
+	 * Creates a long equality filter for a secondary index query on the given bin.
 	 *
-	 * @param name			bin name
-	 * @param value			filter value
-	 * @param ctx			optional context for elements within a CDT
-	 * @return				filter instance
+	 * @param name bin name that has a secondary index defined; must not be {@code null}
+	 * @param value value to match (equality)
+	 * @param ctx optional context for elements within a CDT; may be empty
+	 * @return a filter instance for use with {@link Statement#setFilter(Filter)}
 	 */
 	public static Filter equal(String name, long value, CTX... ctx) {
 		Value val = Value.get(value);
@@ -69,12 +83,12 @@ public final class Filter {
 	}
 
 	/**
-	 * Create string equality filter for query.
+	 * Creates a string equality filter for a secondary index query on the given bin.
 	 *
-	 * @param name			bin name
-	 * @param value			filter value
-	 * @param ctx			optional context for elements within a CDT
-	 * @return				filter instance
+	 * @param name bin name that has a secondary index defined; must not be {@code null}
+	 * @param value string value to match (equality); may be {@code null}
+	 * @param ctx optional context for elements within a CDT; may be empty
+	 * @return a filter instance for use with {@link Statement#setFilter(Filter)}
 	 */
 	public static Filter equal(String name, String value, CTX... ctx) {
 		Value val = Value.get(value);
@@ -270,15 +284,15 @@ public final class Filter {
 	}
 
 	/**
-	 * Create range filter for query.
-	 * Range arguments must be longs or integers which can be cast to longs.
-	 * String ranges are not supported.
+	 * Creates a numeric range filter (inclusive begin and end) for a secondary index query on the given bin.
 	 *
-	 * @param name			bin name
-	 * @param begin			filter begin value inclusive
-	 * @param end			filter end value inclusive
-	 * @param ctx			optional context for elements within a CDT
-	 * @return				filter instance
+	 * <p>Range arguments must be numeric (long or castable to long); string ranges are not supported.
+	 *
+	 * @param name bin name that has a secondary index defined; must not be {@code null}
+	 * @param begin inclusive start of range
+	 * @param end inclusive end of range
+	 * @param ctx optional context for elements within a CDT; may be empty
+	 * @return a filter instance for use with {@link Statement#setFilter(Filter)}
 	 */
 	public static Filter range(String name, long begin, long end, CTX... ctx) {
 		return new Filter(name, IndexCollectionType.DEFAULT, ParticleType.INTEGER, Value.get(begin), Value.get(end), ctx);

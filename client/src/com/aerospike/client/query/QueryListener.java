@@ -21,8 +21,32 @@ import com.aerospike.client.Key;
 import com.aerospike.client.Record;
 
 /**
- * Result notification for sync query command.
- * The results are sent one record at a time.
+ * Callback invoked for each record returned by a synchronous secondary-index query.
+ * Use this listener when you want to process records one at a time instead of buffering
+ * a full {@link RecordSet}; results are streamed and the receive order is not guaranteed.
+ * <p>
+ * No built-in implementations; implement this interface in application code and pass to
+ * {@link com.aerospike.client.IAerospikeClient#query(com.aerospike.client.policy.QueryPolicy, Statement, QueryListener)}
+ * or the overload with {@link PartitionFilter}. To abort from inside the callback, throw
+ * {@link AerospikeException.QueryTerminated}.
+ * <p>Implement onRecord and pass to query to process each record as it arrives; close resources in caller when done.</p>
+ * <pre>{@code
+ * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+ * Statement stmt = new Statement();
+ * stmt.setNamespace("test");
+ * stmt.setSetName("users");
+ * client.query(queryPolicy, stmt, new QueryListener() {
+ *   public void onRecord(Key key, Record record) {
+ *     // process key, record
+ *   }
+ * });
+ * }</pre>
+ *
+ * @see com.aerospike.client.AerospikeClient#query(com.aerospike.client.policy.QueryPolicy, Statement, QueryListener)
+ * @see com.aerospike.client.AerospikeClient#query(com.aerospike.client.policy.QueryPolicy, Statement, PartitionFilter, QueryListener)
+ * @see Statement
+ * @see QueryListenerExecutor
+ * @see QueryListenerCommand
  */
 public interface QueryListener {
 	/**
@@ -36,7 +60,7 @@ public interface QueryListener {
 	 *
 	 * @param key					unique record identifier
 	 * @param record				record instance
-	 * @throws AerospikeException	if error occurs or query should be terminated.
+	 * @throws AerospikeException	when an error occurs or the query should be terminated (e.g. throw {@link AerospikeException.QueryTerminated} to terminate).
 	 */
 	public void onRecord(Key key, Record record);
 }

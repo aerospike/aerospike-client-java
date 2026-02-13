@@ -33,7 +33,69 @@ import com.aerospike.client.configuration.serializers.staticconfig.StaticClientC
 import com.aerospike.client.util.Util;
 
 /**
- * Container object for client policy Command.
+ * Configuration for cluster connection and default policies used by {@link com.aerospike.client.AerospikeClient}.
+ *
+ * <p>This policy controls connection pool sizes, timeouts, authentication, TLS, thread pool,
+ * and default read/write/query/batch policies. Pass an instance to
+ * {@link com.aerospike.client.AerospikeClient} when creating the client.
+ *
+ * <p>Configure auth, timeouts, connection pool and default policies, then pass to AerospikeClient constructor.</p>
+ * <pre>{@code
+ * ClientPolicy policy = new ClientPolicy();
+ * policy.user = "admin";                    // auth user
+ * policy.password = "secret";               // auth password
+ * policy.clusterName = "mycluster";         // expected cluster name
+ * policy.authMode = AuthMode.INTERNAL;      // INTERNAL/EXTERNAL/PKI. Client must use same auth method as server to log in
+ * policy.timeout = 1000;                    // Tend and first-connection timeout (ms); limits wait so client does not block on unreachable nodes
+ * policy.loginTimeout = 5000;               // Login handshake timeout (ms); limits wait when authenticating to each node
+ * policy.closeTimeout = 0;                  // wait for async on close (0=indefinite)
+ * policy.minConnsPerNode = 0;               // min sync connections per node
+ * policy.maxConnsPerNode = 100;             // max sync connections per node
+ * policy.asyncMinConnsPerNode = 0;          // min async connections per node
+ * policy.asyncMaxConnsPerNode = -1;         // max async (-1 = use maxConnsPerNode)
+ * policy.connPoolsPerNode = 1;              // sync connection pools per node
+ * policy.maxSocketIdle = 0;                 // max socket idle seconds (0=no reap)
+ * policy.maxErrorRate = 100;                // max errors per errorRateWindow
+ * policy.errorRateWindow = 1;               // error rate window seconds
+ * policy.tendInterval = 1000;               // cluster tend interval ms
+ * policy.failIfNotConnected = true;          // fail if no connection at init
+ * policy.validateClusterName = true;         // validate cluster name on tend
+ * policy.readPolicyDefault = new Policy();
+ * policy.writePolicyDefault = new WritePolicy();
+ * policy.scanPolicyDefault = new ScanPolicy();
+ * policy.queryPolicyDefault = new QueryPolicy();
+ * policy.batchPolicyDefault = BatchPolicy.ReadDefault();
+ * policy.batchParentPolicyWriteDefault = BatchPolicy.WriteDefault();
+ * policy.batchWritePolicyDefault = new BatchWritePolicy();
+ * policy.batchDeletePolicyDefault = new BatchDeletePolicy();
+ * policy.batchUDFPolicyDefault = new BatchUDFPolicy();
+ * policy.txnVerifyPolicyDefault = new TxnVerifyPolicy();
+ * policy.txnRollPolicyDefault = new TxnRollPolicy();
+ * policy.infoPolicyDefault = new InfoPolicy();
+ * policy.tlsPolicy = null;                  // TLS config (null = plain sockets)
+ * policy.keepAlive = null;                  // TCP keep-alive (null = off)
+ * policy.ipMap = null;                      // IP translation map
+ * policy.threadPool = null;                 // null = default cached pool
+ * policy.sharedThreadPool = false;          // do not shutdown pool on close
+ * policy.useServicesAlternate = false;      // use alt service info commands
+ * policy.forceSingleNode = false;           // single-node mode (testing)
+ * policy.rackAware = false;                 // use rack affinity
+ * policy.rackId = 0;                        // client rack id
+ * policy.rackIds = null;                    // preferred rack list
+ * policy.appId = null;                      // app id for metrics
+ * policy.eventLoops = null;                 // null = async disabled
+ * IAerospikeClient client = new AerospikeClient(policy, "localhost", 3000);
+ * }</pre>
+ *
+ * <p>Related default policies: {@link com.aerospike.client.policy.Policy} (read),
+ * {@link com.aerospike.client.policy.WritePolicy}, {@link com.aerospike.client.policy.ScanPolicy},
+ * {@link com.aerospike.client.policy.QueryPolicy}, {@link com.aerospike.client.policy.BatchPolicy} (batch read/write parent),
+ * {@link com.aerospike.client.policy.BatchWritePolicy}, {@link com.aerospike.client.policy.BatchDeletePolicy},
+ * {@link com.aerospike.client.policy.BatchUDFPolicy}, {@link com.aerospike.client.policy.TxnVerifyPolicy},
+ * {@link com.aerospike.client.policy.TxnRollPolicy}, {@link com.aerospike.client.policy.InfoPolicy},
+ * {@link com.aerospike.client.policy.TlsPolicy}.
+ *
+ * @see com.aerospike.client.AerospikeClient
  */
 public class ClientPolicy {
 	/**
@@ -355,16 +417,16 @@ public class ClientPolicy {
 	 * Underlying thread pool used in synchronous batch, scan, and query commands. These commands
 	 * are often sent to multiple server nodes in parallel threads.  A thread pool improves
 	 * performance because threads do not have to be created/destroyed for each command.
-	 * The default, null, indicates that the following daemon thread pool will be used:
-	 * <pre>
+	 * <p>When null, a default cached daemon thread pool is used as shown below.</p>
+	 * <pre>{@code
 	 * threadPool = Executors.newCachedThreadPool(new ThreadFactory() {
 	 *     public final Thread newThread(Runnable runnable) {
-	 *			Thread thread = new Thread(runnable);
-	 *			thread.setDaemon(true);
-	 *			return thread;
-	 *		}
-	 *	});
-	 * </pre>
+	 *         Thread thread = new Thread(runnable);
+	 *         thread.setDaemon(true);
+	 *         return thread;
+	 *     }
+	 * });
+	 * }</pre>
 	 * Daemon threads automatically terminate when the program terminates.
 	 * <p>
 	 * Default: null (use Executors.newCachedThreadPool)
@@ -454,8 +516,12 @@ public class ClientPolicy {
 	public String appId;
 
 	/**
-	 * Copy client policy from another client policy AND override certain policy attributes if they exist in the
-	 * configProvider. Any policy overrides will not get logged.
+	 * Copies a client policy from another and overrides attributes that exist in the configuration provider.
+	 *
+	 * <p>Overrides from the config provider are applied but not logged.
+	 *
+	 * @param other the policy to copy from; must not be {@code null}
+	 * @param configProvider the provider of overrides; may be {@code null} (no overrides applied)
 	 */
 	public ClientPolicy(ClientPolicy other, ConfigurationProvider configProvider) {
 		this(other);
@@ -463,8 +529,13 @@ public class ClientPolicy {
 	}
 
 	/**
-	 * Copy client policy from another client policy AND override certain policy attributes if they exist in the
-	 * configProvider. Any default policy overrides will get logged.
+	 * Copies a client policy from another and overrides attributes that exist in the configuration provider.
+	 *
+	 * <p>When {@code isDefaultPolicy} is {@code true}, default policy overrides are logged.
+	 *
+	 * @param other the policy to copy from; must not be {@code null}
+	 * @param configProvider the provider of overrides; may be {@code null} (no overrides applied)
+	 * @param isDefaultPolicy {@code true} to log default policy overrides, {@code false} otherwise
 	 */
 	public ClientPolicy(ClientPolicy other, ConfigurationProvider configProvider, boolean isDefaultPolicy) {
 		this(other);
@@ -472,7 +543,9 @@ public class ClientPolicy {
 	}
 
 	/**
-	 * Copy client policy from another client policy.
+	 * Copies all fields from another client policy.
+	 *
+	 * @param other the policy to copy from; must not be {@code null}
 	 */
 	public ClientPolicy(ClientPolicy other) {
 		this.eventLoops = other.eventLoops;
@@ -520,7 +593,7 @@ public class ClientPolicy {
 	}
 
 	/**
-	 * Default constructor.
+	 * Constructs a client policy with default values for all fields.
 	 */
 	public ClientPolicy() {
 	}

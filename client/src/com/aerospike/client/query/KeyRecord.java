@@ -22,21 +22,55 @@ import com.aerospike.client.Record;
 import java.util.Objects;
 
 /**
- * Container object for key identifier and record data.
+ * Pairs a record key with its record data (bins, generation, expiration), as returned by query and scan.
+ *
+ * <p>Used by {@link com.aerospike.client.query.RecordSet} and query/scan listeners. The key may be {@code null}
+ * for aggregation results that do not return keys; the record may be {@code null} when only digests are requested.
+ *
+ * <p>Iterate query/scan RecordSet and read key and record from each KeyRecord.</p>
+ * <pre>{@code
+ * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+ * RecordSet rs = client.query(policy, stmt);
+ * try {
+ *     for (KeyRecord kr : rs) {
+ *         Key key = kr.key;
+ *         Record rec = kr.record;
+ *         if (rec != null) {
+ *             Object val = rec.getValue("mybin");
+ *         }
+ *     }
+ * } finally {
+ *     rs.close();
+ * }
+ * }</pre>
+ *
+ * <p>Construct a KeyRecord pair from a key and record (e.g. for testing or custom iteration).</p>
+ * <pre>{@code
+ * Key key = new Key("ns", "set", "id");
+ * Record record = client.get(null, key).record;
+ * KeyRecord kr = new KeyRecord(key, record);
+ * }</pre>
+ *
+ * @see com.aerospike.client.query.RecordSet
+ * @see com.aerospike.client.Key
+ * @see com.aerospike.client.Record
  */
 public final class KeyRecord {
 	/**
-	 * Unique identifier for record.
+	 * The record key; may be {@code null} in some aggregation or digest-only results.
 	 */
 	public final Key key;
 
 	/**
-	 * Record header and bin data.
+	 * The record (bins, generation, expiration); may be {@code null} if only digests were requested.
 	 */
 	public final Record record;
 
 	/**
-	 * Initialize key and record.
+	 * Constructs a key-record pair.
+	 *
+	 * @param key the record key; may be {@code null}
+	 * @param record the record data; may be {@code null}
 	 */
 	public KeyRecord(Key key, Record record) {
 		this.key = key;
@@ -44,7 +78,9 @@ public final class KeyRecord {
 	}
 
 	/**
-	 * Hash lookup uses key and record.
+	 * Returns a hash code based on key and record.
+	 *
+	 * @return the hash code
 	 */
 	@Override
 	public int hashCode() {
@@ -52,7 +88,10 @@ public final class KeyRecord {
 	}
 
 	/**
-	 * Equality uses key and record.
+	 * Compares this key-record pair to the specified object for equality.
+	 *
+	 * @param obj the object to compare to
+	 * @return {@code true} if equal, {@code false} otherwise
 	 */
 	@Override
 	public boolean equals(Object obj)
@@ -69,7 +108,9 @@ public final class KeyRecord {
 	}
 
 	/**
-	 * Convert key and record to string.
+	 * Returns a string representation of this key-record pair.
+	 *
+	 * @return string representation
 	 */
 	@Override
 	public String toString() {

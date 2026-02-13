@@ -29,18 +29,38 @@ public interface RecordSequenceListener {
 	 * This method is called when an asynchronous record is received from the server.
 	 * The receive sequence is not ordered.
 	 * <p>
-	 * If this listener is used in a scan/query command, The user may throw a
-	 * {@link com.aerospike.client.AerospikeException.QueryTerminated AerospikeException.QueryTerminated}
-	 * exception if the command should be aborted. If any exception is thrown, parallel command threads
-	 * to other nodes will also be terminated and the exception will be propagated back through the
-	 * onFailure() call.
+	 * If this listener is used in a scan/query command, the user may throw
+	 * {@link AerospikeException.QueryTerminated} or {@link AerospikeException.ScanTerminated}
+	 * to abort. If any exception is thrown, parallel command threads to other nodes will also
+	 * be terminated and the exception will be propagated back through {@link #onFailure(AerospikeException)}.
 	 * <p>
-	 * If this listener is used in a batch command, an user thrown exception will terminate the batch
-	 * to the current node, but parallel batch command threads to other nodes will continue to run.
-	 *
+ * If this listener is used in a batch command, a user-thrown exception will terminate the batch
+ * to the current node, but parallel batch command threads to other nodes will continue to run.
+ * <p>
+ * No built-in implementations; implement this interface in application code and pass to
+ * {@link com.aerospike.client.IAerospikeClient#query(com.aerospike.client.async.EventLoop, RecordSequenceListener, com.aerospike.client.policy.QueryPolicy, com.aerospike.client.query.Statement) query(EventLoop, RecordSequenceListener, ...)}
+ * or batch get / scan async methods.
+ * <p>Implement and pass to async query to receive each record via onRecord, then onSuccess or onFailure.</p>
+ * <pre>{@code
+ * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+ * client.query(eventLoop, new RecordSequenceListener() {
+ *   public void onRecord(Key key, Record record) throws AerospikeException {
+ *     if (record != null) {
+ *       System.out.println(key + " " + record.getString("name"));
+ *     }
+ *   }
+ *   public void onSuccess() { }
+ *   public void onFailure(AerospikeException e) { e.printStackTrace(); }
+ * }, null, stmt);
+ * }</pre>
+ *
 	 * @param key					unique record identifier
-	 * @param record				record instance, will be null if the key is not found
-	 * @throws AerospikeException	if error occurs or scan should be terminated.
+	 * @param record				record instance; null if the key is not found
+	 * @throws AerospikeException	when an error occurs or the scan/query should be terminated (e.g. throw {@link AerospikeException.ScanTerminated} to abort).
+	 * @see #onSuccess()
+	 * @see #onFailure(AerospikeException)
+	 * @see com.aerospike.client.AerospikeClient#query(com.aerospike.client.async.EventLoop, RecordSequenceListener, com.aerospike.client.policy.QueryPolicy, com.aerospike.client.query.Statement)
+	 * @see com.aerospike.client.AerospikeClient#get(com.aerospike.client.async.EventLoop, RecordSequenceListener, com.aerospike.client.policy.BatchPolicy, com.aerospike.client.Key[])
 	 */
 	public void onRecord(Key key, Record record) throws AerospikeException;
 

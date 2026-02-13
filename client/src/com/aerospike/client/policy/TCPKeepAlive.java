@@ -17,7 +17,14 @@
 package com.aerospike.client.policy;
 
 /**
- * TCP keep-alive policy. This configuration only referenced when using native Netty epoll library.
+ * TCP keep-alive policy. Referenced when using native Netty epoll library; set on
+ * {@link ClientPolicy#keepAlive} to enable TCP keep-alive on connections.
+ * <p>Set idle, interval and probes then assign to ClientPolicy.keepAlive for Netty epoll.</p>
+ * <pre>{@code
+ * ClientPolicy policy = new ClientPolicy();
+ * policy.keepAlive = new TCPKeepAlive(59, 59, 2);
+ * IAerospikeClient client = new AerospikeClient(policy, "localhost", 3000);
+ * }</pre>
  */
 public final class TCPKeepAlive {
 	/**

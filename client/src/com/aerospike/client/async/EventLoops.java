@@ -19,7 +19,22 @@ package com.aerospike.client.async;
 import java.io.Closeable;
 
 /**
- * Aerospike event loops interface.
+ * Aerospike event loops interface. Supplies event loops for async operations; pass to
+ * {@link com.aerospike.client.AerospikeClient}
+ * or use with {@link EventLoop#execute(Runnable)}.
+ * <p>
+ * Implementations: {@link NioEventLoops}, {@link NettyEventLoops}.
+ * <p>Create NioEventLoops or NettyEventLoops and pass to AerospikeClient for async usage.</p>
+ * <pre>{@code
+ * EventLoops eventLoops = new NioEventLoops(2);
+ * IAerospikeClient client = new AerospikeClient(new ClientPolicy(), new Host("localhost", 3000), eventLoops);
+ * EventLoop loop = eventLoops.next();
+ * client.put(loop, writeListener, null, key, bins);
+ * eventLoops.close();
+ * }</pre>
+ *
+ * @see NioEventLoops
+ * @see NettyEventLoops
  */
 public interface EventLoops extends Closeable {
 	/**

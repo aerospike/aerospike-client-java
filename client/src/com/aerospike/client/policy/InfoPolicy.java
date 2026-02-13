@@ -17,7 +17,15 @@
 package com.aerospike.client.policy;
 
 /**
- * Policy attributes used for info commands.
+ * Policy attributes used for info commands. Pass to {@link com.aerospike.client.AerospikeClient#info}
+ * and other info-based methods to control socket timeout.
+ * <p>Set timeout and pass to info command.</p>
+ * <pre>{@code
+ * InfoPolicy policy = new InfoPolicy();
+ * policy.timeout = 2000;
+ * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+ * java.util.Map<String, String> map = client.info(policy, client.getNodes()[0], "stat");
+ * }</pre>
  */
 public final class InfoPolicy {
 	/**

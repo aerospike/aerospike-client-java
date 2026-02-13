@@ -17,16 +17,52 @@
 package com.aerospike.client;
 
 /**
- * Transaction abort status code.
+ * Status code for a transaction abort operation.
+ *
+ * <p>Indicates success ({@link #OK}, {@link #ALREADY_ABORTED}) or that the client roll-back/close was abandoned
+ * and the server will eventually abort. The {@link #str} field holds the full message for logging or display.
+ *
+ * <p>Abort a transaction and check the returned status.</p>
+ * <pre>{@code
+ * IAerospikeClient client = new AerospikeClient(new ClientPolicy(), "localhost", 3000);
+ * Txn txn = new Txn();
+ * // ... attach txn to multi-record ops, then decide to abort
+ * AbortStatus status = client.abort(txn);
+ * if (status == AbortStatus.OK || status == AbortStatus.ALREADY_ABORTED) {
+ *     // Abort completed or was already aborted
+ * } else {
+ *     // ROLL_BACK_ABANDONED or CLOSE_ABANDONED; server will eventually abort
+ *     System.err.println(status.str);
+ * }
+ * }</pre>
+ *
+ * @see com.aerospike.client.CommitStatus
+ * @see com.aerospike.client.CommitError
+ * @see com.aerospike.client.AerospikeClient#abort
  */
 public enum AbortStatus {
+	/** Abort completed successfully. */
 	OK("Abort succeeded"),
+
+	/** Transaction was already aborted (e.g. duplicate abort). */
 	ALREADY_ABORTED("Already aborted"),
+
+	/** Client roll-back was abandoned; server will eventually abort the transaction. */
 	ROLL_BACK_ABANDONED("Transaction client roll back abandoned. Server will eventually abort the transaction."),
+
+	/** Transaction was rolled back but client close was abandoned; server will eventually close. */
 	CLOSE_ABANDONED("Transaction has been rolled back, but transaction client close was abandoned. Server will eventually close the transaction.");
 
+	/**
+	 * Full status message for this value; suitable for logging or user display.
+	 */
 	public final String str;
 
+	/**
+	 * Constructor for enum constant.
+	 *
+	 * @param str the full status message
+	 */
 	AbortStatus(String str) {
 		this.str = str;
 	}

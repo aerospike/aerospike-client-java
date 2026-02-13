@@ -22,6 +22,19 @@ import com.aerospike.client.Key;
 /**
  * Asynchronous result notifications for batch exists commands.
  * The results are sent one record at a time.
+ * <p>
+ * No built-in implementations; implement this interface in application code and pass to
+ * {@link com.aerospike.client.IAerospikeClient#exists(com.aerospike.client.async.EventLoop, ExistsSequenceListener, com.aerospike.client.policy.BatchPolicy, com.aerospike.client.Key[]) exists(EventLoop, ExistsSequenceListener, ...)}.
+ * <p>Implement and pass to async batch exists to receive each key and exists flag via onExists, then onSuccess or onFailure.</p>
+ * <pre>{@code
+ * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+ * client.exists(eventLoop, new ExistsSequenceListener() {
+ *   public void onExists(Key key, boolean exists) { // use per key
+ *   }
+ *   public void onSuccess() { }
+ *   public void onFailure(AerospikeException ae) { ae.printStackTrace(); }
+ * }, null, keys);
+ * }</pre>
  */
 public interface ExistsSequenceListener {
 	/**

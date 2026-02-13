@@ -39,7 +39,7 @@ public final class TlsPolicy {
 	 * instance needs to be shared between multiple AerospikeClient instances. If this field
 	 * is null, the AerospikeClient constructor will create a new NettyTlsContext when netty
 	 * eventloops are used with TLS.
-	 *
+	 * <p>Share NettyTlsContext across multiple AerospikeClient instances when using Netty with TLS.</p>
 	 * <pre>{@code
 	 * // Share NettyTlsContext across AerospikeClient instances.
 	 * TlsPolicy tp = new TlsPolicy();
@@ -49,8 +49,8 @@ public final class TlsPolicy {
 	 * ClientPolicy cp = new ClientPolicy();
 	 * cp.tlsPolicy = tp;
 	 *
-	 * AerospikeClient cluster1 = new AerospikeClient(cp, "host1", 3000);
-	 * AerospikeClient cluster2 = new AerospikeClient(cp, "host2", 3000);
+	 * IAerospikeClient cluster1 = new AerospikeClient(cp, "host1", 3000);
+	 * IAerospikeClient cluster2 = new AerospikeClient(cp, "host2", 3000);
 	 * }</pre>
 	 *
 	 * Default: null (create NettyTlsContext for each AerospikeClient instance when netty is used).
@@ -60,13 +60,12 @@ public final class TlsPolicy {
 	/**
 	 * Allowable TLS protocols that the client can use for secure connections.
 	 * Available cipher names can be obtained by {@link javax.net.ssl.SSLSocket#getSupportedProtocols()}
-	 * Multiple protocols can be specified. Example:
-	 * <pre>
-	 * {@code
+	 * Multiple protocols can be specified.
+	 * <p>Set allowed TLS protocols (e.g. TLSv1.2).</p>
+	 * <pre>{@code
 	 * TlsPolicy policy = new TlsPolicy();
 	 * policy.protocols = new String[] {"TLSv1", "TLSv1.1", "TLSv1.2"};
-	 * }
-	 * </pre>
+	 * }</pre>
 	 * Default: TLSv1.2 (Only allow TLSv1.2 protocol)
 	 */
 	public String[] protocols = new String[] {"TLSv1.2"};

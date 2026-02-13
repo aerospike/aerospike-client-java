@@ -17,7 +17,13 @@
 package com.aerospike.client.operation;
 
 /**
- * Bitwise operation flags for resize.
+ * Bitwise operation flags for resize. Use with {@link BitOperation#resize(BitPolicy, String, int, int)};
+ * combine with BITWISE OR if needed.
+ * <p>Use DEFAULT, FROM_FRONT, GROW_ONLY, or SHRINK_ONLY when resizing bit bins.</p>
+ * <pre>{@code
+ * client.operate(null, key, BitOperation.resize(BitPolicy.Default, "bits", 8, BitResizeFlags.DEFAULT));
+ * client.operate(null, key, BitOperation.resize(BitPolicy.Default, "bits", 16, BitResizeFlags.GROW_ONLY));
+ * }</pre>
  */
 public final class BitResizeFlags {
 	/**

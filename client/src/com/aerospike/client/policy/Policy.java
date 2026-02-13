@@ -27,7 +27,38 @@ import com.aerospike.client.configuration.serializers.dynamicconfig.DynamicReadC
 import com.aerospike.client.exp.Expression;
 
 /**
- * Command policy attributes used in all database commands.
+ * Base policy for read and read-like database commands (get, exists, operate read, query, scan, etc.).
+ *
+ * <p>Defines timeouts, retries, replica selection, optional expression filter, and transaction attachment.
+ * Subclasses (e.g. {@link com.aerospike.client.policy.WritePolicy}, {@link com.aerospike.client.policy.QueryPolicy})
+ * add command-specific options.
+ *
+ * <p>Set timeouts, replica, filterExp and pass to get or other read commands.</p>
+ * <pre>{@code
+ * Policy policy = new Policy();
+ * policy.txn = null;                         // Attach command to multi-record transaction; null = no txn
+ * policy.readModeAP = ReadModeAP.ONE;        // AP namespace: which replica to read (ONE, ALL, etc.)
+ * policy.readModeSC = ReadModeSC.SESSION;    // SC namespace: session/linearize/allow_unavailable
+ * policy.replica = Replica.SEQUENCE;         // Which partition replica (SEQUENCE, MASTER, PREFER_RACK, etc.)
+ * policy.filterExp = null;                   // Expression filter; if false, command skipped (e.g. Exp.build(...))
+ * policy.connectTimeout = 0;                 // Ms for new connection; 0 = use socket/total timeout (intent: bound TLS/connect cost)
+ * policy.socketTimeout = 30000;              // Ms socket idle during command; intent: detect stuck connections
+ * policy.totalTimeout = 1000;                // Ms total command time; intent: fail fast, avoid indefinite wait
+ * policy.timeoutDelay = 0;                   // Ms to drain socket on timeout before close; intent: avoid RST on cloud
+ * policy.maxRetries = 2;                     // Retries after initial attempt; 0 for non-idempotent writes (intent: tolerate transient failures)
+ * policy.sleepBetweenRetries = 0;            // Ms sleep between retries; intent: give cluster time to reform
+ * policy.sleepMultiplier = 1.0;              // Exponential backoff factor for retries (> 1.0)
+ * policy.readTouchTtlPercent = 0;            // 0=server default, -1=no touch, 1-100=read refreshes TTL (intent: read-based LRU)
+ * policy.sendKey = false;                    // Send user key with request; intent: store/validate key on server
+ * policy.compress = false;                   // Zlib compress buffers; intent: reduce network size (EE server)
+ * policy.failOnFilteredOut = false;          // Throw if filterExp skips command; intent: surface filtered-out as error
+ * client.get(policy, key);
+ * }</pre>
+ *
+ * @see com.aerospike.client.policy.WritePolicy
+ * @see com.aerospike.client.policy.QueryPolicy
+ * @see com.aerospike.client.policy.ScanPolicy
+ * @see com.aerospike.client.policy.BatchPolicy
  */
 public class Policy {
 	/**
@@ -61,16 +92,16 @@ public class Policy {
 	public Replica replica = Replica.SEQUENCE;
 
 	/**
-	 * Optional expression filter. If filterExp exists and evaluates to false, the
-	 * command is ignored.
-	 * <p>
-	 * Default: null
-	 * <p>
-	 * <pre>Example:{@code
-	 * Policy p = new Policy();
-	 * p.filterExp = Exp.build(Exp.eq(Exp.intBin("a"), Exp.val(11)));
-	 * }</pre>
-	 */
+	 * Optional expression filter; if set and the expression evaluates to false, the command is skipped.
+ * <p>
+ * Default: null
+ * <p>
+ * <p>Set filterExp to skip records that do not match the expression.</p>
+ * <pre>{@code
+ * Policy p = new Policy();
+ * p.filterExp = Exp.build(Exp.eq(Exp.intBin("a"), Exp.val(11)));
+ * }</pre>
+ */
 	public Expression filterExp;
 
 	/**

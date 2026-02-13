@@ -24,7 +24,17 @@ import com.aerospike.client.configuration.serializers.dynamicconfig.DynamicBatch
 import com.aerospike.client.exp.Expression;
 
 /**
- * Policy attributes used in batch write commands.
+ * Policy attributes used in batch write commands. Used with {@link BatchPolicy} and
+ * {@link com.aerospike.client.AerospikeClient#put(com.aerospike.client.policy.BatchPolicy, java.util.List)}
+ * or batch operate; defines recordExistsAction, generationPolicy, etc. per batch or per key.
+ * <p>Set record-exists action and use as batch write default or per-key policy.</p>
+ * <pre>{@code
+ * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+ * BatchWritePolicy policy = new BatchWritePolicy();
+ * policy.recordExistsAction = RecordExistsAction.REPLACE;
+ * BatchPolicy batchPolicy = BatchPolicy.WriteDefault();
+ * client.put(batchPolicy, batchRecords);
+ * }</pre>
  */
 public final class BatchWritePolicy {
 	/**

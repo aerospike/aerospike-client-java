@@ -17,8 +17,8 @@
 package com.aerospike.client.cdt;
 
 /**
- * List write bit flags. Use BITWISE OR to combine flags. Example:
- * 
+ * List write bit flags. Use BITWISE OR to combine flags.
+ * <p>Combine flags with bitwise OR for list operations.</p>
  * <pre>{@code 
  * int flags = ListWriteFlags.ADD_UNIQUE | ListWriteFlags.NO_FAIL | ListWriteFlags.PARTIAL;
  * }</pre>

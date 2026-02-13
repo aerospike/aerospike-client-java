@@ -21,6 +21,18 @@ import com.aerospike.client.Key;
 
 /**
  * Asynchronous result notifications for delete commands.
+ * <p>
+ * No built-in implementations; implement this interface in application code and pass to
+ * {@link com.aerospike.client.IAerospikeClient#delete(com.aerospike.client.async.EventLoop, DeleteListener, com.aerospike.client.policy.WritePolicy, com.aerospike.client.Key) delete(EventLoop, DeleteListener, ...)}.
+ * <p>Implement and pass to async delete to receive key and existed flag on success or exception on failure.</p>
+ * <pre>{@code
+ * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+ * client.delete(eventLoop, new DeleteListener() {
+ *   public void onSuccess(Key key, boolean existed) { // done
+ *   }
+ *   public void onFailure(AerospikeException ae) { ae.printStackTrace(); }
+ * }, null, key);
+ * }</pre>
  */
 public interface DeleteListener {
 	/**

@@ -23,7 +23,16 @@ import com.aerospike.client.AerospikeException;
 import com.aerospike.client.util.Util;
 
 /**
- * Asynchronous event loops.
+ * Asynchronous event loops using direct NIO. Implements {@link EventLoops}; create and pass to
+ * {@link com.aerospike.client.AerospikeClient}
+ * <p>Create NIO event loops (e.g. 2 or 4) and use with AerospikeClient for async operations.</p>
+ * <pre>{@code
+ * EventLoops eventLoops = new NioEventLoops(4);
+ * IAerospikeClient client = new AerospikeClient(new ClientPolicy(), new Host("localhost", 3000), eventLoops);
+ * EventLoop loop = eventLoops.next();
+ * client.get(loop, recordListener, null, key);
+ * eventLoops.close();
+ * }</pre>
  */
 public final class NioEventLoops implements EventLoops {
 

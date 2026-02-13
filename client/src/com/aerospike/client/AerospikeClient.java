@@ -139,16 +139,28 @@ import com.aerospike.client.util.Util;
 import com.aerospike.client.util.Version;
 
 /**
- * Instantiate an <code>AerospikeClient</code> object to access an Aerospike
- * database cluster and perform database operations.
- * <p>
- * This client is thread-safe. One client instance should be used per cluster.
- * Multiple threads should share this cluster instance.
- * <p>
- * Your application uses this class API to perform database operations such as
- * writing and reading records, and selecting sets of records. Write operations
- * include specialized functionality such as append/prepend and arithmetic
- * addition.
+ * Main client for connecting to an Aerospike cluster and performing database operations.
+ *
+ * <p><b>Overview</b>
+ * <ul>
+ *   <li>Thread-safe: use one client instance per cluster and share it across threads.</li>
+ *   <li>Supports synchronous and asynchronous APIs; async methods use {@link com.aerospike.client.async.EventLoop EventLoop}s.</li>
+ *   <li>Operations include read/write, batch, scan, query, UDF execute, and admin (security).</li>
+ * </ul>
+ *
+ * <p>Connect, write, read, then close the client.</p>
+ * <pre>{@code
+ * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+ * Key key = new Key("test", "set1", "id1");
+ * client.put(null, key, new Bin("name", "Alice"), new Bin("age", 30));
+ * Record rec = client.get(null, key);
+ * if (rec != null) { System.out.println(rec.getString("name")); }
+ * client.close();
+ * }</pre>
+ *
+ * @see ClientPolicy
+ * @see Key
+ * @see Bin
  */
 public class AerospikeClient implements IAerospikeClient, Closeable {
 	//-------------------------------------------------------
@@ -421,7 +433,19 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	}
 
 	/**
-	 * Return the client's ConfigurationProvider.
+	 * Return the client's configuration provider, if set via {@link ClientPolicy}.
+	 *
+	 * <p>Example demonstrating usage of this method.</p>
+	 * <pre>{@code
+	 * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+	 * try {
+	 *     ConfigurationProvider cp = client.getConfigProvider();
+	 *     if (cp != null) { // use config
+	 *     }
+	 * } finally { client.close(); }
+	 * }</pre>
+	 *
+	 * @return the configuration provider, or null if none was set
 	 */
 	public ConfigurationProvider getConfigProvider() {
 		return configProvider;
@@ -683,6 +707,15 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * This close() method will wait for shutdown if the current thread is not
 	 * an event loop thread.  It's recommended to call close() from a non event
 	 * loop thread for this reason.
+	 *
+	 * <p>Example demonstrating usage of this method.</p>
+	 * <pre>{@code
+	 * try (IAerospikeClient client = new AerospikeClient("localhost", 3000)) {
+	 *     // ... use client ...
+	 * } finally {
+	 *    client.close();
+	 * }
+	 * }</pre>
 	 */
 	public void close() {
 		cluster.close();
@@ -690,6 +723,15 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 
 	/**
 	 * Determine if we are ready to talk to the database server cluster.
+	 *
+	 * <p>Example demonstrating usage of this method.</p>
+	 * <pre>{@code
+	 * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+	 * try {
+	 *     if (client.isConnected()) { // use cluster
+	 *     }
+	 * } finally { client.close(); }
+	 * }</pre>
 	 *
 	 * @return	<code>true</code> if cluster is ready,
 	 * 			<code>false</code> if cluster is not ready
@@ -700,6 +742,16 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 
 	/**
 	 * Return array of active server nodes in the cluster.
+	 *
+	 * <p>Example demonstrating usage of this method.</p>
+	 * <pre>{@code
+	 * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+	 * try {
+	 *     for (Node n : client.getNodes()) { System.out.println(n.getName()); }
+	 * } finally { client.close(); }
+	 * }</pre>
+	 *
+	 * @return array of active cluster nodes
 	 */
 	public final Node[] getNodes() {
 		return cluster.getNodes();
@@ -707,6 +759,16 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 
 	/**
 	 * Return list of active server node names in the cluster.
+	 *
+	 * <p>Example demonstrating usage of this method.</p>
+	 * <pre>{@code
+	 * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+	 * try {
+	 *     List<String> names = client.getNodeNames();
+	 * } finally { client.close(); }
+	 * }</pre>
+	 *
+	 * @return list of node names
 	 */
 	public final List<String> getNodeNames() {
 		Node[] nodes = cluster.getNodes();
@@ -720,6 +782,17 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 
 	/**
 	 * Return node given its name.
+	 *
+	 * <p>Example demonstrating usage of this method.</p>
+	 * <pre>{@code
+	 * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+	 * try {
+	 *     Node n = client.getNode("BB9020011AC4202");
+	 * } finally { client.close(); }
+	 * }</pre>
+	 *
+	 * @param nodeName	node name
+	 * @return the node
 	 * @throws AerospikeException.InvalidNode	if node does not exist.
 	 */
 	public final Node getNode(String nodeName)
@@ -729,6 +802,16 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 
 	/**
 	 * Enable extended periodic cluster and node latency metrics.
+	 *
+	 * <p>Example demonstrating usage of this method.</p>
+	 * <pre>{@code
+	 * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+	 * try {
+	 *     client.enableMetrics(new MetricsPolicy());
+	 * } finally { client.close(); }
+	 * }</pre>
+	 *
+	 * @param policy	metrics policy, or null for defaults
 	 */
 	public final void enableMetrics(MetricsPolicy policy) {
 		cluster.enableMetrics(policy);
@@ -736,6 +819,14 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 
 	/**
 	 * Disable extended periodic cluster and node latency metrics.
+	 *
+	 * <p>Example demonstrating usage of this method.</p>
+	 * <pre>{@code
+	 * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+	 * try {
+	 *     client.disableMetrics();
+	 * } finally { client.close(); }
+	 * }</pre>
 	 */
 	public final void disableMetrics() {
 		cluster.disableMetrics();
@@ -743,6 +834,16 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 
 	/**
 	 * Return operating cluster statistics snapshot.
+	 *
+	 * <p>Example demonstrating usage of this method.</p>
+	 * <pre>{@code
+	 * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+	 * try {
+	 *     ClusterStats stats = client.getClusterStats();
+	 * } finally { client.close(); }
+	 * }</pre>
+	 *
+	 * @return current cluster statistics
 	 */
 	public final ClusterStats getClusterStats() {
 		return cluster.getStats();
@@ -750,6 +851,19 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 
 	/**
 	 * Asynchronously return operating cluster statistics snapshot.
+	 *
+	 * <p>Example demonstrating usage of this method.</p>
+	 * <pre>{@code
+	 * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+	 * try {
+	 *     client.getClusterStats((clusterStats, e) -> {
+	 *         if (e != null) throw new RuntimeException(e);
+	 *         // use clusterStats
+	 *     });
+	 * } finally { client.close(); }
+	 * }</pre>
+	 *
+	 * @param listener	callback for the result or error
 	 */
 	public final void getClusterStats(ClusterStatsListener listener) {
 		cluster.getStats(listener);
@@ -757,13 +871,33 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 
 	/**
 	 * Return operating cluster.
+	 *
+	 * <p>Example demonstrating usage of this method.</p>
+	 * <pre>{@code
+	 * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+	 * Cluster c = client.getCluster();
+	 * client.close();
+	 * }</pre>
+	 *
+	 * @return the cluster instance
 	 */
 	public final Cluster getCluster() {
 		return cluster;
 	}
 
 	/**
-	 * Return the client version
+	 * Return the client library version string.
+	 *
+	 * <p>Example demonstrating usage of this method.</p>
+	 * <pre>{@code
+	 * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+	 * try {
+	 *     String v = client.getVersion();
+	 *     System.out.println("Client version: " + v);
+	 * } finally { client.close(); }
+	 * }</pre>
+	 *
+	 * @return the version string (e.g. "9.3.0")
 	 */
 	public String getVersion() {
 		return version;
@@ -779,6 +913,15 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * committed. Otherwise, the transaction is aborted.
 	 * <p>
 	 * Requires server version 8.0+
+	 *
+	 * <p>Example demonstrating usage of this method.</p>
+	 * <pre>{@code
+	 * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+	 * try {
+	 *     // txn is your transaction (e.g. from Txn.addRead/addWrite)
+	 *     CommitStatus status = client.commit(txn);
+	 * } finally { client.close(); }
+	 * }</pre>
 	 *
 	 * @param txn	transaction
 	 * @return		status of the commit on success
@@ -815,6 +958,16 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * The event loop thread will process the command and send the results to the listener.
 	 * <p>
 	 * Requires server version 8.0+
+	 *
+	 * <p>Example demonstrating usage of this method.</p>
+	 * <pre>{@code
+	 * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+	 * try {
+	 *     EventLoop eventLoop = client.getCluster().eventLoops.next();
+	 *     // txn from your transaction flow; eventLoop may be null if not using async
+	 *     client.commit(eventLoop, (status, e) -> { if (e != null) throw new RuntimeException(e); }, txn);
+	 * } finally { client.close(); }
+	 * }</pre>
 	 *
 	 * @param eventLoop		event loop that will process the command. If NULL, the event
 	 * 						loop will be chosen by round-robin.
@@ -856,6 +1009,16 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * <p>
 	 * Requires server version 8.0+
 	 *
+	 * <p>Example demonstrating usage of this method.</p>
+	 * <pre>{@code
+	 * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+	 * try {
+	 *     // txn is your transaction to abort
+	 *     AbortStatus status = client.abort(txn);
+	 *     System.err.println(status.str);
+	 * } finally { client.close(); }
+	 * }</pre>
+	 *
 	 * @param txn	transaction
 	 * @return		status of the abort
 	 */
@@ -883,6 +1046,15 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * The event loop thread will process the command and send the results to the listener.
 	 * <p>
 	 * Requires server version 8.0+
+	 *
+	 * <p>Example demonstrating usage of this method.</p>
+	 * <pre>{@code
+	 * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+	 * try {
+	 *     EventLoop eventLoop = client.getCluster().eventLoops.next();
+	 *     client.abort(eventLoop, (status, e) -> { if (e != null) throw new RuntimeException(e); }, txn);
+	 * } finally { client.close(); }
+	 * }</pre>
 	 *
 	 * @param eventLoop		event loop that will process the command. If NULL, the event
 	 * 						loop will be chosen by round-robin.
@@ -923,6 +1095,15 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * The policy specifies the command timeouts, record expiration and how the command is
 	 * handled when the record already exists.
 	 *
+	 * <p>Example demonstrating usage of this method.</p>
+	 * <pre>{@code
+	 * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+	 * try {
+	 *     Key key = new Key("test", "set1", "id1");
+	 *     client.put(null, key, new Bin("name", "Alice"), new Bin("age", 30));
+	 * } finally { client.close(); }
+	 * }</pre>
+	 *
 	 * @param policy				write configuration parameters, pass in null for defaults
 	 * @param key					unique record identifier
 	 * @param bins					array of bin name/value pairs
@@ -951,6 +1132,17 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * <p>
 	 * The policy specifies the command timeout, record expiration and how the command is
 	 * handled when the record already exists.
+	 *
+	 * <p>Example demonstrating usage of this method.</p>
+	 * <pre>{@code
+	 * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+	 * try {
+	 *     EventLoop eventLoop = client.getCluster().eventLoops.next();
+	 *     Key key = new Key("test", "set1", "id1");
+	 *     client.put(eventLoop, (k, ex) -> { if (ex != null) throw new RuntimeException(ex); },
+	 *         null, key, new Bin("name", "Alice"));
+	 * } finally { client.close(); }
+	 * }</pre>
 	 *
 	 * @param eventLoop				event loop that will process the command. If NULL, the event
 	 * 								loop will be chosen by round-robin.
@@ -986,6 +1178,15 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * handled when the record already exists.
 	 * This call only works for string values.
 	 *
+	 * <p>Example demonstrating usage of this method.</p>
+	 * <pre>{@code
+	 * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+	 * try {
+	 *     Key key = new Key("test", "set1", "id1");
+	 *     client.append(null, key, new Bin("name", "_suffix"));
+	 * } finally { client.close(); }
+	 * }</pre>
+	 *
 	 * @param policy				write configuration parameters, pass in null for defaults
 	 * @param key					unique record identifier
 	 * @param bins					array of bin name/value pairs
@@ -1015,6 +1216,16 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * The policy specifies the command timeout, record expiration and how the command is
 	 * handled when the record already exists.
 	 * This call only works for string values.
+	 *
+	 * <p>Example demonstrating usage of this method.</p>
+	 * <pre>{@code
+	 * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+	 * try {
+	 *     EventLoop eventLoop = client.getCluster().eventLoops.next();
+	 *     Key key = new Key("test", "set1", "id1");
+	 *     client.append(eventLoop, null, null, key, new Bin("name", "_suffix"));
+	 * } finally { client.close(); }
+	 * }</pre>
 	 *
 	 * @param eventLoop				event loop that will process the command. If NULL, the event
 	 * 								loop will be chosen by round-robin.
@@ -1046,6 +1257,15 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * handled when the record already exists.
 	 * This call works only for string values.
 	 *
+	 * <p>Example demonstrating usage of this method.</p>
+	 * <pre>{@code
+	 * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+	 * try {
+	 *     Key key = new Key("test", "set1", "id1");
+	 *     client.prepend(null, key, new Bin("name", "prefix_"));
+	 * } finally { client.close(); }
+	 * }</pre>
+	 *
 	 * @param policy				write configuration parameters, pass in null for defaults
 	 * @param key					unique record identifier
 	 * @param bins					array of bin name/value pairs
@@ -1075,6 +1295,16 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * The policy specifies the command timeout, record expiration and how the command is
 	 * handled when the record already exists.
 	 * This call only works for string values.
+	 *
+	 * <p>Example demonstrating usage of this method.</p>
+	 * <pre>{@code
+	 * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+	 * try {
+	 *     EventLoop eventLoop = client.getCluster().eventLoops.next();
+	 *     Key key = new Key("test", "set1", "id1");
+	 *     client.prepend(eventLoop, null, null, key, new Bin("name", "prefix_"));
+	 * } finally { client.close(); }
+	 * }</pre>
 	 *
 	 * @param eventLoop				event loop that will process the command. If NULL, the event
 	 * 								loop will be chosen by round-robin.
@@ -1110,6 +1340,15 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * command timeout, record expiration and how the command is handled when the record
 	 * already exists.
 	 *
+	 * <p>Example demonstrating usage of this method.</p>
+	 * <pre>{@code
+	 * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+	 * try {
+	 *     Key key = new Key("test", "set1", "id1");
+	 *     client.add(null, key, new Bin("count", 1));
+	 * } finally { client.close(); }
+	 * }</pre>
+	 *
 	 * @param policy				write configuration parameters, pass in null for defaults
 	 * @param key					unique record identifier
 	 * @param bins					array of bin name/value pairs
@@ -1139,6 +1378,16 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * <p>
 	 * This method registers the command with an event loop and returns.
 	 * The event loop thread will process the command and send the results to the listener.
+	 *
+	 * <p>Example demonstrating usage of this method.</p>
+	 * <pre>{@code
+	 * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+	 * try {
+	 *     EventLoop eventLoop = client.getCluster().eventLoops.next();
+	 *     Key key = new Key("test", "set1", "id1");
+	 *     client.add(eventLoop, null, null, key, new Bin("count", 1));
+	 * } finally { client.close(); }
+	 * }</pre>
 	 *
 	 * @param eventLoop				event loop that will process the command. If NULL, the event
 	 * 								loop will be chosen by round-robin.
@@ -1172,6 +1421,15 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * Delete record for specified key.
 	 * The policy specifies the command timeout.
 	 *
+	 * <p>Example demonstrating usage of this method.</p>
+	 * <pre>{@code
+	 * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+	 * try {
+	 *     Key key = new Key("test", "set1", "id1");
+	 *     boolean existed = client.delete(null, key);
+	 * } finally { client.close(); }
+	 * }</pre>
+	 *
 	 * @param policy				delete configuration parameters, pass in null for defaults
 	 * @param key					unique record identifier
 	 * @return						whether record existed on server before deletion
@@ -1201,6 +1459,16 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * <p>
 	 * The policy specifies the command timeout.
 	 *
+	 * <p>Example demonstrating usage of this method.</p>
+	 * <pre>{@code
+	 * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+	 * try {
+	 *     EventLoop eventLoop = client.getCluster().eventLoops.next();
+	 *     Key key = new Key("test", "set1", "id1");
+	 *     client.delete(eventLoop, null, null, key);
+	 * } finally { client.close(); }
+	 * }</pre>
+	 *
 	 * @param eventLoop				event loop that will process the command. If NULL, the event
 	 * 								loop will be chosen by round-robin.
 	 * @param listener				where to send results, pass in null for fire and forget
@@ -1229,6 +1497,15 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * {@link BatchRecord#resultCode} will be {@link ResultCode#KEY_NOT_FOUND_ERROR}.
 	 * <p>
 	 * Requires server version 6.0+
+	 *
+	 * <p>Example demonstrating usage of this method.</p>
+	 * <pre>{@code
+	 * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+	 * try {
+	 *     Key[] keys = new Key[] { new Key("test", "set1", "id1"), new Key("test", "set1", "id2") };
+	 *     BatchResults results = client.delete(null, null, keys);
+	 * } finally { client.close(); }
+	 * }</pre>
 	 *
 	 * @param batchPolicy	batch configuration parameters, pass in null for defaults
 	 * @param deletePolicy	delete configuration parameters, pass in null for defaults
@@ -1301,6 +1578,21 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * {@link ResultCode#KEY_NOT_FOUND_ERROR}.
 	 * <p>
 	 * Requires server version 6.0+
+	 *
+	 * <p>Example demonstrating usage of this method.</p>
+	 * <pre>{@code
+	 * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+	 * try {
+	 *     EventLoop eventLoop = client.getCluster().eventLoops.next();
+	 *     Key[] keys = new Key[] { new Key("test", "set1", "id1"), new Key("test", "set1", "id2") };
+	 *     client.delete(eventLoop, (records, status) -> {
+	 *         for (BatchRecord r : records) {
+	 *             if (r.record != null) { // use r.key, r.record
+	 *             }
+	 *         }
+	 *     }, null, null, keys);
+	 * } finally { client.close(); }
+	 * }</pre>
 	 *
 	 * @param eventLoop		event loop that will process the command. If NULL, the event
 	 * 						loop will be chosen by round-robin.
@@ -1378,6 +1670,19 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * <p>
 	 * Requires server version 6.0+
 	 *
+	 * <p>Example demonstrating usage of this method.</p>
+	 * <pre>{@code
+	 * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+	 * try {
+	 *     EventLoop eventLoop = client.getCluster().eventLoops.next();
+	 *     Key[] keys = new Key[] { new Key("test", "set1", "id1") };
+	 *     client.delete(eventLoop, (record) -> {
+	 *         if (record.record != null) { // use record.key
+	 *         }
+	 *     }, null, null, keys);
+	 * } finally { client.close(); }
+	 * }</pre>
+	 *
 	 * @param eventLoop		event loop that will process the command. If NULL, the event
 	 * 						loop will be chosen by round-robin.
 	 * @param listener		where to send results
@@ -1448,6 +1753,14 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * write new records after the server call returns because new records will have last update times
 	 * greater than the truncate cutoff (set at the time of truncate call).
 	 *
+	 * <p>Example demonstrating usage of this method.</p>
+	 * <pre>{@code
+	 * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+	 * try {
+	 *     client.truncate(null, "test", "set1", null);
+	 * } finally { client.close(); }
+	 * }</pre>
+	 *
 	 * @param policy				info command configuration parameters, pass in null for defaults
 	 * @param ns					required namespace
 	 * @param set					optional set name.  Pass in null to delete all sets in namespace.
@@ -1500,6 +1813,15 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * If the record does not exist, it can't be created because the server deletes empty records.
 	 * Throw an exception if the record does not exist.
 	 *
+	 * <p>Example demonstrating usage of this method.</p>
+	 * <pre>{@code
+	 * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+	 * try {
+	 *     Key key = new Key("test", "set1", "id1");
+	 *     client.touch(null, key);
+	 * } finally { client.close(); }
+	 * }</pre>
+	 *
 	 * @param policy				write configuration parameters, pass in null for defaults
 	 * @param key					unique record identifier
 	 * @throws AerospikeException	if touch fails
@@ -1529,6 +1851,16 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * <p>
 	 * Fail if the record does not exist.
 	 *
+	 * <p>Example demonstrating usage of this method.</p>
+	 * <pre>{@code
+	 * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+	 * try {
+	 *     EventLoop eventLoop = client.getCluster().eventLoops.next();
+	 *     Key key = new Key("test", "set1", "id1");
+	 *     client.touch(eventLoop, null, null, key);
+	 * } finally { client.close(); }
+	 * }</pre>
+	 *
 	 * @param eventLoop				event loop that will process the command. If NULL, the event
 	 * 								loop will be chosen by round-robin.
 	 * @param listener				where to send results, pass in null for fire and forget
@@ -1556,6 +1888,15 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * Reset record's time to expiration using the policy's expiration.
 	 * If the record does not exist, it can't be created because the server deletes empty records.
 	 * Return true if the record exists and is touched. Return false if the record does not exist.
+	 *
+	 * <p>Example demonstrating usage of this method.</p>
+	 * <pre>{@code
+	 * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+	 * try {
+	 *     Key key = new Key("test", "set1", "id1");
+	 *     boolean ok = client.touched(null, key);
+	 * } finally { client.close(); }
+	 * }</pre>
 	 *
 	 * @param policy				write configuration parameters, pass in null for defaults
 	 * @param key					unique record identifier
@@ -1588,6 +1929,19 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * If the record does not exist, send a value of false to
 	 * {@link com.aerospike.client.listener.ExistsListener#onSuccess(Key, boolean)}
 	 *
+	 * <p>Example demonstrating usage of this method.</p>
+	 * <pre>{@code
+	 * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+	 * try {
+	 *     EventLoop eventLoop = client.getCluster().eventLoops.next();
+	 *     Key key = new Key("test", "set1", "id1");
+	 *     client.touched(eventLoop, (k, exists) -> {
+	 *         if (exists) { // record was touched
+	 *         }
+	 *     }, null, key);
+	 * } finally { client.close(); }
+	 * }</pre>
+	 *
 	 * @param eventLoop				event loop that will process the command. If NULL, the event
 	 * 								loop will be chosen by round-robin.
 	 * @param listener				where to send results, pass in null for fire and forget
@@ -1619,6 +1973,15 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * Determine if a record key exists.
 	 * The policy can be used to specify timeouts.
 	 *
+	 * <p>Example demonstrating usage of this method.</p>
+	 * <pre>{@code
+	 * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+	 * try {
+	 *     Key key = new Key("test", "set1", "id1");
+	 *     boolean found = client.exists(null, key);
+	 * } finally { client.close(); }
+	 * }</pre>
+	 *
 	 * @param policy				generic configuration parameters, pass in null for defaults
 	 * @param key					unique record identifier
 	 * @return						whether record exists or not
@@ -1647,6 +2010,19 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * The event loop thread will process the command and send the results to the listener.
 	 * <p>
 	 * The policy can be used to specify timeouts.
+	 *
+	 * <p>Example demonstrating usage of this method.</p>
+	 * <pre>{@code
+	 * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+	 * try {
+	 *     EventLoop eventLoop = client.getCluster().eventLoops.next();
+	 *     Key key = new Key("test", "set1", "id1");
+	 *     client.exists(eventLoop, (k, exists) -> {
+	 *         if (exists) { // key exists
+	 *         }
+	 *     }, null, key);
+	 * } finally { client.close(); }
+	 * }</pre>
 	 *
 	 * @param eventLoop				event loop that will process the command. If NULL, the event
 	 * 								loop will be chosen by round-robin.
@@ -1678,6 +2054,15 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	/**
 	 * Check if multiple record keys exist in one batch call.
 	 * The returned boolean array is in positional order with the original key array order.
+	 *
+	 * <p>Example demonstrating usage of this method.</p>
+	 * <pre>{@code
+	 * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+	 * try {
+	 *     Key[] keys = new Key[] { new Key("test", "set1", "id1"), new Key("test", "set1", "id2") };
+	 *     boolean[] results = client.exists(null, keys);
+	 * } finally { client.close(); }
+	 * }</pre>
 	 *
 	 * @param policy	batch configuration parameters, pass in null for defaults
 	 * @param keys		array of unique record identifiers
@@ -1733,6 +2118,21 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * The event loop thread will process the command and send the results to the listener.
 	 * <p>
 	 * The returned boolean array is in positional order with the original key array order.
+	 *
+	 * <p>Example demonstrating usage of this method.</p>
+	 * <pre>{@code
+	 * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+	 * try {
+	 *     EventLoop eventLoop = client.getCluster().eventLoops.next();
+	 *     Key[] keys = new Key[] { new Key("test", "set1", "id1"), new Key("test", "set1", "id2") };
+	 *     client.exists(eventLoop, (keyArray, existsArray) -> {
+	 *         for (int i = 0; i < keyArray.length; i++) {
+	 *             if (existsArray[i]) { // keyArray[i] exists
+	 *             }
+	 *         }
+	 *     }, null, keys);
+	 * } finally { client.close(); }
+	 * }</pre>
 	 *
 	 * @param eventLoop		event loop that will process the command. If NULL, the event
 	 * 						loop will be chosen by round-robin.
@@ -1790,6 +2190,19 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * <p>
 	 * Each key's result is returned in separate onExists() calls.
 	 *
+	 * <p>Example demonstrating usage of this method.</p>
+	 * <pre>{@code
+	 * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+	 * try {
+	 *     EventLoop eventLoop = client.getCluster().eventLoops.next();
+	 *     Key[] keys = new Key[] { new Key("test", "set1", "id1") };
+	 *     client.exists(eventLoop, (key, exists) -> {
+	 *         if (exists) { // key exists
+	 *         }
+	 *     }, null, keys);
+	 * } finally { client.close(); }
+	 * }</pre>
+	 *
 	 * @param eventLoop		event loop that will process the command. If NULL, the event
 	 * 						loop will be chosen by round-robin.
 	 * @param listener		where to send results
@@ -1846,6 +2259,16 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * Read entire record for specified key.
 	 * The policy can be used to specify timeouts.
 	 *
+	 * <p>Example demonstrating usage of this method.</p>
+	 * <pre>{@code
+	 * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+	 * try {
+	 *     Key key = new Key("test", "set1", "id1");
+	 *     Record rec = client.get(null, key);
+	 *     if (rec != null) { Object val = rec.getValue("name"); }
+	 * } finally { client.close(); }
+	 * }</pre>
+	 *
 	 * @param policy				generic configuration parameters, pass in null for defaults
 	 * @param key					unique record identifier
 	 * @return						if found, return record instance.  If not found, return null.
@@ -1874,6 +2297,18 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * The event loop thread will process the command and send the results to the listener.
 	 * <p>
 	 * The policy can be used to specify timeouts.
+	 *
+	 * <p>Example demonstrating usage of this method.</p>
+	 * <pre>{@code
+	 * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+	 * try {
+	 *     EventLoop eventLoop = client.getCluster().eventLoops.next();
+	 *     Key key = new Key("test", "set1", "id1");
+	 *     client.get(eventLoop, (keyResult, record) -> {
+	 *         if (record != null) { Object val = record.getValue("mybin"); }
+	 *     }, null, key);
+	 * } finally { client.close(); }
+	 * }</pre>
 	 *
 	 * @param eventLoop				event loop that will process the command. If NULL, the event
 	 * 								loop will be chosen by round-robin.
@@ -1906,6 +2341,16 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * Read record header and bins for specified key.
 	 * The policy can be used to specify timeouts.
 	 *
+	 * <p>Example demonstrating usage of this method.</p>
+	 * <pre>{@code
+	 * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+	 * try {
+	 *     Key key = new Key("test", "set1", "id1");
+	 *     Record rec = client.get(null, key, "name", "age");
+	 *     if (rec != null) { String name = rec.getString("name"); }
+	 * } finally { client.close(); }
+	 * }</pre>
+	 *
 	 * @param policy				generic configuration parameters, pass in null for defaults
 	 * @param key					unique record identifier
 	 * @param binNames				bins to retrieve
@@ -1935,6 +2380,18 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * The event loop thread will process the command and send the results to the listener.
 	 * <p>
 	 * The policy can be used to specify timeouts.
+	 *
+	 * <p>Example demonstrating usage of this method.</p>
+	 * <pre>{@code
+	 * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+	 * try {
+	 *     EventLoop eventLoop = client.getCluster().eventLoops.next();
+	 *     Key key = new Key("test", "set1", "id1");
+	 *     client.get(eventLoop, (keyResult, record) -> {
+	 *         if (record != null) { Object name = record.getValue("name"); Object age = record.getValue("age"); }
+	 *     }, null, key, "name", "age");
+	 * } finally { client.close(); }
+	 * }</pre>
 	 *
 	 * @param eventLoop				event loop that will process the command. If NULL, the event
 	 * 								loop will be chosen by round-robin.
@@ -1968,6 +2425,16 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * Read record generation and expiration only for specified key.  Bins are not read.
 	 * The policy can be used to specify timeouts.
 	 *
+	 * <p>Example demonstrating usage of this method.</p>
+	 * <pre>{@code
+	 * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+	 * try {
+	 *     Key key = new Key("test", "set1", "id1");
+	 *     Record rec = client.getHeader(null, key);
+	 *     if (rec != null) { int gen = rec.generation; }
+	 * } finally { client.close(); }
+	 * }</pre>
+	 *
 	 * @param policy				generic configuration parameters, pass in null for defaults
 	 * @param key					unique record identifier
 	 * @return						if found, return record instance.  If not found, return null.
@@ -1996,6 +2463,18 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * The event loop thread will process the command and send the results to the listener.
 	 * <p>
 	 * The policy can be used to specify timeouts.
+	 *
+	 * <p>Example demonstrating usage of this method.</p>
+	 * <pre>{@code
+	 * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+	 * try {
+	 *     EventLoop eventLoop = client.getCluster().eventLoops.next();
+	 *     Key key = new Key("test", "set1", "id1");
+	 *     client.getHeader(eventLoop, (keyResult, record) -> {
+	 *         if (record != null) { int gen = record.generation; int exp = record.expiration; }
+	 *     }, null, key);
+	 * } finally { client.close(); }
+	 * }</pre>
 	 *
 	 * @param eventLoop				event loop that will process the command. If NULL, the event
 	 * 								loop will be chosen by round-robin.
@@ -2033,6 +2512,18 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * This method allows different namespaces/bins to be requested for each key in the batch.
 	 * The returned records are located in the same list.
 	 * If the BatchRead key field is not found, the corresponding record field will be null.
+	 *
+	 * <p>Example demonstrating usage of this method.</p>
+	 * <pre>{@code
+	 * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+	 * try {
+	 *     List<BatchRead> records = new ArrayList<>();
+	 *     records.add(new BatchRead(new Key("test", "set1", "id1")));
+	 *     records.add(new BatchRead(new Key("test", "set1", "id2"), "name"));
+	 *     boolean ok = client.get(null, records);
+	 *     for (BatchRead r : records) { Record rec = r.record; }
+	 * } finally { client.close(); }
+	 * }</pre>
 	 *
 	 * @param policy	batch configuration parameters, pass in null for defaults
 	 * @param records	list of unique record identifiers and the bins to retrieve.
@@ -2082,6 +2573,21 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * This method allows different namespaces/bins to be requested for each key in the batch.
 	 * The returned records are located in the same list.
 	 * If the BatchRead key field is not found, the corresponding record field will be null.
+	 *
+	 * <p>Example demonstrating usage of this method.</p>
+	 * <pre>{@code
+	 * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+	 * try {
+	 *     EventLoop eventLoop = client.getCluster().eventLoops.next();
+	 *     List<BatchRead> records = new ArrayList<>();
+	 *     records.add(new BatchRead(new Key("test", "set1", "id1")));
+	 *     client.get(eventLoop, (list) -> {
+	 *         for (BatchRecord r : list) { if (r.record != null) { // use r.key, r.record
+	 *             }
+	 *         }
+	 *     }, null, records);
+	 * } finally { client.close(); }
+	 * }</pre>
 	 *
 	 * @param eventLoop		event loop that will process the command. If NULL, the event
 	 * 						loop will be chosen by round-robin.
@@ -2138,6 +2644,19 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * Each record result is returned in separate onRecord() calls.
 	 * If the BatchRead key field is not found, the corresponding record field will be null.
 	 *
+	 * <p>Example demonstrating usage of this method.</p>
+	 * <pre>{@code
+	 * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+	 * try {
+	 *     EventLoop eventLoop = client.getCluster().eventLoops.next();
+	 *     List<BatchRead> records = new ArrayList<>();
+	 *     records.add(new BatchRead(new Key("test", "set1", "id1")));
+	 *     client.get(eventLoop, (key, record) -> {
+	 *         if (record != null) { Object val = record.getValue("mybin"); }
+	 *     }, null, records);
+	 * } finally { client.close(); }
+	 * }</pre>
+	 *
 	 * @param eventLoop		event loop that will process the command. If NULL, the event
 	 * 						loop will be chosen by round-robin.
 	 * @param listener		where to send results
@@ -2190,6 +2709,16 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * Read multiple records for specified keys in one batch call.
 	 * The returned records are in positional order with the original key array order.
 	 * If a key is not found, the positional record will be null.
+	 *
+	 * <p>Example demonstrating usage of this method.</p>
+	 * <pre>{@code
+	 * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+	 * try {
+	 *     Key[] keys = new Key[] { new Key("test", "set1", "id1"), new Key("test", "set1", "id2") };
+	 *     Record[] records = client.get(null, keys);
+	 *     for (Record r : records) { if (r != null) { } }
+	 * } finally { client.close(); }
+	 * }</pre>
 	 *
 	 * @param policy	batch configuration parameters, pass in null for defaults
 	 * @param keys		array of unique record identifiers
@@ -2248,6 +2777,24 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * The returned records are in positional order with the original key array order.
 	 * If a key is not found, the positional record will be null.
 	 *
+	 * <p>Example demonstrating usage of this method.</p>
+	 * <pre>{@code
+	 * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+	 * try {
+	 *     EventLoop eventLoop = client.getEventLoops().next();
+	 *     Key[] keys = new Key[] { new Key("test", "set1", "id1"), new Key("test", "set1", "id2") };
+	 *     client.get(eventLoop, (keyArray, recordArray) -> {
+	 *         for (int i = 0; i < keyArray.length; i++) {
+	 *             Record rec = recordArray[i];
+	 *             if (rec != null) {
+	 *                 Object value = rec.getValue("mybin");
+	 *                 // use keyArray[i], value
+	 *             }
+	 *         }
+	 *     }, null, keys);
+	 * } finally { client.close(); }
+	 * }</pre>
+	 *
 	 * @param eventLoop		event loop that will process the command. If NULL, the event
 	 * 						loop will be chosen by round-robin.
 	 * @param listener		where to send results
@@ -2305,6 +2852,18 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * Each record result is returned in separate onRecord() calls.
 	 * If a key is not found, the record will be null.
 	 *
+	 * <p>Example demonstrating usage of this method.</p>
+	 * <pre>{@code
+	 * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+	 * try {
+	 *     EventLoop eventLoop = client.getEventLoops().next();
+	 *     Key[] keys = new Key[] { new Key("test", "set1", "id1"), new Key("test", "set1", "id2") };
+	 *     client.get(eventLoop, (key, record) -> {
+	 *         if (record != null) { Object val = record.getValue("mybin"); }
+	 *     }, null, keys);
+	 * } finally { client.close(); }
+	 * }</pre>
+	 *
 	 * @param eventLoop		event loop that will process the command. If NULL, the event
 	 * 						loop will be chosen by round-robin.
 	 * @param listener		where to send results
@@ -2357,6 +2916,15 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * Read multiple record headers and bins for specified keys in one batch call.
 	 * The returned records are in positional order with the original key array order.
 	 * If a key is not found, the positional record will be null.
+	 *
+	 * <p>Example demonstrating usage of this method.</p>
+	 * <pre>{@code
+	 * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+	 * try {
+	 *     Key[] keys = new Key[] { new Key("test", "set1", "id1"), new Key("test", "set1", "id2") };
+	 *     Record[] records = client.get(null, keys, "name", "age");
+	 * } finally { client.close(); }
+	 * }</pre>
 	 *
 	 * @param policy	batch configuration parameters, pass in null for defaults
 	 * @param keys		array of unique record identifiers
@@ -2417,6 +2985,21 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * <p>
 	 * The returned records are in positional order with the original key array order.
 	 * If a key is not found, the positional record will be null.
+	 *
+	 * <p>Example demonstrating usage of this method.</p>
+	 * <pre>{@code
+	 * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+	 * try {
+	 *     EventLoop eventLoop = client.getEventLoops().next();
+	 *     Key[] keys = new Key[] { new Key("test", "set1", "id1"), new Key("test", "set1", "id2") };
+	 *     client.get(eventLoop, (keyArray, recordArray) -> {
+	 *         for (int i = 0; i < keyArray.length; i++) {
+	 *             Record rec = recordArray[i];
+	 *             if (rec != null) { Object name = rec.getValue("name"); Object age = rec.getValue("age"); }
+	 *         }
+	 *     }, null, keys, "name", "age");
+	 * } finally { client.close(); }
+	 * }</pre>
 	 *
 	 * @param eventLoop		event loop that will process the command. If NULL, the event
 	 * 						loop will be chosen by round-robin.
@@ -2479,6 +3062,18 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * Each record result is returned in separate onRecord() calls.
 	 * If a key is not found, the record will be null.
 	 *
+	 * <p>Example demonstrating usage of this method.</p>
+	 * <pre>{@code
+	 * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+	 * try {
+	 *     EventLoop eventLoop = client.getEventLoops().next();
+	 *     Key[] keys = new Key[] { new Key("test", "set1", "id1"), new Key("test", "set1", "id2") };
+	 *     client.get(eventLoop, (key, record) -> {
+	 *         if (record != null) { Object name = record.getValue("name"); Object age = record.getValue("age"); }
+	 *     }, null, keys, "name", "age");
+	 * } finally { client.close(); }
+	 * }</pre>
+	 *
 	 * @param eventLoop		event loop that will process the command. If NULL, the event
 	 * 						loop will be chosen by round-robin.
 	 * @param listener		where to send results
@@ -2534,6 +3129,15 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * Read multiple records for specified keys using read operations in one batch call.
 	 * The returned records are in positional order with the original key array order.
 	 * If a key is not found, the positional record will be null.
+	 *
+	 * <p>Example demonstrating usage of this method.</p>
+	 * <pre>{@code
+	 * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+	 * try {
+	 *     Key[] keys = new Key[] { new Key("test", "set1", "id1") };
+	 *     Record[] records = client.get(null, keys, Operation.get("name"));
+	 * } finally { client.close(); }
+	 * }</pre>
 	 *
 	 * @param policy	batch configuration parameters, pass in null for defaults
 	 * @param keys		array of unique record identifiers
@@ -2591,6 +3195,21 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * <p>
 	 * The returned records are in positional order with the original key array order.
 	 * If a key is not found, the positional record will be null.
+	 *
+	 * <p>Example demonstrating usage of this method.</p>
+	 * <pre>{@code
+	 * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+	 * try {
+	 *     EventLoop eventLoop = client.getEventLoops().next();
+	 *     Key[] keys = new Key[] { new Key("test", "set1", "id1") };
+	 *     client.get(eventLoop, (keyArray, recordArray) -> {
+	 *         for (int i = 0; i < keyArray.length; i++) {
+	 *             Record rec = recordArray[i];
+	 *             if (rec != null) { Object name = rec.getValue("name"); }
+	 *         }
+	 *     }, null, keys, Operation.get("name"));
+	 * } finally { client.close(); }
+	 * }</pre>
 	 *
 	 * @param eventLoop		event loop that will process the command. If NULL, the event
 	 * 						loop will be chosen by round-robin.
@@ -2650,6 +3269,18 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * Each record result is returned in separate onRecord() calls.
 	 * If a key is not found, the record will be null.
 	 *
+	 * <p>Example demonstrating usage of this method.</p>
+	 * <pre>{@code
+	 * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+	 * try {
+	 *     EventLoop eventLoop = client.getEventLoops().next();
+	 *     Key[] keys = new Key[] { new Key("test", "set1", "id1") };
+	 *     client.get(eventLoop, (key, record) -> {
+	 *         if (record != null) { Object name = record.getValue("name"); }
+	 *     }, null, keys, Operation.get("name"));
+	 * } finally { client.close(); }
+	 * }</pre>
+	 *
 	 * @param eventLoop		event loop that will process the command. If NULL, the event
 	 * 						loop will be chosen by round-robin.
 	 * @param listener		where to send results
@@ -2702,6 +3333,15 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * Read multiple record header data for specified keys in one batch call.
 	 * The returned records are in positional order with the original key array order.
 	 * If a key is not found, the positional record will be null.
+	 *
+	 * <p>Example demonstrating usage of this method.</p>
+	 * <pre>{@code
+	 * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+	 * try {
+	 *     Key[] keys = new Key[] { new Key("test", "set1", "id1"), new Key("test", "set1", "id2") };
+	 *     Record[] records = client.getHeader(null, keys);
+	 * } finally { client.close(); }
+	 * }</pre>
 	 *
 	 * @param policy	batch configuration parameters, pass in null for defaults
 	 * @param keys		array of unique record identifiers
@@ -2760,6 +3400,21 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * The returned records are in positional order with the original key array order.
 	 * If a key is not found, the positional record will be null.
 	 *
+	 * <p>Example demonstrating usage of this method.</p>
+	 * <pre>{@code
+	 * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+	 * try {
+	 *     EventLoop eventLoop = client.getEventLoops().next();
+	 *     Key[] keys = new Key[] { new Key("test", "set1", "id1"), new Key("test", "set1", "id2") };
+	 *     client.getHeader(eventLoop, (keyArray, recordArray) -> {
+	 *         for (int i = 0; i < keyArray.length; i++) {
+	 *             Record rec = recordArray[i];
+	 *             if (rec != null) { int gen = rec.generation; int exp = rec.expiration; }
+	 *         }
+	 *     }, null, keys);
+	 * } finally { client.close(); }
+	 * }</pre>
+	 *
 	 * @param eventLoop		event loop that will process the command. If NULL, the event
 	 * 						loop will be chosen by round-robin.
 	 * @param listener		where to send results
@@ -2817,6 +3472,18 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * <p>
 	 * Each record result is returned in separate onRecord() calls.
 	 * If a key is not found, the record will be null.
+	 *
+	 * <p>Example demonstrating usage of this method.</p>
+	 * <pre>{@code
+	 * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+	 * try {
+	 *     EventLoop eventLoop = client.getEventLoops().next();
+	 *     Key[] keys = new Key[] { new Key("test", "set1", "id1"), new Key("test", "set1", "id2") };
+	 *     client.getHeader(eventLoop, (key, record) -> {
+	 *         if (record != null) { int gen = record.generation; int exp = record.expiration; }
+	 *     }, null, keys);
+	 * } finally { client.close(); }
+	 * }</pre>
 	 *
 	 * @param eventLoop		event loop that will process the command. If NULL, the event
 	 * 						loop will be chosen by round-robin.
@@ -2882,6 +3549,16 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * Operation results are stored with their associated bin name in the returned record.
 	 * The bin's result type will be a list when multiple operations occur on the same bin.
 	 *
+	 * <p>Example demonstrating usage of this method.</p>
+	 * <pre>{@code
+	 * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+	 * try {
+	 *     Key key = new Key("test", "set1", "id1");
+	 *     Record rec = client.operate(null, key, Operation.add(new Bin("count", 1)), Operation.get("count"));
+	 *     if (rec != null) { long count = rec.getLong("count"); }
+	 * } finally { client.close(); }
+	 * }</pre>
+	 *
 	 * @param policy				write configuration parameters, pass in null for defaults
 	 * @param key					unique record identifier
 	 * @param operations			database operations to perform
@@ -2932,6 +3609,19 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * Operation results are stored with their associated bin name in the returned record.
 	 * The bin's result type will be a list when multiple operations occur on the same bin.
 	 *
+	 * <p>Example demonstrating usage of this method.</p>
+	 * <pre>{@code
+	 * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+	 * try {
+	 *     EventLoop eventLoop = client.getCluster().eventLoops.next();
+	 *     Key key = new Key("test", "set1", "id1");
+	 *     client.operate(eventLoop, (keyResult, record) -> {
+	 *         if (record != null) { Object val = record.getValue("count"); }
+	 *     }, null, key,
+	 *         Operation.add(new Bin("count", 1)), Operation.get("count"));
+	 * } finally { client.close(); }
+	 * }</pre>
+	 *
 	 * @param eventLoop				event loop that will process the command. If NULL, the event
 	 * 								loop will be chosen by round-robin.
 	 * @param listener				where to send results, pass in null for fire and forget
@@ -2980,6 +3670,17 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * {@link BatchUDF}.
 	 * <p>
 	 * Requires server version 6.0+
+	 *
+	 * <p>Example demonstrating usage of this method.</p>
+	 * <pre>{@code
+	 * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+	 * try {
+	 *     List<BatchRecord> records = new ArrayList<>();
+	 *     records.add(new BatchRead(new Key("test", "set1", "id1")));
+	 *     records.add(new BatchWrite(new Key("test", "set1", "id2"), new Bin("x", 1)));
+	 *     boolean ok = client.operate(null, records);
+	 * } finally { client.close(); }
+	 * }</pre>
 	 *
 	 * @param policy	batch configuration parameters, pass in null for defaults
 	 * @param records	list of unique record identifiers and read/write operations
@@ -3101,6 +3802,17 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * {@link BatchUDF}.
 	 * <p>
 	 * Requires server version 6.0+
+	 *
+	 * <p>Example demonstrating usage of this method.</p>
+	 * <pre>{@code
+	 * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+	 * try {
+	 *     EventLoop eventLoop = client.getCluster().eventLoops.next();
+	 *     List<BatchRecord> records = new ArrayList<>();
+	 *     records.add(new BatchRead(new Key("test", "set1", "id1")));
+	 *     client.operate(eventLoop, (list, e) -> { if (e != null) throw new RuntimeException(e); }, null, records);
+	 * } finally { client.close(); }
+	 * }</pre>
 	 *
 	 * @param eventLoop		event loop that will process the command. If NULL, the event
 	 * 						loop will be chosen by round-robin.
@@ -3228,6 +3940,20 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * <p>
 	 * Requires server version 6.0+
 	 *
+	 * <p>Example demonstrating usage of this method.</p>
+	 * <pre>{@code
+	 * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+	 * try {
+	 *     EventLoop eventLoop = client.getCluster().eventLoops.next();
+	 *     List<BatchRecord> records = new ArrayList<>();
+	 *     records.add(new BatchRead(new Key("test", "set1", "id1")));
+	 *     client.operate(eventLoop, (record) -> {
+	 *         if (record.record != null) { // use record.key, record.record
+	 *         }
+	 *     }, null, records);
+	 * } finally { client.close(); }
+	 * }</pre>
+	 *
 	 * @param eventLoop		event loop that will process the command. If NULL, the event
 	 * 						loop will be chosen by round-robin.
 	 * @param listener		where to send results
@@ -3351,6 +4077,15 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * <p>
 	 * Requires server version 6.0+
 	 *
+	 * <p>Example demonstrating usage of this method.</p>
+	 * <pre>{@code
+	 * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+	 * try {
+	 *     Key[] keys = new Key[] { new Key("test", "set1", "id1"), new Key("test", "set1", "id2") };
+	 *     BatchResults results = client.operate(null, null, keys, Operation.get("name"), Operation.get("age"));
+	 * } finally { client.close(); }
+	 * }</pre>
+	 *
 	 * @param batchPolicy	batch configuration parameters, pass in null for defaults
 	 * @param writePolicy	write configuration parameters, pass in null for defaults
 	 * @param keys			array of unique record identifiers
@@ -3437,6 +4172,22 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * {@link ResultCode#KEY_NOT_FOUND_ERROR}.
 	 * <p>
 	 * Requires server version 6.0+
+	 *
+	 * <p>Example demonstrating usage of this method.</p>
+	 * <pre>{@code
+	 * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+	 * try {
+	 *     EventLoop eventLoop = client.getCluster().eventLoops.next();
+	 *     Key[] keys = new Key[] { new Key("test", "set1", "id1"), new Key("test", "set1", "id2") };
+	 *     client.operate(eventLoop, (records, status) -> {
+	 *         for (BatchRecord r : records) {
+	 *             if (r.record != null) { // use r.key, r.record
+	 *             }
+	 *         }
+	 *     }, null, null, keys,
+	 *         Operation.get("name"), Operation.get("age"));
+	 * } finally { client.close(); }
+	 * }</pre>
 	 *
 	 * @param eventLoop		event loop that will process the command. If NULL, the event
 	 * 						loop will be chosen by round-robin.
@@ -3525,6 +4276,18 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * <p>
 	 * Requires server version 6.0+
 	 *
+	 * <p>Example demonstrating usage of this method.</p>
+	 * <pre>{@code
+	 * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+	 * try {
+	 *     EventLoop eventLoop = client.getCluster().eventLoops.next();
+	 *     Key[] keys = new Key[] { new Key("test", "set1", "id1") };
+	 *     client.operate(eventLoop, (record) -> {
+	 *         if (record.record != null) { Object name = record.record.getValue("name"); }
+	 *     }, null, null, keys, Operation.get("name"));
+	 * } finally { client.close(); }
+	 * }</pre>
+	 *
 	 * @param eventLoop		event loop that will process the command. If NULL, the event
 	 * 						loop will be chosen by round-robin.
 	 * @param listener		where to send results
@@ -3608,6 +4371,16 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * This call will block until the scan is complete - callbacks are made
 	 * within the scope of this call.
 	 *
+	 * <p>Example demonstrating usage of this method.</p>
+	 * <pre>{@code
+	 * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+	 * try {
+	 *     client.scanAll(null, "test", "set1", (key, record) -> {
+	 *         Object name = record.getValue("name"); Object age = record.getValue("age");
+	 *     }, "name", "age");
+	 * } finally { client.close(); }
+	 * }</pre>
+	 *
 	 * @param policy				scan configuration parameters, pass in null for defaults
 	 * @param namespace				namespace - equivalent to database name
 	 * @param setName				optional set name - equivalent to database table
@@ -3639,6 +4412,17 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * <p>
 	 * This method registers the command with an event loop and returns.
 	 * The event loop thread will process the command and send the results to the listener.
+	 *
+	 * <p>Example demonstrating usage of this method.</p>
+	 * <pre>{@code
+	 * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+	 * try {
+	 *     EventLoop eventLoop = client.getCluster().eventLoops.next();
+	 *     client.scanAll(eventLoop, (key, record) -> {
+	 *         Object name = record.getValue("name");
+	 *     }, null, "test", "set1", "name");
+	 * } finally { client.close(); }
+	 * }</pre>
 	 *
 	 * @param eventLoop				event loop that will process the command. If NULL, the event
 	 * 								loop will be chosen by round-robin.
@@ -3676,6 +4460,17 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * This call will block until the scan is complete - callbacks are made
 	 * within the scope of this call.
 	 *
+	 * <p>Example demonstrating usage of this method.</p>
+	 * <pre>{@code
+	 * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+	 * try {
+	 *     String nodeName = client.getNodeNames().get(0);
+	 *     client.scanNode(null, nodeName, "test", "set1", (key, record) -> {
+	 *         Object val = record.getValue("mybin");
+	 *     });
+	 * } finally { client.close(); }
+	 * }</pre>
+	 *
 	 * @param policy				scan configuration parameters, pass in null for defaults
 	 * @param nodeName				server node name
 	 * @param namespace				namespace - equivalent to database name
@@ -3698,6 +4493,17 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * <p>
 	 * This call will block until the scan is complete - callbacks are made
 	 * within the scope of this call.
+	 *
+	 * <p>Example demonstrating usage of this method.</p>
+	 * <pre>{@code
+	 * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+	 * try {
+	 *     Node node = client.getNodes()[0];
+	 *     client.scanNode(null, node, "test", "set1", (key, record) -> {
+	 *         Object val = record.getValue("mybin");
+	 *     });
+	 * } finally { client.close(); }
+	 * }</pre>
 	 *
 	 * @param policy				scan configuration parameters, pass in null for defaults
 	 * @param node					server node
@@ -3727,6 +4533,17 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * <p>
 	 * This call will block until the scan is complete - callbacks are made
 	 * within the scope of this call.
+	 *
+	 * <p>Example demonstrating usage of this method.</p>
+	 * <pre>{@code
+	 * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+	 * try {
+	 *     PartitionFilter filter = PartitionFilter.range(0, 4095);
+	 *     client.scanPartitions(null, filter, "test", "set1", (key, record) -> {
+	 *         Object val = record.getValue("mybin");
+	 *     });
+	 * } finally { client.close(); }
+	 * }</pre>
 	 *
 	 * @param policy				scan configuration parameters, pass in null for defaults
 	 * @param partitionFilter		filter on a subset of data partitions
@@ -3758,6 +4575,18 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * <p>
 	 * This method registers the command with an event loop and returns.
 	 * The event loop thread will process the command and send the results to the listener.
+	 *
+	 * <p>Example demonstrating usage of this method.</p>
+	 * <pre>{@code
+	 * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+	 * try {
+	 *     EventLoop eventLoop = client.getCluster().eventLoops.next();
+	 *     PartitionFilter filter = PartitionFilter.range(0, 4095);
+	 *     client.scanPartitions(eventLoop, (key, record) -> {
+	 *         Object val = record.getValue("mybin");
+	 *     }, null, filter, "test", "set1");
+	 * } finally { client.close(); }
+	 * }</pre>
 	 *
 	 * @param eventLoop				event loop that will process the command. If NULL, the event
 	 * 								loop will be chosen by round-robin.
@@ -3799,6 +4628,15 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * The user can optionally wait for command completion by using the returned
 	 * RegisterTask instance.
 	 *
+	 * <p>Example demonstrating usage of this method.</p>
+	 * <pre>{@code
+	 * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+	 * try {
+	 *     RegisterTask task = client.register(null, "myudf.lua", "myudf.lua", Language.LUA);
+	 *     task.waitTillComplete();
+	 * } finally { client.close(); }
+	 * }</pre>
+	 *
 	 * @param policy				generic configuration parameters, pass in null for defaults
 	 * @param clientPath			path of client file containing user defined functions, relative to current directory
 	 * @param serverPath			path to store user defined functions on the server, relative to configured script directory.
@@ -3822,6 +4660,15 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * This asynchronous server call will return before command is complete.
 	 * The user can optionally wait for command completion by using the returned
 	 * RegisterTask instance.
+	 *
+	 * <p>Example demonstrating usage of this method.</p>
+	 * <pre>{@code
+	 * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+	 * try {
+	 *     RegisterTask task = client.register(null, MyClass.class.getClassLoader(), "udf/mymodule.lua", "mymodule.lua", Language.LUA);
+	 *     task.waitTillComplete();
+	 * } finally { client.close(); }
+	 * }</pre>
 	 *
 	 * @param policy				generic configuration parameters, pass in null for defaults
 	 * @param resourceLoader		class loader where resource is located.  Example: MyClass.class.getClassLoader() or Thread.currentThread().getContextClassLoader() for webapps
@@ -3865,6 +4712,16 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * The user can optionally wait for command completion by using the returned
 	 * RegisterTask instance.
 	 *
+	 * <p>Self-contained example: register a UDF from a string and wait for completion.</p>
+	 * <pre>{@code
+	 * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+	 * try {
+	 *     String code = "function myfunc(rec) return rec['bin'] end\n";
+	 *     RegisterTask task = client.registerUdfString(null, code, "myudf.lua", Language.LUA);
+	 *     task.waitTillComplete();
+	 * } finally { client.close(); }
+	 * }</pre>
+	 *
 	 * @param policy				generic configuration parameters, pass in null for defaults
 	 * @param code					code string containing user defined functions.
 	 * @param serverPath			path to store user defined functions on the server, relative to configured script directory.
@@ -3884,6 +4741,14 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 
 	/**
 	 * Remove user defined function from server nodes.
+	 *
+	 * <p>Example demonstrating usage of this method.</p>
+	 * <pre>{@code
+	 * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+	 * try {
+	 *     client.removeUdf(null, "myudf.lua");
+	 * } finally { client.close(); }
+	 * }</pre>
 	 *
 	 * @param policy				info configuration parameters, pass in null for defaults
 	 * @param serverPath			location of UDF on server nodes.  Example: mylua.lua
@@ -3916,6 +4781,15 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * The package name is used to locate the udf file location:
 	 * <p>
 	 * {@code udf file = <server udf dir>/<package name>.lua}
+	 *
+	 * <p>Example demonstrating usage of this method.</p>
+	 * <pre>{@code
+	 * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+	 * try {
+	 *     Key key = new Key("test", "set1", "id1");
+	 *     Object result = client.execute(null, key, "myudf", "myFunc", Value.get("arg1"));
+	 * } finally { client.close(); }
+	 * }</pre>
 	 *
 	 * @param policy				write configuration parameters, pass in null for defaults
 	 * @param key					unique record identifier
@@ -3977,6 +4851,19 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * <p>
 	 * {@code udf file = <server udf dir>/<package name>.lua}
 	 *
+	 * <p>Example demonstrating usage of this method.</p>
+	 * <pre>{@code
+	 * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+	 * try {
+	 *     EventLoop eventLoop = client.getEventLoops().next();
+	 *     Key key = new Key("test", "set1", "id1");
+	 *     client.execute(eventLoop, (key2, obj) -> {
+	 *         if (obj != null) { // use UDF return value
+	 *         }
+	 *     }, null, key, "myudf", "myFunc");
+	 * } finally { client.close(); }
+	 * }</pre>
+	 *
 	 * @param eventLoop				event loop that will process the command. If NULL, the event
 	 * 								loop will be chosen by round-robin.
 	 * @param listener				where to send results, pass in null for fire and forget
@@ -4017,6 +4904,16 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * {@code udf file = <server udf dir>/<package name>.lua}
 	 * <p>
 	 * Requires server version 6.0+
+	 *
+	 * <p>Example demonstrating usage of this method.</p>
+	 * <pre>{@code
+	 * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+	 * try {
+	 *     Key[] keys = new Key[] { new Key("test", "set1", "id1"), new Key("test", "set1", "id2") };
+	 *     BatchResults results = client.execute(null, null, keys, "myudf", "myFunc");
+	 *     for (BatchRecord r : results) { // use r.record }
+	 * } finally { client.close(); }
+	 * }</pre>
 	 *
 	 * @param batchPolicy	batch configuration parameters, pass in null for defaults
 	 * @param udfPolicy		udf configuration parameters, pass in null for defaults
@@ -4103,6 +5000,20 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * <p>
 	 * Requires server version 6.0+
 	 *
+	 * <p>Example demonstrating usage of this method.</p>
+	 * <pre>{@code
+	 * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+	 * try {
+	 *     EventLoop eventLoop = client.getEventLoops().next();
+	 *     Key[] keys = new Key[] { new Key("test", "set1", "id1") };
+	 *     client.execute(eventLoop, (records, status) -> {
+	 *         for (BatchRecord r : records) {
+	 *             if (r.record != null) { Object result = r.record.getValue("SUCCESS"); }
+	 *         }
+	 *     }, null, null, keys, "myudf", "myFunc");
+	 * } finally { client.close(); }
+	 * }</pre>
+	 *
 	 * @param eventLoop		event loop that will process the command. If NULL, the event
 	 * 						loop will be chosen by round-robin.
 	 * @param listener		where to send results
@@ -4188,6 +5099,18 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * <p>
 	 * Requires server version 6.0+
 	 *
+	 * <p>Example demonstrating usage of this method.</p>
+	 * <pre>{@code
+	 * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+	 * try {
+	 *     EventLoop eventLoop = client.getEventLoops().next();
+	 *     Key[] keys = new Key[] { new Key("test", "set1", "id1") };
+	 *     client.execute(eventLoop, (key, record) -> {
+	 *         if (record != null) { Object result = record.getValue("SUCCESS"); }
+	 *     }, null, null, keys, "myudf", "myFunc");
+	 * } finally { client.close(); }
+	 * }</pre>
+	 *
 	 * @param eventLoop		event loop that will process the command. If NULL, the event
 	 * 						loop will be chosen by round-robin.
 	 * @param listener		where to send results
@@ -4267,6 +5190,16 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * The user can optionally wait for command completion by using the returned
 	 * ExecuteTask instance.
 	 *
+	 * <p>Example demonstrating usage of this method.</p>
+	 * <pre>{@code
+	 * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+	 * try {
+	 *     Statement stmt = new Statement("test", "set1");
+	 *     ExecuteTask task = client.execute(null, stmt, "myudf", "myFunc");
+	 *     task.waitTillComplete();
+	 * } finally { client.close(); }
+	 * }</pre>
+	 *
 	 * @param policy				write configuration parameters, pass in null for defaults
 	 * @param statement				background query definition
 	 * @param packageName			server package where user defined function resides
@@ -4309,6 +5242,16 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * This asynchronous server call will return before the command is complete.
 	 * The user can optionally wait for command completion by using the returned
 	 * ExecuteTask instance.
+	 *
+	 * <p>Example demonstrating usage of this method.</p>
+	 * <pre>{@code
+	 * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+	 * try {
+	 *     Statement stmt = new Statement("test", "set1");
+	 *     ExecuteTask task = client.execute(null, stmt, Operation.touch());
+	 *     task.waitTillComplete();
+	 * } finally { client.close(); }
+	 * }</pre>
 	 *
 	 * @param policy				write configuration parameters, pass in null for defaults
 	 * @param statement				background query definition
@@ -4359,6 +5302,20 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * For this case, use {@link #query(QueryPolicy, Statement, QueryListener)} which uses a listener
 	 * callback (without a buffer) instead of a RecordSet.
 	 *
+	 * <p>Example demonstrating usage of this method.</p>
+	 * <pre>{@code
+	 * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+	 * try {
+	 *     Statement stmt = new Statement("test", "set1");
+	 *     try (RecordSet rs = client.query(null, stmt)) {
+	 *         while (rs.next()) {
+	 *             KeyRecord kr = rs.getKeyRecord();
+	 *             // use kr.key, kr.record
+	 *         }
+	 *     }
+	 * } finally { client.close(); }
+	 * }</pre>
+	 *
 	 * @param policy				query configuration parameters, pass in null for defaults
 	 * @param statement				query definition
 	 * @return						record iterator
@@ -4392,6 +5349,18 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * The event loop thread will process the command and send the results to the listener.
 	 * <p>
 	 * Each record result is returned in separate onRecord() calls.
+	 *
+	 * <p>Example demonstrating usage of this method.</p>
+	 * <pre>{@code
+	 * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+	 * try {
+	 *     EventLoop eventLoop = client.getEventLoops().next();
+	 *     Statement stmt = new Statement("test", "set1");
+	 *     client.query(eventLoop, (key, record) -> {
+	 *         Object val = record.getValue("mybin");
+	 *     }, null, stmt);
+	 * } finally { client.close(); }
+	 * }</pre>
 	 *
 	 * @param eventLoop				event loop that will process the command. If NULL, the event
 	 * 								loop will be chosen by round-robin.
@@ -4432,6 +5401,17 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * by multiple query threads (one thread per node) in parallel.
 	 * <p>
 	 * Requires server version 6.0+ if using a secondary index query.
+	 *
+	 * <p>Example demonstrating usage of this method.</p>
+	 * <pre>{@code
+	 * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+	 * try {
+	 *     Statement stmt = new Statement("test", "set1");
+	 *     client.query(null, stmt, (key, record) -> {
+	 *         Object val = record.getValue("mybin");
+	 *     });
+	 * } finally { client.close(); }
+	 * }</pre>
 	 *
 	 * @param policy				query configuration parameters, pass in null for defaults
 	 * @param statement				query definition
@@ -4474,6 +5454,18 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * <p>
 	 * Requires server version 6.0+ if using a secondary index query.
 	 *
+	 * <p>Example demonstrating usage of this method.</p>
+	 * <pre>{@code
+	 * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+	 * try {
+	 *     Statement stmt = new Statement("test", "set1");
+	 *     PartitionFilter filter = PartitionFilter.all();
+	 *     client.query(null, stmt, filter, (key, record) -> {
+	 *         Object val = record.getValue("mybin");
+	 *     });
+	 * } finally { client.close(); }
+	 * }</pre>
+	 *
 	 * @param policy				query configuration parameters, pass in null for defaults
 	 * @param statement				query definition
 	 * @param partitionFilter		data partition filter. Set to
@@ -4509,6 +5501,18 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * records on a queue in a separate thread.  The calling thread concurrently pops records off
 	 * the queue through the record iterator.
 	 *
+	 * <p>Example demonstrating usage of this method.</p>
+	 * <pre>{@code
+	 * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+	 * try {
+	 *     Node node = client.getNodes()[0];
+	 *     Statement stmt = new Statement("test", "set1");
+	 *     try (RecordSet rs = client.queryNode(null, stmt, node)) {
+	 *         while (rs.next()) { KeyRecord kr = rs.getKeyRecord(); }
+	 *     }
+	 * } finally { client.close(); }
+	 * }</pre>
+	 *
 	 * @param policy				query configuration parameters, pass in null for defaults
 	 * @param statement				query definition
 	 * @param node					server node to execute query
@@ -4541,6 +5545,18 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * the queue through the record iterator.
 	 * <p>
 	 * Requires server version 6.0+ if using a secondary index query.
+	 *
+	 * <p>Example demonstrating usage of this method.</p>
+	 * <pre>{@code
+	 * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+	 * try {
+	 *     Statement stmt = new Statement("test", "set1");
+	 *     PartitionFilter filter = PartitionFilter.all();
+	 *     try (RecordSet rs = client.queryPartitions(null, stmt, filter)) {
+	 *         while (rs.next()) { KeyRecord kr = rs.getKeyRecord(); }
+	 *     }
+	 * } finally { client.close(); }
+	 * }</pre>
 	 *
 	 * @param policy				query configuration parameters, pass in null for defaults
 	 * @param statement				query definition
@@ -4578,6 +5594,19 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * Each record result is returned in separate onRecord() calls.
 	 * <p>
 	 * Requires server version 6.0+ if using a secondary index query.
+	 *
+	 * <p>Example demonstrating usage of this method.</p>
+	 * <pre>{@code
+	 * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+	 * try {
+	 *     EventLoop eventLoop = client.getEventLoops().next();
+	 *     Statement stmt = new Statement("test", "set1");
+	 *     PartitionFilter filter = PartitionFilter.all();
+	 *     client.queryPartitions(eventLoop, (key, record) -> {
+	 *         Object val = record.getValue("mybin");
+	 *     }, null, stmt, filter);
+	 * } finally { client.close(); }
+	 * }</pre>
 	 *
 	 * @param eventLoop				event loop that will process the command. If NULL, the event
 	 * 								loop will be chosen by round-robin.
@@ -4626,6 +5655,17 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * <p>
 	 * {@code udf file = <udf dir>/<package name>.lua}
 	 *
+	 * <p>Example demonstrating usage of this method.</p>
+	 * <pre>{@code
+	 * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+	 * try {
+	 *     Statement stmt = new Statement("test", "set1");
+	 *     try (ResultSet rs = client.queryAggregate(null, stmt, "myudf", "myReduce")) {
+	 *         while (rs.next()) { Object val = rs.getObject(); }
+	 *     }
+	 * } finally { client.close(); }
+	 * }</pre>
+	 *
 	 * @param policy				query configuration parameters, pass in null for defaults
 	 * @param statement				query definition
 	 * @param packageName			server package where user defined function resides
@@ -4655,6 +5695,18 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * The aggregation function is called on both server and client (final reduce).
 	 * Therefore, the Lua script file must also reside on both server and client.
 	 *
+	 * <p>Example demonstrating usage of this method.</p>
+	 * <pre>{@code
+	 * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+	 * try {
+	 *     Statement stmt = new Statement("test", "set1");
+	 *     stmt.setAggregateFunction("myudf", "myReduce");
+	 *     try (ResultSet rs = client.queryAggregate(null, stmt)) {
+	 *         while (rs.next()) { Object val = rs.getObject(); }
+	 *     }
+	 * } finally { client.close(); }
+	 * }</pre>
+	 *
 	 * @param policy				query configuration parameters, pass in null for defaults
 	 * @param statement				query definition
 	 * @throws AerospikeException	if query fails
@@ -4683,6 +5735,19 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * The aggregation function is called on both server and client (final reduce).
 	 * Therefore, the Lua script file must also reside on both server and client.
 	 *
+	 * <p>Example demonstrating usage of this method.</p>
+	 * <pre>{@code
+	 * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+	 * try {
+	 *     Node node = client.getNodes()[0];
+	 *     Statement stmt = new Statement("test", "set1");
+	 *     stmt.setAggregateFunction("myudf", "myReduce");
+	 *     try (ResultSet rs = client.queryAggregateNode(null, stmt, node)) {
+	 *         while (rs.next()) { Object val = rs.getObject(); }
+	 *     }
+	 * } finally { client.close(); }
+	 * }</pre>
+	 *
 	 * @param policy				query configuration parameters, pass in null for defaults
 	 * @param statement				query definition
 	 * @param node					server node to execute query
@@ -4710,6 +5775,15 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * The user can optionally wait for command completion by using the returned
 	 * IndexTask instance.
 	 *
+	 * <p>Example demonstrating usage of this method.</p>
+	 * <pre>{@code
+	 * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+	 * try {
+	 *     IndexTask task = client.createIndex(null, "test", "set1", "idx_bin1", "bin1", IndexType.STRING);
+	 *     task.waitTillComplete();
+	 * } finally { client.close(); }
+	 * }</pre>
+	 *
 	 * @param policy				generic configuration parameters, pass in null for defaults
 	 * @param namespace				namespace - equivalent to database name
 	 * @param setName				optional set name - equivalent to database table
@@ -4734,6 +5808,16 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * This asynchronous server call will return before command is complete.
 	 * The user can optionally wait for command completion by using the returned
 	 * IndexTask instance.
+	 *
+	 * <p>Example demonstrating usage of this method.</p>
+	 * <pre>{@code
+	 * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+	 * try {
+	 *     IndexTask task = client.createIndex(null, "test", "set1", "idx_mapbin", "mapbin",
+	 *         IndexType.STRING, IndexCollectionType.MAPKEYS);
+	 *     task.waitTillComplete();
+	 * } finally { client.close(); }
+	 * }</pre>
 	 *
 	 * @param policy				generic configuration parameters, pass in null for defaults
 	 * @param namespace				namespace - equivalent to database name
@@ -4780,6 +5864,16 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * This method registers the command with an event loop and returns.
 	 * The event loop thread will process the command and send the results to the listener.
 	 *
+	 * <p>Example demonstrating usage of this method.</p>
+	 * <pre>{@code
+	 * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+	 * try {
+	 *     EventLoop eventLoop = client.getEventLoops().next();
+	 *     client.createIndex(eventLoop, (task) -> { }, null, "test", "set1", "idx_mapbin", "mapbin",
+	 *         IndexType.STRING, IndexCollectionType.MAPKEYS);
+	 * } finally { client.close(); }
+	 * }</pre>
+	 *
 	 * @param eventLoop				event loop that will process the command. If NULL, the event
 	 * 								loop will be chosen by round-robin.
 	 * @param listener				where to send results
@@ -4825,6 +5919,17 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * The user can optionally wait for command completion by using the returned
 	 * IndexTask instance.
 	 *
+	 * <p>Example demonstrating usage of this method.</p>
+	 * <pre>{@code
+	 * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+	 * try {
+	 *     Expression exp = Exp.build(Exp.eq(Exp.stringBin("tag"), Exp.val("active")));
+	 *     IndexTask task = client.createIndex(null, "test", "set1", "idx_expr", IndexType.STRING,
+	 *         IndexCollectionType.DEFAULT, exp);
+	 *     task.waitTillComplete();
+	 * } finally { client.close(); }
+	 * }</pre>
+	 *
 	 * @param policy				generic configuration parameters, pass in null for defaults
 	 * @param namespace				namespace - equivalent to database name
 	 * @param setName				optional set name - equivalent to database table
@@ -4869,6 +5974,17 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * The user can optionally wait for command completion by using the returned
 	 * IndexTask instance.
 	 *
+	 * <p>Example demonstrating usage of this method.</p>
+	 * <pre>{@code
+	 * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+	 * try {
+	 *     EventLoop eventLoop = client.getEventLoops().next();
+	 *     Expression exp = Exp.build(Exp.eq(Exp.stringBin("tag"), Exp.val("active")));
+	 *     client.createIndex(eventLoop, (task) -> { }, null, "test", "set1", "idx_expr", IndexType.STRING,
+	 *         IndexCollectionType.DEFAULT, exp);
+	 * } finally { client.close(); }
+	 * }</pre>
+	 *
 	 * @param policy				generic configuration parameters, pass in null for defaults
 	 * @param namespace				namespace - equivalent to database name
 	 * @param setName				optional set name - equivalent to database table
@@ -4910,6 +6026,15 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * The user can optionally wait for command completion by using the returned
 	 * IndexTask instance.
 	 *
+	 * <p>Example demonstrating usage of this method.</p>
+	 * <pre>{@code
+	 * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+	 * try {
+	 *     IndexTask task = client.dropIndex(null, "test", "set1", "idx_bin1");
+	 *     task.waitTillComplete();
+	 * } finally { client.close(); }
+	 * }</pre>
+	 *
 	 * @param policy				generic configuration parameters, pass in null for defaults
 	 * @param namespace				namespace - equivalent to database name
 	 * @param setName				optional set name - equivalent to database table
@@ -4945,6 +6070,17 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * Asynchronously delete secondary index.
 	 * This method registers the command with an event loop and returns.
 	 * The event loop thread will process the command and send the results to the listener.
+	 *
+	 * <p>Example demonstrating usage of this method.</p>
+	 * <pre>{@code
+	 * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+	 * try {
+	 *     EventLoop eventLoop = client.getEventLoops().next();
+	 *     client.dropIndex(eventLoop, (task) -> {
+	 *         // task.isDone() to poll completion
+	 *     }, null, "test", "set1", "idx_bin1");
+	 * } finally { client.close(); }
+	 * }</pre>
 	 *
 	 * @param eventLoop				event loop that will process the command. If NULL, the event
 	 * 								loop will be chosen by round-robin.
@@ -4992,6 +6128,18 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * The list of supported info commands can be found at:
 	 * <a href="https://www.aerospike.com/docs/reference/info/index.html">https://www.aerospike.com/docs/reference/info/index.html</a>
 	 *
+	 * <p>Example demonstrating usage of this method.</p>
+	 * <pre>{@code
+	 * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+	 * try {
+	 *     EventLoop eventLoop = client.getEventLoops().next();
+	 *     Node node = client.getNodes()[0];
+	 *     client.info(eventLoop, (map) -> {
+	 *         String build = map.get("build"); String stats = map.get("statistics");
+	 *     }, null, node, "build", "statistics");
+	 * } finally { client.close(); }
+	 * }</pre>
+	 *
 	 * @param eventLoop				event loop that will process the command. If NULL, the event
 	 * 								loop will be chosen by round-robin.
 	 * @param listener				where to send results
@@ -5032,6 +6180,14 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * which records XDR should ship to the datacenter. If the expression filter is null, the
 	 * XDR filter will be removed.
 	 *
+	 * <p>Example demonstrating usage of this method.</p>
+	 * <pre>{@code
+	 * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+	 * try {
+	 *     client.setXDRFilter(null, "DC1", "test", null);
+	 * } finally { client.close(); }
+	 * }</pre>
+	 *
 	 * @param policy				info configuration parameters, pass in null for defaults
 	 * @param datacenter			XDR datacenter name
 	 * @param namespace				namespace - equivalent to database name
@@ -5070,6 +6226,14 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * Create user with password and roles.  Clear-text password will be hashed using bcrypt
 	 * before sending to server.
 	 *
+	 * <p>Example demonstrating usage of this method.</p>
+	 * <pre>{@code
+	 * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+	 * try {
+	 *     client.createUser(null, "newuser", "password", java.util.Arrays.asList("read-write"));
+	 * } finally { client.close(); }
+	 * }</pre>
+	 *
 	 * @param policy				admin configuration parameters, pass in null for defaults
 	 * @param user					user name
 	 * @param password				user password in clear-text format
@@ -5087,6 +6251,14 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * Create PKI user with roles.  PKI users are authenticated via TLS and a certificate instead of a password.
 	 * WARNING: This function should only be called for server versions 8.1+
 	 *
+	 * <p>Example demonstrating usage of this method.</p>
+	 * <pre>{@code
+	 * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+	 * try {
+	 *     client.createPkiUser(null, "pkiuser", java.util.Arrays.asList("read-write"));
+	 * } finally { client.close(); }
+	 * }</pre>
+	 *
 	 * @param policy				admin configuration parameters, pass in null for defaults
 	 * @param user					user name
 	 * @param roles					variable arguments array of role names.  Predefined roles are listed in {@link com.aerospike.client.admin.Role}
@@ -5101,6 +6273,14 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	/**
 	 * Remove user from cluster.
 	 *
+	 * <p>Example demonstrating usage of this method.</p>
+	 * <pre>{@code
+	 * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+	 * try {
+	 *     client.dropUser(null, "olduser");
+	 * } finally { client.close(); }
+	 * }</pre>
+	 *
 	 * @param policy				admin configuration parameters, pass in null for defaults
 	 * @param user					user name
 	 * @throws AerospikeException	if command fails
@@ -5113,6 +6293,14 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 
 	/**
 	 * Change user's password.
+	 *
+	 * <p>Example demonstrating usage of this method.</p>
+	 * <pre>{@code
+	 * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+	 * try {
+	 *     client.changePassword(null, "myuser", "newpassword");
+	 * } finally { client.close(); }
+	 * }</pre>
 	 *
 	 * @param policy				admin configuration parameters, pass in null for defaults
 	 * @param user					user name
@@ -5147,6 +6335,14 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	/**
 	 * Add roles to user's list of roles.
 	 *
+	 * <p>Example demonstrating usage of this method.</p>
+	 * <pre>{@code
+	 * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+	 * try {
+	 *     client.grantRoles(null, "myuser", java.util.Arrays.asList("read-write-udf"));
+	 * } finally { client.close(); }
+	 * }</pre>
+	 *
 	 * @param policy				admin configuration parameters, pass in null for defaults
 	 * @param user					user name
 	 * @param roles					role names.  Predefined roles are listed in {@link com.aerospike.client.admin.Role}
@@ -5160,6 +6356,14 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 
 	/**
 	 * Remove roles from user's list of roles.
+	 *
+	 * <p>Example demonstrating usage of this method.</p>
+	 * <pre>{@code
+	 * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+	 * try {
+	 *     client.revokeRoles(null, "myuser", java.util.Arrays.asList("read-write-udf"));
+	 * } finally { client.close(); }
+	 * }</pre>
 	 *
 	 * @param policy				admin configuration parameters, pass in null for defaults
 	 * @param user					user name
@@ -5175,6 +6379,15 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	/**
 	 * Create user defined role.
 	 *
+	 * <p>Example demonstrating usage of this method.</p>
+	 * <pre>{@code
+	 * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+	 * try {
+	 *     Privilege p = new Privilege(); p.code = PrivilegeCode.READ; p.namespace = "test"; p.setName = "set1";
+	 *     client.createRole(null, "myrole", java.util.Collections.singletonList(p));
+	 * } finally { client.close(); }
+	 * }</pre>
+	 *
 	 * @param policy				admin configuration parameters, pass in null for defaults
 	 * @param roleName				role name
 	 * @param privileges			privileges assigned to the role.
@@ -5188,6 +6401,17 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 
 	/**
 	 * Create user defined role with optional privileges and whitelist.
+	 *
+	 * <p>Example demonstrating usage of this method.</p>
+	 * <pre>{@code
+	 * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+	 * try {
+	 *     Privilege p = new Privilege(); p.code = PrivilegeCode.READ; p.namespace = "test";
+	 *     java.util.List<Privilege> privs = java.util.Collections.singletonList(p);
+	 *     java.util.List<String> allowIps = java.util.Arrays.asList("10.1.2.0/24");
+	 *     client.createRole(null, "myrole", privs, allowIps);
+	 * } finally { client.close(); }
+	 * }</pre>
 	 *
 	 * @param policy				admin configuration parameters, pass in null for defaults
 	 * @param roleName				role name
@@ -5205,6 +6429,17 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	/**
 	 * Create user defined role with optional privileges, whitelist and read/write quotas.
 	 * Quotas require server security configuration "enable-quotas" to be set to true.
+	 *
+	 * <p>Example demonstrating usage of this method.</p>
+	 * <pre>{@code
+	 * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+	 * try {
+	 *     Privilege p = new Privilege(); p.code = PrivilegeCode.READ_WRITE; p.namespace = "test";
+	 *     java.util.List<Privilege> privs = java.util.Collections.singletonList(p);
+	 *     java.util.List<String> allowIps = java.util.Arrays.asList("10.1.2.0/24");
+	 *     client.createRole(null, "myrole", privs, allowIps, 1000, 500);
+	 * } finally { client.close(); }
+	 * }</pre>
 	 *
 	 * @param policy				admin configuration parameters, pass in null for defaults
 	 * @param roleName				role name
@@ -5230,6 +6465,14 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	/**
 	 * Drop user defined role.
 	 *
+	 * <p>Example demonstrating usage of this method.</p>
+	 * <pre>{@code
+	 * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+	 * try {
+	 *     client.dropRole(null, "myrole");
+	 * } finally { client.close(); }
+	 * }</pre>
+	 *
 	 * @param policy				admin configuration parameters, pass in null for defaults
 	 * @param roleName				role name
 	 * @throws AerospikeException	if command fails
@@ -5242,6 +6485,15 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 
 	/**
 	 * Grant privileges to an user defined role.
+	 *
+	 * <p>Example demonstrating usage of this method.</p>
+	 * <pre>{@code
+	 * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+	 * try {
+	 *     Privilege p = new Privilege(); p.code = PrivilegeCode.READ_WRITE_UDF; p.namespace = "test";
+	 *     client.grantPrivileges(null, "myrole", java.util.Collections.singletonList(p));
+	 * } finally { client.close(); }
+	 * }</pre>
 	 *
 	 * @param policy				admin configuration parameters, pass in null for defaults
 	 * @param roleName				role name
@@ -5257,6 +6509,15 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	/**
 	 * Revoke privileges from an user defined role.
 	 *
+	 * <p>Example demonstrating usage of this method.</p>
+	 * <pre>{@code
+	 * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+	 * try {
+	 *     Privilege p = new Privilege(); p.code = PrivilegeCode.READ_WRITE_UDF; p.namespace = "test";
+	 *     client.revokePrivileges(null, "myrole", java.util.Collections.singletonList(p));
+	 * } finally { client.close(); }
+	 * }</pre>
+	 *
 	 * @param policy				admin configuration parameters, pass in null for defaults
 	 * @param roleName				role name
 	 * @param privileges			privileges assigned to the role.
@@ -5270,6 +6531,15 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 
 	/**
 	 * Set IP address whitelist for a role.  If whitelist is null or empty, remove existing whitelist from role.
+	 *
+	 * <p>Example demonstrating usage of this method.</p>
+	 * <pre>{@code
+	 * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+	 * try {
+	 *     java.util.List<String> allowIps = java.util.Arrays.asList("10.1.2.0/24", "192.168.1.0/24");
+	 *     client.setWhitelist(null, "myrole", allowIps);
+	 * } finally { client.close(); }
+	 * }</pre>
 	 *
 	 * @param policy				admin configuration parameters, pass in null for defaults
 	 * @param roleName				role name
@@ -5287,6 +6557,14 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * Set maximum reads/writes per second limits for a role.  If a quota is zero, the limit is removed.
 	 * Quotas require server security configuration "enable-quotas" to be set to true.
 	 *
+	 * <p>Example demonstrating usage of this method.</p>
+	 * <pre>{@code
+	 * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+	 * try {
+	 *     client.setQuotas(null, "myrole", 1000, 500);
+	 * } finally { client.close(); }
+	 * }</pre>
+	 *
 	 * @param policy				admin configuration parameters, pass in null for defaults
 	 * @param roleName				role name
 	 * @param readQuota				maximum reads per second limit, pass in zero for no limit.
@@ -5302,6 +6580,15 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	/**
 	 * Retrieve roles for a given user.
 	 *
+	 * <p>Example demonstrating usage of this method.</p>
+	 * <pre>{@code
+	 * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+	 * try {
+	 *     User u = client.queryUser(null, "myuser");
+	 *     // use u.getRoles(), u.getConnections(), etc.
+	 * } finally { client.close(); }
+	 * }</pre>
+	 *
 	 * @param policy				admin configuration parameters, pass in null for defaults
 	 * @param user					user name filter
 	 * @throws AerospikeException	if command fails
@@ -5315,6 +6602,15 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	/**
 	 * Retrieve all users and their roles.
 	 *
+	 * <p>Example demonstrating usage of this method.</p>
+	 * <pre>{@code
+	 * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+	 * try {
+	 *     java.util.List<User> users = client.queryUsers(null);
+	 *     for (User u : users) { // u.getName(), u.getRoles() }
+	 * } finally { client.close(); }
+	 * }</pre>
+	 *
 	 * @param policy				admin configuration parameters, pass in null for defaults
 	 * @throws AerospikeException	if command fails
 	 */
@@ -5326,6 +6622,15 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 
 	/**
 	 * Retrieve role definition.
+	 *
+	 * <p>Example demonstrating usage of this method.</p>
+	 * <pre>{@code
+	 * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+	 * try {
+	 *     Role r = client.queryRole(null, "read-write");
+	 *     // use r.getPrivileges(), r.getWhitelist(), etc.
+	 * } finally { client.close(); }
+	 * }</pre>
 	 *
 	 * @param policy				admin configuration parameters, pass in null for defaults
 	 * @param roleName				role name filter
@@ -5339,6 +6644,15 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 
 	/**
 	 * Retrieve all roles.
+	 *
+	 * <p>Example demonstrating usage of this method.</p>
+	 * <pre>{@code
+	 * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+	 * try {
+	 *     java.util.List<Role> roles = client.queryRoles(null);
+	 *     for (Role r : roles) { // r.getName(), r.getPrivileges() }
+	 * } finally { client.close(); }
+	 * }</pre>
 	 *
 	 * @param policy				admin configuration parameters, pass in null for defaults
 	 * @throws AerospikeException	if command fails

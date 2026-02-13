@@ -21,6 +21,18 @@ import com.aerospike.client.Key;
 
 /**
  * Asynchronous result notifications for exists commands.
+ * <p>
+ * No built-in implementations; implement this interface in application code and pass to
+ * {@link com.aerospike.client.IAerospikeClient#exists(com.aerospike.client.async.EventLoop, ExistsListener, com.aerospike.client.policy.Policy, com.aerospike.client.Key) exists(EventLoop, ExistsListener, ...)}.
+ * <p>Implement and pass to async exists to receive key and exists flag on success or exception on failure.</p>
+ * <pre>{@code
+ * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+ * client.exists(eventLoop, new ExistsListener() {
+ *   public void onSuccess(Key key, boolean exists) { // use exists
+ *   }
+ *   public void onFailure(AerospikeException ae) { ae.printStackTrace(); }
+ * }, null, key);
+ * }</pre>
  */
 public interface ExistsListener {
 	/**

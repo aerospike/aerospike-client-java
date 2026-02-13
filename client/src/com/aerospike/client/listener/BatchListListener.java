@@ -24,6 +24,18 @@ import com.aerospike.client.BatchRead;
 /**
  * Asynchronous result notifications for batch get commands with variable bins per key.
  * The result is sent in a single list.
+ * <p>
+ * No built-in implementations; implement this interface in application code and pass to
+ * {@link com.aerospike.client.IAerospikeClient#get(com.aerospike.client.async.EventLoop, BatchListListener, com.aerospike.client.policy.BatchPolicy, java.util.List) get(EventLoop, BatchListListener, ...)}.
+ * <p>Implement and pass to async batch get (variable bins) to receive list of BatchRead on success or exception on failure.</p>
+ * <pre>{@code
+ * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+ * client.get(eventLoop, new BatchListListener() {
+ *   public void onSuccess(java.util.List<BatchRead> records) { // use records
+ *   }
+ *   public void onFailure(AerospikeException ae) { ae.printStackTrace(); }
+ * }, null, batchList);
+ * }</pre>
  */
 public interface BatchListListener {
 	/**

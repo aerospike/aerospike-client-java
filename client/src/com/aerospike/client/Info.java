@@ -30,13 +30,23 @@ import com.aerospike.client.util.Crypto;
 import com.aerospike.client.util.ThreadLocalData;
 
 /**
- * Access server's info monitoring protocol.
- * <p>
- * The info protocol is a name/value pair based system, where an individual
- * database server node is queried to determine its configuration and status.
- * The list of supported names can be found at:
- * <p>
- * <a href="https://www.aerospike.com/docs/reference/info/index.html">https://www.aerospike.com/docs/reference/info/index.html</a>
+ * Queries a server node's info protocol for configuration and status (name/value pairs).
+ *
+ * <p>Use the static {@link #request} methods to send an info command to a {@link com.aerospike.client.cluster.Node}
+ * and receive the response string. Typically used for administration or monitoring rather than application logic.
+ *
+ * <p>Request info from a node using Info.request for build or statistics.</p>
+ * <pre>{@code
+ * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+ * try {
+ *     Node node = client.getNodes()[0];
+ *     String build = Info.request(node, "build");
+ *     Map<String,String> map = Info.request(null, node, "build", "statistics");
+ * } finally { client.close(); }
+ * }</pre>
+ *
+ * @see com.aerospike.client.cluster.Node
+ * @see InfoPolicy
  */
 public class Info {
 	//-------------------------------------------------------
@@ -50,11 +60,20 @@ public class Info {
 	//-------------------------------------------------------
 
 	/**
-	 * Get one info value by name from the specified database server node.
-	 * This method supports user authentication.
+	 * Requests one info value by name from the given node (uses default timeout and no auth).
 	 *
-	 * @param node		server node
-	 * @param name		name of variable to retrieve
+	 * <p><b>Example:</b>
+	 * <pre>{@code
+	 * Node node = client.getNodes()[0];
+	 * String build = Info.request(node, "build");
+	 * }</pre>
+	 *
+	 * @param node the server node to query; must not be {@code null}
+	 * @param name the info variable name (e.g. "build", "statistics"); must not be {@code null}
+	 * @return the value returned by the server for that variable
+	 * @throws AerospikeException	when the request fails (e.g. timeout, connection error, or invalid command).
+	 * @see #request(InfoPolicy, Node, String)
+	 * @see #request(InfoPolicy, Node, String...)
 	 */
 	public static String request(Node node, String name) throws AerospikeException {
 		Connection conn = node.getConnection(DEFAULT_TIMEOUT);
@@ -72,12 +91,13 @@ public class Info {
 	}
 
 	/**
-	 * Get one info value by name from the specified database server node.
-	 * This method supports user authentication.
+	 * Requests one info value by name from the given node using the specified policy (timeout, auth).
 	 *
-	 * @param policy	info command configuration parameters, pass in null for defaults
-	 * @param node		server node
-	 * @param name		name of variable to retrieve
+	 * @param policy info command policy; {@code null} for defaults
+	 * @param node the server node to query; must not be {@code null}
+	 * @param name the info variable name; must not be {@code null}
+	 * @return the value returned by the server for that variable
+	 * @throws AerospikeException	when the request fails (e.g. timeout, connection error, or invalid command).
 	 */
 	public static String request(InfoPolicy policy, Node node, String name) throws AerospikeException {
 		int timeout = (policy == null) ? DEFAULT_TIMEOUT : policy.timeout;
@@ -96,12 +116,13 @@ public class Info {
 	}
 
 	/**
-	 * Get many info values by name from the specified database server node.
-	 * This method supports user authentication.
+	 * Requests multiple info values by name from the given node.
 	 *
-	 * @param policy	info command configuration parameters, pass in null for defaults
-	 * @param node		server node
-	 * @param names		names of variables to retrieve
+	 * @param policy info command policy; {@code null} for defaults
+	 * @param node the server node to query; must not be {@code null}
+	 * @param names the info variable names to retrieve; must not be {@code null} or empty
+	 * @return a map of variable name to value
+	 * @throws AerospikeException	when the request fails (e.g. timeout, connection error, or invalid command).
 	 */
 	public static Map<String,String> request(InfoPolicy policy, Node node, String... names) throws AerospikeException {
 		int timeout = (policy == null) ? DEFAULT_TIMEOUT : policy.timeout;

@@ -17,7 +17,16 @@
 package com.aerospike.client.async;
 
 /**
- * Asynchronous event loop configuration.
+ * Asynchronous event loop configuration. Used when creating {@link NioEventLoops} or
+ * {@link NettyEventLoops} to limit commands in process and delay queue size.
+ * <p>Set maxCommandsInProcess and maxCommandsInQueue then pass policy to NioEventLoops.</p>
+ * <pre>{@code
+ * EventPolicy policy = new EventPolicy();
+ * policy.maxCommandsInProcess = 40;
+ * policy.maxCommandsInQueue = 1000;
+ * EventLoops eventLoops = new NioEventLoops(policy, 4);
+ * IAerospikeClient client = new AerospikeClient(new ClientPolicy(), new Host("localhost", 3000), eventLoops);
+ * }</pre>
  */
 public final class EventPolicy {
 	/**

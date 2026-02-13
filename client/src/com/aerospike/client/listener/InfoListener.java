@@ -22,6 +22,18 @@ import com.aerospike.client.AerospikeException;
 
 /**
  * Asynchronous info command result notification.
+ * <p>
+ * No built-in implementations; implement this interface in application code and pass to
+ * {@link com.aerospike.client.IAerospikeClient#info(com.aerospike.client.async.EventLoop, InfoListener, com.aerospike.client.policy.InfoPolicy, com.aerospike.client.cluster.Node, java.lang.String...) info(EventLoop, InfoListener, ...)}.
+ * <p>Implement and pass to async info to receive map of key-value results on success or exception on failure.</p>
+ * <pre>{@code
+ * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+ * client.info(eventLoop, new InfoListener() {
+ *   public void onSuccess(java.util.Map<String,String> map) { // use map
+ *   }
+ *   public void onFailure(AerospikeException ae) { ae.printStackTrace(); }
+ * }, null, node, "stat");
+ * }</pre>
  */
 public interface InfoListener {
 	/**

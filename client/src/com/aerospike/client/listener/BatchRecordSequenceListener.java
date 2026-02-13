@@ -22,6 +22,19 @@ import com.aerospike.client.BatchRecord;
 /**
  * Asynchronous result notifications for batch operate commands.
  * The results are sent one record at a time.
+ * <p>
+ * No built-in implementations; implement this interface in application code and pass to
+ * {@link com.aerospike.client.IAerospikeClient#operate(com.aerospike.client.async.EventLoop, BatchRecordSequenceListener, com.aerospike.client.policy.BatchPolicy, com.aerospike.client.BatchRecord[]) operate(EventLoop, BatchRecordSequenceListener, ...)}.
+ * <p>Implement and pass to async batch operate to receive each BatchRecord via onRecord, then onSuccess or onFailure.</p>
+ * <pre>{@code
+ * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+ * client.operate(eventLoop, new BatchRecordSequenceListener() {
+ *   public void onRecord(BatchRecord record, int index) { // use record
+ *   }
+ *   public void onSuccess() { }
+ *   public void onFailure(AerospikeException ae) { ae.printStackTrace(); }
+ * }, null, batchRecords);
+ * }</pre>
  */
 public interface BatchRecordSequenceListener {
 	/**

@@ -17,7 +17,14 @@
 package com.aerospike.client.operation;
 
 /**
- * Bit operation policy.
+ * Bit operation policy. Use with {@link BitOperation} (resize, insert, set, add, etc.); pass
+ * {@link #Default} or construct with {@link BitWriteFlags}.
+ * <p>Use default policy or custom flags when performing bit operations.</p>
+ * <pre>{@code
+ * BitPolicy policy = BitPolicy.Default;
+ * client.operate(null, key, BitOperation.resize(policy, "bits", 8, BitResizeFlags.DEFAULT));
+ * BitPolicy custom = new BitPolicy(BitWriteFlags.CREATE_ONLY | BitWriteFlags.NO_FAIL);
+ * }</pre>
  */
 public final class BitPolicy {
 	/**

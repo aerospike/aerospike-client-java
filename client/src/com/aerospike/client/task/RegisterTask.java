@@ -23,13 +23,40 @@ import com.aerospike.client.cluster.Node;
 import com.aerospike.client.policy.Policy;
 
 /**
- * Task used to poll for UDF registration completion.
+ * Task that polls for completion of UDF module registration started by
+ * {@link com.aerospike.client.AerospikeClient#register} or
+ * {@link com.aerospike.client.AerospikeClient#registerUdfString}.
+ *
+ * <p>Use {@link #waitTillComplete()} to block until the package is registered on all nodes, or
+ * {@link #queryStatus()} / {@link com.aerospike.client.task.Task#isDone()} to poll.
+ *
+ * <p><b>Example (register UDF from file, wait for completion):</b>
+ * <pre>{@code
+ * RegisterTask task = client.register(null, "udf/myudfs.lua", "myudfs.lua", Language.LUA);
+ * task.waitTillComplete();  // blocks until package is registered on all nodes
+ * }</pre>
+ *
+ * <p><b>Example (register from classpath resource, poll status):</b>
+ * <pre>{@code
+ * RegisterTask task = client.register(null, MyClass.class.getClassLoader(), "udf/myagg.lua", "myagg.lua", Language.LUA);
+ * while (!task.isDone()) {
+ *     int status = task.queryStatus();  // IN_PROGRESS or COMPLETE
+ *     Thread.sleep(500);
+ * }
+ * }</pre>
+ *
+ * @see com.aerospike.client.task.Task
+ * @see com.aerospike.client.AerospikeClient#register
  */
 public final class RegisterTask extends Task {
 	private final String packageName;
 
 	/**
-	 * Initialize task with fields needed to query server nodes.
+	 * Constructs a register task for the given UDF package name.
+	 *
+	 * @param cluster the cluster; must not be {@code null}
+	 * @param policy policy for polling (timeout, etc.); must not be {@code null}
+	 * @param packageName the UDF package name (e.g. "myudfs")
 	 */
 	public RegisterTask(Cluster cluster, Policy policy, String packageName) {
 		super(cluster, policy);
@@ -37,7 +64,10 @@ public final class RegisterTask extends Task {
 	}
 
 	/**
-	 * Query all nodes for task completion status.
+	 * Queries the cluster for this registration task's completion status.
+	 *
+	 * @return {@link Task#IN_PROGRESS} or {@link Task#COMPLETE}
+	 * @throws AerospikeException	when a node request fails (e.g. timeout or connection error).
 	 */
 	public int queryStatus() throws AerospikeException {
 		// All nodes must respond with package to be considered done.

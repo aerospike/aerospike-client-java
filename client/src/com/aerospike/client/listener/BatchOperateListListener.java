@@ -23,6 +23,18 @@ import com.aerospike.client.BatchRecord;
 
 /**
  * Asynchronous result notifications for batch operate commands with variable operations.
+ * <p>
+ * No built-in implementations; implement this interface in application code and pass to
+ * {@link com.aerospike.client.IAerospikeClient#operate(com.aerospike.client.async.EventLoop, BatchOperateListListener, com.aerospike.client.policy.BatchPolicy, java.util.List) operate(EventLoop, BatchOperateListListener, ...)}.
+ * <p>Implement and pass to async batch operate (variable ops) to receive list of BatchRecord and status on success or exception on failure.</p>
+ * <pre>{@code
+ * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+ * client.operate(eventLoop, new BatchOperateListListener() {
+ *   public void onSuccess(java.util.List<BatchRecord> records, boolean status) { // use records
+ *   }
+ *   public void onFailure(AerospikeException ae) { ae.printStackTrace(); }
+ * }, null, batchList);
+ * }</pre>
  */
 public interface BatchOperateListListener {
 	/**

@@ -23,15 +23,26 @@ import com.aerospike.client.configuration.serializers.DynamicConfiguration;
 import com.aerospike.client.configuration.serializers.dynamicconfig.DynamicScanConfig;
 
 /**
- * Container object for optional parameters used in scan operations.
- * <p>
- * Inherited Policy fields {@link Policy#txn} and {@link Policy#failOnFilteredOut} are ignored in
- * scan commands.
+ * Policy for legacy scan operations; prefer {@link com.aerospike.client.policy.QueryPolicy} with a
+ * {@link com.aerospike.client.query.Statement} that has no filter (primary index query).
  *
- * @deprecated Use {@link com.aerospike.client.policy.QueryPolicy} with
- * {@link com.aerospike.client.AerospikeClient#query(com.aerospike.client.policy.QueryPolicy, com.aerospike.client.query.Statement)}
- * (or related query methods) and a {@link com.aerospike.client.query.Statement} with no filter set (primary index query) instead.
- * It will eventually be removed.
+ * <p>Inherited fields {@link com.aerospike.client.policy.Policy#txn} and
+ * {@link com.aerospike.client.policy.Policy#failOnFilteredOut} are ignored in scan commands.
+ *
+ * <p>Set maxRecords, recordsPerSecond, concurrentNodes and pass to scanAll.</p>
+ * <pre>{@code
+ * ScanPolicy policy = new ScanPolicy();
+ * policy.maxRecords = 0;                         // Approx record limit; divided across nodes (0 = no limit). Intent: cap scan size
+ * policy.recordsPerSecond = 0;                   // RPS limit per server (0 = no limit). Intent: throttle scan to reduce load
+ * policy.maxConcurrentNodes = 0;                // Max nodes scanned in parallel; 0 = all. Only when concurrentNodes true. Intent: throttle concurrency
+ * policy.concurrentNodes = true;              // Issue scan requests to nodes in parallel (true) or sequentially (false)
+ * policy.includeBinData = true;                 // true = return bins; false = return only digests and keys. Intent: reduce payload when bins not needed
+ * client.scanAll(policy, namespace, setName, callback);
+ * }</pre>
+ *
+ * @see com.aerospike.client.policy.Policy
+ * @see com.aerospike.client.policy.QueryPolicy
+ * @deprecated Use {@link com.aerospike.client.policy.QueryPolicy} with {@link com.aerospike.client.AerospikeClient#query} and a {@link com.aerospike.client.query.Statement} with no filter instead
  */
 @Deprecated
 public final class ScanPolicy extends Policy {

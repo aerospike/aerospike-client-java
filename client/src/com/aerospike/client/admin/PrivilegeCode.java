@@ -107,7 +107,9 @@ public enum PrivilegeCode {
 	}
 
 	/**
-	 * Can privilege be scoped with namespace and set.
+	 * Returns whether this privilege can be scoped with namespace and set.
+	 *
+	 * @return true if the privilege supports namespace/set scope (e.g. READ, WRITE)
 	 */
 	public boolean canScope() {
 		return id >= 10;
@@ -117,6 +119,10 @@ public enum PrivilegeCode {
 	 * Convert ID to privilege code enum.
 	 * Returns UNKNOWN for unrecognized privilege codes to support
 	 * forward compatibility with newer server versions.
+	 *
+	 * @param id	privilege code ID from wire protocol
+	 * @return		the corresponding enum constant
+	 * @throws AerospikeException when the given ID is not a known privilege code (e.g. invalid or reserved).
 	 */
 	public static PrivilegeCode fromId(int id) {
 		switch (id) {

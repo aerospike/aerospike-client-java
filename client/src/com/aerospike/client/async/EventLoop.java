@@ -22,7 +22,24 @@ import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.Node;
 
 /**
- * Aerospike event loop interface.
+ * Aerospike event loop interface. One event loop is used to run async commands; obtain from
+ * {@link EventLoops#next()} or {@link EventLoops#get(int)} and pass to async API methods.
+ * <p>
+ * Implementations: {@link NioEventLoop}, {@link NettyEventLoop} (obtained via {@link EventLoops}, not constructed directly).
+ * <p>Obtain an event loop from EventLoops and pass it to async get.</p>
+ * <pre>{@code
+ * EventLoops eventLoops = new NioEventLoops(2);
+ * IAerospikeClient client = new AerospikeClient(new ClientPolicy(), new Host("localhost", 3000), eventLoops);
+ * EventLoop eventLoop = eventLoops.next();
+ * client.get(eventLoop, new RecordListener() {
+ *   public void onSuccess(Key key, Record record) { }
+ *   public void onFailure(AerospikeException ae) { ae.printStackTrace(); }
+ * }, null, key);
+ * }</pre>
+ *
+ * @see NioEventLoop
+ * @see NettyEventLoop
+ * @see EventLoops
  */
 public interface EventLoop {
 	/**

@@ -25,21 +25,60 @@ import com.aerospike.client.query.Statement;
 import com.aerospike.client.util.Version;
 
 /**
- * Task used to poll for long-running server execute job completion.
+ * Task that polls for completion of a background query or scan execute job started by
+ * {@link com.aerospike.client.AerospikeClient#execute} (UDF or Operation overload).
+ *
+ * <p>Use {@link #waitTillComplete()} to block until the job finishes on all nodes, or
+ * {@link #queryStatus()} / {@link com.aerospike.client.task.Task#isDone()} to poll.
+ *
+ * <p><b>Example (background execute with Operations, wait for completion):</b>
+ * <pre>{@code
+ * Statement stmt = new Statement();
+ * stmt.setNamespace("test");
+ * stmt.setSetName("users");
+ * stmt.setFilter(Filter.equal("status", "pending"));
+ * ExecuteTask task = client.execute(writePolicy, stmt, Operation.put(new Bin("processed", true)));
+ * task.waitTillComplete();  // blocks until job finishes on all nodes
+ * }</pre>
+ *
+ * <p><b>Example (background execute with UDF, poll status):</b>
+ * <pre>{@code
+ * Statement stmt = new Statement();
+ * stmt.setNamespace("test");
+ * stmt.setSetName("events");
+ * ExecuteTask task = client.execute(writePolicy, stmt, "myudfs", "processRecord", Value.get("arg"));
+ * while (!task.isDone()) {
+ *     int status = task.queryStatus();  // NOT_FOUND, IN_PROGRESS, or COMPLETE
+ *     Thread.sleep(500);
+ * }
+ * }</pre>
+ *
+ * @see com.aerospike.client.task.Task
+ * @see com.aerospike.client.AerospikeClient#execute
  */
 public class ExecuteTask extends Task {
 	private final long taskId;
 	private final boolean scan;
 
 	/**
-	 * Initialize task with fields needed to query server nodes.
+	 * Constructs an execute task for the given statement and task ID (from the execute call).
+	 *
+	 * @param cluster the cluster; must not be {@code null}
+	 * @param policy policy for polling (timeout, etc.); must not be {@code null}
+	 * @param statement the statement that was executed
+	 * @param taskId the task ID returned by the execute call
 	 */
 	public ExecuteTask(Cluster cluster, Policy policy, Statement statement, long taskId) {
 		this(cluster, policy, taskId, statement.isScan());
 	}
 
 	/**
-	 * Initialize task with fields needed to query server nodes.
+	 * Constructs an execute task with the given task ID and scan flag.
+	 *
+	 * @param cluster the cluster; must not be {@code null}
+	 * @param policy policy for polling; must not be {@code null}
+	 * @param taskId the task ID from the execute call
+	 * @param isScan {@code true} for scan execute, {@code false} for query execute
 	 */
 	public ExecuteTask(Cluster cluster, Policy policy, long taskId, boolean isScan) {
 		super(cluster, policy);
@@ -57,14 +96,19 @@ public class ExecuteTask extends Task {
 	}
 
 	/**
-	 * Return task id.
+	 * Returns the task ID for this execute job.
+	 *
+	 * @return the task ID
 	 */
 	public long getTaskId() {
 		return taskId;
 	}
 
 	/**
-	 * Query all nodes for task completion status.
+	 * Queries the cluster for this execute task's completion status.
+	 *
+	 * @return {@link Task#NOT_FOUND}, {@link Task#IN_PROGRESS}, or {@link Task#COMPLETE}
+	 * @throws AerospikeException	when a node request fails (e.g. timeout or connection error).
 	 */
 	@Override
 	public int queryStatus() throws AerospikeException {

@@ -22,13 +22,21 @@ import com.aerospike.client.util.Pack;
 import com.aerospike.client.util.Packer;
 
 /**
- * Bit operations. Create bit operations used by client operate command.
- * Offset orientation is left-to-right.  Negative offsets are supported.
- * If the offset is negative, the offset starts backwards from end of the bitmap.
- * If an offset is out of bounds, a parameter error will be returned.
- * <p>
- * Bit operations on bitmap items nested in lists/maps are not currently
+ * Bit operations for the client operate command. Create bit operations (resize, insert, set, get,
+ * count, add, etc.) and pass to {@link com.aerospike.client.AerospikeClient#operate}. Offset is
+ * left-to-right; negative offset is from end of bitmap. Nested bitmaps in lists/maps are not
  * supported by the server.
+ * <p>Resize a bit bin and perform get/count with BitOperation, then read result from operate.</p>
+ * <pre>{@code
+ * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+ * Key key = new Key("ns", "set", "mykey");
+ * client.operate(null, key,
+ *   BitOperation.resize(BitPolicy.Default, "bits", 4, BitResizeFlags.DEFAULT),
+ *   BitOperation.get("bits", 0, 4),
+ *   BitOperation.count("bits", 0, -1));
+ * Record rec = client.operate(null, key, BitOperation.get("bits", 0, 4));
+ * byte[] bits = (byte[]) rec.getValue("bits");
+ * }</pre>
  */
 public final class BitOperation {
 	private static final int RESIZE = 0;
