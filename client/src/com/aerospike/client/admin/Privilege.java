@@ -17,23 +17,37 @@
 package com.aerospike.client.admin;
 
 /**
- * User privilege.
+ * Single privilege (code plus optional namespace/set scope) for role-based access; use in {@link com.aerospike.client.AerospikeClient#createRole} and {@link com.aerospike.client.AerospikeClient#grantPrivileges}.
+ * <p>
+ * Set {@link #namespace} and {@link #setName} to null for global scope when the privilege allows it; use {@link PrivilegeCode#canScope()} to check.
+ *
+ * <p><b>Example:</b>
+ * <p>Create a privilege with namespace scope and use it in createRole.</p>
+ * <pre>{@code
+ * Privilege p = new Privilege();
+ * p.code = PrivilegeCode.READ_WRITE;
+ * p.namespace = "test";
+ * p.setName = null;
+ * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+ * try {
+ *   client.createRole(null, "myrole", Collections.singletonList(p));
+ * } finally {
+ *   client.close();
+ * }
+ * }</pre>
+ *
+ * @see PrivilegeCode
+ * @see com.aerospike.client.AerospikeClient#createRole
+ * @see com.aerospike.client.AerospikeClient#grantPrivileges
+ * @see com.aerospike.client.AerospikeClient#revokePrivileges
  */
 public final class Privilege {
-	/**
-	 * Privilege code.
-	 */
+	/** Privilege type; must not be null. */
 	public PrivilegeCode code;
 
-	/**
-	 *	Namespace scope. Apply permission to this namespace only.
-	 *	If namespace is null, the privilege applies to all namespaces.
-	 */
+	/** Namespace scope; null means all namespaces (when privilege allows). */
 	public String namespace;
 
-	/**
-	 *	Set name scope. Apply permission to this set within namespace only.
-	 *	If set is null, the privilege applies to all sets within namespace.
-	 */
+	/** Set name scope within namespace; null means all sets in the namespace. */
 	public String setName;
 }

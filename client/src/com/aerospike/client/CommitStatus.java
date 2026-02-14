@@ -17,7 +17,27 @@
 package com.aerospike.client;
 
 /**
- * Transaction commit status code.
+ * Transaction commit result returned by {@link com.aerospike.client.AerospikeClient#commit}. OK and ALREADY_COMMITTED indicate success; abandoned statuses mean the server will complete asynchronously.
+ *
+ * <p><b>Example:</b>
+ * <p>Commit a transaction and handle the returned status (OK, abandoned, etc.).</p>
+ * <pre>{@code
+ * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+ * CommitStatus status = client.commit(txn);
+ * switch (status) {
+ *   case OK:
+ *   case ALREADY_COMMITTED:
+ *     break;
+ *   case ROLL_FORWARD_ABANDONED:
+ *   case CLOSE_ABANDONED:
+ *     System.err.println(status.str);
+ *     break;
+ * }
+ * }</pre>
+ *
+ * @see AbortStatus
+ * @see CommitError
+ * @see com.aerospike.client.AerospikeClient#commit
  */
 public enum CommitStatus {
 	OK("Commit succeeded"),
@@ -25,6 +45,7 @@ public enum CommitStatus {
 	ROLL_FORWARD_ABANDONED("Transaction client roll forward abandoned. Server will eventually commit the transaction."),
 	CLOSE_ABANDONED("Transaction has been rolled forward, but transaction client close was abandoned. Server will eventually close the transaction.");
 
+	/** Human-readable message for this status. */
 	public final String str;
 
 	CommitStatus(String str) {

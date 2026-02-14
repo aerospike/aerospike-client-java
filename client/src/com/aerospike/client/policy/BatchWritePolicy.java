@@ -24,7 +24,24 @@ import com.aerospike.client.configuration.serializers.dynamicconfig.DynamicBatch
 import com.aerospike.client.exp.Expression;
 
 /**
- * Policy attributes used in batch write commands.
+ * Policy for batch write and batch operate write operations: filter expression, record-exists action, generation, commit level, expiration.
+ * <p>
+ * Pass to batch operate or batch write overloads alongside {@link BatchPolicy}. Extends write options per key when using key-specific policies.
+ *
+ * <p><b>Example:</b>
+ * <p>Replace existing records and commit to master only for batch operate or batch write.</p>
+ * <pre>{@code
+ * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+ * BatchPolicy batchPolicy = new BatchPolicy();
+ * BatchWritePolicy bwp = new BatchWritePolicy();
+ * bwp.recordExistsAction = RecordExistsAction.REPLACE;
+ * bwp.commitLevel = CommitLevel.COMMIT_MASTER;
+ * client.operate(batchPolicy, batchRecordList);
+ * }</pre>
+ *
+ * @see BatchPolicy
+ * @see com.aerospike.client.AerospikeClient#operate
+ * @see Policy#filterExp
  */
 public final class BatchWritePolicy {
 	/**

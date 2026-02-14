@@ -20,7 +20,21 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Host name/port of database server.
+ * Host name and port (and optional TLS name) for a database server; used as seed for {@link com.aerospike.client.AerospikeClient} and parsed by {@link #parseHosts}.
+ * <p>
+ * Format for parsing: {@code hostname[:tlsname][:port],...}. Use {@link #parseHosts(String, int)} or {@link #parseServiceHosts(String)} to build a list.
+ *
+ * <p><b>Example:</b>
+ * <p>Parse host string and port into Host array and create a client.</p>
+ * <pre>{@code
+ * Host[] hosts = Host.parseHosts("localhost", 3000);
+ * IAerospikeClient client = new AerospikeClient(new ClientPolicy(), hosts);
+ * client.close();
+ * }</pre>
+ *
+ * @see #parseHosts
+ * @see #parseServiceHosts
+ * @see com.aerospike.client.AerospikeClient
  */
 public final class Host {
 	/**
@@ -95,6 +109,11 @@ public final class Host {
 	 * </ul>
 	 * IPv6 addresses must be enclosed by brackets.
 	 * tlsname and port are optional.
+	 *
+	 * @param str         comma-separated host[:tls][:port] list; must not be null
+	 * @param defaultPort port when not specified per host
+	 * @return array of Host; never null
+	 * @throws AerospikeException when the string format is invalid (e.g. missing host:port or bad port).
 	 */
 	public static Host[] parseHosts(String str, int defaultPort) {
 		try {
@@ -115,6 +134,10 @@ public final class Host {
 	 * <li>IPv6: [xxxx::xxxx]</li>
 	 * </ul>
 	 * IPv6 addresses must be enclosed by brackets.
+	 *
+	 * @param str hostname:port comma-separated list; must not be null
+	 * @return list of Host; never null
+	 * @throws AerospikeException when the string format is invalid (e.g. missing host:port or bad port).
 	 */
 	public static List<Host> parseServiceHosts(String str) {
 		try {

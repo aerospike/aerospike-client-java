@@ -26,9 +26,28 @@ import com.aerospike.client.exp.Expression;
 import com.aerospike.client.util.Pack;
 
 /**
- * Query filter definition.
+ * Query filter definition; exactly one filter per {@link Statement}, on a bin that has a secondary index.
+ * <p>
+ * Use {@link #equal(String, long, CTX...)}, {@link #equal(String, String, CTX...)}, {@link #range}, or other static methods; pass to {@link Statement#setFilter}. Use optional {@link com.aerospike.client.cdt.CTX} for CDT/list/map context (e.g. {@link #range(String, long, long, CTX...)}).
+ * <p>Set Filter.equal on a statement and run query.</p>
+ * <pre>{@code
+ * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+ * Statement stmt = new Statement();
+ * stmt.setNamespace("test");
+ * stmt.setSetName("users");
+ * stmt.setFilter(Filter.equal("status", "active"));
+ * RecordSet rs = client.query(null, stmt);
+ * try {
+ *   while (rs.next()) { KeyRecord kr = rs.getKeyRecord(); }
+ * } finally { rs.close(); }
+ * client.close();
+ * }</pre>
  *
- * Currently, only one filter is allowed in a Statement, and must be on bin which has a secondary index defined.
+ * @see Statement
+ * @see Statement#setFilter
+ * @see IndexType
+ * @see IndexCollectionType
+ * @see com.aerospike.client.cdt.CTX
  */
 public final class Filter {
 	/**

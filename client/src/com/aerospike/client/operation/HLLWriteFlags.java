@@ -17,11 +17,18 @@
 package com.aerospike.client.operation;
 
 /**
- * HyperLogLog operation policy write bit flags. Use BITWISE OR to combine flags. Example:
- * 
- * <pre>{@code 
+ * Write flags for HyperLogLog operations; combine with BITWISE OR and pass to {@link HLLPolicy}.
+ * <p>
+ * <p>Combine HLL write flags and pass to HLLPolicy.</p>
+ * <pre>{@code
  * int flags = HLLWriteFlags.CREATE_ONLY | HLLWriteFlags.NO_FAIL;
+ * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+ * HLLPolicy policy = new HLLPolicy(flags);
+ * client.operate(null, key, HLLOperation.init(policy, "hll", 14));
  * }</pre>
+ *
+ * @see HLLPolicy
+ * @see HLLOperation
  */
 public final class HLLWriteFlags {
 	/**

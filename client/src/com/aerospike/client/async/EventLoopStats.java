@@ -17,32 +17,32 @@
 package com.aerospike.client.async;
 
 /**
- * Event loop statistics.
+ * Snapshot of a single event loop's load (process and queue sizes).
+ * <p>
+ * Used in {@link com.aerospike.client.cluster.ClusterStats#eventLoops}; obtain via {@link com.aerospike.client.AerospikeClient#getClusterStats()}.
+ *
+ * @see com.aerospike.client.cluster.ClusterStats
+ * @see EventLoop#getProcessSize
+ * @see EventLoop#getQueueSize
  */
 public final class EventLoopStats {
-	/**
-	 * Approximate number of commands actively being processed on
-	 * the event loop.
-	 */
+	/** Approximate number of commands actively being processed on the event loop. */
 	public final int processSize;
 
-	/**
-	 * Approximate number of commands stored on this event loop's
-	 * delay queue that have not been started yet.
-	 */
+	/** Approximate number of commands on the event loop's delay queue not yet started. */
 	public final int queueSize;
 
 	/**
-	 * Event loop statistics constructor.
+	 * Builds stats from the given event loop (values are snapshots at construction time).
+	 * @param eventLoop event loop (must not be null)
 	 */
 	public EventLoopStats(EventLoop eventLoop) {
 		this.processSize = eventLoop.getProcessSize();
 		this.queueSize = eventLoop.getQueueSize();
 	}
 
-	/**
-	 * Convert statistics to string.
-	 */
+	/** @return processSize and queueSize as a comma-separated string */
+	@Override
 	public String toString() {
 		return "" + processSize + ',' + queueSize;
 	}

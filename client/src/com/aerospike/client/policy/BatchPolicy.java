@@ -26,7 +26,25 @@ import com.aerospike.client.configuration.serializers.dynamicconfig.DynamicBatch
 import java.util.Objects;
 
 /**
- * Batch parent policy.
+ * Policy for batch get, batch write, batch delete, and batch operate: concurrency, inline processing, and respond-all-keys.
+ * <p>
+ * Pass to {@link com.aerospike.client.AerospikeClient#get}, {@link com.aerospike.client.AerospikeClient#operate}, {@link com.aerospike.client.AerospikeClient#delete} batch overloads. Extends {@link Policy}.
+ *
+ * <p><b>Example:</b>
+ * <p>Allow inline batch processing and set a 2-second total timeout for batch get.</p>
+ * <pre>{@code
+ * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+ * BatchPolicy policy = new BatchPolicy();
+ * policy.allowInline = true;
+ * policy.totalTimeout = 2000;
+ * Record[] records = client.get(policy, keys);
+ * }</pre>
+ *
+ * @see Policy
+ * @see BatchWritePolicy
+ * @see BatchDeletePolicy
+ * @see com.aerospike.client.AerospikeClient#get
+ * @see com.aerospike.client.AerospikeClient#operate
  */
 public class BatchPolicy extends Policy {
 	/**

@@ -29,7 +29,28 @@ import com.aerospike.client.listener.TaskStatusListener;
 import com.aerospike.client.policy.InfoPolicy;
 
 /**
- * Async index task monitor.
+ * Asynchronous index task returned from {@link IAerospikeClient#createIndex} (and drop) to poll completion.
+ * <p>
+ * Use {@link #queryStatus(EventLoop, InfoPolicy, Node, TaskStatusListener)} to check a node; all nodes must report 100% load for the task to be done.
+ * <pre>{@code
+ * EventLoops eventLoops = new NioEventLoops(4);
+ * ClientPolicy clientPolicy = new ClientPolicy();
+ * clientPolicy.eventLoops = eventLoops;
+ * IAerospikeClient client = new AerospikeClient(clientPolicy, "localhost", 3000);
+ * EventLoop loop = eventLoops.next();
+ * InfoPolicy policy = new InfoPolicy();
+ * Node node = client.getNodes()[0];
+ *
+ * client.createIndex(loop, policy, "ns", "set", "idx1", "bin1", IndexType.STRING, new IndexListener() {
+ *   public void onSuccess(AsyncIndexTask task) {
+ *     task.queryStatus(loop, policy, node, new TaskStatusListener() { ... });
+ *   }
+ *   public void onFailure(AerospikeException e) { }
+ * });
+ * }</pre>
+ *
+ * @see IAerospikeClient#createIndex
+ * @see com.aerospike.client.listener.TaskStatusListener
  */
 public class AsyncIndexTask {
 	private final IAerospikeClient client;
@@ -38,7 +59,10 @@ public class AsyncIndexTask {
 	private final boolean isCreate;
 
 	/**
-	 * Initialize task with fields needed to query server nodes.
+	 * @param client client (must not be null)
+	 * @param namespace namespace
+	 * @param indexName index name
+	 * @param isCreate true for create, false for drop
 	 */
 	public AsyncIndexTask(IAerospikeClient client, String namespace, String indexName, boolean isCreate) {
 		this.client = client;
@@ -48,8 +72,11 @@ public class AsyncIndexTask {
 	}
 
 	/**
-	 * Asynchronously query node for task completion status.
-	 * All nodes must respond with load_pct of 100 to be considered done.
+	 * Asynchronously queries the given node for this task's completion status; all nodes must report load_pct 100 for the task to be done.
+	 * @param eventLoop event loop to run the request on (must not be null)
+	 * @param policy info policy (must not be null)
+	 * @param node node to query (must not be null)
+	 * @param listener callback for status or failure (must not be null)
 	 */
 	public void queryStatus(EventLoop eventLoop, InfoPolicy policy, Node node, TaskStatusListener listener) {
 		if (client.getNodes().length == 0) {

@@ -17,12 +17,24 @@
 package com.aerospike.client.cdt;
 
 /**
- * List policy directives when creating a list and writing list items.
+ * List policy: order and write flags when creating a list or writing list items.
+ * <p>
+ * Use with {@link ListOperation#create}, {@link ListOperation#append}, {@link ListOperation#appendItems}, {@link ListOperation#increment}, etc. when the list may not exist or when you need ordered/unique semantics.
+ * <p>Use list policy with appendItems and increment.</p>
+ * <pre>{@code
+ * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+ * ListPolicy unordered = ListPolicy.Default;
+ * ListPolicy ordered = new ListPolicy(ListOrder.ORDERED, ListWriteFlags.DEFAULT);
+ * client.operate(null, key, ListOperation.appendItems(ordered, "bin", itemList));
+ * client.operate(null, key, ListOperation.increment(ordered, "bin", 0, Value.get(1)));
+ * }</pre>
+ *
+ * @see ListOperation
+ * @see ListOrder
+ * @see ListWriteFlags
  */
 public final class ListPolicy {
-	/**
-	 * Default unordered list with normal write semantics.
-	 */
+	/** Default unordered list with normal write semantics. */
 	public static final ListPolicy Default = new ListPolicy();
 
 	public final int attributes;

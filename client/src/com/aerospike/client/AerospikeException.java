@@ -23,7 +23,37 @@ import com.aerospike.client.policy.Policy;
 import java.util.List;
 
 /**
- * Aerospike exceptions that can be thrown from the client.
+ * Base exception for client errors; holds result code, node, policy, optional sub-exceptions, and in-doubt flag.
+ * <p>
+ * Use {@link #getResultCode()} and {@link ResultCode#getResultString(int)} to interpret; use {@link #getBaseMessage()} for the message without metadata. Subclasses denote timeout, connection, batch, transaction commit, and scan/query termination.
+ *
+ * <p><b>Example:</b>
+ * <p>Catch an exception, get result code and message, and check in-doubt for writes.</p>
+ * <pre>{@code
+ * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+ * try {
+ *  client.put(null, key, bins);
+ * } catch (AerospikeException e) {
+ *   int code = e.getResultCode();
+ *   String msg = ResultCode.getResultString(code);
+ *   if (e.getInDoubt()) {
+ *     // write may have completed
+ *   }
+ * }
+ * }</pre>
+ *
+ * @see ResultCode
+ * @see #getResultCode
+ * @see #getBaseMessage
+ * @see #keepConnection()
+ * @see Timeout
+ * @see Connection
+ * @see InvalidNode
+ * @see BatchRecords
+ * @see BatchRecordArray
+ * @see Commit
+ * @see ScanTerminated
+ * @see QueryTerminated
  */
 public class AerospikeException extends RuntimeException {
 	private static final long serialVersionUID = 1L;
@@ -121,7 +151,9 @@ public class AerospikeException extends RuntimeException {
 	}
 
 	/**
-	 * Return base message without extra metadata.
+	 * Return base message without extra metadata (result code, node, policy, inDoubt).
+	 *
+	 * @return the underlying message or the result code string if null
 	 */
 	public String getBaseMessage() {
 		String message = super.getMessage();
@@ -129,7 +161,9 @@ public class AerospikeException extends RuntimeException {
 	}
 
 	/**
-	 * Should connection be put back into pool.
+	 * Whether the connection should be returned to the pool after this exception.
+	 *
+	 * @return true if the connection is reusable
 	 */
 	public final boolean keepConnection() {
 		return ResultCode.keepConnection(resultCode);
@@ -224,7 +258,12 @@ public class AerospikeException extends RuntimeException {
 	}
 
 	/**
-	 * Exception thrown when database request expires before completing.
+	 * Thrown when a database request expires before completing (client or server timeout).
+	 * <p>
+	 * Fields {@link #connectTimeout}, {@link #socketTimeout}, {@link #timeout} reflect policy values; {@link #client} is true for client-initiated timeout.
+	 *
+	 * @see ResultCode#TIMEOUT
+	 * @see com.aerospike.client.policy.Policy#totalTimeout
 	 */
 	public static final class Timeout extends AerospikeException {
 		private static final long serialVersionUID = 1L;
@@ -310,7 +349,9 @@ public class AerospikeException extends RuntimeException {
 	}
 
 	/**
-	 * Exception thrown when a Java serialization error occurs.
+	 * Thrown when a Java serialization error occurs (e.g. value cannot be serialized for the wire).
+	 *
+	 * @see ResultCode#SERIALIZE_ERROR
 	 */
 	public static final class Serialize extends AerospikeException {
 		private static final long serialVersionUID = 1L;
@@ -325,7 +366,9 @@ public class AerospikeException extends RuntimeException {
 	}
 
 	/**
-	 * Exception thrown when client can't parse data returned from server.
+	 * Thrown when the client cannot parse data returned from the server.
+	 *
+	 * @see ResultCode#PARSE_ERROR
 	 */
 	public static final class Parse extends AerospikeException {
 		private static final long serialVersionUID = 1L;
@@ -336,7 +379,9 @@ public class AerospikeException extends RuntimeException {
 	}
 
 	/**
-	 * Exception thrown when client can't connect to the server.
+	 * Thrown when the client cannot connect to the server (e.g. host unreachable, connection refused).
+	 *
+	 * @see ResultCode#SERVER_NOT_AVAILABLE
 	 */
 	public static final class Connection extends AerospikeException {
 		private static final long serialVersionUID = 1L;
@@ -359,8 +404,9 @@ public class AerospikeException extends RuntimeException {
 	}
 
 	/**
-	 * Exception thrown when the selected node is not active, or when the namespace 
-	 * is removed after the client has connected.
+	 * Thrown when the selected node is not active or the namespace is removed after the client has connected.
+	 *
+	 * @see ResultCode#INVALID_NODE_ERROR
 	 */
 	public static final class InvalidNode extends AerospikeException {
 		private static final long serialVersionUID = 1L;
@@ -380,7 +426,9 @@ public class AerospikeException extends RuntimeException {
 	}
 
 	/**
-	 * Exception thrown when namespace is invalid.
+	 * Thrown when the namespace is invalid or not found in the partition map.
+	 *
+	 * @see ResultCode#INVALID_NAMESPACE
 	 */
 	public static final class InvalidNamespace extends AerospikeException {
 		private static final long serialVersionUID = 1L;
@@ -392,11 +440,14 @@ public class AerospikeException extends RuntimeException {
 	}
 
 	/**
-	 * Exception thrown when a batch exists method fails.
+	 * Thrown when a batch exists method fails; {@link #exists} holds per-key existence results for keys that were completed.
+	 *
+	 * @see com.aerospike.client.AerospikeClient#exists(BatchPolicy, Key[])
 	 */
 	public static final class BatchExists extends AerospikeException {
 		private static final long serialVersionUID = 1L;
 
+		/** Existence result per key; length matches the request key array. */
 		public final boolean[] exists;
 
 		public BatchExists(boolean[] exists, Throwable e) {
@@ -406,13 +457,14 @@ public class AerospikeException extends RuntimeException {
 	}
 
 	/**
-	 * Exception thrown when a batch read method fails.
-	 * The records fields contains responses for key requests that succeeded and null
-	 * records for key requests that failed.
+	 * Thrown when a batch read method fails; {@link #records} contains responses for keys that succeeded (null for failed keys).
+	 *
+	 * @see com.aerospike.client.AerospikeClient#get
 	 */
 	public static final class BatchRecords extends AerospikeException {
 		private static final long serialVersionUID = 1L;
 
+		/** Record per key; null for keys that failed or were not found. */
 		public final Record[] records;
 
 		public BatchRecords(Record[] records, Throwable e) {
@@ -422,13 +474,16 @@ public class AerospikeException extends RuntimeException {
 	}
 
 	/**
-	 * Exception thrown when a batch write method fails.
-	 * The records fields contains responses for key requests that succeeded
-	 * and resultCodes for key requests that failed.
+	 * Thrown when a batch write/operate/delete method fails; {@link #records} contains per-key results (use {@link BatchRecord#resultCode} for each).
+	 *
+	 * @see BatchRecord
+	 * @see com.aerospike.client.AerospikeClient#operate
+	 * @see com.aerospike.client.AerospikeClient#delete
 	 */
 	public static final class BatchRecordArray extends AerospikeException {
 		private static final long serialVersionUID = 1L;
 
+		/** BatchRecord per key; check each resultCode. */
 		public final BatchRecord[] records;
 
 		public BatchRecordArray(BatchRecord[] records, Throwable e) {
@@ -443,7 +498,10 @@ public class AerospikeException extends RuntimeException {
 	}
 
 	/**
-	 * Exception thrown when scan was terminated prematurely.
+	 * Thrown when a scan is terminated prematurely (e.g. by the user throwing from {@link com.aerospike.client.ScanCallback}).
+	 *
+	 * @see ResultCode#SCAN_TERMINATED
+	 * @see com.aerospike.client.ScanCallback
 	 */
 	public static final class ScanTerminated extends AerospikeException {
 		private static final long serialVersionUID = 1L;
@@ -458,7 +516,10 @@ public class AerospikeException extends RuntimeException {
 	}
 
 	/**
-	 * Exception thrown when query was terminated prematurely.
+	 * Thrown when a query is terminated prematurely (e.g. by the user throwing from {@link com.aerospike.client.query.QueryListener}).
+	 *
+	 * @see ResultCode#QUERY_TERMINATED
+	 * @see com.aerospike.client.query.QueryListener
 	 */
 	public static final class QueryTerminated extends AerospikeException {
 		private static final long serialVersionUID = 1L;
@@ -473,8 +534,10 @@ public class AerospikeException extends RuntimeException {
 	}
 
 	/**
-	 * Exception thrown when async command was rejected because the
-	 * async delay queue is full.
+	 * Thrown when an async command was rejected because the async delay queue is full.
+	 *
+	 * @see ResultCode#ASYNC_QUEUE_FULL
+	 * @see Backoff
 	 */
 	public static final class AsyncQueueFull extends Backoff {
 		private static final long serialVersionUID = 1L;
@@ -485,8 +548,9 @@ public class AerospikeException extends RuntimeException {
 	}
 
 	/**
-	 * Exception thrown when node is in backoff mode due to excessive
-	 * number of errors.
+	 * Thrown when a node is in backoff mode due to an excessive number of errors.
+	 *
+	 * @see AsyncQueueFull
 	 */
 	public static class Backoff extends AerospikeException {
 		private static final long serialVersionUID = 1L;
@@ -497,26 +561,36 @@ public class AerospikeException extends RuntimeException {
 	}
 
 	/**
-	 * Exception thrown when a transaction commit fails.
+	 * Thrown when a transaction commit fails; use {@link #error} for the commit error code and {@link #verifyRecords}/{@link #rollRecords} for per-key details.
+	 * <p>
+	 * Catch when calling {@link com.aerospike.client.AerospikeClient#commit}; then call {@link com.aerospike.client.AerospikeClient#abort} if appropriate.
+	 *
+	 * <p><b>Example:</b>
+	 * <p>Catch commit failure, read error and abort the transaction.</p>
+	 * <pre>{@code
+	 * try {
+	 *   client.commit(txn);
+	 * } catch (AerospikeException.Commit e) {
+	 *   CommitError err = e.error;
+	 *   client.abort(txn);
+	 * }
+	 * }</pre>
+	 *
+	 * @see CommitError
+	 * @see CommitStatus
+	 * @see com.aerospike.client.AerospikeClient#commit
+	 * @see com.aerospike.client.AerospikeClient#abort
 	 */
 	public static final class Commit extends AerospikeException {
 		private static final long serialVersionUID = 1L;
 
-		/**
-		 * Error status of the attempted commit.
-		 */
+		/** Error status of the attempted commit. */
 		public final CommitError error;
 
-		/**
-		 * Verify result for each read key in the transaction. May be null if failure occurred
-		 * before verify.
-		 */
+		/** Verify result per read key; null if failure occurred before verify. */
 		public final BatchRecord[] verifyRecords;
 
-		/**
-		 * Roll forward/backward result for each write key in the transaction. May be null if
-		 * failure occurred before roll forward/backward.
-		 */
+		/** Roll forward/backward result per write key; null if failure occurred before roll. */
 		public final BatchRecord[] rollRecords;
 
 		public Commit(CommitError error, BatchRecord[] verifyRecords, BatchRecord[] rollRecords) {

@@ -21,20 +21,35 @@ import java.util.Map;
 import com.aerospike.client.AerospikeException;
 
 /**
- * Asynchronous info command result notification.
+ * Async callback for info command; receives a map of info key-value pairs or exception.
+ * <p>
+ * Pass to {@link com.aerospike.client.IAerospikeClient#info}
+ * <pre>{@code
+ * EventLoops eventLoops = new NioEventLoops(4);
+ * ClientPolicy clientPolicy = new ClientPolicy();
+ * clientPolicy.eventLoops = eventLoops;
+ * IAerospikeClient client = new AerospikeClient(clientPolicy, "localhost", 3000);
+ * EventLoop loop = eventLoops.next();
+ * Node node = client.getNodes()[0];
+ *
+ * client.info(loop, new InfoListener() {
+ *   public void onSuccess(Map map) { }
+ *   public void onFailure(AerospikeException e) { }
+ * }, new InfoPolicy(), node, "build");
+ * }</pre>
+ *
+ * @see com.aerospike.client.IAerospikeClient#info
  */
 public interface InfoListener {
 	/**
-	 * This method is called when an asynchronous info command completes successfully.
-	 *
-	 * @param map			map of info command keys and result values.
+	 * Called when the info command completes successfully.
+	 * @param map map of info keys to result values (must not be null)
 	 */
 	public void onSuccess(Map<String,String> map);
 
 	/**
-	 * This method is called when an asynchronous info command fails.
-	 *
-	 * @param ae			error that occurred
+	 * Called when the info command fails.
+	 * @param ae exception cause of failure wrapped into Aerospike exception
 	 */
 	public void onFailure(AerospikeException ae);
 }

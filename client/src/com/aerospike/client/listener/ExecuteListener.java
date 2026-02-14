@@ -20,19 +20,35 @@ import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
 
 /**
- * Asynchronous result notifications for execute commands.
+ * Async callback for execute (UDF); receives key, return value, or exception.
+ * <p>
+ * Pass to {@link com.aerospike.client.IAerospikeClient#execute}
+ * <pre>{@code
+ * EventLoops eventLoops = new NioEventLoops(4);
+ * ClientPolicy clientPolicy = new ClientPolicy();
+ * clientPolicy.eventLoops = eventLoops;
+ * IAerospikeClient client = new AerospikeClient(clientPolicy, "localhost", 3000);
+ * EventLoop loop = eventLoops.next();
+ *
+ * client.execute(loop, new ExecuteListener() {
+ *   public void onSuccess(Key key, Object obj) { }
+ *   public void onFailure(AerospikeException e) { }
+ * }, new Policy(), key, "module", "function", null);
+ * }</pre>
+ *
+ * @see com.aerospike.client.IAerospikeClient#execute
  */
 public interface ExecuteListener {
 	/**
-	 * This method is called when an asynchronous execute command completes successfully.
-	 *
-	 * @param key	unique record identifier
-	 * @param obj	returned object
+	 * Called when the execute completes successfully.
+	 * @param key record key (must not be null)
+	 * @param obj value returned by the UDF, or null
 	 */
 	public void onSuccess(Key key, Object obj);
 
 	/**
-	 * This method is called when an asynchronous execute command fails.
+	 * Called when the execute fails.
+	 * @param ae exception cause of failure wrapped into Aerospike exception
 	 */
 	public void onFailure(AerospikeException ae);
 }

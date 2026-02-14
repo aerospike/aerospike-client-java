@@ -17,7 +17,11 @@
 package com.aerospike.client.operation;
 
 /**
- * Bitwise operation flags for resize.
+ * Flags for {@link BitOperation#resize}; control where bytes are added/removed and size direction.
+ * <p>
+ * Combine with BITWISE OR when needed. Pass to {@link BitOperation#resize(BitPolicy, String, int, int)}.
+ *
+ * @see BitOperation#resize
  */
 public final class BitResizeFlags {
 	/**

@@ -19,11 +19,29 @@ package com.aerospike.client.listener;
 import com.aerospike.client.AbortStatus;
 
 /**
- * Asynchronous result notifications for transaction aborts.
+ * Async callback for transaction abort; receives {@link com.aerospike.client.AbortStatus} on success.
+ * <p>
+ * Pass to {@link com.aerospike.client.IAerospikeClient#abort(com.aerospike.client.async.EventLoop, AbortListener, com.aerospike.client.Txn)}. Abort does not report failure via a separate callback.
+ * <pre>{@code
+ * EventLoops eventLoops = new NioEventLoops(4);
+ * ClientPolicy clientPolicy = new ClientPolicy();
+ * clientPolicy.eventLoops = eventLoops;
+ * IAerospikeClient client = new AerospikeClient(clientPolicy, "localhost", 3000);
+ * EventLoop loop = eventLoops.next();
+ *
+ * client.abort(loop, new AbortListener() {
+ *   public void onSuccess(AbortStatus status) { }
+ * }, txn);
+ * }</pre>
+ *
+ * @see com.aerospike.client.AbortStatus
+ * @see com.aerospike.client.IAerospikeClient#abort
+ * @see com.aerospike.client.Txn
  */
 public interface AbortListener {
 	/**
-	 * This method is called when the abort succeeded or will succeed.
+	 * Called when the abort completes successfully.
+	 * @param status abort status (must not be null)
 	 */
 	void onSuccess(AbortStatus status);
 }

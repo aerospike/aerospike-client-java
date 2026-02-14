@@ -24,7 +24,23 @@ import com.aerospike.client.configuration.serializers.dynamicconfig.DynamicBatch
 import com.aerospike.client.exp.Expression;
 
 /**
- * Policy attributes used in batch delete commands.
+ * Policy for batch delete: optional filter expression and commit level.
+ * <p>
+ * Pass to {@link com.aerospike.client.AerospikeClient#delete(BatchPolicy, BatchDeletePolicy, Key[])}. Omit or use null for defaults.
+ *
+ * <p><b>Example:</b>
+ * <p>Use master-only commit for batch delete to reduce latency.</p>
+ * <pre>{@code
+ * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+ * BatchPolicy batchPolicy = new BatchPolicy();
+ * BatchDeletePolicy bdp = new BatchDeletePolicy();
+ * bdp.commitLevel = CommitLevel.COMMIT_MASTER;
+ * client.delete(batchPolicy, bdp, keys);
+ * }</pre>
+ *
+ * @see BatchPolicy
+ * @see com.aerospike.client.AerospikeClient#delete
+ * @see CommitLevel
  */
 public final class BatchDeletePolicy {
 	/**

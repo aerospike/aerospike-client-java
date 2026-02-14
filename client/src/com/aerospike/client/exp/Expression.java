@@ -24,7 +24,23 @@ import com.aerospike.client.util.Crypto;
 import com.aerospike.client.util.Packer;
 
 /**
- * Packed expression byte instructions.
+ * Packed expression built from {@link Exp}; use in filter policies, query filters, and {@link ExpOperation}.
+ * <p>
+ * Create with {@link Exp#build(Exp)}. Use {@link #getBytes()} or {@link #fromBytes(byte[])} / {@link #fromBase64(String)} for serialization.
+ * <p>Build expression for filter and ExpOperation.read.</p>
+ * <pre>{@code
+ * Expression exp = Exp.build(Exp.eq(Exp.intBin("A"), Exp.val(1)));
+ * WritePolicy policy = new WritePolicy();
+ * policy.filterExp = exp;
+ * client.put(policy, key, new Bin("A", 2));
+ *
+ * Expression readExp = Exp.build(Exp.add(Exp.intBin("A"), Exp.val(10)));
+ * Record rec = client.operate(null, key, ExpOperation.read("result", readExp, ExpReadFlags.DEFAULT));
+ * long result = rec.getLong("result");
+ * }</pre>
+ *
+ * @see Exp
+ * @see ExpOperation
  */
 public final class Expression implements Serializable {
 	private static final long serialVersionUID = 1L;

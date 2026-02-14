@@ -24,10 +24,25 @@ import com.aerospike.client.Value.HLLValue;
 import com.aerospike.client.util.Pack;
 
 /**
- * HyperLogLog (HLL) operations.
+ * HyperLogLog (HLL) operations for the client operate command; init, add, count, union, similarity, etc.
  * <p>
- * HyperLogLog operations on HLL items nested in lists/maps are not currently
- * supported by the server.
+ * Use with {@link com.aerospike.client.AerospikeClient#operate}. HLL bins nested in list/map are not supported by the server. For expression-based HLL in filters, see {@link com.aerospike.client.exp.HLLExp}.
+ * <p>Init and add to an HLL bin then count.</p>
+ * <pre>{@code
+ * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+ * Key key = new Key("ns", "set", "mykey");
+ * client.operate(null, key,
+ *     HLLOperation.init(HLLPolicy.Default, "hll", 14),
+ *     HLLOperation.add(HLLPolicy.Default, "hll", listOfValues));
+ * Record rec = client.operate(null, key, HLLOperation.count("hll"));
+ * long count = rec.getLong("hll");
+ * client.close();
+ * }</pre>
+ *
+ * @see HLLPolicy
+ * @see HLLWriteFlags
+ * @see com.aerospike.client.AerospikeClient#operate
+ * @see com.aerospike.client.exp.HLLExp
  */
 public final class HLLOperation {
 	private static final int INIT = 0;

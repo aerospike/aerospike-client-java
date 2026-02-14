@@ -17,12 +17,25 @@
 package com.aerospike.client.cdt;
 
 /**
- * Map policy directives when creating a map and writing map items.
+ * Map policy: order and write flags when creating a map or writing map items.
+ * <p>
+ * Use with {@link MapOperation#put}, {@link MapOperation#putItems}, {@link MapOperation#replace}, etc. when the map may not exist or when you need key-ordered or update semantics.
+ * <p>Use MapPolicy with put and putItems.</p>
+ * <pre>{@code
+ * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+ * MapPolicy policy = MapPolicy.Default;
+ * client.operate(null, key, MapOperation.put(policy, "bin", Value.get("k"), Value.get(42)));
+ *
+ * MapPolicy keyOrdered = new MapPolicy(MapOrder.KEY_ORDERED, MapWriteFlags.DEFAULT);
+ * client.operate(null, key, MapOperation.putItems(keyOrdered, "bin", map));
+ * }</pre>
+ *
+ * @see MapOperation
+ * @see MapOrder
+ * @see MapWriteFlags
  */
 public final class MapPolicy {
-	/**
-	 * Default unordered unique key map with normal put semantics.
-	 */
+	/** Default unordered unique-key map with normal put semantics. */
 	public static final MapPolicy Default = new MapPolicy();
 
 	public final int attributes;

@@ -20,23 +20,37 @@ import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
 
 /**
- * Asynchronous result notifications for batch exists commands.
- * The result is sent in a single array.
+ * Async callback for batch exists; receives keys and existence flags in one array (same order as input keys).
+ * <p>
+ * Pass to {@link com.aerospike.client.IAerospikeClient#exists(com.aerospike.client.async.EventLoop, ExistsArrayListener, com.aerospike.client.policy.BatchPolicy, com.aerospike.client.Key[])}.
+ * <pre>{@code
+ * EventLoops eventLoops = new NioEventLoops(4);
+ * ClientPolicy clientPolicy = new ClientPolicy();
+ * clientPolicy.eventLoops = eventLoops;
+ * IAerospikeClient client = new AerospikeClient(clientPolicy, "localhost", 3000);
+ * EventLoop loop = eventLoops.next();
+ * Key[] keys = new Key[] { new Key("ns", "set", "k1") };
+ *
+ * client.exists(loop, new ExistsArrayListener() {
+ *   public void onSuccess(Key[] keys, boolean[] exists) { }
+ *   public void onFailure(AerospikeException e) { }
+ * }, new BatchPolicy(), keys);
+ * }</pre>
+ *
+ * @see com.aerospike.client.IAerospikeClient#exists(com.aerospike.client.async.EventLoop, ExistsArrayListener, com.aerospike.client.policy.BatchPolicy, com.aerospike.client.Key[])
+ * @see com.aerospike.client.AerospikeException.BatchExists
  */
 public interface ExistsArrayListener {
 	/**
-	 * This method is called when the command completes successfully.
-	 * The returned boolean array is in positional order with the original key array order.
-	 *
-	 * @param keys		unique record identifiers
-	 * @param exists	whether keys exists on server
+	 * Called when the batch exists completes; arrays are in same order as the key array.
+	 * @param keys original keys (must not be null)
+	 * @param exists existence per key (must not be null)
 	 */
 	public void onSuccess(Key[] keys, boolean[] exists);
 
 	/**
-	 * This method is called when the command fails. The AerospikeException is likely to be
-	 * {@link com.aerospike.client.AerospikeException.BatchExists} which contains results
-	 * for keys that did complete.
+	 * Called when the batch fails; may be {@link com.aerospike.client.AerospikeException.BatchExists} with partial results.
+	 * @param ae exception cause of failure wrapped into Aerospike exception
 	 */
 	public void onFailure(AerospikeException ae);
 }

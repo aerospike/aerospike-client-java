@@ -23,8 +23,27 @@ import com.aerospike.client.policy.BatchReadPolicy;
 import com.aerospike.client.policy.Policy;
 
 /**
- * Batch key and read only operations with default policy.
- * Used in batch read commands where different bins are needed for each key.
+ * Batch get item: one key with optional bin names, read-all-bins flag, or {@link Operation} list (variable bins per key).
+ * <p>
+ * Use when each key needs different bins or operations. Pass an array to {@link com.aerospike.client.AerospikeClient#get(BatchPolicy, BatchRead[])} or async overloads with {@link com.aerospike.client.listener.BatchListListener} / {@link com.aerospike.client.listener.BatchSequenceListener}. Use {@link Operation#get(String)} per bin, not {@link Operation#get()}.
+ * <pre>{@code
+ * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+ * BatchRead[] batchReads = new BatchRead[] {
+ *   new BatchRead(new Key("ns", "set", "k1"), new String[] { "a", "b" }),
+ *   new BatchRead(new Key("ns", "set", "k2"), true),
+ *   new BatchRead(new Key("ns", "set", "k3"), new Operation[] { Operation.get("x"), Operation.get("y") })
+ * };
+ * client.get(null, batchReads);
+ * for (BatchRead br : batchReads) {
+ *   if (br.record != null) { Record r = br.record; }
+ * }
+ * client.close();
+ * }</pre>
+ *
+ * @see BatchRecord
+ * @see com.aerospike.client.AerospikeClient#get
+ * @see com.aerospike.client.listener.BatchListListener
+ * @see com.aerospike.client.listener.BatchSequenceListener
  */
 public final class BatchRead extends BatchRecord {
 	/**

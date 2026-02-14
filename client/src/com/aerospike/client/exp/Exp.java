@@ -23,7 +23,32 @@ import java.util.Map;
 import com.aerospike.client.util.Packer;
 
 /**
- * Expression generator.
+ * Expression generator for filters, queries, and operate read/write.
+ * <p>
+ * Build expressions with {@link #build(Exp)} then use on {@link com.aerospike.client.policy.WritePolicy#filterExp}, {@link com.aerospike.client.policy.Policy#filterExp}, {@link com.aerospike.client.query.Statement#setFilter}, or {@link com.aerospike.client.exp.ExpOperation#read} / {@link ExpOperation#write}. Use {@link ListExp}, {@link MapExp}, and {@link CdtExp} for CDT bin expressions.
+ * <p>Use filter expressions on put, get, and ExpOperation.read.</p>
+ * <pre>{@code
+ * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+ * Key key = new Key("ns", "set", "mykey");
+ *
+ * WritePolicy policy = new WritePolicy();
+ * policy.filterExp = Exp.build(Exp.eq(Exp.intBin("A"), Exp.val(1)));
+ * client.put(policy, key, new Bin("A", 3));
+ *
+ * Policy readPolicy = new Policy();
+ * readPolicy.filterExp = Exp.build(Exp.gt(Exp.intBin("score"), Exp.val(100)));
+ * Record rec = client.get(readPolicy, key);
+ *
+ * Expression exp = Exp.build(Exp.add(Exp.intBin("A"), Exp.val(4)));
+ * Record rec2 = client.operate(null, key, ExpOperation.read("EV", exp, ExpReadFlags.DEFAULT));
+ * }</pre>
+ *
+ * @see Expression
+ * @see ExpOperation
+ * @see ListExp
+ * @see MapExp
+ * @see CdtExp
+ * @see com.aerospike.client.policy.WritePolicy#filterExp
  */
 public abstract class Exp {
 	/**
@@ -1228,7 +1253,7 @@ public abstract class Exp {
 	/**
 	 * Create expression that references a built-in variable.
 	 * Requires server version 8.1.1
-	 * 
+	 * <p>Example for this expression.</p>
 	 * <pre>{@code
 	 * Exp.intLoopVar(LoopVarPart.MAP_KEY)
 	 * }</pre>
@@ -1240,7 +1265,7 @@ public abstract class Exp {
 	/**
 	 * Create expression that references a built-in variable.
 	 * Requires server version 8.1.1
-	 * 
+	 * <p>Example for this expression.</p>
 	 * <pre>{@code
 	 * Exp.floatLoopVar(LoopVarPart.MAP_KEY)
 	 * }</pre>
@@ -1252,7 +1277,7 @@ public abstract class Exp {
 	/**
 	 * Create expression that references a built-in variable.
 	 * Requires server version 8.1.1
-	 * 
+	 * <p>Example for this expression.</p>
 	 * <pre>{@code
 	 * Exp.listLoopVar(LoopVarPart.MAP_KEY)
 	 * }</pre>
@@ -1264,7 +1289,7 @@ public abstract class Exp {
 	/**
 	 * Create expression that references a built-in variable.
 	 * Requires server version 8.1.1
-	 * 
+	 * <p>Example for this expression.</p>
 	 * <pre>{@code
 	 * Exp.mapLoopVar(LoopVarPart.MAP_KEY)
 	 * }</pre>
@@ -1276,7 +1301,7 @@ public abstract class Exp {
 	/**
 	 * Create expression that references a built-in variable.
 	 * Requires server version 8.1.1
-	 * 
+	 * <p>Example for this expression.</p>
 	 * <pre>{@code
 	 * Exp.blobLoopVar(LoopVarPart.MAP_KEY)
 	 * }</pre>
@@ -1288,7 +1313,7 @@ public abstract class Exp {
 	/**
 	 * Create expression that references a built-in variable.
 	 * Requires server version 8.1.1
-	 * 
+	 * <p>Example for this expression.</p>
 	 * <pre>{@code
 	 * Exp.nilLoopVar(LoopVarPart.MAP_KEY)
 	 * }</pre>
@@ -1300,7 +1325,7 @@ public abstract class Exp {
 	/**
 	 * Create expression that references a built-in variable.
 	 * Requires server version 8.1.1
-	 * 
+	 * <p>Example for this expression.</p>
 	 * <pre>{@code
 	 * Exp.geoJsonLoopVar(LoopVarPart.MAP_KEY)
 	 * }</pre>

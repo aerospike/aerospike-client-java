@@ -17,8 +17,19 @@
 package com.aerospike.client.exp;
 
 /**
- * Loop variable parts for expression loop variables.
- * Used to specify which part of a loop variable to access during iteration.
+ * Which part of a loop variable to use in iteration expressions (e.g. in {@link com.aerospike.client.cdt.CTX#allChildrenWithFilter(Exp)} and CDT apply).
+ * <p>
+ * Use with {@link Exp#mapLoopVar}, {@link Exp#stringLoopVar}, {@link Exp#intLoopVar}, {@link Exp#floatLoopVar} when building filter/apply expressions over map or list elements.
+ * <p>Filter nested children by loop variable key or value.</p>
+ * <pre>{@code
+ * CTX ctx = CTX.allChildrenWithFilter(Exp.eq(Exp.stringLoopVar(LoopVarPart.MAP_KEY), Exp.val("title")));
+ * CTX ctx2 = CTX.allChildrenWithFilter(Exp.le(MapExp.getByKey(MapReturnType.VALUE, Exp.Type.FLOAT, Exp.val("price"), Exp.mapLoopVar(LoopVarPart.VALUE)), Exp.val(10.0)));
+ * }</pre>
+ *
+ * @see Exp#mapLoopVar
+ * @see Exp#stringLoopVar
+ * @see com.aerospike.client.cdt.CTX#allChildrenWithFilter(Exp)
+ * @see com.aerospike.client.cdt.CdtOperation#modifyByPath
  */
 public enum LoopVarPart {
 	/**

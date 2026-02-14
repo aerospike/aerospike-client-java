@@ -17,7 +17,25 @@
 package com.aerospike.client;
 
 /**
- * Database operation definition.  The class is used in client's operate() method.
+ * Single operation in a multi-op request; use static factories and pass to {@link com.aerospike.client.AerospikeClient#operate}.
+ * <p>
+ * Supports read (get, getHeader), write (put, append, prepend, add), touch, and delete. Multiple operations are executed atomically.
+ *
+ * <p><b>Example:</b>
+ * <p>Atomically add to a bin and read it back using operate.</p>
+ * <pre>{@code
+ * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+ * try {
+ *   Key key = new Key("test", "set1", "id1");
+ *   Record rec = client.operate(null, key, Operation.add(new Bin("count", 1)), Operation.get("count"));
+ *   long count = rec.getLong("count");
+ * } finally {
+ *   client.close();
+ * }
+ * }</pre>
+ *
+ * @see com.aerospike.client.AerospikeClient#operate
+ * @see Bin
  */
 public final class Operation {
 	/**

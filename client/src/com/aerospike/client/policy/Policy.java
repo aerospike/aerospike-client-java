@@ -27,7 +27,24 @@ import com.aerospike.client.configuration.serializers.dynamicconfig.DynamicReadC
 import com.aerospike.client.exp.Expression;
 
 /**
- * Command policy attributes used in all database commands.
+ * Base policy for all database commands: timeouts, retries, replica selection, optional expression filter and transaction.
+ * <p>
+ * Subclasses define operation-specific options (e.g. {@link WritePolicy}, {@link QueryPolicy}). Set {@link #txn} for multi-record transactions.
+ *
+ * <p><b>Example (expression filter):</b>
+ * <p>Apply an expression filter so only records where bin "a" equals 11 are read.</p>
+ * <pre>{@code
+ * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+ * Policy p = new Policy();
+ * p.filterExp = Exp.build(Exp.eq(Exp.intBin("a"), Exp.val(11)));
+ * client.get(p, key);
+ * }</pre>
+ *
+ * @see WritePolicy
+ * @see QueryPolicy
+ * @see ScanPolicy
+ * @see BatchPolicy
+ * @see com.aerospike.client.Txn
  */
 public class Policy {
 	/**
@@ -65,11 +82,7 @@ public class Policy {
 	 * command is ignored.
 	 * <p>
 	 * Default: null
-	 * <p>
-	 * <pre>Example:{@code
-	 * Policy p = new Policy();
-	 * p.filterExp = Exp.build(Exp.eq(Exp.intBin("a"), Exp.val(11)));
-	 * }</pre>
+	 * See class-level example for {@link com.aerospike.client.exp.Exp#build} usage.
 	 */
 	public Expression filterExp;
 

@@ -19,7 +19,23 @@ package com.aerospike.client.admin;
 import com.aerospike.client.AerospikeException;
 
 /**
- * Permission codes define the type of permission granted for a user's role.
+ * Permission codes for role privileges (read, write, admin, etc.); use with {@link Privilege} in createRole and grantPrivileges.
+ * <p>
+ * Use {@link #fromId(int)} to map server-returned IDs; use {@link #canScope()} to see if namespace/set scope applies.
+ *
+ * <p><b>Example:</b>
+ * <p>Create a role with READ_WRITE privilege scoped to a namespace.</p>
+ * <pre>{@code
+ * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+ * Privilege p = new Privilege();
+ * p.code = PrivilegeCode.READ_WRITE;
+ * p.namespace = "test";
+ * client.createRole(null, "myrole", java.util.Collections.singletonList(p));
+ * }</pre>
+ *
+ * @see Privilege
+ * @see com.aerospike.client.AerospikeClient#createRole
+ * @see com.aerospike.client.AerospikeClient#grantPrivileges
  */
 public enum PrivilegeCode {
 	/**
@@ -107,7 +123,9 @@ public enum PrivilegeCode {
 	}
 
 	/**
-	 * Can privilege be scoped with namespace and set.
+	 * Whether this privilege can be scoped with namespace and set (data privileges); global-only privileges return false.
+	 *
+	 * @return true if namespace/set scope can be applied
 	 */
 	public boolean canScope() {
 		// Unknown privileges cannot be scoped since we don't know their characteristics
@@ -117,9 +135,11 @@ public enum PrivilegeCode {
 	}
 
 	/**
-	 * Convert ID to privilege code enum.
-	 * Returns UNKNOWN for unrecognized privilege codes to support
-	 * forward compatibility with newer server versions.
+	 * Convert wire-protocol privilege ID to enum.
+	 *
+	 * @param id privilege ID from server (e.g. 10 for READ, 11 for READ_WRITE)
+	 * @return the corresponding PrivilegeCode
+	 * @throws AerospikeException when the given ID is not a known privilege code (invalid or reserved).
 	 */
 	public static PrivilegeCode fromId(int id) {
 		switch (id) {

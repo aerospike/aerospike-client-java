@@ -17,31 +17,25 @@
 package com.aerospike.client.async;
 
 /**
- * Type of async event loop used.
+ * Type of async event loop implementation (Netty or direct NIO).
+ * <p>
+ * Used when constructing {@link NettyEventLoops} with an explicit type; otherwise the type is inferred from the Netty {@link io.netty.channel.EventLoopGroup}.
+ *
+ * @see NettyEventLoops
  */
 public enum EventLoopType {
-	/**
-	 * Direct NIO
-	 */
+	/** Direct NIO (used by {@link NioEventLoops}). */
 	DIRECT_NIO,
 
-	/**
-	 * Netty NIO
-	 */
+	/** Netty NIO. */
 	NETTY_NIO,
 
-	/**
-	 * Netty epoll. Available on Linux.
-	 */
+	/** Netty epoll; available on Linux. */
 	NETTY_EPOLL,
 
-	/**
-	 * Netty kqueue. Available on MacOS, FreeBSD.
-	 */
+	/** Netty kqueue; available on MacOS, FreeBSD. */
 	NETTY_KQUEUE,
 
-	/**
-	 * Netty io_uring. Available on Linux.
-	 */
+	/** Netty io_uring; available on Linux. */
 	NETTY_IOURING
 }

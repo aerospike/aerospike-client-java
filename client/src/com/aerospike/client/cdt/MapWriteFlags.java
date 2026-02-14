@@ -17,11 +17,15 @@
 package com.aerospike.client.cdt;
 
 /**
- * Map write bit flags. Use BITWISE OR to combine flags. Example:
- * 
- * <pre>{@code 
+ * Map write bit flags; combine with BITWISE OR and pass to {@link MapPolicy}.
+ * <p>
+ * <p>Combine map write flags and pass to MapPolicy.</p>
+ * <pre>{@code
  * int flags = MapWriteFlags.UPDATE_ONLY | MapWriteFlags.NO_FAIL | MapWriteFlags.PARTIAL;
+ * MapPolicy policy = new MapPolicy(MapOrder.KEY_ORDERED, flags);
  * }</pre>
+ *
+ * @see MapPolicy
  */
 public final class MapWriteFlags {
 	/**

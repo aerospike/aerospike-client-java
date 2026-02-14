@@ -23,8 +23,23 @@ import com.aerospike.client.configuration.serializers.DynamicConfiguration;
 import com.aerospike.client.configuration.serializers.dynamicconfig.DynamicTxnVerifyConfig;
 
 /**
- * Transaction policy fields used to batch verify record versions on commit.
- * Used a placeholder for now as there are no additional fields beyond BatchPolicy.
+ * Policy for transaction verify phase (batch read of record versions before commit); extends {@link BatchPolicy} with no extra fields.
+ * <p>
+ * Used internally when {@link com.aerospike.client.AerospikeClient#commit} verifies read keys. Can be set on {@link ClientPolicy#txnVerifyPolicyDefault}.
+ *
+ * <p><b>Example:</b>
+ * <p>Set a custom transaction verify policy as the client default for the commit verify phase.</p>
+ * <pre>{@code
+ * TxnVerifyPolicy tvp = new TxnVerifyPolicy();
+ * tvp.socketTimeout = 5000;
+ * ClientPolicy cp = new ClientPolicy();
+ * cp.txnVerifyPolicyDefault = tvp;
+ * IAerospikeClient client = new AerospikeClient(cp, "localhost", 3000);
+ * }</pre>
+ *
+ * @see BatchPolicy
+ * @see ClientPolicy#txnVerifyPolicyDefault
+ * @see com.aerospike.client.AerospikeClient#commit
  */
 public class TxnVerifyPolicy extends BatchPolicy {
 	/**

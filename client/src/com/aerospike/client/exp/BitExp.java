@@ -23,7 +23,7 @@ import com.aerospike.client.util.Pack;
 import com.aerospike.client.util.Packer;
 
 /**
- * Bit expression generator. See {@link com.aerospike.client.exp.Exp}.
+ * Bit (blob) expression generator for filters and operate; see {@link Exp}.
  * <p>
  * The bin expression argument in these methods can be a reference to a bin or the
  * result of another expression. Expressions that modify bin values are only used
@@ -33,6 +33,21 @@ import com.aerospike.client.util.Packer;
  * Offset orientation is left-to-right.  Negative offsets are supported.
  * If the offset is negative, the offset starts backwards from end of the bitmap.
  * If an offset is out of bounds, a parameter error will be returned.
+ * <p>Filter or read by bit count and resize expression.</p>
+ * <pre>{@code
+ * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+ * Expression exp = Exp.build(Exp.eq(BitExp.count(Exp.blobBin("bits"), 0, -1), Exp.val(5)));
+ * Policy policy = new Policy();
+ * policy.filterExp = exp;
+ * Record rec = client.get(policy, key);
+ *
+ * Expression resizeExp = Exp.build(BitExp.resize(Exp.blobBin("a"), 4, BitResizeFlags.DEFAULT));
+ * Record r = client.operate(null, key, ExpOperation.read("a", resizeExp, ExpReadFlags.DEFAULT));
+ * }</pre>
+ *
+ * @see Exp
+ * @see com.aerospike.client.operation.BitResizeFlags
+ * @see com.aerospike.client.operation.BitPolicy
  */
 public final class BitExp {
 	private static final int MODULE = 1;
@@ -66,6 +81,7 @@ public final class BitExp {
 	 * <li>resizeFlags = 0</li>
 	 * <li>returns [0b00000001, 0b01000010, 0b00000000, 0b00000000]</li>
 	 * </ul>
+	 * <p>Example for this expression.</p>
 	 * <pre>{@code
 	 * // Resize bin "a" and compare bit count
 	 * Exp.eq(
@@ -87,6 +103,7 @@ public final class BitExp {
 	 * <li>value = [0b11111111, 0b11000111]</li>
 	 * <li>bin result = [0b00000001, 0b11111111, 0b11000111, 0b01000010, 0b00000011, 0b00000100, 0b00000101]</li>
 	 * </ul>
+	 * <p>Example for this expression.</p>
 	 * <pre>{@code
 	 * // Insert bytes into bin "a" and compare bit count
 	 * Exp.eq(
@@ -108,6 +125,7 @@ public final class BitExp {
 	 * <li>byteSize = 3</li>
 	 * <li>bin result = [0b00000001, 0b01000010]</li>
 	 * </ul>
+	 * <p>Example for this expression.</p>
 	 * <pre>{@code
 	 * // Remove bytes from bin "a" and compare bit count
 	 * Exp.eq(
@@ -130,6 +148,7 @@ public final class BitExp {
 	 * <li>value = [0b11100000]</li>
 	 * <li>bin result = [0b00000001, 0b01000111, 0b00000011, 0b00000100, 0b00000101]</li>
 	 * </ul>
+	 * <p>Example for this expression.</p>
 	 * <pre>{@code
 	 * // Set bytes in bin "a" and compare bit count
 	 * Exp.eq(
@@ -311,6 +330,7 @@ public final class BitExp {
 	 * <li>bitSize = 5</li>
 	 * <li>returns [0b10000000]</li>
 	 * </ul>
+	 * <p>Example for this expression.</p>
 	 * <pre>{@code
 	 * // Bin "a" bits = [0b10000000]
 	 * Exp.eq(
@@ -332,6 +352,7 @@ public final class BitExp {
 	 * <li>bitSize = 4</li>
 	 * <li>returns 2</li>
 	 * </ul>
+	 * <p>Example for this expression.</p>
 	 * <pre>{@code
 	 * // Bin "a" bit count <= 2
 	 * Exp.le(BitExp.count(Exp.val(0), Exp.val(5), Exp.blobBin("a")), Exp.val(2))
@@ -352,6 +373,7 @@ public final class BitExp {
 	 * <li>value = true</li>
 	 * <li>returns 5</li>
 	 * </ul>
+	 * <p>Example for this expression.</p>
 	 * <pre>{@code
 	 * // lscan(a) == 5
 	 * Exp.eq(BitExp.lscan(Exp.val(24), Exp.val(8), Exp.val(true), Exp.blobBin("a")), Exp.val(5))
@@ -378,6 +400,7 @@ public final class BitExp {
 	 * <li>value = true</li>
 	 * <li>returns 7</li>
 	 * </ul>
+	 * <p>Example for this expression.</p>
 	 * <pre>{@code
 	 * // rscan(a) == 7
 	 * Exp.eq(BitExp.rscan(Exp.val(32), Exp.val(8), Exp.val(true), Exp.blobBin("a")), Exp.val(7))
@@ -403,6 +426,7 @@ public final class BitExp {
 	 * <li>signed = false</li>
 	 * <li>returns 16899</li>
 	 * </ul>
+	 * <p>Example for this expression.</p>
 	 * <pre>{@code
 	 * // getInt(a) == 16899
 	 * Exp.eq(BitExp.getInt(Exp.val(8), Exp.val(16), false, Exp.blobBin("a")), Exp.val(16899))

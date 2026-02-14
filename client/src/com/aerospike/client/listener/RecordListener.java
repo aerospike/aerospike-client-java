@@ -21,19 +21,38 @@ import com.aerospike.client.Key;
 import com.aerospike.client.Record;
 
 /**
- * Asynchronous result notifications for get or operate commands.
+ * Async callback for single-key get and operate; receives one record or failure.
+ * <p>
+ * Pass to {@link com.aerospike.client.IAerospikeClient#get} or operate overloads. Called once per key with the record (or null if not found) or with an exception.
+ * <pre>{@code
+ * EventLoops eventLoops = new NioEventLoops(4);
+ * ClientPolicy clientPolicy = new ClientPolicy();
+ * clientPolicy.eventLoops = eventLoops;
+ * IAerospikeClient client = new AerospikeClient(clientPolicy, "localhost", 3000);
+ * EventLoop loop = eventLoops.next();
+ *
+ * client.get(loop, new Policy(), new RecordListener() {
+ *   public void onSuccess(Key key, Record record) {
+ *     if (record != null) { Object v = record.getValue("bin"); }
+ *   }
+ *   public void onFailure(AerospikeException e) { }
+ * }, key);
+ * }</pre>
+ *
+ * @see com.aerospike.client.IAerospikeClient#get
+ * @see com.aerospike.client.IAerospikeClient#operate
  */
 public interface RecordListener {
 	/**
-	 * This method is called when an asynchronous get or operate command completes successfully.
-	 *
-	 * @param key			unique record identifier
-	 * @param record		record instance if found, otherwise null
+	 * Called when the get or operate completes successfully.
+	 * @param key record key (must not be null)
+	 * @param record record if found, otherwise null
 	 */
 	public void onSuccess(Key key, Record record);
 
 	/**
-	 * This method is called when an asynchronous get or operate command fails.
+	 * Called when the get or operate fails.
+	 * @param ae exception cause of failure wrapped into Aerospike exception
 	 */
 	public void onFailure(AerospikeException ae);
 }

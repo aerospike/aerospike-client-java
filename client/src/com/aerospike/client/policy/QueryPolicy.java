@@ -23,10 +23,24 @@ import com.aerospike.client.configuration.serializers.DynamicConfiguration;
 import com.aerospike.client.configuration.serializers.dynamicconfig.DynamicQueryConfig;
 
 /**
- * Container object for policy attributes used in query operations.
+ * Policy for query and scan operations: expected duration, max records, concurrency, record queue size, and include-bin-data.
  * <p>
- * Inherited Policy fields {@link Policy#txn} and {@link Policy#failOnFilteredOut} are ignored
- * in query commands.
+ * Pass to {@link com.aerospike.client.AerospikeClient#query} and {@link com.aerospike.client.AerospikeClient#queryAggregate}. {@link Policy#txn} and {@link Policy#failOnFilteredOut} are ignored for query.
+ *
+ * <p><b>Example:</b>
+ * <p>Run a short-duration query and include bin data in the returned records.</p>
+ * <pre>{@code
+ * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+ * QueryPolicy policy = new QueryPolicy();
+ * policy.expectedDuration = QueryDuration.SHORT;
+ * policy.includeBinData = true;
+ * RecordSet rs = client.query(policy, stmt);
+ * rs.close();
+ * }</pre>
+ *
+ * @see Policy
+ * @see com.aerospike.client.query.Statement
+ * @see com.aerospike.client.AerospikeClient#query
  */
 public class QueryPolicy extends Policy {
 	/**

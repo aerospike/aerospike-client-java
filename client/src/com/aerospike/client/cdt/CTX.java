@@ -27,9 +27,31 @@ import com.aerospike.client.util.Pack;
 import com.aerospike.client.util.Unpacker;
 
 /**
- * Nested CDT context.  Identifies the location of nested list/map to apply the operation.
- * for the current level.  An array of CTX identifies location of the list/map on multiple
- * levels on nesting.
+ * Nested CDT context. Identifies the path to a nested list or map for an operation or query.
+ * <p>
+ * An array of CTX identifies location of the list/map on multiple levels on nesting.
+ * <p>Build nested path with CTX for operate and index creation.</p>
+ * <pre>{@code
+ * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+ * Key key = new Key("ns", "set", "mykey");
+ *
+ * // Nested path: map "book" then all list items (e.g. for CdtOperation.selectByPath)
+ * CTX ctx1 = CTX.mapKey(Value.get("book"));
+ * CTX ctx2 = CTX.allChildren();
+ *
+ * // List index -1 = last element (e.g. for Filter.range on list bin)
+ * CTX listCtx = CTX.listIndex(-1);
+ * Filter.range("listbin", 10, 20, listCtx);
+ *
+ * // Query index on last element of list
+ * IndexTask task = client.createIndex(null, "ns", "set", "idx1", "listbin",
+ *     IndexType.NUMERIC, IndexCollectionType.DEFAULT, CTX.listRank(-1));
+ * }</pre>
+ *
+ * @see com.aerospike.client.cdt.CdtOperation
+ * @see com.aerospike.client.cdt.ListOperation
+ * @see com.aerospike.client.cdt.MapOperation
+ * @see com.aerospike.client.query.Filter#range
  */
 public final class CTX {
 	/**

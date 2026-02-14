@@ -17,7 +17,9 @@
 package com.aerospike.client.policy;
 
 /**
- * How to handle record writes based on record generation.
+ * How to handle record writes based on record generation (optimistic concurrency).
+ *
+ * @see WritePolicy#generationPolicy
  */
 public enum GenerationPolicy {
 	/**

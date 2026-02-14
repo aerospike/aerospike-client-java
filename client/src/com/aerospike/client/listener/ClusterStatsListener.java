@@ -20,16 +20,35 @@ import com.aerospike.client.AerospikeException;
 import com.aerospike.client.cluster.ClusterStats;
 
 /**
- * Asynchronous result notifications for cluster statistics.
+ * Async callback for cluster statistics; receives {@link com.aerospike.client.cluster.ClusterStats} or exception.
+ * <p>
+ * Pass to {@link com.aerospike.client.IAerospikeClient#getClusterStats}.
+ * <pre>{@code
+ * EventLoops eventLoops = new NioEventLoops(4);
+ * ClientPolicy clientPolicy = new ClientPolicy();
+ * clientPolicy.eventLoops = eventLoops;
+ * IAerospikeClient client = new AerospikeClient(clientPolicy, "localhost", 3000);
+ * EventLoop loop = eventLoops.next();
+ *
+ * client.getClusterStats(loop, new ClusterStatsListener() {
+ *   public void onSuccess(ClusterStats stats) { }
+ *   public void onFailure(AerospikeException e) { }
+ * });
+ * }</pre>
+ *
+ * @see com.aerospike.client.cluster.ClusterStats
+ * @see com.aerospike.client.IAerospikeClient#getClusterStats
  */
 public interface ClusterStatsListener {
 	/**
-	 * This method is called when command completes successfully.
+	 * Called when the cluster stats request completes successfully.
+	 * @param stats cluster statistics (must not be null)
 	 */
 	public void onSuccess(ClusterStats stats);
 
 	/**
-	 * This method is called when command fails.
+	 * Called when the cluster stats request fails.
+	 * @param ae exception cause of failure wrapped into Aerospike exception
 	 */
 	public void onFailure(AerospikeException ae);
 }

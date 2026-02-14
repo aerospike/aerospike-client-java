@@ -17,7 +17,18 @@
 package com.aerospike.client.async;
 
 /**
- * Asynchronous event loop configuration.
+ * Configuration for asynchronous event loops (limits, timeouts, queue capacities).
+ * <p>
+ * Pass to {@link NioEventLoops} or {@link NettyEventLoops} constructors. Defaults are suitable for most cases; tune when limiting concurrent commands or memory.
+ * <pre>{@code
+ * EventPolicy policy = new EventPolicy();
+ * policy.maxCommandsInProcess = 40;
+ * EventLoops eventLoops = new NioEventLoops(policy, 4);
+ * }</pre>
+ *
+ * @see NioEventLoops
+ * @see NettyEventLoops
+ * @see com.aerospike.client.AerospikeException.AsyncQueueFull
  */
 public final class EventPolicy {
 	/**

@@ -17,7 +17,20 @@
 package com.aerospike.client.policy;
 
 /**
- * Policy attributes used for info commands.
+ * Policy for info protocol requests to a node; currently supports socket timeout.
+ * <p>
+ * Pass to {@link com.aerospike.client.Info#request} and related overloads, or use for cluster tend. Default timeout is 1000 ms.
+ *
+ * <p><b>Example:</b>
+ * <p>Use a 2-second socket timeout for info requests to a node (e.g. to fetch "build").</p>
+ * <pre>{@code
+ * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+ * InfoPolicy policy = new InfoPolicy();
+ * policy.timeout = 2000;
+ * String build = Info.request(policy, client.getNodes()[0], "build");
+ * }</pre>
+ *
+ * @see com.aerospike.client.Info#request
  */
 public final class InfoPolicy {
 	/**

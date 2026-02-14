@@ -24,7 +24,23 @@ import com.aerospike.client.configuration.serializers.dynamicconfig.DynamicBatch
 import com.aerospike.client.exp.Expression;
 
 /**
- * Policy attributes used in batch UDF execute commands.
+ * Policy for batch UDF execute: optional filter expression and commit level.
+ * <p>
+ * Pass to batch execute overloads. Omit or use null for defaults.
+ *
+ * <p><b>Example:</b>
+ * <p>Run batch UDF execute with commit-all consistency so all replicas commit before returning.</p>
+ * <pre>{@code
+ * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+ * BatchPolicy batchPolicy = new BatchPolicy();
+ * BatchUDFPolicy budfp = new BatchUDFPolicy();
+ * budfp.commitLevel = CommitLevel.COMMIT_ALL;
+ * client.execute(batchPolicy, budfp, keys, "pkg", "func", Value.get("arg"));
+ * }</pre>
+ *
+ * @see BatchPolicy
+ * @see com.aerospike.client.AerospikeClient#execute
+ * @see CommitLevel
  */
 public final class BatchUDFPolicy {
 	/**

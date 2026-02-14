@@ -23,58 +23,66 @@ import com.aerospike.client.cdt.MapReturnType;
 import com.aerospike.client.util.Pack;
 
 /**
- * Map expression generator. See {@link com.aerospike.client.exp.Exp}.
+ * Map expression generator for filters and operate; see {@link Exp}.
  * <p>
- * The bin expression argument in these methods can be a reference to a bin or the
- * result of another expression. Expressions that modify bin values are only used
- * for temporary expression evaluation and are not permanently applied to the bin.
+ * The bin argument can be a bin reference or an expression that returns a map. Map modify
+ * expressions return the bin's value (a map, or a list when the map is nested in a list). Valid
+ * map key types: String, Integer, byte[]. Maps support index (item offset) and rank (sorted value
+ * index), including negative indexing; use optional {@link com.aerospike.client.cdt.CTX} for
+ * nested maps/lists. For loop variables in filters use {@link Exp#mapLoopVar}, {@link Exp#stringLoopVar}
+ * with {@link LoopVarPart}.
  * <p>
- * Map modify expressions return the bin's value. This value will be a map except
- * when the map is nested within a list. In that case, a list is returned for the
- * map modify expression.
- * <p>
- * Valid map key types are:
+ * Index (item offset from start; negative = from end):
  * <ul>
- * <li>String</li>
- * <li>Integer</li>
- * <li>byte[]</li>
+ * <li>Index 0: first item; 4: fifth item; -1: last item; -3: third to last.</li>
+ * <li>Index 1 Count 2: second and third items; Index -3 Count 3: last three items.</li>
  * </ul>
- * <p>
- * The server will validate map key types in an upcoming release.
- * <p>
- * All maps maintain an index and a rank.  The index is the item offset from the start of the map,
- * for both unordered and ordered maps.  The rank is the sorted index of the value component.
- * Map supports negative indexing for index and rank.
- * <p>
- * Index examples:
+ * Rank (sorted index of value; negative = from highest):
  * <ul>
- * <li>Index 0: First item in map.</li>
- * <li>Index 4: Fifth item in map.</li>
- * <li>Index -1: Last item in map.</li>
- * <li>Index -3: Third to last item in map.</li>
- * <li>Index 1 Count 2: Second and third items in map.</li>
- * <li>Index -3 Count 3: Last three items in map.</li>
- * <li>Index -5 Count 4: Range between fifth to last item to second to last item inclusive.</li>
+ * <li>Rank 0: lowest ranked value; 4: fifth lowest; -1: highest ranked; -3: third highest.</li>
+ * <li>Rank 1 Count 2: second and third lowest; Rank -3 Count 3: top three ranked.</li>
  * </ul>
- * <p>
- * Rank examples:
- * <ul>
- * <li>Rank 0: Item with lowest value rank in map.</li>
- * <li>Rank 4: Fifth lowest ranked item in map.</li>
- * <li>Rank -1: Item with highest ranked value in map.</li>
- * <li>Rank -3: Item with third highest ranked value in map.</li>
- * <li>Rank 1 Count 2: Second and third lowest ranked items in map.</li>
- * <li>Rank -3 Count 3: Top three ranked items in map.</li>
- * </ul>
- * <p>
- * Nested expressions are supported by optional CTX context arguments.  Example:
- * <ul>
- * <li>bin = {key1={key11=9,key12=4}, key2={key21=3,key22=5}}</li>
- * <li>Set map value to 11 for map key "key21" inside of map key "key2".</li>
- * <li>Get size of map key2.</li>
- * <li>MapExp.size(Exp.mapBin("bin"), CTX.mapKey(Value.get("key2"))</li>
- * <li>result = 2</li>
- * </ul>
+ * <p>Filter by map, read with index/rank and nested CTX, and use a loop variable.</p>
+ * <pre>{@code
+ * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+ * Key key = new Key("ns", "set", "mykey");
+ *
+ * // Filter by map bin (key types: String, Integer, byte[])
+ * java.util.Map<String, Object> myMap = new java.util.HashMap<>();
+ * myMap.put("k", 1);
+ * Policy policy = new Policy();
+ * policy.filterExp = Exp.build(Exp.eq(Exp.mapBin("m"), Exp.val(myMap)));
+ * Record rec = client.get(policy, key);
+ *
+ * // Index: first (0), last (-1), range second+third (1, count 2), last three (-3, count 3)
+ * Exp byIndex0 = MapExp.getByIndex(MapReturnType.VALUE, Exp.Type.INT, Exp.val(0), Exp.mapBin("m"));
+ * Exp byIndexLast = MapExp.getByIndex(MapReturnType.VALUE, Exp.Type.INT, Exp.val(-1), Exp.mapBin("m"));
+ * Exp byIndexRange = MapExp.getByIndexRange(MapReturnType.KEY_VALUE, Exp.val(1), Exp.val(2), Exp.mapBin("m"));
+ * Exp lastThree = MapExp.getByIndexRange(MapReturnType.KEY_VALUE, Exp.val(-3), Exp.val(3), Exp.mapBin("m"));
+ *
+ * // Rank: lowest (0), highest (-1), second+third lowest (1, count 2), top three (-3, count 3)
+ * Exp byRank0 = MapExp.getByRank(MapReturnType.VALUE, Exp.Type.INT, Exp.val(0), Exp.mapBin("m"));
+ * Exp byRankLast = MapExp.getByRank(MapReturnType.VALUE, Exp.Type.INT, Exp.val(-1), Exp.mapBin("m"));
+ * Exp byRankRange = MapExp.getByRankRange(MapReturnType.KEY_VALUE, Exp.val(1), Exp.val(2), Exp.mapBin("m"));
+ * Exp topThree = MapExp.getByRankRange(MapReturnType.KEY_VALUE, Exp.val(-3), Exp.val(3), Exp.mapBin("m"));
+ *
+ * // Map modify (returns bin value)
+ * Expression exp = Exp.build(MapExp.removeByValue(MapReturnType.INVERTED, Exp.val(2), Exp.mapBin("m")));
+ * Record r = client.operate(null, key, ExpOperation.read("m", exp, ExpReadFlags.DEFAULT));
+ * java.util.Map<?, ?> result = r.getMap("m");
+ *
+ * // Nested map: size of map at key "key2" (bin = {key1={...}, key2={key21=3, key22=5}})
+ * Exp sizeExp = MapExp.size(Exp.mapBin("bin"), CTX.mapKey(com.aerospike.client.Value.get("key2")));
+ *
+ * // Loop variable in filter (e.g. with CTX.allChildrenWithFilter)
+ * Exp getPrice = MapExp.getByKey(MapReturnType.VALUE, Exp.Type.FLOAT, Exp.val("price"), Exp.mapLoopVar(LoopVarPart.VALUE));
+ * }</pre>
+ *
+ * @see Exp
+ * @see ListExp
+ * @see LoopVarPart
+ * @see com.aerospike.client.cdt.CTX
+ * @see com.aerospike.client.cdt.MapReturnType
  */
 public final class MapExp {
 	private static final int MODULE = 0;
@@ -113,7 +121,7 @@ public final class MapExp {
 	/**
 	 * Create expression that writes key/value item to a map bin. The 'bin' expression should either
 	 * reference an existing map bin or be a expression that returns a map.
-	 *
+	 * <p>Example for this expression.</p>
 	 * <pre>{@code
 	 * // Add entry{11,22} to existing map bin.
 	 * Expression e = Exp.build(MapExp.put(MapPolicy.Default, Exp.val(11), Exp.val(22), Exp.mapBin(binName)));
@@ -377,7 +385,7 @@ public final class MapExp {
 
 	/**
 	 * Create expression that returns list size.
-	 *
+	 * <p>Example for this expression.</p>
 	 * <pre>{@code
 	 * // Map bin "a" size > 7
 	 * Exp.gt(MapExp.size(Exp.mapBin("a")), Exp.val(7))
@@ -391,7 +399,7 @@ public final class MapExp {
 	/**
 	 * Create expression that selects map item identified by key and returns selected data
 	 * specified by returnType.
-	 *
+	 * <p>Example for this expression.</p>
 	 * <pre>{@code
 	 * // Map bin "a" contains key "B"
 	 * MapExp.getByKey(MapReturnType.EXISTS, Exp.Type.BOOL, Exp.val("B"), Exp.mapBin("a"))
@@ -470,7 +478,7 @@ public final class MapExp {
 	/**
 	 * Create expression that selects map items identified by value and returns selected data
 	 * specified by returnType.
-	 *
+	 * <p>Example for this expression.</p>
 	 * <pre>{@code
 	 * // Map bin "a" contains value "BBB"
 	 * MapExp.getByValue(MapReturnType.EXISTS, Exp.val("BBB"), Exp.mapBin("a"))

@@ -33,7 +33,34 @@ import com.aerospike.client.configuration.serializers.staticconfig.StaticClientC
 import com.aerospike.client.util.Util;
 
 /**
- * Container object for client policy Command.
+ * Client-level configuration: connection limits, timeouts, auth, default policies, and optional event loops for async.
+ * <p>
+ * Pass to {@link com.aerospike.client.AerospikeClient} constructors. Default policies (read, write, batch, etc.) are used when null is passed to operations.
+ *
+ * <p><b>Example:</b>
+ * <p>Connect to the cluster with authentication and a 2-second tend timeout.</p>
+ * <pre>{@code
+ * ClientPolicy policy = new ClientPolicy();
+ * policy.user = "admin";
+ * policy.password = "secret";
+ * policy.timeout = 2000;
+ * IAerospikeClient client = new AerospikeClient(policy, "localhost", 3000);
+ * client.close();
+ * }</pre>
+ *
+ * @see com.aerospike.client.AerospikeClient
+ * @see Policy
+ * @see WritePolicy
+ * @see QueryPolicy
+ * @see ScanPolicy
+ * @see BatchPolicy
+ * @see BatchWritePolicy
+ * @see BatchDeletePolicy
+ * @see BatchUDFPolicy
+ * @see TxnVerifyPolicy
+ * @see TxnRollPolicy
+ * @see InfoPolicy
+ * @see TlsPolicy
  */
 public class ClientPolicy {
 	/**

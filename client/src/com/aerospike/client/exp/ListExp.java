@@ -25,37 +25,49 @@ import com.aerospike.client.util.Pack;
 import com.aerospike.client.util.Packer;
 
 /**
- * List expression generator. See {@link com.aerospike.client.exp.Exp}.
+ * List expression generator for filters and operate; see {@link Exp}.
  * <p>
- * The bin expression argument in these methods can be a reference to a bin or the
- * result of another expression. Expressions that modify bin values are only used
- * for temporary expression evaluation and are not permanently applied to the bin.
+ * The bin argument can be a bin reference or an expression that returns a list. List modify
+ * expressions return the bin's value (a list, or a map when the list is nested in a map). Negative
+ * indexing is supported; index out of bounds returns a parameter error; a range partially out of
+ * bounds returns the valid part. Use optional {@link com.aerospike.client.cdt.CTX} for nested
+ * lists/maps.
  * <p>
- * List modify expressions return the bin's value. This value will be a list except
- * when the list is nested within a map. In that case, a map is returned for the
- * list modify expression.
- * <p>
- * List expressions support negative indexing. If the index is negative, the
- * resolved index starts backwards from end of list. If an index is out of bounds,
- * a parameter error will be returned. If a range is partially out of bounds, the
- * valid part of the range will be returned. Index/Range examples:
+ * Index (item offset; negative = from end):
  * <ul>
- * <li>Index 0: First item in list.</li>
- * <li>Index 4: Fifth item in list.</li>
- * <li>Index -1: Last item in list.</li>
- * <li>Index -3: Third to last item in list.</li>
- * <li>Index 1 Count 2: Second and third items in list.</li>
- * <li>Index -3 Count 3: Last three items in list.</li>
- * <li>Index -5 Count 4: Range between fifth to last item to second to last item inclusive.</li>
+ * <li>Index 0: first item; 4: fifth item; -1: last item; -3: third to last.</li>
+ * <li>Index 1 Count 2: second and third items; Index -3 Count 3: last three items.</li>
+ * <li>Index -5 Count 4: range from fifth-to-last to second-to-last inclusive.</li>
  * </ul>
- * <p>
- * Nested expressions are supported by optional CTX context arguments.  Example:
- * <ul>
- * <li>bin = [[7,9,5],[1,2,3],[6,5,4,1]]</li>
- * <li>Get size of last list.</li>
- * <li>ListExp.size(Exp.listBin("bin"), CTX.listIndex(-1))</li>
- * <li>result = 4</li>
- * </ul>
+ * <p>Filter by list size, read by index/range, and nested CTX (e.g. size of last list).</p>
+ * <pre>{@code
+ * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+ * Key key = new Key("ns", "set", "mykey");
+ *
+ * // Filter by list size (e.g. list at CTX listIndex 4 has size 6)
+ * Policy policy = new Policy();
+ * policy.filterExp = Exp.build(Exp.eq(ListExp.size(Exp.listBin("A"), CTX.listIndex(4)), Exp.val(6)));
+ * Record rec = client.get(policy, key);
+ *
+ * // Index: first (0), last (-1), range second+third (1, count 2), last three (-3, count 3), -5 count 4
+ * Exp byIndex0 = ListExp.getByIndex(ListReturnType.VALUE, Exp.Type.INT, Exp.val(0), Exp.listBin("bin"));
+ * Exp byIndexLast = ListExp.getByIndex(ListReturnType.VALUE, Exp.Type.INT, Exp.val(-1), Exp.listBin("bin"));
+ * Exp byIndexRange = ListExp.getByIndexRange(ListReturnType.VALUE, Exp.val(1), Exp.val(2), Exp.listBin("bin"));
+ * Exp lastThree = ListExp.getByIndexRange(ListReturnType.VALUE, Exp.val(-3), Exp.val(3), Exp.listBin("bin"));
+ * Exp rangeFromFifthToLast = ListExp.getByIndexRange(ListReturnType.VALUE, Exp.val(-5), Exp.val(4), Exp.listBin("bin"));
+ *
+ * // List modify (returns bin value)
+ * Expression exp = Exp.build(ListExp.getByIndex(ListReturnType.VALUE, Exp.Type.INT, Exp.val(0), Exp.listBin("bin")));
+ * Record r = client.operate(null, key, ExpOperation.read("first", exp, ExpReadFlags.DEFAULT));
+ *
+ * // Nested: size of last list (bin = [[7,9,5],[1,2,3],[6,5,4,1]] -> result 4)
+ * Exp sizeOfLastList = ListExp.size(Exp.listBin("bin"), CTX.listIndex(-1));
+ * }</pre>
+ *
+ * @see Exp
+ * @see MapExp
+ * @see com.aerospike.client.cdt.CTX
+ * @see com.aerospike.client.cdt.ListReturnType
  */
 public final class ListExp {
 	private static final int MODULE = 0;
@@ -286,7 +298,7 @@ public final class ListExp {
 
 	/**
 	 * Create expression that returns list size.
-	 *
+	 * <p>Example for this expression.</p>
 	 * <pre>{@code
 	 * // List bin "a" size > 7
 	 * Exp.gt(ListExp.size(Exp.listBin("a")), Exp.val(7))
@@ -300,7 +312,7 @@ public final class ListExp {
 	/**
 	 * Create expression that selects list items identified by value and returns selected
 	 * data specified by returnType.
-	 *
+	 * <p>Example for this expression.</p>
 	 * <pre>{@code
 	 * // List bin "a" contains at least one item == "abc"
 	 * ListExp.getByValue(ListReturnType.EXISTS, Exp.val("abc"), Exp.listBin("a"))
@@ -319,7 +331,7 @@ public final class ListExp {
 	/**
 	 * Create expression that selects list items identified by value range and returns selected data
 	 * specified by returnType.
-	 *
+	 * <p>Example for this expression.</p>
 	 * <pre>{@code
 	 * // List bin "a" items >= 10 && items < 20
 	 * ListExp.getByValueRange(ListReturnType.VALUE, Exp.val(10), Exp.val(20), Exp.listBin("a"))
@@ -388,7 +400,7 @@ public final class ListExp {
 	/**
 	 * Create expression that selects list item identified by index and returns
 	 * selected data specified by returnType.
-	 *
+	 * <p>Example for this expression.</p>
 	 * <pre>{@code
 	 * // a[3] == 5
 	 * Exp.eq(
@@ -428,7 +440,7 @@ public final class ListExp {
 	/**
 	 * Create expression that selects list item identified by rank and returns selected
 	 * data specified by returnType.
-	 *
+	 * <p>Example for this expression.</p>
 	 * <pre>{@code
 	 * // Player with lowest score.
 	 * ListExp.getByRank(ListReturnType.VALUE, Type.STRING, Exp.val(0), Exp.listBin("a"))

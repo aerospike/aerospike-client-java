@@ -17,11 +17,15 @@
 package com.aerospike.client.cdt;
 
 /**
- * List write bit flags. Use BITWISE OR to combine flags. Example:
- * 
- * <pre>{@code 
+ * List write bit flags; combine with BITWISE OR and pass to {@link ListPolicy}.
+ * <p>
+ * <p>Combine list write flags and pass to ListPolicy.</p>
+ * <pre>{@code
  * int flags = ListWriteFlags.ADD_UNIQUE | ListWriteFlags.NO_FAIL | ListWriteFlags.PARTIAL;
+ * ListPolicy policy = new ListPolicy(ListOrder.ORDERED, flags);
  * }</pre>
+ *
+ * @see ListPolicy
  */
 public final class ListWriteFlags {
 	/**

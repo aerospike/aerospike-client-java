@@ -22,20 +22,35 @@ import com.aerospike.client.AerospikeException;
 import com.aerospike.client.BatchRead;
 
 /**
- * Asynchronous result notifications for batch get commands with variable bins per key.
- * The result is sent in a single list.
+ * Async callback for batch get with variable bins; receives a single list of {@link com.aerospike.client.BatchRead} results.
+ * <p>
+ * Pass to {@link com.aerospike.client.IAerospikeClient#get} is null when the key is not found.
+ * <pre>{@code
+ * EventLoops eventLoops = new NioEventLoops(4);
+ * ClientPolicy clientPolicy = new ClientPolicy();
+ * clientPolicy.eventLoops = eventLoops;
+ * IAerospikeClient client = new AerospikeClient(clientPolicy, "localhost", 3000);
+ * EventLoop loop = eventLoops.next();
+ * BatchRead[] batchReads = new BatchRead[] { new BatchRead(new Key("ns", "set", "k1"), new String[] { "bin1" }) };
+ *
+ * client.get(loop, new BatchListListener() {
+ *   public void onSuccess(List records) { }
+ *   public void onFailure(AerospikeException e) { }
+ * }, new BatchPolicy(), batchReads);
+ * }</pre>
+ *
+ * @see com.aerospike.client.IAerospikeClient#get
  */
 public interface BatchListListener {
 	/**
-	 * This method is called when the command completes successfully.
-	 *
-	 * @param records		record instances, {@link com.aerospike.client.BatchRecord#record}
-	 *						will be null if the key is not found
+	 * Called when the batch get completes; list order matches input BatchRead array.
+	 * @param records list of BatchRead; record is null when key not found
 	 */
 	public void onSuccess(List<BatchRead> records);
 
 	/**
-	 * This method is called when the command fails.
+	 * Called when the batch get fails.
+	 * @param ae exception cause of failure wrapped into Aerospike exception
 	 */
 	public void onFailure(AerospikeException ae);
 }

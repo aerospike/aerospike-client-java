@@ -17,7 +17,10 @@
 package com.aerospike.client.policy;
 
 /**
- * How to handle writes when the record already exists.
+ * How to handle writes when the record already exists (update, replace, create-only, etc.).
+ *
+ * @see WritePolicy#recordExistsAction
+ * @see BatchWritePolicy#recordExistsAction
  */
 public enum RecordExistsAction {
 	/**

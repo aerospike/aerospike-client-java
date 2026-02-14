@@ -23,8 +23,24 @@ import com.aerospike.client.configuration.serializers.DynamicConfiguration;
 import com.aerospike.client.configuration.serializers.dynamicconfig.DynamicTxnRollConfig;
 
 /**
- * Transaction policy fields used to batch roll forward/backward records on
- * commit or abort. Used a placeholder for now as there are no additional fields beyond BatchPolicy.
+ * Policy for transaction roll forward/backward phase on commit or abort; extends {@link BatchPolicy} with no extra fields.
+ * <p>
+ * Used internally when {@link com.aerospike.client.AerospikeClient#commit} or {@link com.aerospike.client.AerospikeClient#abort} applies write results. Can be set on {@link ClientPolicy#txnRollPolicyDefault}.
+ *
+ * <p><b>Example:</b>
+ * <p>Set a custom transaction roll policy as the client default for commit/abort phase.</p>
+ * <pre>{@code
+ * TxnRollPolicy trp = new TxnRollPolicy();
+ * trp.totalTimeout = 15000;
+ * ClientPolicy cp = new ClientPolicy();
+ * cp.txnRollPolicyDefault = trp;
+ * IAerospikeClient client = new AerospikeClient(cp, "localhost", 3000);
+ * }</pre>
+ *
+ * @see BatchPolicy
+ * @see ClientPolicy#txnRollPolicyDefault
+ * @see com.aerospike.client.AerospikeClient#commit
+ * @see com.aerospike.client.AerospikeClient#abort
  */
 public class TxnRollPolicy extends BatchPolicy {
 	/**

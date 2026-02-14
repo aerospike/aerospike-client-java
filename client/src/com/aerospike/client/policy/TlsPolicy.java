@@ -23,8 +23,23 @@ import javax.net.ssl.SSLContext;
 import com.aerospike.client.async.NettyTlsContext;
 
 /**
- * TLS connection policy.  Secure TLS connections are supported for
- * synchronous commands and netty backed asynchronous commands.
+ * TLS connection policy for secure connections; supported for sync and Netty-backed async commands.
+ * <p>
+ * Set on {@link ClientPolicy#tlsPolicy}. Optionally provide {@link #context} (SSLContext) or {@link #nettyContext} (NettyTlsContext) for shared TLS state across clients.
+ *
+ * <p><b>Example:</b>
+ * <p>Connect over TLS using TLSv1.2 by attaching TlsPolicy to ClientPolicy.</p>
+ * <pre>{@code
+ * TlsPolicy tp = new TlsPolicy();
+ * tp.protocols = new String[] {"TLSv1.2"};
+ * ClientPolicy cp = new ClientPolicy();
+ * cp.tlsPolicy = tp;
+ * IAerospikeClient client = new AerospikeClient(cp, "localhost", 4333);
+ * client.close();
+ * }</pre>
+ *
+ * @see ClientPolicy#tlsPolicy
+ * @see com.aerospike.client.AerospikeClient
  */
 public final class TlsPolicy {
 	/**
@@ -49,8 +64,8 @@ public final class TlsPolicy {
 	 * ClientPolicy cp = new ClientPolicy();
 	 * cp.tlsPolicy = tp;
 	 *
-	 * AerospikeClient cluster1 = new AerospikeClient(cp, "host1", 3000);
-	 * AerospikeClient cluster2 = new AerospikeClient(cp, "host2", 3000);
+	 * IAerospikeClient cluster1 = new AerospikeClient(cp, "host1", 3000);
+	 * IAerospikeClient cluster2 = new AerospikeClient(cp, "host2", 3000);
 	 * }</pre>
 	 *
 	 * Default: null (create NettyTlsContext for each AerospikeClient instance when netty is used).

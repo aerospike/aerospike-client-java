@@ -17,11 +17,25 @@
 package com.aerospike.client;
 
 /**
- * User defined function languages.
+ * UDF language identifier; used when registering or executing user-defined functions.
+ * <p>
+ * Pass to {@link com.aerospike.client.AerospikeClient#register} for UDF package registration.
+ *
+ * <p><b>Example:</b>
+ * <p>Register a UDF package using Language.LUA.</p>
+ * <pre>{@code
+ * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+ * try {
+ *   com.aerospike.client.task.RegisterTask task = client.register(null, "myudf.lua", "myudf.lua", Language.LUA);
+ *   task.waitTillComplete();
+ * } finally {
+ *   client.close();
+ * }
+ * }</pre>
+ *
+ * @see com.aerospike.client.AerospikeClient#register
  */
 public enum Language {
-	/**
-	 * Lua embedded programming language.
-	 */
+	/** Lua embedded programming language. */
 	LUA;
 }

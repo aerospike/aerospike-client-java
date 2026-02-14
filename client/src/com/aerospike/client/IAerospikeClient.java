@@ -76,6 +76,8 @@ import com.aerospike.client.task.RegisterTask;
 /**
  * This interface's sole purpose is to allow mock frameworks to operate on
  * AerospikeClient without being constrained by final methods.
+ *
+ * @see AerospikeClient
  */
 public interface IAerospikeClient extends Closeable {
 	/**

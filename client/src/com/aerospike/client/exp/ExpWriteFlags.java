@@ -17,11 +17,15 @@
 package com.aerospike.client.exp;
 
 /**
- * Expression write bit flags. Use BITWISE OR to combine flags. Example:
- * 
- * <pre>{@code 
+ * Flags for {@link ExpOperation#write}; combine with BITWISE OR. Control create/update and failure behavior.
+ * <p>
+ * <p>Combine ExpWriteFlags and pass to ExpOperation.write.</p>
+ * <pre>{@code
  * int flags = ExpWriteFlags.CREATE_ONLY | ExpWriteFlags.POLICY_NO_FAIL;
+ * client.operate(null, key, ExpOperation.write("bin", exp, flags));
  * }</pre>
+ *
+ * @see ExpOperation#write
  */
 public final class ExpWriteFlags {
 	/**

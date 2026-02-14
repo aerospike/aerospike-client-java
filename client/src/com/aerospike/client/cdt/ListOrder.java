@@ -17,7 +17,12 @@
 package com.aerospike.client.cdt;
 
 /**
- * List storage order.
+ * List storage order; used in {@link ListPolicy} and {@link ListOperation#create}.
+ * <p>
+ * Use {@link #ORDERED} when you need rank/getByRank; default is {@link #UNORDERED}.
+ *
+ * @see ListPolicy
+ * @see ListOperation
  */
 public enum ListOrder {
 	/**

@@ -25,7 +25,30 @@ import com.aerospike.client.Value.GeoJSONValue;
 import com.aerospike.client.Value.HLLValue;
 
 /**
- * Container object for records.  Records are equivalent to rows.
+ * Container for a record's bins and metadata (generation, expiration); returned by get, query, and scan.
+ * <p>
+ * Use {@link #getValue(String)} or typed getters such as {@link #getString(String)}, {@link #getLong(String)} to read bins.
+ *
+ * <p><b>Example:</b>
+ * <p>Read a record and access bins with getString/getLong.</p>
+ * <pre>{@code
+ * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+ * try {
+ *   Key key = new Key("test", "set1", "id1");
+ *   Record rec = client.get(null, key);
+ *   if (rec != null) {
+ *     String name = rec.getString("name");
+ *     long age = rec.getLong("age");
+ *   }
+ * } finally {
+ *   client.close();
+ * }
+ * }</pre>
+ *
+ * @see Key
+ * @see #getValue
+ * @see #getString
+ * @see com.aerospike.client.AerospikeClient#get
  */
 public final class Record {
 	/**
@@ -57,7 +80,10 @@ public final class Record {
 	}
 
 	/**
-	 * Get bin value given bin name.
+	 * Get bin value by name.
+	 *
+	 * @param name bin name; must not be null
+	 * @return the bin value, or null if absent or bins is null
 	 */
 	public Object getValue(String name) {
 		return (bins == null)? null : bins.get(name);
@@ -65,6 +91,9 @@ public final class Record {
 
 	/**
 	 * Get bin value as String.
+	 *
+	 * @param name bin name; must not be null
+	 * @return the bin value as String, or null if absent or not a string
 	 */
 	public String getString(String name) {
 		return (String)getValue(name);

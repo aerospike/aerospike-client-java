@@ -20,18 +20,39 @@ import com.aerospike.client.AerospikeException;
 import com.aerospike.client.async.AsyncIndexTask;
 
 /**
- * Asynchronous result notifications for create/drop index commands.
+ * Async callback for create/drop index; receives {@link com.aerospike.client.async.AsyncIndexTask} to poll status or exception.
+ * <p>
+ * Pass to {@link com.aerospike.client.IAerospikeClient#createIndex} and dropIndex overloads. Use the task in onSuccess to call {@link com.aerospike.client.async.AsyncIndexTask#queryStatus} for completion.
+ * <pre>{@code
+ * EventLoops eventLoops = new NioEventLoops(4);
+ * ClientPolicy clientPolicy = new ClientPolicy();
+ * clientPolicy.eventLoops = eventLoops;
+ * IAerospikeClient client = new AerospikeClient(clientPolicy, "localhost", 3000);
+ * EventLoop loop = eventLoops.next();
+ *
+ * client.createIndex(loop, new InfoPolicy(), "ns", "set", "idx1", "bin1", IndexType.STRING, new IndexListener() {
+ *   public void onSuccess(AsyncIndexTask task) {
+ *     task.queryStatus(loop, policy, node, new TaskStatusListener() { ... });
+ *   }
+ *   public void onFailure(AerospikeException e) { }
+ * });
+ * }</pre>
+ *
+ * @see com.aerospike.client.async.AsyncIndexTask
+ * @see TaskStatusListener
+ * @see com.aerospike.client.IAerospikeClient#createIndex
+ * @see com.aerospike.client.IAerospikeClient#dropIndex
  */
 public interface IndexListener {
 	/**
-	 * This method is called when an asynchronous command completes successfully.
-	 *
-	 * @param indexTask		task monitor that can be used to query for index command completion.
+	 * Called when the create/drop index request is accepted; use the task to poll completion.
+	 * @param indexTask task monitor for querying index status (must not be null)
 	 */
 	void onSuccess(AsyncIndexTask indexTask);
 
 	/**
-	 * This method is called when an asynchronous command fails.
+	 * Called when the create/drop index request fails.
+	 * @param ae exception cause of failure wrapped into Aerospike exception
 	 */
 	public void onFailure(AerospikeException ae);
 }

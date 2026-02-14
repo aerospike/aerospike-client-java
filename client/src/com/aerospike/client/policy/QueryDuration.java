@@ -17,8 +17,9 @@
 package com.aerospike.client.policy;
 
 /**
- * Expected query duration. The server treats the query in different ways depending on the expected duration.
- * This enum is ignored for aggregation queries, background queries and server versions &lt; 6.0.
+ * Expected query duration (LONG or SHORT); server optimizes accordingly. Ignored for aggregation, background queries, and server versions before 6.0.
+ *
+ * @see QueryPolicy#expectedDuration
  */
 public enum QueryDuration {
 	/**

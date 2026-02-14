@@ -17,8 +17,25 @@
 package com.aerospike.client;
 
 /**
- * Database operation error codes.  The positive numbers align with the server
- * side file proto.h.
+ * Database operation result/error codes; positive values align with server proto.h, negative values are client-side.
+ * <p>
+ * Use {@link AerospikeException#getResultCode()} and {@link #getResultString(int)} to interpret failures.
+ *
+ * <p><b>Example:</b>
+ * <p>Get result code and message from an AerospikeException after a failed put.</p>
+ * <pre>{@code
+ * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+ * try {
+ *   client.put(null, key, bins);
+ * } catch (AerospikeException e) {
+ *   int code = e.getResultCode();
+ *   String msg = ResultCode.getResultString(code);
+ * }
+ * }</pre>
+ *
+ * @see AerospikeException#getResultCode
+ * @see #getResultString(int)
+ * @see #keepConnection(int)
  */
 public final class ResultCode {
 	/**

@@ -17,7 +17,13 @@
 package com.aerospike.client.query;
 
 /**
- * Secondary index collection type.
+ * Whether the secondary index is on a scalar bin, list elements, or map keys/values; used with {@link IndexType} when creating an index and in {@link Filter}.
+ * <p>
+ * Pass to {@link com.aerospike.client.AerospikeClient#createIndex} for list/map bins; use the same value in {@link Filter#range} or {@link Filter#equal} for CDT context.
+ *
+ * @see IndexType
+ * @see Filter
+ * @see com.aerospike.client.AerospikeClient#createIndex
  */
 public enum IndexCollectionType {
 	/**

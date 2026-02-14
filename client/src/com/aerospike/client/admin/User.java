@@ -19,48 +19,48 @@ package com.aerospike.client.admin;
 import java.util.List;
 
 /**
- * User and assigned roles.
+ * User record: name, assigned roles, optional read/write stats and connection count. Returned by {@link com.aerospike.client.AerospikeClient#queryUser} and in the list from {@link com.aerospike.client.AerospikeClient#queryUsers}.
+ * <p>
+ * {@link #readInfo} and {@link #writeInfo} are server-defined statistic lists (e.g. quota, TPS, RPS); offsets may change in future server versions.
+ *
+ * <p><b>Example:</b>
+ * <p>Query a user and read name and roles.</p>
+ * <pre>{@code
+ * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+ * try {
+ *   User user = client.queryUser(null, "jdoe");
+ *   if (user != null) {
+ *     String name = user.name;
+ *     List roles = user.roles;
+ *   }
+ * } finally {
+ *   client.close();
+ * }
+ * }</pre>
+ *
+ * @see com.aerospike.client.AerospikeClient#queryUser
+ * @see com.aerospike.client.AerospikeClient#queryUsers
+ * @see com.aerospike.client.AerospikeClient#createUser
+ * @see Role
  */
 public final class User {
-	/**
-	 * User name.
-	 */
+	/** User name. */
 	public String name;
 
-	/**
-	 * List of assigned roles.
-	 */
+	/** Assigned role names. */
 	public List<String> roles;
 
 	/**
-	 * List of read statistics. List may be null.
-	 * Current statistics by offset are:
-	 * <ul>
-	 * <li>0: read quota in records per second</li>
-	 * <li>1: single record read transaction rate (TPS)</li>
-	 * <li>2: read scan/query record per second rate (RPS)</li>
-	 * <li>3: number of limitless read scans/queries</li>
-	 * </ul>
-	 * Future server releases may add additional statistics.
+	 * Read statistics (may be null). Current offsets: 0 = read quota (RPS), 1 = read TPS, 2 = read scan/query RPS, 3 = limitless read scans/queries. Future server versions may add more.
 	 */
 	public List<Integer> readInfo;
 
 	/**
-	 * List of write statistics. List may be null.
-	 * Current statistics by offset are:
-	 * <ul>
-	 * <li>0: write quota in records per second</li>
-	 * <li>1: single record write transaction rate (TPS)</li>
-	 * <li>2: write scan/query record per second rate (RPS)</li>
-	 * <li>3: number of limitless write scans/queries</li>
-	 * </ul>
-	 * Future server releases may add additional statistics.
+	 * Write statistics (may be null). Current offsets: 0 = write quota (RPS), 1 = write TPS, 2 = write scan/query RPS, 3 = limitless write scans/queries. Future server versions may add more.
 	 */
 	public List<Integer> writeInfo;
 
-	/**
-	 * Number of currently open connections.
-	 */
+	/** Number of currently open connections for this user. */
 	public int connsInUse;
 
 	public String toString() {

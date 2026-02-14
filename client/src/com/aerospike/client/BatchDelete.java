@@ -23,7 +23,25 @@ import com.aerospike.client.policy.BatchDeletePolicy;
 import com.aerospike.client.policy.Policy;
 
 /**
- * Batch delete operation.
+ * Batch delete item: one key to delete; optional {@link com.aerospike.client.policy.BatchDeletePolicy}.
+ * <p>
+ * Pass a list to {@link com.aerospike.client.AerospikeClient#operate} (BatchRecord list can mix BatchDelete with other types) or use {@link com.aerospike.client.AerospikeClient#delete(BatchPolicy, BatchDeletePolicy, Key[])} for keys-only with a single policy. After the call, check {@link BatchRecord#resultCode}.
+ * <pre>{@code
+ * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+ * BatchDelete[] deletes = new BatchDelete[] {
+ *   new BatchDelete(new Key("ns", "set", "k1")),
+ *   new BatchDelete(new BatchDeletePolicy(), new Key("ns", "set", "k2"))
+ * };
+ * client.operate(null, java.util.Arrays.asList(deletes));
+ * for (BatchDelete bd : deletes) {
+ *   int rc = bd.resultCode;
+ * }
+ * client.close();
+ * }</pre>
+ *
+ * @see BatchRecord
+ * @see com.aerospike.client.AerospikeClient#operate
+ * @see com.aerospike.client.AerospikeClient#delete
  */
 public final class BatchDelete extends BatchRecord {
 	/**

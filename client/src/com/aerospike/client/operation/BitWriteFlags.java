@@ -17,11 +17,17 @@
 package com.aerospike.client.operation;
 
 /**
- * Bitwise operation policy write bit flags. Use BITWISE OR to combine flags. Example:
- * 
- * <pre>{@code 
+ * Write flags for bit operations; combine with BITWISE OR and pass to {@link BitPolicy}.
+ * <p>
+ * <p>Combine bit write flags and pass to BitPolicy.</p>
+ * <pre>{@code
  * int flags = BitWriteFlags.NO_FAIL | BitWriteFlags.PARTIAL;
+ * BitPolicy policy = new BitPolicy(flags);
+ * client.operate(null, key, BitOperation.set(policy, "bits", 0, value));
  * }</pre>
+ *
+ * @see BitPolicy
+ * @see BitOperation
  */
 public final class BitWriteFlags {
 	/**

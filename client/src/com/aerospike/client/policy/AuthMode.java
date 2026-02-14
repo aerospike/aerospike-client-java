@@ -17,7 +17,9 @@
 package com.aerospike.client.policy;
 
 /**
- * Authentication mode.
+ * Authentication mode (internal, external, PKI). Set on {@link ClientPolicy#authMode} to match server configuration.
+ *
+ * @see ClientPolicy#authMode
  */
 public enum AuthMode {
 	/**

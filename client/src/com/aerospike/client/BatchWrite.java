@@ -24,7 +24,30 @@ import com.aerospike.client.policy.BatchWritePolicy;
 import com.aerospike.client.policy.Policy;
 
 /**
- * Batch key and read/write operations with write policy.
+ * Batch operate item: one key with a list of read/write {@link Operation}s (put, delete, append, etc.).
+ * <p>
+ * Pass an array to {@link com.aerospike.client.AerospikeClient#operate} or async overloads with {@link com.aerospike.client.listener.BatchRecordArrayListener} / {@link com.aerospike.client.listener.BatchRecordSequenceListener}. Use {@link Operation#get(String)} per bin, not {@link Operation#get()}, so results align with operations.
+ * <pre>{@code
+ * AerospikeClient client = new AerospikeClient("localhost", 3000);
+ * BatchWrite[] records = new BatchWrite[] {
+ *   new BatchWrite(new Key("ns", "set", "k1"), new Operation[] {
+ *     Operation.put(new Bin("a", 1)),
+ *     Operation.get("a")
+ *   }),
+ *   new BatchWrite(new Key("ns", "set", "k2"), new Operation[] { Operation.delete() })
+ * };
+ * client.operate(null, records);
+ * for (BatchWrite bw : records) {
+ *   if (bw.record != null) { Record r = bw.record; }
+ * }
+ * client.close();
+ * }</pre>
+ *
+ * @see BatchRecord
+ * @see Operation
+ * @see com.aerospike.client.AerospikeClient#operate
+ * @see com.aerospike.client.listener.BatchRecordArrayListener
+ * @see com.aerospike.client.listener.BatchRecordSequenceListener
  */
 public final class BatchWrite extends BatchRecord {
 	/**
