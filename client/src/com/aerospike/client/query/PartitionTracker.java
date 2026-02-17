@@ -52,6 +52,7 @@ public final class PartitionTracker {
 	public int totalTimeout;
 	public int iteration = 1;
 	private long deadline;
+	private double sleepMultiplier;
 
 	public PartitionTracker(ScanPolicy policy, Node[] nodes) {
 		this((Policy)policy, nodes.length);
@@ -204,6 +205,7 @@ public final class PartitionTracker {
 		sleepBetweenRetries = policy.sleepBetweenRetries;
 		socketTimeout = policy.socketTimeout;
 		totalTimeout = policy.totalTimeout;
+		sleepMultiplier = policy.sleepMultiplier;
 
 		if (totalTimeout > 0) {
 			deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(totalTimeout);
@@ -511,6 +513,9 @@ public final class PartitionTracker {
 		// Prepare for next iteration.
 		if (maxRecords > 0) {
 			maxRecords -= recCount;
+		}
+		if (sleepMultiplier > 1) {
+			sleepBetweenRetries = (int) Math.round(sleepBetweenRetries * sleepMultiplier);
 		}
 		iteration++;
 		return false;

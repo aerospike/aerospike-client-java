@@ -73,6 +73,21 @@ public final class Role {
 	public static final String Truncate = "truncate";
 
 	/**
+	 * Manage data masking.
+	 */
+	public static final String MaskingAdmin = "masking-admin";
+
+	/**
+	 * Allow read masked data.
+	 */
+	public static final String ReadMasked = "read-masked";
+
+	/**
+	 * Allow write masked data.
+	 */
+	public static final String WriteMasked = "write-masked";
+
+	/**
 	 * Role name.
 	 */
 	public String name;

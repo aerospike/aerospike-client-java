@@ -29,7 +29,11 @@ import com.aerospike.client.Info;
 import com.aerospike.client.Log;
 import com.aerospike.client.admin.AdminCommand;
 import com.aerospike.client.admin.AdminCommand.LoginCommand;
+import com.aerospike.client.command.Buffer;
+import com.aerospike.client.policy.ClientPolicy;
+import com.aerospike.client.util.Crypto;
 import com.aerospike.client.util.Util;
+import com.aerospike.client.util.Version;
 
 public final class NodeValidator {
 	Node fallback;
@@ -40,6 +44,7 @@ public final class NodeValidator {
 	byte[] sessionToken;
 	long sessionExpiration;
 	int features;
+	Version serverVersion;
 
 	/**
 	 * Return first valid node referenced by seed host aliases. In most cases, aliases
@@ -171,6 +176,23 @@ public final class NodeValidator {
 		return addresses;
 	}
 
+	private String getB64userAgent(Cluster cluster) {
+		String appIdValue;
+		ClientPolicy clientPolicy = cluster.client.getClientPolicy();
+		if (clientPolicy.appId != null) {
+			appIdValue = clientPolicy.appId;
+		} else {
+			byte[] userBytes = cluster.getUser();
+			if (userBytes != null && userBytes.length > 0) {
+				appIdValue = Buffer.utf8ToString(userBytes, 0, userBytes.length);
+			} else {
+				appIdValue = "not-set";
+			}
+		}
+		String userAgent = "1,java-" + cluster.client.getVersion() + "," + appIdValue;
+		return Crypto.encodeBase64(userAgent.getBytes());
+	}
+
 	private void validateAddress(Cluster cluster, InetAddress address, String tlsName, int port, boolean detectLoadBalancer)
 		throws Exception {
 
@@ -200,13 +222,12 @@ public final class NodeValidator {
 				}
 			}
 
-			List<String> commands = new ArrayList<String>(5);
+			List<String> commands = new ArrayList<String>(6);
 			commands.add("node");
 			commands.add("partition-generation");
-			commands.add("features");
+			commands.add("build");
 
 			boolean validateCluster = cluster.validateClusterName();
-
 			if (validateCluster) {
 				commands.add("cluster-name");
 			}
@@ -238,7 +259,13 @@ public final class NodeValidator {
 
 			validateNode(map);
 			validatePartitionGeneration(map);
-			setFeatures(map);
+			validateServerBuildVersion(map);
+
+			boolean sendUserAgent = serverVersion.isGreaterOrEqual(Version.SERVER_VERSION_8_1);
+			if (sendUserAgent) {
+				Info.request(conn, "user-agent-set:value=" + getB64userAgent(cluster));
+			}
+			setFeatures(serverVersion);
 
 			if (validateCluster) {
 				validateClusterName(cluster, map);
@@ -278,46 +305,64 @@ public final class NodeValidator {
 		}
 	}
 
-	private void setFeatures(HashMap<String,String> map) {
-		try {
-			String featuresString = map.get("features");
-			int begin = 0;
-			int end = 0;
+	private void validateServerBuildVersion(HashMap<String,String> map) {
+		String build = map.get("build");
+		serverVersion = Version.convertStringToVersion(build, name, primaryAddress);
+	}
 
-			while (end < featuresString.length()) {
-				end = featuresString.indexOf(';', begin);
+/*
+		private void SetFeatures(Version serverVersion)
+		{
+			if (serverVersion >= Node.SERVER_VERSION_PSCAN)
+			{
+				features |= Node.HAS_PARTITION_SCAN;
+			}
+			else
+			{
+				// This client requires partition scan support. Partition scans were first
+				// supported in server version 4.9. Do not allow any server node into the
+				// cluster that is running server version < 4.9.
+				if ((this.features & Node.HAS_PARTITION_SCAN) == 0)
+				{
+					throw new AerospikeException("Node " + this.name + ' ' + this.primaryHost +
+						" version < 4.9. This client requires server version >= 4.9");
+				}
+			}
 
-				if (end < 0) {
-					end = featuresString.length();
-				}
+			if (serverVersion >= Node.SERVER_VERSION_QUERY_SHOW)
+			{
+				features |= Node.HAS_QUERY_SHOW;
+			}
 
-				int len = end - begin;
+			if (serverVersion >= Node.SERVER_VERSION_PQUERY_BATCH_ANY)
+			{
+				features |= Node.HAS_BATCH_ANY;
+				features |= Node.HAS_PARTITION_QUERY;
+			}
+		} 
+ */
 
-				if (featuresString.regionMatches(begin, "pscans", 0, len)) {
-					this.features |= Node.HAS_PARTITION_SCAN;
-				}
-				else if (featuresString.regionMatches(begin, "query-show", 0, len)) {
-					this.features |= Node.HAS_QUERY_SHOW;
-				}
-				else if (featuresString.regionMatches(begin, "batch-any", 0, len)) {
-					this.features |= Node.HAS_BATCH_ANY;
-				}
-				else if (featuresString.regionMatches(begin, "pquery", 0, len)) {
-					this.features |= Node.HAS_PARTITION_QUERY;
-				}
-				begin = end + 1;
+
+	private void setFeatures(Version serverVersion) {
+		if (serverVersion.isGreaterOrEqual(Version.SERVER_VERSION_PSCAN)) {
+			this.features |= Node.HAS_PARTITION_SCAN;
+		} else {
+			// This client requires partition scan support. Partition scans were first
+			// supported in server version 4.9. Do not allow any server node into the
+			// cluster that is running server version < 4.9.
+			if ((this.features & Node.HAS_PARTITION_SCAN) == 0) {
+				throw new AerospikeException("Node " + this.name + ' ' + this.primaryHost +
+					" version < 4.9. This client requires server version >= 4.9");
 			}
 		}
-		catch (Throwable e) {
-			// Unexpected exception. Use defaults.
+
+		if (serverVersion.isGreaterOrEqual(Version.SERVER_VERSION_QUERY_SHOW)) {
+			features |= Node.HAS_QUERY_SHOW;
 		}
 
-		// This client requires partition scan support. Partition scans were first
-		// supported in server version 4.9. Do not allow any server node into the
-		// cluster that is running server version < 4.9.
-		if ((this.features & Node.HAS_PARTITION_SCAN) == 0) {
-			throw new AerospikeException("Node " + this.name + ' ' + this.primaryHost +
-					" version < 4.9. This client requires server version >= 4.9");
+		if (serverVersion.isGreaterOrEqual(Version.SERVER_VERSION_PQUERY_BATCH_ANY)) {
+			features |= Node.HAS_BATCH_ANY;
+			features |= Node.HAS_PARTITION_QUERY;
 		}
 	}
 

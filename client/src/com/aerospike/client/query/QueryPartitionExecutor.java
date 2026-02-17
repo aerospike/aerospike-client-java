@@ -75,6 +75,8 @@ public final class QueryPartitionExecutor implements IQueryExecutor, Runnable {
 	private void execute() {
 		TaskGen task = new TaskGen(statement);
 		long taskId = task.getId();
+		int retryInterval = policy.sleepBetweenRetries;
+		double sleepMultiplier = policy.sleepMultiplier;
 
 		while (true) {
 			List<NodePartitions> list = tracker.assignPartitionsToNodes(cluster, statement.namespace);
@@ -131,9 +133,12 @@ public final class QueryPartitionExecutor implements IQueryExecutor, Runnable {
 				break;
 			}
 
-			if (policy.sleepBetweenRetries > 0) {
+			if (retryInterval > 0) {
 				// Sleep before trying again.
-				Util.sleep(policy.sleepBetweenRetries);
+				Util.sleep(retryInterval);
+				if (sleepMultiplier > 1) {
+					retryInterval = (int) Math.round(sleepMultiplier * retryInterval);
+				}
 			}
 
 			completedCount.set(0);

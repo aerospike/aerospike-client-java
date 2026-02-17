@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -39,7 +39,7 @@ public abstract class AsyncMultiCommand extends AsyncCommand {
 	 * Batch constructor.
 	 */
 	public AsyncMultiCommand(Node node, Policy policy, boolean isOperation) {
-		super(policy, false);
+		super(policy, false, null);
 		this.node = node;
 		this.isOperation = isOperation;
 	}
@@ -47,8 +47,8 @@ public abstract class AsyncMultiCommand extends AsyncCommand {
 	/**
 	 * Scan/Query constructor.
 	 */
-	public AsyncMultiCommand(Node node, Policy policy, int socketTimeout, int totalTimeout) {
-		super(policy, socketTimeout, totalTimeout);
+	public AsyncMultiCommand(Node node, Policy policy, int socketTimeout, int totalTimeout, String namespace) {
+		super(policy, socketTimeout, totalTimeout, namespace);
 		this.node = node;
 		this.isOperation = false;
 	}

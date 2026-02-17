@@ -1020,7 +1020,7 @@ public final class AsyncBatchSingle {
 			Node node,
 			boolean hasWrite
 		) {
-			super(policy, true);
+			super(policy, true, key.namespace);
 			this.executor = executor;
 			this.cluster = cluster;
 			this.key = key;

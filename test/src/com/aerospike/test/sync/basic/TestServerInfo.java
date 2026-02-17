@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2024 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -16,12 +16,13 @@
  */
 package com.aerospike.test.sync.basic;
 
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.*;
 
-import java.util.Map;
+import java.util.Arrays;
+import java.util.List;
 
 import com.aerospike.client.ResultCode;
+import com.aerospike.client.util.Version;
 import org.junit.Test;
 
 import com.aerospike.client.Info;
@@ -32,29 +33,7 @@ public class TestServerInfo extends TestSync {
 	@Test
 	public void serverInfo() {
 		Node node = client.getNodes()[0];
-		GetServerConfig(node);
 		GetNamespaceConfig(node);
-	}
-
-	/**
-	 * Query server configuration and cluster status.
-	 */
-	private void GetServerConfig(Node node) {
-		Map<String,String> map = Info.request(null, node);
-		assertNotNull(map);
-
-		for (Map.Entry<String,String> entry : map.entrySet()) {
-			String key = entry.getKey();
-
-			if (key.equals("statistics") || key.equals("query-stat")) {
-				LogNameValueTokens(entry.getValue());
-			}
-			else {
-				if (! (key.equals("services-alumni") || key.equals("services") || key.equals("dcs") || key.equals("build_ee_sha"))) {
-					assertNotNull(entry.getValue());
-				}
-			}
-		}
 	}
 
 	/**
@@ -102,5 +81,25 @@ public class TestServerInfo extends TestSync {
 		error = new Info.Error("generic message");
 		assertEquals(error.code, ResultCode.CLIENT_ERROR);
 		assertEquals(error.message, "generic message");
+	}
+
+	@Test
+	public void validateServerBuilds() {
+		List<String> builds = Arrays.asList("7.0.0.26", "8.1.0.0", "8.1.0.0-rc2");
+		for (String build : builds) {
+			Version ver = new Version(build);
+			assertNotNull(ver);
+			assertTrue(build.startsWith(ver.toString()));
+		}
+	}
+
+	@Test
+	public void invalidateServerBuilds() {
+		List<String> builds = Arrays.asList("7.0.26", "8.1.C.0", "lol");
+		for (String build : builds) {
+			Version ver = new Version(build);
+			assertNotNull(ver);
+			assertFalse(build.startsWith(ver.toString()));
+		}
 	}
 }

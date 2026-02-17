@@ -12,10 +12,16 @@ on:
       crypto-type:
         type: string
         required: true
-      use-server-rc:
+      java-version:
+        type: string
+        required: true
+      run-tests:
         type: boolean
         required: true
       server-tag:
+        type: string
+        required: true
+      server-type:
         type: string
         required: true
     secrets:
@@ -26,6 +32,7 @@ on:
 
 jobs:
   build:
+    name: '${{ inputs.crypto-type }} build ${{inputs.source-branch}} using java-version ${{ inputs.java-version }} on ${{ inputs.server-type}}:${{ inputs.server-tag }}'
     runs-on: ${{ vars.BUILD_CONTAINER_DISTRO_VERSION }}
     steps:
       - name: Checkout code
@@ -34,18 +41,13 @@ jobs:
           fetch-depth: 0
           ref: ${{ inputs.source-branch }}
 
-      - name: Get java version
-        id: get-java-version
-        run: |
-          echo java-version="$(grep '<java.version>' pom.xml | sed -e 's/<[^>]*>//g' | awk '{$1=$1};1' | sed 's/^1\.8$/8/')"  >> $GITHUB_OUTPUT
-
       # Java plugin will setup gpg but we are not using maven to deploy do JFrog.
       # - jf mvn clean install on publish does not publish POM we would like to publish
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
           distribution: "semeru"
-          java-version: ${{ steps.get-java-version.outputs.java-version }}
+          java-version: ${{ inputs.java-version }}
 
       # Running build followed by tests
       - name: Build and test
@@ -53,6 +55,7 @@ jobs:
         with:
           crypto-type: ${{ inputs.crypto-type }}
           server-tag: ${{ inputs.server-tag }}
-          use-server-rc: ${{ inputs.use-server-rc }}
+          server-type: ${{ inputs.server-type }}
+          run-tests: ${{ inputs.run-tests }}
           oidc-provider: ${{ secrets.JFROG_OIDC_PROVIDER }}
           oidc-audience: ${{ secrets.JFROG_OIDC_AUDIENCE }}

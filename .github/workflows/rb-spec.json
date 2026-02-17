@@ -1,0 +1,9 @@
+{
+    "files": [
+      {
+        "build": "",
+        "includeDeps": "true",
+        "project": "clients"
+      }
+    ]
+}

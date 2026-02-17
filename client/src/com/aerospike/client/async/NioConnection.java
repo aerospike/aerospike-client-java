@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2024 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -28,6 +28,7 @@ import java.nio.channels.SocketChannel;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Log;
+import com.aerospike.client.cluster.Node;
 import com.aerospike.client.util.Util;
 
 /**
@@ -36,6 +37,7 @@ import com.aerospike.client.util.Util;
 public final class NioConnection extends AsyncConnection implements Closeable {
 	private final SocketChannel socketChannel;
 	private SelectionKey key;
+	private long bytesIn;
 
 	public NioConnection(InetSocketAddress address) {
 		try {
@@ -80,6 +82,7 @@ public final class NioConnection extends AsyncConnection implements Closeable {
 
 	public void attach(INioCommand command) {
 		key.attach(command);
+		bytesIn = 0;
 	}
 
 	public void registerWrite() {
@@ -111,6 +114,8 @@ public final class NioConnection extends AsyncConnection implements Closeable {
 				// Server has shutdown socket.
 				throw new EOFException();
 			}
+
+			bytesIn += len;
 		}
 		return true;
 	}
@@ -140,6 +145,19 @@ public final class NioConnection extends AsyncConnection implements Closeable {
 	public void unregister() {
 		key.interestOps(0);
 		key.attach(null);
+	}
+
+	public void addBytesIn(Node node, String namespace) {
+		if (node.areMetricsEnabled()) {
+			node.addBytesIn(namespace, bytesIn);
+		}
+		bytesIn = 0;
+	}
+
+	public long resetBytesIn() {
+		long tmp = bytesIn;
+		bytesIn = 0;
+		return tmp;
 	}
 
 	/**

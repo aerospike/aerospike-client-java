@@ -47,6 +47,11 @@ import com.aerospike.client.async.NettyTlsContext;
 import com.aerospike.client.async.NioEventLoops;
 import com.aerospike.client.cluster.Node.AsyncPool;
 import com.aerospike.client.command.Buffer;
+import com.aerospike.client.configuration.ConfigurationProvider;
+import com.aerospike.client.configuration.YamlConfigProvider;
+import com.aerospike.client.configuration.serializers.Configuration;
+import com.aerospike.client.configuration.serializers.StaticConfiguration;
+import com.aerospike.client.configuration.serializers.staticconfig.StaticClientConfig;
 import com.aerospike.client.listener.ClusterStatsListener;
 import com.aerospike.client.metrics.MetricsListener;
 import com.aerospike.client.metrics.MetricsPolicy;
@@ -59,8 +64,15 @@ import com.aerospike.client.util.ThreadLocalData;
 import com.aerospike.client.util.Util;
 
 public class Cluster implements Runnable, Closeable {
+	private final static long MAX_SOCKET_IDLE_TRIM_DEFAULT_SECS = 55;
+	private final static int DEFAULT_CONFIG_INTERVAL_MS = 5_000;
+	private final static int TEND_INTERVAL_MIN_MS = 250;
+
 	// Client back pointer.
 	public final AerospikeClient client;
+
+	// Config created from a ConfigProvider, if available
+	private Configuration config;
 
 	// Expected cluster name.
 	protected final String clusterName;
@@ -99,10 +111,10 @@ public class Cluster implements Runnable, Closeable {
 	// Password in hashed format in bytes.
 	private byte[] passwordHash;
 
-	// Random node index.
+	// Random node index counter.
 	private final AtomicInteger nodeIndex;
 
-	// Random partition replica index.
+	// Random partition replica index counter.
 	final AtomicInteger replicaIndex;
 
 	// Count of connections in recover queue.
@@ -124,16 +136,16 @@ public class Cluster implements Runnable, Closeable {
 	public final EventState[] eventState;
 
 	// Maximum socket idle to validate connections in command.
-	private final long maxSocketIdleNanosTran;
+	private long maxSocketIdleNanosTran;
 
 	// Maximum socket idle to trim peak connections to min connections.
-	private final long maxSocketIdleNanosTrim;
+	private long maxSocketIdleNanosTrim;
 
 	// Minimum sync connections per node.
-	protected final int minConnsPerNode;
+	protected int minConnsPerNode;
 
 	// Maximum sync connections per node.
-	protected final int maxConnsPerNode;
+	protected int maxConnsPerNode;
 
 	// Minimum async connections per node.
 	protected final int asyncMinConnsPerNode;
@@ -151,25 +163,31 @@ public class Cluster implements Runnable, Closeable {
 	int errorRateWindow;
 
 	// Initial connection timeout.
-	public final int connectTimeout;
+	public int connectTimeout;
 
 	// Login timeout.
-	public final int loginTimeout;
+	public int loginTimeout;
 
 	// Cluster close timeout.
 	public final int closeTimeout;
 
 	// Rack id.
-	public final int[] rackIds;
+	public int[] rackIds;
 
 	// Count of add node failures in the most recent cluster tend iteration.
 	private volatile int invalidNodeCount;
 
 	// Interval in milliseconds between cluster tends.
-	private final int tendInterval;
+	private int tendInterval;
 
 	// Cluster tend counter
 	private int tendCount;
+
+	// Milliseconds between dynamic configuration check for file modifications.
+	public final int configInterval;
+
+	// Dynamic configuration path. If not null, dynamic configuration is enabled.
+	private final String configPath;
 
 	// Has cluster instance been closed.
 	private AtomicBoolean closed;
@@ -179,10 +197,10 @@ public class Cluster implements Runnable, Closeable {
 	protected volatile boolean tendValid;
 
 	// Should use "services-alternate" instead of "services" in info request?
-	protected final boolean useServicesAlternate;
+	protected boolean useServicesAlternate;
 
 	// Request server rack ids.
-	final boolean rackAware;
+	boolean rackAware;
 
 	// Verify clusterName if populated.
 	public final boolean validateClusterName;
@@ -198,12 +216,14 @@ public class Cluster implements Runnable, Closeable {
 	public boolean metricsEnabled;
 	MetricsPolicy metricsPolicy;
 	private volatile MetricsListener metricsListener;
+	private final Object metricsLock = new Object();
 	private final AtomicLong retryCount = new AtomicLong();
 	private final AtomicLong commandCount = new AtomicLong();
 	private final AtomicLong delayQueueTimeoutCount = new AtomicLong();
 
-	public Cluster(AerospikeClient client, ClientPolicy policy, Host[] hosts) {
+	public Cluster(AerospikeClient client, ClientPolicy policy, String configPath, Host[] hosts) {
 		this.client = client;
+		this.configPath = configPath;
 		this.clusterName = policy.clusterName;
 		this.validateClusterName = policy.validateClusterName;
 		this.tlsPolicy = policy.tlsPolicy;
@@ -231,6 +251,9 @@ public class Cluster implements Runnable, Closeable {
 		this.seeds = hosts;
 
 		if (policy.authMode == AuthMode.PKI) {
+			if (policy.password != null) {
+				throw new AerospikeException("Password authentication is disabled for PKI-only users");
+			}
 			this.authEnabled = true;
 			this.user = null;
 		}
@@ -258,19 +281,6 @@ public class Cluster implements Runnable, Closeable {
 			this.user = null;
 		}
 
-		if (policy.maxSocketIdle < 0) {
-			throw new AerospikeException("Invalid maxSocketIdle: " + policy.maxSocketIdle);
-		}
-
-		if (policy.maxSocketIdle == 0) {
-			maxSocketIdleNanosTran = 0;
-			maxSocketIdleNanosTrim = TimeUnit.SECONDS.toNanos(55);
-		}
-		else {
-			maxSocketIdleNanosTran = TimeUnit.SECONDS.toNanos(policy.maxSocketIdle);
-			maxSocketIdleNanosTrim = maxSocketIdleNanosTran;
-		}
-
 		minConnsPerNode = policy.minConnsPerNode;
 		maxConnsPerNode = policy.maxConnsPerNode;
 
@@ -286,30 +296,29 @@ public class Cluster implements Runnable, Closeable {
 		}
 
 		connPoolsPerNode = policy.connPoolsPerNode;
-		maxErrorRate = policy.maxErrorRate;
-		errorRateWindow = policy.errorRateWindow;
-		connectTimeout = policy.timeout;
-		loginTimeout = policy.loginTimeout;
+
+		int configIntervalDuration = DEFAULT_CONFIG_INTERVAL_MS;
+
+		if (client.getConfigProvider() != null) {
+			config = client.getConfigProvider().fetchConfiguration();
+			if (config != null) {
+				StaticConfiguration sConfig = config.getStaticConfiguration();
+				if (sConfig != null) {
+					StaticClientConfig staCC = sConfig.getStaticClientConfig();
+					if (staCC != null && staCC.configInterval != null) {
+						configIntervalDuration = staCC.configInterval.value;
+					}
+				}
+			}
+		}
+		this.configInterval = configIntervalDuration;
+
+		applyCommonClientPolicyParameters(policy, true);
+
 		closeTimeout = policy.closeTimeout;
-		tendInterval = policy.tendInterval;
 		ipMap = policy.ipMap;
 		keepAlive = policy.keepAlive;
 		threadFactory = Thread.ofVirtual().name("Aerospike-", 0L).factory();
-		useServicesAlternate = policy.useServicesAlternate;
-		rackAware = policy.rackAware;
-
-		if (policy.rackIds != null && policy.rackIds.size() > 0) {
-			List<Integer> list = policy.rackIds;
-			int max = list.size();
-			rackIds = new int[max];
-
-			for (int i = 0; i < max; i++) {
-				rackIds[i] = list.get(i);
-			}
-		}
-		else {
-			rackIds = new int[] {policy.rackId};
-		}
 
 		nodesMap = new HashMap<String,Node>();
 		nodes = new Node[0];
@@ -370,6 +379,81 @@ public class Cluster implements Runnable, Closeable {
 		}
 		else {
 			initTendThread(policy.failIfNotConnected);
+		}
+	}
+
+	/**
+	 * A common place to apply certain Client Policy parameters. The allowed parameters for dynamic client config
+	 * dictate which Client Policy parameters can be applied here.
+	 */
+	private void applyCommonClientPolicyParameters(ClientPolicy clientPolicy, boolean init) {
+		if (clientPolicy.tendInterval < TEND_INTERVAL_MIN_MS) {
+			throw new AerospikeException("Invalid tendInterval: " + clientPolicy.tendInterval + ". min: " +
+				TEND_INTERVAL_MIN_MS);
+		}
+
+		if (configInterval < clientPolicy.tendInterval) {
+			throw new AerospikeException("Dynamic config interval " + configInterval +
+				" must be greater or equal to the tend interval " + clientPolicy.tendInterval);
+		}
+
+		tendInterval = clientPolicy.tendInterval;
+		connectTimeout = clientPolicy.timeout;
+		loginTimeout = clientPolicy.loginTimeout;
+
+		if (clientPolicy.maxSocketIdle < 0) {
+			throw new AerospikeException("Invalid maxSocketIdle: " + clientPolicy.maxSocketIdle);
+		}
+		if (clientPolicy.maxSocketIdle == 0) {
+			maxSocketIdleNanosTran = 0;
+			maxSocketIdleNanosTrim = TimeUnit.SECONDS.toNanos(MAX_SOCKET_IDLE_TRIM_DEFAULT_SECS);
+		}
+		else {
+			maxSocketIdleNanosTran = TimeUnit.SECONDS.toNanos(clientPolicy.maxSocketIdle);
+			maxSocketIdleNanosTrim = maxSocketIdleNanosTran;
+		}
+
+		useServicesAlternate = clientPolicy.useServicesAlternate;
+		rackAware = clientPolicy.rackAware;
+
+		errorRateWindow = clientPolicy.errorRateWindow;
+		if (maxErrorRate != clientPolicy.maxErrorRate) {
+			maxErrorRate = clientPolicy.maxErrorRate;
+			if (!init) {
+				for (Node node : nodes) {
+					node.maxErrorRate = maxErrorRate;
+				}
+			}
+		}
+
+		if (init || !Util.rackIdsEqual(clientPolicy.rackIds, this.rackIds)) {
+			int[] rackIdsTemp;
+
+			if (clientPolicy.rackIds != null && !clientPolicy.rackIds.isEmpty()) {
+				List<Integer> list = clientPolicy.rackIds;
+				int max = list.size();
+				rackIdsTemp = new int[max];
+
+				for (int i = 0; i < max; i++) {
+					rackIdsTemp[i] = list.get(i);
+				}
+			}
+			else {
+				rackIdsTemp = new int[] {clientPolicy.rackId};
+			}
+
+			this.rackIds = rackIdsTemp;
+
+			if (!init) {
+				for (Node node : nodes) {
+					if (rackAware && node.racks == null) {
+						node.racks = new HashMap<>();
+					}
+					else if (!rackAware && node.racks != null) {
+						node.racks = null;
+					}
+				}
+			}
 		}
 	}
 
@@ -434,6 +518,13 @@ public class Cluster implements Runnable, Closeable {
 
 		if (seedsToAdd.size() > 0) {
 			addSeeds(seedsToAdd.toArray(new Host[seedsToAdd.size()]));
+		}
+
+		if (config != null && config.hasMetrics() && config.dynamicConfiguration.dynamicMetricsConfig.enable != null &&
+			config.dynamicConfiguration.dynamicMetricsConfig.enable.value) {
+			synchronized(metricsLock) {
+				enableMetricsInternal(metricsPolicy);
+			}
 		}
 
 		// Run cluster tend thread.
@@ -614,14 +705,33 @@ public class Cluster implements Runnable, Closeable {
 		}
 
 		// Reset connection error window for all nodes every connErrorWindow tend iterations.
-		if (maxErrorRate > 0 && tendCount % errorRateWindow == 0) {
+		if (tendCount % errorRateWindow == 0) {
 			for (Node node : nodes) {
 				node.resetErrorRate();
 			}
 		}
 
-		if (metricsEnabled && (tendCount % metricsPolicy.interval) == 0) {
-			metricsListener.onSnapshot(this);
+		// Perform metrics snapshot.
+		synchronized(metricsLock) {
+			if (metricsEnabled && (tendCount % metricsPolicy.interval) == 0) {
+				metricsListener.onSnapshot(this);
+			}
+		}
+
+		// Convert config interval from a millisecond duration to the number of cluster tend
+		// iterations.
+		int interval = configInterval / tendInterval;
+
+		// Check configuration file for updates.
+		if (configPath != null && tendCount % interval == 0) {
+			try {
+				loadConfiguration();
+			}
+			catch (Throwable t) {
+				if (Log.warnEnabled()) {
+					Log.warn("Dynamic configuration failed: " + t);
+				}
+			}
 		}
 
 		processRecoverQueue();
@@ -865,13 +975,15 @@ public class Cluster implements Runnable, Closeable {
 			// Remove node from map.
 			nodesMap.remove(node.getName());
 
-			if (metricsEnabled) {
-				// Flush node metrics before removal.
-				try {
-					metricsListener.onNodeClose(node);
-				}
-				catch (Throwable e) {
-					Log.warn("Write metrics failed on " + node + ": " + Util.getErrorMessage(e));
+			synchronized(metricsLock) {
+				if (metricsEnabled) {
+					// Flush node metrics before removal.
+					try {
+						metricsListener.onNodeClose(node);
+					}
+					catch (Throwable e) {
+						Log.warn("Write metrics failed on " + node + ": " + Util.getErrorMessage(e));
+					}
 				}
 			}
 			node.close();
@@ -1049,34 +1161,120 @@ public class Cluster implements Runnable, Closeable {
 		}
 	}
 
+	private void loadConfiguration() {
+		ConfigurationProvider provider = client.getConfigProvider();
+
+		if (provider == null) {
+			provider = YamlConfigProvider.getConfigProvider(configPath);
+
+			if (provider == null) {
+				// Failed to read configuration file. Warning was already logged.
+				return;
+			}
+
+			client.setConfigProvider(provider);
+		}
+		else {
+			if (!provider.loadConfiguration()) {
+				return;
+			}
+		}
+
+		config = provider.fetchConfiguration();
+		client.mergePoliciesWithConfig();
+		applyCommonClientPolicyParameters(client.getClientPolicy(), false);
+
+		synchronized(metricsLock) {
+			metricsPolicy = mergeMetricsPolicyWithConfig(metricsPolicy);
+
+			if (metricsEnabled && metricsPolicy.isMetricsRestartRequired()) {
+				disableMetricsInternal();
+				enableMetricsInternal(metricsPolicy);
+				metricsPolicy.setMetricsRestartRequired(false);
+				return;
+			}
+
+			if (config != null && config.hasMetrics() &&
+					config.dynamicConfiguration.dynamicMetricsConfig.enable != null) {
+				if (!metricsEnabled && config.dynamicConfiguration.dynamicMetricsConfig.enable.value) {
+					enableMetricsInternal(metricsPolicy);
+				}
+				else if (metricsEnabled && !config.dynamicConfiguration.dynamicMetricsConfig.enable.value) {
+					disableMetricsInternal();
+				}
+			}
+		}
+	}
+
+	private MetricsPolicy mergeMetricsPolicyWithConfig(MetricsPolicy mp) {
+		if (mp == null) {
+			mp = new MetricsPolicy();
+		}
+        return new MetricsPolicy(mp, config, metricsEnabled);
+	}
+
 	public final void enableMetrics(MetricsPolicy policy) {
+		if (config != null) {
+			if (config.hasMetrics() && config.dynamicConfiguration.dynamicMetricsConfig.enable != null) {
+				if (!config.dynamicConfiguration.dynamicMetricsConfig.enable.value) {
+					Log.warn("When a config exists, metrics can not be enabled via enableMetrics unless they" +
+							" are enabled in the config provider.");
+					this.metricsPolicy = mergeMetricsPolicyWithConfig(policy);
+					return;
+				}
+			}
+		}
+
+		synchronized(metricsLock) {
+			enableMetricsInternal(policy);
+		}
+	}
+
+	private void enableMetricsInternal(MetricsPolicy policy) {
+		MetricsPolicy mergedMP = mergeMetricsPolicyWithConfig(policy);
+		MetricsListener listener = mergedMP.listener;
+
+		if (listener == null) {
+			listener = new MetricsWriter(mergedMP.reportDir);
+		}
+
+		this.metricsListener = listener;
+		this.metricsPolicy = mergedMP;
+
 		if (metricsEnabled) {
 			this.metricsListener.onDisable(this);
 		}
 
-		MetricsListener listener = policy.listener;
-
-		if (listener == null) {
-			listener = new MetricsWriter(policy.reportDir);
-		}
-
-		this.metricsListener = listener;
-		this.metricsPolicy = policy;
-
 		Node[] nodeArray = nodes;
 
 		for (Node node : nodeArray) {
-			node.enableMetrics(policy);
+			node.enableMetrics(this.metricsPolicy);
 		}
 
-		listener.onEnable(this, policy);
+		this.metricsListener.onEnable(this, this.metricsPolicy);
 		metricsEnabled = true;
+		Log.info("Metrics have been enabled.");
 	}
 
 	public final void disableMetrics() {
+		if (config != null) {
+			if (config.hasMetrics() && config.dynamicConfiguration.dynamicMetricsConfig.enable != null &&
+				config.dynamicConfiguration.dynamicMetricsConfig.enable.value) {
+				Log.warn("Metrics can not be disabled via disableMetrics() when they are enabled via config.");
+				return;
+			}
+		}
+
+		synchronized(metricsLock) {
+			disableMetricsInternal();
+		}
+	}
+
+	private void disableMetricsInternal() {
 		if (metricsEnabled) {
 			metricsEnabled = false;
 			metricsListener.onDisable(this);
+			Log.info("Metrics have been disabled.");
 		}
 	}
 
@@ -1424,6 +1622,13 @@ public class Cluster implements Runnable, Closeable {
 		return invalidNodeCount;
 	}
 
+	/**
+	 * Return the current Metrics Policy
+	 */
+	public MetricsPolicy getMetricsPolicy() {
+		return metricsPolicy;
+	}
+
 	public void close() {
 		if (! closed.compareAndSet(false, true)) {
 			// close() has already been called.
@@ -1434,11 +1639,13 @@ public class Cluster implements Runnable, Closeable {
 		tendValid = false;
 		tendThread.interrupt();
 
-		try {
-			disableMetrics();
-		}
-		catch (Throwable e) {
-			Log.warn("DisableMetrics failed: " + Util.getErrorMessage(e));
+		synchronized(metricsLock) {
+			try {
+				disableMetricsInternal();
+			}
+			catch (Throwable e) {
+				Log.warn("DisableMetrics failed: " + Util.getErrorMessage(e));
+			}
 		}
 
 		if (eventLoops == null) {

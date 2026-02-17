@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -48,7 +48,7 @@ public final class AsyncScanPartition extends AsyncMultiCommand {
 		PartitionTracker tracker,
 		NodePartitions nodePartitions
 	) {
-		super(nodePartitions.node, scanPolicy, tracker.socketTimeout, tracker.totalTimeout);
+		super(nodePartitions.node, scanPolicy, tracker.socketTimeout, tracker.totalTimeout, namespace);
 		this.parent = parent;
 		this.scanPolicy = scanPolicy;
 		this.listener = listener;

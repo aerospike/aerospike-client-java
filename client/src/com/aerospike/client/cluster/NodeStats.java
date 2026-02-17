@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -48,6 +48,11 @@ public final class NodeStats {
 	public final long timeoutCount;
 
 	/**
+	 * Key busy count since node was initialized.
+	 */
+	public final long keyBusyCount;
+
+	/**
 	 * Node statistics constructor.
 	 */
 	public NodeStats(Node node) {
@@ -55,12 +60,14 @@ public final class NodeStats {
 		this.sync = node.getConnectionStats();
 		this.errorCount = node.getErrorCount();
 		this.timeoutCount = node.getTimeoutCount();
+		this.keyBusyCount = node.getKeyBusyCount();
 	}
 
 	/**
 	 * Convert statistics to string.
 	 */
 	public String toString() {
-		return node + " sync(" + sync + ") async(" + async + ") " + errorCount + ',' + timeoutCount;
+		return node + " sync(" + sync + ") async(" + async + ") " + errorCount + ',' + timeoutCount
+				+ ',' + keyBusyCount;
 	}
 }

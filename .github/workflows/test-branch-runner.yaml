@@ -9,16 +9,46 @@ on:
         description: Branch to run test against
 
 jobs:
+  make-matrix:
+    name: make input matrix
+    runs-on: ${{ vars.BUILD_CONTAINER_DISTRO_VERSION }}
+    outputs:
+      input-matrix: ${{ steps.create-server-matrix.outputs.input-matrix }}
+      java-version: ${{ steps.get-java-version.outputs.java-version }}
+    steps:
+      - uses: actions/checkout@v4 # brings versions.json into the workspace
+        with:
+          ref: ${{ github.ref }}
+      - id: create-server-matrix
+        uses: ./.github/actions/make-server-matrix
+        with:
+          default_json: ${{ vars.DEFAULT_SERVER_VERSIONS }}
+          test_servers_file_path: ${{ vars.TEST_SERVERS_FILE_PATH }}
+
+      - name: Get java version
+        id: get-java-version
+        run: |
+          echo java-version="$(grep '<java.version>' pom.xml | sed -e 's/<[^>]*>//g' | awk '{$1=$1};1' | sed 's/^1\.8$/8/')"  >> $GITHUB_OUTPUT
+
+      - name: debug - print input variables
+        run: |
+          echo ${{ steps.get-java-version.outputs.java-version }}
+          echo ${{ steps.create-server-matrix.outputs.input-matrix }}
+
   build-and-test:
     uses: ./.github/workflows/test-branch.yaml
+    needs: make-matrix
     strategy:
       matrix:
+        entry: ${{ fromJson(needs.make-matrix.outputs.input-matrix) }}
         crypto-type: [bouncycastle, gnu]
-        use-server-rc: [true, false]
-      fail-fast: false
+    name: build-${{ matrix.entry.type }}-${{ matrix.entry.version }}
     with:
-      source-branch: ${{ inputs.source-branch }}
+      java-version: ${{ needs.make-matrix.outputs.java-version }}
       crypto-type: ${{ matrix.crypto-type }}
-      use-server-rc: ${{ matrix.use-server-rc }}
-      server-tag: latest
+      source-branch: ${{ inputs.source-branch }}
+      run-tests: true
+      server-tag: ${{ matrix.entry.version }}
+      server-type: ${{ matrix.entry.type }}
     secrets: inherit
+

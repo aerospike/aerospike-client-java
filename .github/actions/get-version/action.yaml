@@ -1,0 +1,54 @@
+name: Get version
+description: Detects if build is a snapshot and gets the release or snapshot version
+
+runs:
+  using: composite
+  steps:
+    # Checking if this particular build is a snapshot build
+    - name: Detect if snapshot
+      id: get-is-snapshot
+      shell: bash
+      run: |
+        # Getting previous commit
+        COMMIT_REF="HEAD~1"
+
+        # Checking if previous commit contains pom.xml. This should always return true
+        if ! git show "${COMMIT_REF}:pom.xml" &>/dev/null; then
+          echo "Error: pom.xml not found in commit ${COMMIT_REF}"
+          exit 1
+        fi
+
+        # Getting previous version
+        OLD_VERSIONS=$(git show "${COMMIT_REF}:pom.xml" |
+          sed -n '/<revision>/ { s/.*<revision>\([^<]*\)<\/revision>.*/\1/p; q }')
+
+        # Getting current version
+        NEW_VERSIONS=$(sed -n 's/.*<revision>\([^<]*\)<\/revision>.*/\1/p' pom.xml)
+
+        echo "old versions: ${OLD_VERSIONS}, new versions: ${NEW_VERSIONS}"
+        # Compare the extracted versions. CI will not commit snapshot version.
+        if [[ "${OLD_VERSIONS}" != "${NEW_VERSIONS}" ]]; then
+          echo "is-snapshot='false'" >> $GITHUB_OUTPUT
+        else
+          echo "is-snapshot='true'" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Get release or snapshot-version
+      id: get-release-version
+      shell: bash
+      run: |
+        IS_SNAPSHOT=${{ steps.get-is-snapshot.outputs.is-snapshot }}
+        if [ $IS_SNAPSHOT == 'true' ];then
+          echo release-version="$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)-SNAPSHOT_$GITHUB_SHA" >> $GITHUB_OUTPUT
+        else
+          echo release-version="$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)" >> $GITHUB_OUTPUT
+        fi
+
+outputs:
+  is-snapshot:
+    description: Whether this is a snapshot build
+    value: ${{ steps.get-is-snapshot.outputs.is-snapshot }}
+  release-version:
+    description: The release or snapshot version
+    value: ${{ steps.get-release-version.outputs.release-version }}
+

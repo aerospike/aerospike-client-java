@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2024 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -34,6 +34,7 @@ import com.aerospike.client.command.Buffer;
 import com.aerospike.client.command.Command;
 import com.aerospike.client.policy.AdminPolicy;
 import com.aerospike.client.policy.AuthMode;
+import com.aerospike.client.util.Version;
 
 public class AdminCommand {
 	// Commands
@@ -137,8 +138,13 @@ public class AdminCommand {
 					// Server does not require login.
 					return;
 				}
+				String msg = "Login failed";
+				if (result == ResultCode.INVALID_CREDENTIAL) {
+					msg = "Authentication failed: Password authentication is disabled for PKI-only users. " +
+							"Please authenticate using your certificate.";
+				}
 
-				throw new AerospikeException(result, "Login failed");
+				throw new AerospikeException(result, msg);
 			}
 
 			// Read session token.
@@ -223,6 +229,23 @@ public class AdminCommand {
 		executeCommand(cluster, policy);
 	}
 
+	public void createPkiUser(Cluster cluster, AdminPolicy policy, String user, List<String> roles) {
+		Node node = cluster.getRandomNode();
+		Version nodeVer = node.getServerVersion();
+		if (nodeVer.compareTo(Version.SERVER_VERSION_8_1) < 0 ) {
+			throw new AerospikeException("Node version " + nodeVer + " is less than required minimum version " + Version.SERVER_VERSION_8_1);
+		}
+		String hash = hashPassword("nopassword");
+		writeHeader(CREATE_USER, 3);
+		writeField(USER, user);
+		writeField(PASSWORD, hash);
+		writeRoles(roles);
+		int result = executeCommandNode(node, policy);
+		if (result != 0) {
+			throw new AerospikeException("PKI user creation failed: " + ResultCode.getResultString(result));
+		}
+	}
+
 	public void dropUser(Cluster cluster, AdminPolicy policy, String user) {
 		writeHeader(DROP_USER, 1);
 		writeField(USER, user);
@@ -230,18 +253,26 @@ public class AdminCommand {
 	}
 
 	public void setPassword(Cluster cluster, AdminPolicy policy, byte[] user, String password) {
+		Node node = cluster.getRandomNode();
 		writeHeader(SET_PASSWORD, 2);
 		writeField(USER, user);
 		writeField(PASSWORD, password);
-		executeCommand(cluster, policy);
+		int result = executeCommandNode(node, policy);
+		if (result == ResultCode.FORBIDDEN_PASSWORD) {
+			throw new AerospikeException("FORBIDDEN_PASSWORD (64): PKI user password not changeable");
+		}
 	}
 
 	public void changePassword(Cluster cluster, AdminPolicy policy, byte[] user, String password) {
+		Node node = cluster.getRandomNode();
 		writeHeader(CHANGE_PASSWORD, 3);
 		writeField(USER, user);
 		writeField(OLD_PASSWORD, cluster.getPasswordHash());
 		writeField(PASSWORD, password);
-		executeCommand(cluster, policy);
+		int result = executeCommandNode(node, policy);
+		if (result == ResultCode.FORBIDDEN_PASSWORD) {
+			throw new AerospikeException("FORBIDDEN_PASSWORD (64): PKI user password not changeable");
+		}
 	}
 
 	public void grantRoles(Cluster cluster, AdminPolicy policy, String user, List<String> roles) {
@@ -463,9 +494,8 @@ public class AdminCommand {
 		dataBuffer[dataOffset++] = id;
 	}
 
-	private void executeCommand(Cluster cluster, AdminPolicy policy) {
+	private int executeCommandNode(Node node, AdminPolicy policy) {
 		writeSize();
-		Node node = cluster.getRandomNode();
 		int timeout = (policy == null) ? 1000 : policy.timeout;
 		Connection conn = node.getConnection(timeout);
 
@@ -474,15 +504,20 @@ public class AdminCommand {
 			conn.readFully(dataBuffer, HEADER_SIZE);
 			conn.updateLastUsed();
 			node.putConnection(conn);
-		}
-		catch (Throwable e) {
+		} catch (Throwable e) {
 			// All IO exceptions are considered fatal.  Do not retry.
 			// Close socket to flush out possible garbage.  Do not put back in pool.
 			node.closeConnection(conn);
 			throw new AerospikeException(e);
 		}
 
-		int result = dataBuffer[RESULT_CODE] & 0xFF;
+		return dataBuffer[RESULT_CODE] & 0xFF;
+	}
+
+	private void executeCommand(Cluster cluster, AdminPolicy policy) {
+		Node node = cluster.getRandomNode();
+
+		int result = executeCommandNode(node, policy);
 
 		if (result != 0)
 		{
@@ -699,7 +734,6 @@ public class AdminCommand {
 					case PRIVILEGES:
 						parsePrivileges(role);
 						break;
-
 					case WHITELIST:
 						role.whitelist = parseWhitelist(len);
 						break;

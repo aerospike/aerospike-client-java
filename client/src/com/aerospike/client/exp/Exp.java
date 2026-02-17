@@ -48,6 +48,20 @@ public abstract class Exp {
 		}
 	}
 
+	public static final int SELECT_MATCHING_TREE = 0;
+	public static final int SELECT_VALUE = 1;
+	public static final int SELECT_LIST_VALUE = 1;
+	public static final int SELECT_MAP_VALUE = 1;
+	public static final int SELECT_MAP_KEY = 2;
+	public static final int SELECT_MAP_KEY_VALUE = SELECT_MAP_KEY | SELECT_MAP_VALUE;
+	public static final int SELECT_NO_FAIL = 0x10;
+
+	public static final int MODIFY_DEFAULT = 0x00;
+    public static final int MODIFY_APPLY = 0x04;
+    public static final int MODIFY_NO_FAIL = 0x10;
+
+	public static final int CTX_EXP = 0x04;
+
 	//--------------------------------------------------
 	// Build
 	//--------------------------------------------------
@@ -57,6 +71,47 @@ public abstract class Exp {
 	 */
 	public static Expression build(Exp exp) {
 		return new Expression(exp);
+	}
+
+	/**
+	 * Helper method to create Exp objects from unpacked objects
+	 */
+	public static Exp get(Object obj) {
+		if (obj == null) {
+			return nil();
+		} else if (obj instanceof Boolean) {
+			return new Bool((Boolean)obj);
+		} else if (obj instanceof Long) {
+			return new Int((Long)obj);
+		} else if (obj instanceof Double) {
+			return new Float((Double)obj);
+		} else if (obj instanceof String) {
+			return new Str((String)obj);
+		} else if (obj instanceof byte[]) {
+			return new Blob((byte[])obj);
+		} else if (obj instanceof List) {
+			List<Object> list = (List<Object>)obj;
+			if (!list.isEmpty() && list.get(0) instanceof Number) {
+				// This might be a command array, try to reconstruct it
+				// For complex expressions, return as ExpBytes
+				Packer packer = new Packer();
+				packer.packObject(obj);
+				packer.createBuffer();
+				packer.packObject(obj);
+				return new ExpBytes(new Expression(packer.getBuffer()));
+			}
+			return new ListVal(list);
+		} else if (obj instanceof Map) {
+			Map<Object, Object> map = (Map<Object, Object>)obj;
+			return new MapVal(map);
+		} else {
+			// For unknown types, wrap as ExpBytes
+			Packer packer = new Packer();
+			packer.packObject(obj);
+			packer.createBuffer();
+			packer.packObject(obj);
+			return new ExpBytes(new Expression(packer.getBuffer()));
+		}
 	}
 
 	//--------------------------------------------------
@@ -97,6 +152,7 @@ public abstract class Exp {
 	/**
 	 * Create bin expression of specified type.
 	 *
+
 	 * <pre>{@code
 	 * // String bin "a" == "views"
 	 * Exp.eq(Exp.bin("a", Type.STRING), Exp.val("views"))
@@ -288,6 +344,7 @@ public abstract class Exp {
 	 * Exp.ge(Exp.deviceSize(), Exp.val(100 * 1024))
 	 * }</pre>
 	 */
+	@Deprecated(since = "9.1.0", forRemoval = true)
 	public static Exp deviceSize() {
 		return new Cmd(DEVICE_SIZE);
 	}
@@ -305,6 +362,7 @@ public abstract class Exp {
 	 * Exp.ge(Exp.memorySize(), Exp.val(100 * 1024))
 	 * }</pre>
 	 */
+	@Deprecated(since = "9.1.0", forRemoval = true)
 	public static Exp memorySize() {
 		return new Cmd(MEMORY_SIZE);
 	}
@@ -1131,6 +1189,138 @@ public abstract class Exp {
 		return new CmdStr(VAR, name);
 	}
 
+	/**
+	 * Create expression that references a built-in variable.
+	 * Requires server version 8.1.1
+	 *
+	 * <pre>{@code
+	 * Exp.stringLoopVar(LoopVarPart.MAP_KEY)
+	 * }</pre>
+	 */
+	public static Exp stringLoopVar(LoopVarPart part) {
+		return new Var(Type.STRING.code, part.id);
+	}
+
+	/**
+	 * Create expression that references a built-in variable.
+	 * Requires server version 8.1.1
+	 *
+	 * <pre>{@code
+	 * Exp.boolLoopVar(LoopVarPart.MAP_KEY)
+	 * }</pre>
+	 */
+	public static Exp boolLoopVar(LoopVarPart part) {
+		return new Var(Type.BOOL.code, part.id);
+	}
+
+	/**
+	 * Create expression that references a built-in variable.
+	 * Requires server version 8.1.1
+	 *
+	 * <pre>{@code
+	 * Exp.hllLoopVar(LoopVarPart.MAP_KEY)
+	 * }</pre>
+	 */
+	public static Exp hllLoopVar(LoopVarPart part) {
+		return new Var(Type.HLL.code, part.id);
+	}
+
+	/**
+	 * Create expression that references a built-in variable.
+	 * Requires server version 8.1.1
+	 * 
+	 * <pre>{@code
+	 * Exp.intLoopVar(LoopVarPart.MAP_KEY)
+	 * }</pre>
+	 */
+	public static Exp intLoopVar(LoopVarPart part) {
+		return new Var(Type.INT.code, part.id);
+	}
+
+	/**
+	 * Create expression that references a built-in variable.
+	 * Requires server version 8.1.1
+	 * 
+	 * <pre>{@code
+	 * Exp.floatLoopVar(LoopVarPart.MAP_KEY)
+	 * }</pre>
+	 */
+	public static Exp floatLoopVar(LoopVarPart part) {
+		return new Var(Type.FLOAT.code, part.id);
+	}
+
+	/**
+	 * Create expression that references a built-in variable.
+	 * Requires server version 8.1.1
+	 * 
+	 * <pre>{@code
+	 * Exp.listLoopVar(LoopVarPart.MAP_KEY)
+	 * }</pre>
+	 */
+	public static Exp listLoopVar(LoopVarPart part)	{
+		return new Var(Type.LIST.code, part.id);
+	}
+
+	/**
+	 * Create expression that references a built-in variable.
+	 * Requires server version 8.1.1
+	 * 
+	 * <pre>{@code
+	 * Exp.mapLoopVar(LoopVarPart.MAP_KEY)
+	 * }</pre>
+	 */
+	public static Exp mapLoopVar(LoopVarPart part)	{
+		return new Var(Type.MAP.code, part.id);
+	}
+
+	/**
+	 * Create expression that references a built-in variable.
+	 * Requires server version 8.1.1
+	 * 
+	 * <pre>{@code
+	 * Exp.blobLoopVar(LoopVarPart.MAP_KEY)
+	 * }</pre>
+	 */
+	public static Exp blobLoopVar(LoopVarPart part)	{
+		return new Var(Type.BLOB.code, part.id);
+	}
+
+	/**
+	 * Create expression that references a built-in variable.
+	 * Requires server version 8.1.1
+	 * 
+	 * <pre>{@code
+	 * Exp.nilLoopVar(LoopVarPart.MAP_KEY)
+	 * }</pre>
+	 */
+	public static Exp nilLoopVar(LoopVarPart part)	{
+		return new Var(Type.NIL.code, part.id);
+	}
+
+	/**
+	 * Create expression that references a built-in variable.
+	 * Requires server version 8.1.1
+	 * 
+	 * <pre>{@code
+	 * Exp.geoJsonLoopVar(LoopVarPart.MAP_KEY)
+	 * }</pre>
+	 */
+	public static Exp geoJsonLoopVar(LoopVarPart part)	{
+		return new Var(Type.GEO.code, part.id);
+	}
+
+	/**
+     * Creates a result remove expression.
+     * Requires server version 8.1.1+.
+	 *
+	 * <pre>{@code
+	 * Exp.removeResults()
+	 * }</pre>
+	 */
+	public static Exp removeResults() {
+		return new Cmd(RESULT_REMOVE);
+	}
+
 	//--------------------------------------------------
 	// Miscellaneous
 	//--------------------------------------------------
@@ -1225,11 +1415,13 @@ public abstract class Exp {
 	private static final int KEY = 80;
 	private static final int BIN = 81;
 	private static final int BIN_TYPE = 82;
+	private static final int RESULT_REMOVE = 100;
+	private static final int VAR_BUILTIN = 122;
 	private static final int COND = 123;
 	private static final int VAR = 124;
 	private static final int LET = 125;
 	private static final int QUOTED = 126;
-	private static final int CALL = 127;
+	public static final int CALL = 127;
 	public static final int MODIFY = 0x40;
 	private static final long NANOS_PER_MILLIS = 1000000L;
 
@@ -1536,12 +1728,28 @@ public abstract class Exp {
 		}
 	}
 
-	private static final class ExpBytes extends Exp
-	{
+	private static final class Var extends Exp {
+		private final int type;
+		private final int varId;
+
+		private Var(int type, int varId) {
+			this.type = type;
+			this.varId = varId;
+		}
+
+		@Override
+		public void pack(Packer packer) {
+			packer.packArrayBegin(3);
+			packer.packInt(Exp.VAR_BUILTIN);
+			packer.packInt(type);
+			packer.packInt(varId);
+		}
+	}
+
+	private static final class ExpBytes extends Exp {
 		private final byte[] bytes;
 
-		private ExpBytes(Expression e)
-		{
+		private ExpBytes(Expression e) {
 			this.bytes = e.getBytes();
 		}
 

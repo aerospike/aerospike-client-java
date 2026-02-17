@@ -33,6 +33,7 @@ jobs:
         uses: jfrog/setup-jfrog-cli@v4
         env:
           JF_URL: ${{ inputs.jfrog-platform-url }}
+          JF_PROJECT: clients
         with:
           version: 2.72.2
           oidc-provider-name: ${{ secrets.JFROG_OIDC_PROVIDER }}

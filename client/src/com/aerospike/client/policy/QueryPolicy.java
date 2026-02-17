@@ -16,6 +16,12 @@
  */
 package com.aerospike.client.policy;
 
+import com.aerospike.client.Log;
+import com.aerospike.client.configuration.ConfigurationProvider;
+import com.aerospike.client.configuration.serializers.Configuration;
+import com.aerospike.client.configuration.serializers.DynamicConfiguration;
+import com.aerospike.client.configuration.serializers.dynamicconfig.DynamicQueryConfig;
+
 /**
  * Container object for policy attributes used in query operations.
  * <p>
@@ -107,6 +113,24 @@ public class QueryPolicy extends Policy {
 	public boolean shortQuery;
 
 	/**
+	 * Copy query policy from another query policy AND override certain policy attributes if they exist in the
+	 * configProvider.  Any policy overrides will not get logged.
+	 */
+	public QueryPolicy(QueryPolicy other, ConfigurationProvider configProvider) {
+		this(other);
+		updateFromConfig(configProvider, false);
+	}
+
+	/**
+	 * Copy query policy from another query policy AND override certain policy attributes if they exist in the
+	 * configProvider.  Any default policy overrides will get logged.
+	 */
+	public QueryPolicy(QueryPolicy other, ConfigurationProvider configProvider, boolean isDefaultPolicy) {
+		this(other);
+		updateFromConfig(configProvider, isDefaultPolicy);
+	}
+
+	/**
 	 * Copy query policy from another query policy.
 	 */
 	public QueryPolicy(QueryPolicy other) {
@@ -144,6 +168,101 @@ public class QueryPolicy extends Policy {
 	public QueryPolicy() {
 		super.totalTimeout = 0;
 		super.maxRetries = 5;
+	}
+
+	private void updateFromConfig(ConfigurationProvider configProvider, boolean log) {
+		boolean logUpdate = false;
+		if (configProvider == null) {
+			return;
+		}
+		Configuration config = configProvider.fetchConfiguration();
+		if (config == null) {
+			return;
+		}
+		DynamicConfiguration dConfig = config.getDynamicConfiguration();
+		if (dConfig == null) {
+			return;
+		}
+		DynamicQueryConfig dynQC = dConfig.getDynamicQueryConfig();
+		if (dynQC == null) {
+			return;
+		}
+
+		if (log && Log.infoEnabled()) {
+			logUpdate = true;
+		}
+		if (dynQC.connectTimeout != null && this.connectTimeout != dynQC.connectTimeout.value) {
+			this.connectTimeout = dynQC.connectTimeout.value;
+			if (logUpdate) {
+				Log.info("Set QueryPolicy.connectTimeout = " + this.connectTimeout);
+			}
+		}
+		if (dynQC.replica != null && this.replica != dynQC.replica) {
+			this.replica = dynQC.replica;
+			if (logUpdate) {
+				Log.info("Set QueryPolicy.replica = " + this.replica);
+			}
+		}
+		if (dynQC.sleepBetweenRetries != null && this.sleepBetweenRetries != dynQC.sleepBetweenRetries.value) {
+			this.sleepBetweenRetries = dynQC.sleepBetweenRetries.value;
+			if (logUpdate) {
+				Log.info("Set QueryPolicy.sleepBetweenRetries = " + this.sleepBetweenRetries);
+			}
+		}
+		if (dynQC.sleepMultiplier != null && this.sleepMultiplier != dynQC.sleepMultiplier.value) {
+			this.sleepMultiplier = dynQC.sleepMultiplier.value;
+			if (logUpdate) {
+				Log.info("Set QueryPolicy.sleepMultiplier = " + this.sleepMultiplier);
+			}
+		}
+		if (dynQC.socketTimeout != null && this.socketTimeout != dynQC.socketTimeout.value) {
+			this.socketTimeout = dynQC.socketTimeout.value;
+			if (logUpdate) {
+				Log.info("Set QueryPolicy.socketTimeout = " + this.socketTimeout);
+			}
+		}
+		if (dynQC.timeoutDelay != null && this.timeoutDelay != dynQC.timeoutDelay.value) {
+			this.timeoutDelay = dynQC.timeoutDelay.value;
+			if (logUpdate) {
+				Log.info("Set QueryPolicy.timeoutDelay = " + this.timeoutDelay);
+			}
+		}
+		if (dynQC.totalTimeout != null && this.totalTimeout != dynQC.totalTimeout.value) {
+			this.totalTimeout = dynQC.totalTimeout.value;
+			if (logUpdate) {
+				Log.info("Set QueryPolicy.totalTimeout = " + this.totalTimeout);
+			}
+		}
+		if (dynQC.maxRetries != null && this.maxRetries != dynQC.maxRetries.value) {
+			this.maxRetries = dynQC.maxRetries.value;
+			if (logUpdate) {
+				Log.info("Set QueryPolicy.maxRetries = " + this.maxRetries);
+			}
+		}
+		if (dynQC.includeBinData != null && this.includeBinData != dynQC.includeBinData.value) {
+			this.includeBinData = dynQC.includeBinData.value;
+			if (logUpdate) {
+				Log.info("Set QueryPolicy.includeBinData = " + this.includeBinData);
+			}
+		}
+		if (dynQC.infoTimeout != null && this.infoTimeout != dynQC.infoTimeout.value) {
+			this.infoTimeout = dynQC.infoTimeout.value;
+			if (logUpdate) {
+				Log.info("Set QueryPolicy.infoTimeout = " + this.infoTimeout);
+			}
+		}
+		if (dynQC.recordQueueSize != null && this.recordQueueSize != dynQC.recordQueueSize.value) {
+			this.recordQueueSize = dynQC.recordQueueSize.value;
+			if (logUpdate) {
+				Log.info("Set QueryPolicy.recordQueueSize = " + this.recordQueueSize);
+			}
+		}
+		if (dynQC.expectedDuration != null && this.expectedDuration != dynQC.expectedDuration) {
+			this.expectedDuration = dynQC.expectedDuration;
+			if (logUpdate) {
+				Log.info("Set QueryPolicy.expectedDuration = " + this.expectedDuration);
+			}
+		}
 	}
 
 	// Include setters to facilitate Spring's ConfigurationProperties.

@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2024 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -45,6 +45,7 @@ public final class NioCommand implements INioCommand, Runnable, TimerTask {
 	ByteBuffer byteBuffer;
 	long begin;
 	long totalDeadline;
+	long bytesOut;
 	int state;
 	int iteration;
 	final boolean metricsEnabled;
@@ -222,6 +223,7 @@ public final class NioCommand implements INioCommand, Runnable, TimerTask {
 
 	protected final void executeCommand(long deadline, int tstate) {
 		state = AsyncCommand.CONNECT;
+		bytesOut = 0;
 		iteration++;
 
 		try {
@@ -341,6 +343,9 @@ public final class NioCommand implements INioCommand, Runnable, TimerTask {
 			else if (ae.getResultCode() == ResultCode.DEVICE_OVERLOAD) {
 				onDeviceOverload(ae);
 			}
+			else if (ae.getResultCode() == ResultCode.KEY_BUSY) {
+				onKeyBusy(ae);
+			}
 			else {
 				onApplicationError(ae);
 			}
@@ -407,6 +412,7 @@ public final class NioCommand implements INioCommand, Runnable, TimerTask {
 		command.putBuffer();
 
 		if (conn.write(byteBuffer)) {
+			bytesOut += command.dataOffset;
 			byteBuffer.clear();
 			byteBuffer.limit(8);
 			state = AsyncCommand.AUTH_READ_HEADER;
@@ -437,6 +443,7 @@ public final class NioCommand implements INioCommand, Runnable, TimerTask {
 		command.putBuffer();
 
 		if (conn.write(byteBuffer)) {
+			bytesOut += command.dataOffset;
 			byteBuffer.clear();
 			byteBuffer.limit(8);
 			state = AsyncCommand.COMMAND_READ_HEADER;
@@ -451,6 +458,7 @@ public final class NioCommand implements INioCommand, Runnable, TimerTask {
 
 	protected final void write() throws IOException {
 		if (conn.write(byteBuffer)) {
+			bytesOut += command.dataOffset;
 			byteBuffer.clear();
 			byteBuffer.limit(8);
 
@@ -726,7 +734,7 @@ public final class NioCommand implements INioCommand, Runnable, TimerTask {
 		}
 
 		// Increment node's timeout counter.
-		node.addTimeout();
+		node.addTimeout(command.namespace);
 
 		// Recover connection when possible.
 		recoverConnection();
@@ -776,7 +784,7 @@ public final class NioCommand implements INioCommand, Runnable, TimerTask {
 		}
 
 		// Increment node's timeout counter.
-		node.addTimeout();
+		node.addTimeout(command.namespace);
 
 		// Recover connection when possible.
 		recoverConnection();
@@ -830,7 +838,7 @@ public final class NioCommand implements INioCommand, Runnable, TimerTask {
 
 	private void addLatency(LatencyType type) {
 		long elapsed = System.nanoTime() - begin;
-		node.addLatency(type, elapsed);
+		node.addLatency(command.namespace, type, elapsed);
 	}
 
 	protected final void onNetworkError(AerospikeException ae, boolean queueCommand) {
@@ -846,7 +854,8 @@ public final class NioCommand implements INioCommand, Runnable, TimerTask {
 		if (state == AsyncCommand.COMPLETE) {
 			return;
 		}
-		node.addTimeout();
+		node.addTimeout(command.namespace);
+		addBytesInOut();
 		conn.unregister();
 		node.putAsyncConnection(conn, eventLoop.index);
 
@@ -859,10 +868,16 @@ public final class NioCommand implements INioCommand, Runnable, TimerTask {
 			return;
 		}
 		addError();
+		addBytesInOut();
 		conn.unregister();
 		node.putAsyncConnection(conn, eventLoop.index);
 		node.incrErrorRate();
 		retry(ae, false);
+	}
+
+	private void onKeyBusy(AerospikeException ae) {
+		node.addKeyBusy(command.namespace);
+		onApplicationError(ae);
 	}
 
 	private final void retry(final AerospikeException ae, boolean queueCommand) {
@@ -982,12 +997,13 @@ public final class NioCommand implements INioCommand, Runnable, TimerTask {
 	private void addError() {
 		// Some errors can occur before the node is assigned.
 		if (node != null) {
-			node.addError();
+			node.addError(command.namespace);
 		}
 	}
 
 	private final void complete() {
 		conn.unregister();
+		addBytesInOut();
 		node.putAsyncConnection(conn, eventLoop.index);
 		close();
 	}
@@ -999,9 +1015,18 @@ public final class NioCommand implements INioCommand, Runnable, TimerTask {
 
 	private final void closeConnection() {
 		if (conn != null) {
+			addBytesInOut();
 			node.closeAsyncConnection(conn, eventLoop.index);
 			conn = null;
 		}
+	}
+
+	private final void addBytesInOut() {
+		if (node.areMetricsEnabled()) {
+			node.addBytesIn(command.namespace, conn.resetBytesIn());
+			node.addBytesOut(command.namespace, bytesOut);
+		}
+		bytesOut = 0;
 	}
 
 	private final void closeFromDelayQueue() {

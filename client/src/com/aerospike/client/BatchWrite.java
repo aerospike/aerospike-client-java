@@ -18,6 +18,8 @@ package com.aerospike.client;
 
 import com.aerospike.client.command.Buffer;
 import com.aerospike.client.command.Command;
+import com.aerospike.client.configuration.*;
+import com.aerospike.client.configuration.serializers.*;
 import com.aerospike.client.policy.BatchWritePolicy;
 import com.aerospike.client.policy.Policy;
 
@@ -74,19 +76,35 @@ public final class BatchWrite extends BatchRecord {
 	 * For internal use only.
 	 */
 	@Override
-	public boolean equals(BatchRecord obj) {
+	public boolean equals(BatchRecord obj, ConfigurationProvider configProvider) {
 		if (getClass() != obj.getClass())
 			return false;
 
 		BatchWrite other = (BatchWrite)obj;
-		return ops == other.ops && policy == other.policy && (policy == null || !policy.sendKey);
+		if (ops != other.ops || policy != other.policy) {
+			return false;
+		}
+
+		boolean sendkey = false;
+		if (policy != null) {
+			sendkey = policy.sendKey;
+		}
+		if (configProvider != null) {
+			Configuration config = configProvider.fetchConfiguration();
+			if (config != null && config.hasDBWCsendKey()) {
+				sendkey = config.dynamicConfiguration.dynamicBatchWriteConfig.sendKey.value;
+			}
+		}
+
+		return !sendkey;
+
 	}
 
 	/**
 	 * Return wire protocol size. For internal use only.
 	 */
 	@Override
-	public int size(Policy parentPolicy) {
+	public int size(Policy parentPolicy, ConfigurationProvider configProvider) {
 		int size = 2; // gen(2) = 2
 
 		if (policy != null) {
@@ -94,7 +112,16 @@ public final class BatchWrite extends BatchRecord {
 				size += policy.filterExp.size();
 			}
 
-			if (policy.sendKey || parentPolicy.sendKey) {
+			boolean sendkey;
+			sendkey = policy.sendKey;
+			if (configProvider != null) {
+				Configuration config = configProvider.fetchConfiguration();
+				if (config != null && config.hasDBWCsendKey()) {
+					sendkey = config.dynamicConfiguration.dynamicBatchWriteConfig.sendKey.value;
+				}
+			}
+
+			if (sendkey || parentPolicy.sendKey) {
 				size += key.userKey.estimateSize() + Command.FIELD_HEADER_SIZE + 1;
 			}
 		}

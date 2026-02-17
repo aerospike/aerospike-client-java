@@ -48,9 +48,22 @@ public final class ExpOperation {
 	public static Operation read(String name, Expression exp, int flags) {
 		return createOperation(Operation.Type.EXP_READ, name, exp, flags);
 	}
+	public static Operation read(String name, byte[] b, int flags) {
+		return createOperation(Operation.Type.EXP_READ, name, b, flags);
+	}
 
 	private static Operation createOperation(Operation.Type type, String name, Expression exp, int flags) {
-		byte[] b = exp.getBytes();
+		byte[] packedBytes = packOperation(type, name, exp.getBytes(), flags);
+		return new Operation(type, name, Value.get(packedBytes));
+	}
+
+	private static Operation createOperation(Operation.Type type, String name, byte[] b, int flags) {
+		byte[] packedBytes = packOperation(type, name, b, flags);
+		return new Operation(type, name, Value.get(packedBytes));
+	}
+
+	// return new Operation(type, name, Value.get(packer.getBuffer()));
+	private static byte[] packOperation(Operation.Type type, String name, byte[] b, int flags) {
 		Packer packer = new Packer();
 
 		packer.packArrayBegin(2);
@@ -63,6 +76,6 @@ public final class ExpOperation {
 		packer.packByteArray(b, 0, b.length);
 		packer.packInt(flags);
 
-		return new Operation(type, name, Value.get(packer.getBuffer()));
+		return packer.getBuffer();
 	}
 }

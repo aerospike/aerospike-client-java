@@ -16,6 +16,7 @@
  */
 package com.aerospike.client;
 
+import com.aerospike.client.configuration.*;
 import com.aerospike.client.policy.Policy;
 
 /**
@@ -126,14 +127,14 @@ public class BatchRecord {
 	 * Optimized reference equality check to determine batch wire protocol repeat flag.
 	 * For internal use only.
 	 */
-	public boolean equals(BatchRecord other) {
+	public boolean equals(BatchRecord other, ConfigurationProvider configProvider) {
 		return false;
 	}
 
 	/**
 	 * Return wire protocol size. For internal use only.
 	 */
-	public int size(Policy parentPolicy) {
+	public int size(Policy parentPolicy, ConfigurationProvider configProvider) {
 		return 0;
 	}
 

@@ -41,14 +41,19 @@ function main() {
 cd $(dirname $0)
 
 VERSION=$1
-REGEX="^[0-9]+\.[0-9]+\.[0-9]+(-SNAPSHOT_[a-zA-Z0-9]+)?$"
+REGEX="^[0-9]+\.[0-9]+\.[0-9]+(-[A-Za-z0-9]+([._-][A-Za-z0-9]+)*)?$"
 
 if [ -z $VERSION ]; then
   printf "Missing version ..."
 
   exit 1
 elif [[ ! "$1" =~ $REGEX ]]; then
-  printf "Version format not valid. Valid format are [0 - 9].[0 - 9].[0 - 9] | [0 - 9].[0 - 9].[0 - 9]-SNAPSHOT_[git_sha]"
+  printf "Version format not valid. Valid formats are:\n"
+  printf "  - [0-9].[0-9].[0-9]\n"
+  printf "  - [0-9].[0-9].[0-9]-alpha[.N]\n"
+  printf "  - [0-9].[0-9].[0-9]-beta[.N]\n"
+  printf "  - [0-9].[0-9].[0-9]-rc[.N]\n"
+  printf "  - [0-9].[0-9].[0-9]-SNAPSHOT_[git_sha]\n"
 
   exit 1
 else

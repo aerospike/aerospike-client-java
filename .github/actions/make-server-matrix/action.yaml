@@ -1,0 +1,49 @@
+name: Make Matrix from JSON or File
+description: Builds a matrix array from a repo file (if present) or default JSON string.
+
+inputs:
+  default_json:
+    description: JSON string used if file is missing/empty (e.g. org/environment variable).
+    required: true
+  test_servers_file_path:
+    description: Repo-relative path to JSON file to prefer when present (e.g. server matrix file).
+    required: false
+
+runs:
+  using: composite
+  steps:
+    - id: build
+      shell: bash
+      env:
+        DEFAULT_JSON: ${{ inputs.default_json }}
+        TEST_SERVERS_FILE_PATH: ${{ inputs.test_servers_file_path }}
+      run: |
+        set -euo pipefail
+
+        FILE="${TEST_SERVERS_FILE_PATH:-}"
+
+        if [[ -n "${FILE}" && -s "${FILE}" ]]; then
+          echo "Using ${FILE} from repository"
+          JSON="$(cat "${FILE}")"
+        else
+          echo "${FILE:-<unset>} missing or empty – using default_json input"
+          JSON="${DEFAULT_JSON}"
+        fi
+
+        # Validate JSON early to give a clear error
+        echo "${JSON}" | jq . >/dev/null
+
+        # Convert: { "stable": {...}, "release": {...} }
+        MATRIX="$(echo "${JSON}" | jq -c "[to_entries[] | { server: .key } + .value ]")"
+
+        # Safely write multi-line output
+        {
+          echo "input-matrix<<__JSON__"
+          echo "${MATRIX}"
+          echo "__JSON__"
+        } >> "$GITHUB_OUTPUT"
+
+outputs:
+  input-matrix:
+    description: Compact JSON array suitable for fromJson() (e.g. `[{"server":"stable",...}, ...]`)
+    value: ${{ steps.build.outputs.input-matrix }}

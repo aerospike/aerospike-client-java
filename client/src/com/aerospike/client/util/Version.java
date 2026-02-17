@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -16,12 +16,19 @@
  */
 package com.aerospike.client.util;
 
+import java.net.InetSocketAddress;
+
+import com.aerospike.client.AerospikeException;
 import com.aerospike.client.IAerospikeClient;
 import com.aerospike.client.Info;
 import com.aerospike.client.cluster.Node;
 import com.aerospike.client.policy.InfoPolicy;
 
-public final class Version {
+public final class Version implements Comparable<Version> {
+	public static final Version SERVER_VERSION_8_1 = new Version(8, 1, 0, 0);
+	public static final Version SERVER_VERSION_PSCAN = new Version(4, 9, 0, 3);
+	public static final Version SERVER_VERSION_QUERY_SHOW = new Version(5, 7, 0, 0);
+	public static final Version SERVER_VERSION_PQUERY_BATCH_ANY = new Version(6, 0, 0, 0);
 
 	public static Version getServerVersion(IAerospikeClient client, InfoPolicy policy) {
 		Node node = client.getCluster().getRandomNode();
@@ -35,57 +42,101 @@ public final class Version {
 
 	private final int major;
 	private final int minor;
-	private final int revision;
-	private final String extension;
+	private final int patch;
+	private final int build;
+
+	public static Version convertStringToVersion(String strVersion, String nodeName, InetSocketAddress primaryAddress) {
+		Version version = new Version(strVersion);
+		if (!strVersion.startsWith(version.toString())) {
+			throw new AerospikeException("Node " + nodeName + " " + primaryAddress.toString() + " version is invalid: " + strVersion);
+		}
+		return version;
+	}
 
 	public Version(String version) {
 		int begin = 0;
 		int i = begin;
 		int max = version.length();
 
-		while (i < max) {
-			if (! Character.isDigit(version.charAt(i))) {
-				break;
-			}
-			i++;
-		}
-
+		i = getNextVersionDigitEndOffset(i, max, version);
 		major = (i > begin)? Integer.parseInt(version.substring(begin, i)) : 0;
 		begin = ++i;
 
-		while (i < max) {
-			if (! Character.isDigit(version.charAt(i))) {
-				break;
-			}
-			i++;
-		}
-
+		i = getNextVersionDigitEndOffset(i, max, version);
 		minor = (i > begin)? Integer.parseInt(version.substring(begin, i)) : 0;
 		begin = ++i;
 
+		i = getNextVersionDigitEndOffset(i, max, version);
+		patch = (i > begin)? Integer.parseInt(version.substring(begin, i)) : 0;
+		begin = ++i;
+
+		i = getNextVersionDigitEndOffset(i, max, version);
+		build = (i > begin)? Integer.parseInt(version.substring(begin, i)) : 0;
+	}
+
+	public Version(int major, int minor, int patch, int build) {
+		this.major = major;
+		this.minor = minor;
+		this.patch = patch;
+		this.build = build;
+	}
+
+	private int getNextVersionDigitEndOffset(int i, int max, String version) {
 		while (i < max) {
 			if (! Character.isDigit(version.charAt(i))) {
 				break;
 			}
 			i++;
 		}
-
-		revision = (i > begin)? Integer.parseInt(version.substring(begin, i)) : 0;
-		begin = i;
-		extension = (begin < max)? version.substring(begin) : "";
-	}
-
-	public boolean isGreaterEqual(int v1, int v2, int v3) {
-		return major > v1 || (major == v1 && (minor > v2 || (minor == v2 && revision >= v3)));
-	}
-
-	public boolean isLess(int v1, int v2, int v3) {
-		return major < v1 || (major == v1 && (minor < v2 || (minor == v2 && revision < v3)));
+		return i;
 	}
 
 	@Override
+    public int compareTo(Version other) {
+        if (this.major != other.major) {
+			return Integer.compare(this.major, other.major);
+		}
+        if (this.minor != other.minor) {
+			return Integer.compare(this.minor, other.minor);
+		} 
+        if (this.patch != other.patch) {
+			return Integer.compare(this.patch, other.patch);
+		}
+
+        return Integer.compare(this.build, other.build);
+    }
+
+    public boolean isGreaterOrEqual(Version otherVersion) {
+        return this.compareTo(otherVersion) >= 0;
+    }
+
+    public boolean isLessThan(Version otherVersion) {
+        return this.compareTo(otherVersion) < 0;
+    }
+
+    public boolean isLessThanOrEqual(Version otherVersion) {
+        return this.compareTo(otherVersion) <= 0;
+    }
+
+    public boolean isGreaterThan(Version otherVersion) {
+        return this.compareTo(otherVersion) > 0;
+    }
+
+    public boolean isGreaterThan(int major, int minor, int patch, int build) {
+        return this.isGreaterThan(new Version(major, minor, patch, build));
+    }
+
+    public boolean isGreaterOrEqual(int major, int minor, int patch, int build) {
+        return this.compareTo(new Version(major, minor, patch, build)) >= 0;
+    }
+
+    public boolean isLessThan(int major, int minor, int patch, int build) {
+        return this.compareTo(new Version(major, minor, patch, build)) < 0;
+    }
+
+	@Override
 	public String toString() {
-		return Integer.toString(major) + "." + minor + "." + revision + extension;
+		return major + "." + minor + "." + patch + "." + build;
 	}
 
 	@Override
@@ -97,7 +148,7 @@ public final class Version {
 		if (getClass() != obj.getClass())
 			return false;
 		Version other = (Version) obj;
-		return major == other.major && minor == other.minor && revision == other.revision;
+		return major == other.major && minor == other.minor && patch == other.patch;
 	}
 
 	@Override
@@ -106,7 +157,7 @@ public final class Version {
 		int result = 1;
 		result = prime * result + major;
 		result = prime * result + minor;
-		result = prime * result + revision;
+		result = prime * result + patch;
 		return result;
 	}
 }

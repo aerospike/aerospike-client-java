@@ -20,6 +20,8 @@ import java.util.List;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Value;
+import com.aerospike.client.exp.Exp;
+import com.aerospike.client.exp.Expression;
 import com.aerospike.client.util.Crypto;
 import com.aerospike.client.util.Pack;
 import com.aerospike.client.util.Unpacker;
@@ -30,6 +32,20 @@ import com.aerospike.client.util.Unpacker;
  * levels on nesting.
  */
 public final class CTX {
+	/**
+	 * Apply operation to all children of the current context.
+	 * This allows traversing all items in a collection without filtering.
+	 */
+	public static CTX allChildren() {
+		Expression expression = Exp.build(Exp.val(true));
+		return new CTX(Exp.CTX_EXP, expression);
+	}
+
+	public static CTX allChildrenWithFilter(Exp exp) {
+		Expression expression = Exp.build(exp);
+		return new CTX(Exp.CTX_EXP, expression);
+	}
+
 	/**
 	 * Lookup list by index offset.
 	 * <p>
@@ -150,9 +166,15 @@ public final class CTX {
 			}
 
 			Object obj = list.get(i);
-			Value val = Value.get(obj);
-
-			ctx[count++] = new CTX(id, val);
+			// Check if this is an expression context based on the id
+			if (id == Exp.CTX_EXP) {
+				Expression exp = Exp.build(Exp.get(obj));
+				ctx[count++] = new CTX(id, exp);
+			} else {
+				// This is a value context
+				Value val = Value.get(obj);
+				ctx[count++] = new CTX(id, val);
+			}
 			i++;
 		}
 		return ctx;
@@ -177,9 +199,17 @@ public final class CTX {
 
 	public final int id;
 	public final Value value;
+	public final Expression exp;
 
 	private CTX(int id, Value value) {
 		this.id = id;
 		this.value = value;
+		this.exp = null;
+	}
+
+	private CTX(int id, Expression exp) {
+		this.id = id;
+		this.value = null;
+		this.exp = exp;
 	}
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2024 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -59,7 +59,8 @@ public class Info {
 		Connection conn = node.getConnection(DEFAULT_TIMEOUT);
 
 		try	{
-			String response = Info.request(conn, name);
+			Info info = new Info(node, conn, name);
+			String response = info.parseSingleResponse(name);
 			node.putConnection(conn);
 			return response;
 		}
@@ -82,7 +83,8 @@ public class Info {
 		Connection conn = node.getConnection(timeout);
 
 		try {
-			String result = request(conn, name);
+			Info info = new Info(node, conn, name);
+			String result = info.parseSingleResponse(name);
 			node.putConnection(conn);
 			return result;
 		}
@@ -105,7 +107,8 @@ public class Info {
 		Connection conn = node.getConnection(timeout);
 
 		try {
-			Map<String,String> result = request(conn, names);
+			Info info = new Info(node, conn, names);
+			Map<String,String> result = info.parseMultiResponse();
 			node.putConnection(conn);
 			return result;
 		}
@@ -122,12 +125,14 @@ public class Info {
 	 * @param policy	info command configuration parameters, pass in null for defaults
 	 * @param node		server node
 	 */
+	@Deprecated(since="8.1.0")
 	public static Map<String,String> request(InfoPolicy policy, Node node) throws AerospikeException {
 		int timeout = (policy == null) ? DEFAULT_TIMEOUT : policy.timeout;
 		Connection conn = node.getConnection(timeout);
 
 		try {
-			Map<String,String> result = request(conn);
+			Info info = new Info(node, conn);
+			Map<String,String> result = info.parseMultiResponse();
 			node.putConnection(conn);
 			return result;
 		}
@@ -361,7 +366,29 @@ public class Info {
 		offset += Buffer.stringToUtf8(command, buffer, offset);
 		buffer[offset++] = '\n';
 
-		sendCommand(conn);
+		sendCommand(null, conn);
+	}
+
+	/**
+	 * Send single command to server and store results.
+	 * This constructor is used internally.
+	 * The static request methods should be used instead.
+	 *
+	 * @param node			server node
+	 * @param conn			connection to server node
+	 * @param command		command sent to server
+	 */
+	public Info(Node node, Connection conn, String command) throws AerospikeException {
+		int size = Buffer.estimateSizeUtf8Quick(command) + 9;
+
+		buffer = new byte[size];
+		offset = 8; // Skip size field.
+
+		// The command format is: <name1>\n<name2>\n...
+		offset += Buffer.stringToUtf8(command, buffer, offset);
+		buffer[offset++] = '\n';
+
+		sendCommand(node, conn);
 	}
 
 	/**
@@ -387,7 +414,7 @@ public class Info {
 			offset += Buffer.stringToUtf8(command, buffer, offset);
 			buffer[offset++] = '\n';
 		}
-		sendCommand(conn);
+		sendCommand(null, conn);
 	}
 
 	/**
@@ -395,8 +422,35 @@ public class Info {
 	 * This constructor is used internally.
 	 * The static request methods should be used instead.
 	 *
+	 * @param node			server node
 	 * @param conn			connection to server node
 	 * @param commands		commands sent to server
+	 */
+	public Info(Node node, Connection conn, String... commands) throws AerospikeException {
+		int size = 8;
+
+		for (String command : commands) {
+			size += Buffer.estimateSizeUtf8Quick(command) + 1;
+		}
+
+		buffer = new byte[size];
+		offset = 8; // Skip size field.
+
+		// The command format is: <name1>\n<name2>\n...
+		for (String command : commands) {
+			offset += Buffer.stringToUtf8(command, buffer, offset);
+			buffer[offset++] = '\n';
+		}
+		sendCommand(node, conn);
+	}
+
+	/**
+	 * Send multiple commands to server and store results.
+	 * This constructor is used internally.
+	 * The static request methods should be used instead.
+	 *
+	 * @param conn     connection to server node
+	 * @param commands commands sent to server
 	 */
 	public Info(Connection conn, List<String> commands) throws AerospikeException {
 		int size = 8;
@@ -413,7 +467,7 @@ public class Info {
 			offset += Buffer.stringToUtf8(command, buffer, offset);
 			buffer[offset++] = '\n';
 		}
-		sendCommand(conn);
+		sendCommand(null, conn);
 	}
 
 	/**
@@ -426,7 +480,21 @@ public class Info {
 	public Info(Connection conn) throws AerospikeException {
 		buffer = new byte[8];
 		offset = 8;  // Skip size field.
-		sendCommand(conn);
+		sendCommand(null, conn);
+	}
+
+	/**
+	 * Send default empty command to server and store results.
+	 * This constructor is used internally.
+	 * The static request methods should be used instead.
+	 *
+	 * @param node			server node
+	 * @param conn			connection to server node
+	 */
+	public Info(Node node, Connection conn) throws AerospikeException {
+		buffer = new byte[8];
+		offset = 8;  // Skip size field.
+		sendCommand(node, conn);
 	}
 
 	/**
@@ -441,17 +509,23 @@ public class Info {
 	 * Issue request and set results buffer. This method is used internally.
 	 * The static request methods should be used instead.
 	 */
-	private void sendCommand(Connection conn) {
+	private void sendCommand(Node node, Connection conn) {
 		try {
+			long bytesIn = 0;
+
 			// Write size field.
-			long size = ((long)offset - 8L) | (2L << 56) | (1L << 48);
+			long size = (offset - 8L) | (2L << 56) | (1L << 48);
 			Buffer.longToBytes(size, buffer, 0);
 
 			// Write.
 			conn.write(buffer, offset);
+			if (node != null && node.areMetricsEnabled()) {
+				node.addBytesOut(null, offset);
+			}
 
 			// Read - reuse input buffer.
 			conn.readFully(buffer, 8);
+			bytesIn += 8;
 
 			size = Buffer.bytesToLong(buffer, 0);
 			length = (int)(size & 0xFFFFFFFFFFFFL);
@@ -460,6 +534,10 @@ public class Info {
 				buffer = new byte[length];
 			}
 			conn.readFully(buffer, length);
+			bytesIn += length;
+			if (node != null && node.areMetricsEnabled()) {
+				node.addBytesIn(null, bytesIn);
+			}
 			conn.updateLastUsed();
 			offset = 0;
 		}

@@ -39,6 +39,7 @@ import com.aerospike.client.task.ExecuteTask;
 import com.aerospike.client.task.IndexTask;
 import com.aerospike.client.task.RegisterTask;
 import com.aerospike.client.util.RandomShift;
+import com.aerospike.client.util.Version;
 import com.aerospike.test.sync.TestSync;
 
 public class TestQueryRPS extends TestSync {
@@ -95,18 +96,23 @@ public class TestQueryRPS extends TestSync {
 		String taskId = Long.toUnsignedString(id);
 		String module = (stmt.getFilter() == null) ? "scan" : "query";
 		String command;
+		Version serverVersion = n.getServerVersion();
+
+		String cmd1 = serverVersion.isGreaterOrEqual(Version.SERVER_VERSION_8_1) ? "query-show:id=" + taskId : "query-show:trid=" + taskId;
+		String cmd2 = serverVersion.isGreaterOrEqual(Version.SERVER_VERSION_8_1) ? module + "-show:id=" + taskId : module + "-show:trid=" + taskId;
+		String cmd3 = serverVersion.isGreaterOrEqual(Version.SERVER_VERSION_8_1) ? "jobs:module=" + module + ";cmd=get-job;id=" + taskId : "jobs:module=" + module + ";cmd=get-job;trid=" + taskId;
 
 		if (n.hasPartitionQuery()) {
 			// query-show works for both scan and query.
-			command = "query-show:trid=" + taskId;
+			command = cmd1;
 		}
 		else if (n.hasQueryShow()) {
 			// scan-show and query-show are separate.
-			command = module + "-show:trid=" + taskId;
+			command = cmd2;
 		}
 		else {
 			// old job monitor syntax.
-			command = "jobs:module=" + module + ";cmd=get-job;trid=" + taskId;
+			command = cmd3;
 		}
 
 		String job_info = Info.request(n, command);

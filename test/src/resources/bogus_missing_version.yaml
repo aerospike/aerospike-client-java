@@ -1,0 +1,142 @@
+# A config YAML that is intended only for test purposes.  Property keys can be used as a template, but property values
+# should not be taken as "typical" and should not be used in aggregate outside of testing.
+
+static:
+  client:
+    config_interval: 5000
+    max_connections_per_node: 99
+    min_connections_per_node: 1
+    async_max_connections_per_node: 50
+    async_min_connections_per_node: 1
+dynamic:
+  client:
+    app_id: unit_tester
+    timeout: 2002
+    error_rate_window: 5
+    max_error_rate: 13
+    fail_if_not_connected: false
+    login_timeout: 2500
+    max_socket_idle: 29
+    rack_aware: true
+    rack_ids: [2,4,6,8]
+    tend_interval: 500
+    use_service_alternative: true
+  read:
+    read_mode_ap: ONE
+    read_mode_sc: SESSION
+    connect_timeout: 10000
+    fail_on_filtered_out: false
+    replica: PREFER_RACK
+    sleep_between_retries: 2000
+    socket_timeout: 12000
+    timeout_delay: 1500
+    total_timeout: 3500
+    max_retries: 3
+  write:
+    connect_timeout: 10000
+    fail_on_filtered_out: false
+    replica: PREFER_RACK
+    send_key: false
+    sleep_between_retries: 2000
+    socket_timeout: 11000
+    timeout_delay: 1500
+    total_timeout: 3500
+    max_retries: 5
+    durable_delete: true
+  query:
+    read_mode_ap: ONE
+    read_mode_sc: SESSION
+    connect_timeout: 10000
+    replica: PREFER_RACK
+    sleep_between_retries: 2000
+    socket_timeout: 11000
+    timeout_delay: 1500
+    total_timeout: 3500
+    max_retries: 7
+    include_bin_data: true
+    info_timeout: 4000
+    record_queue_size: 5
+    expected_duration: LONG_RELAX_AP
+  scan:
+    read_mode_ap: ONE
+    read_mode_sc: SESSION
+    connect_timeout: 10000
+    replica: PREFER_RACK
+    sleep_between_retries: 2000
+    socket_timeout: 11000
+    timeout_delay: 1500
+    total_timeout: 3500
+    max_retries: 3
+    concurrent_nodes: true
+    max_concurrent_nodes: 3
+  batch_read:
+    read_mode_ap: ONE
+    read_mode_sc: SESSION
+    connect_timeout: 10000
+    replica: PREFER_RACK
+    sleep_between_retries: 2000
+    socket_timeout: 11000
+    timeout_delay: 1500
+    total_timeout: 3500
+    max_retries: 3
+    max_concurrent_threads: 4
+    allow_inline: true
+    allow_inline_ssd: true
+    respond_all_keys: true
+  batch_write:
+    connect_timeout: 20000
+    fail_on_filtered_out: false
+    replica: PREFER_RACK
+    send_key: true
+    sleep_between_retries: 2500
+    socket_timeout: 15000
+    timeout_delay: 1300
+    total_timeout: 5500
+    max_retries: 5
+    durable_delete: true
+    max_concurrent_threads: 4
+    allow_inline: true
+    allow_inline_ssd: false
+    respond_all_keys: true
+  batch_udf:
+    send_key: true
+    durable_delete: false
+  batch_delete:
+    send_key: false
+    durable_delete: true
+  txn_roll:
+    read_mode_ap: ALL
+    read_mode_sc: LINEARIZE
+    connect_timeout: 10000
+    replica: RANDOM
+    sleep_between_retries: 2500
+    socket_timeout: 13000
+    timeout_delay: 1500
+    total_timeout: 3500
+    max_retries: 3
+    max_concurrent_threads: 7
+    allow_inline: true
+    allow_inline_ssd: true
+    respond_all_keys: true
+  txn_verify:
+    read_mode_ap: ONE
+    read_mode_sc: ALLOW_REPLICA
+    connect_timeout: 8000
+    replica: MASTER_PROLES
+    sleep_between_retries: 2500
+    socket_timeout: 13000
+    timeout_delay: 1500
+    total_timeout: 5500
+    max_retries: 3
+    max_concurrent_threads: 5
+    allow_inline: true
+    allow_inline_ssd: true
+    respond_all_keys: false
+  metrics:
+    enable: true
+    latency_shift: 2
+    latency_columns: 7
+    labels:
+      region: us-west
+      zone: usw1-az3
+      rack-id: kjsdfj2k3k

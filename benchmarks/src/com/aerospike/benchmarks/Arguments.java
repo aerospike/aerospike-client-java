@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2024 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -31,6 +31,7 @@ public class Arguments {
 	public String setName;
 	public Workload workload;
 	public DBObjectSpec[] objectSpec;
+	public String binNameBase;
 	public Policy readPolicy;
 	public WritePolicy writePolicy;
 	public WritePolicy updatePolicy;
@@ -72,7 +73,7 @@ public class Arguments {
 		int specLength = objectSpec.length;
 
 		for (int i = 0; i < binCount; i++) {
-			String name = Integer.toString(i);
+			String name = binNameBase + "_" + (i + 1);
 			// Use passed in value for 0th bin. Random for others.
 			Value value = genValue(random, objectSpec[i % specLength],
 							i == 0 ? keySeed : -1);

@@ -38,6 +38,8 @@ public final class ScanExecutor {
 		PartitionTracker tracker
 	) {
 		cluster.addCommandCount();
+		int retryInterval = policy.sleepBetweenRetries;
+		double sleepMultiplier = policy.sleepMultiplier;
 
 		RandomShift random = new RandomShift();
 
@@ -75,10 +77,13 @@ public final class ScanExecutor {
 				return;
 			}
 
-			if (policy.sleepBetweenRetries > 0) {
+			if (retryInterval > 0) {
 				// Sleep before trying again.
-				Util.sleep(policy.sleepBetweenRetries);
-			}
+				Util.sleep(retryInterval);
+				if (sleepMultiplier > 1) {
+					retryInterval = (int) Math.round(retryInterval * sleepMultiplier);
+				}
+ 			}
 		}
 	}
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2024 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -73,6 +73,7 @@ public final class NettyCommand implements Runnable, TimerTask {
 	NettyConnection conn;
 	long begin;
 	long totalDeadline;
+	long bytesIn;
 	int state;
 	int iteration;
 	final boolean metricsEnabled;
@@ -250,6 +251,7 @@ public final class NettyCommand implements Runnable, TimerTask {
 
 	private void executeCommand(long deadline, int tstate) {
 		state = AsyncCommand.CHANNEL_INIT;
+		bytesIn = 0;
 		iteration++;
 
 		try {
@@ -471,6 +473,9 @@ public final class NettyCommand implements Runnable, TimerTask {
 		ByteBuf byteBuffer = PooledByteBufAllocator.DEFAULT.directBuffer(command.dataOffset);
 		byteBuffer.clear();
 		byteBuffer.writeBytes(command.dataBuffer, 0, command.dataOffset);
+		if (node.areMetricsEnabled()) {
+			node.addBytesOut(command.namespace, command.dataOffset);
+		}
 
 		ChannelFuture cf = conn.channel.writeAndFlush(byteBuffer);
 		cf.addListener(new ChannelFutureListener() {
@@ -504,6 +509,7 @@ public final class NettyCommand implements Runnable, TimerTask {
 	}
 
 	private void read(ByteBuf byteBuffer) {
+		bytesIn += byteBuffer.readableBytes();
 		eventReceived = true;
 
 		try {
@@ -794,7 +800,7 @@ public final class NettyCommand implements Runnable, TimerTask {
 		}
 
 		// Increment node's timeout counter.
-		node.addTimeout();
+		node.addTimeout(command.namespace);
 
 		// Recover connection when possible.
 		recoverConnection();
@@ -844,7 +850,7 @@ public final class NettyCommand implements Runnable, TimerTask {
 		}
 
 		// Increment node's timeout counter.
-		node.addTimeout();
+		node.addTimeout(command.namespace);
 
 		// Recover connection when possible.
 		recoverConnection();
@@ -912,7 +918,7 @@ public final class NettyCommand implements Runnable, TimerTask {
 
 	private void addLatency(LatencyType type) {
 		long elapsed = System.nanoTime() - begin;
-		node.addLatency(type, elapsed);
+		node.addLatency(command.namespace, type, elapsed);
 	}
 
 	private void onNetworkError(AerospikeException ae) {
@@ -941,7 +947,7 @@ public final class NettyCommand implements Runnable, TimerTask {
 	}
 
 	private void onServerTimeout() {
-		node.addTimeout();
+		node.addTimeout(command.namespace);
 		retryServerError(new AerospikeException.Timeout(command.policy, false));
 	}
 
@@ -949,6 +955,12 @@ public final class NettyCommand implements Runnable, TimerTask {
 		addError();
 		retryServerError(ae);
 	}
+
+	private void onKeyBusy(AerospikeException ae) {
+		node.addKeyBusy(command.namespace);
+		onApplicationError(ae);
+	}
+
 
 	private void retryServerError(AerospikeException ae) {
 		if (state == AsyncCommand.COMPLETE) {
@@ -1099,7 +1111,7 @@ public final class NettyCommand implements Runnable, TimerTask {
 	private void addError() {
 		// Some errors can occur before the node is assigned.
 		if (node != null) {
-			node.addError();
+			node.addError(command.namespace);
 		}
 	}
 
@@ -1152,6 +1164,9 @@ public final class NettyCommand implements Runnable, TimerTask {
 	}
 
 	private void close() {
+		if (bytesIn > 0 && node.areMetricsEnabled()) {
+			node.addBytesIn(command.namespace, bytesIn);
+		}
 		timeoutTask.cancel();
 		command.putBuffer();
 		state = AsyncCommand.COMPLETE;
@@ -1272,6 +1287,9 @@ public final class NettyCommand implements Runnable, TimerTask {
 				}
 				else if (ae.getResultCode() == ResultCode.DEVICE_OVERLOAD) {
 					command.onDeviceOverload(ae);
+				}
+				else if (ae.getResultCode() == ResultCode.KEY_BUSY) {
+					command.onKeyBusy(ae);
 				}
 				else {
 					command.onApplicationError(ae);

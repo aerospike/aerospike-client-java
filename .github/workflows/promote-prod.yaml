@@ -16,6 +16,7 @@ on:
         options:
           - master
           - jdk8
+          - dev-test-main
 
 jobs:
   promote-from-stage-to-prod:
@@ -26,4 +27,5 @@ jobs:
       target-repository: clients-maven-stage-local
       target-branch: ${{ inputs.target-branch }}
       source-branch: ${{ inputs.target-branch == 'master' && 'stage' || 'stage-jdk8' }}
+      #source-branch: dev/versioning-from-ci
     secrets: inherit

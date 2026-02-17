@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2024 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -23,6 +23,9 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Host;
@@ -31,6 +34,8 @@ import com.aerospike.client.async.EventLoop;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.ConnectionStats;
 import com.aerospike.client.cluster.Node;
+import com.aerospike.client.command.Buffer;
+import com.aerospike.client.policy.ClientPolicy;
 import com.aerospike.client.util.Util;
 
 /**
@@ -90,10 +95,8 @@ public final class MetricsWriter implements MetricsListener {
 	 */
 	@Override
 	public void onSnapshot(Cluster cluster) {
-		synchronized(this) {
-			if (enabled) {
-				writeCluster(cluster);
-			}
+		if (enabled) {
+			writeCluster(cluster);
 		}
 	}
 
@@ -102,14 +105,12 @@ public final class MetricsWriter implements MetricsListener {
 	 */
 	@Override
 	public void onNodeClose(Node node) {
-		synchronized(this) {
-			if (enabled) {
-				sb.setLength(0);
-				sb.append(LocalDateTime.now().format(TimestampFormat));
-				sb.append(" node");
-				writeNode(node);
-				writeLine();
-			}
+		if (enabled) {
+			sb.setLength(0);
+			sb.append(LocalDateTime.now().format(TimestampFormat));
+			sb.append(" node");
+			writeNode(node);
+			writeLine();
 		}
 	}
 
@@ -118,16 +119,14 @@ public final class MetricsWriter implements MetricsListener {
 	 */
 	@Override
 	public void onDisable(Cluster cluster) {
-		synchronized(this) {
-			if (enabled) {
-				try {
-					enabled = false;
-					writeCluster(cluster);
-					writer.close();
-				}
-				catch (Throwable e) {
-					Log.error("Failed to close metrics writer: " + Util.getErrorMessage(e));
-				}
+		if (enabled) {
+			try {
+				enabled = false;
+				writeCluster(cluster);
+				writer.close();
+			}
+			catch (Throwable e) {
+				Log.error("Failed to close metrics writer: " + Util.getErrorMessage(e));
 			}
 		}
 	}
@@ -135,17 +134,19 @@ public final class MetricsWriter implements MetricsListener {
 	private void open() throws IOException {
 		LocalDateTime now = LocalDateTime.now();
 		String path = dir + File.separator + "metrics-" + now.format(FilenameFormat) + ".log";
-		writer = new FileWriter(path, true);
+		writer = new FileWriter(path, false);
 		size = 0;
 
 		// Must use separate StringBuilder instance to avoid conflicting with metrics detail write.
 		sb.setLength(0);
 		sb.append(now.format(TimestampFormat));
-		sb.append(" header(1)");
-		sb.append(" cluster[name,cpu,mem,recoverQueueSize,invalidNodeCount,commandCount,retryCount,delayQueueTimeoutCount,eventloop[],node[]]");
+		sb.append(" header(2)");
+		sb.append(" cluster[name,clientType,clientVersion,appId,label[],cpu,mem,recoverQueueSize,invalidNodeCount,commandCount,retryCount,delayQueueTimeoutCount,eventloop[],node[]]");
+		sb.append(" label[name,value]");
 		sb.append(" eventloop[processSize,queueSize]");
-		sb.append(" node[name,address,port,syncConn,asyncConn,errors,timeouts,latency[]]");
+		sb.append(" node[name,address,port,syncConn,asyncConn,namespace[]]");
 		sb.append(" conn[inUse,inPool,opened,closed]");
+		sb.append(" namespace[name,errors,timeouts,keyBusy,bytesIn,bytesOut,latency[]]");
 		sb.append(" latency(");
 		sb.append(latencyColumns);
 		sb.append(',');
@@ -156,6 +157,9 @@ public final class MetricsWriter implements MetricsListener {
 	}
 
 	private void writeCluster(Cluster cluster) {
+		MetricsPolicy policy = cluster.getMetricsPolicy();
+		ClientPolicy clientPolicy = cluster.client.getClientPolicy();
+		String appId = clientPolicy.appId;
 		String clusterName = cluster.getClusterName();
 
 		if (clusterName == null) {
@@ -169,6 +173,29 @@ public final class MetricsWriter implements MetricsListener {
 		sb.append(LocalDateTime.now().format(TimestampFormat));
 		sb.append(" cluster[");
 		sb.append(clusterName);
+		sb.append(',');
+		sb.append("java");
+		sb.append(',');
+		sb.append(cluster.client.getVersion());
+		sb.append(',');
+		if (appId != null) {
+			sb.append(appId);
+		} else {
+			byte[] userBytes = cluster.getUser();
+			if (userBytes != null && userBytes.length > 0) {
+				String user = Buffer.utf8ToString(userBytes, 0, userBytes.length);
+				sb.append(user);
+			}
+		}
+		sb.append(',');
+		if (policy.labels != null) {
+			sb.append("[");
+			for (String key : policy.labels.keySet()) {
+				sb.append("[").append(key).append(",").append(policy.labels.get(key)).append("],");
+			}
+			sb.deleteCharAt(sb.length() - 1);
+			sb.append("]");
+		}
 		sb.append(',');
 		sb.append((int)cpu);
 		sb.append(',');
@@ -214,7 +241,7 @@ public final class MetricsWriter implements MetricsListener {
 			}
 			writeNode(node);
 		}
-		sb.append("]]");
+		sb.append("]");
 		writeLine();
 	}
 
@@ -233,34 +260,51 @@ public final class MetricsWriter implements MetricsListener {
 		writeConn(node.getConnectionStats());
 		sb.append(',');
 		writeConn(node.getAsyncConnectionStats());
-		sb.append(',');
-
-		sb.append(node.getErrorCount());   // Cumulative. Not reset on each interval.
-		sb.append(',');
-		sb.append(node.getTimeoutCount()); // Cumulative. Not reset on each interval.
 		sb.append(",[");
 
-		NodeMetrics nm = node.getMetrics();
+		Histograms hGrams = node.getMetrics().getHistograms();
+		ConcurrentHashMap<String, LatencyBuckets[]> hMap = hGrams.getMap();
 		int max = LatencyType.getMax();
 
-		for (int i = 0; i < max; i++) {
-			if (i > 0) {
-				sb.append(',');
-			}
-
-			sb.append(LatencyType.getString(i));
-			sb.append('[');
-
-			LatencyBuckets buckets = nm.getLatencyBuckets(i);
-			int bucketMax = buckets.getMax();
-
-			for (int j = 0; j < bucketMax; j++) {
-				if (j > 0) {
+		Iterator<Map.Entry<String, LatencyBuckets[]>> nsItr = hMap.entrySet().iterator();
+		while (nsItr.hasNext()) {
+			Map.Entry<String, LatencyBuckets[]> entry = nsItr.next();
+			String namespace = entry.getKey();
+			sb.append(namespace).append(',');
+			sb.append(node.getErrorCountByNS(namespace));
+			sb.append(',');
+			sb.append(node.getTimeoutCountbyNS(namespace));
+			sb.append(',');
+			sb.append(node.getKeyBusyCountByNS(namespace));
+			sb.append(',');
+			sb.append(node.getBytesInByNS(namespace));
+			sb.append(',');
+			sb.append(node.getBytesOutByNS(namespace));
+			sb.append(",[");
+			LatencyBuckets[] latencyBuckets = hGrams.getBuckets(namespace);
+			for (int i = 0; i < max; i++) {
+				if (i > 0) {
 					sb.append(',');
 				}
-				sb.append(buckets.getBucket(j)); // Cumulative. Not reset on each interval.
+
+				sb.append(LatencyType.getString(i));
+				sb.append('[');
+
+				LatencyBuckets buckets = latencyBuckets[i];
+				int bucketMax = buckets.getMax();
+				for (int j = 0; j < bucketMax; j++) {
+					if (j > 0) {
+						sb.append(',');
+					}
+					sb.append(buckets.getBucket(j)); // Cumulative. Not reset on each interval.
+				}
+				sb.append(']');
 			}
-			sb.append(']');
+			if (nsItr.hasNext()) {
+				sb.append("]],[");
+			} else {
+				sb.append("]]");
+			}
 		}
 		sb.append("]]");
 	}

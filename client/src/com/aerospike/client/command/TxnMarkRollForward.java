@@ -23,6 +23,7 @@ import com.aerospike.client.Key;
 import com.aerospike.client.ResultCode;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.Connection;
+import com.aerospike.client.cluster.Node;
 import com.aerospike.client.policy.WritePolicy;
 
 public final class TxnMarkRollForward extends SyncWriteCommand {
@@ -37,8 +38,8 @@ public final class TxnMarkRollForward extends SyncWriteCommand {
 	}
 
 	@Override
-	protected void parseResult(Connection conn) throws IOException {
-		int resultCode = parseHeader(conn);
+	protected void parseResult(Node node, Connection conn) throws IOException {
+		int resultCode = parseHeader(node, conn);
 
 		// MRT_COMMITTED is considered a success because it means a previous attempt already
 		// succeeded in notifying the server that the transaction will be rolled forward.

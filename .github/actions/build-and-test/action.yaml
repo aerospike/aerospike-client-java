@@ -6,10 +6,6 @@ inputs:
     description: "Crypto type to use. This should either be bouncycastle or gnu"
     required: false
     default: gnu
-  use-server-rc:
-    required: false
-    default: "false"
-    description: "Test against server release candidate?"
   server-tag:
     required: false
     default: "latest"
@@ -24,6 +20,9 @@ inputs:
     required: true
     default: "true"
     description: Spin up aerospike enterprise server and run tests
+  server-type:
+    required: true
+    description: Server type `aerospike-server` or `aerospike-enterprise-server` 
 
 runs:
   using: "composite"
@@ -45,8 +44,8 @@ runs:
       if: ${{ inputs.run-tests == 'true' }}
       uses: ./.github/actions/run-ee-server
       with:
-        use-server-rc: ${{ inputs.use-server-rc }}
         server-tag: ${{ inputs.server-tag }}
+        server-type: ${{ inputs.server-type }}
         oidc-provider: ${{ inputs.oidc-provider }}
         oidc-audience: ${{ inputs.oidc-audience }}
 

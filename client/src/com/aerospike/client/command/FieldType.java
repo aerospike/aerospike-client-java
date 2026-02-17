@@ -31,8 +31,10 @@ public final class FieldType {
 	public final static int DIGEST_ARRAY = 12;
 	public final static int MAX_RECORDS = 13;
 	public final static int BVAL_ARRAY = 15;
+	public final static int INDEX_NAME = 21;
 	public final static int INDEX_RANGE = 22;
 	public final static int INDEX_CONTEXT = 23;
+	public final static int INDEX_EXPRESSION = 24;
 	public final static int INDEX_TYPE = 26;
 	public final static int UDF_PACKAGE_NAME = 30;
 	public final static int UDF_FUNCTION = 31;

@@ -1,0 +1,193 @@
+name: Release backport 
+permissions:
+  # This is required for requesting the OIDC token
+  id-token: write
+
+on:
+  push:
+    branches:
+      # - release-backport-version # TODO: used to test the workflow. Removed this line at some point int time.
+      - 6.2.x
+      - 7.2.x
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ${{ vars.BUILD_CONTAINER_DISTRO_VERSION }}
+    outputs:
+      java-version: ${{ steps.get-java-version.outputs.java-version }}
+      release-version: ${{ steps.get-release-version.outputs.release-version }}
+    steps:
+      - name: Checkout client
+        uses: actions/checkout@v4
+        with:
+          repository: citrusleaf/release 
+          token: ${{ secrets.CLIENT_BOT_PAT }}
+          path: release
+          fetch-depth: 0
+          ref: legacy-ci-backport
+
+      - name: Checkout client
+        uses: actions/checkout@v4
+        with:
+          path: client-java
+          fetch-depth: 0
+          ref: ${{ github.ref_name }}
+            
+      - name: Get java version
+        working-directory: client-java
+        id: get-java-version
+        run: |
+          echo java-version="$(grep '<java.version>' pom.xml | sed -e 's/<[^>]*>//g' | awk '{$1=$1};1' | sed 's/^1\.8$/8/')"  >> $GITHUB_OUTPUT
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: ${{ vars.JAVA_PROVIDER }} # See 'Supported distributions' for available options
+          java-version: ${{ steps.get-java-version.outputs.java-version }}
+
+      - name: Get release or snapshot-version
+        id: get-release-version
+        working-directory: client-java
+        shell: bash
+        run: |
+            echo release-version="$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)" >> $GITHUB_OUTPUT
+    
+      - name: Get clent working directory
+        id: get-client-working-directory
+        working-directory: client-java
+        shell: bash
+        run: |
+            echo client-working-directory="$(pwd)" >> $GITHUB_OUTPUT
+
+      - name: Import GPG key
+        id: import-gpg-key
+        env:
+          GPG_PRIVATE_KEY: ${{ secrets.GPG_JAVA_CLIENT_PRIVATE_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.gnupg
+          chmod 700 ~/.gnupg
+          # Ensure loopback pinentry works on CI
+          echo "pinentry-mode loopback" >> ~/.gnupg/gpg.conf
+          gpgconf --kill gpg-agent
+
+          # Import the ASCII-armored key from the secret
+          gpg --batch --yes --import <(printf "%s" "$GPG_PRIVATE_KEY")
+
+          # Grab the key fingerprint (first secret key in the keyring)
+          FPR="$(gpg --batch --list-secret-keys --with-colons | awk -F: '/^fpr:/ {print $10; exit}')"
+
+          # Mark it ultimately trusted so non-interactive signing won't complain
+          printf "5\ny\n" | gpg --batch --yes --command-fd 0 --edit-key "$FPR" trust quit
+
+          # Expose for later steps
+          echo gpg_fpr="$FPR" >> $GITHUB_OUTPUT
+
+      - name: Debug - step
+        shell: bash
+        run: |
+            ls -laR .
+
+      - name: Build artifacts 
+        working-directory: release/client-java
+        env:
+          JAVA_CLIENT: ${{ steps.get-client-working-directory.outputs.client-working-directory }}
+          AEROKEY: ${{ steps.import-gpg-key.outputs.gpg_fpr }}
+          GPG_PASSPHRASE: ${{ secrets.GPG_JAVA_CLIENT_PASS }}
+        shell: bash
+        run: |
+            ./build_all ${{ steps.get-release-version.outputs.release-version }}
+
+      - name: Release all mavent artifacts
+        working-directory: release/client-java
+        env:
+          JAVA_CLIENT: ${{ steps.get-client-working-directory.outputs.client-working-directory }}
+          AEROKEY: ${{ steps.import-gpg-key.outputs.gpg_fpr }}
+        shell: bash
+        run: |
+            ./release_maven_all ${{ steps.get-release-version.outputs.release-version }}
+
+      - name: Debug step
+        working-directory: release/client-java
+        shell: bash
+        run: |
+            ls -laR .
+
+      - name: Stage artifacts on maven central
+        working-directory: release/client-java
+        id: stage-release
+        shell: bash
+        run: |
+          TOKEN=$(printf "${{ secrets.AEROSPIKE_SA_CICD_USERNAME }}:${{ secrets.AEROSPIKE_SA_CICD_PASSWORD }}" | base64)
+          responses=()
+
+          for f in $(find . -maxdepth 1 -type f -name "*.zip"); do
+            echo "curl --request POST --verbose \
+              --header 'Authorization: Bearer ${TOKEN}' \
+              --form bundle=@${f} \
+              ${{ vars.SONATYPE_DOMAIN_NAME }}/api/v1/publisher/upload?publishingType=USER_MANAGED"
+
+            resp=$(curl --request POST --silent \
+              --header "Authorization: Bearer ${TOKEN}" \
+              --form bundle=@${f} \
+              ${{ vars.SONATYPE_DOMAIN_NAME }}/api/v1/publisher/upload?publishingType=USER_MANAGED) >> $GITHUB_OUTPUT
+
+            if echo "$resp" | grep -qi '"error"'; then
+              echo "Upload error ${resp} detected in response for $f" >&2
+              exit 1
+            else 
+                echo "Upload successful for $f. Response: ${resp}"
+            fi
+            responses+=("$resp")
+          done 
+
+          echo "All responses: ${responses[@]}"
+
+          json=$(printf '%s\0' "${responses[@]}" | jq -Rsc 'split("\u0000")[:-1]')
+          echo "stage-release-ids=${json}" >> $GITHUB_OUTPUT
+
+      # Validation check loop
+      - name: Check validation
+        working-directory: release/client-java
+        shell: bash
+        run: |
+          TOKEN=$(printf "${{ secrets.AEROSPIKE_SA_CICD_USERNAME }}:${{ secrets.AEROSPIKE_SA_CICD_PASSWORD }}" | base64)
+          NUMBER_OF_CHECKS=${{ vars.VALIDATION_MAX_NUMBER_CHECKS }}
+          STAGE_IDS='${{ steps.stage-release.outputs.stage-release-ids }}'
+
+          echo "$payload" | jq -r '.[]' | while read -r id; do
+            for ((i = 1; i <= NUMBER_OF_CHECKS; i++)); do
+              RESPONSE=$(curl --request POST --silent --header "Authorization: Bearer ${TOKEN}" "${{ vars.SONATYPE_DOMAIN_NAME }}/api/v1/publisher/status?id=$id" | jq -cr '.')
+              SONATYPE_RESPONSE=$(echo "${RESPONSE}" | jq -cr '.deploymentState')
+
+              if [[ ${SONATYPE_RESPONSE} == 'FAILED' ]]; then
+                ERRORS=$(echo "${RESPONSE}" | jq '.errors')
+                echo "Package validation failed. Check build package logs to determine potential reasons why the uploaded package is not valid."
+                echo "Errors: ${ERRORS}"
+
+                exit 1
+              elif [[ ${SONATYPE_RESPONSE} == 'VALIDATING' || ${SONATYPE_RESPONSE} == 'PENDING' ]]; then
+                echo "Package validation is not done. Status: ${SONATYPE_RESPONSE}"
+
+                # Exponential backoff
+                sleep_time=$((2 ** (i - 1)))
+                echo "Next retry in ${sleep_time} second ...."
+                sleep "$sleep_time"
+              elif [[ "${SONATYPE_RESPONSE}" == 'VALIDATED' ]]; then
+                echo "Package is validated. Run release confirmation."
+
+                break
+              fi
+            done
+          done
+
+      # Peculating up the maven central release id
+      - name: Maven Central release id
+        working-directory: release/client-java
+        id: get-maven-central-release-id
+        shell: bash
+        run: |
+          echo "maven-central-release-id=${{ steps.stage-release.outputs.stage-release-ids }}" >> $GITHUB_OUTPUT
+

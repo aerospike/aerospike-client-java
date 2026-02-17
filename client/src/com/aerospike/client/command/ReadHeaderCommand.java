@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2024 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -24,6 +24,7 @@ import com.aerospike.client.Record;
 import com.aerospike.client.ResultCode;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.Connection;
+import com.aerospike.client.cluster.Node;
 import com.aerospike.client.policy.Policy;
 
 public final class ReadHeaderCommand extends SyncReadCommand {
@@ -39,9 +40,13 @@ public final class ReadHeaderCommand extends SyncReadCommand {
 	}
 
 	@Override
-	protected void parseResult(Connection conn) throws IOException {
+	protected void parseResult(Node node, Connection conn) throws IOException {
 		RecordParser rp = new RecordParser(conn, dataBuffer);
 		rp.parseFields(policy.txn, key, false);
+
+		if (node.areMetricsEnabled()) {
+			node.addBytesIn(namespace, rp.bytesIn);
+		}
 
 		if (rp.resultCode == ResultCode.OK) {
 			record = new Record(null, rp.generation, rp.expiration);

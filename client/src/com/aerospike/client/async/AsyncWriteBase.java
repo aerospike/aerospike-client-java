@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2024 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -30,7 +30,7 @@ public abstract class AsyncWriteBase extends AsyncCommand {
 	final Partition partition;
 
 	public AsyncWriteBase(Cluster cluster, WritePolicy writePolicy, Key key) {
-		super(writePolicy, true);
+		super(writePolicy, true, key.namespace);
 		this.writePolicy = writePolicy;
 		this.key = key;
 		this.partition = Partition.write(cluster, writePolicy, key);

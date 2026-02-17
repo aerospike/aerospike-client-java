@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -49,11 +49,16 @@ public enum Replica {
 	PREFER_RACK,
 
 	/**
-	 * Distribute reads across all nodes in cluster in round-robin fashion.
+	 * Distribute reads and writes across all nodes in cluster in round-robin fashion.
 	 * Writes always use node containing key's master partition.
 	 * <p>
-	 * This option is useful when the replication factor equals the number
+	 * This option is useful on reads when the replication factor equals the number
 	 * of nodes in the cluster and the overhead of requesting proles is not desired.
+	 * <p>
+	 * This option could temporarily be useful on writes when the client can't connect
+	 * to a node, but that node is reachable via a proxy from a different node.
+	 * <p>
+	 * This option can also be used to test server proxies.
 	 */
 	RANDOM;
 }

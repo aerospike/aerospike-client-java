@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2024 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -23,6 +23,7 @@ import com.aerospike.client.Operation;
 import com.aerospike.client.ResultCode;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.Connection;
+import com.aerospike.client.cluster.Node;
 import com.aerospike.client.policy.WritePolicy;
 import java.io.IOException;
 
@@ -42,8 +43,8 @@ public final class WriteCommand extends SyncWriteCommand {
 	}
 
 	@Override
-	protected void parseResult(Connection conn) throws IOException {
-		int resultCode = parseHeader(conn);
+	protected void parseResult(Node node, Connection conn) throws IOException {
+		int resultCode = parseHeader(node, conn);
 
 		if (resultCode == ResultCode.OK) {
 			return;

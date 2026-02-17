@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -33,7 +33,6 @@ public abstract class MultiCommand extends SyncCommand {
 	private static final int MAX_BUFFER_SIZE = 1024 * 1024 * 128;  // 128 MB
 
 	private final Node node;
-	protected final String namespace;
 	private final long clusterKey;
 	protected int info3;
 	protected int resultCode;
@@ -50,10 +49,9 @@ public abstract class MultiCommand extends SyncCommand {
 	 * Batch and server execute constructor.
 	 */
 	protected MultiCommand(Cluster cluster, Policy policy, Node node, boolean isOperation) {
-		super(cluster, policy);
+		super(cluster, policy, null);
 		this.node = node;
 		this.isOperation = isOperation;
-		this.namespace = null;
 		this.clusterKey = 0;
 		this.first = false;
 	}
@@ -62,10 +60,9 @@ public abstract class MultiCommand extends SyncCommand {
 	 * Partition scan/query constructor.
 	 */
 	protected MultiCommand(Cluster cluster, Policy policy, Node node, String namespace, int socketTimeout, int totalTimeout) {
-		super(cluster, policy, socketTimeout, totalTimeout);
+		super(cluster, policy, socketTimeout, totalTimeout, namespace);
 		this.node = node;
 		this.isOperation = false;
-		this.namespace = namespace;
 		this.clusterKey = 0;
 		this.first = false;
 	}
@@ -74,10 +71,9 @@ public abstract class MultiCommand extends SyncCommand {
 	 * Legacy scan/query constructor.
 	 */
 	protected MultiCommand(Cluster cluster, Policy policy, Node node, String namespace, long clusterKey, boolean first) {
-		super(cluster, policy, policy.socketTimeout, policy.totalTimeout);
+		super(cluster, policy, policy.socketTimeout, policy.totalTimeout, namespace);
 		this.node = node;
 		this.isOperation = false;
-		this.namespace = namespace;
 		this.clusterKey = clusterKey;
 		this.first = first;
 	}
@@ -111,7 +107,7 @@ public abstract class MultiCommand extends SyncCommand {
 	}
 
 	@Override
-	protected final void parseResult(Connection conn) throws IOException {
+	protected final void parseResult(Node node, Connection conn) throws IOException {
 		// Read blocks of records.  Do not use thread local receive buffer because each
 		// block will likely be too big for a cache.  Also, scan callbacks can nest
 		// further database commands which would contend with the thread local receive buffer.
@@ -119,11 +115,13 @@ public abstract class MultiCommand extends SyncCommand {
 		byte[] buf = null;
 		byte[] ubuf = null;
 		int receiveSize;
+		int bytesIn = 0;
 
 		while (true) {
 			// Read header
 			byte[] protoBuf = new byte[8];
 			conn.readFully(protoBuf, 8, Command.STATE_READ_HEADER);
+			bytesIn += 8;
 
 			long proto = Buffer.bytesToLong(protoBuf, 0);
 			int size = (int)(proto & 0xFFFFFFFFFFFFL);
@@ -147,6 +145,10 @@ public abstract class MultiCommand extends SyncCommand {
 			// Read remaining message bytes in group.
 			try {
 				conn.readFully(buf, size, Command.STATE_READ_DETAIL);
+				bytesIn += size;
+				if (node.areMetricsEnabled()) {
+					node.addBytesIn(namespace, bytesIn);
+				}
 				conn.updateLastUsed();
 			}
 			catch (ReadTimeout rt) {

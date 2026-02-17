@@ -51,6 +51,7 @@ jobs:
         uses: jfrog/setup-jfrog-cli@v4
         env:
           JF_URL: ${{ vars.JFROG_PLATFORM_URL }}
+          JF_PROJECT: clients
         with:
           oidc-provider-name: ${{ secrets.JFROG_OIDC_PROVIDER }}
           oidc-audience: ${{ secrets.JFROG_OIDC_AUDIENCE }}
@@ -68,7 +69,17 @@ jobs:
       - name: Get info
         id: get-build-info
         run: |
-          echo build-info=$(jf rt curl /api/build/${{ inputs.jf-target-build }}/${{ inputs.build-number }}) >> $GITHUB_OUTPUT
+          API_PATH="/api/build/${{ inputs.jf-target-build }}/${{ inputs.build-number }}?project=clients"
+          status_code=$(jf rt curl "${API_PATH}" -o /dev/null -s -w "%{http_code}")
+
+          # Exit with 1 unless the request succeeded (HTTP 200)
+          if [[ "$status_code" -ne 200 ]]; then
+            echo "ERROR: could not fetch build for build number ${{ inputs.build-number }} (HTTP $status_code)" >&2
+
+            exit 1
+          fi
+
+          echo build-info=$(jf rt curl "${API_PATH}" ) >> $GITHUB_OUTPUT
 
       # Snapshot builds are not promoted to production. We consider a snapshot build if the version in pom has been updated/changed as part of changes
       # we are promoting in the build
@@ -175,7 +186,7 @@ jobs:
           echo "${GIT_NOTES}"
 
   # Runs parallel jobs for bouncycastle and gnu builds
-  publish-releases:
+  publish-release-sonatype:
     runs-on: ${{ vars.BUILD_CONTAINER_DISTRO_VERSION }}
     needs: promote
     strategy:
@@ -199,13 +210,6 @@ jobs:
           build-name-number: ${{ matrix.build-name-number }}
           artifact-version: ${{ matrix.artifact-version }}
 
-      # Publishing release to github
-      - uses: ./.github/actions/publish-to-github
-        with:
-          release-notes: ${{ needs.promote.outputs.release-notes }}
-          github-token: ${{ secrets.CLIENT_BOT_PAT }}
-          artifact-version: ${{ matrix.artifact-version }}
-
       # Publishing release to Maven Central
       - uses: ./.github/actions/publish-to-sonatype
         id: publish-to-sonatype
@@ -224,10 +228,52 @@ jobs:
           build-path: ${{ matrix.build-name-number }}
           variables: '{"SONATYPE_STAGING_BUILD_ID":"${{ steps.publish-to-sonatype.outputs.maven-central-release-id }}"}'
 
+  # Runs single jobs for bouncycastle and gnu builds since we want to publish single release to github
+  # TODO: This part here needs to be optimized. We are running the same action twice since we need to pull 
+  # artifacts from JFROG for bc and gnu and combine them to publish to github under single version.
+  publish-release-github:
+    runs-on: ${{ vars.BUILD_CONTAINER_DISTRO_VERSION }}
+    needs: [promote, publish-release-sonatype]
+    steps: 
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.target-branch }}
+          token: ${{ secrets.CLIENT_BOT_PAT }}
+
+      # Pulling bc release from JFROG
+      - uses: ./.github/actions/stage-release-artifacts
+        with:
+          oidc-provider: ${{ secrets.JFROG_OIDC_PROVIDER }}
+          oidc-audience: ${{ secrets.JFROG_OIDC_AUDIENCE }}
+          target-repository: ${{ inputs.target-repository }}
+          build-name-number: ${{ fromJson(needs.promote.outputs.build-name-numbers)[0] }}
+          artifact-version: ${{ fromJson(needs.promote.outputs.artifact-version)[0] }}
+          staging-folder: '["staging","github"]'
+
+      # Pulling gnu release from JFROG
+      - uses: ./.github/actions/stage-release-artifacts
+        with:
+          oidc-provider: ${{ secrets.JFROG_OIDC_PROVIDER }}
+          oidc-audience: ${{ secrets.JFROG_OIDC_AUDIENCE }}
+          target-repository: ${{ inputs.target-repository }}
+          build-name-number: ${{ fromJson(needs.promote.outputs.build-name-numbers)[1] }}
+          artifact-version: ${{ fromJson(needs.promote.outputs.artifact-version)[0] }}
+          staging-folder: '["staging","github"]'
+
+      # Publishing release to github
+      # Note this action knows how to process json internally. It expects inputs to be in json format
+      - uses: ./.github/actions/publish-to-github
+        with:
+          release-notes: ${{ needs.promote.outputs.release-notes }}
+          github-token: ${{ secrets.CLIENT_BOT_PAT }}
+          build-name-number: ${{ needs.promote.outputs.build-name-numbers }} # json format
+          artifact-version: ${{ needs.promote.outputs.artifact-version }}    # json format
+
   # Aggregated release job which will be triggered after all the releases have been published and will have build info for bouncycastle  and gnu builds
   aggregated-release:
     uses: ./.github/workflows/aggregated-release-build.yaml
-    needs: [promote, publish-releases]
+    needs: [promote, publish-release-sonatype, publish-release-github]
     with:
       build-name-numbers: ${{ needs.promote.outputs.build-name-numbers }}
     secrets: inherit

@@ -152,7 +152,7 @@ public final class TxnMonitor {
 		wp.sleepBetweenRetries = policy.sleepBetweenRetries;
 		wp.compress = policy.compress;
 		wp.respondAllOps = true;
-
+		wp.sleepMultiplier = policy.sleepMultiplier;
 		// Note that the server only accepts the timeout on transaction monitor record create.
 		// The server ignores the transaction timeout field on successive transaction monitor
 		// record updates.

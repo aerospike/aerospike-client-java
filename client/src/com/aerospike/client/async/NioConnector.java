@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2024 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -100,6 +100,9 @@ public final class NioConnector extends AsyncConnector implements INioCommand {
 		byteBuffer.flip();
 
 		if (conn.write(byteBuffer)) {
+			if (node.areMetricsEnabled()) {
+				node.addBytesOut(null, byteBuffer.position());
+			}
 			byteBuffer.clear();
 			byteBuffer.limit(8);
 			state = AsyncCommand.AUTH_READ_HEADER;
@@ -113,6 +116,9 @@ public final class NioConnector extends AsyncConnector implements INioCommand {
 
 	protected final void write() throws IOException {
 		if (conn.write(byteBuffer)) {
+			if (node.areMetricsEnabled()) {
+				node.addBytesOut(null, byteBuffer.position());
+			}
 			byteBuffer.clear();
 			byteBuffer.limit(8);
 			state = AsyncCommand.AUTH_READ_HEADER;
@@ -173,6 +179,7 @@ public final class NioConnector extends AsyncConnector implements INioCommand {
 
 	private final void finish() {
 		conn.unregister();
+		conn.addBytesIn(node, null);
 		conn.updateLastUsed();
 		putByteBuffer();
 		success();
@@ -197,6 +204,7 @@ public final class NioConnector extends AsyncConnector implements INioCommand {
 		putByteBuffer();
 
 		if (conn != null) {
+			conn.addBytesIn(node, null);
 			node.closeAsyncConnection(conn, eventLoop.index);
 			conn = null;
 		}

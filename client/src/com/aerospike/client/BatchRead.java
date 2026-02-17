@@ -18,6 +18,7 @@ package com.aerospike.client;
 
 import com.aerospike.client.command.Buffer;
 import com.aerospike.client.command.Command;
+import com.aerospike.client.configuration.*;
 import com.aerospike.client.policy.BatchReadPolicy;
 import com.aerospike.client.policy.Policy;
 
@@ -130,7 +131,7 @@ public final class BatchRead extends BatchRecord {
 	 * For internal use only.
 	 */
 	@Override
-	public boolean equals(BatchRecord obj) {
+	public boolean equals(BatchRecord obj, ConfigurationProvider configProvider) {
 		if (getClass() != obj.getClass())
 			return false;
 
@@ -142,7 +143,7 @@ public final class BatchRead extends BatchRecord {
 	 * Return wire protocol size. For internal use only.
 	 */
 	@Override
-	public int size(Policy parentPolicy) {
+	public int size(Policy parentPolicy, ConfigurationProvider configProvider) {
 		int size = 0;
 
 		if (policy != null) {

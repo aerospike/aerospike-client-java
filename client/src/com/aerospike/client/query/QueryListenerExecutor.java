@@ -37,6 +37,8 @@ public final class QueryListenerExecutor {
 
 		TaskGen task = new TaskGen(statement);
 		long taskId = task.getId();
+		int retryInterval = policy.sleepBetweenRetries;
+		double sleepMultiplier = policy.sleepMultiplier;
 
 		while (true) {
 			try {
@@ -69,9 +71,12 @@ public final class QueryListenerExecutor {
 				return;
 			}
 
-			if (policy.sleepBetweenRetries > 0) {
+			if (retryInterval > 0) {
 				// Sleep before trying again.
-				Util.sleep(policy.sleepBetweenRetries);
+				Util.sleep(retryInterval);
+				if (sleepMultiplier > 1) {
+					retryInterval = (int) Math.round(retryInterval * sleepMultiplier);
+				}
 			}
 
 			// taskId must be reset on next pass to avoid server duplicate query detection.

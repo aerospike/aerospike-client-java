@@ -35,6 +35,7 @@ public final class AsyncScanPartitionExecutor extends AsyncMultiExecutor {
 	private final String[] binNames;
 	private final PartitionTracker tracker;
 	private final RandomShift random;
+	private int retryInterval;
 
 	public AsyncScanPartitionExecutor(
 		EventLoop eventLoop,
@@ -54,6 +55,7 @@ public final class AsyncScanPartitionExecutor extends AsyncMultiExecutor {
 		this.binNames = binNames;
 		this.tracker = tracker;
 		this.random = new RandomShift();
+		this.retryInterval = policy.sleepBetweenRetries;
 
 		cluster.addCommandCount();
 		tracker.setSleepBetweenRetries(0);
@@ -80,14 +82,19 @@ public final class AsyncScanPartitionExecutor extends AsyncMultiExecutor {
 				return;
 			}
 
-			// Prepare for retry.
-			if (policy.sleepBetweenRetries > 0) {
+ 			// Prepare for retry.
+			if (retryInterval > 0) {
+				double sleepMultiplier = policy.sleepMultiplier;
+				int currentInterval = retryInterval;
 				// Schedule retry at a future time.
 				eventLoop.schedule(new Runnable() {
 					@Override
 					public void run() {
 						try {
 							reset();
+							if (sleepMultiplier > 1) {
+								retryInterval = (int) Math.round(currentInterval * sleepMultiplier);
+							}
 							scanPartitions();
 						}
 						catch (AerospikeException ae) {
@@ -97,7 +104,7 @@ public final class AsyncScanPartitionExecutor extends AsyncMultiExecutor {
 							onFailure(new AerospikeException(e));
 						}
 					}
-				}, policy.sleepBetweenRetries, TimeUnit.MILLISECONDS);
+				}, currentInterval, TimeUnit.MILLISECONDS);
 			}
 			else {
 				reset();

@@ -35,6 +35,8 @@ import com.aerospike.client.Record;
 import com.aerospike.client.ResultCode;
 import com.aerospike.client.Value;
 import com.aerospike.client.cluster.Cluster;
+import com.aerospike.client.configuration.*;
+import com.aerospike.client.configuration.serializers.*;
 import com.aerospike.client.exp.Expression;
 import com.aerospike.client.policy.BatchDeletePolicy;
 import com.aerospike.client.policy.BatchPolicy;
@@ -1064,7 +1066,8 @@ public class Command {
 		BatchUDFPolicy udfPolicy,
 		BatchDeletePolicy deletePolicy,
 		List<? extends BatchRecord> records,
-		BatchNode batch
+		BatchNode batch,
+		ConfigurationProvider configProvider
 	) {
 		begin();
 		int max = batch.offsetsSize;
@@ -1101,7 +1104,7 @@ public class Command {
 
 			dataOffset += key.digest.length + 4;
 
-			if (canRepeat(policy, key, record, prev, ver, verPrev)) {
+			if (canRepeat(policy, key, record, prev, ver, verPrev, configProvider)) {
 				// Can set repeat previous namespace/bin names to save space.
 				dataOffset++;
 			}
@@ -1111,7 +1114,7 @@ public class Command {
 				dataOffset += Buffer.estimateSizeUtf8(key.namespace) + FIELD_HEADER_SIZE;
 				dataOffset += Buffer.estimateSizeUtf8(key.setName) + FIELD_HEADER_SIZE;
 				sizeTxnBatch(txn, ver, record.hasWrite);
-				dataOffset += record.size(policy);
+				dataOffset += record.size(policy, configProvider);
 				prev = record;
 				verPrev = ver;
 			}
@@ -1148,7 +1151,7 @@ public class Command {
 			System.arraycopy(digest, 0, dataBuffer, dataOffset, digest.length);
 			dataOffset += digest.length;
 
-			if (canRepeat(policy, key, record, prev, ver, verPrev)) {
+			if (canRepeat(policy, key, record, prev, ver, verPrev, configProvider)) {
 				// Can set repeat previous namespace/bin names to save space.
 				dataBuffer[dataOffset++] = BATCH_MSG_REPEAT;
 			}
@@ -1189,6 +1192,17 @@ public class Command {
 						BatchWrite bw = (BatchWrite)record;
 						BatchWritePolicy bwp = (bw.policy != null)? bw.policy : writePolicy;
 
+						if (configProvider != null) {
+							Configuration config = configProvider.fetchConfiguration();
+							if (config != null) {
+								bwp.sendKey = (config.dynamicConfiguration.dynamicBatchWriteConfig.sendKey != null) ?
+										config.dynamicConfiguration.dynamicBatchWriteConfig.sendKey.value : bwp.sendKey;
+								bwp.durableDelete = (config.dynamicConfiguration.dynamicBatchWriteConfig.durableDelete !=
+										null) ? config.dynamicConfiguration.dynamicBatchWriteConfig.durableDelete.value :
+										bwp.durableDelete;
+							}
+						}
+
 						attr.setWrite(bwp);
 						attr.adjustWrite(bw.ops);
 						writeBatchOperations(key, txn, ver, bw.ops, attr, attr.filterExp);
@@ -1198,6 +1212,16 @@ public class Command {
 					case BATCH_UDF: {
 						BatchUDF bu = (BatchUDF)record;
 						BatchUDFPolicy bup = (bu.policy != null)? bu.policy : udfPolicy;
+						if (configProvider != null) {
+							Configuration config = configProvider.fetchConfiguration();
+							if (config != null) {
+								bup.sendKey = (config.dynamicConfiguration.dynamicBatchUDFconfig.sendKey != null) ?
+										config.dynamicConfiguration.dynamicBatchUDFconfig.sendKey.value : bup.sendKey;
+								bup.durableDelete = (config.dynamicConfiguration.dynamicBatchUDFconfig.durableDelete !=
+										null) ? config.dynamicConfiguration.dynamicBatchUDFconfig.durableDelete.value :
+										bup.durableDelete;
+							}
+						}
 
 						attr.setUDF(bup);
 						writeBatchWrite(key, txn, ver, attr, attr.filterExp, 3, 0);
@@ -1210,6 +1234,16 @@ public class Command {
 					case BATCH_DELETE: {
 						BatchDelete bd = (BatchDelete)record;
 						BatchDeletePolicy bdp = (bd.policy != null)? bd.policy : deletePolicy;
+						if (configProvider != null) {
+							Configuration config = configProvider.fetchConfiguration();
+							if (config != null) {
+								bdp.sendKey = (config.dynamicConfiguration.dynamicBatchDeleteConfig.sendKey != null) ?
+										config.dynamicConfiguration.dynamicBatchDeleteConfig.sendKey.value : bdp.sendKey;
+								bdp.durableDelete = (config.dynamicConfiguration.dynamicBatchDeleteConfig.durableDelete !=
+										null) ? config.dynamicConfiguration.dynamicBatchDeleteConfig.durableDelete.value :
+										bdp.durableDelete;
+							}
+						}
 
 						attr.setDelete(bdp);
 						writeBatchWrite(key, txn, ver, attr, attr.filterExp, 0, 0);
@@ -1490,15 +1524,33 @@ public class Command {
 		BatchRecord record,
 		BatchRecord prev,
 		Long ver,
-		Long verPrev
+		Long verPrev,
+		ConfigurationProvider configProvider
 	) {
 		// Avoid relatively expensive full equality checks for performance reasons.
 		// Use reference equality only in hope that common namespaces/bin names are set from
 		// fixed variables.  It's fine if equality not determined correctly because it just
 		// results in more space used. The batch will still be correct.
 		// Same goes for ver reference equality check.
-		return !policy.sendKey && verPrev == ver && prev != null && prev.key.namespace == key.namespace &&
-				prev.key.setName == key.setName && record.equals(prev);
+
+		if ( !(verPrev == ver && prev != null && prev.key.namespace == key.namespace &&
+				prev.key.setName == key.setName )) {
+			return false;
+		}
+
+		boolean sendkey = policy.sendKey;
+		if (configProvider != null) {
+			Configuration config = configProvider.fetchConfiguration();
+			if (config != null && config.hasDBWCsendKey()) {
+				sendkey = config.dynamicConfiguration.dynamicBatchWriteConfig.sendKey.value;
+			}
+		}
+		if (sendkey) {
+			return false;
+		}
+
+		return record.equals(prev);
+
 	}
 
 	private static boolean canRepeat(BatchAttr attr, Key key, Key keyPrev, Long ver, Long verPrev) {
@@ -1911,6 +1963,8 @@ public class Command {
 		Filter filter = statement.getFilter();
 		String[] binNames = statement.getBinNames();
 		byte[] packedCtx = null;
+		String indexName = null;
+		byte[] packedExp = null;
 
 		if (filter != null) {
 			IndexCollectionType type = filter.getCollectionType();
@@ -1945,9 +1999,20 @@ public class Command {
 			}
 
 			packedCtx = filter.getPackedCtx();
-
 			if (packedCtx != null) {
 				dataOffset += FIELD_HEADER_SIZE + packedCtx.length;
+				fieldCount++;
+			}
+
+			indexName = filter.getIndexName();
+			if (indexName != null) {
+				dataOffset += FIELD_HEADER_SIZE + Buffer.estimateSizeUtf8(indexName);
+				fieldCount++;
+			}
+
+			packedExp = filter.getPackedExp();
+			if (packedExp != null) {
+				dataOffset += FIELD_HEADER_SIZE + packedExp.length;
 				fieldCount++;
 			}
 		}
@@ -2112,6 +2177,16 @@ public class Command {
 				writeFieldHeader(packedCtx.length, FieldType.INDEX_CONTEXT);
 				System.arraycopy(packedCtx, 0, dataBuffer, dataOffset, packedCtx.length);
 				dataOffset += packedCtx.length;
+			}
+
+			if (indexName != null) {
+				writeField(indexName, FieldType.INDEX_NAME);
+			}
+
+			if (packedExp != null) {
+				writeFieldHeader(packedExp.length, FieldType.INDEX_EXPRESSION);
+				System.arraycopy(packedExp, 0, dataBuffer, dataOffset, packedExp.length);
+				dataOffset += packedExp.length;
 			}
 		}
 

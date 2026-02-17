@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -22,6 +22,7 @@ import com.aerospike.client.Value;
 import com.aerospike.client.cdt.CTX;
 import com.aerospike.client.command.Buffer;
 import com.aerospike.client.command.ParticleType;
+import com.aerospike.client.exp.Expression;
 import com.aerospike.client.util.Pack;
 
 /**
@@ -44,6 +45,30 @@ public final class Filter {
 	}
 
 	/**
+	 * Create long equality filter for query with Expression.
+	 *
+	 * @param exp	the Expression
+	 * @param value			filter value
+	 * @return				filter instance
+	 */
+	public static Filter equal(Expression exp, long value) {
+		Value val = Value.get(value);
+		return new Filter(null, exp.getBytes(), IndexCollectionType.DEFAULT, val.getType(), val, val);
+	}
+
+	/**
+	 * Create long equality filter for query with index name.
+	 *
+	 * @param indexName		the name that was assigned to the Secondary Index (SI)
+	 * @param value			filter value
+	 * @return				filter instance
+	 */
+	public static Filter equalByIndex(String indexName, long value) {
+		Value val = Value.get(value);
+		return new Filter(indexName, null, IndexCollectionType.DEFAULT, val.getType(), val, val);
+	}
+
+	/**
 	 * Create string equality filter for query.
 	 *
 	 * @param name			bin name
@@ -54,6 +79,30 @@ public final class Filter {
 	public static Filter equal(String name, String value, CTX... ctx) {
 		Value val = Value.get(value);
 		return new Filter(name, IndexCollectionType.DEFAULT, val.getType(), val, val, ctx);
+	}
+
+	/**
+	 * Create string equality filter for query with Expression.
+	 *
+	 * @param exp	the Expression
+	 * @param value			filter value
+	 * @return				filter instance
+	 */
+	public static Filter equal(Expression exp, String value) {
+		Value val = Value.get(value);
+		return new Filter(null, exp.getBytes(), IndexCollectionType.DEFAULT, val.getType(), val, val);
+	}
+
+	/**
+	 * Create string equality filter for query with index name.
+	 *
+	 * @param indexName		the name that was assigned to the Secondary Index (SI)
+	 * @param value			filter value
+	 * @return				filter instance
+	 */
+	public static Filter equalByIndex(String indexName, String value) {
+		Value val = Value.get(value);
+		return new Filter(indexName, null, IndexCollectionType.DEFAULT, val.getType(), val, val);
 	}
 
 	/**
@@ -71,6 +120,30 @@ public final class Filter {
 	}
 
 	/**
+	 * Create blob equality filter for query with Expression.
+	 *
+	 * @param exp	the Expression
+	 * @param value			filter value
+	 * @return				filter instance
+	 */
+	public static Filter equal(Expression exp, byte[] value) {
+		Value val = Value.get(value);
+		return new Filter(null, exp.getBytes(), IndexCollectionType.DEFAULT, val.getType(), val, val);
+	}
+
+	/**
+	 * Create blob equality filter for query with index name.
+	 *
+	 * @param indexName		the name that was assigned to the Secondary Index (SI)
+	 * @param value			filter value
+	 * @return				filter instance
+	 */
+	public static Filter equalByIndex(String indexName, byte[] value) {
+		Value val = Value.get(value);
+		return new Filter(indexName, null, IndexCollectionType.DEFAULT, val.getType(), val, val);
+	}
+
+	/**
 	 * Create contains number filter for query on collection index.
 	 *
 	 * @param name			bin name
@@ -82,6 +155,34 @@ public final class Filter {
 	public static Filter contains(String name, IndexCollectionType type, long value, CTX... ctx) {
 		Value val = Value.get(value);
 		return new Filter(name, type, val.getType(), val, val, ctx);
+	}
+
+	/**
+	 * Create contains number filter for query on collection index with Expression.
+	 *
+	 * @param exp	expression to use for the filter
+	 * @param type			index collection type
+	 * @param value			filter value
+	 * @param ctx			optional context for elements within a CDT
+	 * @return				filter instance
+	 */
+	public static Filter contains(Expression exp, IndexCollectionType type, long value) {
+		Value val = Value.get(value);
+		return new Filter(null, exp.getBytes(), type, val.getType(), val, val);
+	}
+
+	/**
+	 * Create contains number filter for query on collection index with index name.
+	 *
+	 * @param indexName		index name
+	 * @param type			index collection type
+	 * @param value			filter value
+	 * @param ctx			optional context for elements within a CDT
+	 * @return				filter instance
+	 */
+	public static Filter containsByIndex(String indexName, IndexCollectionType type, long value) {
+		Value val = Value.get(value);
+		return new Filter(indexName, null, type, val.getType(), val, val);
 	}
 
 	/**
@@ -99,6 +200,34 @@ public final class Filter {
 	}
 
 	/**
+	 * Create contains string filter for query on collection index with Expression.
+	 *
+	 * @param exp	expression to use for the filter
+	 * @param type			index collection type
+	 * @param value			filter value
+	 * @param ctx			optional context for elements within a CDT
+	 * @return				filter instance
+	 */
+	public static Filter contains(Expression exp, IndexCollectionType type, String value) {
+		Value val = Value.get(value);
+		return new Filter(null, exp.getBytes(), type, val.getType(), val, val);
+	}
+
+	/**
+	 * Create contains string filter for query on collection index with index name.
+	 *
+	 * @param indexName		index name
+	 * @param type			index collection type
+	 * @param value			filter value
+	 * @param ctx			optional context for elements within a CDT
+	 * @return				filter instance
+	 */
+	public static Filter containsByIndex(String indexName, IndexCollectionType type, String value) {
+		Value val = Value.get(value);
+		return new Filter(indexName, null, type, val.getType(), val, val);
+	}
+
+	/**
 	 * Create contains byte[] filter for query on collection index.
 	 *
 	 * @param name			bin name
@@ -110,6 +239,34 @@ public final class Filter {
 	public static Filter contains(String name, IndexCollectionType type, byte[] value, CTX... ctx) {
 		Value val = Value.get(value);
 		return new Filter(name, type, val.getType(), val, val, ctx);
+	}
+
+	/**
+	 * Create contains byte[] filter for query on collection index with expression.
+	 *
+	 * @param exp	expression to use for the filter
+	 * @param type			index collection type
+	 * @param value			filter value
+	 * @param ctx			optional context for elements within a CDT
+	 * @return				filter instance
+	 */
+	public static Filter contains(Expression exp, IndexCollectionType type, byte[] value) {
+		Value val = Value.get(value);
+		return new Filter(null, exp.getBytes(), type, val.getType(), val, val);
+	}
+
+	/**
+	 * Create contains byte[] filter for query on collection index with index name.
+	 *
+	 * @param indexName		index name
+	 * @param type			index collection type
+	 * @param value			filter value
+	 * @param ctx			optional context for elements within a CDT
+	 * @return				filter instance
+	 */
+	public static Filter containsByIndex(String indexName, IndexCollectionType type, byte[] value) {
+		Value val = Value.get(value);
+		return new Filter(indexName, null, type, val.getType(), val, val);
 	}
 
 	/**
@@ -125,6 +282,37 @@ public final class Filter {
 	 */
 	public static Filter range(String name, long begin, long end, CTX... ctx) {
 		return new Filter(name, IndexCollectionType.DEFAULT, ParticleType.INTEGER, Value.get(begin), Value.get(end), ctx);
+	}
+
+	/**
+	 * Create a range filter for an Expression-based Secondary Index (SI) query, with the actual Expression that was
+	 * used to create the SI.
+	 * Range arguments must be longs or integers which can be cast to longs.
+	 * String ranges are not supported.
+	 *
+	 * @param exp			the Expression
+	 * @param begin			filter begin value inclusive
+	 * @param end			filter end value inclusive
+	 * @return				filter instance
+	 */
+	public static Filter range(Expression exp, long begin, long end) {
+		return new Filter(null, exp.getBytes(), IndexCollectionType.DEFAULT, ParticleType.INTEGER,
+				Value.get(begin), Value.get(end));
+	}
+
+	/**
+	 * Create a range filter for an Expression-based Secondary Index (SI) query, using the SI name
+	 * Range arguments must be longs or integers which can be cast to longs.
+	 * String ranges are not supported.
+	 *
+	 * @param indexName	    the name that was assigned to the SI
+	 * @param begin			filter begin value inclusive
+	 * @param end			filter end value inclusive
+	 * @return				filter instance
+	 */
+	public static Filter rangeByIndex(String indexName, long begin, long end) {
+		return new Filter(indexName, null, IndexCollectionType.DEFAULT, ParticleType.INTEGER,
+				Value.get(begin), Value.get(end));
 	}
 
 	/**
@@ -144,6 +332,38 @@ public final class Filter {
 	}
 
 	/**
+	 * Create range filter for query on collection index with expression.
+	 * Range arguments must be longs or integers which can be cast to longs.
+	 * String ranges are not supported.
+	 *
+	 * @param expression	the Expression to use for the filter
+	 * @param type			index collection type
+	 * @param begin			filter begin value inclusive
+	 * @param end			filter end value inclusive
+	 * @param ctx			optional context for elements within a CDT
+	 * @return				filter instance
+	 */
+	public static Filter range(Expression exp, IndexCollectionType type, long begin, long end) {
+		return new Filter(null, exp.getBytes(), type, ParticleType.INTEGER, Value.get(begin), Value.get(end));
+	}
+
+	/**
+	 * Create range filter for query on collection index with index name.
+	 * Range arguments must be longs or integers which can be cast to longs.
+	 * String ranges are not supported.
+	 *
+	 * @param indexName		index name
+	 * @param type			index collection type
+	 * @param begin			filter begin value inclusive
+	 * @param end			filter end value inclusive
+	 * @param ctx			optional context for elements within a CDT
+	 * @return				filter instance
+	 */
+	public static Filter rangeByIndex(String indexName, IndexCollectionType type, long begin, long end) {
+		return new Filter(indexName, null, type, ParticleType.INTEGER, Value.get(begin), Value.get(end));
+	}
+
+	/**
 	 * Create geospatial "within region" filter for query.
 	 *
 	 * @param name			bin name
@@ -153,6 +373,30 @@ public final class Filter {
 	 */
 	public static Filter geoWithinRegion(String name, String region, CTX... ctx) {
 		return new Filter(name, IndexCollectionType.DEFAULT, ParticleType.GEOJSON, Value.get(region), Value.get(region), ctx);
+	}
+
+	/**
+	 * Create geospatial "within region" filter for query with expression.
+	 *
+	 * @param exp	the Expression to use for the filter
+	 * @param region		GeoJSON region
+	 * @param ctx			optional context for elements within a CDT
+	 * @return				filter instance
+	 */
+	public static Filter geoWithinRegion(Expression exp, String region) {
+		return new Filter(null, exp.getBytes(), IndexCollectionType.DEFAULT, ParticleType.GEOJSON, Value.get(region), Value.get(region));
+	}
+
+	/**
+	 * Create geospatial "within region" filter for query with index name.
+	 *
+	 * @param indexName	    index name
+	 * @param region		GeoJSON region
+	 * @param ctx			optional context for elements within a CDT
+	 * @return				filter instance
+	 */
+	public static Filter geoWithinRegionByIndex(String indexName, String region) {
+		return new Filter(indexName, null, IndexCollectionType.DEFAULT, ParticleType.GEOJSON, Value.get(region), Value.get(region));
 	}
 
 	/**
@@ -167,6 +411,32 @@ public final class Filter {
 	public static Filter geoWithinRegion(String name, IndexCollectionType type, String region, CTX... ctx) {
 		return new Filter(name, type, ParticleType.GEOJSON, Value.get(region), Value.get(region), ctx);
 	}
+
+	/**
+	 * Create geospatial "within region" filter for query on collection index with expression.
+	 *
+	 * @param exp	the Expression to use for the filter
+	 * @param type			index collection type
+	 * @param region		GeoJSON region
+	 * @param ctx			optional context for elements within a CDT
+	 * @return				filter instance
+	 */
+	public static Filter geoWithinRegion(Expression exp, IndexCollectionType type, String region) {
+		return new Filter(null, exp.getBytes(), type, ParticleType.GEOJSON, Value.get(region), Value.get(region));
+	}
+
+	/**
+	 * Create geospatial "within region" filter for query on collection index with index name.
+	 *
+	 * @param indexName	    index name
+	 * @param type			index collection type
+	 * @param region		GeoJSON region
+	 * @param ctx			optional context for elements within a CDT
+	 * @return				filter instance
+	 */
+	public static Filter geoWithinRegionByIndex(String indexName, IndexCollectionType type, String region) {
+		return new Filter(indexName, null, type, ParticleType.GEOJSON, Value.get(region), Value.get(region));
+	} 
 
 	/**
 	 * Create geospatial "within radius" filter for query.
@@ -184,6 +454,42 @@ public final class Filter {
 							  + "\"coordinates\": [[%.8f, %.8f], %f] }",
 							  lng, lat, radius);
 		return new Filter(name, IndexCollectionType.DEFAULT, ParticleType.GEOJSON, Value.get(rgnstr), Value.get(rgnstr), ctx);
+	}
+
+	/**
+	 * Create geospatial "within radius" filter for query with expression.
+	 *
+	 * @param exp	the Expression to use for the filter
+	 * @param lng			longitude
+	 * @param lat			latitude
+	 * @param radius 		radius (meters)
+	 * @param ctx			optional context for elements within a CDT
+	 * @return				filter instance
+	 */
+	public static Filter geoWithinRadius(Expression exp, double lng, double lat, double radius) {
+		String rgnstr =
+				String.format("{ \"type\": \"AeroCircle\", "
+							  + "\"coordinates\": [[%.8f, %.8f], %f] }",
+							  lng, lat, radius);
+		return new Filter(null, exp.getBytes(), IndexCollectionType.DEFAULT, ParticleType.GEOJSON, Value.get(rgnstr), Value.get(rgnstr));
+	}
+
+	/**
+	 * Create geospatial "within radius" filter for query with index name.
+	 *
+	 * @param indexName		index name
+	 * @param lng			longitude
+	 * @param lat			latitude
+	 * @param radius 		radius (meters)
+	 * @param ctx			optional context for elements within a CDT
+	 * @return				filter instance
+	 */
+	public static Filter geoWithinRadiusByIndex(String indexName, double lng, double lat, double radius) {
+		String rgnstr =
+				String.format("{ \"type\": \"AeroCircle\", "
+							  + "\"coordinates\": [[%.8f, %.8f], %f] }",
+							  lng, lat, radius);
+		return new Filter(indexName, null, IndexCollectionType.DEFAULT, ParticleType.GEOJSON, Value.get(rgnstr), Value.get(rgnstr));
 	}
 
 	/**
@@ -206,6 +512,44 @@ public final class Filter {
 	}
 
 	/**
+	 * Create geospatial "within radius" filter for query on collection index with expression.
+	 *
+	 * @param exp	the Expression to use for the filter
+	 * @param type			index collection type
+	 * @param lng			longitude
+	 * @param lat			latitude
+	 * @param radius 		radius (meters)
+	 * @param ctx			optional context for elements within a CDT
+	 * @return				filter instance
+	 */
+	public static Filter geoWithinRadius(Expression exp, IndexCollectionType type, double lng, double lat, double radius) {
+		String rgnstr =
+				String.format("{ \"type\": \"AeroCircle\", "
+							  + "\"coordinates\": [[%.8f, %.8f], %f] }",
+							  lng, lat, radius);
+		return new Filter(null, exp.getBytes(), type, ParticleType.GEOJSON, Value.get(rgnstr), Value.get(rgnstr));
+	}
+
+	/**
+	 * Create geospatial "within radius" filter for query on collection index with index name.
+	 *
+	 * @param indexName		index name
+	 * @param type			index collection type
+	 * @param lng			longitude
+	 * @param lat			latitude
+	 * @param radius 		radius (meters)
+	 * @param ctx			optional context for elements within a CDT
+	 * @return				filter instance
+	 */
+	public static Filter geoWithinRadiusByIndex(String indexName, IndexCollectionType type, double lng, double lat, double radius) {
+		String rgnstr =
+				String.format("{ \"type\": \"AeroCircle\", "
+							  + "\"coordinates\": [[%.8f, %.8f], %f] }",
+							  lng, lat, radius);
+		return new Filter(indexName, null, type, ParticleType.GEOJSON, Value.get(rgnstr), Value.get(rgnstr));
+	}
+
+	/**
 	 * Create geospatial "containing point" filter for query.
 	 *
 	 * @param name			bin name
@@ -215,6 +559,30 @@ public final class Filter {
 	 */
 	public static Filter geoContains(String name, String point, CTX... ctx) {
 		return new Filter(name, IndexCollectionType.DEFAULT, ParticleType.GEOJSON, Value.get(point), Value.get(point), ctx);
+	}
+
+	/**
+	 * Create geospatial "containing point" filter for query with expression.
+	 *
+	 * @param exp	the Expression to use for the filter
+	 * @param point			GeoJSON point
+	 * @param ctx			optional context for elements within a CDT
+	 * @return				filter instance
+	 */
+	public static Filter geoContains(Expression exp, String point) {
+		return new Filter(null, exp.getBytes(), IndexCollectionType.DEFAULT, ParticleType.GEOJSON, Value.get(point), Value.get(point));
+	}
+
+	/**
+	 * Create geospatial "containing point" filter for query with index name.
+	 *
+	 * @param indexName	    index name
+	 * @param point			GeoJSON point
+	 * @param ctx			optional context for elements within a CDT
+	 * @return				filter instance
+	 */
+	public static Filter geoContainsByIndex(String indexName, String point) {
+		return new Filter(indexName, null, IndexCollectionType.DEFAULT, ParticleType.GEOJSON, Value.get(point), Value.get(point));
 	}
 
 	/**
@@ -230,24 +598,58 @@ public final class Filter {
 		return new Filter(name, type, ParticleType.GEOJSON, Value.get(point), Value.get(point), ctx);
 	}
 
+	/**
+	 * Create geospatial "containing point" filter for query on collection index with expression.
+	 *
+	 * @param exp	the Expression to use for the filter
+	 * @param type			index collection type
+	 * @param point			GeoJSON point
+	 * @param ctx			optional context for elements within a CDT
+	 * @return				filter instance
+	 */
+	public static Filter geoContains(Expression exp, IndexCollectionType type, String point) {
+		return new Filter(null, exp.getBytes(), type, ParticleType.GEOJSON, Value.get(point), Value.get(point));
+	}
+
+	/**
+	 * Create geospatial "containing point" filter for query on collection index with index name.
+	 *
+	 * @param indexName	    index name
+	 * @param type			index collection type
+	 * @param point			GeoJSON point
+	 * @param ctx			optional context for elements within a CDT
+	 * @return				filter instance
+	 */
+	public static Filter geoContainsByIndex(String indexName, IndexCollectionType type, String point) {
+		return new Filter(indexName, null, type, ParticleType.GEOJSON, Value.get(point), Value.get(point));
+	}
+
 	private final String name;
+	private final String indexName;
 	private final IndexCollectionType colType;
 	private final byte[] packedCtx;
 	private final int valType;
 	private final Value begin;
 	private final Value end;
+	private final byte[] packedExp;
 
 	private Filter(String name, IndexCollectionType colType, int valType, Value begin, Value end, CTX[] ctx) {
-		this(name, colType, valType, begin, end, (ctx != null && ctx.length > 0) ? Pack.pack(ctx) : null);
+		this(name, null, colType, valType, begin, end, (ctx != null && ctx.length > 0) ? Pack.pack(ctx) : null, null);
+	}
+	private Filter(String indexName, byte[] exp, IndexCollectionType colType, int valType, Value begin, Value end) {
+		this(null, indexName, colType, valType, begin, end, null, exp);
 	}
 
-	Filter(String name, IndexCollectionType colType, int valType, Value begin, Value end, byte[] packedCtx) {
+	Filter(String name, String indexName, IndexCollectionType colType, int valType, Value begin, Value end,
+		   byte[] packedCtx, byte[] packedExp) {
 		this.name = name;
+		this.indexName = indexName;
 		this.colType = colType;
 		this.valType = valType;
 		this.begin = begin;
 		this.end = end;
 		this.packedCtx = packedCtx;
+		this.packedExp = packedExp;
 	}
 
 	/**
@@ -302,6 +704,14 @@ public final class Filter {
 	}
 
 	/**
+	 * Index name.
+	 * For internal use only.
+	 */
+	public String getIndexName() {
+		return indexName;
+	}
+
+	/**
 	 * Index collection type.
 	 * For internal use only.
 	 */
@@ -339,6 +749,14 @@ public final class Filter {
 	 */
 	public byte[] getPackedCtx() {
 		return packedCtx;
+	}
+
+	/**
+	 * Retrieve packed Expression.
+	 * For internal use only.
+	 */
+	public byte[] getPackedExp() {
+		return packedExp;
 	}
 
 	/**

@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -21,34 +21,31 @@ package com.aerospike.client.metrics;
  * (See {@link com.aerospike.client.AerospikeClient#enableMetrics(MetricsPolicy)}).
  */
 public final class NodeMetrics {
-	private final LatencyBuckets[] latency;
+	private final Histograms histograms;
+	public final Counter bytesInCounter;
+	public final Counter bytesOutCounter;
 
 	/**
 	 * Initialize extended node metrics.
 	 */
 	public NodeMetrics(MetricsPolicy policy) {
-		int latencyColumns = policy.latencyColumns;
-		int latencyShift = policy.latencyShift;
-		int max = LatencyType.getMax();
-
-		latency = new LatencyBuckets[max];
-
-		for (int i = 0; i < max; i++) {
-			latency[i] = new LatencyBuckets(latencyColumns, latencyShift);
-		}
+		this.bytesInCounter = new Counter();
+		this.bytesOutCounter = new Counter();
+		histograms = new Histograms(policy.latencyColumns, policy.latencyShift);
 	}
 
 	/**
-	 * Add elapsed time in nanoseconds to latency buckets corresponding to latency type.
+	 * Add elapsed time in nanoseconds to histogram map buckets corresponding to namespace & latency type.
 	 */
-	public void addLatency(LatencyType type, long elapsed) {
-		latency[type.ordinal()].add(elapsed);
+	public void addLatency(String namespace, LatencyType type, long elapsed) {
+		histograms.addLatency(namespace, type, elapsed);
 	}
 
 	/**
-	 * Return latency buckets given type.
+	 * Returns the available Histograms (Containers for namespace-aggregated latency buckets)
+	 * @return the Histograms object
 	 */
-	public LatencyBuckets getLatencyBuckets(int type) {
-		return latency[type];
+	public Histograms getHistograms() {
+		return histograms;
 	}
 }

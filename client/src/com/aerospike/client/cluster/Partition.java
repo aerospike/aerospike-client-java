@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -207,8 +207,9 @@ public final class Partition {
 
 		case MASTER:
 		case MASTER_PROLES:
-		case RANDOM:
 			return getMasterNode(cluster);
+		case RANDOM:
+			return cluster.getRandomNode();
 		}
 	}
 
@@ -248,8 +249,9 @@ public final class Partition {
 		int seq2 = 0;
 		Node fallback1 = null;
 		Node fallback2 = null;
+		int[] rackIds = cluster.rackIds;
 
-		for (int rackId : cluster.rackIds) {
+		for (int rackId : rackIds) {
 			int seq = sequence;
 
 			for (int i = 0; i < max; i++) {

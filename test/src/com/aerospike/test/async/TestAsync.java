@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2024 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -25,7 +25,6 @@ import com.aerospike.client.Key;
 import com.aerospike.client.Record;
 import com.aerospike.client.async.EventLoop;
 import com.aerospike.test.SuiteAsync;
-import com.aerospike.test.SuiteSync;
 import com.aerospike.test.util.TestBase;
 
 public class TestAsync extends TestBase {
@@ -46,7 +45,7 @@ public class TestAsync extends TestBase {
 	@AfterClass
 	public static void destroy() {
 		if (DestroyClient) {
-			SuiteSync.destroy();
+			SuiteAsync.destroy();
 		}
 	}
 

@@ -35,6 +35,7 @@ public final class AsyncQueryPartitionExecutor extends AsyncMultiExecutor {
 	private final PartitionTracker tracker;
 	private final TaskGen task;
 	private long taskId;
+	private int retryInterval;
 
 	public AsyncQueryPartitionExecutor(
 		EventLoop eventLoop,
@@ -49,6 +50,7 @@ public final class AsyncQueryPartitionExecutor extends AsyncMultiExecutor {
 		this.listener = listener;
 		this.statement = statement;
 		this.tracker = tracker;
+		this.retryInterval = policy.sleepBetweenRetries;
 
 		cluster.addCommandCount();
 		task = new TaskGen(statement);
@@ -77,13 +79,18 @@ public final class AsyncQueryPartitionExecutor extends AsyncMultiExecutor {
 			}
 
 			// Prepare for retry.
-			if (policy.sleepBetweenRetries > 0) {
+			if (retryInterval > 0) {
 				// Schedule retry at a future time.
+				int currentInterval = retryInterval;
+				double sleepMultiplier = policy.sleepMultiplier;
 				eventLoop.schedule(new Runnable() {
 					@Override
 					public void run() {
 						try {
 							reset();
+							if (sleepMultiplier > 1) {
+								retryInterval = (int) Math.round(currentInterval * sleepMultiplier);
+							}
 							taskId = task.nextId();
 							queryPartitions();
 						}
@@ -94,7 +101,7 @@ public final class AsyncQueryPartitionExecutor extends AsyncMultiExecutor {
 							onFailure(new AerospikeException(e));
 						}
 					}
-				}, policy.sleepBetweenRetries, TimeUnit.MILLISECONDS);
+				}, currentInterval, TimeUnit.MILLISECONDS);
 			}
 			else {
 				reset();

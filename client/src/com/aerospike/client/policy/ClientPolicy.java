@@ -19,9 +19,18 @@ package com.aerospike.client.policy;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ExecutorService;
 
+import com.aerospike.client.Log;
 import com.aerospike.client.async.EventLoops;
+import com.aerospike.client.configuration.ConfigurationProvider;
+import com.aerospike.client.configuration.serializers.Configuration;
+import com.aerospike.client.configuration.serializers.DynamicConfiguration;
+import com.aerospike.client.configuration.serializers.StaticConfiguration;
+import com.aerospike.client.configuration.serializers.dynamicconfig.DynamicClientConfig;
+import com.aerospike.client.configuration.serializers.staticconfig.StaticClientConfig;
+import com.aerospike.client.util.Util;
 
 /**
  * Container object for client policy Command.
@@ -105,6 +114,10 @@ public class ClientPolicy {
 	 * (no reap) if minConnsPerNode is greater than zero.  Reaping connections can defeat the purpose
 	 * of keeping connections in reserve for a future burst of activity.
 	 * <p>
+	 * <p>
+	 * Servers 8.1+ have deprecated proto-fd-idle-ms. When proto-fd-idle-ms is ultimately removed,
+     * the server will stop automatically reaping based on socket idle timeouts.
+	 * <p>
 	 * Default: 0
 	 */
 	public int minConnsPerNode;
@@ -178,6 +191,10 @@ public class ClientPolicy {
 	 * when maxSocketIdle is zero.  Idle connections will still be trimmed down from peak
 	 * connections to min connections (minConnsPerNode and asyncMinConnsPerNode) using a
 	 * hard-coded 55 second limit in the cluster tend thread.
+	 * <p>
+	 * <p>
+	 * Servers 8.1+ have deprecated proto-fd-idle-ms. When proto-fd-idle-ms is ultimately removed,
+     * the server will stop automatically reaping based on socket idle timeouts.
 	 * <p>
 	 * Default: 0
 	 */
@@ -318,7 +335,7 @@ public class ClientPolicy {
 	public TCPKeepAlive keepAlive;
 
 	/**
-	 * A IP translation table is used in cases where different clients use different server
+	 * An IP translation table is used in cases where different clients use different server
 	 * IP addresses.  This may be necessary when using clients from both inside and outside
 	 * a local area network.  Default is no translation.
 	 * <p>
@@ -346,10 +363,20 @@ public class ClientPolicy {
 	public boolean sharedThreadPool;
 
 	/**
-	 * Should use "services-alternate" instead of "services" in info request during cluster
-	 * tending.  "services-alternate" returns server configured external IP addresses that client
-	 * uses to talk to nodes.  "services-alternate" can be used in place of providing a client "ipMap".
+	 * Flag to signify if alternate IP address discovery info commands should be used.
 	 * <p>
+	 * If false, use:<br>
+	 * 	IP address: service-clear-std<br>
+	 * 	TLS IP address: service-tls-std<br>
+	 * 	Peers addresses: peers-clear-std<br>
+	 * 	Peers TLS addresses: peers-tls-std
+	 * 	<p>
+	 * If true, use:<br>
+	 * 	IP address: service-clear-alt<br>
+	 * 	TLS IP address: service-tls-alt<br>
+	 * 	Peers addresses: peers-clear-alt<br>
+	 * 	Peers TLS addresses: peers-tls-alt
+	 * 	<p>
 	 * Default: false (use original "services" info request)
 	 */
 	public boolean useServicesAlternate;
@@ -400,6 +427,29 @@ public class ClientPolicy {
 	public List<Integer> rackIds;
 
 	/**
+	 * Application ID. Metrics are loosely tied to this. Changing the appId will not reset the metric counters.
+	 */
+	public String appId;
+
+	/**
+	 * Copy client policy from another client policy AND override certain policy attributes if they exist in the
+	 * configProvider. Any policy overrides will not get logged.
+	 */
+	public ClientPolicy(ClientPolicy other, ConfigurationProvider configProvider) {
+		this(other);
+		updateFromConfig(configProvider, false);
+	}
+
+	/**
+	 * Copy client policy from another client policy AND override certain policy attributes if they exist in the
+	 * configProvider. Any default policy overrides will get logged.
+	 */
+	public ClientPolicy(ClientPolicy other, ConfigurationProvider configProvider, boolean isDefaultPolicy) {
+		this(other);
+		updateFromConfig(configProvider, isDefaultPolicy);
+	}
+
+	/**
 	 * Copy client policy from another client policy.
 	 */
 	public ClientPolicy(ClientPolicy other) {
@@ -444,12 +494,157 @@ public class ClientPolicy {
 		this.rackAware = other.rackAware;
 		this.rackId = other.rackId;
 		this.rackIds = (other.rackIds != null)? new ArrayList<Integer>(other.rackIds) : null;
+		this.appId = other.appId;
 	}
 
 	/**
 	 * Default constructor.
 	 */
 	public ClientPolicy() {
+	}
+
+	private void validateErrorRateConfig() {
+		float ratio = (errorRateWindow == 0)? (float) 0.0 : ((float)maxErrorRate / (float)errorRateWindow);
+
+		if ( !(1 <= ratio && ratio <= 100)) {
+			int mer = maxErrorRate;
+			int erw = errorRateWindow;
+
+			this.maxErrorRate = 100;
+			this.errorRateWindow = 1;
+
+			Log.warn("Invalid circuit breaker configuration: max_error_rate: " + mer + ", error_rate_window: " + erw +
+					 ", ratio: " + ratio +". The ratio (max_error_rate/error_rate_window) must be between 1 and 100." +
+					 " Resetting to defaults - max_error_rate: " + maxErrorRate + " and error_rate_window: " +
+					 errorRateWindow);
+		}
+	}
+
+	private void updateFromConfig(ConfigurationProvider configProvider, boolean log) {
+		boolean logUpdate = false;
+		if (configProvider == null) {
+			return;
+		}
+		Configuration config = configProvider.fetchConfiguration();
+		if (config == null) {
+			return;
+		}
+		StaticConfiguration sConfig = config.getStaticConfiguration();
+		if (sConfig == null) {
+			return;
+		}
+		StaticClientConfig staCC = sConfig.getStaticClientConfig();
+		if (staCC == null) {
+			return;
+		}
+
+		if (log && Log.infoEnabled()) {
+			logUpdate = true;
+		}
+		if (staCC.maxConnectionsPerNode != null && this.maxConnsPerNode != staCC.maxConnectionsPerNode.value) {
+			this.maxConnsPerNode = staCC.maxConnectionsPerNode.value;
+			if (logUpdate) {
+				Log.info("Set ClientPolicy.maxConnsPerNode = " + this.maxConnsPerNode);
+			}
+		}
+		if (staCC.minConnectionsPerNode != null && this.minConnsPerNode != staCC.minConnectionsPerNode.value) {
+			this.minConnsPerNode = staCC.minConnectionsPerNode.value;
+			if (logUpdate) {
+				Log.info("Set ClientPolicy.minConnsPerNode = " + this.minConnsPerNode);
+			}
+		}
+		if (staCC.asyncMaxConnectionsPerNode != null && this.asyncMaxConnsPerNode != staCC.asyncMaxConnectionsPerNode.value) {
+			this.asyncMaxConnsPerNode = staCC.asyncMaxConnectionsPerNode.value;
+			if (logUpdate) {
+				Log.info("Set ClientPolicy.asyncMaxConnsPerNode = " + this.asyncMaxConnsPerNode);
+			}
+		}
+		if (staCC.asyncMinConnectionsPerNode != null && this.asyncMinConnsPerNode != staCC.asyncMinConnectionsPerNode.value) {
+			this.asyncMinConnsPerNode = staCC.asyncMinConnectionsPerNode.value;
+			if (logUpdate) {
+				Log.info("Set ClientPolicy.asyncMinConnsPerNode = " + this.asyncMinConnsPerNode);
+			}
+		}
+
+		DynamicConfiguration dConfig = config.getDynamicConfiguration();
+		if (dConfig == null) {
+			return;
+		}
+		DynamicClientConfig dynCC = dConfig.getDynamicClientConfig();
+		if (dynCC == null) {
+			return;
+		}
+		if (dynCC.appId != null && !Objects.equals(this.appId, dynCC.appId.value)) {
+			this.appId = dynCC.appId.value;
+			if (logUpdate) {
+				Log.info("Set ClientPolicy.appId = " + this.appId);
+			}
+		}
+		if (dynCC.timeout != null && this.timeout != dynCC.timeout.value) {
+			this.timeout = dynCC.timeout.value;
+			if (logUpdate) {
+				Log.info("Set ClientPolicy.timeout = " + this.timeout);
+			}
+		}
+		if (dynCC.errorRateWindow != null && this.errorRateWindow != dynCC.errorRateWindow.value) {
+			this.errorRateWindow = dynCC.errorRateWindow.value;
+			if (logUpdate) {
+				Log.info("Set ClientPolicy.errorRateWindow = " + this.errorRateWindow);
+			}
+		}
+		if (dynCC.maxErrorRate != null && this.maxErrorRate != dynCC.maxErrorRate.value) {
+			this.maxErrorRate = dynCC.maxErrorRate.value;
+			if (logUpdate) {
+				Log.info("Set ClientPolicy.maxErrorRate = " + this.maxErrorRate);
+			}
+		}
+		validateErrorRateConfig();
+		if (dynCC.failIfNotConnected != null && this.failIfNotConnected != dynCC.failIfNotConnected.value) {
+			this.failIfNotConnected = dynCC.failIfNotConnected.value;
+			if (logUpdate) {
+				Log.info("Set ClientPolicy.failIfNotConnected = " + this.failIfNotConnected);
+			}
+		}
+		if (dynCC.loginTimeout != null && this.loginTimeout != dynCC.loginTimeout.value) {
+			this.loginTimeout = dynCC.loginTimeout.value;
+			if (logUpdate) {
+				Log.info("Set ClientPolicy.loginTimeout = " + this.loginTimeout);
+			}
+		}
+		if (dynCC.maxSocketIdle != null && this.maxSocketIdle != dynCC.maxSocketIdle.value) {
+			if (dynCC.maxSocketIdle.value < 0) {
+				Log.error("Invalid maxSocketIdle in config: " + dynCC.maxSocketIdle.value);
+			} else {
+				this.maxSocketIdle = dynCC.maxSocketIdle.value;
+				if (logUpdate) {
+					Log.info("Set ClientPolicy.maxSocketIdle = " + this.maxSocketIdle);
+				}
+			}
+		}
+		if (dynCC.rackAware != null && this.rackAware != dynCC.rackAware.value) {
+			this.rackAware = dynCC.rackAware.value;
+			if (logUpdate) {
+				Log.info("Set ClientPolicy.rackAware = " + this.rackAware);
+			}
+		}
+		if (dynCC.rackIds != null && !Util.rackIdsEqual(this.rackIds, dynCC.rackIds.stream().mapToInt(i->i).toArray())) {
+			this.rackIds = dynCC.rackIds;
+			if (logUpdate) {
+				Log.info("Set ClientPolicy.rackIds = " + this.rackIds);
+			}
+		}
+		if (dynCC.tendInterval != null && this.tendInterval != dynCC.tendInterval.value) {
+			this.tendInterval = dynCC.tendInterval.value;
+			if (logUpdate) {
+				Log.info("Set ClientPolicy.tendInterval = " + this.tendInterval);
+			}
+		}
+		if (dynCC.useServiceAlternative != null && this.useServicesAlternate != dynCC.useServiceAlternative.value) {
+			this.useServicesAlternate = dynCC.useServiceAlternative.value;
+			if (logUpdate) {
+				Log.info("Set ClientPolicy.useServicesAlternate = " + this.useServicesAlternate);
+			}
+		}
 	}
 
 	// Include setters to facilitate Spring's ConfigurationProperties.
@@ -616,5 +811,9 @@ public class ClientPolicy {
 
 	public void setRackIds(List<Integer> rackIds) {
 		this.rackIds = rackIds;
+	}
+
+	public void setAppId(String appId) {
+		this.appId = appId;
 	}
 }

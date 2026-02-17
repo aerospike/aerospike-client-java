@@ -26,6 +26,7 @@ import static org.junit.Assert.fail;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.aerospike.client.util.Version;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -415,6 +416,7 @@ public class TestBatch extends TestSync {
 	@Test
 	public void batchReadTTL() {
 		org.junit.Assume.assumeTrue(args.hasTtl);
+        org.junit.Assume.assumeTrue("Skipping for server version less than 7.0", args.serverVersion.isGreaterThan(new Version(7, 0, 0, 0)));
 
 		// WARNING: This test takes a long time to run due to sleeps.
 		// Define keys
@@ -438,7 +440,7 @@ public class TestBatch extends TestSync {
 		BatchRead br1 = new BatchRead(brp1, key1, new String[] {"a"});
 		BatchRead br2 = new BatchRead(brp2, key2, new String[] {"a"});
 
-		List<BatchRecord> list = new ArrayList<BatchRecord>();
+		List<BatchRecord> list = new ArrayList<>();
 		list.add(br1);
 		list.add(br2);
 
@@ -476,7 +478,7 @@ public class TestBatch extends TestSync {
 		assertFalse(rv);
 	}
 
-	private void assertBatchBinEqual(List<BatchRead> list, String binName, int i) {
+    private void assertBatchBinEqual(List<BatchRead> list, String binName, int i) {
 		BatchRead batch = list.get(i);
 		assertBinEqual(batch.key, batch.record, binName, ValuePrefix + (i + 1));
 	}

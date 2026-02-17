@@ -22,6 +22,7 @@ import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.Node;
 import com.aerospike.client.policy.Policy;
 import com.aerospike.client.query.Statement;
+import com.aerospike.client.util.Version;
 
 /**
  * Task used to poll for long-running server execute job completion.
@@ -69,14 +70,15 @@ public class ExecuteTask extends Task {
 	public int queryStatus() throws AerospikeException {
 		// All nodes must respond with complete to be considered done.
 		Node[] nodes = cluster.validateNodes();
-
 		String tid = Long.toUnsignedString(taskId);
 		String module = (scan) ? "scan" : "query";
-		String cmd1 = "query-show:trid=" + tid;
-		String cmd2 = module + "-show:trid=" + tid;
-		String cmd3 = "jobs:module=" + module + ";cmd=get-job;trid=" + tid;
 
 		for (Node node : nodes) {
+			Version serverVersion = node.getServerVersion();
+			String cmd1 = serverVersion.isGreaterOrEqual(Version.SERVER_VERSION_8_1) ? "query-show:id=" + tid : "query-show:trid=" + tid;
+			String cmd2 = serverVersion.isGreaterOrEqual(Version.SERVER_VERSION_8_1) ? module + "-show:id=" + tid : module + "-show:trid=" + tid;
+			String cmd3 = serverVersion.isGreaterOrEqual(Version.SERVER_VERSION_8_1) ? "jobs:module=" + module + ";cmd=get-job;id=" + tid : "jobs:module=" + module + ";cmd=get-job;trid=" + tid;
+
 			String command;
 
 			if (node.hasPartitionQuery()) {

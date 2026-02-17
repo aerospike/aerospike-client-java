@@ -31,6 +31,7 @@ import java.net.URL;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.List;
 
 import javax.management.Attribute;
 import javax.management.AttributeList;
@@ -245,5 +246,28 @@ public final class Util {
 		catch (Throwable e) {
 			return 0.0;
 		}
+	}
+
+	public static boolean rackIdsEqual(List<Integer> racks1, int[] racks2) {
+		if (racks1 == null) {
+			return racks2 == null;
+		}
+		else if (racks2 == null) {
+			return false;
+		}
+
+		if (racks1.size() != racks2.length) {
+			return false;
+		}
+
+		for (int i = 0; i < racks2.length; i++) {
+			int r1 = racks1.get(i);
+			int r2 = racks2[i];
+
+			if (r1 != r2) {
+				return false;
+			}
+		}
+		return true;
 	}
 }

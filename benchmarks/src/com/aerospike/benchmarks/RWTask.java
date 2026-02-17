@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2024 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -368,7 +368,7 @@ public abstract class RWTask {
 	 */
 	protected void doReadLong(long keyIdx, boolean multiBin) {
 		// Warning: read from file only works when keyStart + keyIdx < Integer.MAX_VALUE.
-		long numKey = Long.parseLong(Main.keyList.get((int)(keyStart + keyIdx)));
+		long numKey = Long.parseLong(AerospikeBenchmark.keyList.get((int)(keyStart + keyIdx)));
 
 
 		try {
@@ -400,7 +400,7 @@ public abstract class RWTask {
 	 */
 	protected void doReadString(long keyIdx,boolean multiBin) {
 		// Warning: read from file only works when keyStart + keyIdx < Integer.MAX_VALUE.
-		String strKey = Main.keyList.get((int)(keyStart+keyIdx));
+		String strKey = AerospikeBenchmark.keyList.get((int)(keyStart+keyIdx));
 
 		try {
 			if (args.udfValues != null) {

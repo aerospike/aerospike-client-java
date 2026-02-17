@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -251,16 +251,17 @@ public final class Record {
 				else {
 					sep = true;
 				}
-				sb.append('(');
-				sb.append(entry.getKey());
-				sb.append(':');
-				sb.append(entry.getValue());
-				sb.append(')');
 
 				if (sb.length() > 1000) {
 					sb.append("...");
 					break;
 				}
+
+				sb.append('(');
+				sb.append(entry.getKey());
+				sb.append(':');
+				sb.append(entry.getValue());
+				sb.append(')');
 			}
 		}
 		else {
@@ -280,19 +281,26 @@ public final class Record {
 	 */
 	@Override
 	public boolean equals(Object obj) {
-		if (this == obj)
+		if (this == obj) {
 			return true;
-		if (obj == null)
+		}
+		if (obj == null) {
 			return false;
-		if (getClass() != obj.getClass())
+		}
+		if (getClass() != obj.getClass()) {
 			return false;
+		}
 		Record other = (Record) obj;
-		if (expiration != other.expiration)
+		if (expiration != other.expiration) {
 			return false;
-		if (generation != other.generation)
+		}
+		if (generation != other.generation) {
 			return false;
+		}
 		if (bins == null) {
 			return other.bins == null;
-		} else return bins.equals(other.bins);
+		} else {
+			return bins.equals(other.bins);
+		}
 	}
 }

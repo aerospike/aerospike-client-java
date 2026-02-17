@@ -21,6 +21,7 @@ import java.util.List;
 import com.aerospike.client.Value;
 import com.aerospike.client.cdt.CTX;
 import com.aerospike.client.exp.Exp;
+import com.aerospike.client.exp.Expression;
 
 public final class Pack {
 	public static byte[] pack(int command, CTX... ctx) {
@@ -579,6 +580,16 @@ public final class Pack {
 		return packer.getBuffer();
 	}
 
+	public static byte[] pack(int command, int v1, Expression expression) {
+		Packer packer = new Packer();
+		packer.packArrayBegin(3);
+		packer.packInt(command);
+		packer.packInt(v1);
+		packer.packByteArray(expression.getBytes(), 0, expression.getBytes().length);
+
+		return packer.getBuffer();
+	}
+
 	public static byte[] pack(int command, Exp v1) {
 		Packer packer = new Packer();
 
@@ -775,7 +786,10 @@ public final class Pack {
 
 			for (CTX c : ctx) {
 				packer.packInt(c.id);
-				c.value.pack(packer);
+				if (c.value != null)
+					c.value.pack(packer);
+				else
+		        	packer.packByteArray(c.exp.getBytes(), 0, c.exp.getBytes().length);
 			}
 		}
 	}
@@ -787,7 +801,12 @@ public final class Pack {
 
 		for (CTX c : ctx) {
 			packer.packInt(c.id);
-			c.value.pack(packer);
+			if (c.value != null) {
+				c.value.pack(packer);
+			}
+			else {
+		        packer.packByteArray(c.exp.getBytes(), 0, c.exp.getBytes().length);
+			}
 		}
 
 		packer.createBuffer();
@@ -796,7 +815,10 @@ public final class Pack {
 
 		for (CTX c : ctx) {
 			packer.packInt(c.id);
-			c.value.pack(packer);
+			if (c.value != null) 
+				c.value.pack(packer);
+			else 
+		        packer.packByteArray(c.exp.getBytes(), 0, c.exp.getBytes().length);
 		}
 
 		return packer.getBuffer();

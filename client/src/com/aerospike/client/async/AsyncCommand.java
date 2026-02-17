@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2024 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -48,6 +48,7 @@ public abstract class AsyncCommand extends Command {
 	static final int COMPLETE = 12;
 
 	Policy policy;
+	String namespace;
 	ArrayDeque<byte[]> bufferQueue;
 	ArrayList<AerospikeException> subExceptions;
 	int receiveSize;
@@ -59,19 +60,21 @@ public abstract class AsyncCommand extends Command {
 	/**
 	 * Default constructor.
 	 */
-	public AsyncCommand(Policy policy, boolean isSingle) {
+	public AsyncCommand(Policy policy, boolean isSingle, String namespace) {
 		super(policy.socketTimeout, policy.totalTimeout, policy.maxRetries);
 		this.policy = policy;
 		this.isSingle = isSingle;
+		this.namespace = namespace;
 	}
 
 	/**
 	 * Scan/Query constructor.
 	 */
-	public AsyncCommand(Policy policy, int socketTimeout, int totalTimeout) {
+	public AsyncCommand(Policy policy, int socketTimeout, int totalTimeout, String namespace) {
 		super(socketTimeout, totalTimeout, 0);
 		this.policy = policy;
 		this.isSingle = false;
+		this.namespace = namespace;
 	}
 
 	final int parseProto(long proto) {
@@ -198,16 +201,16 @@ public abstract class AsyncCommand extends Command {
 		ae.setIteration(iteration);
 		ae.setInDoubt(isWrite(), commandSentCounter);
 		ae.setSubExceptions(subExceptions);
-		
+
 		if (ae.getInDoubt()) {
 			onInDoubt();
 		}
 
 		onFailure(ae);
 	}
-	
+
 	void onInDoubt() {
-        // Write commands will override this method.		
+		// Write commands will override this method.
 	}
 
 	boolean retryBatch(Runnable command, long deadline) {

@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2024 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -28,7 +28,7 @@ public abstract class AsyncReadBase extends AsyncCommand {
 	protected final Partition partition;
 
 	public AsyncReadBase(Cluster cluster, Policy policy, Key key) {
-		super(policy, true);
+		super(policy, true, key.namespace);
 		this.key = key;
 		this.partition = Partition.read(cluster, policy, key);
 		cluster.addCommandCount();

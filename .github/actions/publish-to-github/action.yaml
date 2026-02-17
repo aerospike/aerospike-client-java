@@ -11,13 +11,16 @@ inputs:
     required: false
     default: github
   release-notes:
-    description: ""
+    description: "Release notes"
     required: true
   github-token:
-    description: ""
+    description: "Github auth token"
     required: true
   artifact-version:
-    description: ""
+    description: "Version of the artifact to release"
+    required: true
+  build-name-number:
+    description: "String containing build name, number and jdk versions"
     required: true
 
 runs:
@@ -30,6 +33,31 @@ runs:
         echo "${{ inputs.target-folder }}"
         echo "${{ inputs.artifact-version }}"
         echo "${{ inputs.release-notes }}"
+        echo "${{ inputs.build-name-number }}"
+
+    - id: get-jdk-version
+      shell: bash
+      run: |
+        # Building array from json input
+        JDK_VERSIONS=($(echo '${{ inputs.build-name-number }}' | jq -r '.[] | match("jdk[^/]+").string'))
+
+        # Creating count of number of unique jdk versions
+        UNIQUE_COUNT=$(printf "%s\n" "${JDK_VERSIONS[@]}" | sort -u | wc -l)
+
+        # If the input contains more than one JDK version we know this case cannot exists therefore exit with error
+        if [ "$UNIQUE_COUNT" -eq 1 ]; then
+          # All JDK versions are the same: ${JDK_VERSIONS[0]}
+          echo jdk-version="${JDK_VERSIONS[0]}" >> $GITHUB_OUTPUT
+        else
+          echo "Found multiple JDK versions: ${JDK_VERSIONS[*]}"
+          exit 1
+        fi
+
+    - id: get-artifact-version
+      shell: bash
+      run: |
+        VERSION=$(echo '${{ inputs.artifact-version }}' | jq -r '.[]')
+        echo artifact-version="${VERSION}" >> $GITHUB_OUTPUT
 
     - name: Create upload archive for github
       id: create-artifact
@@ -41,11 +69,12 @@ runs:
         find "$src" -type f \
           -exec cp {} "$dest" \;
 
+    # Listing staged artifacts to be uploaded
     - id: get-github-release-artifact-names
       working-directory: ${{ inputs.target-folder }}
       shell: bash
       run: |
-        ARTIFACTS=$(ls -l)
+        ARTIFACTS=$(ls | sed 's/^/${{ inputs.target-folder }}\//')
 
         echo "release-artifacts<<EOF" >> $GITHUB_OUTPUT
         echo "${ARTIFACTS}" >> $GITHUB_OUTPUT
@@ -55,27 +84,26 @@ runs:
       shell: bash
       run: |
         pwd
-        ls -laR "${{ inputs.target-folder }}"
+        ls ${{ inputs.target-folder }} | sed 's/^//' 
 
     - name: Debug GitHub publish input
       shell: bash
       working-directory: ${{ inputs.target-folder }}
       run: |
         echo "working directory: ${{ inputs.target-folder }}"
-        echo "tag name: Release ${{ inputs.artifact-version }}"
-        echo "body: Changes for release ${{ inputs.artifact-version }}"
+        echo "tag name: Release ${{ steps.get-artifact-version.outputs.artifact-version }}"
+        echo "body: Changes for release ${{ steps.get-artifact-version.outputs.artifact-version }}"
         echo "body: ${{ inputs.release-notes }}"
         echo "files: ${{ steps.get-github-release-artifact-names.outputs.release-artifacts }}"
 
     - name: Publish release to github
-      working-directory: ${{ inputs.target-folder }}
       uses: softprops/action-gh-release@v2
       with:
         token: ${{ inputs.github-token }}
-        tag_name: Release ${{ inputs.artifact-version }}
+        tag_name: ${{ steps.get-artifact-version.outputs.artifact-version }}${{ steps.get-jdk-version.outputs.jdk-version == 'jdk8' && '-jdk8' || '' }}
         body: |
-          Changes for release ${{ inputs.artifact-version }}
+          Changes for release ${{ steps.get-artifact-version.outputs.artifact-version }}
           "${{ inputs.release-notes }}"
-        draft: false
+        draft: true
         prerelease: false
         files: ${{ steps.get-github-release-artifact-names.outputs.release-artifacts }}

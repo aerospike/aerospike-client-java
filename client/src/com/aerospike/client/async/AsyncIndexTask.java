@@ -56,7 +56,7 @@ public class AsyncIndexTask {
 			listener.onFailure(new AerospikeException("Cluster is empty"));
 		}
 
-		String command = buildStatusCommand(namespace, indexName);
+		String command = buildStatusCommand(namespace, indexName, node.serverVersion);
 
 		client.info(eventLoop, new InfoListener() {
 			@Override

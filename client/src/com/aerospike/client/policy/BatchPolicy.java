@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2024 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -15,6 +15,15 @@
  * the License.
  */
 package com.aerospike.client.policy;
+
+import com.aerospike.client.Log;
+import com.aerospike.client.configuration.ConfigurationProvider;
+import com.aerospike.client.configuration.serializers.Configuration;
+import com.aerospike.client.configuration.serializers.DynamicConfiguration;
+import com.aerospike.client.configuration.serializers.dynamicconfig.DynamicBatchReadConfig;
+import com.aerospike.client.configuration.serializers.dynamicconfig.DynamicBatchWriteConfig;
+
+import java.util.Objects;
 
 /**
  * Batch parent policy.
@@ -89,6 +98,24 @@ public class BatchPolicy extends Policy {
 	public boolean sendSetName;
 
 	/**
+	 * Copy batch policy from another batch policy AND override certain policy attributes if they exist in the
+	 * configProvider. Any policy overrides will not get logged.
+	 */
+	public BatchPolicy(BatchPolicy other, ConfigurationProvider configProvider) {
+		this(other);
+		updateFromConfig(configProvider, false, "");
+	}
+
+	/**
+	 * Copy batch policy from another batch policy AND override certain policy attributes if they exist in the
+	 * configProvider. Any default policy overrides will get logged.
+	 */
+	public BatchPolicy(BatchPolicy other, ConfigurationProvider configProvider, boolean isDefaultPolicy, String preText) {
+		this(other);
+		updateFromConfig(configProvider, isDefaultPolicy, preText);
+	}
+
+	/**
 	 * Copy batch policy from another batch policy.
 	 */
 	public BatchPolicy(BatchPolicy other) {
@@ -129,6 +156,116 @@ public class BatchPolicy extends Policy {
 		return policy;
 	}
 
+	private void updateFromConfig(ConfigurationProvider configProvider, boolean log, String preText) {
+		boolean logUpdate = false;
+		if (configProvider == null) {
+			return;
+		}
+		Configuration config = configProvider.fetchConfiguration();
+		if (config == null) {
+			return;
+		}
+		DynamicConfiguration dConfig = config.getDynamicConfiguration();
+		if (dConfig == null) {
+			return;
+		}
+		DynamicBatchReadConfig dynBRC = dConfig.getDynamicBatchReadConfig();
+		if (dynBRC == null) {
+			return;
+		}
+
+		if (log && Log.infoEnabled()) {
+			logUpdate = true;
+		}
+		if (!Objects.equals(preText, "")) {
+			preText = " " + preText;
+		}
+		if (dynBRC.readModeAP != null && this.readModeAP != dynBRC.readModeAP) {
+			this.readModeAP = dynBRC.readModeAP;
+			if (logUpdate) {
+				Log.info("Set" + preText + " BatchPolicy.readModeAP = " + this.readModeAP);
+			}
+		}
+		if (dynBRC.readModeSC != null && this.readModeSC != dynBRC.readModeSC) {
+			this.readModeSC = dynBRC.readModeSC;
+			if (logUpdate) {
+				Log.info("Set" + preText + " BatchPolicy.readModeSC = " + this.readModeSC);
+			}
+		}
+		if (dynBRC.connectTimeout != null && this.connectTimeout != dynBRC.connectTimeout.value) {
+			this.connectTimeout = dynBRC.connectTimeout.value;
+			if (logUpdate) {
+				Log.info("Set" + preText + " BatchPolicy.connectTimeout = " + this.connectTimeout);
+			}
+		}
+		if (dynBRC.replica != null && this.replica != dynBRC.replica) {
+			this.replica = dynBRC.replica;
+			if (logUpdate) {
+				Log.info("Set" + preText + " BatchPolicy.replica = " + this.replica);
+			}
+		}
+		if (dynBRC.sleepBetweenRetries != null && this.sleepBetweenRetries != dynBRC.sleepBetweenRetries.value) {
+			this.sleepBetweenRetries = dynBRC.sleepBetweenRetries.value;
+			if (logUpdate) {
+				Log.info("Set" + preText + " BatchPolicy.sleepBetweenRetries = " + this.sleepBetweenRetries);
+			}
+		}
+		if (dynBRC.sleepMultiplier != null && this.sleepMultiplier != dynBRC.sleepMultiplier.value) {
+			this.sleepMultiplier = dynBRC.sleepMultiplier.value;
+			if (logUpdate) {
+				Log.info("Set" + preText + " BatchPolicy.sleepMultiplier = " + this.sleepMultiplier);
+			}
+		}
+		if (dynBRC.socketTimeout != null && this.socketTimeout != dynBRC.socketTimeout.value) {
+			this.socketTimeout = dynBRC.socketTimeout.value;
+			if (logUpdate) {
+				Log.info("Set" + preText + " BatchPolicy.socketTimeout = " + this.socketTimeout);
+			}
+		}
+		if (dynBRC.timeoutDelay != null && this.timeoutDelay != dynBRC.timeoutDelay.value) {
+			this.timeoutDelay = dynBRC.timeoutDelay.value;
+			if (logUpdate) {
+				Log.info("Set" + preText + " BatchPolicy.timeoutDelay = " + this.timeoutDelay);
+			}
+		}
+		if (dynBRC.totalTimeout != null && this.totalTimeout != dynBRC.totalTimeout.value) {
+			this.totalTimeout = dynBRC.totalTimeout.value;
+			if (logUpdate) {
+				Log.info("Set" + preText + " BatchPolicy.totalTimeout = " + this.totalTimeout);
+			}
+		}
+		if (dynBRC.maxRetries != null && this.maxRetries != dynBRC.maxRetries.value) {
+			this.maxRetries = dynBRC.maxRetries.value;
+			if (logUpdate) {
+				Log.info("Set" + preText + " BatchPolicy.maxRetries = " + this.maxRetries);
+			}
+		}
+		if (dynBRC.maxConcurrentThreads != null && this.maxConcurrentThreads != dynBRC.maxConcurrentThreads.value) {
+			this.maxConcurrentThreads = dynBRC.maxConcurrentThreads.value;
+			if (logUpdate) {
+				Log.info("Set" + preText + " BatchPolicy.maxConcurrentThreads = " + this.maxConcurrentThreads);
+			}
+		}
+		if (dynBRC.allowInline != null && this.allowInline != dynBRC.allowInline.value) {
+			this.allowInline = dynBRC.allowInline.value;
+			if (logUpdate) {
+				Log.info("Set" + preText + " BatchPolicy.allowInline = " + this.allowInline);
+			}
+		}
+		if (dynBRC.allowInlineSSD != null && this.allowInlineSSD != dynBRC.allowInlineSSD.value) {
+			this.allowInlineSSD = dynBRC.allowInlineSSD.value;
+			if (logUpdate) {
+				Log.info("Set" + preText + " BatchPolicy.allowInlineSSD = " + this.allowInlineSSD);
+			}
+		}
+		if (dynBRC.respondAllKeys != null && this.respondAllKeys != dynBRC.respondAllKeys.value) {
+			this.respondAllKeys = dynBRC.respondAllKeys.value;
+			if (logUpdate) {
+				Log.info("Set" + preText + " BatchPolicy.respondAllKeys = " + this.respondAllKeys);
+			}
+		}
+	}
+
 	// Include setters to facilitate Spring's ConfigurationProperties.
 
 	public void setMaxConcurrentThreads(int maxConcurrentThreads) {
@@ -145,5 +282,60 @@ public class BatchPolicy extends Policy {
 
 	public void setRespondAllKeys(boolean respondAllKeys) {
 		this.respondAllKeys = respondAllKeys;
+	}
+
+	/**
+	 * Apply batch_write config properties if they exist in the configProvider (BatchWrite).
+	 */
+	public void graftBatchWriteConfig(ConfigurationProvider configProvider) {
+		Configuration config = configProvider.fetchConfiguration();
+		if (config == null) {
+			return;
+		}
+		DynamicConfiguration dConfig = config.getDynamicConfiguration();
+		if (dConfig == null) {
+			return;
+		}
+		DynamicBatchWriteConfig dynBWC = dConfig.getDynamicBatchWriteConfig();
+		if (dynBWC == null) {
+			return;
+		}
+
+		if (dynBWC.connectTimeout != null && this.connectTimeout != dynBWC.connectTimeout.value) {
+			this.connectTimeout = dynBWC.connectTimeout.value;
+		}
+		if (dynBWC.replica != null && this.replica != dynBWC.replica) {
+			this.replica = dynBWC.replica;
+		}
+		if (dynBWC.sendKey != null && 	this.sendKey != dynBWC.sendKey.value) {
+			this.sendKey = dynBWC.sendKey.value;
+		}
+		if (dynBWC.sleepBetweenRetries != null && this.sleepBetweenRetries != dynBWC.sleepBetweenRetries.value) {
+			this.sleepBetweenRetries = dynBWC.sleepBetweenRetries.value;
+		}
+		if (dynBWC.sleepMultiplier != null && this.sleepMultiplier != dynBWC.sleepMultiplier.value) {
+			this.sleepMultiplier = dynBWC.sleepMultiplier.value;
+		}
+		if (dynBWC.socketTimeout != null && this.socketTimeout != dynBWC.socketTimeout.value) {
+			this.socketTimeout = dynBWC.socketTimeout.value;
+		}
+		if (dynBWC.timeoutDelay != null && this.timeoutDelay != dynBWC.timeoutDelay.value) {
+			this.timeoutDelay = dynBWC.timeoutDelay.value;
+		}
+		if (dynBWC.totalTimeout != null && this.totalTimeout != dynBWC.totalTimeout.value) {
+			this.totalTimeout = dynBWC.totalTimeout.value;
+		}
+		if (dynBWC.maxRetries != null && this.maxRetries != dynBWC.maxRetries.value) {
+			this.maxRetries = dynBWC.maxRetries.value;
+		}
+		if (dynBWC.maxConcurrentThreads != null && this.maxConcurrentThreads != dynBWC.maxConcurrentThreads.value) {
+			this.maxConcurrentThreads = dynBWC.maxConcurrentThreads.value;
+		}
+		if (dynBWC.allowInlineSSD != null && this.allowInlineSSD != dynBWC.allowInlineSSD.value) {
+			this.allowInlineSSD = dynBWC.allowInlineSSD.value;
+		}
+		if (dynBWC.respondAllKeys != null && this.respondAllKeys != dynBWC.respondAllKeys.value) {
+			this.respondAllKeys = dynBWC.respondAllKeys.value;
+		}
 	}
 }

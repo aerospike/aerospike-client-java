@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2024 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -30,6 +30,7 @@ import com.aerospike.test.sync.basic.TestAdd;
 import com.aerospike.test.sync.basic.TestAppend;
 import com.aerospike.test.sync.basic.TestBatch;
 import com.aerospike.test.sync.basic.TestBitExp;
+import com.aerospike.test.sync.basic.TestConfigLoadYAML;
 import com.aerospike.test.sync.basic.TestDeleteBin;
 import com.aerospike.test.sync.basic.TestExpOperation;
 import com.aerospike.test.sync.basic.TestExpire;
@@ -45,6 +46,7 @@ import com.aerospike.test.sync.basic.TestOperateHll;
 import com.aerospike.test.sync.basic.TestOperateList;
 import com.aerospike.test.sync.basic.TestOperateMap;
 import com.aerospike.test.sync.basic.TestPutGet;
+import com.aerospike.test.sync.basic.TestQueryRoles;
 import com.aerospike.test.sync.basic.TestReplace;
 import com.aerospike.test.sync.basic.TestScan;
 import com.aerospike.test.sync.basic.TestServerInfo;
@@ -52,6 +54,7 @@ import com.aerospike.test.sync.basic.TestTouch;
 import com.aerospike.test.sync.basic.TestTxn;
 import com.aerospike.test.sync.basic.TestUDF;
 import com.aerospike.test.sync.query.TestIndex;
+import com.aerospike.test.sync.query.TestExpSecondaryIndex;
 import com.aerospike.test.sync.query.TestQueryAverage;
 import com.aerospike.test.sync.query.TestQueryBlob;
 import com.aerospike.test.sync.query.TestQueryCollection;
@@ -74,6 +77,7 @@ import com.aerospike.test.util.Args;
 	TestAppend.class,
 	TestBatch.class,
 	TestBitExp.class,
+	TestConfigLoadYAML.class,
 	TestDeleteBin.class,
 	TestExpire.class,
 	TestExpOperation.class,
@@ -89,6 +93,7 @@ import com.aerospike.test.util.Args;
 	TestOperateList.class,
 	TestOperateMap.class,
 	TestPutGet.class,
+	TestQueryRoles.class,
 	TestReplace.class,
 	TestScan.class,
 	TestServerInfo.class,
@@ -96,6 +101,7 @@ import com.aerospike.test.util.Args;
 	TestTxn.class,
 	TestUDF.class,
 	TestIndex.class,
+	TestExpSecondaryIndex.class,
 	TestQueryAverage.class,
 	TestQueryBlob.class,
 	TestQueryCollection.class,

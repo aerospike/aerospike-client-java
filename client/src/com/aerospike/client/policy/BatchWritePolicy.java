@@ -16,6 +16,11 @@
  */
 package com.aerospike.client.policy;
 
+import com.aerospike.client.Log;
+import com.aerospike.client.configuration.ConfigurationProvider;
+import com.aerospike.client.configuration.serializers.Configuration;
+import com.aerospike.client.configuration.serializers.DynamicConfiguration;
+import com.aerospike.client.configuration.serializers.dynamicconfig.DynamicBatchWriteConfig;
 import com.aerospike.client.exp.Expression;
 
 /**
@@ -122,6 +127,24 @@ public final class BatchWritePolicy {
 	public boolean sendKey;
 
 	/**
+	 * Copy policy from another policy AND override certain policy attributes if they exist in the configProvider.
+	 * Any policy overrides will not get logged.
+	 */
+	public BatchWritePolicy(BatchWritePolicy other, ConfigurationProvider configProvider) {
+		this(other);
+		updateFromConfig(configProvider, false);
+	}
+
+	/**
+	 * Copy policy from another policy AND override certain policy attributes if they exist in the configProvider.
+	 * Any default policy overrides will get logged.
+	 */
+	public BatchWritePolicy(BatchWritePolicy other, ConfigurationProvider configProvider, boolean isDefaultPolicy) {
+		this(other);
+		updateFromConfig(configProvider, isDefaultPolicy);
+	}
+
+	/**
 	 * Copy constructor.
 	 */
 	public BatchWritePolicy(BatchWritePolicy other) {
@@ -141,6 +164,42 @@ public final class BatchWritePolicy {
 	 */
 	public BatchWritePolicy() {
 	}
+
+	private void updateFromConfig(ConfigurationProvider configProvider, boolean log) {
+		boolean logUpdate = false;
+		if (configProvider == null) {
+			return;
+		}
+		Configuration config = configProvider.fetchConfiguration();
+		if (config == null) {
+			return;
+		}
+		DynamicConfiguration dConfig = config.getDynamicConfiguration();
+		if (dConfig == null) {
+			return;
+		}
+		DynamicBatchWriteConfig dynBWC = dConfig.getDynamicBatchWriteConfig();
+		if (dynBWC == null) {
+			return;
+		}
+
+		if (log && Log.infoEnabled()) {
+			logUpdate = true;
+		}
+		if (dynBWC.sendKey != null && this.sendKey != dynBWC.sendKey.value) {
+			this.sendKey = dynBWC.sendKey.value;
+			if (logUpdate) {
+				Log.info("Set BatchWritePolicy.sendKey = " + this.sendKey);
+			}
+		}
+		if (dynBWC.durableDelete != null && this.durableDelete != dynBWC.durableDelete.value) {
+			this.durableDelete = dynBWC.durableDelete.value;
+			if (logUpdate) {
+				Log.info("Set BatchWritePolicy.durableDelete = " + this.durableDelete);
+			}
+		}
+	}
+
 
 	// Include setters to facilitate Spring's ConfigurationProperties.
 
