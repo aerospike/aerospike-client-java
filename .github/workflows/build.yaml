@@ -3,6 +3,8 @@ run-name: Build artifact for ${{ inputs.crypto-type }} ${{ inputs.java-version }
 permissions:
   # This is required for requesting the OIDC token
   id-token: write
+  checks: write
+  pull-requests: write
 
 on:
   workflow_call:
@@ -54,3 +56,10 @@ jobs:
           server-type: ${{ inputs.server-type }}
           oidc-provider: ${{ secrets.JFROG_OIDC_PROVIDER }}
           oidc-audience: ${{ secrets.JFROG_OIDC_AUDIENCE }}
+
+      - name: Publish Test Results
+        if: ${{ always() && inputs.run-tests }}
+        uses: EnricoMi/publish-unit-test-result-action@v2
+        with:
+          files: test/target/surefire-reports/*.xml
+          check_name: "Test Results (${{ inputs.crypto-type }} / ${{ inputs.server-tag }})"
