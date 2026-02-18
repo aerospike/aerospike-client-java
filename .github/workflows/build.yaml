@@ -4,6 +4,7 @@ permissions:
   # This is required for requesting the OIDC token
   id-token: write
   checks: write
+  pull-requests: write
 
 on:
   workflow_call:
