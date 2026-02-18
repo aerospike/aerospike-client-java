@@ -95,6 +95,26 @@ jobs:
           
           echo "build-names=$BUILD_NAMES" >> "$GITHUB_OUTPUT"
 
+      - name: Get artifact version
+        id: get-version
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION=$(jq -r '[.modules[].id | split("/") | last] | unique | first' build-info.json)
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Write release summary
+        shell: bash
+        run: |
+          cat >> "$GITHUB_STEP_SUMMARY" <<EOF
+          ## Maven Central Release
+          | Field | Value |
+          |-------|-------|
+          | **Version** | \`${{ steps.get-version.outputs.version }}\` |
+          | **Build Number** | \`${{ inputs.build-number }}\` |
+          | **Artifacts** | ${{ steps.get-build-name.outputs.build-names }} |
+          EOF
+
       - name  : Debug step
         shell: bash
         run: |
