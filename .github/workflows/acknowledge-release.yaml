@@ -1,4 +1,5 @@
 name: Confirm release
+run-name: "Confirm release - build #${{ inputs.build-number }}"
 
 permissions:
   # This is required for requesting the OIDC token
