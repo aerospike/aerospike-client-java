@@ -3,6 +3,7 @@ name: PR open
 permissions:
   # This is required for requesting the OIDC token
   id-token: write
+  checks: write
 
 on:
   pull_request:
