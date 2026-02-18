@@ -1296,4 +1296,289 @@ public class TestCdtExp extends TestSync {
         assertNotNull("Union count should exist", unionCount);
         assertTrue("Union count should be positive", ((Number) unionCount).longValue() >= 3);
     }
+
+    @Test
+    public void testSelectByPathWithExpressionVariant() {
+        Key key = new Key(NAMESPACE, SET, "expressionVariantKey");
+        
+        try {
+            client.delete(null, key);
+        } catch (Exception e) {
+        }
+        
+        List<Map<String, Object>> itemsList = new ArrayList<>();
+        
+        Map<String, Object> item1 = new HashMap<>();
+        item1.put("name", "Item1");
+        item1.put("quantity", 5);
+        itemsList.add(item1);
+        
+        Map<String, Object> item2 = new HashMap<>();
+        item2.put("name", "Item2");
+        item2.put("quantity", 15);
+        itemsList.add(item2);
+        
+        Map<String, Object> item3 = new HashMap<>();
+        item3.put("name", "Item3");
+        item3.put("quantity", 25);
+        itemsList.add(item3);
+        
+        Map<String, Object> rootMap = new HashMap<>();
+        rootMap.put("items", itemsList);
+        
+        Bin bin = new Bin("data", rootMap);
+        client.put(null, key, bin);
+        
+        // Build Expression first for the filter
+        Expression filterExpression = Exp.build(
+            Exp.gt(
+                MapExp.getByKey(MapReturnType.VALUE, Exp.Type.INT,
+                    Exp.val("quantity"), Exp.mapLoopVar(LoopVarPart.VALUE)),
+                Exp.val(10)
+            )
+        );
+        
+        // Use the Expression variant of allChildrenWithFilter
+        CTX ctx1 = CTX.mapKey(Value.get("items"));
+        CTX ctx2 = CTX.allChildrenWithFilter(filterExpression);
+        CTX ctx3 = CTX.allChildrenWithFilter(
+            Exp.eq(Exp.stringLoopVar(LoopVarPart.MAP_KEY), Exp.val("name"))
+        );
+        
+        Expression selectExp = Exp.build(
+            CdtExp.selectByPath(
+                Exp.Type.LIST,
+                Exp.SELECT_VALUE,
+                Exp.mapBin("data"),
+                ctx1, ctx2, ctx3
+            )
+        );
+        
+        Record result = client.operate(null, key,
+            ExpOperation.write("filteredNames", selectExp, ExpWriteFlags.DEFAULT)
+        );
+        
+        assertTrue("Operation should succeed", result != null);
+        
+        Record finalRecord = client.get(null, key);
+        assertNotNull("Final record should exist", finalRecord);
+        
+        List<?> names = finalRecord.getList("filteredNames");
+        assertNotNull("Names should exist", names);
+        assertEquals("Should have 2 items with quantity > 10", 2, names.size());
+        assertTrue("Should contain 'Item2'", names.contains("Item2"));
+        assertTrue("Should contain 'Item3'", names.contains("Item3"));
+    }
+
+    @Test
+    public void testModifyByPathWithExpressionVariant() {
+        Key key = new Key(NAMESPACE, SET, "modifyExpressionVariantKey");
+        
+        try {
+            client.delete(null, key);
+        } catch (Exception e) {
+        }
+        
+        Map<String, Object> data = new HashMap<>();
+        List<Map<String, Object>> products = new ArrayList<>();
+        
+        Map<String, Object> p1 = new HashMap<>();
+        p1.put("name", "Product1");
+        p1.put("stock", 10);
+        products.add(p1);
+        
+        Map<String, Object> p2 = new HashMap<>();
+        p2.put("name", "Product2");
+        p2.put("stock", 20);
+        products.add(p2);
+        
+        data.put("products", products);
+        
+        Bin bin = new Bin("data", data);
+        client.put(null, key, bin);
+        
+        // Build filter Expression for items to modify
+        Expression filterExpression = Exp.build(
+            Exp.gt(
+                MapExp.getByKey(MapReturnType.VALUE, Exp.Type.INT,
+                    Exp.val("stock"), Exp.mapLoopVar(LoopVarPart.VALUE)),
+                Exp.val(15)
+            )
+        );
+        
+        // Modify stock for products with stock > 15
+        CTX ctx1 = CTX.mapKey(Value.get("products"));
+        CTX ctx2 = CTX.allChildrenWithFilter(filterExpression);  // Using Expression variant
+        CTX ctx3 = CTX.mapKey(Value.get("stock"));
+        
+        Exp modifyExp = Exp.add(
+            Exp.intLoopVar(LoopVarPart.VALUE),
+            Exp.val(50)
+        );
+        
+        Expression applyExp = Exp.build(
+            CdtExp.modifyByPath(
+                Exp.Type.MAP,
+                Exp.MODIFY_DEFAULT,
+                modifyExp,
+                Exp.mapBin("data"),
+                ctx1, ctx2, ctx3
+            )
+        );
+        
+        Record result = client.operate(null, key,
+            ExpOperation.write("data", applyExp, ExpWriteFlags.UPDATE_ONLY)
+        );
+        
+        assertTrue("Operation should succeed", result != null);
+        
+        // Verify modification
+        Record finalRecord = client.get(null, key);
+        assertNotNull("Final record should exist", finalRecord);
+        
+        Map<?, ?> finalData = (Map<?, ?>) finalRecord.getValue("data");
+        assertNotNull("Data map should exist", finalData);
+        
+        List<?> finalProducts = (List<?>) finalData.get("products");
+        assertNotNull("Products list should exist", finalProducts);
+        
+        // Product1 (stock 10) should be unchanged
+        Map<?, ?> product1 = (Map<?, ?>) finalProducts.get(0);
+        assertEquals("Product1 stock should be unchanged", 10L, ((Number) product1.get("stock")).longValue());
+        
+        // Product2 (stock 20) should be increased by 50
+        Map<?, ?> product2 = (Map<?, ?>) finalProducts.get(1);
+        assertEquals("Product2 stock should be 70 (20 + 50)", 70L, ((Number) product2.get("stock")).longValue());
+    }
+
+    @Test
+    public void testAllChildrenWithFilterNullExp() {
+        try {
+            Exp nullExp = null;
+            CTX.allChildrenWithFilter(nullExp);
+            assertTrue("Should throw NullPointerException when Exp is null", false);
+        } catch (NullPointerException e) {
+            // Expected - Exp.build() will throw NPE when trying to pack null exp
+        }
+    }
+
+    @Test
+    public void testAllChildrenWithFilterNullExpression() {
+        Key key = new Key(NAMESPACE, SET, "nullExpressionKey");
+        
+        try {
+            client.delete(null, key);
+        } catch (Exception e) {
+        }
+        
+        Map<String, Object> data = new HashMap<>();
+        List<Integer> items = new ArrayList<>();
+        items.add(1);
+        items.add(2);
+        items.add(3);
+        data.put("items", items);
+        
+        Bin bin = new Bin("data", data);
+        client.put(null, key, bin);
+        
+        try {
+            Expression nullExpression = null;
+            CTX ctx1 = CTX.mapKey(Value.get("items"));
+            CTX ctx2 = CTX.allChildrenWithFilter(nullExpression);  // Passing null Expression
+            
+            Expression selectExp = Exp.build(
+                CdtExp.selectByPath(
+                    Exp.Type.LIST,
+                    Exp.SELECT_VALUE,
+                    Exp.mapBin("data"),
+                    ctx1, ctx2
+                )
+            );
+            
+            client.operate(null, key,
+                ExpOperation.write("result", selectExp, ExpWriteFlags.DEFAULT)
+            );
+            
+            // The operation construction should fail or the server should reject it
+            assertTrue("Should handle null Expression appropriately", false);
+        } catch (NullPointerException | AerospikeException e) {
+            // Expected - null Expression should cause an error
+        }
+    }
+
+    @Test
+    public void testCombineExpAndExpressionVariants() {
+        Key key = new Key(NAMESPACE, SET, "combineVariantsKey");
+        
+        try {
+            client.delete(null, key);
+        } catch (Exception e) {
+        }
+        
+        Map<String, Object> data = new HashMap<>();
+        List<Map<String, Object>> records = new ArrayList<>();
+        
+        Map<String, Object> rec1 = new HashMap<>();
+        rec1.put("id", 1);
+        rec1.put("value", 100);
+        rec1.put("active", true);
+        records.add(rec1);
+        
+        Map<String, Object> rec2 = new HashMap<>();
+        rec2.put("id", 2);
+        rec2.put("value", 50);
+        rec2.put("active", false);
+        records.add(rec2);
+        
+        Map<String, Object> rec3 = new HashMap<>();
+        rec3.put("id", 3);
+        rec3.put("value", 150);
+        rec3.put("active", true);
+        records.add(rec3);
+        
+        data.put("records", records);
+        
+        Bin bin = new Bin("data", data);
+        client.put(null, key, bin);
+        
+        // Use pre-built Expression for first filter
+        Expression activeFilterExpression = Exp.build(
+            Exp.eq(
+                MapExp.getByKey(MapReturnType.VALUE, Exp.Type.BOOL,
+                    Exp.val("active"), Exp.mapLoopVar(LoopVarPart.VALUE)),
+                Exp.val(true)
+            )
+        );
+        
+        // Mix Expression variant with Exp variant
+        CTX ctx1 = CTX.mapKey(Value.get("records"));
+        CTX ctx2 = CTX.allChildrenWithFilter(activeFilterExpression);  // Using Expression
+        CTX ctx3 = CTX.allChildrenWithFilter(  // Using Exp directly
+            Exp.eq(Exp.stringLoopVar(LoopVarPart.MAP_KEY), Exp.val("value"))
+        );
+        
+        Expression selectExp = Exp.build(
+            CdtExp.selectByPath(
+                Exp.Type.LIST,
+                Exp.SELECT_VALUE,
+                Exp.mapBin("data"),
+                ctx1, ctx2, ctx3
+            )
+        );
+        
+        Record result = client.operate(null, key,
+            ExpOperation.write("activeValues", selectExp, ExpWriteFlags.DEFAULT)
+        );
+        
+        assertTrue("Operation should succeed", result != null);
+        
+        Record finalRecord = client.get(null, key);
+        assertNotNull("Final record should exist", finalRecord);
+        
+        List<?> values = finalRecord.getList("activeValues");
+        assertNotNull("Values should exist", values);
+        assertEquals("Should have 2 active records", 2, values.size());
+        assertTrue("Should contain 100", values.contains(100L));
+        assertTrue("Should contain 150", values.contains(150L));
+    }
 }

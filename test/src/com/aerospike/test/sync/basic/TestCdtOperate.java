@@ -2393,4 +2393,156 @@ public class TestCdtOperate extends TestSync {
         }
     }
 
+    @Test
+    public void testAllChildrenWithFilterUsingExpression() {
+        Key rkey = new Key(NAMESPACE, SET, 262);
+        
+        try {
+            client.delete(null, rkey);
+        } catch (Exception e) {
+        }
+        
+        List<Map<String, Object>> booksList = new ArrayList<>();
+        
+        Map<String, Object> book1 = new HashMap<>();
+        book1.put("title", "Cheap Book 1");
+        book1.put("price", 7.99);
+        booksList.add(book1);
+        
+        Map<String, Object> book2 = new HashMap<>();
+        book2.put("title", "Expensive Book");
+        book2.put("price", 25.99);
+        booksList.add(book2);
+        
+        Map<String, Object> book3 = new HashMap<>();
+        book3.put("title", "Cheap Book 2");
+        book3.put("price", 9.99);
+        booksList.add(book3);
+        
+        Map<String, Object> rootMap = new HashMap<>();
+        rootMap.put("book", booksList);
+        
+        Bin bin = new Bin(BIN_NAME, rootMap);
+        client.put(null, rkey, bin);
+        
+        Record record = client.get(null, rkey);
+        assertTrue("Record should exist", record != null);
+        
+        // Build Expression first, then pass to allChildrenWithFilter
+        Expression filterExpression = Exp.build(
+            Exp.le(
+                MapExp.getByKey(MapReturnType.VALUE, Exp.Type.FLOAT, 
+                    Exp.val("price"), Exp.mapLoopVar(LoopVarPart.VALUE)),
+                Exp.val(10.0)
+            )
+        );
+        
+        CTX ctx1 = CTX.mapKey(Value.get("book"));
+        CTX ctx2 = CTX.allChildrenWithFilter(filterExpression);  // Using Expression variant
+        CTX ctx3 = CTX.allChildrenWithFilter(
+            Exp.eq(Exp.stringLoopVar(LoopVarPart.MAP_KEY), Exp.val("title"))
+        );
+        
+        Operation selectOp = CdtOperation.selectByPath(BIN_NAME, Exp.SELECT_VALUE, ctx1, ctx2, ctx3);
+
+        Record result = client.operate(null, rkey, selectOp);
+        assertTrue("CDT select operation should succeed", result != null);
+        
+        List<?> results = result.getList(BIN_NAME);
+        assertNotNull("Results should not be null", results);
+        assertEquals("Should have 2 books with price <= 10.0", 2, results.size());
+        
+        // Verify the titles
+        List<String> titles = new ArrayList<>();
+        for (Object item : results) {
+            assertTrue("Each result should be a string title", item instanceof String);
+            titles.add((String) item);
+        }
+        
+        assertTrue("Should contain 'Cheap Book 1'", titles.contains("Cheap Book 1"));
+        assertTrue("Should contain 'Cheap Book 2'", titles.contains("Cheap Book 2"));
+    }
+
+    @Test
+    public void testAllChildrenWithFilterNullExp() {
+        try {
+            Exp nullExp = null;
+            CTX.allChildrenWithFilter(nullExp);
+            assertTrue("Should throw NullPointerException when Exp is null", false);
+        } catch (NullPointerException e) {
+            // Expected - Exp.build() will throw NPE when trying to pack null exp
+        }
+    }
+
+    @Test
+    public void testAllChildrenWithFilterNullExpression() {
+        Key rkey = new Key(NAMESPACE, SET, 263);
+        
+        try {
+            client.delete(null, rkey);
+        } catch (Exception e) {
+        }
+        
+        Map<String, Object> data = new HashMap<>();
+        List<Integer> items = new ArrayList<>();
+        items.add(10);
+        items.add(20);
+        data.put("items", items);
+        
+        Bin bin = new Bin(BIN_NAME, data);
+        client.put(null, rkey, bin);
+        
+        try {
+            Expression nullExpression = null;
+            CTX ctx1 = CTX.mapKey(Value.get("items"));
+            CTX ctx2 = CTX.allChildrenWithFilter(nullExpression);  // Passing null Expression
+            
+            Operation selectOp = CdtOperation.selectByPath(BIN_NAME, Exp.SELECT_VALUE, ctx1, ctx2);
+            client.operate(null, rkey, selectOp);
+            
+            // The operation construction should fail or the server should reject it
+            // This tests that null expressions are not silently accepted
+            assertTrue("Should handle null Expression appropriately", false);
+        } catch (NullPointerException | com.aerospike.client.AerospikeException e) {
+            // Expected - null Expression should cause an error
+        }
+    }
+
+    @Test
+    public void testAllChildrenWithExpressionVariant() {
+        Key rkey = new Key(NAMESPACE, SET, 264);
+        
+        try {
+            client.delete(null, rkey);
+        } catch (Exception e) {
+        }
+        
+        Map<String, Object> data = new HashMap<>();
+        Map<String, Object> products = new HashMap<>();
+        products.put("item1", 100);
+        products.put("item2", 50);
+        products.put("item3", 150);
+        data.put("products", products);
+        
+        Bin bin = new Bin(BIN_NAME, data);
+        client.put(null, rkey, bin);
+        
+        // Create Expression outside of CTX constructor
+        Expression filterExpression = Exp.build(
+            Exp.gt(Exp.intLoopVar(LoopVarPart.VALUE), Exp.val(75))
+        );
+        
+        CTX ctx1 = CTX.mapKey(Value.get("products"));
+        CTX ctx2 = CTX.allChildrenWithFilter(filterExpression);  // Using pre-built Expression
+        
+        Operation selectOp = CdtOperation.selectByPath(BIN_NAME, Exp.SELECT_VALUE, ctx1, ctx2);
+        
+        Record result = client.operate(null, rkey, selectOp);
+        assertTrue("CDT select operation should succeed", result != null);
+        
+        List<?> results = result.getList(BIN_NAME);
+        assertNotNull("Results should not be null", results);
+        assertEquals("Should have 2 items with value > 75", 2, results.size());
+    }
+
 }
