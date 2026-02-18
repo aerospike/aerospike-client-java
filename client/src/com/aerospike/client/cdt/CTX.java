@@ -41,9 +41,21 @@ public final class CTX {
 		return new CTX(Exp.CTX_EXP, expression);
 	}
 
+	/**
+	 * Apply operation to all children of the current context that match the filter expression.
+	 * This allows traversing all items in a collection with filtering.
+	 */
 	public static CTX allChildrenWithFilter(Exp exp) {
 		Expression expression = Exp.build(exp);
 		return new CTX(Exp.CTX_EXP, expression);
+	}
+
+	/**
+	 * Apply operation to all children of the current context that match the filter expression.
+	 * This allows traversing all items in a collection with filtering.
+	 */
+	public static CTX allChildrenWithFilter(Expression exp) {
+		return new CTX(Exp.CTX_EXP, exp);
 	}
 
 	/**
@@ -175,7 +187,6 @@ public final class CTX {
 				Value val = Value.get(obj);
 				ctx[count++] = new CTX(id, val);
 			}
-
 			i++;
 		}
 		return ctx;
