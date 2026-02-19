@@ -40,7 +40,7 @@
     <maven-javadoc-plugin.version>3.2.0</maven-javadoc-plugin.version>
 
     <snakeyaml.version>2.5</snakeyaml.version>
-    <netty.version>4.2.2.Final</netty.version>
+    <netty.version>4.2.10.Final</netty.version>
     <luaj-jse.version>3.0.1</luaj-jse.version>
     <jbcrypt.version>0.4</jbcrypt.version>
     <commons-cli.version>1.11.0</commons-cli.version>
