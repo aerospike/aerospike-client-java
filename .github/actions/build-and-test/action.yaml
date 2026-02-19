@@ -42,10 +42,10 @@ runs:
     # Starting test bench
     - name: Run Aerospike
       if: ${{ inputs.run-tests == 'true' }}
-      uses: ./.github/actions/run-ee-server
+      id: setup-aes
+      uses: aerospike/shared-workflows/.github/actions/setup-aes@CLIENT-4213
       with:
         server-tag: ${{ inputs.server-tag }}
-        server-type: ${{ inputs.server-type }}
         oidc-provider: ${{ inputs.oidc-provider }}
         oidc-audience: ${{ inputs.oidc-audience }}
 
