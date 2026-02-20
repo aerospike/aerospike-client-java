@@ -22,7 +22,11 @@ inputs:
     description: Spin up aerospike enterprise server and run tests
   server-type:
     required: true
-    description: Server type `aerospike-server` or `aerospike-enterprise-server` 
+    description: Server type `aerospike-server` or `aerospike-enterprise-server`
+  enable-tls:
+    required: false
+    default: "false"
+    description: Enable TLS for the Aerospike server and test connections
 
 runs:
   using: "composite"
@@ -48,10 +52,26 @@ runs:
         server-tag: ${{ inputs.server-tag }}
         oidc-provider: ${{ inputs.oidc-provider }}
         oidc-audience: ${{ inputs.oidc-audience }}
+        enable-tls: ${{ inputs.enable-tls }}
+
+    - name: Import CA cert into JVM trust store
+      if: ${{ inputs.run-tests == 'true' && inputs.enable-tls == 'true' }}
+      shell: bash
+      run: |
+        keytool -import -trustcacerts \
+          -keystore $JAVA_HOME/lib/security/cacerts \
+          -storepass changeit -noprompt \
+          -alias aerospike-ca \
+          -file ${{ steps.setup-aes.outputs.tls-cert-dir }}/ca.crt
 
     # Running tests
     - name: Run tests
       shell: bash
       if: ${{ inputs.run-tests == 'true' }}
       working-directory: test
-      run: mvn test -DskipTests=false
+      run: |
+        if [ "${{ inputs.enable-tls }}" = "true" ]; then
+          mvn test -DskipTests=false "-Dargs=-tls -h 127.0.0.1:aerospike-tls:4333 -p 4333"
+        else
+          mvn test -DskipTests=false
+        fi

@@ -1,0 +1,62 @@
+name: Nightly Extended Integration Tests
+
+permissions:
+  id-token: write
+  contents: read
+
+on:
+  schedule:
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+
+jobs:
+  make-matrix:
+    runs-on: ${{ vars.BUILD_CONTAINER_DISTRO_VERSION }}
+    outputs:
+      input-matrix: ${{ steps.create-server-matrix.outputs.input-matrix }}
+      java-version: ${{ steps.get-java-version.outputs.java-version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+
+      - id: create-server-matrix
+        uses: ./.github/actions/make-server-matrix
+        with:
+          default_json: ${{ vars.DEFAULT_SERVER_VERSIONS }}
+          test_servers_file_path: .github/nightly_test_servers.json
+
+      - name: Get java version
+        id: get-java-version
+        run: |
+          echo java-version="$(grep '<java.version>' pom.xml | sed -e 's/<[^>]*>//g' | awk '{$1=$1};1' | sed 's/^1\.8$/8/')"  >> $GITHUB_OUTPUT
+
+  extended-test:
+    needs: make-matrix
+    strategy:
+      fail-fast: false
+      matrix:
+        entry: ${{ fromJson(needs.make-matrix.outputs.input-matrix) }}
+        crypto-type: [bouncycastle, gnu]
+    name: test-${{ matrix.entry.server }}-${{ matrix.crypto-type }}
+    runs-on: ${{ vars.BUILD_CONTAINER_DISTRO_VERSION }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: ${{ vars.JAVA_PROVIDER }}
+          java-version: ${{ needs.make-matrix.outputs.java-version }}
+
+      - name: Build and test
+        uses: ./.github/actions/build-and-test
+        with:
+          crypto-type: ${{ matrix.crypto-type }}
+          server-tag: ${{ matrix.entry.version }}
+          server-type: ${{ matrix.entry.type }}
+          enable-tls: ${{ matrix.entry.tls }}
+          oidc-provider: ${{ secrets.JFROG_OIDC_PROVIDER }}
+          oidc-audience: ${{ secrets.JFROG_OIDC_AUDIENCE }}
