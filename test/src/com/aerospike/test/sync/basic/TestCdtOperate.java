@@ -37,8 +37,13 @@ import com.aerospike.client.Value;
 import com.aerospike.client.cdt.CdtOperation;
 import com.aerospike.client.cdt.CTX;
 import com.aerospike.client.cdt.MapReturnType;
+import com.aerospike.client.Value.HLLValue;
+import com.aerospike.client.exp.CdtExp;
 import com.aerospike.client.exp.Exp;
+import com.aerospike.client.exp.ExpOperation;
+import com.aerospike.client.exp.ExpReadFlags;
 import com.aerospike.client.exp.Expression;
+import com.aerospike.client.exp.HLLExp;
 import com.aerospike.client.exp.LoopVarPart;
 import com.aerospike.client.exp.MapExp;
 import com.aerospike.client.exp.ListExp;
@@ -2543,6 +2548,229 @@ public class TestCdtOperate extends TestSync {
         List<?> results = result.getList(BIN_NAME);
         assertNotNull("Results should not be null", results);
         assertEquals("Should have 2 items with value > 75", 2, results.size());
+    }
+
+    // --- HLL Nested in CDT Tests ---
+
+    @Test
+    public void hllNestedInMap() {
+        Key rkey = new Key(NAMESPACE, SET, "hllNestedMapKey");
+        client.delete(null, rkey);
+
+        // Create an HLL with 5000 values
+        List<Value> values = new ArrayList<>();
+        for (int i = 0; i < 5000; i++) {
+            values.add(Value.get(i));
+        }
+
+        client.operate(null, rkey,
+            HLLOperation.add(HLLPolicy.Default, "hll_temp", values, 4, 4));
+
+        Record rec = client.get(null, rkey, "hll_temp");
+        assertNotNull(rec);
+        HLLValue hllVal = (HLLValue) rec.getValue("hll_temp");
+        assertNotNull("Top-level HLL bin should be HLLValue", hllVal);
+
+        // Store HLL inside a map
+        Map<String, Object> mapData = new HashMap<>();
+        mapData.put("a", hllVal);
+        client.put(null, rkey, new Bin("mapbin", mapData));
+
+        // Read back and verify nested value is HLLValue
+        rec = client.get(null, rkey, "mapbin");
+        assertNotNull(rec);
+
+        Map<?, ?> resultMap = (Map<?, ?>) rec.getValue("mapbin");
+        assertNotNull("Bin should be a map", resultMap);
+
+        Object nested = resultMap.get("a");
+        assertTrue("Nested value should be HLLValue, got: " +
+            (nested == null ? "null" : nested.getClass().getName()),
+            nested instanceof HLLValue);
+        assertTrue("HLL bytes should not be empty", ((HLLValue) nested).getBytes().length > 0);
+    }
+
+    @Test
+    public void hllNestedInList() {
+        Key rkey = new Key(NAMESPACE, SET, "hllNestedListKey");
+        client.delete(null, rkey);
+
+        List<Value> smallData = new ArrayList<>();
+        smallData.add(Value.get("a"));
+        smallData.add(Value.get("b"));
+
+        List<Value> largeData = new ArrayList<>();
+        for (int i = 0; i < 5; i++) {
+            largeData.add(Value.get("item" + i));
+        }
+
+        client.operate(null, rkey,
+            HLLOperation.add(HLLPolicy.Default, "hll1", smallData, 8),
+            HLLOperation.add(HLLPolicy.Default, "hll2", largeData, 8));
+
+        Record rec = client.get(null, rkey, "hll1", "hll2");
+        HLLValue hll1 = (HLLValue) rec.getValue("hll1");
+        HLLValue hll2 = (HLLValue) rec.getValue("hll2");
+
+        // Store HLLs in a list inside a map
+        Map<String, Object> data = new HashMap<>();
+        List<Object> hllList = new ArrayList<>();
+        hllList.add(hll1);
+        hllList.add(hll2);
+        data.put("hlls", hllList);
+        client.put(null, rkey, new Bin("listbin", data));
+
+        // Read back and verify both preserve type
+        rec = client.get(null, rkey, "listbin");
+        assertNotNull(rec);
+
+        Map<?, ?> resultMap = (Map<?, ?>) rec.getValue("listbin");
+        assertNotNull(resultMap);
+
+        List<?> resultList = (List<?>) resultMap.get("hlls");
+        assertNotNull(resultList);
+        assertEquals("Should have 2 HLL values", 2, resultList.size());
+        assertTrue("First nested HLL should be HLLValue", resultList.get(0) instanceof HLLValue);
+        assertTrue("Second nested HLL should be HLLValue", resultList.get(1) instanceof HLLValue);
+    }
+
+    @Test
+    public void hllNestedInMapInsideMap() {
+        Key rkey = new Key(NAMESPACE, SET, "hllDeepMapKey");
+        client.delete(null, rkey);
+
+        List<Value> entries = new ArrayList<>();
+        for (int i = 0; i < 256; i++) {
+            entries.add(Value.get(i));
+        }
+
+        client.operate(null, rkey,
+            HLLOperation.add(HLLPolicy.Default, "hll_temp", entries, 8));
+
+        Record rec = client.get(null, rkey, "hll_temp");
+        HLLValue hllVal = (HLLValue) rec.getValue("hll_temp");
+        assertNotNull(hllVal);
+
+        // Store HLL 2 levels deep: map -> map -> HLL
+        Map<String, Object> inner = new HashMap<>();
+        inner.put("level2", hllVal);
+        Map<String, Object> outer = new HashMap<>();
+        outer.put("level1", inner);
+        client.put(null, rkey, new Bin("deepmap", outer));
+
+        // Read back and verify
+        rec = client.get(null, rkey, "deepmap");
+        assertNotNull(rec);
+
+        Map<?, ?> outerResult = (Map<?, ?>) rec.getValue("deepmap");
+        assertNotNull(outerResult);
+        Map<?, ?> innerResult = (Map<?, ?>) outerResult.get("level1");
+        assertNotNull(innerResult);
+
+        Object nested = innerResult.get("level2");
+        assertTrue("HLL nested 2 levels deep should be HLLValue, got: " +
+            (nested == null ? "null" : nested.getClass().getName()),
+            nested instanceof HLLValue);
+    }
+
+    @Test
+    public void hllNestedInListInsideListInsideMap() {
+        Key rkey = new Key(NAMESPACE, SET, "hllDeepListKey");
+        client.delete(null, rkey);
+
+        List<Value> entries = new ArrayList<>();
+        for (int i = 0; i < 256; i++) {
+            entries.add(Value.get(i));
+        }
+
+        client.operate(null, rkey,
+            HLLOperation.add(HLLPolicy.Default, "hll_temp", entries, 8));
+
+        Record rec = client.get(null, rkey, "hll_temp");
+        HLLValue hllVal = (HLLValue) rec.getValue("hll_temp");
+        assertNotNull(hllVal);
+
+        // Store HLL 3 levels deep: map -> list -> list -> HLL
+        List<Object> innerList = new ArrayList<>();
+        innerList.add(hllVal);
+        List<Object> outerList = new ArrayList<>();
+        outerList.add(innerList);
+        Map<String, Object> data = new HashMap<>();
+        data.put("level1", outerList);
+        client.put(null, rkey, new Bin("deeplist", data));
+
+        // Read back and verify
+        rec = client.get(null, rkey, "deeplist");
+        assertNotNull(rec);
+
+        Map<?, ?> resultMap = (Map<?, ?>) rec.getValue("deeplist");
+        assertNotNull(resultMap);
+        List<?> outerResult = (List<?>) resultMap.get("level1");
+        assertNotNull(outerResult);
+        List<?> innerResult = (List<?>) outerResult.get(0);
+        assertNotNull(innerResult);
+
+        Object nested = innerResult.get(0);
+        assertTrue("HLL nested 3 levels deep (map->list->list) should be HLLValue, got: " +
+            (nested == null ? "null" : nested.getClass().getName()),
+            nested instanceof HLLValue);
+    }
+
+    @Test
+    public void hllLoopVarFilterOnNestedHLLs() {
+        Key rkey = new Key(NAMESPACE, SET, "hllLoopVarFilterKey");
+        client.delete(null, rkey);
+
+        List<Value> smallData = new ArrayList<>();
+        smallData.add(Value.get("a"));
+        smallData.add(Value.get("b"));
+
+        List<Value> largeData = new ArrayList<>();
+        for (int i = 0; i < 5; i++) {
+            largeData.add(Value.get("item" + i));
+        }
+
+        client.operate(null, rkey,
+            HLLOperation.add(HLLPolicy.Default, "hll1", smallData, 8),
+            HLLOperation.add(HLLPolicy.Default, "hll2", largeData, 8));
+
+        Record rec = client.get(null, rkey, "hll1", "hll2");
+        HLLValue hll1 = (HLLValue) rec.getValue("hll1");
+        HLLValue hll2 = (HLLValue) rec.getValue("hll2");
+
+        // Store in nested map->list structure
+        Map<String, Object> data = new HashMap<>();
+        List<Object> hllList = new ArrayList<>();
+        hllList.add(hll1);
+        hllList.add(hll2);
+        data.put("hlls", hllList);
+        client.put(null, rkey, new Bin("data", data));
+
+        // Use hllLoopVar to filter HLL values with count > 3
+        CTX ctx1 = CTX.mapKey(Value.get("hlls"));
+        CTX ctx2 = CTX.allChildrenWithFilter(
+            Exp.gt(
+                HLLExp.getCount(Exp.hllLoopVar(LoopVarPart.VALUE)),
+                Exp.val(3)
+            )
+        );
+
+        Expression selectExp = Exp.build(
+            CdtExp.selectByPath(
+                Exp.Type.LIST,
+                Exp.SELECT_VALUE,
+                Exp.mapBin("data"),
+                ctx1, ctx2
+            )
+        );
+
+        Record result = client.operate(null, rkey,
+            ExpOperation.read("filtered", selectExp, ExpReadFlags.DEFAULT));
+
+        assertNotNull(result);
+        List<?> filtered = result.getList("filtered");
+        assertNotNull("Filtered result should not be null", filtered);
+        assertEquals("Should have 1 HLL with count > 3 (the large one)", 1, filtered.size());
     }
 
 }
