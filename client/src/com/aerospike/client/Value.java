@@ -1375,7 +1375,7 @@ public abstract class Value {
 
 		@Override
 		public void pack(Packer packer) {
-			packer.packParticleBytes(bytes);
+			packer.packParticleBytes(bytes, ParticleType.HLL);
 		}
 
 		@Override
