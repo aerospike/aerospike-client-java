@@ -49,6 +49,6 @@ jobs:
       source-branch: ${{ inputs.source-branch }}
       run-tests: true
       server-tag: ${{ matrix.entry.version }}
-      server-type: ${{ matrix.entry.type }}
+      server-container-repo: ${{ matrix.entry.type }}
     secrets: inherit
 
