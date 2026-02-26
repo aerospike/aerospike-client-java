@@ -20,7 +20,7 @@ inputs:
     required: true
     default: "true"
     description: Spin up aerospike enterprise server and run tests
-  server-type:
+  server-container-repo:
     required: true
     description: Server type `aerospike-server` or `aerospike-enterprise-server`
   enable-tls:
@@ -50,6 +50,7 @@ runs:
       uses: aerospike/shared-workflows/.github/actions/setup-aes@CLIENT-4213
       with:
         server-tag: ${{ inputs.server-tag }}
+        server-container-repo: ${{ inputs.server-container-repo }}
         oidc-provider: ${{ inputs.oidc-provider }}
         oidc-audience: ${{ inputs.oidc-audience }}
         enable-tls: ${{ inputs.enable-tls }}

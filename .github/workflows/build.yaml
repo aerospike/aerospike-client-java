@@ -25,7 +25,7 @@ on:
       crypto-type:
         type: string
         required: true
-      server-type:
+      server-container-repo:
         type: string
         required: true
     secrets:
@@ -53,7 +53,7 @@ jobs:
         with:
           crypto-type: ${{ inputs.crypto-type }}
           server-tag: ${{ inputs.server-tag }}
-          server-type: ${{ inputs.server-type }}
+          server-container-repo: ${{ inputs.server-container-repo }}
           oidc-provider: ${{ secrets.JFROG_OIDC_PROVIDER }}
           oidc-audience: ${{ secrets.JFROG_OIDC_AUDIENCE }}
 

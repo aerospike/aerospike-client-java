@@ -3,7 +3,7 @@ run-name: Build artifact for ${{ github.event.pull_request.head.ref }} - ${{ git
 on:
   workflow_call:
     inputs:
-      server-type:
+      server-container-repo:
         type: string
         required: true
       java-version:
@@ -32,5 +32,5 @@ jobs:
       run-tests: ${{ inputs.run-tests }}
       server-tag: ${{ inputs.server-tag }}
       crypto-type:  ${{ matrix.crypto }}
-      server-type: ${{ inputs.server-type }}
+      server-container-repo: ${{ inputs.server-container-repo }}
     secrets: inherit

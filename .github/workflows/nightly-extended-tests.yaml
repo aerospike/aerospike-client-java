@@ -56,7 +56,7 @@ jobs:
         with:
           crypto-type: ${{ matrix.crypto-type }}
           server-tag: ${{ matrix.entry.version }}
-          server-type: ${{ matrix.entry.type }}
+          server-container-repo: ${{ matrix.entry.type }}
           enable-tls: ${{ matrix.entry.tls }}
           oidc-provider: ${{ secrets.JFROG_OIDC_PROVIDER }}
           oidc-audience: ${{ secrets.JFROG_OIDC_AUDIENCE }}
