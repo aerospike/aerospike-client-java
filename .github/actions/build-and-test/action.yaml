@@ -46,8 +46,8 @@ runs:
     # Starting test bench
     - name: Run Aerospike
       if: ${{ inputs.run-tests == 'true' }}
-      id: setup-aes
-      uses: aerospike/shared-workflows/.github/actions/setup-aes@CLIENT-4213
+      id: setup-aerospike-server
+      uses: aerospike/shared-workflows/.github/actions/setup-aerospike-server@CLIENT-4213
       with:
         server-tag: ${{ inputs.server-tag }}
         server-container-repo: ${{ inputs.server-container-repo }}
@@ -63,7 +63,7 @@ runs:
           -keystore $JAVA_HOME/lib/security/cacerts \
           -storepass changeit -noprompt \
           -alias aerospike-ca \
-          -file ${{ steps.setup-aes.outputs.tls-cert-dir }}/ca.crt
+          -file ${{ steps.setup-aerospike-server.outputs.tls-cert-dir }}/ca.crt
 
     # Running tests
     - name: Run tests
