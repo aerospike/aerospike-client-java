@@ -34,4 +34,3 @@ Some sample arguments are:
 
     # Run default benchmarks using TLS secure sockets.
     java -Djavax.net.ssl.trustStore=TrustStorePath -Djavax.net.ssl.trustStorePassword=TrustStorePassword -jar target/aerospike-benchmarks-*-jar-with-dependencies.jar -h "hostname:tlsname:tlsport" -tlsEnable
-
