@@ -41,6 +41,8 @@
       <groupId>io.netty</groupId>
       <artifactId>netty-transport-native-io_uring</artifactId>
       <classifier>linux-x86_64</classifier>
+      <scope>provided</scope>
+      <optional>true</optional>
     </dependency>
 
     <dependency>
