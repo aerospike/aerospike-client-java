@@ -16,44 +16,27 @@
  */
 package com.aerospike.benchmarks;
 
+import com.aerospike.client.*;
+import com.aerospike.client.Log.Level;
+import com.aerospike.client.async.*;
+import com.aerospike.client.cluster.Node;
+import com.aerospike.client.command.BatchNode;
+import com.aerospike.client.command.BatchNodeList;
+import com.aerospike.client.command.BatchStatus;
+import com.aerospike.client.policy.*;
+import com.aerospike.client.util.Util;
+import io.netty.channel.EventLoopGroup;
+import io.netty.channel.MultiThreadIoEventLoopGroup;
+import io.netty.channel.epoll.EpollIoHandler;
+import io.netty.channel.kqueue.KQueueIoHandler;
+import io.netty.channel.nio.NioIoHandler;
+import io.netty.channel.uring.IoUringIoHandler;
 import picocli.AutoComplete.GenerateCompletion;
 import picocli.CommandLine.ArgGroup;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Model.CommandSpec;
 import picocli.CommandLine.Spec;
 
-import com.aerospike.client.AerospikeClient;
-import com.aerospike.client.Host;
-import com.aerospike.client.IAerospikeClient;
-import com.aerospike.client.Key;
-import com.aerospike.client.Log;
-import com.aerospike.client.Log.Level;
-import com.aerospike.client.Value;
-import com.aerospike.client.async.EventLoop;
-import com.aerospike.client.async.EventLoopType;
-import com.aerospike.client.async.EventLoops;
-import com.aerospike.client.async.EventPolicy;
-import com.aerospike.client.async.NettyEventLoops;
-import com.aerospike.client.async.NioEventLoops;
-import com.aerospike.client.cluster.Node;
-import com.aerospike.client.command.BatchNode;
-import com.aerospike.client.command.BatchNodeList;
-import com.aerospike.client.command.BatchStatus;
-import com.aerospike.client.policy.AuthMode;
-import com.aerospike.client.policy.ClientPolicy;
-import com.aerospike.client.policy.CommitLevel;
-import com.aerospike.client.policy.ReadModeAP;
-import com.aerospike.client.policy.ReadModeSC;
-import com.aerospike.client.policy.RecordExistsAction;
-import com.aerospike.client.policy.Replica;
-import com.aerospike.client.policy.TlsPolicy;
-import com.aerospike.client.policy.WritePolicy;
-import com.aerospike.client.util.Util;
-import io.netty.channel.EventLoopGroup;
-import io.netty.channel.epoll.EpollEventLoopGroup;
-import io.netty.channel.kqueue.KQueueEventLoopGroup;
-import io.netty.channel.nio.NioEventLoopGroup;
-import io.netty.incubator.channel.uring.IOUringEventLoopGroup;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -61,8 +44,8 @@ import java.time.format.DateTimeFormatter;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 @Command(
@@ -913,22 +896,22 @@ public class AerospikeBenchmark implements Callable<Integer>, Log.Callback {
 					break;
 
 				case NETTY_NIO:
-					group = new NioEventLoopGroup(this.eventLoopSize);
+                    group = new MultiThreadIoEventLoopGroup(this.eventLoopSize, NioIoHandler.newFactory());
 					eventLoops = new NettyEventLoops(eventPolicy, group, this.eventLoopType);
 					break;
 
 				case NETTY_EPOLL:
-					group = new EpollEventLoopGroup(this.eventLoopSize);
+                    group = new MultiThreadIoEventLoopGroup(this.eventLoopSize, EpollIoHandler.newFactory());
 					eventLoops = new NettyEventLoops(eventPolicy, group, this.eventLoopType);
 					break;
 
 				case NETTY_KQUEUE:
-					group = new KQueueEventLoopGroup(this.eventLoopSize);
+                    group = new MultiThreadIoEventLoopGroup(this.eventLoopSize, KQueueIoHandler.newFactory());
 					eventLoops = new NettyEventLoops(eventPolicy, group, this.eventLoopType);
 					break;
 
 				case NETTY_IOURING:
-					group = new IOUringEventLoopGroup(this.eventLoopSize);
+                    group = new MultiThreadIoEventLoopGroup(this.eventLoopSize, IoUringIoHandler.newFactory());
 					eventLoops = new NettyEventLoops(eventPolicy, group, this.eventLoopType);
 					break;
 			}

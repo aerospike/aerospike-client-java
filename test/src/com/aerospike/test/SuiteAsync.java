@@ -16,35 +16,24 @@
  */
 package com.aerospike.test;
 
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
-import org.junit.runner.RunWith;
-import org.junit.runners.Suite;
-
 import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.Host;
 import com.aerospike.client.IAerospikeClient;
 import com.aerospike.client.Log;
-import com.aerospike.client.async.EventLoop;
-import com.aerospike.client.async.EventLoops;
-import com.aerospike.client.async.EventPolicy;
-import com.aerospike.client.async.NettyEventLoops;
-import com.aerospike.client.async.NioEventLoops;
+import com.aerospike.client.async.*;
 import com.aerospike.client.policy.ClientPolicy;
-import com.aerospike.test.async.TestAsyncBatch;
-import com.aerospike.test.async.TestAsyncOperate;
-import com.aerospike.test.async.TestAsyncPutGet;
-import com.aerospike.test.async.TestAsyncQuery;
-import com.aerospike.test.async.TestAsyncScan;
-import com.aerospike.test.async.TestAsyncTxn;
-import com.aerospike.test.async.TestAsyncUDF;
+import com.aerospike.test.async.*;
 import com.aerospike.test.util.Args;
-
 import io.netty.channel.EventLoopGroup;
-import io.netty.channel.epoll.EpollEventLoopGroup;
-import io.netty.channel.kqueue.KQueueEventLoopGroup;
-import io.netty.channel.nio.NioEventLoopGroup;
-import io.netty.incubator.channel.uring.IOUringEventLoopGroup;
+import io.netty.channel.MultiThreadIoEventLoopGroup;
+import io.netty.channel.epoll.EpollIoHandler;
+import io.netty.channel.kqueue.KQueueIoHandler;
+import io.netty.channel.nio.NioIoHandler;
+import io.netty.channel.uring.IoUringIoHandler;
+import org.junit.AfterClass;
+import org.junit.BeforeClass;
+import org.junit.runner.RunWith;
+import org.junit.runners.Suite;
 
 @RunWith(Suite.class)
 @Suite.SuiteClasses({
@@ -78,25 +67,25 @@ public class SuiteAsync {
 			}
 
 			case NETTY_NIO: {
-				EventLoopGroup group = new NioEventLoopGroup(1);
+                EventLoopGroup group = new MultiThreadIoEventLoopGroup(1, NioIoHandler.newFactory());
 				eventLoops = new NettyEventLoops(eventPolicy, group, args.eventLoopType);
 				break;
 			}
 
 			case NETTY_EPOLL: {
-				EventLoopGroup group = new EpollEventLoopGroup(1);
+                EventLoopGroup group = new MultiThreadIoEventLoopGroup(1, EpollIoHandler.newFactory());
 				eventLoops = new NettyEventLoops(eventPolicy, group, args.eventLoopType);
 				break;
 			}
 
 			case NETTY_KQUEUE: {
-				EventLoopGroup group = new KQueueEventLoopGroup(1);
+                EventLoopGroup group = new MultiThreadIoEventLoopGroup(1, KQueueIoHandler.newFactory());
 				eventLoops = new NettyEventLoops(eventPolicy, group, args.eventLoopType);
 				break;
 			}
 
 			case NETTY_IOURING: {
-				EventLoopGroup group = new IOUringEventLoopGroup(1);
+                EventLoopGroup group = new MultiThreadIoEventLoopGroup(1, IoUringIoHandler.newFactory());
 				eventLoops = new NettyEventLoops(eventPolicy, group, args.eventLoopType);
 				break;
 			}

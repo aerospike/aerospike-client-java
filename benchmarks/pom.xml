@@ -36,9 +36,9 @@
     </dependency>
 
     <dependency>
-      <groupId>io.netty.incubator</groupId>
-      <artifactId>netty-incubator-transport-native-io_uring</artifactId>
-      <classifier>linux-x86_64</classifier>
+        <groupId>io.netty</groupId>
+        <artifactId>netty-transport-native-io_uring</artifactId>
+        <classifier>linux-x86_64</classifier>
     </dependency>
 
     <dependency>

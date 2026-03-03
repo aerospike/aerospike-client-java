@@ -40,7 +40,7 @@
     <maven-javadoc-plugin.version>3.2.0</maven-javadoc-plugin.version>
 
     <snakeyaml.version>2.5</snakeyaml.version>
-    <netty.version>4.1.119.Final</netty.version>
+    <netty.version>4.2.10.Final</netty.version>
     <luaj-jse.version>3.0.1</luaj-jse.version>
     <jbcrypt.version>0.4</jbcrypt.version>
     <commons-cli.version>1.11.0</commons-cli.version>
@@ -78,10 +78,10 @@
       </dependency>
 
       <dependency>
-        <groupId>io.netty.incubator</groupId>
-        <artifactId>netty-incubator-transport-native-io_uring</artifactId>
-        <classifier>linux-x86_64</classifier>
-        <version>0.0.26.Final</version>
+          <groupId>io.netty</groupId>
+          <artifactId>netty-transport-native-io_uring</artifactId>
+          <classifier>linux-x86_64</classifier>
+          <version>${netty.version}</version>
       </dependency>
 
       <dependency>
