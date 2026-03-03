@@ -55,7 +55,7 @@ import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.handler.ssl.SslHandler;
 import io.netty.handler.ssl.SslHandshakeCompletionEvent;
-import io.netty.incubator.channel.uring.IOUringSocketChannel;
+import io.netty.channel.uring.IoUringSocketChannel;
 
 /**
  * Asynchronous command handler using netty.
@@ -381,7 +381,7 @@ public final class NettyCommand implements Runnable, TimerTask {
 			break;
 
 		case NETTY_IOURING:
-			b.channel(IOUringSocketChannel.class);
+			b.channel(IoUringSocketChannel.class);
 			break;
 		}
 

@@ -16,6 +16,11 @@
  */
 package com.aerospike.benchmarks;
 
+import io.netty.channel.MultiThreadIoEventLoopGroup;
+import io.netty.channel.epoll.EpollIoHandler;
+import io.netty.channel.kqueue.KQueueIoHandler;
+import io.netty.channel.nio.NioIoHandler;
+import io.netty.channel.uring.IoUringIoHandler;
 import picocli.AutoComplete.GenerateCompletion;
 import picocli.CommandLine.ArgGroup;
 import picocli.CommandLine.Command;
@@ -50,10 +55,6 @@ import com.aerospike.client.policy.TlsPolicy;
 import com.aerospike.client.policy.WritePolicy;
 import com.aerospike.client.util.Util;
 import io.netty.channel.EventLoopGroup;
-import io.netty.channel.epoll.EpollEventLoopGroup;
-import io.netty.channel.kqueue.KQueueEventLoopGroup;
-import io.netty.channel.nio.NioEventLoopGroup;
-import io.netty.incubator.channel.uring.IOUringEventLoopGroup;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -913,22 +914,22 @@ public class AerospikeBenchmark implements Callable<Integer>, Log.Callback {
 					break;
 
 				case NETTY_NIO:
-					group = new NioEventLoopGroup(this.eventLoopSize);
+                    group = new MultiThreadIoEventLoopGroup(this.eventLoopSize, NioIoHandler.newFactory());
 					eventLoops = new NettyEventLoops(eventPolicy, group, this.eventLoopType);
 					break;
 
 				case NETTY_EPOLL:
-					group = new EpollEventLoopGroup(this.eventLoopSize);
+                    group = new MultiThreadIoEventLoopGroup(this.eventLoopSize, EpollIoHandler.newFactory());
 					eventLoops = new NettyEventLoops(eventPolicy, group, this.eventLoopType);
 					break;
 
 				case NETTY_KQUEUE:
-					group = new KQueueEventLoopGroup(this.eventLoopSize);
+                    group = new MultiThreadIoEventLoopGroup(this.eventLoopSize, KQueueIoHandler.newFactory());
 					eventLoops = new NettyEventLoops(eventPolicy, group, this.eventLoopType);
 					break;
 
 				case NETTY_IOURING:
-					group = new IOUringEventLoopGroup(this.eventLoopSize);
+                    group = new MultiThreadIoEventLoopGroup(this.eventLoopSize, IoUringIoHandler.newFactory());
 					eventLoops = new NettyEventLoops(eventPolicy, group, this.eventLoopType);
 					break;
 			}
