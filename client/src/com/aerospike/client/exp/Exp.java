@@ -1310,14 +1310,14 @@ public abstract class Exp {
 	}
 
 	/**
-     * Creates a result remove expression.
+     * Creates a remove result expression.
      * Requires server version 8.1.1+.
 	 *
 	 * <pre>{@code
-	 * Exp.resultRemove()
+	 * Exp.removeResult()
 	 * }</pre>
 	 */
-	public static Exp removeResults() {
+	public static Exp removeResult() {
 		return new Cmd(RESULT_REMOVE);
 	}
 
