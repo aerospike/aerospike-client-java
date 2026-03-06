@@ -1163,7 +1163,7 @@ public class TestCdtOperate extends TestSync {
         CTX ctx1 = CTX.mapKey(Value.get("items"));
         CTX ctx2 = CTX.allChildrenWithFilter(Exp.val(true));
         
-        Expression removeExp = Exp.build(Exp.removeResults());
+        Expression removeExp = Exp.build(Exp.removeResult());
         Operation applyOp = CdtOperation.modifyByPath(BIN_NAME, Exp.MODIFY_DEFAULT, removeExp, ctx1, ctx2);
         
         Record result = client.operate(null, rkey, applyOp);
@@ -1208,7 +1208,7 @@ public class TestCdtOperate extends TestSync {
             Exp.gt(Exp.intLoopVar(LoopVarPart.VALUE), Exp.val(10))
         );
         
-        Expression removeExp = Exp.build(Exp.removeResults());
+        Expression removeExp = Exp.build(Exp.removeResult());
         Operation applyOp = CdtOperation.modifyByPath(BIN_NAME, Exp.MODIFY_DEFAULT, removeExp, ctx1, ctx2);
         
         Record result = client.operate(null, rkey, applyOp);
@@ -1250,7 +1250,7 @@ public class TestCdtOperate extends TestSync {
         CTX ctx1 = CTX.mapKey(Value.get("config"));
         CTX ctx2 = CTX.allChildrenWithFilter(Exp.val(true));
         
-        Expression removeExp = Exp.build(Exp.removeResults());
+        Expression removeExp = Exp.build(Exp.removeResult());
         Operation applyOp = CdtOperation.modifyByPath(BIN_NAME, Exp.MODIFY_DEFAULT, removeExp, ctx1, ctx2);
         
         Record result = client.operate(null, rkey, applyOp);
@@ -1292,7 +1292,7 @@ public class TestCdtOperate extends TestSync {
             Exp.lt(Exp.intLoopVar(LoopVarPart.VALUE), Exp.val(50))
         );
         
-        Expression removeExp = Exp.build(Exp.removeResults());
+        Expression removeExp = Exp.build(Exp.removeResult());
         Operation applyOp = CdtOperation.modifyByPath(BIN_NAME, Exp.MODIFY_DEFAULT, removeExp, ctx1, ctx2);
         
         Record result = client.operate(null, rkey, applyOp);
@@ -1361,7 +1361,7 @@ public class TestCdtOperate extends TestSync {
             )
         );
         
-        Expression removeExp = Exp.build(Exp.removeResults());
+        Expression removeExp = Exp.build(Exp.removeResult());
         Operation applyOp = CdtOperation.modifyByPath(BIN_NAME, Exp.MODIFY_DEFAULT, removeExp, ctx1, ctx2);
         
         Record result = client.operate(null, rkey, applyOp);
@@ -1416,7 +1416,7 @@ public class TestCdtOperate extends TestSync {
             Exp.ge(Exp.intLoopVar(LoopVarPart.INDEX), Exp.val(3))
         );
         
-        Expression removeExp = Exp.build(Exp.removeResults());
+        Expression removeExp = Exp.build(Exp.removeResult());
         Operation applyOp = CdtOperation.modifyByPath(BIN_NAME, Exp.MODIFY_DEFAULT, removeExp, ctx1, ctx2);
         
         Record result = client.operate(null, rkey, applyOp);
@@ -1461,7 +1461,7 @@ public class TestCdtOperate extends TestSync {
             Exp.ge(Exp.stringLoopVar(LoopVarPart.MAP_KEY), Exp.val("c"))
         );
         
-        Expression removeExp = Exp.build(Exp.removeResults());
+        Expression removeExp = Exp.build(Exp.removeResult());
         Operation applyOp = CdtOperation.modifyByPath(BIN_NAME, Exp.MODIFY_DEFAULT, removeExp, ctx1, ctx2);
         
         Record result = client.operate(null, rkey, applyOp);
@@ -1531,7 +1531,7 @@ public class TestCdtOperate extends TestSync {
         );
 
 
-        Expression removeExp = Exp.build(Exp.removeResults());
+        Expression removeExp = Exp.build(Exp.removeResult());
         Operation applyOp = CdtOperation.modifyByPath(BIN_NAME, Exp.MODIFY_DEFAULT, removeExp, ctx1, ctx2, ctx3);
         
         Record result = client.operate(null, rkey, applyOp);
