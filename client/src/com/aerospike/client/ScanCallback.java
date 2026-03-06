@@ -20,12 +20,29 @@ package com.aerospike.client;
  * An object implementing this interface is passed in <code>scan()</code> calls, so the caller can
  * be notified with scan results.
  * @deprecated
- * <p>Use {@link com.aerospike.client.query.QueryListener} with
- *    {@link com.aerospike.client.AerospikeClient#query(com.aerospike.client.policy.QueryPolicy, com.aerospike.client.query.Statement, com.aerospike.client.query.QueryListener)}
- *    instead. create a {@link com.aerospike.client.query.Statement} with the same namespace and set name (no filter),
- *    set bin names if needed, then call {@code query(queryPolicy, statement, queryListener)}.
- *    For partition-scoped reads use {@link com.aerospike.client.AerospikeClient#queryPartitions(com.aerospike.client.policy.QueryPolicy, com.aerospike.client.query.Statement, com.aerospike.client.query.PartitionFilter)}.
- * </p>
+ * <p>Use {@link com.aerospike.client.query.QueryListener} with {@link com.aerospike.client.AerospikeClient#query}
+ * instead.Create a {@link com.aerospike.client.query.Statement} with the same namespace and set name (no filter),
+ * then call {@code query(queryPolicy, statement, queryListener)}. For partition-scoped reads use
+ * {@link com.aerospike.client.AerospikeClient#queryPartitions}.
+ *
+ * <p><b>Example (deprecated; prefer query with QueryListener):</b>
+ * <pre>{@code
+ * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+ * try {
+ *   ScanCallback callback = (key, record) -> {
+ *     if (record != null) {
+ *       Object val = record.getValue("mybin");
+ *     }
+ *   };
+ *   client.scanAll(null, "test", "set1", callback, "mybin");
+ * } finally {
+ *   client.close();
+ * }
+ * }</pre>
+ *
+ * @see com.aerospike.client.query.QueryListener
+ * @see com.aerospike.client.AerospikeClient#query
+ * @see com.aerospike.client.AerospikeClient#queryPartitions
  */
 @Deprecated
 public interface ScanCallback {
@@ -36,13 +53,11 @@ public interface ScanCallback {
 	 * to other nodes will also be terminated and the exception will be propagated back through the
 	 * initiating scan call.
 	 * <p>
-	 * If {@link com.aerospike.client.policy.ScanPolicy#concurrentNodes} is true and
-	 * {@link com.aerospike.client.policy.ScanPolicy#maxConcurrentNodes} is not equal one, then
-	 * your scanCallback implementation must be thread safe.
+	 * If {@link com.aerospike.client.policy.ScanPolicy#concurrentNodes} is true and maxConcurrentNodes is not one, the implementation must be thread-safe.
 	 *
-	 * @param key					unique record identifier
-	 * @param record				container for bins and record meta-data
-	 * @throws AerospikeException	if error occurs or scan should be terminated.
+	 * @param key    unique record identifier; never null
+	 * @param record container for bins and metadata; never null
+	 * @throws AerospikeException when the callback wishes to abort the scan or report an error (e.g. throw ScanTerminated to abort).
 	 */
 	public void scanCallback(Key key, Record record) throws AerospikeException;
 }

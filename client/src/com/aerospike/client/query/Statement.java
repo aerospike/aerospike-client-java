@@ -21,7 +21,35 @@ import com.aerospike.client.Value;
 import com.aerospike.client.util.RandomShift;
 
 /**
- * Query statement parameters.
+ * Parameters for a secondary-index query or scan: namespace, set, optional {@link Filter}, bin names, and optional aggregation.
+ * <p>
+ * Use with {@link com.aerospike.client.AerospikeClient#query}, {@link com.aerospike.client.AerospikeClient#queryAggregate}, or {@link com.aerospike.client.AerospikeClient#queryPartitions}. Set a {@link Filter} for index query; omit filter for full namespace/set scan.
+ * <p>Build a statement with filter and run a query.</p>
+ * <pre>{@code
+ * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+ * Statement stmt = new Statement();
+ * stmt.setNamespace("test");
+ * stmt.setSetName("set1");
+ * stmt.setFilter(Filter.equal("status", "active"));
+ * RecordSet rs = client.query(null, stmt);
+ * try {
+ *   while (rs.next()) {
+ *     KeyRecord kr = rs.getKeyRecord();
+ *     if (kr.record != null) { Object v = kr.record.getValue("mybin"); }
+ *   }
+ * } finally {
+ *   rs.close();
+ * }
+ * client.close();
+ * }</pre>
+ *
+ * @see Filter
+ * @see RecordSet
+ * @see ResultSet
+ * @see QueryListener
+ * @see com.aerospike.client.AerospikeClient#query
+ * @see com.aerospike.client.AerospikeClient#queryAggregate
+ * @see com.aerospike.client.AerospikeClient#queryPartitions
  */
 public final class Statement {
 	String namespace;

@@ -17,7 +17,11 @@
 package com.aerospike.client.policy;
 
 /**
- * Desired consistency guarantee when committing a command on the server.
+ * Consistency guarantee when committing a write on the server (all replicas vs master only).
+ *
+ * @see WritePolicy#commitLevel
+ * @see BatchDeletePolicy#commitLevel
+ * @see BatchUDFPolicy#commitLevel
  */
 public enum CommitLevel {
 	/**

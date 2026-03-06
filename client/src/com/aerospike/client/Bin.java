@@ -24,7 +24,25 @@ import java.util.SortedMap;
 import com.aerospike.client.cdt.MapOrder;
 
 /**
- * Column name/value pair.
+ * Name/value pair for a single bin (column); used in put and operate calls.
+ * <p>
+ * Bin names are limited to {@link #MAX_BIN_NAME_LENGTH} characters. Use {@link Value} for typed values.
+ *
+ * <p><b>Example:</b>
+ * <p>Put a record with multiple bins using Bin name/value pairs.</p>
+ * <pre>{@code
+ * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+ * try {
+ *   Key key = new Key("test", "set1", "id1");
+ *   client.put(null, key, new Bin("name", "Alice"), new Bin("age", 30));
+ * } finally {
+ *   client.close();
+ * }
+ * }</pre>
+ *
+ * @see Value
+ * @see com.aerospike.client.AerospikeClient#put
+ * @see com.aerospike.client.AerospikeClient#operate
  */
 public final class Bin {
 	/**
@@ -246,19 +264,21 @@ public final class Bin {
 	}
 
 	/**
-	 * Create bin with a null value. This is useful for bin deletions within a record.
+	 * Create a bin with a null value (useful for bin deletions within a record).
 	 *
-	 * @param name		bin name, current limit is 15 characters
+	 * @param name bin name; current limit 15 characters; must not be null
+	 * @return a Bin whose value is null
 	 */
 	public static Bin asNull(String name) {
 		return new Bin(name, Value.getAsNull());
 	}
 
 	/**
-	 * Create bin with a GeoJSON value.
+	 * Create a bin with a GeoJSON string value.
 	 *
-	 * @param name		bin name, current limit is 15 characters
-	 * @param value		bin value
+	 * @param name  bin name; current limit 15 characters; must not be null
+	 * @param value GeoJSON string; must not be null
+	 * @return a Bin with GeoJSON value
 	 */
 	public static Bin asGeoJSON(String name, String value) {
 		return new Bin(name, Value.getAsGeoJSON(value));

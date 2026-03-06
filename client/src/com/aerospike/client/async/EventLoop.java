@@ -22,77 +22,87 @@ import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.Node;
 
 /**
- * Aerospike event loop interface.
+ * Single event loop used to run asynchronous Aerospike operations.
+ * <p>
+ * Obtain an event loop from {@link EventLoops#next()} or {@link EventLoops#get(int)} and pass it
+ * to async client methods (e.g. {@link com.aerospike.client.IAerospikeClient#get}).
+ * <pre>{@code
+ * EventLoops eventLoops = new NioEventLoops(4);
+ * ClientPolicy policy = new ClientPolicy();
+ * policy.eventLoops = eventLoops;
+ * IAerospikeClient client = new AerospikeClient(policy, "localhost", 3000);
+ * EventLoop loop = eventLoops.next();
+ * client.get(loop, new Policy(), new RecordListener() { ... }, key);
+ * }</pre>
+ *
+ * @see EventLoops
+ * @see NioEventLoop
+ * @see NettyEventLoop
  */
 public interface EventLoop {
 	/**
-	 * Execute async command.  Execute immediately if in event loop.
-	 * Otherwise, place command on event loop queue.
+	 * Executes an async command on this event loop; runs immediately if called from the event loop thread, otherwise enqueues.
+	 * @param cluster cluster (must not be null)
+	 * @param command command to run (must not be null)
 	 */
 	public void execute(Cluster cluster, AsyncCommand command);
 
 	/**
-	 * Schedule execution of runnable command on event loop.
-	 * Command is placed on event loop queue and is never executed directly.
+	 * Schedules a runnable on this event loop; always enqueues and never runs in the caller thread.
+	 * @param command runnable to run (must not be null)
 	 */
 	public void execute(Runnable command);
 
-	/**
-	 * Retry async batch command.  For internal use only.
-	 */
+	/** Retry async batch command. For internal use only. */
 	public void executeBatchRetry(Runnable other, AsyncCommand command, long deadline);
 
 	/**
-	 * Schedule execution of runnable command with delay.
+	 * Schedules a runnable to run after the given delay.
+	 * @param command runnable to run (must not be null)
+	 * @param delay delay amount
+	 * @param unit unit of delay (must not be null)
 	 */
 	public void schedule(Runnable command, long delay, TimeUnit unit);
 
 	/**
-	 * Schedule execution with a reusable ScheduleTask.
+	 * Schedules a reusable task to run after the given delay.
+	 * @param task task to run (must not be null)
+	 * @param delay delay amount
+	 * @param unit unit of delay (must not be null)
 	 */
 	public void schedule(ScheduleTask task, long delay, TimeUnit unit);
 
 	/**
-	 * Create async connector command.
+	 * Creates an async connector command for the given cluster and node.
+	 * @param cluster cluster (must not be null)
+	 * @param node node (must not be null)
+	 * @param listener listener (must not be null)
+	 * @return new connector command
 	 */
 	public AsyncConnector createConnector(Cluster cluster, Node node, AsyncConnector.Listener listener);
 
-	/**
-	 * Return the approximate number of commands currently being processed on
-	 * the event loop.  The value is approximate because the call may be from a
-	 * different thread than the event loop’s thread and there are no locks or
-	 * atomics used.
-	 *
-	 * If accuracy is important and not running in the event loop thread,
-	 * the slower execute(Runnable) can be called to run this method in the
-	 * event loop thread.
+/**
+	 * Approximate number of commands currently being processed on this event loop.
+	 * <p>
+	 * Value is approximate when called from a different thread. For accuracy from another thread, run this inside {@link #execute(Runnable)} on this event loop.
+	 * @return approximate process size (non-negative)
 	 */
 	public int getProcessSize();
 
 	/**
-	 * Return the approximate number of commands stored on this event loop's
-	 * delay queue that have not been started yet.  The value is approximate
-	 * because the call may be from a different thread than the event loop’s
-	 * thread and there are no locks or atomics used.
-	 *
-	 * If accuracy is important and not running in the event loop thread,
-	 * the slower execute(Runnable) can be called to run this method in the
-	 * event loop thread.
+	 * Approximate number of commands on this event loop's delay queue not yet started.
+	 * <p>
+	 * Value is approximate when called from a different thread. For accuracy from another thread, run this inside {@link #execute(Runnable)} on this event loop.
+	 * @return approximate queue size (non-negative)
 	 */
 	public int getQueueSize();
 
-	/**
-	 * Return event loop array index.
-	 */
+	/** @return this event loop's index in its {@link EventLoops} array */
 	public int getIndex();
 
-	/**
-	 * Is current thread the event loop thread.
-=	 */
+	/** @return true if the current thread is this event loop's thread */
 	public boolean inEventLoop();
 
-	/**
-	 * For internal use only.
-	 */
+	/** For internal use only. */
 	public EventState createState();
 }

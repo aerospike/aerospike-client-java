@@ -17,7 +17,9 @@
 package com.aerospike.client.policy;
 
 /**
- * Defines algorithm used to determine the target node for a command.
+ * Algorithm used to determine the target node for a partition (master, replica, rack-aware, etc.).
+ *
+ * @see Policy#replica
  */
 public enum Replica {
 	/**

@@ -39,7 +39,49 @@ import com.aerospike.client.lua.LuaInstance;
 import com.aerospike.client.util.Packer;
 
 /**
- * Polymorphic value classes used to efficiently serialize objects into the wire protocol.
+ * Polymorphic value type used to serialize objects for the wire protocol; use static {@code get()} factories to obtain instances.
+ * <p>
+ * Concrete types represent strings, numbers, blobs, lists, maps, GeoJSON, etc. Use with {@link Bin} and
+ * {@link com.aerospike.client.AerospikeClient#put}, {@link com.aerospike.client.AerospikeClient#operate}, and expression APIs.
+ * <p>
+ * Concrete value types (child classes): {@link NullValue}, {@link BytesValue}, {@link ByteSegmentValue}, {@link ByteValue},
+ * {@link StringValue}, {@link ShortValue}, {@link IntegerValue}, {@link LongValue}, {@link DoubleValue}, {@link FloatValue},
+ * {@link BooleanValue}, {@link BoolIntValue}, {@link GeoJSONValue}, {@link HLLValue}, {@link ValueArray}, {@link ListValue},
+ * {@link MapValue}, {@link SortedMapValue}, {@link InfinityValue}, and {@link WildcardValue}.
+ *
+ * <p><b>Example:</b>
+ * <p>Put a record with string and integer bins using IAerospikeClient.</p>
+ * <pre>{@code
+ * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+ * try {
+ *   Key key = new Key("test", "set1", "id1");
+ *   client.put(null, key, new Bin("name", Value.get("Alice")), new Bin("age", Value.get(30)));
+ * } finally {
+ *   client.close();
+ * }
+ * }</pre>
+ *
+ * @see NullValue
+ * @see BytesValue
+ * @see ByteSegmentValue
+ * @see ByteValue
+ * @see StringValue
+ * @see ShortValue
+ * @see IntegerValue
+ * @see LongValue
+ * @see DoubleValue
+ * @see FloatValue
+ * @see BooleanValue
+ * @see BoolIntValue
+ * @see GeoJSONValue
+ * @see HLLValue
+ * @see ValueArray
+ * @see ListValue
+ * @see MapValue
+ * @see SortedMapValue
+ * @see InfinityValue
+ * @see WildcardValue
+ * @see Bin
  */
 public abstract class Value {
 	/**
@@ -397,6 +439,13 @@ public abstract class Value {
 
 	/**
 	 * Empty value.
+	 * <p><b>Example:</b>
+	 * <p>Store a null bin using Value.getAsNull().</p>
+	 * <pre>{@code
+	 * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+	 * Key key = new Key("test", "set1", "id1");
+	 * client.put(null, key, new Bin("optional", Value.getAsNull()));
+	 * }</pre>
 	 */
 	public static final class NullValue extends Value {
 		public static final NullValue INSTANCE = new NullValue();
@@ -457,6 +506,13 @@ public abstract class Value {
 
 	/**
 	 * Byte array value.
+	 * <p><b>Example:</b>
+	 * <p>Store a blob bin with Value.get(byte[]).</p>
+	 * <pre>{@code
+	 * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+	 * Key key = new Key("test", "set1", "id1");
+	 * client.put(null, key, new Bin("blob", Value.get(new byte[] { 1, 2, 3 })));
+	 * }</pre>
 	 */
 	public static final class BytesValue extends Value {
 		private final byte[] bytes;
@@ -528,6 +584,13 @@ public abstract class Value {
 
 	/**
 	 * Byte segment value.
+	 * <p><b>Example:</b>
+	 * <p>Store a byte segment with Value.get(array, offset, length).</p>
+	 * <pre>{@code
+	 * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+	 * byte[] buf = new byte[] { 0, 1, 2, 3, 4 };
+	 * client.put(null, new Key("test", "set1", "id1"), new Bin("seg", Value.get(buf, 1, 3)));
+	 * }</pre>
 	 */
 	public static final class ByteSegmentValue extends Value {
 		private final byte[] bytes;
@@ -628,6 +691,12 @@ public abstract class Value {
 
 	/**
 	 * Byte value.
+	 * <p><b>Example:</b>
+	 * <p>Store a byte bin with Value.get(byte).</p>
+	 * <pre>{@code
+	 * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+	 * client.put(null, new Key("test", "set1", "id1"), new Bin("flag", Value.get((byte) 1)));
+	 * }</pre>
 	 */
 	public static final class ByteValue extends Value {
 		private final byte value;
@@ -703,6 +772,12 @@ public abstract class Value {
 
 	/**
 	 * String value.
+	 * <p><b>Example:</b>
+	 * <p>Store a string bin with Value.get(String).</p>
+	 * <pre>{@code
+	 * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+	 * client.put(null, new Key("test", "set1", "id1"), new Bin("name", Value.get("Alice")));
+	 * }</pre>
 	 */
 	public static final class StringValue extends Value {
 		private final String value;
@@ -766,6 +841,12 @@ public abstract class Value {
 
 	/**
 	 * Short value.
+	 * <p><b>Example:</b>
+	 * <p>Store a short bin with Value.get(short).</p>
+	 * <pre>{@code
+	 * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+	 * client.put(null, new Key("test", "set1", "id1"), new Bin("count", Value.get((short) 100)));
+	 * }</pre>
 	 */
 	public static final class ShortValue extends Value {
 		private final short value;
@@ -840,6 +921,12 @@ public abstract class Value {
 
 	/**
 	 * Integer value.
+	 * <p><b>Example:</b>
+	 * <p>Store an integer bin with Value.get(int).</p>
+	 * <pre>{@code
+	 * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+	 * client.put(null, new Key("test", "set1", "id1"), new Bin("age", Value.get(30)));
+	 * }</pre>
 	 */
 	public static final class IntegerValue extends Value {
 		private final int value;
@@ -914,6 +1001,12 @@ public abstract class Value {
 
 	/**
 	 * Long value.
+	 * <p><b>Example:</b>
+	 * <p>Store a long bin with Value.get(long).</p>
+	 * <pre>{@code
+	 * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+	 * client.put(null, new Key("test", "set1", "id1"), new Bin("timestamp", Value.get(1234567890L)));
+	 * }</pre>
 	 */
 	public static final class LongValue extends Value {
 		private final long value;
@@ -988,6 +1081,12 @@ public abstract class Value {
 
 	/**
 	 * Double value.
+	 * <p><b>Example:</b>
+	 * <p>Store a double bin with Value.get(double).</p>
+	 * <pre>{@code
+	 * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+	 * client.put(null, new Key("test", "set1", "id1"), new Bin("score", Value.get(3.14)));
+	 * }</pre>
 	 */
 	public static final class DoubleValue extends Value {
 		private final double value;
@@ -1063,6 +1162,12 @@ public abstract class Value {
 
 	/**
 	 * Float value.
+	 * <p><b>Example:</b>
+	 * <p>Store a float bin with Value.get(float).</p>
+	 * <pre>{@code
+	 * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+	 * client.put(null, new Key("test", "set1", "id1"), new Bin("rate", Value.get(1.5f)));
+	 * }</pre>
 	 */
 	public static final class FloatValue extends Value {
 		private final float value;
@@ -1137,6 +1242,12 @@ public abstract class Value {
 
 	/**
 	 * Boolean value.
+	 * <p><b>Example:</b>
+	 * <p>Store a boolean bin with Value.get(boolean).</p>
+	 * <pre>{@code
+	 * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+	 * client.put(null, new Key("test", "set1", "id1"), new Bin("active", Value.get(true)));
+	 * }</pre>
 	 */
 	public static final class BooleanValue extends Value {
 		private final boolean value;
@@ -1213,6 +1324,13 @@ public abstract class Value {
 	 * Boolean value that converts to integer when sending a bin to the server.
 	 * This class will be deleted once full conversion to boolean particle type
 	 * is complete.
+	 * <p><b>Example:</b>
+	 * <p>Store boolean as integer when UseBoolBin is false.</p>
+	 * <pre>{@code
+	 * Value.UseBoolBin = false;
+	 * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+	 * client.put(null, new Key("test", "set1", "id1"), new Bin("flag", Value.get(false)));
+	 * }</pre>
 	 */
 	public static final class BoolIntValue extends Value {
 		private final boolean value;
@@ -1288,6 +1406,13 @@ public abstract class Value {
 
 	/**
 	 * GeoJSON value.
+	 * <p><b>Example:</b>
+	 * <p>Store a GeoJSON bin with Value.getAsGeoJSON(String).</p>
+	 * <pre>{@code
+	 * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+	 * client.put(null, new Key("test", "set1", "id1"),
+	 *     new Bin("loc", Value.getAsGeoJSON("{\"type\":\"Point\",\"coordinates\":[-122.0,37.5]}")));
+	 * }</pre>
 	 */
 	public static final class GeoJSONValue extends Value {
 		private final String value;
@@ -1354,6 +1479,12 @@ public abstract class Value {
 
 	/**
 	 * HyperLogLog value.
+	 * <p><b>Example:</b>
+	 * <p>Store an HLL bin with Value.getAsHLL(byte[]).</p>
+	 * <pre>{@code
+	 * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+	 * client.put(null, new Key("test", "set1", "id1"), new Bin("hll", Value.getAsHLL(hllBytes)));
+	 * }</pre>
 	 */
 	public static final class HLLValue extends Value {
 		private final byte[] bytes;
@@ -1422,6 +1553,13 @@ public abstract class Value {
 
 	/**
 	 * Value array.
+	 * <p><b>Example:</b>
+	 * <p>Store a list bin from Value array with Value.get(Value[]).</p>
+	 * <pre>{@code
+	 * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+	 * client.put(null, new Key("test", "set1", "id1"),
+	 *     new Bin("arr", Value.get(new Value[] { Value.get(1), Value.get("x") })));
+	 * }</pre>
 	 */
 	public static final class ValueArray extends Value {
 		private final Value[] array;
@@ -1488,6 +1626,13 @@ public abstract class Value {
 
 	/**
 	 * List value.
+	 * <p><b>Example:</b>
+	 * <p>Store a list bin with Value.get(List).</p>
+	 * <pre>{@code
+	 * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+	 * client.put(null, new Key("test", "set1", "id1"),
+	 *     new Bin("tags", Value.get(Arrays.asList("a", "b", "c"))));
+	 * }</pre>
 	 */
 	public static final class ListValue extends Value {
 		private final List<?> list;
@@ -1554,6 +1699,14 @@ public abstract class Value {
 
 	/**
 	 * Map value.
+	 * <p><b>Example:</b>
+	 * <p>Store a map bin with Value.get(Map).</p>
+	 * <pre>{@code
+	 * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+	 * java.util.Map<String, Integer> map = new java.util.HashMap<>();
+	 * map.put("x", 1);
+	 * client.put(null, new Key("test", "set1", "id1"), new Bin("data", Value.get(map)));
+	 * }</pre>
 	 */
 	public static final class MapValue extends Value {
 		private final Map<?,?> map;
@@ -1635,6 +1788,14 @@ public abstract class Value {
 
 	/**
 	 * Sorted map value.
+	 * <p><b>Example:</b>
+	 * <p>Store a sorted map bin with Value.get(SortedMap).</p>
+	 * <pre>{@code
+	 * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+	 * java.util.SortedMap<String, Integer> map = new java.util.TreeMap<>();
+	 * map.put("a", 1);
+	 * client.put(null, new Key("test", "set1", "id1"), new Bin("data", Value.get(map)));
+	 * }</pre>
 	 */
 	public static final class SortedMapValue extends Value {
 		private final List<? extends Entry<?,?>> list;
@@ -1704,7 +1865,13 @@ public abstract class Value {
 	}
 
 	/**
-	 * Infinity value.
+	 * Infinity value to be used in CDT range comparisons only.
+	 * <p><b>Example:</b>
+	 * <p>Use Value.INFINITY in map/list range operations (e.g. getByValueRange).</p>
+	 * <pre>{@code
+	 * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+	 * // Use Value.INFINITY in map/list range operations, e.g. getByValueRange(Value.INFINITY, Value.INFINITY)
+	 * }</pre>
 	 */
 	public static final class InfinityValue extends Value {
 		@Override
@@ -1760,7 +1927,13 @@ public abstract class Value {
 	}
 
 	/**
-	 * Wildcard value.
+	 * Wildcard value to be used in CDT range comparisons only.
+	 * <p><b>Example:</b>
+	 * <p>Use Value.WILDCARD in map/list range operations (e.g. getByValueRange).</p>
+	 * <pre>{@code
+	 * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+	 * // Use Value.WILDCARD in map/list range operations, e.g. getByValueRange(Value.WILDCARD, Value.WILDCARD)
+	 * }</pre>
 	 */
 	public static final class WildcardValue extends Value {
 		@Override

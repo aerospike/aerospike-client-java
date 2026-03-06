@@ -29,6 +29,22 @@ import com.aerospike.client.cluster.Partition;
  * after the last record read (in digest order) in each partition in the previous scan/query.
  * To reset the cursor of an existing PartitionFilter instance, call
  * {@link #setPartitions(PartitionStatus[])} with a null argument.
+ * <p>Query a partition range with queryPartitions.</p>
+ * <pre>{@code
+ * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+ * Statement stmt = new Statement();
+ * stmt.setNamespace("test");
+ * stmt.setSetName("set1");
+ * PartitionFilter filter = PartitionFilter.range(0, 100);
+ * RecordSet rs = client.queryPartitions(null, stmt, filter);
+ * try {
+ *   while (rs.next()) { KeyRecord kr = rs.getKeyRecord(); }
+ * } finally { rs.close(); }
+ * client.close();
+ * }</pre>
+ *
+ * @see com.aerospike.client.AerospikeClient#queryPartitions
+ * @see Statement
  */
 public final class PartitionFilter implements Serializable {
 	private static final long serialVersionUID = 4L;

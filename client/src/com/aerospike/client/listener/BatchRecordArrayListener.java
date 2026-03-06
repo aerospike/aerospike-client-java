@@ -20,24 +20,38 @@ import com.aerospike.client.AerospikeException;
 import com.aerospike.client.BatchRecord;
 
 /**
- * Asynchronous result notifications for batch operate commands.
+ * Async callback for batch operate; receives full array of {@link com.aerospike.client.BatchRecord} and overall status.
+ * <p>
+ * Pass to {@link com.aerospike.client.IAerospikeClient#operate(com.aerospike.client.async.EventLoop, BatchRecordArrayListener, com.aerospike.client.policy.BatchPolicy, com.aerospike.client.BatchRecord[])}. Records are in same order as input; check each {@link com.aerospike.client.BatchRecord#resultCode}.
+ * <pre>{@code
+ * EventLoops eventLoops = new NioEventLoops(4);
+ * ClientPolicy clientPolicy = new ClientPolicy();
+ * clientPolicy.eventLoops = eventLoops;
+ * IAerospikeClient client = new AerospikeClient(clientPolicy, "localhost", 3000);
+ * EventLoop loop = eventLoops.next();
+ * BatchRecord[] records = new BatchRecord[] { new BatchWrite(...) };
+ *
+ * client.operate(loop, new BatchRecordArrayListener() {
+ *   public void onSuccess(BatchRecord[] records, boolean status) { }
+ *   public void onFailure(BatchRecord[] records, AerospikeException e) { }
+ * }, new BatchPolicy(), records);
+ * }</pre>
+ *
+ * @see com.aerospike.client.BatchRecord
+ * @see com.aerospike.client.IAerospikeClient#operate(com.aerospike.client.async.EventLoop, BatchRecordArrayListener, com.aerospike.client.policy.BatchPolicy, com.aerospike.client.BatchRecord[])
  */
 public interface BatchRecordArrayListener {
 	/**
-	 * This method is called when the command completes successfully.
-	 * The returned record array is in positional order with the original key array order.
-	 *
-	 * @param records		record instances, always populated.
-	 * @param status		true if all records returned success.
+	 * Called when the batch operate completes; one entry per input record, in order.
+	 * @param records batch records, always populated (must not be null)
+	 * @param status true if all records succeeded
 	 */
 	public void onSuccess(BatchRecord[] records, boolean status);
 
 	/**
-	 * This method is called when one or more keys fail.
-	 *
-	 * @param records		record instances, always populated. {@link com.aerospike.client.BatchRecord#resultCode}
-	 * 						indicates if an error occurred for each record instance.
-	 * @param ae			error that occurred
+	 * Called when the batch fails; records may still be populated with per-key results.
+	 * @param records batch records (must not be null); check {@link com.aerospike.client.BatchRecord#resultCode}
+	 * @param ae exception cause of failure wrapped into Aerospike exception
 	 */
 	public void onFailure(BatchRecord[] records, AerospikeException ae);
 }

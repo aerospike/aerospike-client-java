@@ -37,8 +37,22 @@ import java.util.Iterator;
 import java.util.Map;
 
 /**
- * Aerospike wrapper around netty event loops.
- * Implements the Aerospike EventLoops interface.
+ * Netty-based implementation of {@link EventLoops} (wraps an existing Netty {@link io.netty.channel.EventLoopGroup}).
+ * <p>
+ * Use when the application already uses Netty; create from your {@link io.netty.channel.EventLoopGroup} and set on {@link com.aerospike.client.policy.ClientPolicy#eventLoops}.
+ * <pre>{@code
+ * EventLoopGroup group = new NioEventLoopGroup(4);
+ * EventLoops eventLoops = new NettyEventLoops(group);
+ * ClientPolicy policy = new ClientPolicy();
+ * policy.eventLoops = eventLoops;
+ * IAerospikeClient client = new AerospikeClient(policy, "localhost", 3000);
+ * }</pre>
+ *
+ * @see EventLoops
+ * @see NioEventLoops
+ * @see EventPolicy
+ * @see EventLoopType
+ * @see com.aerospike.client.policy.ClientPolicy#eventLoops
  */
 public final class NettyEventLoops implements EventLoops {
 
@@ -48,23 +62,27 @@ public final class NettyEventLoops implements EventLoops {
 	final EventLoopType eventLoopType;
 	private int eventIter;
 
-	/**
-	 * Create Aerospike event loop wrappers from given netty event loops.
-	 */
+	/** Creates Aerospike event loop wrappers from the given Netty event loop group (type inferred). */
 	public NettyEventLoops(EventLoopGroup group) {
 		this(new EventPolicy(), group);
 	}
 
 	/**
-	 * Create Aerospike event loop wrappers from given netty event loops.
-	 * The type of event loop is determined from the event loop group instance.
+	 * Creates Aerospike event loop wrappers from the given Netty group and policy; type is inferred from the group.
+	 * @param policy event loop policy (must not be null)
+	 * @param group Netty event loop group (must not be null)
+	 * @throws com.aerospike.client.AerospikeException when minTimeout is invalid
 	 */
 	public NettyEventLoops(EventPolicy policy, EventLoopGroup group) {
 		this(policy, group, getEventLoopType(group));
 	}
 
 	/**
-	 * Create Aerospike event loop wrappers from given netty event loops and specified event loop type.
+	 * Creates Aerospike event loop wrappers with an explicit event loop type.
+	 * @param policy event loop policy (must not be null)
+	 * @param group Netty event loop group (must not be null)
+	 * @param type event loop type (must not be null)
+	 * @throws com.aerospike.client.AerospikeException when minTimeout is invalid
 	 */
 	public NettyEventLoops(EventPolicy policy, EventLoopGroup group, EventLoopType type) {
 		if (policy.minTimeout < 5) {

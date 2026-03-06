@@ -38,14 +38,27 @@ import io.netty.handler.ssl.SslContextBuilder;
 import io.netty.handler.ssl.SslHandler;
 
 /**
- * Netty SslContext container.
+ * Netty SslContext container for TLS when using Netty-based event loops.
+ * <p>
+ * Optionally set on {@link com.aerospike.client.policy.TlsPolicy#nettyContext} to share one TLS context across multiple {@link com.aerospike.client.AerospikeClient} instances that use Netty.
+ * <pre>{@code
+ * TlsPolicy tp = new TlsPolicy();
+ * tp.nettyContext = new NettyTlsContext(tp);
+ * ClientPolicy policy = new ClientPolicy();
+ * policy.tlsPolicy = tp;
+ * policy.eventLoops = new NettyEventLoops(...);
+ * }</pre>
+ *
+ * @see com.aerospike.client.policy.TlsPolicy#nettyContext
  */
 public final class NettyTlsContext implements CipherSuiteFilter {
 	private final TlsPolicy policy;
 	private final SslContext context;
 
 	/**
-	 * Construct Netty SslContext.
+	 * Builds a Netty SslContext from the given TLS policy.
+	 * @param policy TLS policy (must not be null)
+	 * @throws com.aerospike.client.AerospikeException when Netty TLS initialization fails
 	 */
 	public NettyTlsContext(TlsPolicy policy) {
 		this.policy = policy;
@@ -94,15 +107,15 @@ public final class NettyTlsContext implements CipherSuiteFilter {
 	}
 
 	/**
-	 * Create TLS handler.
+	 * Creates a TLS handler for the given Netty channel.
+	 * @param ch Netty socket channel (must not be null)
+	 * @return new SslHandler for the channel
 	 */
 	public SslHandler createHandler(SocketChannel ch) {
 		return context.newHandler(ch.alloc());
 	}
 
-	/**
-	 * Return supported ciphers.
-	 */
+	/** @return supported ciphers per policy, or default from context when policy ciphers are null */
 	@Override
 	public String[] filterCipherSuites(Iterable<String> ciphers, List<String> defaultCiphers, Set<String> supportedCiphers) {
 		if (policy.ciphers != null) {

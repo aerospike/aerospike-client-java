@@ -25,7 +25,25 @@ import com.aerospike.client.policy.Policy;
 import com.aerospike.client.util.Packer;
 
 /**
- * Batch user defined functions.
+ * Batch UDF item: one key and a Lua module/function with optional arguments.
+ * <p>
+ * Pass an array to {@link com.aerospike.client.AerospikeClient#operate} (same as batch operate) or async overloads. Each element can use a different UDF or args.
+ * <pre>{@code
+ * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+ * BatchUDF[] udfs = new BatchUDF[] {
+ *   new BatchUDF(new Key("ns", "set", "k1"), "mymodule", "myfunc", new Value[] { Value.get(1), Value.get("x") }),
+ *   new BatchUDF(new BatchUDFPolicy(), new Key("ns", "set", "k2"), "mymodule", "other", null)
+ * };
+ * client.operate(null, udfs);
+ * for (BatchUDF bu : udfs) {
+ *   if (bu.record != null) { Object result = bu.record.getValue("result"); }
+ * }
+ * client.close();
+ * }</pre>
+ *
+ * @see BatchRecord
+ * @see com.aerospike.client.AerospikeClient#operate
+ * @see com.aerospike.client.listener.BatchRecordArrayListener
  */
 public final class BatchUDF extends BatchRecord {
 	/**

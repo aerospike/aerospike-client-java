@@ -26,11 +26,36 @@ import com.aerospike.client.Key;
 import com.aerospike.client.Record;
 
 /**
- * This class manages record retrieval from queries.
- * Multiple threads will retrieve records from the server nodes and put these records on the queue.
- * The single user thread consumes these records from the queue.
+ * Iterable set of key/record pairs from a query; call {@link #next()} then {@link #getKeyRecord()} (or iterate) and always {@link #close()} when done.
+ * <p>
+ * Returned by {@link com.aerospike.client.AerospikeClient#query}. Use {@link #END} to detect end when iterating; {@link #next()} returns false when no more records. Close in a finally block to release resources.
+ * <p>Run a query and iterate RecordSet with next() and getKeyRecord().</p>
+ * <pre>{@code
+ * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+ * Statement stmt = new Statement();
+ * stmt.setNamespace("test");
+ * stmt.setSetName("set1");
+ * stmt.setFilter(Filter.equal("bin1", 1));
+ * RecordSet rs = client.query(null, stmt);
+ * try {
+ *   while (rs.next()) {
+ *     KeyRecord kr = rs.getKeyRecord();
+ *     if (kr.record != null) { Object v = kr.record.getValue("mybin"); }
+ *   }
+ * } finally {
+ *   rs.close();
+ * }
+ * client.close();
+ * }</pre>
+ *
+ * @see KeyRecord
+ * @see ResultSet
+ * @see QueryListener
+ * @see Statement
+ * @see com.aerospike.client.AerospikeClient#query
  */
 public class RecordSet implements Iterable<KeyRecord>, Closeable {
+	/** Sentinel indicating no more records; do not use as application data. */
 	public static final KeyRecord END = new KeyRecord(null, null);
 
 	private final IQueryExecutor executor;
@@ -59,10 +84,9 @@ public class RecordSet implements Iterable<KeyRecord>, Closeable {
 	//-------------------------------------------------------
 
 	/**
-	 * Retrieve next record.  This method will block until a record is retrieved
-	 * or the query is cancelled.
-	 *
-	 * @return whether record exists - if false, no more records are available
+	 * Advances to the next record; blocks until a record is available or the query ends.
+	 * @return true if a record is available (use {@link #getKeyRecord()}); false when no more records
+	 * @throws AerospikeException when the query fails on the server (e.g. timeout, connection error, or invalid statement)
 	 */
 	public boolean next() throws AerospikeException {
 		if (! valid) {
@@ -92,9 +116,7 @@ public class RecordSet implements Iterable<KeyRecord>, Closeable {
 		return true;
 	}
 
-	/**
-	 * Close query.
-	 */
+	/** Closes this record set and releases resources; call in a finally block. */
 	public void close() {
 		valid = false;
 

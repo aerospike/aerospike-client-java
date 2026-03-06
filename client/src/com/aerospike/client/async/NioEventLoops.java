@@ -23,46 +23,57 @@ import com.aerospike.client.AerospikeException;
 import com.aerospike.client.util.Util;
 
 /**
- * Asynchronous event loops.
+ * Direct NIO implementation of {@link EventLoops} (no Netty dependency).
+ * <p>
+ * Create and set on {@link com.aerospike.client.policy.ClientPolicy#eventLoops} before constructing the client. Use one event loop per CPU core by default, or pass an explicit size.
+ * <pre>{@code
+ * EventLoops eventLoops = new NioEventLoops(4);
+ * ClientPolicy policy = new ClientPolicy();
+ * policy.eventLoops = eventLoops;
+ * IAerospikeClient client = new AerospikeClient(policy, "localhost", 3000);
+ * }</pre>
+ *
+ * @see EventLoops
+ * @see NettyEventLoops
+ * @see EventPolicy
+ * @see com.aerospike.client.policy.ClientPolicy#eventLoops
  */
 public final class NioEventLoops implements EventLoops {
 
 	final NioEventLoop[] eventLoops;
 	private int eventIter;
 
-	/**
-	 * Create direct NIO event loops, one per CPU core.
-	 */
+	/** Creates direct NIO event loops, one per CPU core. */
 	public NioEventLoops() throws AerospikeException {
 		this(0);
 	}
 
 	/**
-	 * Create direct NIO event loops.
-	 *
-	 * @param size		number of event loops to create
+	 * Creates direct NIO event loops.
+	 * @param size number of event loops (0 for one per CPU core)
+	 * @throws com.aerospike.client.AerospikeException when minTimeout is invalid or creation fails
 	 */
 	public NioEventLoops(int size) throws AerospikeException {
 		this(new EventPolicy(), size);
 	}
 
 	/**
-	 * Create direct NIO event loops.
-	 *
-	 * @param policy	event loop policy
-	 * @param size		number of event loops to create
+	 * Creates direct NIO event loops with the given policy.
+	 * @param policy event loop policy (must not be null)
+	 * @param size number of event loops (0 for one per CPU core)
+	 * @throws com.aerospike.client.AerospikeException when minTimeout is invalid or creation fails
 	 */
 	public NioEventLoops(EventPolicy policy, int size) throws AerospikeException {
 		this(policy, size, false, "aerospike-nio-event-loop");
 	}
 
 	/**
-	 * Create direct NIO event loops.
-	 *
-	 * @param policy	event loop policy
-	 * @param size		number of event loops to create
-	 * @param daemon	true if the associated threads should run as a daemons
-	 * @param poolName	event loop thread pool name
+	 * Creates direct NIO event loops with the given policy and thread settings.
+	 * @param policy event loop policy (must not be null)
+	 * @param size number of event loops (0 for one per CPU core)
+	 * @param daemon true if event loop threads should be daemon threads
+	 * @param poolName name for the event loop thread pool
+	 * @throws com.aerospike.client.AerospikeException when minTimeout is invalid or creation fails
 	 */
 	public NioEventLoops(EventPolicy policy, int size, boolean daemon, String poolName) throws AerospikeException {
 		if (policy.minTimeout < 5) {

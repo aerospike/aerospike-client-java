@@ -20,7 +20,29 @@ import com.aerospike.client.configuration.*;
 import com.aerospike.client.policy.Policy;
 
 /**
- * Batch key and record result.
+ * Base for a single key in a batch get, operate, delete, or UDF; holds key, record (or null), resultCode, and inDoubt flag.
+ * <p>
+ * <pre>{@code
+ * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+ * BatchRead[] batchReads = new BatchRead[] {
+ *   new BatchRead(new Key("ns", "set", "k1"), new String[] { "bin1", "bin2" }),
+ *   new BatchRead(new Key("ns", "set", "k2"), true)
+ * };
+ * client.get(null, batchReads);
+ * for (BatchRead br : batchReads) {
+ *   if (br.record != null) { Object v = br.record.getValue("bin1"); }
+ * }
+ * client.close();
+ * }</pre>
+ *
+ * @see BatchRead
+ * @see BatchWrite
+ * @see BatchDelete
+ * @see BatchUDF
+ * @see ResultCode
+ * @see com.aerospike.client.AerospikeException.BatchRecords
+ * @see com.aerospike.client.AerospikeClient#get
+ * @see com.aerospike.client.AerospikeClient#operate
  */
 public class BatchRecord {
 	/**

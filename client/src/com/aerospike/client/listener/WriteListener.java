@@ -20,18 +20,35 @@ import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
 
 /**
- * Asynchronous result notifications for put, append, prepend, add, delete and touch commands.
+ * Async callback for put, append, prepend, add, touch; receives key on success or exception on failure.
+ * <p>
+ * Pass to {@link com.aerospike.client.IAerospikeClient#put} and other write overloads.
+ * <pre>{@code
+ * EventLoops eventLoops = new NioEventLoops(4);
+ * ClientPolicy clientPolicy = new ClientPolicy();
+ * clientPolicy.eventLoops = eventLoops;
+ * IAerospikeClient client = new AerospikeClient(clientPolicy, "localhost", 3000);
+ * EventLoop loop = eventLoops.next();
+ *
+ * client.put(loop, new WriteListener() {
+ *   public void onSuccess(Key key) { }
+ *   public void onFailure(AerospikeException e) { }
+ * }, new WritePolicy(), key, new Bin("bin", "value"));
+ * }</pre>
+ *
+ * @see com.aerospike.client.IAerospikeClient#put
+ * @see com.aerospike.client.IAerospikeClient#delete
  */
 public interface WriteListener {
 	/**
 	 * This method is called when an asynchronous write command completes successfully.
-	 *
-	 * @param key		unique record identifier
+	 * @param key unique record identifier (must not be null)
 	 */
 	public void onSuccess(Key key);
 
 	/**
 	 * This method is called when an asynchronous write command fails.
+	 * @param ae exception cause of failure wrapped into Aerospike exception
 	 */
 	public void onFailure(AerospikeException ae);
 }

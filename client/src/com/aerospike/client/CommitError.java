@@ -17,7 +17,29 @@
 package com.aerospike.client;
 
 /**
- * Transaction error status.
+ * Transaction commit error code in {@link AerospikeException.Commit}; {@link #str} holds a human-readable message.
+ *
+ * <p><b>Example:</b>
+ * <p>Catch commit exception and handle CommitError (e.g. verify failure).</p>
+ * <pre>{@code
+ * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+ * try {
+ *   client.commit(txn);
+ * } catch (AerospikeException.Commit e) {
+ *   CommitError err = e.error;
+ *   switch (err) {
+ *     case VERIFY_FAIL:
+ *     case VERIFY_FAIL_CLOSE_ABANDONED:
+ *       break;
+ *     default:
+ *       System.err.println(err.str);
+ *   }
+ * }
+ * }</pre>
+ *
+ * @see AerospikeException.Commit
+ * @see CommitStatus
+ * @see AbortStatus
  */
 public enum CommitError {
 	VERIFY_FAIL("Transaction verify failed. Transaction aborted."),
@@ -25,6 +47,7 @@ public enum CommitError {
 	VERIFY_FAIL_ABORT_ABANDONED("Transaction verify failed. Transaction client abort abandoned. Server will eventually abort the transaction."),
 	MARK_ROLL_FORWARD_ABANDONED("Transaction client mark roll forward abandoned. Server will eventually abort the transaction.");
 
+	/** Human-readable message for this error. */
 	public final String str;
 
 	CommitError(String str) {

@@ -17,12 +17,24 @@
 package com.aerospike.client.operation;
 
 /**
- * Bit operation policy.
+ * Policy for bit (byte[]) operations; holds {@link BitWriteFlags} used by {@link BitOperation}.
+ * <p>
+ * Pass to {@link BitOperation#resize}, {@link BitOperation#insert}, {@link BitOperation#set}, and other BitOperation methods.
+ * <p>Use BitPolicy with resize and set.</p>
+ * <pre>{@code
+ * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+ * BitPolicy policy = BitPolicy.Default;
+ * client.operate(null, key, BitOperation.resize(policy, "bits", 8, BitResizeFlags.DEFAULT));
+ *
+ * BitPolicy createOnly = new BitPolicy(BitWriteFlags.CREATE_ONLY);
+ * client.operate(null, key, BitOperation.set(createOnly, "bits", 0, new byte[] { 1, 2, 3 }));
+ * }</pre>
+ *
+ * @see BitOperation
+ * @see BitWriteFlags
  */
 public final class BitPolicy {
-	/**
-	 * Default byte[] with normal bin write semantics.
-	 */
+	/** Default policy with normal create/update semantics. */
 	public static final BitPolicy Default = new BitPolicy();
 
 	public final int flags;

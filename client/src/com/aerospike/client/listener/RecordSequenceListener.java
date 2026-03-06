@@ -21,36 +21,46 @@ import com.aerospike.client.Key;
 import com.aerospike.client.Record;
 
 /**
- * Asynchronous result notifications for batch get and scan/query commands.
- * The results are sent one record at a time.
+ * Asynchronous callback for batch get and scan/query; results are delivered one record at a time via {@link #onRecord}, then {@link #onSuccess} or {@link #onFailure}.
+ * <p>
+ * Pass to {@link com.aerospike.client.AerospikeClient#query} or {@link com.aerospike.client.AerospikeClient#get} async overloads. For scan/query, throw {@link com.aerospike.client.AerospikeException.QueryTerminated} or {@link com.aerospike.client.AerospikeException.ScanTerminated} to abort; the exception is reported in {@link #onFailure}.
+ *
+ * <pre>{@code
+ * EventLoops eventLoops = new NioEventLoops(4);
+ * ClientPolicy clientPolicy = new ClientPolicy();
+ * clientPolicy.eventLoops = eventLoops;
+ * IAerospikeClient client = new AerospikeClient(clientPolicy, "localhost", 3000);
+ * EventLoop loop = eventLoops.next();
+ * Statement stmt = new Statement();
+ * stmt.setNamespace("test");
+ * stmt.setSetName("set1");
+ * client.query(loop, new RecordSequenceListener() {
+ *   public void onRecord(Key key, Record record) {
+ *     if (record != null) { Object v = record.getValue("mybin"); }
+ *   }
+ *   public void onSuccess() { }
+ *   public void onFailure(AerospikeException e) { }
+ * }, null, stmt);
+ * }</pre>
+ *
+ * @see #onSuccess
+ * @see #onFailure(AerospikeException)
+ * @see com.aerospike.client.AerospikeClient#query
+ * @see com.aerospike.client.AerospikeClient#get
  */
 public interface RecordSequenceListener {
 	/**
-	 * This method is called when an asynchronous record is received from the server.
-	 * The receive sequence is not ordered.
-	 * <p>
-	 * If this listener is used in a scan/query command, The user may throw a
-	 * {@link com.aerospike.client.AerospikeException.QueryTerminated AerospikeException.QueryTerminated}
-	 * exception if the command should be aborted. If any exception is thrown, parallel command threads
-	 * to other nodes will also be terminated and the exception will be propagated back through the
-	 * onFailure() call.
-	 * <p>
-	 * If this listener is used in a batch command, an user thrown exception will terminate the batch
-	 * to the current node, but parallel batch command threads to other nodes will continue to run.
+	 * Called when an asynchronous record is received; order is not guaranteed. For scan/query, throw QueryTerminated or ScanTerminated to abort (reported in onFailure). For batch, a thrown exception stops only the current node.
 	 *
-	 * @param key					unique record identifier
-	 * @param record				record instance, will be null if the key is not found
-	 * @throws AerospikeException	if error occurs or scan should be terminated.
+	 * @param key    unique record identifier; never null
+	 * @param record record instance; null if the key is not found
+	 * @throws AerospikeException when an error occurs or the scan/query should be terminated (e.g. throw ScanTerminated or QueryTerminated to abort).
 	 */
 	public void onRecord(Key key, Record record) throws AerospikeException;
 
-	/**
-	 * This method is called when the asynchronous batch get or scan command completes.
-	 */
+	/** Called when the asynchronous batch get or scan/query completes successfully. */
 	public void onSuccess();
 
-	/**
-	 * This method is called when an asynchronous batch get or scan command fails.
-	 */
+	/** Called when the asynchronous batch get or scan/query fails; receives the exception. */
 	public void onFailure(AerospikeException ae);
 }

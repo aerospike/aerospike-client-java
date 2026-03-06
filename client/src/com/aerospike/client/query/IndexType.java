@@ -17,7 +17,13 @@
 package com.aerospike.client.query;
 
 /**
- * Underlying data type of secondary index.
+ * Data type of a secondary index; used when creating an index and must match the bin type and {@link Filter}.
+ * <p>
+ * Pass to {@link com.aerospike.client.AerospikeClient#createIndex} and {@link com.aerospike.client.AerospikeClient#dropIndex}. Use with {@link IndexCollectionType} for list/map indexes.
+ *
+ * @see IndexCollectionType
+ * @see Filter
+ * @see com.aerospike.client.AerospikeClient#createIndex
  */
 public enum IndexType {
 	/**

@@ -19,7 +19,24 @@ package com.aerospike.client.policy;
 import com.aerospike.client.exp.Expression;
 
 /**
- * Policy attributes used in batch read commands.
+ * Policy for batch read: optional filter expression, read mode (AP/SC), replica, and read-touch-TTL.
+ * <p>
+ * Pass to batch get overloads when using key-specific policies; otherwise batch uses {@link BatchPolicy} and default read behavior.
+ *
+ * <p><b>Example:</b>
+ * <p>Use availability read mode ONE for batch reads when passing key-specific policies (e.g. in BatchRecord).</p>
+ * <pre>{@code
+ * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+ * BatchPolicy batchPolicy = new BatchPolicy();
+ * BatchReadPolicy brp = new BatchReadPolicy();
+ * brp.readModeAP = ReadModeAP.ONE;
+ * Record[] records = client.get(batchPolicy, keys);
+ * }</pre>
+ *
+ * @see BatchPolicy
+ * @see com.aerospike.client.AerospikeClient#get
+ * @see ReadModeAP
+ * @see ReadModeSC
  */
 public final class BatchReadPolicy {
 	/**

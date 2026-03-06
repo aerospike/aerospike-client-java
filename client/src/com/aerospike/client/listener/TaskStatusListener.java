@@ -19,18 +19,32 @@ package com.aerospike.client.listener;
 import com.aerospike.client.AerospikeException;
 
 /**
- * Asynchronous result notifications for index status command.
+ * Async callback for index task status (e.g. from {@link com.aerospike.client.async.AsyncIndexTask#queryStatus}); receives load percentage or exception.
+ * <p>
+ * Pass to {@link com.aerospike.client.async.AsyncIndexTask#queryStatus}. Status 100 means complete; see {@link com.aerospike.client.task.Task}.
+ * <pre>{@code
+ * task.queryStatus(loop, new InfoPolicy(), node, new TaskStatusListener() {
+ *   public void onSuccess(int status) {
+ *     if (status == 100) { }
+ *   }
+ *   public void onFailure(AerospikeException e) { }
+ * });
+ * }</pre>
+ *
+ * @see com.aerospike.client.async.AsyncIndexTask#queryStatus
+ * @see IndexListener
+ * @see com.aerospike.client.task.Task
  */
 public interface TaskStatusListener {
 	/**
-	 * This method is called when an asynchronous command completes successfully.
-	 *
-	 * @param status	task status (see {@link com.aerospike.client.task.Task})
+	 * Called when the asynchronous command completes successfully
+	 * @param status  task status see {@link com.aerospike.client.task.Task}
 	 */
 	void onSuccess(int status);
 
 	/**
-	 * This method is called when an asynchronous command fails.
+	 * Called when the asynchronous command fails.
+	 * @param ae exception cause of failure wrapped into Aerospike exception
 	 */
 	public void onFailure(AerospikeException ae);
 }

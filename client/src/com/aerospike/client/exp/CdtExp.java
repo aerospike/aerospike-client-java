@@ -13,12 +13,30 @@
  * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
  * License for the specific language governing permissions and limitations under
  * the License.
-*/ 
+*/
 package com.aerospike.client.exp;
 
 import com.aerospike.client.cdt.CTX;
 import com.aerospike.client.util.Packer;
 
+/**
+ * CDT select/modify expressions for use in filters and expressions (nested path select/apply).
+ * <p>
+ * Use with {@link Exp#build(Exp)} in {@link com.aerospike.client.policy.Policy#filterExp} or inside other expressions. Complements {@link com.aerospike.client.cdt.CdtOperation} (operate-only) with expression form for filtering.
+ * <p>Filter by nested path with CdtExp.selectByPath.</p>
+ * <pre>{@code
+ * CTX ctx1 = CTX.mapKey(Value.get("book"));
+ * CTX ctx2 = CTX.allChildrenWithFilter(Exp.le(MapExp.getByKey(MapReturnType.VALUE, Exp.Type.FLOAT, Exp.val("price"), Exp.mapLoopVar(LoopVarPart.VALUE)), Exp.val(10.0)));
+ * Exp selectExp = CdtExp.selectByPath(Exp.Type.LIST, Exp.SELECT_VALUE, Exp.mapBin("bin"), ctx1, ctx2);
+ * Policy policy = new Policy();
+ * policy.filterExp = Exp.build(selectExp);
+ * }</pre>
+ *
+ * @see Exp
+ * @see com.aerospike.client.cdt.CdtOperation
+ * @see CTX
+ * @see LoopVarPart
+ */
 public class CdtExp {
     /**
      * The module identifier for CDT expressions.

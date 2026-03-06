@@ -22,7 +22,25 @@ import com.aerospike.client.Record;
 import java.util.Objects;
 
 /**
- * Container object for key identifier and record data.
+ * Key and record pair returned by query/scan iteration; obtained from {@link RecordSet#getKeyRecord()} after {@link RecordSet#next()}.
+ * <p>
+ * In normal iteration {@link #key} is not null; {@link #record} is null when the key was not found. Also used as sentinel {@link RecordSet#END}.
+ * <p>Iterate query results and get KeyRecord from RecordSet.</p>
+ * <pre>{@code
+ * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+ * RecordSet rs = client.query(null, stmt);
+ * try {
+ *   while (rs.next()) {
+ *     KeyRecord kr = rs.getKeyRecord();
+ *     if (kr.record != null) { Object v = kr.record.getValue("mybin"); }
+ *   }
+ * } finally { rs.close(); }
+ * client.close();
+ * }</pre>
+ *
+ * @see RecordSet
+ * @see com.aerospike.client.Key
+ * @see com.aerospike.client.Record
  */
 public final class KeyRecord {
 	/**

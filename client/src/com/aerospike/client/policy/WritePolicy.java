@@ -25,8 +25,25 @@ import com.aerospike.client.configuration.serializers.DynamicConfiguration;
 import com.aerospike.client.configuration.serializers.dynamicconfig.DynamicWriteConfig;
 
 /**
- * Container object for policy attributes used in write operations.
- * This object is passed into methods where database writes can occur.
+ * Policy for write operations: record-exists action, generation policy, commit level, expiration, and related options.
+ * <p>
+ * Pass to put, append, prepend, add, delete, touch, operate, and execute. Extends {@link Policy} for timeouts and retries.
+ *
+ * <p><b>Example:</b>
+ * <p>Replace existing records and set record TTL to one hour (3600 seconds).</p>
+ * <pre>{@code
+ * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+ * WritePolicy wp = new WritePolicy();
+ * wp.recordExistsAction = RecordExistsAction.REPLACE;
+ * wp.expiration = 3600;
+ * client.put(wp, key, new Bin("name", "Alice"));
+ * }</pre>
+ *
+ * @see Policy
+ * @see RecordExistsAction
+ * @see GenerationPolicy
+ * @see com.aerospike.client.AerospikeClient#put
+ * @see com.aerospike.client.AerospikeClient#operate
  */
 public final class WritePolicy extends Policy {
 	/**

@@ -17,16 +17,21 @@
 package com.aerospike.client.exp;
 
 /**
- * Expression read flags.
+ * Flags for {@link ExpOperation#read}; control behavior when expression evaluation fails (e.g. missing bin).
+ * <p>
+ * Use with {@link ExpOperation#read}. {@link #EVAL_NO_FAIL} returns the record without the expression result instead of failing.
+ * <p>Use ExpReadFlags with ExpOperation.read.</p>
+ * <pre>{@code
+ * Record rec = client.operate(null, key, ExpOperation.read("EV", exp, ExpReadFlags.DEFAULT));
+ * Record rec2 = client.operate(null, key, ExpOperation.read("EV", exp, ExpReadFlags.EVAL_NO_FAIL));
+ * }</pre>
+ *
+ * @see ExpOperation#read
  */
 public final class ExpReadFlags {
-	/**
-	 * Default.
-	 */
+	/** Default: fail if expression cannot be evaluated (e.g. bin missing). */
 	public static final int DEFAULT = 0;
 
-	/**
-	 * Ignore failures caused by the expression resolving to unknown or a non-bin type.
-	 */
+	/** Ignore failures when expression resolves to unknown or non-bin type; record still returned. */
 	public static final int EVAL_NO_FAIL = 16;
 }

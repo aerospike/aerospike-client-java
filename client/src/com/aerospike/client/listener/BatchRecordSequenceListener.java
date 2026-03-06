@@ -20,26 +20,40 @@ import com.aerospike.client.AerospikeException;
 import com.aerospike.client.BatchRecord;
 
 /**
- * Asynchronous result notifications for batch operate commands.
- * The results are sent one record at a time.
+ * Async callback for batch operate; results delivered one {@link com.aerospike.client.BatchRecord} at a time via {@link #onRecord}, then {@link #onSuccess} or {@link #onFailure}.
+ * <p>
+ * Pass to {@link com.aerospike.client.IAerospikeClient#operate}. Order of onRecord is not guaranteed.
+ * <pre>{@code
+ * EventLoops eventLoops = new NioEventLoops(4);
+ * ClientPolicy clientPolicy = new ClientPolicy();
+ * clientPolicy.eventLoops = eventLoops;
+ * IAerospikeClient client = new AerospikeClient(clientPolicy, "localhost", 3000);
+ * EventLoop loop = eventLoops.next();
+ * BatchRecord[] records = new BatchRecord[] { new BatchWrite(...) };
+ *
+ * client.operate(loop, new BatchRecordSequenceListener() {
+ *   public void onRecord(BatchRecord record, int index) { }
+ *   public void onSuccess() { }
+ *   public void onFailure(AerospikeException e) { }
+ * }, new BatchPolicy(), records);
+ * }</pre>
+ *
+ * @see com.aerospike.client.IAerospikeClient#operate
  */
 public interface BatchRecordSequenceListener {
 	/**
-	 * This method is called when a record is received from the server.
-	 * The receive sequence is not ordered.
-	 *
-	 * @param record	record instance
-	 * @param index 	index offset into the original BatchRecord array.
+	 * Called for each batch record when received; order is not guaranteed.
+	 * @param record batch record (must not be null)
+	 * @param index index into the original BatchRecord array
 	 */
 	public void onRecord(BatchRecord record, int index);
 
-	/**
-	 * This method is called when the command completes successfully.
-	 */
+	/** Called when the batch operate completes successfully. */
 	public void onSuccess();
 
 	/**
-	 * This method is called when the command fails.
+	 * Called when the batch operate fails.
+	 * @param ae exception cause of failure wrapped into Aerospike exception
 	 */
 	public void onFailure(AerospikeException ae);
 }

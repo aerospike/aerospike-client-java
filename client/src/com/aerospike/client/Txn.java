@@ -23,12 +23,32 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
- * Multi-record transaction. Each command in the transaction must use the same namespace.
+ * Multi-record transaction; all commands must use the same namespace. Set {@link com.aerospike.client.policy.Policy#txn} on the write policy, then call {@link com.aerospike.client.AerospikeClient#commit} or {@link com.aerospike.client.AerospikeClient#abort}.
+ *
+ * <p><b>Example:</b>
+ * <p>Run a multi-record transaction: get, put with txn policy, then commit.</p>
+ * <pre>{@code
+ * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+ * try {
+ *   Txn txn = new Txn();
+ *   WritePolicy wp = client.getWritePolicyDefault().copy();
+ *   wp.txn = txn;
+ *   Key k1 = new Key("test", "set1", "id1");
+ *   Key k2 = new Key("test", "set1", "id2");
+ *   client.get(null, k1);
+ *   client.put(wp, k2, new Bin("x", 1));
+ *   CommitStatus status = client.commit(txn);
+ * } finally {
+ *   client.close();
+ * }
+ * }</pre>
+ *
+ * @see com.aerospike.client.policy.Policy#txn
+ * @see com.aerospike.client.AerospikeClient#commit
+ * @see com.aerospike.client.AerospikeClient#abort
  */
 public final class Txn {
-	/**
-	 * Transaction state.
-	 */
+	/** Transaction state. */
 	public static enum State {
 		OPEN,
 		VERIFIED,

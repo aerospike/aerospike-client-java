@@ -20,19 +20,35 @@ import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
 
 /**
- * Asynchronous result notifications for delete commands.
+ * Async callback for delete; receives key, whether record existed, or exception.
+ * <p>
+ * Pass to {@link com.aerospike.client.IAerospikeClient#delete}
+ * <pre>{@code
+ * EventLoops eventLoops = new NioEventLoops(4);
+ * ClientPolicy clientPolicy = new ClientPolicy();
+ * clientPolicy.eventLoops = eventLoops;
+ * IAerospikeClient client = new AerospikeClient(clientPolicy, "localhost", 3000);
+ * EventLoop loop = eventLoops.next();
+ *
+ * client.delete(loop, new DeleteListener() {
+ *   public void onSuccess(Key key, boolean existed) { }
+ *   public void onFailure(AerospikeException e) { }
+ * }, new WritePolicy(), key);
+ * }</pre>
+ *
+ * @see com.aerospike.client.IAerospikeClient#delete
  */
 public interface DeleteListener {
 	/**
-	 * This method is called when an asynchronous delete command completes successfully.
-	 *
-	 * @param key		unique record identifier
-	 * @param existed	whether record existed on server before deletion
+	 * Called when the delete completes successfully.
+	 * @param key record key (must not be null)
+	 * @param existed true if the record existed before deletion
 	 */
 	public void onSuccess(Key key, boolean existed);
 
 	/**
-	 * This method is called when an asynchronous delete command fails.
+	 * Called when the delete fails.
+	 * @param ae exception cause of failure wrapped into Aerospike exception
 	 */
 	public void onFailure(AerospikeException ae);
 }

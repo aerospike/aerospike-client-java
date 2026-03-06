@@ -21,23 +21,37 @@ import com.aerospike.client.Key;
 import com.aerospike.client.Record;
 
 /**
- * Asynchronous result notifications for batch get commands.
- * The result is sent in a single array.
+ * Async callback for batch get; receives keys and records in one array (same order as input keys).
+ * <p>
+ * Pass to {@link com.aerospike.client.IAerospikeClient#get}. Records align by index with keys; null record means key not found.
+ * <pre>{@code
+ * EventLoops eventLoops = new NioEventLoops(4);
+ * ClientPolicy clientPolicy = new ClientPolicy();
+ * clientPolicy.eventLoops = eventLoops;
+ * IAerospikeClient client = new AerospikeClient(clientPolicy, "localhost", 3000);
+ * EventLoop loop = eventLoops.next();
+ * Key[] keys = new Key[] { new Key("ns", "set", "k1") };
+ *
+ * client.get(loop, new RecordArrayListener() {
+ *   public void onSuccess(Key[] keys, Record[] records) { }
+ *   public void onFailure(AerospikeException e) { }
+ * }, new BatchPolicy(), keys);
+ * }</pre>
+ *
+ * @see com.aerospike.client.IAerospikeClient#get
+ * @see com.aerospike.client.AerospikeException.BatchRecords
  */
 public interface RecordArrayListener {
 	/**
-	 * This method is called when the command completes successfully.
-	 * The returned record array is in positional order with the original key array order.
-	 *
-	 * @param keys			unique record identifiers
-	 * @param records		record instances, an instance will be null if the key is not found
+	 * Called when the batch get completes; arrays are in same order as the key array.
+	 * @param keys original keys (must not be null)
+	 * @param records records; null at index i means key i was not found
 	 */
 	public void onSuccess(Key[] keys, Record[] records);
 
 	/**
-	 * This method is called when the command fails. The AerospikeException is likely to be
-	 * {@link com.aerospike.client.AerospikeException.BatchRecords} which contains results
-	 * for keys that did complete.
+	 * Called when the batch fails; may be {@link com.aerospike.client.AerospikeException.BatchRecords} with partial results.
+	 * @param ae exception cause of failure wrapped into Aerospike exception
 	 */
 	public void onFailure(AerospikeException ae);
 }

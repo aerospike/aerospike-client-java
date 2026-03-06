@@ -20,26 +20,39 @@ import com.aerospike.client.AerospikeException;
 import com.aerospike.client.BatchRead;
 
 /**
- * Asynchronous result notifications for batch get commands with variable bins per key.
- * The results are sent one batch record at a time.
+ * Async callback for batch get with variable bins; results delivered one {@link com.aerospike.client.BatchRead} at a time via {@link #onRecord}, then {@link #onSuccess} or {@link #onFailure}.
+ * <p>
+ * Pass to {@link com.aerospike.client.IAerospikeClient#get}. Order of onRecord is not guaranteed; {@link com.aerospike.client.BatchRead#record} is null when key is not found.
+ * <pre>{@code
+ * EventLoops eventLoops = new NioEventLoops(4);
+ * ClientPolicy clientPolicy = new ClientPolicy();
+ * clientPolicy.eventLoops = eventLoops;
+ * IAerospikeClient client = new AerospikeClient(clientPolicy, "localhost", 3000);
+ * EventLoop loop = eventLoops.next();
+ * BatchRead[] batchReads = new BatchRead[] { new BatchRead(new Key("ns", "set", "k1"), new String[] { "bin1" }) };
+ *
+ * client.get(loop, new BatchSequenceListener() {
+ *   public void onRecord(BatchRead record) { }
+ *   public void onSuccess() { }
+ *   public void onFailure(AerospikeException e) { }
+ * }, new BatchPolicy(), batchReads);
+ * }</pre>
+ *
+ * @see com.aerospike.client.IAerospikeClient#get
  */
 public interface BatchSequenceListener {
 	/**
-	 * This method is called when an asynchronous batch record is received from the server.
-	 * The receive sequence is not ordered.
-	 *
-	 * @param record	record instance, {@link com.aerospike.client.BatchRecord#record}
-	 *					will be null if the key is not found
+	 * Called for each batch read when received; order is not guaranteed.
+	 * @param record batch read; {@link com.aerospike.client.BatchRead#record} is null if key not found
 	 */
 	public void onRecord(BatchRead record);
 
-	/**
-	 * This method is called when the command completes successfully.
-	 */
+	/** Called when the batch get completes successfully. */
 	public void onSuccess();
 
 	/**
-	 * This method is called when the command fails.
+	 * Called when the batch get fails.
+	 * @param ae exception cause of failure wrapped into Aerospike exception
 	 */
 	public void onFailure(AerospikeException ae);
 }

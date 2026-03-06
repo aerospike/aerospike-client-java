@@ -19,9 +19,42 @@ package com.aerospike.client.configuration;
 
 import com.aerospike.client.configuration.serializers.Configuration;
 
+/**
+ * Supplies static and dynamic client configuration (e.g. from YAML). Pass to {@link com.aerospike.client.policy.ClientPolicy#ClientPolicy(com.aerospike.client.policy.ClientPolicy, com.aerospike.client.configuration.ConfigurationProvider)} so policies can load and apply config.
+ * <p>
+ * The client and policy constructors that take a ConfigurationProvider use it to populate policy fields from the fetched {@link Configuration}. Implement this interface to provide config from a custom source.
+ * <pre>{@code
+ * ConfigurationProvider provider = YamlConfigProvider.getConfigProvider("file:///path/to/config.yaml");
+ * ClientPolicy clientPolicy = new ClientPolicy(new ClientPolicy(), provider);
+ * IAerospikeClient client = new AerospikeClient(clientPolicy, "localhost", 3000);
+ *
+ * ConfigurationProvider fromClient = client.getConfigProvider();
+ * if (fromClient != null && fromClient.loadConfiguration()) {
+ *   Configuration config = fromClient.fetchConfiguration();
+ * }
+ * }</pre>
+ *
+ * @see Configuration
+ * @see YamlConfigProvider
+ * @see com.aerospike.client.policy.ClientPolicy#ClientPolicy(ClientPolicy, ConfigurationProvider)
+ * @see com.aerospike.client.IAerospikeClient#getConfigProvider()
+ */
 public interface ConfigurationProvider {
+    /**
+     * Loads or reloads configuration from the provider source.
+     * @return true if configuration was loaded successfully
+     */
     boolean loadConfiguration();
 
+    /**
+     * Returns the current static and dynamic configuration snapshot.
+     * @return configuration (must not be null)
+     */
     Configuration fetchConfiguration();
+
+    /**
+     * Returns the dynamic part of configuration (for runtime updates).
+     * @return dynamic configuration (must not be null)
+     */
     Configuration fetchDynamicConfiguration();
 }

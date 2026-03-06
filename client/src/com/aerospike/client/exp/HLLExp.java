@@ -20,12 +20,27 @@ import com.aerospike.client.operation.HLLPolicy;
 import com.aerospike.client.util.Pack;
 
 /**
- * HyperLogLog (HLL) expression generator. See {@link com.aerospike.client.exp.Exp}.
+ * HyperLogLog (HLL) expression generator for filters and operate; see {@link Exp}.
  * <p>
  * The bin expression argument in these methods can be a reference to a bin or the
  * result of another expression. Expressions that modify bin values are only used
  * for temporary expression evaluation and are not permanently applied to the bin.
  * HLL modify expressions return the HLL bin's value.
+ * <p>Below example illustrates filter by HLL count and read count with ExpOperation.</p>
+ * <pre>{@code
+ * Expression exp = Exp.build(Exp.ge(HLLExp.count(Exp.hllBin("h")), Exp.val(10)));
+ * Policy policy = new Policy();
+ * policy.filterExp = exp;
+ * Record rec = client.get(policy, key);
+ *
+ * Expression countExp = Exp.build(HLLExp.count(Exp.hllBin("h")));
+ * Record r = client.operate(null, key, ExpOperation.read("cnt", countExp, ExpReadFlags.DEFAULT));
+ * long cnt = r.getLong("cnt");
+ * }</pre>
+ *
+ * @see Exp
+ * @see com.aerospike.client.operation.HLLOperation
+ * @see com.aerospike.client.operation.HLLPolicy
  */
 public final class HLLExp {
 	private static final int MODULE = 2;
@@ -67,7 +82,7 @@ public final class HLLExp {
 	/**
 	 * Create expression that adds list values to a HLL set and returns HLL set.
 	 * The function assumes HLL bin already exists.
-	 *
+	 * <p>Example for this expression.</p>
 	 * <pre>{@code
 	 * // Add values to HLL bin "a" and check count > 7
 	 * Exp.gt(
@@ -87,7 +102,7 @@ public final class HLLExp {
 	/**
 	 * Create expression that adds values to a HLL set and returns HLL set.
 	 * If HLL bin does not exist, use indexBitCount to create HLL bin.
-	 *
+	 * <p>Example for this expression.</p>
 	 * <pre>{@code
 	 * // Add values to HLL bin "a" and check count > 7
 	 * Exp.gt(
@@ -108,7 +123,7 @@ public final class HLLExp {
 	/**
 	 * Create expression that adds values to a HLL set and returns HLL set. If HLL bin does not
 	 * exist, use indexBitCount and minHashBitCount to create HLL set.
-	 *
+	 * <p>Example for this expression.</p>
 	 * <pre>{@code
 	 * // Add values to HLL bin "a" and check count > 7
 	 * Exp.gt(
@@ -131,7 +146,7 @@ public final class HLLExp {
 
 	/**
 	 * Create expression that returns estimated number of elements in the HLL bin.
-	 *
+	 * <p>Example for this expression.</p>
 	 * <pre>{@code
 	 * // HLL bin "a" count > 7
 	 * Exp.gt(HLLExp.getCount(Exp.hllBin("a")), Exp.val(7))
@@ -145,7 +160,7 @@ public final class HLLExp {
 	/**
 	 * Create expression that returns a HLL object that is the union of all specified HLL objects
 	 * in the list with the HLL bin.
-	 *
+	 * <p>Example for this expression.</p>
 	 * <pre>{@code
 	 * // Union of HLL bins "a" and "b"
 	 * HLLExp.getUnion(Exp.hllBin("a"), Exp.hllBin("b"))
@@ -162,7 +177,7 @@ public final class HLLExp {
 	/**
 	 * Create expression that returns estimated number of elements that would be contained by
 	 * the union of these HLL objects.
-	 *
+	 * <p>Example for this expression.</p>
 	 * <pre>{@code
 	 * // Union count of HLL bins "a" and "b"
 	 * HLLExp.getUnionCount(Exp.hllBin("a"), Exp.hllBin("b"))
@@ -179,7 +194,7 @@ public final class HLLExp {
 	/**
 	 * Create expression that returns estimated number of elements that would be contained by
 	 * the intersection of these HLL objects.
-	 *
+	 * <p>Example for this expression.</p>
 	 * <pre>{@code
 	 * // Intersect count of HLL bins "a" and "b"
 	 * HLLExp.getIntersectCount(Exp.hllBin("a"), Exp.hllBin("b"))
@@ -196,7 +211,7 @@ public final class HLLExp {
 	/**
 	 * Create expression that returns estimated similarity of these HLL objects as a
 	 * 64 bit float.
-	 *
+	 * <p>Example for this expression.</p>
 	 * <pre>{@code
 	 * // Similarity of HLL bins "a" and "b" >= 0.75
 	 * Exp.ge(HLLExp.getSimilarity(Exp.hllBin("a"), Exp.hllBin("b")), Exp.val(0.75))
@@ -210,7 +225,7 @@ public final class HLLExp {
 	/**
 	 * Create expression that returns indexBitCount and minHashBitCount used to create HLL bin
 	 * in a list of longs. list[0] is indexBitCount and list[1] is minHashBitCount.
-	 *
+	 * <p>Example for this expression.</p>
 	 * <pre>{@code
 	 * // Bin "a" indexBitCount < 10
 	 * Exp.lt(
@@ -226,7 +241,7 @@ public final class HLLExp {
 
 	/**
 	 * Create expression that returns one if HLL bin may contain all items in the list.
-	 *
+	 * <p>Example for this expression.</p>
 	 * <pre>{@code
 	 * // Bin "a" may contain value "x"
 	 * ArrayList<Value> list = new ArrayList<Value>();

@@ -25,11 +25,33 @@ import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Log;
 
 /**
- * This class manages result retrieval from queries.
- * Multiple threads will retrieve results from the server nodes and put these results on the queue.
- * The single user thread consumes these results from the queue.
+ * Iterable set of aggregation UDF results; call {@link #next()} then {@link #getObject()} (or iterate) and always {@link #close()} when done.
+ * <p>
+ * Returned by {@link com.aerospike.client.AerospikeClient#queryAggregate}. Use {@link #END} to detect end when iterating; {@link #next()} returns false when no more results. Close in a finally block to release resources.
+ * <p>Run queryAggregate and iterate ResultSet with next() and getObject().</p>
+ * <pre>{@code
+ * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+ * Statement stmt = new Statement();
+ * stmt.setNamespace("test");
+ * stmt.setSetName("set1");
+ * stmt.setFilter(Filter.equal("bin1", 1));
+ * ResultSet rs = client.queryAggregate(null, stmt);
+ * try {
+ *   while (rs.next()) {
+ *     Object obj = rs.getObject();
+ *   }
+ * } finally {
+ *   rs.close();
+ * }
+ * client.close();
+ * }</pre>
+ *
+ * @see RecordSet
+ * @see Statement
+ * @see com.aerospike.client.AerospikeClient#queryAggregate
  */
 public class ResultSet implements Iterable<Object>, Closeable {
+	/** Sentinel indicating no more results; do not use as application data. */
 	public static final Object END = new Object();
 
 	private final QueryAggregateExecutor executor;
@@ -58,10 +80,9 @@ public class ResultSet implements Iterable<Object>, Closeable {
 	//-------------------------------------------------------
 
 	/**
-	 * Retrieve next result.  This method will block until a result is retrieved
-	 * or the query is cancelled.
-	 *
-	 * @return whether result exists - if false, no more results are available
+	 * Advances to the next result; blocks until a result is available or the query ends.
+	 * @return true if a result is available (use {@link #getObject()}); false when no more results
+	 * @throws AerospikeException when the query fails on the server (e.g. timeout, connection error, or invalid statement)
 	 */
 	public boolean next() throws AerospikeException {
 		if (!valid) {

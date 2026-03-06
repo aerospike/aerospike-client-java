@@ -17,7 +17,11 @@
 package com.aerospike.client.operation;
 
 /**
- * Action to take when bitwise add/subtract results in overflow/underflow.
+ * Action when bit add/subtract overflows or underflows; used in {@link BitOperation} integer bit ops.
+ * <p>
+ * Pass to {@link BitOperation#add}, {@link BitOperation#subtract}, {@link BitOperation#setInt}, {@link BitOperation#getInt}.
+ *
+ * @see BitOperation
  */
 public enum BitOverflowAction {
 	/**

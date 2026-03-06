@@ -17,7 +17,17 @@
 package com.aerospike.client.cdt;
 
 /**
- * List return type. Type of data to return when selecting or removing items from the list.
+ * What to return from list read/remove operations (index, rank, value, count, etc.).
+ * <p>
+ * Pass to {@link ListOperation#get}, {@link ListOperation#getByIndex}, {@link ListOperation#getByRank}, {@link ListOperation#getRange}, {@link ListOperation#removeByValue}, and similar.
+ * <p>Use ListReturnType in getByIndex and getByValue.</p>
+ * <pre>{@code
+ * Record rec = client.operate(null, key,
+ *     ListOperation.getByIndex("bin", 0, ListReturnType.VALUE),
+ *     ListOperation.getByValue("bin", Value.get(5), ListReturnType.INDEX));
+ * }</pre>
+ *
+ * @see ListOperation
  */
 public final class ListReturnType {
 	/**

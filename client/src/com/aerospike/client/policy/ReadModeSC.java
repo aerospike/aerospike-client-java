@@ -17,9 +17,10 @@
 package com.aerospike.client.policy;
 
 /**
- * Read policy for SC (strong consistency) namespaces.
- * <p>
- * Determines SC read consistency options.
+ * Read policy for SC (strong consistency) namespaces; session, linearize, or allow-unavailable.
+ *
+ * @see Policy#readModeSC
+ * @see BatchReadPolicy#readModeSC
  */
 public enum ReadModeSC {
 	/**

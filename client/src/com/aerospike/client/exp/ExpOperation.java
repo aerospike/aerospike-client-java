@@ -21,7 +21,31 @@ import com.aerospike.client.Value;
 import com.aerospike.client.util.Packer;
 
 /**
- * Expression operations.
+ * Read and write operations that evaluate expressions on the server (server 5.6+).
+ * <p>
+ * Use with {@link com.aerospike.client.AerospikeClient#operate}. Read stores the expression result in a bin-name variable; write stores the result in the given bin.
+ * <p>Write and read expression results with operate.</p>
+ * <pre>{@code
+ * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+ * Key key = new Key("ns", "set", "mykey");
+ * client.put(null, key, new Bin("A", 1), new Bin("D", 2));
+ *
+ * Expression wexp = Exp.build(Exp.intBin("D"));
+ * Expression rexp = Exp.build(Exp.add(Exp.intBin("A"), Exp.val(4)));
+ * Record rec = client.operate(null, key,
+ *     ExpOperation.write("D", wexp, ExpWriteFlags.DEFAULT),
+ *     ExpOperation.read("EV", rexp, ExpReadFlags.DEFAULT));
+ * long ev = rec.getLong("EV");
+ *
+ * Expression writeExp = Exp.build(Exp.add(Exp.intBin("A"), Exp.val(10)));
+ * client.operate(null, key, ExpOperation.write("C", writeExp, ExpWriteFlags.DEFAULT));
+ * }</pre>
+ *
+ * @see Exp
+ * @see Expression
+ * @see ExpReadFlags
+ * @see ExpWriteFlags
+ * @see com.aerospike.client.AerospikeClient#operate
  */
 public final class ExpOperation {
 	/**

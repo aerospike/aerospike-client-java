@@ -22,10 +22,28 @@ import com.aerospike.client.command.Buffer;
 import com.aerospike.client.util.Crypto;
 
 /**
- * Unique record identifier. Records can be identified using a specified namespace,
- * an optional set name, and a user defined key which must be unique within a set.
- * Records can also be identified by namespace/digest which is the combination used
- * on the server.
+ * Unique record identifier: namespace, optional set name, and user key (or namespace/digest on the server).
+ * <p>
+ * The user key is hashed to a digest; set {@link com.aerospike.client.policy.WritePolicy#sendKey} to store/retrieve the key on the server.
+ *
+ * <p><b>Example:</b>
+ * <p>Create a key and use it to get a record.</p>
+ * <pre>{@code
+ * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+ * try {
+ *   Key key = new Key("test", "set1", "id1");
+ *   Record rec = client.get(null, key);
+ *   if (rec != null) {
+ *     String name = (String) rec.getValue("name");
+ *   }
+ * } finally {
+ *   client.close();
+ * }
+ * }</pre>
+ *
+ * @see Record
+ * @see com.aerospike.client.AerospikeClient#get
+ * @see com.aerospike.client.policy.WritePolicy#sendKey
  */
 public final class Key {
 	/**
@@ -83,7 +101,7 @@ public final class Key {
 	 * @param namespace				namespace
 	 * @param setName				optional set name, enter null when set does not exist
 	 * @param key					user defined unique identifier within set.
-	 * @throws AerospikeException	if digest computation fails
+	 * @throws AerospikeException when digest computation fails (e.g. unsupported or invalid key type).
 	 */
 	public Key(String namespace, String setName, String key) throws AerospikeException {
 		this.namespace = namespace;
@@ -119,7 +137,7 @@ public final class Key {
 	 * @param namespace				namespace
 	 * @param setName				optional set name, enter null when set does not exist
 	 * @param key					user defined unique identifier within set.
-	 * @throws AerospikeException	if digest computation fails
+	 * @throws AerospikeException when digest computation fails (e.g. unsupported or invalid key type).
 	 */
 	public Key(String namespace, String setName, byte[] key) throws AerospikeException {
 		this.namespace = namespace;
@@ -157,7 +175,7 @@ public final class Key {
 	 * @param key					user defined unique identifier within set.
 	 * @param offset				byte array segment offset
 	 * @param length				byte array segment length
-	 * @throws AerospikeException	if digest computation fails
+	 * @throws AerospikeException when digest computation fails (e.g. unsupported or invalid key type).
 	 */
 	public Key(String namespace, String setName, byte[] key, int offset, int length) throws AerospikeException {
 		this.namespace = namespace;
@@ -180,7 +198,7 @@ public final class Key {
 	 * @param namespace				namespace
 	 * @param setName				optional set name, enter null when set does not exist
 	 * @param key					user defined unique identifier within set.
-	 * @throws AerospikeException	if digest computation fails
+	 * @throws AerospikeException when digest computation fails (e.g. unsupported or invalid key type).
 	 */
 	public Key(String namespace, String setName, int key) throws AerospikeException {
 		this.namespace = namespace;
@@ -203,7 +221,7 @@ public final class Key {
 	 * @param namespace				namespace
 	 * @param setName				optional set name, enter null when set does not exist
 	 * @param key					user defined unique identifier within set.
-	 * @throws AerospikeException	if digest computation fails
+	 * @throws AerospikeException when digest computation fails (e.g. unsupported or invalid key type).
 	 */
 	public Key(String namespace, String setName, long key) throws AerospikeException {
 		this.namespace = namespace;
@@ -226,7 +244,7 @@ public final class Key {
 	 * @param namespace				namespace
 	 * @param setName				optional set name, enter null when set does not exist
 	 * @param key					user defined unique identifier within set.
-	 * @throws AerospikeException	if digest computation fails
+	 * @throws AerospikeException when digest computation fails (e.g. unsupported or invalid key type).
 	 */
 	public Key(String namespace, String setName, Value key) throws AerospikeException {
 		this.namespace = namespace;
@@ -309,8 +327,8 @@ public final class Key {
 	 *
 	 * @param setName				optional set name, enter null when set does not exist
 	 * @param key					record identifier, unique within set
-	 * @return						unique server hash value
-	 * @throws AerospikeException	if digest computation fails
+	 * @return unique server hash value (RIPEMD-160 digest)
+	 * @throws AerospikeException when digest computation fails (e.g. unsupported or invalid key type).
 	 */
 	public static byte[] computeDigest(String setName, Value key) throws AerospikeException {
 		return Crypto.computeDigest(setName, key);

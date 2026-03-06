@@ -17,10 +17,10 @@
 package com.aerospike.client.policy;
 
 /**
- * Read policy for AP (availability) namespaces.
- * <p>
- * How duplicates should be consulted in a read operation.
- * Only makes a difference during migrations and only applicable in AP mode.
+ * Read policy for AP (availability) namespaces; how many duplicates to consult (ONE or ALL). Only applies during migrations in AP mode.
+ *
+ * @see Policy#readModeAP
+ * @see BatchReadPolicy#readModeAP
  */
 public enum ReadModeAP {
 	/**

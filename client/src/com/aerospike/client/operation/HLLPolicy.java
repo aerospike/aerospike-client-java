@@ -17,12 +17,25 @@
 package com.aerospike.client.operation;
 
 /**
- * HyperLogLog operation policy.
+ * Policy for HyperLogLog operations; holds {@link HLLWriteFlags} used by {@link HLLOperation}.
+ * <p>
+ * Pass to {@link HLLOperation#init}, {@link HLLOperation#add}, and other HLLOperation methods.
+ * <p>Use HLLPolicy with init and add.</p>
+ * <pre>{@code
+ * HLLPolicy policy = HLLPolicy.Default;
+ * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+ * client.operate(null, key, HLLOperation.init(policy, "hll", 14));
+ * client.operate(null, key, HLLOperation.add(policy, "hll", valueList));
+ *
+ * HLLPolicy createOnly = new HLLPolicy(HLLWriteFlags.CREATE_ONLY);
+ * client.operate(null, key, HLLOperation.init(createOnly, "hll", 12));
+ * }</pre>
+ *
+ * @see HLLOperation
+ * @see HLLWriteFlags
  */
 public final class HLLPolicy {
-	/**
-	 * Default HLL bin write semantics.
-	 */
+	/** Default policy with normal create/update semantics. */
 	public static final HLLPolicy Default = new HLLPolicy();
 
 	public final int flags;

@@ -26,7 +26,34 @@ import com.aerospike.client.util.Pack;
 import com.aerospike.client.util.Packer;
 import com.aerospike.client.exp.Expression;
 
-public class CdtOperation {	
+/**
+ * CDT select and apply operations on nested list/map bins by path (context).
+ * <p>
+ * Use with {@link com.aerospike.client.AerospikeClient#operate} to select values or apply expressions inside nested CDTs. Build context with {@link CTX#mapKey}, {@link CTX#listIndex}, {@link CTX#allChildren}, {@link CTX#allChildrenWithFilter}, etc.
+ * <p>Select and modify nested CDT values by path with CTX.</p>
+ * <pre>{@code
+ * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+ * Key key = new Key("ns", "set", "mykey");
+ * Map rootMap = new HashMap();
+ * rootMap.put("book", booksList);
+ * client.put(null, key, new Bin("bin", rootMap));
+ *
+ * CTX ctx1 = CTX.mapKey(Value.get("book"));
+ * CTX ctx2 = CTX.allChildren();
+ * Operation selectOp = CdtOperation.selectByPath("bin", Exp.SELECT_VALUE, ctx1, ctx2);
+ * Record rec = client.operate(null, key, selectOp);
+ * List results = rec.getList("bin");
+ *
+ * Expression modifyExp = Exp.build(Exp.mul(Exp.floatLoopVar(LoopVarPart.VALUE), Exp.val(1.10)));
+ * Operation applyOp = CdtOperation.modifyByPath("bin", Exp.MODIFY_DEFAULT, modifyExp, ctx1, ctx2, CTX.mapKey(Value.get("price")));
+ * client.operate(null, key, applyOp);
+ * }</pre>
+ *
+ * @see CTX
+ * @see com.aerospike.client.exp.Exp
+ * @see com.aerospike.client.AerospikeClient#operate
+ */
+public class CdtOperation {
     /**
      * Create CDT select operation with context.
      *

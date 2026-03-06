@@ -19,97 +19,83 @@ package com.aerospike.client.admin;
 import java.util.List;
 
 /**
- * Role definition.
+ * Role definition: name, privileges, optional whitelist and read/write quotas. Returned by {@link com.aerospike.client.AerospikeClient#queryRole}; privilege list is used in createRole and grantPrivileges.
+ * <p>
+ * Use the static constants (e.g. {@link #Read}, {@link #ReadWrite}) as role names when creating users; use {@link Privilege} for fine-grained role definitions.
+ *
+ * <p><b>Example:</b>
+ * <p>Query a role and read its name and privileges.</p>
+ * <pre>{@code
+ * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+ * try {
+ *   Role role = client.queryRole(null, "myrole");
+ *   if (role != null) {
+ *     String name = role.name;
+ *     List privs = role.privileges;
+ *   }
+ * } finally {
+ *   client.close();
+ * }
+ * }</pre>
+ *
+ * @see Privilege
+ * @see com.aerospike.client.AerospikeClient#queryRole
+ * @see com.aerospike.client.AerospikeClient#queryRoles
+ * @see com.aerospike.client.AerospikeClient#createRole
  */
 public final class Role {
-	/**
-	 * Manage users their roles.
-	 */
+	/** Role name for user administration. */
 	public static final String UserAdmin = "user-admin";
 
-	/**
-	 * Manage server configuration.
-	 */
+	/** Role name for server configuration. */
 	public static final String SysAdmin = "sys-admin";
 
-	/**
-	 * Manage user defined functions and indicies.
-	 */
+	/** Role name for UDF and index administration. */
 	public static final String DataAdmin = "data-admin";
 
-	/**
-	 * Manage user defined functions.
-	 */
+	/** Role name for UDF administration. */
 	public static final String UDFAdmin = "udf-admin";
 
-	/**
-	 * Manage indicies.
-	 */
+	/** Role name for index administration. */
 	public static final String SIndexAdmin = "sindex-admin";
 
-	/**
-	 * Allow read commands.
-	 */
+	/** Role name for read-only access. */
 	public static final String Read = "read";
 
-	/**
-	 * Allow read and write commands.
-	 */
+	/** Role name for read and write access. */
 	public static final String ReadWrite = "read-write";
 
-	/**
-	 * Allow read and write commands within user defined functions.
-	 */
+	/** Role name for read/write via UDF. */
 	public static final String ReadWriteUdf = "read-write-udf";
 
-	/**
-	 * Allow write commands.
-	 */
+	/** Role name for write-only access. */
 	public static final String Write = "write";
 
-	/**
-	 * Allow truncate.
-	 */
+	/** Role name for truncate. */
 	public static final String Truncate = "truncate";
 
-	/**
-	 * Manage data masking.
-	 */
+	/** Role name for data masking administration. */
 	public static final String MaskingAdmin = "masking-admin";
 
-	/**
-	 * Allow read masked data.
-	 */
+	/** Role name for read masked data. */
 	public static final String ReadMasked = "read-masked";
 
-	/**
-	 * Allow write masked data.
-	 */
+	/** Role name for write masked data. */
 	public static final String WriteMasked = "write-masked";
 
-	/**
-	 * Role name.
-	 */
+	/** Role name. */
 	public String name;
 
-	/**
-	 * List of assigned privileges.
-	 */
+	/** Assigned privileges (namespace/set-scoped when applicable). */
 	public List<Privilege> privileges;
 
-	/**
-	 * List of allowable IP addresses.
-	 */
+	/** Allowed IP addresses (whitelist); null or empty for no restriction. */
 	public List<String> whitelist;
 
-	/**
-	 * Maximum reads per second limit.
-	 */
+	/** Maximum reads per second (0 for no limit). */
 	public int readQuota;
 
-	/**
-	 * Maximum writes per second limit.
-	 */
+	/** Maximum writes per second (0 for no limit). */
 	public int writeQuota;
 
 	public String toString() {

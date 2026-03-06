@@ -29,13 +29,26 @@ import com.aerospike.client.policy.InfoPolicy;
 import com.aerospike.client.util.Crypto;
 
 /**
- * Access server's info monitoring protocol.
+ * Access the server info monitoring protocol (name/value pairs from a node).
  * <p>
- * The info protocol is a name/value pair based system, where an individual
- * database server node is queried to determine its configuration and status.
- * The list of supported names can be found at:
- * <p>
- * <a href="https://www.aerospike.com/docs/reference/info/index.html">https://www.aerospike.com/docs/reference/info/index.html</a>
+ * Query a single node for configuration and status. Supported command names: <a href="https://www.aerospike.com/docs/reference/info/index.html">Aerospike Info Reference</a>.
+ *
+ * <p><b>Example:</b>
+ * <p>Request info from a node (e.g. "build" or "statistics").</p>
+ * <pre>{@code
+ * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+ * try {
+ *   Node node = client.getNodes()[0];
+ *   String build = Info.request(node, "build");
+ *   Map m = Info.request(null, node, "build", "statistics");
+ * } finally {
+ *   client.close();
+ * }
+ * }</pre>
+ *
+ * @see #request(Node, String)
+ * @see #request(InfoPolicy, Node, String)
+ * @see #request(InfoPolicy, Node, String...)
  */
 public class Info {
 	//-------------------------------------------------------
@@ -50,10 +63,11 @@ public class Info {
 
 	/**
 	 * Get one info value by name from the specified database server node.
-	 * This method supports user authentication.
 	 *
-	 * @param node		server node
-	 * @param name		name of variable to retrieve
+	 * @param node server node; must not be null
+	 * @param name name of the info variable (e.g. "build", "statistics")
+	 * @return the value string for the requested name
+	 * @throws AerospikeException when the request fails (e.g. timeout, connection error, or invalid command).
 	 */
 	public static String request(Node node, String name) throws AerospikeException {
 		Connection conn = node.getConnection(DEFAULT_TIMEOUT);

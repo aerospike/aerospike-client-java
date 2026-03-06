@@ -20,19 +20,36 @@ import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
 
 /**
- * Asynchronous result notifications for exists commands.
+ * Async callback for exists; receives key, existence flag, or exception.
+ * <p>
+ * Pass to {@link com.aerospike.client.IAerospikeClient#exists} or untouched
+ * <pre>{@code
+ * EventLoops eventLoops = new NioEventLoops(4);
+ * ClientPolicy clientPolicy = new ClientPolicy();
+ * clientPolicy.eventLoops = eventLoops;
+ * IAerospikeClient client = new AerospikeClient(clientPolicy, "localhost", 3000);
+ * EventLoop loop = eventLoops.next();
+ *
+ * client.exists(loop, new ExistsListener() {
+ *   public void onSuccess(Key key, boolean exists) { }
+ *   public void onFailure(AerospikeException e) { }
+ * }, new Policy(), key);
+ * }</pre>
+ *
+ * @see com.aerospike.client.IAerospikeClient#exists
+ * @see com.aerospike.client.IAerospikeClient#touched
  */
 public interface ExistsListener {
 	/**
-	 * This method is called when an asynchronous exists command completes successfully.
-	 *
-	 * @param key		unique record identifier
-	 * @param exists	whether key exists on server
+	 * Called when the exists check completes successfully.
+	 * @param key record key (must not be null)
+	 * @param exists true if the record exists on the server
 	 */
 	public void onSuccess(Key key, boolean exists);
 
 	/**
-	 * This method is called when an asynchronous exists command fails.
+	 * Called when the exists check fails.
+	 * @param ae exception cause of failure wrapped into Aerospike exception
 	 */
 	public void onFailure(AerospikeException ae);
 }

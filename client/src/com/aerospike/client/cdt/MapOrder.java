@@ -17,7 +17,12 @@
 package com.aerospike.client.cdt;
 
 /**
- * Map storage order.
+ * Map storage order; used in {@link MapPolicy} and {@link MapOperation}.
+ * <p>
+ * Use {@link #KEY_ORDERED} or {@link #KEY_VALUE_ORDERED} for rank/getByRank; default is {@link #UNORDERED}.
+ *
+ * @see MapPolicy
+ * @see MapOperation
  */
 public enum MapOrder {
 	/**

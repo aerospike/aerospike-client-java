@@ -20,26 +20,40 @@ import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
 
 /**
- * Asynchronous result notifications for batch exists commands.
- * The results are sent one record at a time.
+ * Async callback for batch exists; results delivered one key at a time via {@link #onExists}, then {@link #onSuccess} or {@link #onFailure}.
+ * <p>
+ * Pass to {@link com.aerospike.client.IAerospikeClient#exists}. Order of onExists is not guaranteed.
+ * <pre>{@code
+ * EventLoops eventLoops = new NioEventLoops(4);
+ * ClientPolicy clientPolicy = new ClientPolicy();
+ * clientPolicy.eventLoops = eventLoops;
+ * IAerospikeClient client = new AerospikeClient(clientPolicy, "localhost", 3000);
+ * EventLoop loop = eventLoops.next();
+ * Key[] keys = new Key[] { new Key("ns", "set", "k1") };
+ *
+ * client.exists(loop, new ExistsSequenceListener() {
+ *   public void onExists(Key key, boolean exists) { }
+ *   public void onSuccess() { }
+ *   public void onFailure(AerospikeException e) { }
+ * }, new BatchPolicy(), keys);
+ * }</pre>
+ *
+ * @see com.aerospike.client.IAerospikeClient#exists
  */
 public interface ExistsSequenceListener {
 	/**
-	 * This method is called when an asynchronous batch exists result is received from the server.
-	 * The receive sequence is not ordered.
-	 *
-	 * @param key		unique record identifier
-	 * @param exists	whether key exists on server
+	 * Called for each key when its exists result is received; order is not guaranteed.
+	 * @param key record key (must not be null)
+	 * @param exists true if the record exists on the server
 	 */
 	public void onExists(Key key, boolean exists);
 
-	/**
-	 * This method is called when the asynchronous batch exists command completes.
-	 */
+	/** Called when the batch exists completes successfully. */
 	public void onSuccess();
 
 	/**
-	 * This method is called when an asynchronous batch exists command fails.
+	 * Called when the batch exists fails.
+	 * @param ae exception cause of failure wrapped into Aerospike exception
 	 */
 	public void onFailure(AerospikeException ae);
 }

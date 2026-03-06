@@ -25,11 +25,32 @@ import com.aerospike.client.policy.Policy;
 import com.aerospike.client.util.Util;
 
 /**
- * Task used to poll for server task completion.
+ * Base type for asynchronous server tasks (index create/drop, UDF register, background execute); poll with {@link #queryStatus()} or block with {@link #waitTillComplete()}.
+ * <p>
+ * Concrete types are returned by {@link com.aerospike.client.AerospikeClient#createIndex}, {@link com.aerospike.client.AerospikeClient#dropIndex},
+ * {@link com.aerospike.client.AerospikeClient#register}, and {@link com.aerospike.client.AerospikeClient#execute}.
+ *
+ * <p><b>Example:</b>
+ * <p>Create an index and wait for the task to complete.</p>
+ * <pre>{@code
+ * Task task = client.createIndex(null, "test", "users", "idx_status", "status", IndexType.STRING);
+ * task.waitTillComplete();
+ * }</pre>
+ *
+ * @see IndexTask
+ * @see RegisterTask
+ * @see ExecuteTask
+ * @see com.aerospike.client.AerospikeClient#createIndex
+ * @see com.aerospike.client.AerospikeClient#dropIndex
+ * @see com.aerospike.client.AerospikeClient#register
+ * @see com.aerospike.client.AerospikeClient#execute
  */
 public abstract class Task {
+	/** Task not found on server. */
 	public static final int NOT_FOUND = 0;
+	/** Task still in progress. */
 	public static final int IN_PROGRESS = 1;
+	/** Task completed. */
 	public static final int COMPLETE = 2;
 
 	protected final Cluster cluster;

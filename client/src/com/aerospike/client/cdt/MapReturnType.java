@@ -17,7 +17,17 @@
 package com.aerospike.client.cdt;
 
 /**
- * Map return type. Type of data to return when selecting or removing items from the map.
+ * What to return from map read/remove operations (key, value, index, rank, count, etc.).
+ * <p>
+ * Pass to {@link MapOperation#getByKey}, {@link MapOperation#getByIndex}, {@link MapOperation#getByRank}, {@link MapOperation#removeByKey}, and similar.
+ * <p>Use MapReturnType in getByKey and getByRank.</p>
+ * <pre>{@code
+ * Record rec = client.operate(null, key,
+ *     MapOperation.getByKey("bin", Value.get("name"), MapReturnType.VALUE),
+ *     MapOperation.getByRank("bin", -1, MapReturnType.KEY_VALUE));
+ * }</pre>
+ *
+ * @see MapOperation
  */
 public final class MapReturnType {
 	/**

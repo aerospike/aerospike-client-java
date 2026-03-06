@@ -20,16 +20,36 @@ import com.aerospike.client.AerospikeException;
 import com.aerospike.client.CommitStatus;
 
 /**
- * Asynchronous result notifications for transaction commits.
+ * Async callback for transaction commit; receives {@link com.aerospike.client.CommitStatus} or exception.
+ * <p>
+ * Pass to {@link com.aerospike.client.IAerospikeClient#commit}
+ * <pre>{@code
+ * EventLoops eventLoops = new NioEventLoops(4);
+ * ClientPolicy clientPolicy = new ClientPolicy();
+ * clientPolicy.eventLoops = eventLoops;
+ * IAerospikeClient client = new AerospikeClient(clientPolicy, "localhost", 3000);
+ * EventLoop loop = eventLoops.next();
+ *
+ * client.commit(loop, new CommitListener() {
+ *   public void onSuccess(CommitStatus status) { }
+ *   public void onFailure(AerospikeException.Commit e) { }
+ * }, new CommitPolicy(), txn);
+ * }</pre>
+ *
+ * @see com.aerospike.client.CommitStatus
+ * @see com.aerospike.client.IAerospikeClient#commit
+ * @see com.aerospike.client.Txn
  */
 public interface CommitListener {
 	/**
-	 * This method is called when the records are verified and the commit succeeded or will succeed.
+	 * Called when the commit completes (verified or will succeed).
+	 * @param status commit status (must not be null)
 	 */
 	void onSuccess(CommitStatus status);
 
 	/**
-	 * This method is called when the commit fails.
+	 * Called when the commit fails.
+	 * @param ae commit exception cause of failure wrapped into Aerospike exception
 	 */
 	void onFailure(AerospikeException.Commit ae);
 }

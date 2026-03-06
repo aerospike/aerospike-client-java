@@ -23,15 +23,24 @@ import com.aerospike.client.configuration.serializers.DynamicConfiguration;
 import com.aerospike.client.configuration.serializers.dynamicconfig.DynamicScanConfig;
 
 /**
- * Container object for optional parameters used in scan operations.
+ * Policy for scan operations (max records, records per second, concurrent nodes, include bin data).
  * <p>
- * Inherited Policy fields {@link Policy#txn} and {@link Policy#failOnFilteredOut} are ignored in
- * scan commands.
+ * {@link Policy#txn} and {@link Policy#failOnFilteredOut} are ignored for scan.
  *
- * @deprecated Scan operation related policies have been deprecated and will be removed eventually.
- * <p>Use {@link QueryPolicy} with {@link com.aerospike.client.AerospikeClient#query(com.aerospike.client.policy.QueryPolicy, com.aerospike.client.query.Statement, com.aerospike.client.query.QueryListener)}
- * or {@link com.aerospike.client.AerospikeClient#queryPartitions(com.aerospike.client.policy.QueryPolicy, com.aerospike.client.query.Statement, com.aerospike.client.query.PartitionFilter)}
- * instead (use statement with namespace and set name, no filter).</p>
+ * <p><b>Example:</b>
+ * <p>Run a scan with a record limit and include bin data (prefer {@link QueryPolicy} with query for new code).</p>
+ * <pre>{@code
+ * IAerospikeClient client = new AerospikeClient("localhost", 3000);
+ * ScanPolicy policy = new ScanPolicy();
+ * policy.maxRecords = 1000;
+ * policy.includeBinData = true;
+ * client.scanAll(policy, "test", "set1", (key, record) -> { }, "mybin");
+ * }</pre>
+ *
+ * @deprecated Use {@link QueryPolicy} with {@link com.aerospike.client.AerospikeClient#query} or {@link com.aerospike.client.AerospikeClient#queryPartitions} and a {@link com.aerospike.client.query.Statement} with namespace and set name (no filter).
+ *
+ * @see QueryPolicy
+ * @see com.aerospike.client.AerospikeClient#query
  */
 @Deprecated
 public final class ScanPolicy extends Policy {
