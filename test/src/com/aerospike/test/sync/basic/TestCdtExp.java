@@ -22,6 +22,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -1582,5 +1583,205 @@ public class TestCdtExp extends TestSync {
         assertEquals("Should have 2 active records", 2, values.size());
         assertTrue("Should contain 100", values.contains(100L));
         assertTrue("Should contain 150", values.contains(150L));
+    }
+
+    @Test
+    public void testMapKeyInList() {
+        Key key = new Key(NAMESPACE, SET, "cdtExpMapKeyInList");
+
+        try {
+            client.delete(null, key);
+        } catch (Exception e) {
+        }
+
+        // Create a map with several keys
+        Map<String, Object> map = new HashMap<>();
+        map.put("a", 1);
+        map.put("b", 2);
+        map.put("c", 3);
+        map.put("d", 4);
+
+        Bin bin = new Bin("myMap", map);
+        client.put(null, key, bin);
+
+        // Select only keys "a" and "c" using mapKeys
+        CTX ctx = CTX.mapKeys(Arrays.asList("a", "c"));
+
+        Expression selectExp = Exp.build(
+            CdtExp.selectByPath(
+                Exp.Type.MAP,
+                SelectFlags.MAP_KEY_VALUE,
+                Exp.mapBin("myMap"),
+                ctx
+            )
+        );
+
+        Record result = client.operate(null, key,
+            ExpOperation.read("subset", selectExp, ExpReadFlags.DEFAULT)
+        );
+
+        assertNotNull("Result should not be null", result);
+        Map<?, ?> subset = result.getMap("subset");
+        assertNotNull("Subset should not be null", subset);
+        assertEquals("Should have 2 entries", 2, subset.size());
+        assertEquals("Key 'a' should have value 1", 1L, subset.get("a"));
+        assertEquals("Key 'c' should have value 3", 3L, subset.get("c"));
+    }
+
+    @Test
+    public void testSameLevelFilter() {
+        Key key = new Key(NAMESPACE, SET, "cdtExpSameLevelFilter");
+
+        try {
+            client.delete(null, key);
+        } catch (Exception e) {
+        }
+
+        // Create a map with several keys and integer values
+        Map<String, Object> map = new HashMap<>();
+        map.put("a", 10);
+        map.put("b", 20);
+        map.put("c", 30);
+        map.put("d", 40);
+
+        Bin bin = new Bin("myMap", map);
+        client.put(null, key, bin);
+
+        // Select keys "a", "b", "c" via mapKeys, then AND-filter to only keep values > 15
+        CTX keyInList = CTX.mapKeys(Arrays.asList("a", "b", "c"));
+        CTX andFilter = CTX.andFilter(
+            Exp.gt(Exp.intLoopVar(LoopVarPart.VALUE), Exp.val(15))
+        );
+
+        Expression selectExp = Exp.build(
+            CdtExp.selectByPath(
+                Exp.Type.LIST,
+                SelectFlags.VALUE,
+                Exp.mapBin("myMap"),
+                keyInList, andFilter
+            )
+        );
+
+        Record result = client.operate(null, key,
+            ExpOperation.read("filtered", selectExp, ExpReadFlags.DEFAULT)
+        );
+
+        assertNotNull("Result should not be null", result);
+        List<?> filtered = result.getList("filtered");
+        assertNotNull("Filtered list should not be null", filtered);
+        assertEquals("Should have 2 values > 15 from keys a,b,c", 2, filtered.size());
+        assertTrue("Should contain 20", filtered.contains(20L));
+        assertTrue("Should contain 30", filtered.contains(30L));
+    }
+
+    @Test
+    public void testInList() {
+        Key key = new Key(NAMESPACE, SET, "cdtExpInList");
+
+        try {
+            client.delete(null, key);
+        } catch (Exception e) {
+        }
+
+        Bin bin = new Bin("color", "blue");
+        client.put(null, key, bin);
+
+        // Check if bin "color" is in the list ["red", "blue", "green"]
+        Expression exp = Exp.build(
+            Exp.inList(
+                Exp.stringBin("color"),
+                Exp.val(Arrays.asList("red", "blue", "green"))
+            )
+        );
+
+        Record result = client.operate(null, key,
+            ExpOperation.read("inList", exp, ExpReadFlags.DEFAULT)
+        );
+
+        assertNotNull("Result should not be null", result);
+        assertTrue("color 'blue' should be in the list", result.getBoolean("inList"));
+
+        // Negative case: value not in list
+        Expression expNot = Exp.build(
+            Exp.inList(
+                Exp.stringBin("color"),
+                Exp.val(Arrays.asList("red", "yellow", "green"))
+            )
+        );
+
+        Record resultNot = client.operate(null, key,
+            ExpOperation.read("notInList", expNot, ExpReadFlags.DEFAULT)
+        );
+
+        assertNotNull("Result should not be null", resultNot);
+        assertTrue("color 'blue' should not be in the list", !resultNot.getBoolean("notInList"));
+    }
+
+    @Test
+    public void testMapKeys() {
+        Key key = new Key(NAMESPACE, SET, "cdtExpMapKeys");
+
+        try {
+            client.delete(null, key);
+        } catch (Exception e) {
+        }
+
+        Map<String, Object> map = new HashMap<>();
+        map.put("x", 1);
+        map.put("y", 2);
+        map.put("z", 3);
+
+        Bin bin = new Bin("myMap", map);
+        client.put(null, key, bin);
+
+        Expression exp = Exp.build(
+            Exp.mapKeys(Exp.mapBin("myMap"))
+        );
+
+        Record result = client.operate(null, key,
+            ExpOperation.read("keys", exp, ExpReadFlags.DEFAULT)
+        );
+
+        assertNotNull("Result should not be null", result);
+        List<?> keys = result.getList("keys");
+        assertNotNull("Keys list should not be null", keys);
+        assertEquals("Should have 3 keys", 3, keys.size());
+        assertTrue("Should contain 'x'", keys.contains("x"));
+        assertTrue("Should contain 'y'", keys.contains("y"));
+        assertTrue("Should contain 'z'", keys.contains("z"));
+    }
+
+    @Test
+    public void testMapValues() {
+        Key key = new Key(NAMESPACE, SET, "cdtExpMapValues");
+
+        try {
+            client.delete(null, key);
+        } catch (Exception e) {
+        }
+
+        Map<String, Object> map = new HashMap<>();
+        map.put("a", 100);
+        map.put("b", 200);
+        map.put("c", 300);
+
+        Bin bin = new Bin("myMap", map);
+        client.put(null, key, bin);
+
+        Expression exp = Exp.build(
+            Exp.mapValues(Exp.mapBin("myMap"))
+        );
+
+        Record result = client.operate(null, key,
+            ExpOperation.read("values", exp, ExpReadFlags.DEFAULT)
+        );
+
+        assertNotNull("Result should not be null", result);
+        List<?> values2 = result.getList("values");
+        assertNotNull("Values list should not be null", values2);
+        assertEquals("Should have 3 values", 3, values2.size());
+        assertTrue("Should contain 100", values2.contains(100L));
+        assertTrue("Should contain 200", values2.contains(200L));
+        assertTrue("Should contain 300", values2.contains(300L));
     }
 }

@@ -21,6 +21,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -2773,6 +2774,75 @@ public class TestCdtOperate extends TestSync {
         List<?> filtered = result.getList("filtered");
         assertNotNull("Filtered result should not be null", filtered);
         assertEquals("Should have 1 HLL with count > 3 (the large one)", 1, filtered.size());
+    }
+
+    @Test
+    public void testCDTOperateMapKeyInList() {
+        Key rkey = new Key(NAMESPACE, SET, "cdtOpMapKeyInList");
+
+        try {
+            client.delete(null, rkey);
+        } catch (Exception e) {
+        }
+
+        // Create a map with several keys
+        Map<String, Object> map = new HashMap<>();
+        map.put("alpha", 10);
+        map.put("beta", 20);
+        map.put("gamma", 30);
+        map.put("delta", 40);
+
+        Bin bin = new Bin(BIN_NAME, map);
+        client.put(null, rkey, bin);
+
+        // Select only keys "alpha" and "gamma" using mapKeys via CdtOperation
+        CTX ctx = CTX.mapKeys(Arrays.asList("alpha", "gamma"));
+        Operation selectOp = CdtOperation.selectByPath(BIN_NAME, SelectFlags.VALUE, ctx);
+
+        Record result = client.operate(null, rkey, selectOp);
+        assertNotNull("Result should not be null", result);
+
+        List<?> values = result.getList(BIN_NAME);
+        assertNotNull("Values should not be null", values);
+        assertEquals("Should have 2 values", 2, values.size());
+        assertTrue("Should contain 10", values.contains(10L));
+        assertTrue("Should contain 30", values.contains(30L));
+    }
+
+    @Test
+    public void testCDTOperateSameLevelFilter() {
+        Key rkey = new Key(NAMESPACE, SET, "cdtOpSameLevelFilter");
+
+        try {
+            client.delete(null, rkey);
+        } catch (Exception e) {
+        }
+
+        Map<String, Object> map = new HashMap<>();
+        map.put("a", 5);
+        map.put("b", 15);
+        map.put("c", 25);
+        map.put("d", 35);
+
+        Bin bin = new Bin(BIN_NAME, map);
+        client.put(null, rkey, bin);
+
+        // Select keys "a", "b", "c" via mapKeys, then AND-filter to keep values > 10
+        CTX keyInList = CTX.mapKeys(Arrays.asList("a", "b", "c"));
+        CTX andFilter = CTX.andFilter(
+            Exp.gt(Exp.intLoopVar(LoopVarPart.VALUE), Exp.val(10))
+        );
+
+        Operation selectOp = CdtOperation.selectByPath(BIN_NAME, SelectFlags.MAP_KEY_VALUE, keyInList, andFilter);
+
+        Record result = client.operate(null, rkey, selectOp);
+        assertNotNull("Result should not be null", result);
+
+        Map<?, ?> resultMap = result.getMap(BIN_NAME);
+        assertNotNull("Result map should not be null", resultMap);
+        assertEquals("Should have 2 entries with value > 10", 2, resultMap.size());
+        assertEquals("Key 'b' should have value 15", 15L, resultMap.get("b"));
+        assertEquals("Key 'c' should have value 25", 25L, resultMap.get("c"));
     }
 
 }

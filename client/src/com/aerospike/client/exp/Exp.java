@@ -49,6 +49,7 @@ public abstract class Exp {
 	}
 
 	public static final int CTX_EXP = 0x04;
+	public static final int CTX_AND = 0x200;
 
 	//--------------------------------------------------
 	// Build
@@ -1298,6 +1299,40 @@ public abstract class Exp {
 	}
 
 	/**
+	 * Create expression that checks if a value is contained in a list.
+	 *
+	 * <pre>{@code
+	 * // Check if bin "color" value is in the list ["red", "blue", "green"]
+	 * Exp.inList(Exp.stringBin("color"), Exp.val(List.of("red", "blue", "green")))
+	 * }</pre>
+	 */
+	public static Exp inList(Exp value, Exp list) {
+		return new CmdExp(IN_LIST, value, list);
+	}
+
+	/**
+	 * Create expression that extracts all keys from a map as a list.
+	 *
+	 * <pre>{@code
+	 * Exp.mapKeys(Exp.mapBin("myMap"))
+	 * }</pre>
+	 */
+	public static Exp mapKeys(Exp map) {
+		return new CmdExp(MAP_KEYS, map);
+	}
+
+	/**
+	 * Create expression that extracts all values from a map as a list.
+	 *
+	 * <pre>{@code
+	 * Exp.mapValues(Exp.mapBin("myMap"))
+	 * }</pre>
+	 */
+	public static Exp mapValues(Exp map) {
+		return new CmdExp(MAP_VALUES, map);
+	}
+
+	/**
      * Creates a remove result expression.
      * Requires server version 8.1.1+.
 	 *
@@ -1403,7 +1438,10 @@ public abstract class Exp {
 	private static final int KEY = 80;
 	private static final int BIN = 81;
 	private static final int BIN_TYPE = 82;
+	private static final int IN_LIST = 9;
 	private static final int RESULT_REMOVE = 100;
+	private static final int MAP_KEYS = 101;
+	private static final int MAP_VALUES = 102;
 	private static final int VAR_BUILTIN = 122;
 	private static final int COND = 123;
 	private static final int VAR = 124;
