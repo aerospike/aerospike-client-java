@@ -78,7 +78,7 @@ public class CdtOperation {
         if (ctx == null || ctx.length == 0) { 
             packedBytes = Pack.pack(CDT.Type.SELECT.value, flags);
         } else {
-            packedBytes = packCdtSelect(flags, CDT.Type.SELECT, ctx);
+            packedBytes = packCdtSelect(CDT.Type.SELECT, flags, ctx);
         }
 
         return new Operation(Operation.Type.CDT_READ, binName, Value.get(packedBytes, ParticleType.BLOB));
@@ -133,13 +133,13 @@ public class CdtOperation {
         if (ctx == null || ctx.length == 0) { 
             packedBytes = Pack.pack(CDT.Type.SELECT.value, flags, modifyExp);
         } else {
-            packedBytes = packCdtModify(flags, CDT.Type.SELECT, modifyExp, ctx);
+            packedBytes = packCdtModify(CDT.Type.SELECT, flags, modifyExp, ctx);
         }
 
         return new Operation(Operation.Type.CDT_MODIFY, binName, Value.get(packedBytes, ParticleType.BLOB));
     }
 	
-	private static byte[] packCdtSelect(int flags, CDT.Type typeSelect, CTX... ctx) {
+	private static byte[] packCdtSelect(CDT.Type typeSelect, int flags, CTX... ctx) {
         Packer packer = new Packer();
 
         for (int i = 0; i < 2; i++) {
@@ -151,7 +151,7 @@ public class CdtOperation {
                 packer.packInt(c.id);
                 if (c.value != null)
                     c.value.pack(packer);
-                else 
+                else
                     packer.packByteArray(c.exp.getBytes(), 0, c.exp.getBytes().length);
             }
 
@@ -167,7 +167,7 @@ public class CdtOperation {
         return packer.getBuffer();
 	}
 
-	private static byte[] packCdtModify(int modifyFlag, CDT.Type type, Expression modifyExp, CTX... ctx) {
+	private static byte[] packCdtModify(CDT.Type type, int modifyFlag, Expression modifyExp, CTX... ctx) {
         Packer packer = new Packer();
 
         for (int i = 0; i < 2; i++) {
@@ -179,7 +179,7 @@ public class CdtOperation {
                 packer.packInt(c.id);
                 if (c.value != null)
                     c.value.pack(packer);
-                else 
+                else
                     packer.packByteArray(c.exp.getBytes(), 0, c.exp.getBytes().length);
             }
 
