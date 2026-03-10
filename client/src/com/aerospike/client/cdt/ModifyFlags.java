@@ -27,11 +27,6 @@ public final class ModifyFlags {
 	public static final int DEFAULT = 0x00;
 
 	/**
-	 * This flag is set when leaf values are to be modified.
-	 */
-	public static final int APPLY = 0x04;
-
-	/**
 	 * If the expression in the context hits an invalid type (e.g., selects
 	 * as an integer when the value is a string), do not fail the operation;
 	 * just ignore those elements.  Interpret UNKNOWN as false instead.
