@@ -48,18 +48,6 @@ public abstract class Exp {
 		}
 	}
 
-	public static final int SELECT_MATCHING_TREE = 0;
-	public static final int SELECT_VALUE = 1;
-	public static final int SELECT_LIST_VALUE = 1;
-	public static final int SELECT_MAP_VALUE = 1;
-	public static final int SELECT_MAP_KEY = 2;
-	public static final int SELECT_MAP_KEY_VALUE = SELECT_MAP_KEY | SELECT_MAP_VALUE;
-	public static final int SELECT_NO_FAIL = 0x10;
-
-	public static final int MODIFY_DEFAULT = 0x00;
-    public static final int MODIFY_APPLY = 0x04;
-    public static final int MODIFY_NO_FAIL = 0x10;
-
 	public static final int CTX_EXP = 0x04;
 
 	//--------------------------------------------------
