@@ -48,7 +48,16 @@ public abstract class Exp {
 		}
 	}
 
+	/**
+	 * @hidden
+	 * Internal context type flag for expression-based contexts.
+	 */
 	public static final int CTX_EXP = 0x04;
+
+	/**
+	 * @hidden
+	 * Internal context type flag for AND filter contexts.
+	 */
 	public static final int CTX_AND = 0x200;
 
 	//--------------------------------------------------
