@@ -57,6 +57,7 @@ public class Main extends JPanel {
 		"OperateBit",
 		"OperateList",
 		"OperateMap",
+		"PathExpression",
 		"ScanPage",
 		"ScanParallel",
 		"ScanResume",
