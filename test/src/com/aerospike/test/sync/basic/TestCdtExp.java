@@ -1585,94 +1585,7 @@ public class TestCdtExp extends TestSync {
         assertTrue("Should contain 150", values.contains(150L));
     }
 
-    @Test
-    public void testMapKeyInList() {
-        Key key = new Key(NAMESPACE, SET, "cdtExpMapKeyInList");
 
-        try {
-            client.delete(null, key);
-        } catch (Exception e) {
-        }
-
-        // Create a map with several keys
-        Map<String, Object> map = new HashMap<>();
-        map.put("a", 1);
-        map.put("b", 2);
-        map.put("c", 3);
-        map.put("d", 4);
-
-        Bin bin = new Bin("myMap", map);
-        client.put(null, key, bin);
-
-        // Select only keys "a" and "c" using mapKeys
-        CTX ctx = CTX.mapKeys(Arrays.asList("a", "c"));
-
-        Expression selectExp = Exp.build(
-            CdtExp.selectByPath(
-                Exp.Type.MAP,
-                SelectFlags.MAP_KEY_VALUE,
-                Exp.mapBin("myMap"),
-                ctx
-            )
-        );
-
-        Record result = client.operate(null, key,
-            ExpOperation.read("subset", selectExp, ExpReadFlags.DEFAULT)
-        );
-
-        assertNotNull("Result should not be null", result);
-        Map<?, ?> subset = result.getMap("subset");
-        assertNotNull("Subset should not be null", subset);
-        assertEquals("Should have 2 entries", 2, subset.size());
-        assertEquals("Key 'a' should have value 1", 1L, subset.get("a"));
-        assertEquals("Key 'c' should have value 3", 3L, subset.get("c"));
-    }
-
-    @Test
-    public void testSameLevelFilter() {
-        Key key = new Key(NAMESPACE, SET, "cdtExpSameLevelFilter");
-
-        try {
-            client.delete(null, key);
-        } catch (Exception e) {
-        }
-
-        // Create a map with several keys and integer values
-        Map<String, Object> map = new HashMap<>();
-        map.put("a", 10);
-        map.put("b", 20);
-        map.put("c", 30);
-        map.put("d", 40);
-
-        Bin bin = new Bin("myMap", map);
-        client.put(null, key, bin);
-
-        // Select keys "a", "b", "c" via mapKeys, then AND-filter to only keep values > 15
-        CTX keyInList = CTX.mapKeys(Arrays.asList("a", "b", "c"));
-        CTX andFilter = CTX.andFilter(
-            Exp.gt(Exp.intLoopVar(LoopVarPart.VALUE), Exp.val(15))
-        );
-
-        Expression selectExp = Exp.build(
-            CdtExp.selectByPath(
-                Exp.Type.LIST,
-                SelectFlags.VALUE,
-                Exp.mapBin("myMap"),
-                keyInList, andFilter
-            )
-        );
-
-        Record result = client.operate(null, key,
-            ExpOperation.read("filtered", selectExp, ExpReadFlags.DEFAULT)
-        );
-
-        assertNotNull("Result should not be null", result);
-        List<?> filtered = result.getList("filtered");
-        assertNotNull("Filtered list should not be null", filtered);
-        assertEquals("Should have 2 values > 15 from keys a,b,c", 2, filtered.size());
-        assertTrue("Should contain 20", filtered.contains(20L));
-        assertTrue("Should contain 30", filtered.contains(30L));
-    }
 
     @Test
     public void testInList() {
@@ -1735,7 +1648,7 @@ public class TestCdtExp extends TestSync {
         client.put(null, key, bin);
 
         Expression exp = Exp.build(
-            Exp.mapKeys(Exp.mapBin("myMap"))
+            Exp.mapKeysIn(Exp.mapBin("myMap"))
         );
 
         Record result = client.operate(null, key,

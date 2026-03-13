@@ -1323,10 +1323,10 @@ public abstract class Exp {
 	 * Create expression that extracts all keys from a map as a list.
 	 *
 	 * <pre>{@code
-	 * Exp.mapKeys(Exp.mapBin("myMap"))
+	 * Exp.mapKeysIn(Exp.mapBin("myMap"))
 	 * }</pre>
 	 */
-	public static Exp mapKeys(Exp map) {
+	public static Exp mapKeysIn(Exp map) {
 		return new CmdExp(MAP_KEYS, map);
 	}
 

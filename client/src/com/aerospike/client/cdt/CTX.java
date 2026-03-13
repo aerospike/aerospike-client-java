@@ -164,7 +164,7 @@ public final class CTX {
 	 * <pre>{@code
 	 * // Given map: {alpha: 10, beta: 20, gamma: 30, delta: 40}
 	 * // Select only the "alpha" and "gamma" entries.
-	 * CTX ctx = CTX.mapKeys(Arrays.asList("alpha", "gamma"));
+	 * CTX ctx = CTX.mapKeysIn(Arrays.asList("alpha", "gamma"));
 	 * Operation op = CdtOperation.selectByPath("myBin", SelectFlags.VALUE, ctx);
 	 * Record result = client.operate(null, key, op);
 	 * // result: [10, 30]
@@ -175,7 +175,7 @@ public final class CTX {
 	 * @see #andFilter(Exp)
 	 * @see CdtOperation#selectByPath(String, int, CTX...)
 	 */
-	public static CTX mapKeys(List<?> keys) {
+	public static CTX mapKeysIn(List<?> keys) {
 		return new CTX(0x2a, Value.get(keys));
 	}
 
@@ -184,13 +184,13 @@ public final class CTX {
 	 * <p>
 	 * This creates an AND filter that combines with the preceding context.
 	 * Entries must satisfy both the preceding context and this filter expression
-	 * to be included in the result. Typically used after {@link #mapKeys(List)}
+	 * to be included in the result. Typically used after {@link #mapKeysIn(List)}
 	 * or other selection contexts to further narrow the results.
 	 *
 	 * <pre>{@code
 	 * // Given map: {a: 5, b: 15, c: 25, d: 35}
 	 * // Select keys "a", "b", "c" AND keep only entries where value > 10.
-	 * CTX keys = CTX.mapKeys(Arrays.asList("a", "b", "c"));
+	 * CTX keys = CTX.mapKeysIn(Arrays.asList("a", "b", "c"));
 	 * CTX filter = CTX.andFilter(
 	 *     Exp.gt(Exp.intLoopVar(LoopVarPart.VALUE), Exp.val(10))
 	 * );
@@ -201,7 +201,7 @@ public final class CTX {
 	 *
 	 * @param exp	filter expression; entries that evaluate to false are excluded
 	 * @return		an AND filter context
-	 * @see #mapKeys(List)
+	 * @see #mapKeysIn(List)
 	 * @see CdtOperation#selectByPath(String, int, CTX...)
 	 */
 	public static CTX andFilter(Exp exp) {
@@ -214,13 +214,13 @@ public final class CTX {
 	 * <p>
 	 * This creates an AND filter that combines with the preceding context.
 	 * Entries must satisfy both the preceding context and this filter expression
-	 * to be included in the result. Typically used after {@link #mapKeys(List)}
+	 * to be included in the result. Typically used after {@link #mapKeysIn(List)}
 	 * or other selection contexts to further narrow the results.
 	 *
 	 * @param exp	compiled filter expression; entries that evaluate to false are excluded
 	 * @return		an AND filter context
 	 * @see #andFilter(Exp)
-	 * @see #mapKeys(List)
+	 * @see #mapKeysIn(List)
 	 * @see CdtOperation#selectByPath(String, int, CTX...)
 	 */
 	public static CTX andFilter(Expression exp) {

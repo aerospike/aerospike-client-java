@@ -41,8 +41,8 @@ public class PathExpression extends Example {
 	}
 
 	/**
-	 * Demonstrate path expression enhancements: CTX.mapKeys, CTX.andFilter,
-	 * Exp.inList, Exp.mapKeys, and Exp.mapValues.
+	 * Demonstrate path expression enhancements: CTX.mapKeysIn, CTX.andFilter,
+	 * Exp.inList, Exp.mapKeysIn, and Exp.mapValues.
 	 */
 	@Override
 	public void runExample(IAerospikeClient client, Parameters params) throws Exception {
@@ -54,7 +54,7 @@ public class PathExpression extends Example {
 	}
 
 	/**
-	 * Use CTX.mapKeys to select a subset of map entries by key list
+	 * Use CTX.mapKeysIn to select a subset of map entries by key list
 	 * via CdtOperation.selectByPath.
 	 */
 	private void runMapKeysSelect(IAerospikeClient client, Parameters params) {
@@ -73,17 +73,17 @@ public class PathExpression extends Example {
 
 		console.info("Map: " + map);
 
-		// Select only "Charlie" and "John" values using CTX.mapKeys.
-		CTX ctx = CTX.mapKeys(Arrays.asList("Charlie", "John"));
+		// Select only "Charlie" and "John" values using CTX.mapKeysIn.
+		CTX ctx = CTX.mapKeysIn(Arrays.asList("Charlie", "John"));
 		Record record = client.operate(params.writePolicy, key,
 			CdtOperation.selectByPath(binName, SelectFlags.VALUE, ctx)
 		);
 
-		console.info("selectByPath mapKeys [Charlie, John]: " + record.getList(binName));
+		console.info("selectByPath mapKeysIn [Charlie, John]: " + record.getList(binName));
 	}
 
 	/**
-	 * Use CTX.mapKeys combined with CTX.andFilter to select map entries
+	 * Use CTX.mapKeysIn combined with CTX.andFilter to select map entries
 	 * by key list and then further filter by value.
 	 */
 	private void runMapKeysWithAndFilter(IAerospikeClient client, Parameters params) {
@@ -103,7 +103,7 @@ public class PathExpression extends Example {
 		console.info("Map: " + map);
 
 		// Select keys "Charlie", "Jim", "John", then keep only entries with value > 70.
-		CTX keyCtx = CTX.mapKeys(Arrays.asList("Charlie", "Jim", "John"));
+		CTX keyCtx = CTX.mapKeysIn(Arrays.asList("Charlie", "Jim", "John"));
 		CTX filter = CTX.andFilter(
 			Exp.gt(Exp.intLoopVar(LoopVarPart.VALUE), Exp.val(70))
 		);
@@ -112,7 +112,7 @@ public class PathExpression extends Example {
 			CdtOperation.selectByPath(binName, SelectFlags.MAP_KEY_VALUE, keyCtx, filter)
 		);
 
-		console.info("selectByPath mapKeys [Charlie, Jim, John] AND value > 70: " + record.getValue(binName));
+		console.info("selectByPath mapKeysIn [Charlie, Jim, John] AND value > 70: " + record.getValue(binName));
 	}
 
 	/**
@@ -160,7 +160,7 @@ public class PathExpression extends Example {
 	}
 
 	/**
-	 * Use Exp.mapKeys to extract all keys from a map bin.
+	 * Use Exp.mapKeysIn to extract all keys from a map bin.
 	 */
 	private void runMapKeysExpression(IAerospikeClient client, Parameters params) {
 		Key key = new Key(params.namespace, params.set, "pathexp4");
@@ -179,7 +179,7 @@ public class PathExpression extends Example {
 
 		// Extract all keys from the map.
 		Expression exp = Exp.build(
-			Exp.mapKeys(Exp.mapBin(binName))
+			Exp.mapKeysIn(Exp.mapBin(binName))
 		);
 
 		Record record = client.operate(null, key,
@@ -187,7 +187,7 @@ public class PathExpression extends Example {
 		);
 
 		List<?> keys = record.getList("keys");
-		console.info("Exp.mapKeys: " + keys);
+		console.info("Exp.mapKeysIn: " + keys);
 	}
 
 	/**
