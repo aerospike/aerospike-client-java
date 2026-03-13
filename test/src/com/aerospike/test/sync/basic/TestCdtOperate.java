@@ -2838,11 +2838,253 @@ public class TestCdtOperate extends TestSync {
         Record result = client.operate(null, rkey, selectOp);
         assertNotNull("Result should not be null", result);
 
-        Map<?, ?> resultMap = result.getMap(BIN_NAME);
-        assertNotNull("Result map should not be null", resultMap);
-        assertEquals("Should have 2 entries with value > 10", 2, resultMap.size());
+        List<?> resultList = result.getList(BIN_NAME);
+        assertNotNull("Result list should not be null", resultList);
+        // MAP_KEY_VALUE returns a flat list [key, value, key, value, ...]
+        assertEquals("Should have 4 elements (2 key-value pairs)", 4, resultList.size());
+
+        Map<Object, Object> resultMap = new HashMap<>();
+        for (int i = 0; i < resultList.size(); i += 2) {
+            resultMap.put(resultList.get(i), resultList.get(i + 1));
+        }
         assertEquals("Key 'b' should have value 15", 15L, resultMap.get("b"));
         assertEquals("Key 'c' should have value 25", 25L, resultMap.get("c"));
+    }
+
+    // ---- MK-002: Select subset - some keys missing ----
+    @Test
+    public void testMapKeysSomeMissing() {
+        Key rkey = new Key(NAMESPACE, SET, "mkSomeMissing");
+
+        try {
+            client.delete(null, rkey);
+        } catch (Exception e) {
+        }
+
+        Map<String, Object> map = new HashMap<>();
+        map.put("a", 1);
+        map.put("b", 2);
+
+        client.put(null, rkey, new Bin(BIN_NAME, map));
+
+        CTX ctx = CTX.mapKeys(Arrays.asList("a", "x"));
+        Record result = client.operate(null, rkey,
+            CdtOperation.selectByPath(BIN_NAME, SelectFlags.VALUE, ctx)
+        );
+
+        assertNotNull(result);
+        List<?> values = result.getList(BIN_NAME);
+        assertNotNull(values);
+        assertEquals("Should have 1 value (missing key skipped)", 1, values.size());
+        assertTrue("Should contain 1", values.contains(1L));
+    }
+
+    // ---- MK-003: Empty key list ----
+    @Test
+    public void testMapKeysEmptyKeyList() {
+        Key rkey = new Key(NAMESPACE, SET, "mkEmptyKeys");
+
+        try {
+            client.delete(null, rkey);
+        } catch (Exception e) {
+        }
+
+        Map<String, Object> map = new HashMap<>();
+        map.put("a", 1);
+        map.put("b", 2);
+
+        client.put(null, rkey, new Bin(BIN_NAME, map));
+
+        CTX ctx = CTX.mapKeys(Arrays.asList());
+        Record result = client.operate(null, rkey,
+            CdtOperation.selectByPath(BIN_NAME, SelectFlags.VALUE, ctx)
+        );
+
+        assertNotNull(result);
+        List<?> values = result.getList(BIN_NAME);
+        assertNotNull(values);
+        assertEquals("Empty key list should return empty result", 0, values.size());
+    }
+
+    // ---- MK-004: Empty map ----
+    @Test
+    public void testMapKeysEmptyMap() {
+        Key rkey = new Key(NAMESPACE, SET, "mkEmptyMap");
+
+        try {
+            client.delete(null, rkey);
+        } catch (Exception e) {
+        }
+
+        Map<String, Object> map = new HashMap<>();
+        client.put(null, rkey, new Bin(BIN_NAME, map));
+
+        CTX ctx = CTX.mapKeys(Arrays.asList("a", "b"));
+        Record result = client.operate(null, rkey,
+            CdtOperation.selectByPath(BIN_NAME, SelectFlags.VALUE, ctx)
+        );
+
+        assertNotNull(result);
+        List<?> values = result.getList(BIN_NAME);
+        assertNotNull(values);
+        assertEquals("Empty map should return empty result", 0, values.size());
+    }
+
+    // ---- MK-005: Single key selection ----
+    @Test
+    public void testMapKeysSingleKey() {
+        Key rkey = new Key(NAMESPACE, SET, "mkSingleKey");
+
+        try {
+            client.delete(null, rkey);
+        } catch (Exception e) {
+        }
+
+        Map<String, Object> map = new HashMap<>();
+        map.put("x", 1);
+        map.put("y", 2);
+        map.put("z", 3);
+
+        client.put(null, rkey, new Bin(BIN_NAME, map));
+
+        CTX ctx = CTX.mapKeys(Arrays.asList("y"));
+        Record result = client.operate(null, rkey,
+            CdtOperation.selectByPath(BIN_NAME, SelectFlags.VALUE, ctx)
+        );
+
+        assertNotNull(result);
+        List<?> values = result.getList(BIN_NAME);
+        assertNotNull(values);
+        assertEquals("Should have 1 value", 1, values.size());
+        assertEquals("Should be 2", 2L, values.get(0));
+    }
+
+    // ---- MK-006: All keys selected ----
+    @Test
+    public void testMapKeysAllKeys() {
+        Key rkey = new Key(NAMESPACE, SET, "mkAllKeys");
+
+        try {
+            client.delete(null, rkey);
+        } catch (Exception e) {
+        }
+
+        Map<String, Object> map = new HashMap<>();
+        map.put("a", 1);
+        map.put("b", 2);
+
+        client.put(null, rkey, new Bin(BIN_NAME, map));
+
+        CTX ctx = CTX.mapKeys(Arrays.asList("a", "b"));
+        Record result = client.operate(null, rkey,
+            CdtOperation.selectByPath(BIN_NAME, SelectFlags.VALUE, ctx)
+        );
+
+        assertNotNull(result);
+        List<?> values = result.getList(BIN_NAME);
+        assertNotNull(values);
+        assertEquals("Should have 2 values", 2, values.size());
+        assertTrue("Should contain 1", values.contains(1L));
+        assertTrue("Should contain 2", values.contains(2L));
+    }
+
+    // ---- MK-007: Key order - results follow map key order, not input list order ----
+    @Test
+    public void testMapKeysOrder() {
+        Key rkey = new Key(NAMESPACE, SET, "mkOrder");
+
+        try {
+            client.delete(null, rkey);
+        } catch (Exception e) {
+        }
+
+        Map<String, Object> map = new HashMap<>();
+        map.put("z", 3);
+        map.put("a", 1);
+        map.put("m", 2);
+
+        client.put(null, rkey, new Bin(BIN_NAME, map));
+
+        // Request in order [a, z, m] but expect results in key-sorted order [a, m, z]
+        CTX ctx = CTX.mapKeys(Arrays.asList("a", "z", "m"));
+        Record result = client.operate(null, rkey,
+            CdtOperation.selectByPath(BIN_NAME, SelectFlags.VALUE, ctx)
+        );
+
+        assertNotNull(result);
+        List<?> values = result.getList(BIN_NAME);
+        assertNotNull(values);
+        assertEquals("Should have 3 values", 3, values.size());
+        // Aerospike maps are key-ordered, so results come back in sorted key order: a=1, m=2, z=3
+        assertEquals("First value (key 'a')", 1L, values.get(0));
+        assertEquals("Second value (key 'm')", 2L, values.get(1));
+        assertEquals("Third value (key 'z')", 3L, values.get(2));
+    }
+
+    // ---- MK-008: Non-string keys (integer keys) ----
+    @Test
+    public void testMapKeysIntegerKeys() {
+        Key rkey = new Key(NAMESPACE, SET, "mkIntKeys");
+
+        try {
+            client.delete(null, rkey);
+        } catch (Exception e) {
+        }
+
+        Map<Long, String> map = new HashMap<>();
+        map.put(1L, "one");
+        map.put(2L, "two");
+        map.put(3L, "three");
+
+        client.put(null, rkey, new Bin(BIN_NAME, map));
+
+        CTX ctx = CTX.mapKeys(Arrays.asList(1L, 2L));
+        Record result = client.operate(null, rkey,
+            CdtOperation.selectByPath(BIN_NAME, SelectFlags.VALUE, ctx)
+        );
+
+        assertNotNull(result);
+        List<?> values = result.getList(BIN_NAME);
+        assertNotNull(values);
+        assertEquals("Should have 2 values", 2, values.size());
+        assertTrue("Should contain 'one'", values.contains("one"));
+        assertTrue("Should contain 'two'", values.contains("two"));
+    }
+
+    // ---- MK-009: Nested map with mapKeys context ----
+    @Test
+    public void testMapKeysNested() {
+        Key rkey = new Key(NAMESPACE, SET, "mkNested");
+
+        try {
+            client.delete(null, rkey);
+        } catch (Exception e) {
+        }
+
+        Map<String, Object> inner = new HashMap<>();
+        inner.put("a", 1);
+        inner.put("b", 2);
+        inner.put("c", 3);
+
+        Map<String, Object> outer = new HashMap<>();
+        outer.put("outer", inner);
+
+        client.put(null, rkey, new Bin(BIN_NAME, outer));
+
+        // Navigate into "outer" key, then select keys "a" and "c" from the inner map
+        CTX outerCtx = CTX.mapKey(Value.get("outer"));
+        CTX keysCtx = CTX.mapKeys(Arrays.asList("a", "c"));
+
+        Record result = client.operate(null, rkey,
+            CdtOperation.selectByPath(BIN_NAME, SelectFlags.VALUE, outerCtx, keysCtx)
+        );
+
+        assertNotNull(result);
+        List<?> values = result.getList(BIN_NAME);
+        assertNotNull(values);
+        assertEquals("Should have 2 values from nested map", 2, values.size());
+        assertTrue("Should contain 1", values.contains(1L));
+        assertTrue("Should contain 3", values.contains(3L));
     }
 
 }
