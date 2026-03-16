@@ -1337,7 +1337,7 @@ public abstract class Exp {
 	 * Exp.mapValues(Exp.mapBin("myMap"))
 	 * }</pre>
 	 */
-	public static Exp mapValues(Exp map) {
+	public static Exp mapValuesIn(Exp map) {
 		return new CmdExp(MAP_VALUES, map);
 	}
 

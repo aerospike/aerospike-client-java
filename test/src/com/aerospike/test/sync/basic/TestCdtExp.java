@@ -1682,7 +1682,7 @@ public class TestCdtExp extends TestSync {
         client.put(null, key, bin);
 
         Expression exp = Exp.build(
-            Exp.mapValues(Exp.mapBin("myMap"))
+            Exp.mapValuesIn(Exp.mapBin("myMap"))
         );
 
         Record result = client.operate(null, key,

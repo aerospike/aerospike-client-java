@@ -210,7 +210,7 @@ public class PathExpression extends Example {
 
 		// Extract all values from the map.
 		Expression exp = Exp.build(
-			Exp.mapValues(Exp.mapBin(binName))
+			Exp.mapValuesIn(Exp.mapBin(binName))
 		);
 
 		Record record = client.operate(null, key,

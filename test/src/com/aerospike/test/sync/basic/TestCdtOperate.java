@@ -3087,4 +3087,242 @@ public class TestCdtOperate extends TestSync {
         assertTrue("Should contain 3", values.contains(3L));
     }
 
+    // ---- MV-001: Basic mapValues - extract all values from a map ----
+    @Test
+    public void testMapValuesBasic() {
+        Key rkey = new Key(NAMESPACE, SET, "mvBasic");
+
+        try {
+            client.delete(null, rkey);
+        } catch (Exception e) {
+        }
+
+        Map<String, Object> map = new HashMap<>();
+        map.put("a", 1);
+        map.put("b", 2);
+        map.put("c", 3);
+
+        client.put(null, rkey, new Bin(BIN_NAME, map));
+
+        Expression exp = Exp.build(
+            Exp.mapValuesIn(Exp.mapBin(BIN_NAME))
+        );
+
+        Record result = client.operate(null, rkey,
+            ExpOperation.read("values", exp, ExpReadFlags.DEFAULT)
+        );
+
+        assertNotNull(result);
+        List<?> values = result.getList("values");
+        assertNotNull(values);
+        assertEquals("Should have 3 values", 3, values.size());
+        assertTrue("Should contain 1", values.contains(1L));
+        assertTrue("Should contain 2", values.contains(2L));
+        assertTrue("Should contain 3", values.contains(3L));
+    }
+
+    // ---- MV-002: mapValues on empty map ----
+    @Test
+    public void testMapValuesEmptyMap() {
+        Key rkey = new Key(NAMESPACE, SET, "mvEmptyMap");
+
+        try {
+            client.delete(null, rkey);
+        } catch (Exception e) {
+        }
+
+        Map<String, Object> map = new HashMap<>();
+        client.put(null, rkey, new Bin(BIN_NAME, map));
+
+        Expression exp = Exp.build(
+            Exp.mapValuesIn(Exp.mapBin(BIN_NAME))
+        );
+
+        Record result = client.operate(null, rkey,
+            ExpOperation.read("values", exp, ExpReadFlags.DEFAULT)
+        );
+
+        assertNotNull(result);
+        List<?> values = result.getList("values");
+        assertNotNull(values);
+        assertEquals("Empty map should return empty list", 0, values.size());
+    }
+
+    // ---- MV-003: mapValues on single-entry map ----
+    @Test
+    public void testMapValuesSingleEntry() {
+        Key rkey = new Key(NAMESPACE, SET, "mvSingleEntry");
+
+        try {
+            client.delete(null, rkey);
+        } catch (Exception e) {
+        }
+
+        Map<String, Object> map = new HashMap<>();
+        map.put("x", 42);
+
+        client.put(null, rkey, new Bin(BIN_NAME, map));
+
+        Expression exp = Exp.build(
+            Exp.mapValuesIn(Exp.mapBin(BIN_NAME))
+        );
+
+        Record result = client.operate(null, rkey,
+            ExpOperation.read("values", exp, ExpReadFlags.DEFAULT)
+        );
+
+        assertNotNull(result);
+        List<?> values = result.getList("values");
+        assertNotNull(values);
+        assertEquals("Should have 1 value", 1, values.size());
+        assertEquals("Should be 42", 42L, values.get(0));
+    }
+
+    // ---- MV-004: mapValues with integer keys ----
+    @Test
+    public void testMapValuesIntegerKeys() {
+        Key rkey = new Key(NAMESPACE, SET, "mvIntKeys");
+
+        try {
+            client.delete(null, rkey);
+        } catch (Exception e) {
+        }
+
+        Map<Long, String> map = new HashMap<>();
+        map.put(1L, "one");
+        map.put(2L, "two");
+        map.put(3L, "three");
+
+        client.put(null, rkey, new Bin(BIN_NAME, map));
+
+        Expression exp = Exp.build(
+            Exp.mapValuesIn(Exp.mapBin(BIN_NAME))
+        );
+
+        Record result = client.operate(null, rkey,
+            ExpOperation.read("values", exp, ExpReadFlags.DEFAULT)
+        );
+
+        assertNotNull(result);
+        List<?> values = result.getList("values");
+        assertNotNull(values);
+        assertEquals("Should have 3 values", 3, values.size());
+        assertTrue("Should contain 'one'", values.contains("one"));
+        assertTrue("Should contain 'two'", values.contains("two"));
+        assertTrue("Should contain 'three'", values.contains("three"));
+    }
+
+    // ---- MV-005: mapValues combined with inList filter ----
+    @Test
+    public void testMapValuesWithInList() {
+        Key rkey = new Key(NAMESPACE, SET, "mvInList");
+
+        try {
+            client.delete(null, rkey);
+        } catch (Exception e) {
+        }
+
+        Map<String, Object> map = new HashMap<>();
+        map.put("a", 10);
+        map.put("b", 20);
+        map.put("c", 30);
+
+        client.put(null, rkey, new Bin(BIN_NAME, map));
+
+        // Check if 20 is in the map values
+        Expression exp = Exp.build(
+            Exp.inList(
+                Exp.val(20),
+                Exp.mapValuesIn(Exp.mapBin(BIN_NAME))
+            )
+        );
+
+        Record result = client.operate(null, rkey,
+            ExpOperation.read("found", exp, ExpReadFlags.DEFAULT)
+        );
+
+        assertNotNull(result);
+        assertTrue("20 should be found in map values", result.getBoolean("found"));
+
+        // Check if 99 is NOT in the map values
+        Expression expNot = Exp.build(
+            Exp.inList(
+                Exp.val(99),
+                Exp.mapValuesIn(Exp.mapBin(BIN_NAME))
+            )
+        );
+
+        Record resultNot = client.operate(null, rkey,
+            ExpOperation.read("notFound", expNot, ExpReadFlags.DEFAULT)
+        );
+
+        assertNotNull(resultNot);
+        assertEquals("99 should not be found in map values", false, resultNot.getBoolean("notFound"));
+    }
+
+    // ---- MV-006: mapValues with string values ----
+    @Test
+    public void testMapValuesStringValues() {
+        Key rkey = new Key(NAMESPACE, SET, "mvStringVals");
+
+        try {
+            client.delete(null, rkey);
+        } catch (Exception e) {
+        }
+
+        Map<String, Object> map = new HashMap<>();
+        map.put("name", "Charlie");
+        map.put("city", "London");
+
+        client.put(null, rkey, new Bin(BIN_NAME, map));
+
+        Expression exp = Exp.build(
+            Exp.mapValuesIn(Exp.mapBin(BIN_NAME))
+        );
+
+        Record result = client.operate(null, rkey,
+            ExpOperation.read("values", exp, ExpReadFlags.DEFAULT)
+        );
+
+        assertNotNull(result);
+        List<?> values = result.getList("values");
+        assertNotNull(values);
+        assertEquals("Should have 2 values", 2, values.size());
+        assertTrue("Should contain 'Charlie'", values.contains("Charlie"));
+        assertTrue("Should contain 'London'", values.contains("London"));
+    }
+
+    // ---- MV-007: mapValues list size check ----
+    @Test
+    public void testMapValuesListSize() {
+        Key rkey = new Key(NAMESPACE, SET, "mvListSize");
+
+        try {
+            client.delete(null, rkey);
+        } catch (Exception e) {
+        }
+
+        Map<String, Object> map = new HashMap<>();
+        map.put("x", 1);
+        map.put("y", 2);
+        map.put("z", 3);
+
+        client.put(null, rkey, new Bin(BIN_NAME, map));
+
+        // Use mapValues inside a list size expression
+        Expression exp = Exp.build(
+            Exp.eq(
+                ListExp.size(Exp.mapValuesIn(Exp.mapBin(BIN_NAME))),
+                Exp.val(3)
+            )
+        );
+
+        Record result = client.operate(null, rkey,
+            ExpOperation.read("sizeCheck", exp, ExpReadFlags.DEFAULT)
+        );
+
+        assertNotNull(result);
+        assertTrue("Map values list size should be 3", result.getBoolean("sizeCheck"));
+    }
+
 }
