@@ -21,7 +21,6 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -2796,7 +2795,7 @@ public class TestCdtOperate extends TestSync {
         client.put(null, rkey, bin);
 
         // Select only keys "alpha" and "gamma" using mapKeysIn via CdtOperation
-        CTX ctx = CTX.mapKeysIn(Arrays.asList("alpha", "gamma"));
+        CTX ctx = CTX.mapKeysIn("alpha", "gamma");
         Operation selectOp = CdtOperation.selectByPath(BIN_NAME, SelectFlags.VALUE, ctx);
 
         Record result = client.operate(null, rkey, selectOp);
@@ -2828,7 +2827,7 @@ public class TestCdtOperate extends TestSync {
         client.put(null, rkey, bin);
 
         // Select keys "a", "b", "c" via mapKeysIn, then AND-filter to keep values > 10
-        CTX keyInList = CTX.mapKeysIn(Arrays.asList("a", "b", "c"));
+        CTX keyInList = CTX.mapKeysIn("a", "b", "c");
         CTX andFilter = CTX.andFilter(
             Exp.gt(Exp.intLoopVar(LoopVarPart.VALUE), Exp.val(10))
         );
@@ -2867,7 +2866,7 @@ public class TestCdtOperate extends TestSync {
 
         client.put(null, rkey, new Bin(BIN_NAME, map));
 
-        CTX ctx = CTX.mapKeysIn(Arrays.asList("a", "x"));
+        CTX ctx = CTX.mapKeysIn("a", "x");
         Record result = client.operate(null, rkey,
             CdtOperation.selectByPath(BIN_NAME, SelectFlags.VALUE, ctx)
         );
@@ -2895,7 +2894,7 @@ public class TestCdtOperate extends TestSync {
 
         client.put(null, rkey, new Bin(BIN_NAME, map));
 
-        CTX ctx = CTX.mapKeysIn(Arrays.asList());
+        CTX ctx = CTX.mapKeysIn(new String[]{});
         Record result = client.operate(null, rkey,
             CdtOperation.selectByPath(BIN_NAME, SelectFlags.VALUE, ctx)
         );
@@ -2919,7 +2918,7 @@ public class TestCdtOperate extends TestSync {
         Map<String, Object> map = new HashMap<>();
         client.put(null, rkey, new Bin(BIN_NAME, map));
 
-        CTX ctx = CTX.mapKeysIn(Arrays.asList("a", "b"));
+        CTX ctx = CTX.mapKeysIn("a", "b");
         Record result = client.operate(null, rkey,
             CdtOperation.selectByPath(BIN_NAME, SelectFlags.VALUE, ctx)
         );
@@ -2947,7 +2946,7 @@ public class TestCdtOperate extends TestSync {
 
         client.put(null, rkey, new Bin(BIN_NAME, map));
 
-        CTX ctx = CTX.mapKeysIn(Arrays.asList("y"));
+        CTX ctx = CTX.mapKeysIn("y");
         Record result = client.operate(null, rkey,
             CdtOperation.selectByPath(BIN_NAME, SelectFlags.VALUE, ctx)
         );
@@ -2975,7 +2974,7 @@ public class TestCdtOperate extends TestSync {
 
         client.put(null, rkey, new Bin(BIN_NAME, map));
 
-        CTX ctx = CTX.mapKeysIn(Arrays.asList("a", "b"));
+        CTX ctx = CTX.mapKeysIn("a", "b");
         Record result = client.operate(null, rkey,
             CdtOperation.selectByPath(BIN_NAME, SelectFlags.VALUE, ctx)
         );
@@ -3006,7 +3005,7 @@ public class TestCdtOperate extends TestSync {
         client.put(null, rkey, new Bin(BIN_NAME, map));
 
         // Request in order [a, z, m] but expect results in key-sorted order [a, m, z]
-        CTX ctx = CTX.mapKeysIn(Arrays.asList("a", "z", "m"));
+        CTX ctx = CTX.mapKeysIn("a", "z", "m");
         Record result = client.operate(null, rkey,
             CdtOperation.selectByPath(BIN_NAME, SelectFlags.VALUE, ctx)
         );
@@ -3038,7 +3037,7 @@ public class TestCdtOperate extends TestSync {
 
         client.put(null, rkey, new Bin(BIN_NAME, map));
 
-        CTX ctx = CTX.mapKeysIn(Arrays.asList(1L, 2L));
+        CTX ctx = CTX.mapKeysIn(1L, 2L);
         Record result = client.operate(null, rkey,
             CdtOperation.selectByPath(BIN_NAME, SelectFlags.VALUE, ctx)
         );
@@ -3073,7 +3072,7 @@ public class TestCdtOperate extends TestSync {
 
         // Navigate into "outer" key, then select keys "a" and "c" from the inner map
         CTX outerCtx = CTX.mapKey(Value.get("outer"));
-        CTX keysCtx = CTX.mapKeysIn(Arrays.asList("a", "c"));
+        CTX keysCtx = CTX.mapKeysIn("a", "c");
 
         Record result = client.operate(null, rkey,
             CdtOperation.selectByPath(BIN_NAME, SelectFlags.VALUE, outerCtx, keysCtx)

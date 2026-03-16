@@ -74,7 +74,7 @@ public class PathExpression extends Example {
 		console.info("Map: " + map);
 
 		// Select only "Charlie" and "John" values using CTX.mapKeysIn.
-		CTX ctx = CTX.mapKeysIn(Arrays.asList("Charlie", "John"));
+		CTX ctx = CTX.mapKeysIn("Charlie", "John");
 		Record record = client.operate(params.writePolicy, key,
 			CdtOperation.selectByPath(binName, SelectFlags.VALUE, ctx)
 		);
@@ -103,7 +103,7 @@ public class PathExpression extends Example {
 		console.info("Map: " + map);
 
 		// Select keys "Charlie", "Jim", "John", then keep only entries with value > 70.
-		CTX keyCtx = CTX.mapKeysIn(Arrays.asList("Charlie", "Jim", "John"));
+		CTX keyCtx = CTX.mapKeysIn("Charlie", "Jim", "John");
 		CTX filter = CTX.andFilter(
 			Exp.gt(Exp.intLoopVar(LoopVarPart.VALUE), Exp.val(70))
 		);
