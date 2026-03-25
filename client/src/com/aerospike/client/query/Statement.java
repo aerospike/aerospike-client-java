@@ -251,7 +251,7 @@ public final class Statement {
 	}
 
 	/**
-	 * Return operations to be performed on a background query.
+	 * Return operations to be performed on query/execute.
 	 */
 	public Operation[] getOperations() {
 		return this.operations;
