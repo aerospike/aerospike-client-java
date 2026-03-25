@@ -25,7 +25,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.junit.BeforeClass;
 import org.junit.Assume;
 import org.junit.Test;
 
@@ -60,16 +59,17 @@ public class TestCdtOperate extends TestSync {
     private static final String SET = "testset";
     private static final String BIN_NAME = "testbin";
     
-    @BeforeClass
-    public static void checkServerVersion() {
-        // Skip tests for server version < 8.1.1
+    private static void checkMinServerVersion(int major, int minor, int patch, int build) {
         Version serverVersion = client.getCluster().getRandomNode().getServerVersion();
-        boolean condition = serverVersion.isGreaterOrEqual(8, 1, 1, 0);
-        Assume.assumeTrue("Tests skipped for server version < 8.1.1", condition);
+        Assume.assumeTrue(
+            String.format("Test skipped for server version < %d.%d.%d", major, minor, patch),
+            serverVersion.isGreaterOrEqual(major, minor, patch, build)
+        );
     }
     
     @Test
     public void testCDTOperateWithExpressions() {
+        checkMinServerVersion(8, 1, 1, 0);
         Key rkey = new Key(NAMESPACE, SET, 215);
         
         try {
@@ -143,6 +143,7 @@ public class TestCdtOperate extends TestSync {
     
     @Test
     public void testCDTApplyWithExpressions() {
+        checkMinServerVersion(8, 1, 1, 0);
         Key rkey = new Key(NAMESPACE, SET, 216);
         
         try {
@@ -237,6 +238,7 @@ public class TestCdtOperate extends TestSync {
     
     @Test
     public void testNestedContextsAndComplexFilters() {
+        checkMinServerVersion(8, 1, 1, 0);
         Key rkey = new Key(NAMESPACE, SET, 217);
         
         try {
@@ -308,6 +310,7 @@ public class TestCdtOperate extends TestSync {
     
     @Test
     public void testEmptyResultsWhenNoItemsMatch() {
+        checkMinServerVersion(8, 1, 1, 0);
         Key rkey = new Key(NAMESPACE, SET, 218);
         
         try {
@@ -361,6 +364,7 @@ public class TestCdtOperate extends TestSync {
     
     @Test
     public void testMatchingTreeFlag() {
+        checkMinServerVersion(8, 1, 1, 0);
         Key rkey = new Key(NAMESPACE, SET, 219);
         
         try {
@@ -407,6 +411,7 @@ public class TestCdtOperate extends TestSync {
     
     @Test
     public void testMapKeysFlag() {
+        checkMinServerVersion(8, 1, 1, 0);
         Key rkey = new Key(NAMESPACE, SET, 220);
         
         try {
@@ -442,6 +447,7 @@ public class TestCdtOperate extends TestSync {
     
     @Test
     public void testSelectNoFailFlag() {
+        checkMinServerVersion(8, 1, 1, 0);
         Key rkey = new Key(NAMESPACE, SET, 221);
         
         try {
@@ -471,6 +477,7 @@ public class TestCdtOperate extends TestSync {
     
     @Test
     public void testLoopVariableIndex() {
+        checkMinServerVersion(8, 1, 1, 0);
         Key rkey = new Key(NAMESPACE, SET, 222);
         
         try {
@@ -510,6 +517,7 @@ public class TestCdtOperate extends TestSync {
     
     @Test
     public void testLoopVariableMapKey() {
+        checkMinServerVersion(8, 1, 1, 0);
         Key rkey = new Key(NAMESPACE, SET, 223);
         
         try {
@@ -547,6 +555,7 @@ public class TestCdtOperate extends TestSync {
     
     @Test
     public void testModifyWithAddition() {
+        checkMinServerVersion(8, 1, 1, 0);
         Key rkey = new Key(NAMESPACE, SET, 224);
         
         try {
@@ -595,6 +604,7 @@ public class TestCdtOperate extends TestSync {
     
     @Test
     public void testModifyWithSubtraction() {
+        checkMinServerVersion(8, 1, 1, 0);
         Key rkey = new Key(NAMESPACE, SET, 225);
         
         try {
@@ -641,6 +651,7 @@ public class TestCdtOperate extends TestSync {
     
     @Test
     public void testNestedListsAndComplexFilters() {
+        checkMinServerVersion(8, 1, 1, 0);
         Key rkey = new Key(NAMESPACE, SET, 226);
         
         try {
@@ -687,6 +698,7 @@ public class TestCdtOperate extends TestSync {
     
     @Test
     public void testBooleanExpressionsInFilters() {
+        checkMinServerVersion(8, 1, 1, 0);
         Key rkey = new Key(NAMESPACE, SET, 227);
         
         try {
@@ -749,6 +761,7 @@ public class TestCdtOperate extends TestSync {
     
     @Test
     public void testComplexAndOrFilterCombinations() {
+        checkMinServerVersion(8, 1, 1, 0);
         Key rkey = new Key(NAMESPACE, SET, 228);
         
         try {
@@ -829,6 +842,7 @@ public class TestCdtOperate extends TestSync {
     
     @Test
     public void testDeeplyNestedStructures() {
+        checkMinServerVersion(8, 1, 1, 0);
         Key rkey = new Key(NAMESPACE, SET, 229);
         
         try {
@@ -889,6 +903,7 @@ public class TestCdtOperate extends TestSync {
     
     @Test
     public void testSingleContextElement() {
+        checkMinServerVersion(8, 1, 1, 0);
         Key rkey = new Key(NAMESPACE, SET, 230);
         
         try {
@@ -916,6 +931,7 @@ public class TestCdtOperate extends TestSync {
     
     @Test
     public void testEmptyLists() {
+        checkMinServerVersion(8, 1, 1, 0);
         Key rkey = new Key(NAMESPACE, SET, 231);
         
         try {
@@ -947,6 +963,7 @@ public class TestCdtOperate extends TestSync {
     
     @Test
     public void testEmptyMaps() {
+        checkMinServerVersion(8, 1, 1, 0);
         Key rkey = new Key(NAMESPACE, SET, 232);
         
         try {
@@ -977,6 +994,7 @@ public class TestCdtOperate extends TestSync {
     
     @Test
     public void testListIndexContext() {
+        checkMinServerVersion(8, 1, 1, 0);
         Key rkey = new Key(NAMESPACE, SET, 233);
         
         try {
@@ -1028,6 +1046,7 @@ public class TestCdtOperate extends TestSync {
     
     @Test
     public void testModifyWithIndex() {
+        checkMinServerVersion(8, 1, 1, 0);
         Key rkey = new Key(NAMESPACE, SET, 234);
         
         try {
@@ -1079,6 +1098,7 @@ public class TestCdtOperate extends TestSync {
     
     @Test
     public void testModifyWithComplexArithmetic() {
+        checkMinServerVersion(8, 1, 1, 0);
         Key rkey = new Key(NAMESPACE, SET, 235);
         
         try {
@@ -1143,6 +1163,7 @@ public class TestCdtOperate extends TestSync {
     
     @Test
     public void testRemoveAllItemsFromList() {
+        checkMinServerVersion(8, 1, 1, 0);
         Key rkey = new Key(NAMESPACE, SET, 236);
         
         try {
@@ -1184,6 +1205,7 @@ public class TestCdtOperate extends TestSync {
     
     @Test
     public void testRemoveFilteredItemsFromList() {
+        checkMinServerVersion(8, 1, 1, 0);
         Key rkey = new Key(NAMESPACE, SET, 237);
         
         try {
@@ -1232,6 +1254,7 @@ public class TestCdtOperate extends TestSync {
     
     @Test
     public void testRemoveAllItemsFromMap() {
+        checkMinServerVersion(8, 1, 1, 0);
         Key rkey = new Key(NAMESPACE, SET, 238);
         
         try {
@@ -1271,6 +1294,7 @@ public class TestCdtOperate extends TestSync {
     
     @Test
     public void testRemoveFilteredMapEntries() {
+        checkMinServerVersion(8, 1, 1, 0);
         Key rkey = new Key(NAMESPACE, SET, 239);
         
         try {
@@ -1319,6 +1343,7 @@ public class TestCdtOperate extends TestSync {
     
     @Test
     public void testRemoveBooksWithLowPrices() {
+        checkMinServerVersion(8, 1, 1, 0);
         Key rkey = new Key(NAMESPACE, SET, 240);
         
         try {
@@ -1394,6 +1419,7 @@ public class TestCdtOperate extends TestSync {
     
     @Test
     public void testRemoveItemsByIndexFilter() {
+        checkMinServerVersion(8, 1, 1, 0);
         Key rkey = new Key(NAMESPACE, SET, 241);
         
         try {
@@ -1440,6 +1466,7 @@ public class TestCdtOperate extends TestSync {
     
     @Test
     public void testRemoveMapEntriesByKeyFilter() {
+        checkMinServerVersion(8, 1, 1, 0);
         Key rkey = new Key(NAMESPACE, SET, 242);
         
         try {
@@ -1485,6 +1512,7 @@ public class TestCdtOperate extends TestSync {
     
     @Test
     public void testRemoveNestedItemsWithComplexPath() {
+        checkMinServerVersion(8, 1, 1, 0);
         Key rkey = new Key(NAMESPACE, SET, 243);
         
         try {
@@ -1559,6 +1587,7 @@ public class TestCdtOperate extends TestSync {
     
     @Test
     public void testOperateWithNoOperations() {
+        checkMinServerVersion(8, 1, 1, 0);
         Key rkey = new Key(NAMESPACE, SET, 244);
        
         // Make sure the record does not exist
@@ -1586,6 +1615,7 @@ public class TestCdtOperate extends TestSync {
     
     @Test
     public void testSelectByPathWithNullContext() {
+        checkMinServerVersion(8, 1, 1, 0);
         Key rkey = new Key(NAMESPACE, SET, 245);
         
         try {
@@ -1616,6 +1646,7 @@ public class TestCdtOperate extends TestSync {
     
     @Test
     public void testSelectByPathWithNoContexts() {
+        checkMinServerVersion(8, 1, 1, 0);
         Key rkey = new Key(NAMESPACE, SET, 246);
         
         try {
@@ -1646,6 +1677,7 @@ public class TestCdtOperate extends TestSync {
     
     @Test
     public void testSelectByPathWithEmptyContextArray() {
+        checkMinServerVersion(8, 1, 1, 0);
         Key rkey = new Key(NAMESPACE, SET, 247);
         
         try {
@@ -1677,6 +1709,7 @@ public class TestCdtOperate extends TestSync {
     
     @Test
     public void testModifyByPathWithNullContext() {
+        checkMinServerVersion(8, 1, 1, 0);
         Key rkey = new Key(NAMESPACE, SET, 248);
         
         try {
@@ -1708,6 +1741,7 @@ public class TestCdtOperate extends TestSync {
     
     @Test
     public void testModifyByPathWithNoContexts() {
+        checkMinServerVersion(8, 1, 1, 0);
         Key rkey = new Key(NAMESPACE, SET, 249);
         
         try {
@@ -1739,6 +1773,7 @@ public class TestCdtOperate extends TestSync {
     
     @Test
     public void testModifyByPathWithEmptyContextArray() {
+        checkMinServerVersion(8, 1, 1, 0);
         Key rkey = new Key(NAMESPACE, SET, 250);
         
         try {
@@ -1769,6 +1804,7 @@ public class TestCdtOperate extends TestSync {
     
     @Test
     public void testLoopVarListWithNestedLists() {
+        checkMinServerVersion(8, 1, 1, 0);
         Key rkey = new Key(NAMESPACE, SET, 251);
         
         try {
@@ -1814,6 +1850,7 @@ public class TestCdtOperate extends TestSync {
     
     @Test
     public void testModifyWithDivision() {
+        checkMinServerVersion(8, 1, 1, 0);
         Key rkey = new Key(NAMESPACE, SET, 252);
         
         try {
@@ -1858,6 +1895,7 @@ public class TestCdtOperate extends TestSync {
     
     @Test
     public void testLoopVarListAccessNestedListSize() {
+        checkMinServerVersion(8, 1, 1, 0);
         Key rkey = new Key(NAMESPACE, SET, 253);
         
         try {
@@ -1911,6 +1949,7 @@ public class TestCdtOperate extends TestSync {
     
     @Test
     public void testLoopVarBlobAccessBlobValues() {
+        checkMinServerVersion(8, 1, 1, 0);
         Key rkey = new Key(NAMESPACE, SET, 254);
         
         try {
@@ -1953,6 +1992,7 @@ public class TestCdtOperate extends TestSync {
     
     @Test
     public void testLoopVarNilWithNilValues() {
+        checkMinServerVersion(8, 1, 1, 0);
         Key rkey = new Key(NAMESPACE, SET, 255);
         
         try {
@@ -1990,6 +2030,7 @@ public class TestCdtOperate extends TestSync {
     
     @Test
     public void testLoopVarGeoJSONFilterLocations() {
+        checkMinServerVersion(8, 1, 1, 0);
         Key rkey = new Key(NAMESPACE, SET, 256);
         
         try {
@@ -2035,6 +2076,7 @@ public class TestCdtOperate extends TestSync {
     
     @Test
     public void testBoolLoopVarFilterActive() {
+        checkMinServerVersion(8, 1, 1, 0);
         Key rkey = new Key(NAMESPACE, SET, 257);
         
         try {
@@ -2102,6 +2144,7 @@ public class TestCdtOperate extends TestSync {
     
     @Test
     public void testBoolLoopVarModifyFlags() {
+        checkMinServerVersion(8, 1, 1, 0);
         Key rkey = new Key(NAMESPACE, SET, 258);
         
         try {
@@ -2150,6 +2193,7 @@ public class TestCdtOperate extends TestSync {
     
     @Test
     public void testBoolLoopVarInListFilter() {
+        checkMinServerVersion(8, 1, 1, 0);
         Key rkey = new Key(NAMESPACE, SET, 259);
         
         try {
@@ -2191,6 +2235,7 @@ public class TestCdtOperate extends TestSync {
     
     @Test
     public void testHllLoopVarWithHllExpressions() {
+        checkMinServerVersion(8, 1, 1, 0);
         // Demonstrates hllLoopVar usage pattern with selectByPath.
         // Creates a metadata structure and shows the expression pattern for HLL filtering.
         Key rkey = new Key(NAMESPACE, SET, 260);
@@ -2289,6 +2334,7 @@ public class TestCdtOperate extends TestSync {
     
     @Test
     public void testHllLoopVarInExpressionContext() {
+        checkMinServerVersion(8, 1, 1, 0);
         Key rkey = new Key(NAMESPACE, SET, 261);
         
         try {
@@ -2319,6 +2365,7 @@ public class TestCdtOperate extends TestSync {
     
     @Test
     public void testSelectByPathWithNullBinName() {
+        checkMinServerVersion(8, 1, 1, 0);
         CTX ctx1 = CTX.mapKey(Value.get("test"));
 
         try {
@@ -2332,6 +2379,7 @@ public class TestCdtOperate extends TestSync {
 
     @Test
     public void testSelectByPathWithEmptyBinName() {
+        checkMinServerVersion(8, 1, 1, 0);
         CTX ctx1 = CTX.mapKey(Value.get("test"));
 
         try {
@@ -2345,6 +2393,7 @@ public class TestCdtOperate extends TestSync {
 
     @Test
     public void testModifyByPathWithNullBinName() {
+        checkMinServerVersion(8, 1, 1, 0);
         CTX ctx1 = CTX.mapKey(Value.get("test"));
         Expression modifyExp = Exp.build(Exp.val(100));
 
@@ -2359,6 +2408,7 @@ public class TestCdtOperate extends TestSync {
 
     @Test
     public void testModifyByPathWithEmptyBinName() {
+        checkMinServerVersion(8, 1, 1, 0);
         CTX ctx1 = CTX.mapKey(Value.get("test"));
         Expression modifyExp = Exp.build(Exp.val(100));
 
@@ -2373,6 +2423,7 @@ public class TestCdtOperate extends TestSync {
 
     @Test
     public void testSelectByPathWithBinNameTooLong() {
+        checkMinServerVersion(8, 1, 1, 0);
         CTX ctx1 = CTX.mapKey(Value.get("test"));
         String longBinName = "1234567890123456"; // 16 characters, exceeds limit of 15
 
@@ -2387,6 +2438,7 @@ public class TestCdtOperate extends TestSync {
 
     @Test
     public void testModifyByPathWithBinNameTooLong() {
+        checkMinServerVersion(8, 1, 1, 0);
         CTX ctx1 = CTX.mapKey(Value.get("test"));
         Expression modifyExp = Exp.build(Exp.val(100));
         String longBinName = "1234567890123456"; // 16 characters, exceeds limit of 15
@@ -2402,6 +2454,7 @@ public class TestCdtOperate extends TestSync {
 
     @Test
     public void testAllChildrenWithFilterUsingExpression() {
+        checkMinServerVersion(8, 1, 1, 0);
         Key rkey = new Key(NAMESPACE, SET, 262);
         
         try {
@@ -2472,6 +2525,7 @@ public class TestCdtOperate extends TestSync {
 
     @Test
     public void testAllChildrenWithFilterNullExp() {
+        checkMinServerVersion(8, 1, 1, 0);
         try {
             Exp nullExp = null;
             CTX.allChildrenWithFilter(nullExp);
@@ -2483,6 +2537,7 @@ public class TestCdtOperate extends TestSync {
 
     @Test
     public void testAllChildrenWithFilterNullExpression() {
+        checkMinServerVersion(8, 1, 1, 0);
         Key rkey = new Key(NAMESPACE, SET, 263);
         
         try {
@@ -2517,6 +2572,7 @@ public class TestCdtOperate extends TestSync {
 
     @Test
     public void testAllChildrenWithExpressionVariant() {
+        checkMinServerVersion(8, 1, 1, 0);
         Key rkey = new Key(NAMESPACE, SET, 264);
         
         try {
@@ -2773,6 +2829,572 @@ public class TestCdtOperate extends TestSync {
         List<?> filtered = result.getList("filtered");
         assertNotNull("Filtered result should not be null", filtered);
         assertEquals("Should have 1 HLL with count > 3 (the large one)", 1, filtered.size());
+    }
+
+    @Test
+    public void testCDTOperateMapKeyInList() {
+        checkMinServerVersion(8, 1, 2, 0);
+        Key rkey = new Key(NAMESPACE, SET, "cdtOpMapKeyInList");
+
+        try {
+            client.delete(null, rkey);
+        } catch (Exception e) {
+        }
+
+        // Create a map with several keys
+        Map<String, Object> map = new HashMap<>();
+        map.put("alpha", 10);
+        map.put("beta", 20);
+        map.put("gamma", 30);
+        map.put("delta", 40);
+
+        Bin bin = new Bin(BIN_NAME, map);
+        client.put(null, rkey, bin);
+
+        // Select only keys "alpha" and "gamma" using mapKeysIn via CdtOperation
+        CTX ctx = CTX.mapKeysIn("alpha", "gamma");
+        Operation selectOp = CdtOperation.selectByPath(BIN_NAME, SelectFlags.VALUE, ctx);
+
+        Record result = client.operate(null, rkey, selectOp);
+        assertNotNull("Result should not be null", result);
+
+        List<?> values = result.getList(BIN_NAME);
+        assertNotNull("Values should not be null", values);
+        assertEquals("Should have 2 values", 2, values.size());
+        assertTrue("Should contain 10", values.contains(10L));
+        assertTrue("Should contain 30", values.contains(30L));
+    }
+
+    @Test
+    public void testCDTOperateSameLevelFilter() {
+        checkMinServerVersion(8, 1, 2, 0);
+        Key rkey = new Key(NAMESPACE, SET, "cdtOpSameLevelFilter");
+
+        try {
+            client.delete(null, rkey);
+        } catch (Exception e) {
+        }
+
+        Map<String, Object> map = new HashMap<>();
+        map.put("a", 5);
+        map.put("b", 15);
+        map.put("c", 25);
+        map.put("d", 35);
+
+        Bin bin = new Bin(BIN_NAME, map);
+        client.put(null, rkey, bin);
+
+        // Select keys "a", "b", "c" via mapKeysIn, then AND-filter to keep values > 10
+        CTX keyInList = CTX.mapKeysIn("a", "b", "c");
+        CTX andFilter = CTX.andFilter(
+            Exp.gt(Exp.intLoopVar(LoopVarPart.VALUE), Exp.val(10))
+        );
+
+        Operation selectOp = CdtOperation.selectByPath(BIN_NAME, SelectFlags.MAP_KEY_VALUE, keyInList, andFilter);
+
+        Record result = client.operate(null, rkey, selectOp);
+        assertNotNull("Result should not be null", result);
+
+        List<?> resultList = result.getList(BIN_NAME);
+        assertNotNull("Result list should not be null", resultList);
+        // MAP_KEY_VALUE returns a flat list [key, value, key, value, ...]
+        assertEquals("Should have 4 elements (2 key-value pairs)", 4, resultList.size());
+
+        Map<Object, Object> resultMap = new HashMap<>();
+        for (int i = 0; i < resultList.size(); i += 2) {
+            resultMap.put(resultList.get(i), resultList.get(i + 1));
+        }
+        assertEquals("Key 'b' should have value 15", 15L, resultMap.get("b"));
+        assertEquals("Key 'c' should have value 25", 25L, resultMap.get("c"));
+    }
+
+    // ---- MK-002: Select subset - some keys missing ----
+    @Test
+    public void testMapKeysSomeMissing() {
+        checkMinServerVersion(8, 1, 2, 0);
+        Key rkey = new Key(NAMESPACE, SET, "mkSomeMissing");
+
+        try {
+            client.delete(null, rkey);
+        } catch (Exception e) {
+        }
+
+        Map<String, Object> map = new HashMap<>();
+        map.put("a", 1);
+        map.put("b", 2);
+
+        client.put(null, rkey, new Bin(BIN_NAME, map));
+
+        CTX ctx = CTX.mapKeysIn("a", "x");
+        Record result = client.operate(null, rkey,
+            CdtOperation.selectByPath(BIN_NAME, SelectFlags.VALUE, ctx)
+        );
+
+        assertNotNull(result);
+        List<?> values = result.getList(BIN_NAME);
+        assertNotNull(values);
+        assertEquals("Should have 1 value (missing key skipped)", 1, values.size());
+        assertTrue("Should contain 1", values.contains(1L));
+    }
+
+    // ---- MK-003: Empty key list ----
+    @Test
+    public void testMapKeysEmptyKeyList() {
+        checkMinServerVersion(8, 1, 2, 0);
+        Key rkey = new Key(NAMESPACE, SET, "mkEmptyKeys");
+
+        try {
+            client.delete(null, rkey);
+        } catch (Exception e) {
+        }
+
+        Map<String, Object> map = new HashMap<>();
+        map.put("a", 1);
+        map.put("b", 2);
+
+        client.put(null, rkey, new Bin(BIN_NAME, map));
+
+        CTX ctx = CTX.mapKeysIn(new String[]{});
+        Record result = client.operate(null, rkey,
+            CdtOperation.selectByPath(BIN_NAME, SelectFlags.VALUE, ctx)
+        );
+
+        assertNotNull(result);
+        List<?> values = result.getList(BIN_NAME);
+        assertNotNull(values);
+        assertEquals("Empty key list should return empty result", 0, values.size());
+    }
+
+    // ---- MK-004: Empty map ----
+    @Test
+    public void testMapKeysEmptyMap() {
+        checkMinServerVersion(8, 1, 2, 0);
+        Key rkey = new Key(NAMESPACE, SET, "mkEmptyMap");
+
+        try {
+            client.delete(null, rkey);
+        } catch (Exception e) {
+        }
+
+        Map<String, Object> map = new HashMap<>();
+        client.put(null, rkey, new Bin(BIN_NAME, map));
+
+        CTX ctx = CTX.mapKeysIn("a", "b");
+        Record result = client.operate(null, rkey,
+            CdtOperation.selectByPath(BIN_NAME, SelectFlags.VALUE, ctx)
+        );
+
+        assertNotNull(result);
+        List<?> values = result.getList(BIN_NAME);
+        assertNotNull(values);
+        assertEquals("Empty map should return empty result", 0, values.size());
+    }
+
+    // ---- MK-005: Single key selection ----
+    @Test
+    public void testMapKeysSingleKey() {
+        checkMinServerVersion(8, 1, 2, 0);
+        Key rkey = new Key(NAMESPACE, SET, "mkSingleKey");
+
+        try {
+            client.delete(null, rkey);
+        } catch (Exception e) {
+        }
+
+        Map<String, Object> map = new HashMap<>();
+        map.put("x", 1);
+        map.put("y", 2);
+        map.put("z", 3);
+
+        client.put(null, rkey, new Bin(BIN_NAME, map));
+
+        CTX ctx = CTX.mapKeysIn("y");
+        Record result = client.operate(null, rkey,
+            CdtOperation.selectByPath(BIN_NAME, SelectFlags.VALUE, ctx)
+        );
+
+        assertNotNull(result);
+        List<?> values = result.getList(BIN_NAME);
+        assertNotNull(values);
+        assertEquals("Should have 1 value", 1, values.size());
+        assertEquals("Should be 2", 2L, values.get(0));
+    }
+
+    // ---- MK-006: All keys selected ----
+    @Test
+    public void testMapKeysAllKeys() {
+        checkMinServerVersion(8, 1, 2, 0);
+        Key rkey = new Key(NAMESPACE, SET, "mkAllKeys");
+
+        try {
+            client.delete(null, rkey);
+        } catch (Exception e) {
+        }
+
+        Map<String, Object> map = new HashMap<>();
+        map.put("a", 1);
+        map.put("b", 2);
+
+        client.put(null, rkey, new Bin(BIN_NAME, map));
+
+        CTX ctx = CTX.mapKeysIn("a", "b");
+        Record result = client.operate(null, rkey,
+            CdtOperation.selectByPath(BIN_NAME, SelectFlags.VALUE, ctx)
+        );
+
+        assertNotNull(result);
+        List<?> values = result.getList(BIN_NAME);
+        assertNotNull(values);
+        assertEquals("Should have 2 values", 2, values.size());
+        assertTrue("Should contain 1", values.contains(1L));
+        assertTrue("Should contain 2", values.contains(2L));
+    }
+
+    // ---- MK-007: Key order - results follow map key order, not input list order ----
+    @Test
+    public void testMapKeysOrder() {
+        checkMinServerVersion(8, 1, 2, 0);
+        Key rkey = new Key(NAMESPACE, SET, "mkOrder");
+
+        try {
+            client.delete(null, rkey);
+        } catch (Exception e) {
+        }
+
+        Map<String, Object> map = new HashMap<>();
+        map.put("z", 3);
+        map.put("a", 1);
+        map.put("m", 2);
+
+        client.put(null, rkey, new Bin(BIN_NAME, map));
+
+        // Request in order [a, z, m] but expect results in key-sorted order [a, m, z]
+        CTX ctx = CTX.mapKeysIn("a", "z", "m");
+        Record result = client.operate(null, rkey,
+            CdtOperation.selectByPath(BIN_NAME, SelectFlags.VALUE, ctx)
+        );
+
+        assertNotNull(result);
+        List<?> values = result.getList(BIN_NAME);
+        assertNotNull(values);
+        assertEquals("Should have 3 values", 3, values.size());
+        // Aerospike maps are key-ordered, so results come back in sorted key order: a=1, m=2, z=3
+        assertEquals("First value (key 'a')", 1L, values.get(0));
+        assertEquals("Second value (key 'm')", 2L, values.get(1));
+        assertEquals("Third value (key 'z')", 3L, values.get(2));
+    }
+
+    // ---- MK-008: Non-string keys (integer keys) ----
+    @Test
+    public void testMapKeysIntegerKeys() {
+        checkMinServerVersion(8, 1, 2, 0);
+        Key rkey = new Key(NAMESPACE, SET, "mkIntKeys");
+
+        try {
+            client.delete(null, rkey);
+        } catch (Exception e) {
+        }
+
+        Map<Long, String> map = new HashMap<>();
+        map.put(1L, "one");
+        map.put(2L, "two");
+        map.put(3L, "three");
+
+        client.put(null, rkey, new Bin(BIN_NAME, map));
+
+        CTX ctx = CTX.mapKeysIn(1L, 2L);
+        Record result = client.operate(null, rkey,
+            CdtOperation.selectByPath(BIN_NAME, SelectFlags.VALUE, ctx)
+        );
+
+        assertNotNull(result);
+        List<?> values = result.getList(BIN_NAME);
+        assertNotNull(values);
+        assertEquals("Should have 2 values", 2, values.size());
+        assertTrue("Should contain 'one'", values.contains("one"));
+        assertTrue("Should contain 'two'", values.contains("two"));
+    }
+
+    // ---- MK-009: Nested map with mapKeysIn context ----
+    @Test
+    public void testMapKeysNested() {
+        checkMinServerVersion(8, 1, 2, 0);
+        Key rkey = new Key(NAMESPACE, SET, "mkNested");
+
+        try {
+            client.delete(null, rkey);
+        } catch (Exception e) {
+        }
+
+        Map<String, Object> inner = new HashMap<>();
+        inner.put("a", 1);
+        inner.put("b", 2);
+        inner.put("c", 3);
+
+        Map<String, Object> outer = new HashMap<>();
+        outer.put("outer", inner);
+
+        client.put(null, rkey, new Bin(BIN_NAME, outer));
+
+        // Navigate into "outer" key, then select keys "a" and "c" from the inner map
+        CTX outerCtx = CTX.mapKey(Value.get("outer"));
+        CTX keysCtx = CTX.mapKeysIn("a", "c");
+
+        Record result = client.operate(null, rkey,
+            CdtOperation.selectByPath(BIN_NAME, SelectFlags.VALUE, outerCtx, keysCtx)
+        );
+
+        assertNotNull(result);
+        List<?> values = result.getList(BIN_NAME);
+        assertNotNull(values);
+        assertEquals("Should have 2 values from nested map", 2, values.size());
+        assertTrue("Should contain 1", values.contains(1L));
+        assertTrue("Should contain 3", values.contains(3L));
+    }
+
+    // ---- MV-001: Basic mapValues - extract all values from a map ----
+    @Test
+    public void testMapValuesBasic() {
+        checkMinServerVersion(8, 1, 2, 0);
+        Key rkey = new Key(NAMESPACE, SET, "mvBasic");
+
+        try {
+            client.delete(null, rkey);
+        } catch (Exception e) {
+        }
+
+        Map<String, Object> map = new HashMap<>();
+        map.put("a", 1);
+        map.put("b", 2);
+        map.put("c", 3);
+
+        client.put(null, rkey, new Bin(BIN_NAME, map));
+
+        Expression exp = Exp.build(
+            Exp.mapValuesIn(Exp.mapBin(BIN_NAME))
+        );
+
+        Record result = client.operate(null, rkey,
+            ExpOperation.read("values", exp, ExpReadFlags.DEFAULT)
+        );
+
+        assertNotNull(result);
+        List<?> values = result.getList("values");
+        assertNotNull(values);
+        assertEquals("Should have 3 values", 3, values.size());
+        assertTrue("Should contain 1", values.contains(1L));
+        assertTrue("Should contain 2", values.contains(2L));
+        assertTrue("Should contain 3", values.contains(3L));
+    }
+
+    // ---- MV-002: mapValues on empty map ----
+    @Test
+    public void testMapValuesEmptyMap() {
+        checkMinServerVersion(8, 1, 2, 0);
+        Key rkey = new Key(NAMESPACE, SET, "mvEmptyMap");
+
+        try {
+            client.delete(null, rkey);
+        } catch (Exception e) {
+        }
+
+        Map<String, Object> map = new HashMap<>();
+        client.put(null, rkey, new Bin(BIN_NAME, map));
+
+        Expression exp = Exp.build(
+            Exp.mapValuesIn(Exp.mapBin(BIN_NAME))
+        );
+
+        Record result = client.operate(null, rkey,
+            ExpOperation.read("values", exp, ExpReadFlags.DEFAULT)
+        );
+
+        assertNotNull(result);
+        List<?> values = result.getList("values");
+        assertNotNull(values);
+        assertEquals("Empty map should return empty list", 0, values.size());
+    }
+
+    // ---- MV-003: mapValues on single-entry map ----
+    @Test
+    public void testMapValuesSingleEntry() {
+        checkMinServerVersion(8, 1, 2, 0);
+        Key rkey = new Key(NAMESPACE, SET, "mvSingleEntry");
+
+        try {
+            client.delete(null, rkey);
+        } catch (Exception e) {
+        }
+
+        Map<String, Object> map = new HashMap<>();
+        map.put("x", 42);
+
+        client.put(null, rkey, new Bin(BIN_NAME, map));
+
+        Expression exp = Exp.build(
+            Exp.mapValuesIn(Exp.mapBin(BIN_NAME))
+        );
+
+        Record result = client.operate(null, rkey,
+            ExpOperation.read("values", exp, ExpReadFlags.DEFAULT)
+        );
+
+        assertNotNull(result);
+        List<?> values = result.getList("values");
+        assertNotNull(values);
+        assertEquals("Should have 1 value", 1, values.size());
+        assertEquals("Should be 42", 42L, values.get(0));
+    }
+
+    // ---- MV-004: mapValues with integer keys ----
+    @Test
+    public void testMapValuesIntegerKeys() {
+        checkMinServerVersion(8, 1, 2, 0);
+        Key rkey = new Key(NAMESPACE, SET, "mvIntKeys");
+
+        try {
+            client.delete(null, rkey);
+        } catch (Exception e) {
+        }
+
+        Map<Long, String> map = new HashMap<>();
+        map.put(1L, "one");
+        map.put(2L, "two");
+        map.put(3L, "three");
+
+        client.put(null, rkey, new Bin(BIN_NAME, map));
+
+        Expression exp = Exp.build(
+            Exp.mapValuesIn(Exp.mapBin(BIN_NAME))
+        );
+
+        Record result = client.operate(null, rkey,
+            ExpOperation.read("values", exp, ExpReadFlags.DEFAULT)
+        );
+
+        assertNotNull(result);
+        List<?> values = result.getList("values");
+        assertNotNull(values);
+        assertEquals("Should have 3 values", 3, values.size());
+        assertTrue("Should contain 'one'", values.contains("one"));
+        assertTrue("Should contain 'two'", values.contains("two"));
+        assertTrue("Should contain 'three'", values.contains("three"));
+    }
+
+    // ---- MV-005: mapValues combined with inList filter ----
+    @Test
+    public void testMapValuesWithInList() {
+        checkMinServerVersion(8, 1, 2, 0);
+        Key rkey = new Key(NAMESPACE, SET, "mvInList");
+
+        try {
+            client.delete(null, rkey);
+        } catch (Exception e) {
+        }
+
+        Map<String, Object> map = new HashMap<>();
+        map.put("a", 10);
+        map.put("b", 20);
+        map.put("c", 30);
+
+        client.put(null, rkey, new Bin(BIN_NAME, map));
+
+        // Check if 20 is in the map values
+        Expression exp = Exp.build(
+            Exp.inList(
+                Exp.val(20),
+                Exp.mapValuesIn(Exp.mapBin(BIN_NAME))
+            )
+        );
+
+        Record result = client.operate(null, rkey,
+            ExpOperation.read("found", exp, ExpReadFlags.DEFAULT)
+        );
+
+        assertNotNull(result);
+        assertTrue("20 should be found in map values", result.getBoolean("found"));
+
+        // Check if 99 is NOT in the map values
+        Expression expNot = Exp.build(
+            Exp.inList(
+                Exp.val(99),
+                Exp.mapValuesIn(Exp.mapBin(BIN_NAME))
+            )
+        );
+
+        Record resultNot = client.operate(null, rkey,
+            ExpOperation.read("notFound", expNot, ExpReadFlags.DEFAULT)
+        );
+
+        assertNotNull(resultNot);
+        assertEquals("99 should not be found in map values", false, resultNot.getBoolean("notFound"));
+    }
+
+    // ---- MV-006: mapValues with string values ----
+    @Test
+    public void testMapValuesStringValues() {
+        checkMinServerVersion(8, 1, 2, 0);
+        Key rkey = new Key(NAMESPACE, SET, "mvStringVals");
+
+        try {
+            client.delete(null, rkey);
+        } catch (Exception e) {
+        }
+
+        Map<String, Object> map = new HashMap<>();
+        map.put("name", "Charlie");
+        map.put("city", "London");
+
+        client.put(null, rkey, new Bin(BIN_NAME, map));
+
+        Expression exp = Exp.build(
+            Exp.mapValuesIn(Exp.mapBin(BIN_NAME))
+        );
+
+        Record result = client.operate(null, rkey,
+            ExpOperation.read("values", exp, ExpReadFlags.DEFAULT)
+        );
+
+        assertNotNull(result);
+        List<?> values = result.getList("values");
+        assertNotNull(values);
+        assertEquals("Should have 2 values", 2, values.size());
+        assertTrue("Should contain 'Charlie'", values.contains("Charlie"));
+        assertTrue("Should contain 'London'", values.contains("London"));
+    }
+
+    // ---- MV-007: mapValues list size check ----
+    @Test
+    public void testMapValuesListSize() {
+        checkMinServerVersion(8, 1, 2, 0);
+        Key rkey = new Key(NAMESPACE, SET, "mvListSize");
+
+        try {
+            client.delete(null, rkey);
+        } catch (Exception e) {
+        }
+
+        Map<String, Object> map = new HashMap<>();
+        map.put("x", 1);
+        map.put("y", 2);
+        map.put("z", 3);
+
+        client.put(null, rkey, new Bin(BIN_NAME, map));
+
+        // Use mapValues inside a list size expression
+        Expression exp = Exp.build(
+            Exp.eq(
+                ListExp.size(Exp.mapValuesIn(Exp.mapBin(BIN_NAME))),
+                Exp.val(3)
+            )
+        );
+
+        Record result = client.operate(null, rkey,
+            ExpOperation.read("sizeCheck", exp, ExpReadFlags.DEFAULT)
+        );
+
+        assertNotNull(result);
+        assertTrue("Map values list size should be 3", result.getBoolean("sizeCheck"));
     }
 
 }

@@ -16,6 +16,8 @@
  */
 package com.aerospike.client.cdt;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import com.aerospike.client.AerospikeException;
@@ -154,6 +156,184 @@ public final class CTX {
 	}
 
 	/**
+	 * Select map entries whose keys are contained in the provided string keys.
+	 * <p>
+	 * This context selects a subset of a map by matching its keys against
+	 * the given keys. Only entries with keys present in {@code keys} are
+	 * included. Can be combined with {@link #andFilter(Exp)} to apply
+	 * additional filtering on the selected entries.
+	 *
+	 * <pre>{@code
+	 * // Given map: {alpha: 10, beta: 20, gamma: 30, delta: 40}
+	 * // Select only the "alpha" and "gamma" entries.
+	 * CTX ctx = CTX.mapKeysIn("alpha", "gamma");
+	 * Operation op = CdtOperation.selectByPath("myBin", SelectFlags.VALUE, ctx);
+	 * Record result = client.operate(null, key, op);
+	 * // result: [10, 30]
+	 * }</pre>
+	 *
+	 * @param keys	string map keys to select
+	 * @return		a map key-list context
+	 * @see #andFilter(Exp)
+	 * @see CdtOperation#selectByPath(String, int, CTX...)
+	 */
+	public static CTX mapKeysIn(String... keys) {
+		return new CTX(0x2a, Value.get(Arrays.asList(keys)));
+	}
+
+	/**
+	 * Select map entries whose keys are contained in the provided integer keys.
+	 *
+	 * <pre>{@code
+	 * CTX ctx = CTX.mapKeysIn(1, 2, 3);
+	 * }</pre>
+	 *
+	 * @param keys	integer map keys to select
+	 * @return		a map key-list context
+	 * @see #mapKeysIn(String...)
+	 */
+	public static CTX mapKeysIn(int... keys) {
+		// Manual boxing required: Arrays.asList() on a primitive array wraps it as a single element, not per-element.
+		List<Integer> list = new ArrayList<>(keys.length);
+		for (int k : keys) {
+			list.add(k);
+		}
+		return new CTX(0x2a, Value.get(list));
+	}
+
+	/**
+	 * Select map entries whose keys are contained in the provided long keys.
+	 *
+	 * <pre>{@code
+	 * CTX ctx = CTX.mapKeysIn(1L, 2L, 3L);
+	 * }</pre>
+	 *
+	 * @param keys	long map keys to select
+	 * @return		a map key-list context
+	 * @see #mapKeysIn(String...)
+	 */
+	public static CTX mapKeysIn(long... keys) {
+		// Manual boxing required: Arrays.asList() on a primitive array wraps it as a single element, not per-element.
+		List<Long> list = new ArrayList<>(keys.length);
+		for (long k : keys) {
+			list.add(k);
+		}
+		return new CTX(0x2a, Value.get(list));
+	}
+
+	/**
+	 * Select map entries whose keys are contained in the provided byte keys.
+	 *
+	 * @param keys	byte map keys to select
+	 * @return		a map key-list context
+	 * @see #mapKeysIn(String...)
+	 */
+	public static CTX mapKeysIn(byte... keys) {
+		// Manual boxing required: Arrays.asList() on a primitive array wraps it as a single element, not per-element.
+		List<Byte> list = new ArrayList<>(keys.length);
+		for (byte k : keys) {
+			list.add(k);
+		}
+		return new CTX(0x2a, Value.get(list));
+	}
+
+	/**
+	 * Select map entries whose keys are contained in the provided short keys.
+	 *
+	 * @param keys	short map keys to select
+	 * @return		a map key-list context
+	 * @see #mapKeysIn(String...)
+	 */
+	public static CTX mapKeysIn(short... keys) {
+		// Manual boxing required: Arrays.asList() on a primitive array wraps it as a single element, not per-element.
+		List<Short> list = new ArrayList<>(keys.length);
+		for (short k : keys) {
+			list.add(k);
+		}
+		return new CTX(0x2a, Value.get(list));
+	}
+
+	/**
+	 * Select map entries whose keys are contained in the provided double keys.
+	 *
+	 * @param keys	double map keys to select
+	 * @return		a map key-list context
+	 * @see #mapKeysIn(String...)
+	 */
+	public static CTX mapKeysIn(double... keys) {
+		// Manual boxing required: Arrays.asList() on a primitive array wraps it as a single element, not per-element.
+		List<Double> list = new ArrayList<>(keys.length);
+		for (double k : keys) {
+			list.add(k);
+		}
+		return new CTX(0x2a, Value.get(list));
+	}
+
+	/**
+	 * Select map entries whose keys are contained in the provided float keys.
+	 *
+	 * @param keys	float map keys to select
+	 * @return		a map key-list context
+	 * @see #mapKeysIn(String...)
+	 */
+	public static CTX mapKeysIn(float... keys) {
+		// Manual boxing required: Arrays.asList() on a primitive array wraps it as a single element, not per-element.
+		List<Float> list = new ArrayList<>(keys.length);
+		for (float k : keys) {
+			list.add(k);
+		}
+		return new CTX(0x2a, Value.get(list));
+	}
+
+	/**
+	 * Apply an additional expression filter at the current context level.
+	 * <p>
+	 * This creates an AND filter that combines with the preceding context.
+	 * Entries must satisfy both the preceding context and this filter expression
+	 * to be included in the result. Typically used after {@link #mapKeysIn(String...)}
+	 * or other selection contexts to further narrow the results.
+	 *
+	 * <pre>{@code
+	 * // Given map: {a: 5, b: 15, c: 25, d: 35}
+	 * // Select keys "a", "b", "c" AND keep only entries where value > 10.
+	 * CTX keys = CTX.mapKeysIn("a", "b", "c");
+	 * CTX filter = CTX.andFilter(
+	 *     Exp.gt(Exp.intLoopVar(LoopVarPart.VALUE), Exp.val(10))
+	 * );
+	 * Operation op = CdtOperation.selectByPath("myBin", SelectFlags.MAP_KEY_VALUE, keys, filter);
+	 * Record result = client.operate(null, key, op);
+	 * // result: {b: 15, c: 25}
+	 * }</pre>
+	 *
+	 * @param exp	filter expression; entries that evaluate to false are excluded
+	 * @return		an AND filter context
+	 * @see #mapKeysIn(String...)
+	 * @see CdtOperation#selectByPath(String, int, CTX...)
+	 */
+	public static CTX andFilter(Exp exp) {
+		Expression expression = Exp.build(exp);
+		return new CTX(Exp.CTX_AND | Exp.CTX_EXP, expression);
+	}
+
+	/**
+	 * Apply an additional expression filter at the current context level.
+	 * <p>
+	 * This creates an AND filter that combines with the preceding context.
+	 * Entries must satisfy both the preceding context and this filter expression
+	 * to be included in the result. Typically used after {@link #mapKeysIn(String...)}
+	 * or other selection contexts to further narrow the results.
+	 *
+	 * @param exp	compiled filter expression; entries that evaluate to false are excluded
+	 * @return		an AND filter context
+	 * @see #andFilter(Exp)
+	 * @see #mapKeysIn(String...)
+	 * @see CdtOperation#selectByPath(String, int, CTX...)
+	 */
+	public static CTX andFilter(Expression exp) {
+		return new CTX(Exp.CTX_AND | Exp.CTX_EXP, exp);
+	}
+
+	/**
 	 * Serialize context array to bytes.
 	 */
 	public static byte[] toBytes(CTX[] ctx) {
@@ -178,8 +358,9 @@ public final class CTX {
 			}
 
 			Object obj = list.get(i);
-			// Check if this is an expression context based on the id
-			if (id == Exp.CTX_EXP) {
+			// Check if this is an expression context based on the low nibble of the id.
+			// Mask with 0x0f so AND|EXP contexts (0x204) are correctly detected.
+			if ((id & 0x0f) == Exp.CTX_EXP) {
 				Expression exp = Exp.build(Exp.get(obj));
 				ctx[count++] = new CTX(id, exp);
 			} else {

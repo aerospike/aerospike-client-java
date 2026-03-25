@@ -48,7 +48,17 @@ public abstract class Exp {
 		}
 	}
 
+	/**
+	 * @hidden
+	 * Internal context type flag for expression-based contexts.
+	 */
 	public static final int CTX_EXP = 0x04;
+
+	/**
+	 * @hidden
+	 * Internal context type flag for AND filter contexts.
+	 */
+	public static final int CTX_AND = 0x200;
 
 	//--------------------------------------------------
 	// Build
@@ -1182,7 +1192,7 @@ public abstract class Exp {
 	 * Requires server version 8.1.1
 	 *
 	 * <pre>{@code
-	 * Exp.stringLoopVar(LoopVarPart.MAP_KEY | LoopVarPart.VALUE | INDEX)
+	 * Exp.stringLoopVar(LoopVarPart.MAP_KEY)
 	 * }</pre>
 	 */
 	public static Exp stringLoopVar(LoopVarPart part) {
@@ -1194,7 +1204,7 @@ public abstract class Exp {
 	 * Requires server version 8.1.1
 	 *
 	 * <pre>{@code
-	 * Exp.boolLoopVar(LoopVarPart.MAP_KEY | LoopVarPart.VALUE | INDEX)
+	 * Exp.boolLoopVar(LoopVarPart.MAP_KEY)
 	 * }</pre>
 	 */
 	public static Exp boolLoopVar(LoopVarPart part) {
@@ -1206,7 +1216,7 @@ public abstract class Exp {
 	 * Requires server version 8.1.1
 	 *
 	 * <pre>{@code
-	 * Exp.hllLoopVar(LoopVarPart.MAP_KEY | LoopVarPart.VALUE | INDEX)
+	 * Exp.hllLoopVar(LoopVarPart.MAP_KEY)
 	 * }</pre>
 	 */
 	public static Exp hllLoopVar(LoopVarPart part) {
@@ -1218,7 +1228,7 @@ public abstract class Exp {
 	 * Requires server version 8.1.1
 	 * 
 	 * <pre>{@code
-	 * Exp.intLoopVar(LoopVarPart.MAP_KEY | LoopVarPart.VALUE | INDEX)
+	 * Exp.intLoopVar(LoopVarPart.MAP_KEY)
 	 * }</pre>
 	 */
 	public static Exp intLoopVar(LoopVarPart part) {
@@ -1230,7 +1240,7 @@ public abstract class Exp {
 	 * Requires server version 8.1.1
 	 * 
 	 * <pre>{@code
-	 * Exp.floatLoopVar(LoopVarPart.MAP_KEY | LoopVarPart.VALUE | INDEX)
+	 * Exp.floatLoopVar(LoopVarPart.MAP_KEY)
 	 * }</pre>
 	 */
 	public static Exp floatLoopVar(LoopVarPart part) {
@@ -1242,7 +1252,7 @@ public abstract class Exp {
 	 * Requires server version 8.1.1
 	 * 
 	 * <pre>{@code
-	 * Exp.listLoopVar(LoopVarPart.MAP_KEY | LoopVarPart.VALUE | INDEX)
+	 * Exp.listLoopVar(LoopVarPart.MAP_KEY)
 	 * }</pre>
 	 */
 	public static Exp listLoopVar(LoopVarPart part)	{
@@ -1254,7 +1264,7 @@ public abstract class Exp {
 	 * Requires server version 8.1.1
 	 * 
 	 * <pre>{@code
-	 * Exp.mapLoopVar(LoopVarPart.MAP_KEY | LoopVarPart.VALUE | INDEX)
+	 * Exp.mapLoopVar(LoopVarPart.MAP_KEY)
 	 * }</pre>
 	 */
 	public static Exp mapLoopVar(LoopVarPart part)	{
@@ -1266,7 +1276,7 @@ public abstract class Exp {
 	 * Requires server version 8.1.1
 	 * 
 	 * <pre>{@code
-	 * Exp.blobLoopVar(LoopVarPart.MAP_KEY | LoopVarPart.VALUE | INDEX)
+	 * Exp.blobLoopVar(LoopVarPart.MAP_KEY)
 	 * }</pre>
 	 */
 	public static Exp blobLoopVar(LoopVarPart part)	{
@@ -1278,7 +1288,7 @@ public abstract class Exp {
 	 * Requires server version 8.1.1
 	 * 
 	 * <pre>{@code
-	 * Exp.nilLoopVar(LoopVarPart.MAP_KEY | LoopVarPart.VALUE | INDEX)
+	 * Exp.nilLoopVar(LoopVarPart.MAP_KEY)
 	 * }</pre>
 	 */
 	public static Exp nilLoopVar(LoopVarPart part)	{
@@ -1290,11 +1300,45 @@ public abstract class Exp {
 	 * Requires server version 8.1.1
 	 * 
 	 * <pre>{@code
-	 * Exp.geoJsonLoopVar(LoopVarPart.MAP_KEY | LoopVarPart.VALUE | INDEX)
+	 * Exp.geoJsonLoopVar(LoopVarPart.MAP_KEY)
 	 * }</pre>
 	 */
 	public static Exp geoJsonLoopVar(LoopVarPart part)	{
 		return new Var(Type.GEO.code, part.id);
+	}
+
+	/**
+	 * Create expression that checks if a value is contained in a list.
+	 *
+	 * <pre>{@code
+	 * // Check if bin "color" value is in the list ["red", "blue", "green"]
+	 * Exp.inList(Exp.stringBin("color"), Exp.val(List.of("red", "blue", "green")))
+	 * }</pre>
+	 */
+	public static Exp inList(Exp value, Exp list) {
+		return new CmdExp(IN_LIST, value, list);
+	}
+
+	/**
+	 * Create expression that extracts all keys from a map as a list.
+	 *
+	 * <pre>{@code
+	 * Exp.mapKeysIn(Exp.mapBin("myMap"))
+	 * }</pre>
+	 */
+	public static Exp mapKeysIn(Exp map) {
+		return new CmdExp(MAP_KEYS, map);
+	}
+
+	/**
+	 * Create expression that extracts all values from a map as a list.
+	 *
+	 * <pre>{@code
+	 * Exp.mapValues(Exp.mapBin("myMap"))
+	 * }</pre>
+	 */
+	public static Exp mapValuesIn(Exp map) {
+		return new CmdExp(MAP_VALUES, map);
 	}
 
 	/**
@@ -1403,7 +1447,10 @@ public abstract class Exp {
 	private static final int KEY = 80;
 	private static final int BIN = 81;
 	private static final int BIN_TYPE = 82;
+	private static final int IN_LIST = 9;
 	private static final int RESULT_REMOVE = 100;
+	private static final int MAP_KEYS = 101;
+	private static final int MAP_VALUES = 102;
 	private static final int VAR_BUILTIN = 122;
 	private static final int COND = 123;
 	private static final int VAR = 124;
