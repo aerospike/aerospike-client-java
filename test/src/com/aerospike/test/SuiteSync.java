@@ -66,6 +66,7 @@ import com.aerospike.test.sync.query.TestQueryFilterSet;
 import com.aerospike.test.sync.query.TestQueryGeo;
 import com.aerospike.test.sync.query.TestQueryInteger;
 import com.aerospike.test.sync.query.TestQueryKey;
+import com.aerospike.test.sync.query.TestQueryOperations;
 import com.aerospike.test.sync.query.TestQueryRPS;
 import com.aerospike.test.sync.query.TestQueryString;
 import com.aerospike.test.sync.query.TestQuerySum;
@@ -113,6 +114,7 @@ import com.aerospike.test.util.Args;
 	TestQueryGeo.class,
 	TestQueryInteger.class,
 	TestQueryKey.class,
+	TestQueryOperations.class,
 	TestQueryRPS.class,
 	TestQueryString.class,
 	TestQuerySum.class
