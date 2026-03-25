@@ -22,11 +22,11 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.junit.BeforeClass;
 import org.junit.Assume;
 import org.junit.Test;
 
@@ -59,16 +59,17 @@ public class TestCdtExp extends TestSync {
     private static final String NAMESPACE = "test";
     private static final String SET = "testset";
     
-    @BeforeClass
-    public static void checkServerVersion() {
-        // Skip tests for server version < 8.1.1
+    private static void checkMinServerVersion(int major, int minor, int patch, int build) {
         Version serverVersion = client.getCluster().getRandomNode().getServerVersion();
-        boolean condition = serverVersion.isGreaterOrEqual(8, 1, 1, 0);
-        Assume.assumeTrue("Tests skipped for server version < 8.1.1", condition);
+        Assume.assumeTrue(
+            String.format("Test skipped for server version < %d.%d.%d", major, minor, patch),
+            serverVersion.isGreaterOrEqual(major, minor, patch, build)
+        );
     }
     
     @Test
     public void testCDTExpSelect() {
+        checkMinServerVersion(8, 1, 1, 0);
         Key keyA = new Key(NAMESPACE, SET, "cdtExpSelectKey");
         
         try {
@@ -134,6 +135,7 @@ public class TestCdtExp extends TestSync {
     
     @Test
     public void testCDTExpApply() {
+        checkMinServerVersion(8, 1, 1, 0);
         Key keyA = new Key(NAMESPACE, SET, "cdtExpApplyKey");
         
         try {
@@ -219,6 +221,7 @@ public class TestCdtExp extends TestSync {
     
     @Test
     public void testSelectTitlesWithPriceFilter() {
+        checkMinServerVersion(8, 1, 1, 0);
         Key key = new Key(NAMESPACE, SET, "selectTitlesFilterKey");
         
         try {
@@ -295,6 +298,7 @@ public class TestCdtExp extends TestSync {
     
     @Test
     public void testExpReadOpWithSelectByPath() {
+        checkMinServerVersion(8, 1, 1, 0);
         Key key = new Key(NAMESPACE, SET, "expReadOpSelectKey");
         
         try {
@@ -340,6 +344,7 @@ public class TestCdtExp extends TestSync {
     
     @Test
     public void testModifyWithAddition() {
+        checkMinServerVersion(8, 1, 1, 0);
         Key key = new Key(NAMESPACE, SET, "modifyAdditionKey");
         
         try {
@@ -413,6 +418,7 @@ public class TestCdtExp extends TestSync {
     
     @Test
     public void testModifyWithSubtraction() {
+        checkMinServerVersion(8, 1, 1, 0);
         Key key = new Key(NAMESPACE, SET, "modifySubtractionKey");
         
         try {
@@ -470,6 +476,7 @@ public class TestCdtExp extends TestSync {
     
     @Test
     public void testExpWriteFlagCreateOnly() {
+        checkMinServerVersion(8, 1, 1, 0);
         Key key = new Key(NAMESPACE, SET, "createOnlyFlagKey");
         
         try {
@@ -519,6 +526,7 @@ public class TestCdtExp extends TestSync {
     
     @Test
     public void testCombineSelectAndModify() {
+        checkMinServerVersion(8, 1, 1, 0);
         Key key = new Key(NAMESPACE, SET, "combineSelectModifyKey");
         
         try {
@@ -617,6 +625,7 @@ public class TestCdtExp extends TestSync {
     
     @Test
     public void testSelectByPathWithListOfLists() {
+        checkMinServerVersion(8, 1, 1, 0);
         Key key = new Key(NAMESPACE, SET, "listOfListsKey");
         
         try {
@@ -680,6 +689,7 @@ public class TestCdtExp extends TestSync {
     
     @Test
     public void testModifyNestedMapValues() {
+        checkMinServerVersion(8, 1, 1, 0);
         Key key = new Key(NAMESPACE, SET, "modifyNestedMapKey");
         
         try {
@@ -758,6 +768,7 @@ public class TestCdtExp extends TestSync {
     
     @Test
     public void testSelectByPathWithIntegerValues() {
+        checkMinServerVersion(8, 1, 1, 0);
         Key key = new Key(NAMESPACE, SET, "selectIntegerValuesKey");
         
         try {
@@ -802,6 +813,7 @@ public class TestCdtExp extends TestSync {
     
     @Test
     public void testModifyWithDivision() {
+        checkMinServerVersion(8, 1, 1, 0);
         Key key = new Key(NAMESPACE, SET, "modifyDivisionKey");
         
         try {
@@ -860,6 +872,7 @@ public class TestCdtExp extends TestSync {
     
     @Test
     public void testSelectByPathWithMapKeys() {
+        checkMinServerVersion(8, 1, 1, 0);
         Key key = new Key(NAMESPACE, SET, "selectMapKeysKey");
         
         try {
@@ -906,6 +919,7 @@ public class TestCdtExp extends TestSync {
     
     @Test
     public void testSelectByPathWithFilteredResults() {
+        checkMinServerVersion(8, 1, 1, 0);
         Key key = new Key(NAMESPACE, SET, "selectFilteredKey");
         
         try {
@@ -987,6 +1001,7 @@ public class TestCdtExp extends TestSync {
     
     @Test
     public void testExpWriteFlagEvalNoFail() {
+        checkMinServerVersion(8, 1, 1, 0);
         Key key = new Key(NAMESPACE, SET, "evalNoFailKey");
         
         try {
@@ -1021,6 +1036,7 @@ public class TestCdtExp extends TestSync {
     
     @Test
     public void testMultipleExpWriteOpInSequence() {
+        checkMinServerVersion(8, 1, 1, 0);
         Key key = new Key(NAMESPACE, SET, "multipleOpsKey");
         
         try {
@@ -1097,6 +1113,7 @@ public class TestCdtExp extends TestSync {
     
     @Test
     public void testBoolLoopVarSelect() {
+        checkMinServerVersion(8, 1, 1, 0);
         Key key = new Key(NAMESPACE, SET, "boolLoopVarSelectKey");
         
         try {
@@ -1174,6 +1191,7 @@ public class TestCdtExp extends TestSync {
     
     @Test
     public void testBoolLoopVarModify() {
+        checkMinServerVersion(8, 1, 1, 0);
         Key key = new Key(NAMESPACE, SET, "boolLoopVarModifyKey");
         
         try {
@@ -1229,6 +1247,7 @@ public class TestCdtExp extends TestSync {
     
     @Test
     public void testHllLoopVarWithHllBins() {
+        checkMinServerVersion(8, 1, 1, 0);
         // Note: HLL operations on HLL items nested in lists/maps are not currently
         // supported by the server. This test demonstrates hllLoopVar usage with
         // HLL expressions in a filtering context.
@@ -1301,6 +1320,7 @@ public class TestCdtExp extends TestSync {
 
     @Test
     public void testSelectByPathWithExpressionVariant() {
+        checkMinServerVersion(8, 1, 1, 0);
         Key key = new Key(NAMESPACE, SET, "expressionVariantKey");
         
         try {
@@ -1374,6 +1394,7 @@ public class TestCdtExp extends TestSync {
 
     @Test
     public void testModifyByPathWithExpressionVariant() {
+        checkMinServerVersion(8, 1, 1, 0);
         Key key = new Key(NAMESPACE, SET, "modifyExpressionVariantKey");
         
         try {
@@ -1455,6 +1476,7 @@ public class TestCdtExp extends TestSync {
 
     @Test
     public void testAllChildrenWithFilterNullExp() {
+        checkMinServerVersion(8, 1, 1, 0);
         try {
             Exp nullExp = null;
             CTX.allChildrenWithFilter(nullExp);
@@ -1466,6 +1488,7 @@ public class TestCdtExp extends TestSync {
 
     @Test
     public void testAllChildrenWithFilterNullExpression() {
+        checkMinServerVersion(8, 1, 1, 0);
         Key key = new Key(NAMESPACE, SET, "nullExpressionKey");
         
         try {
@@ -1510,6 +1533,7 @@ public class TestCdtExp extends TestSync {
 
     @Test
     public void testCombineExpAndExpressionVariants() {
+        checkMinServerVersion(8, 1, 1, 0);
         Key key = new Key(NAMESPACE, SET, "combineVariantsKey");
         
         try {
@@ -1582,5 +1606,121 @@ public class TestCdtExp extends TestSync {
         assertEquals("Should have 2 active records", 2, values.size());
         assertTrue("Should contain 100", values.contains(100L));
         assertTrue("Should contain 150", values.contains(150L));
+    }
+
+
+
+    @Test
+    public void testInList() {
+        checkMinServerVersion(8, 1, 2, 0);
+        Key key = new Key(NAMESPACE, SET, "cdtExpInList");
+
+        try {
+            client.delete(null, key);
+        } catch (Exception e) {
+        }
+
+        Bin bin = new Bin("color", "blue");
+        client.put(null, key, bin);
+
+        // Check if bin "color" is in the list ["red", "blue", "green"]
+        Expression exp = Exp.build(
+            Exp.inList(
+                Exp.stringBin("color"),
+                Exp.val(Arrays.asList("red", "blue", "green"))
+            )
+        );
+
+        Record result = client.operate(null, key,
+            ExpOperation.read("inList", exp, ExpReadFlags.DEFAULT)
+        );
+
+        assertNotNull("Result should not be null", result);
+        assertTrue("color 'blue' should be in the list", result.getBoolean("inList"));
+
+        // Negative case: value not in list
+        Expression expNot = Exp.build(
+            Exp.inList(
+                Exp.stringBin("color"),
+                Exp.val(Arrays.asList("red", "yellow", "green"))
+            )
+        );
+
+        Record resultNot = client.operate(null, key,
+            ExpOperation.read("notInList", expNot, ExpReadFlags.DEFAULT)
+        );
+
+        assertNotNull("Result should not be null", resultNot);
+        assertTrue("color 'blue' should not be in the list", !resultNot.getBoolean("notInList"));
+    }
+
+    @Test
+    public void testMapKeys() {
+        checkMinServerVersion(8, 1, 2, 0);
+        Key key = new Key(NAMESPACE, SET, "cdtExpMapKeys");
+
+        try {
+            client.delete(null, key);
+        } catch (Exception e) {
+        }
+
+        Map<String, Object> map = new HashMap<>();
+        map.put("x", 1);
+        map.put("y", 2);
+        map.put("z", 3);
+
+        Bin bin = new Bin("myMap", map);
+        client.put(null, key, bin);
+
+        Expression exp = Exp.build(
+            Exp.mapKeysIn(Exp.mapBin("myMap"))
+        );
+
+        Record result = client.operate(null, key,
+            ExpOperation.read("keys", exp, ExpReadFlags.DEFAULT)
+        );
+
+        assertNotNull("Result should not be null", result);
+        List<?> keys = result.getList("keys");
+        assertNotNull("Keys list should not be null", keys);
+        assertEquals("Should have 3 keys", 3, keys.size());
+        assertTrue("Should contain 'x'", keys.contains("x"));
+        assertTrue("Should contain 'y'", keys.contains("y"));
+        assertTrue("Should contain 'z'", keys.contains("z"));
+    }
+
+    @Test
+    public void testMapValues() {
+        checkMinServerVersion(8, 1, 2, 0);
+        Key key = new Key(NAMESPACE, SET, "cdtExpMapValues");
+
+        try {
+            client.delete(null, key);
+        } catch (Exception e) {
+        }
+
+        Map<String, Object> map = new HashMap<>();
+        map.put("a", 100);
+        map.put("b", 200);
+        map.put("c", 300);
+
+        Bin bin = new Bin("myMap", map);
+        client.put(null, key, bin);
+
+        Expression exp = Exp.build(
+            Exp.mapValuesIn(Exp.mapBin("myMap"))
+        );
+
+        Record result = client.operate(null, key,
+            ExpOperation.read("values", exp, ExpReadFlags.DEFAULT)
+        );
+
+        assertNotNull("Result should not be null", result);
+        List<?> values2 = result.getList("values");
+        assertNotNull("Values list should not be null", values2);
+        assertEquals("Should have 3 values", 3, values2.size());
+        assertTrue("Should contain 100", values2.contains(100L));
+        assertTrue("Should contain 200", values2.contains(200L));
+        assertTrue("Should contain 300", values2.contains(300L));
     }
 }

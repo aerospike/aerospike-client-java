@@ -31,7 +31,7 @@ public class CdtExp {
     /**
      * The modify flag for CDT expressions.
      */
-	public static final int MODIFY = 0x40;
+	private static final int MODIFY = 0x40;
 
     /**
      * The type of CDT expression.
