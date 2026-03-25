@@ -22,6 +22,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -1582,5 +1583,118 @@ public class TestCdtExp extends TestSync {
         assertEquals("Should have 2 active records", 2, values.size());
         assertTrue("Should contain 100", values.contains(100L));
         assertTrue("Should contain 150", values.contains(150L));
+    }
+
+
+
+    @Test
+    public void testInList() {
+        Key key = new Key(NAMESPACE, SET, "cdtExpInList");
+
+        try {
+            client.delete(null, key);
+        } catch (Exception e) {
+        }
+
+        Bin bin = new Bin("color", "blue");
+        client.put(null, key, bin);
+
+        // Check if bin "color" is in the list ["red", "blue", "green"]
+        Expression exp = Exp.build(
+            Exp.inList(
+                Exp.stringBin("color"),
+                Exp.val(Arrays.asList("red", "blue", "green"))
+            )
+        );
+
+        Record result = client.operate(null, key,
+            ExpOperation.read("inList", exp, ExpReadFlags.DEFAULT)
+        );
+
+        assertNotNull("Result should not be null", result);
+        assertTrue("color 'blue' should be in the list", result.getBoolean("inList"));
+
+        // Negative case: value not in list
+        Expression expNot = Exp.build(
+            Exp.inList(
+                Exp.stringBin("color"),
+                Exp.val(Arrays.asList("red", "yellow", "green"))
+            )
+        );
+
+        Record resultNot = client.operate(null, key,
+            ExpOperation.read("notInList", expNot, ExpReadFlags.DEFAULT)
+        );
+
+        assertNotNull("Result should not be null", resultNot);
+        assertTrue("color 'blue' should not be in the list", !resultNot.getBoolean("notInList"));
+    }
+
+    @Test
+    public void testMapKeys() {
+        Key key = new Key(NAMESPACE, SET, "cdtExpMapKeys");
+
+        try {
+            client.delete(null, key);
+        } catch (Exception e) {
+        }
+
+        Map<String, Object> map = new HashMap<>();
+        map.put("x", 1);
+        map.put("y", 2);
+        map.put("z", 3);
+
+        Bin bin = new Bin("myMap", map);
+        client.put(null, key, bin);
+
+        Expression exp = Exp.build(
+            Exp.mapKeysIn(Exp.mapBin("myMap"))
+        );
+
+        Record result = client.operate(null, key,
+            ExpOperation.read("keys", exp, ExpReadFlags.DEFAULT)
+        );
+
+        assertNotNull("Result should not be null", result);
+        List<?> keys = result.getList("keys");
+        assertNotNull("Keys list should not be null", keys);
+        assertEquals("Should have 3 keys", 3, keys.size());
+        assertTrue("Should contain 'x'", keys.contains("x"));
+        assertTrue("Should contain 'y'", keys.contains("y"));
+        assertTrue("Should contain 'z'", keys.contains("z"));
+    }
+
+    @Test
+    public void testMapValues() {
+        Key key = new Key(NAMESPACE, SET, "cdtExpMapValues");
+
+        try {
+            client.delete(null, key);
+        } catch (Exception e) {
+        }
+
+        Map<String, Object> map = new HashMap<>();
+        map.put("a", 100);
+        map.put("b", 200);
+        map.put("c", 300);
+
+        Bin bin = new Bin("myMap", map);
+        client.put(null, key, bin);
+
+        Expression exp = Exp.build(
+            Exp.mapValuesIn(Exp.mapBin("myMap"))
+        );
+
+        Record result = client.operate(null, key,
+            ExpOperation.read("values", exp, ExpReadFlags.DEFAULT)
+        );
+
+        assertNotNull("Result should not be null", result);
+        List<?> values2 = result.getList("values");
+        assertNotNull("Values list should not be null", values2);
+        assertEquals("Should have 3 values", 3, values2.size());
+        assertTrue("Should contain 100", values2.contains(100L));
+        assertTrue("Should contain 200", values2.contains(200L));
+        assertTrue("Should contain 300", values2.contains(300L));
     }
 }
