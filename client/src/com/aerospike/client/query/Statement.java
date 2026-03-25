@@ -86,7 +86,8 @@ public final class Statement {
 	}
 
 	/**
-	 * Set query bin names.
+	 * Set query bin names for bin projection in queries.
+	 * Mutually exclusive with {@link #setOperations(Operation[])}.
 	 */
 	public void setBinNames(String... binNames) {
 		this.binNames = binNames;
@@ -232,9 +233,18 @@ public final class Statement {
 	}
 
 	/**
-	 * Set operations to be performed on a background query
-	 * {@link com.aerospike.client.AerospikeClient#execute(com.aerospike.client.policy.WritePolicy, Statement, Operation...)}
-	 * A foreground query that returns records to the client will silently ignore these operations.
+	 * Set operations to be performed on query/execute.
+	 * <p>
+	 * For foreground queries ({@link com.aerospike.client.AerospikeClient#query(com.aerospike.client.policy.QueryPolicy, Statement)}),
+	 * only read operations are allowed (e.g., {@link Operation#get(String)},
+	 * {@link com.aerospike.client.exp.ExpOperation#read(String, com.aerospike.client.exp.Expression, com.aerospike.client.exp.ExpReadFlags)}).
+	 * Read operations act as bin projections, limiting which bins are returned.
+	 * <p>
+	 * For background execute ({@link com.aerospike.client.AerospikeClient#execute(com.aerospike.client.policy.WritePolicy, Statement, Operation...)}),
+	 * only write operations are allowed (e.g., {@link com.aerospike.client.exp.ExpOperation#write}).
+	 * <p>
+	 * Operations and {@link #setBinNames(String...)} are mutually exclusive. If both are set,
+	 * operations take precedence and a warning is logged.
 	 */
 	public void setOperations(Operation[] operations) {
 		this.operations = operations;
