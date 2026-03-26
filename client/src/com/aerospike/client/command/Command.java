@@ -30,6 +30,7 @@ import com.aerospike.client.BatchUDF;
 import com.aerospike.client.BatchWrite;
 import com.aerospike.client.Bin;
 import com.aerospike.client.Key;
+import com.aerospike.client.Log;
 import com.aerospike.client.Operation;
 import com.aerospike.client.Record;
 import com.aerospike.client.ResultCode;
@@ -2075,21 +2076,32 @@ public class Command {
 			fieldCount++;
 		}
 
-		// Operations (used in query execute) and bin names (used in scan/query) are mutually exclusive.
+		// Operations and bin names are mutually exclusive.
 		Operation[] operations = statement.getOperations();
 		int operationCount = 0;
 
 		if (operations != null) {
-			// Estimate size for background operations.
-			if (! background) {
-				throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Operations not allowed in foreground query");
+			if (binNames != null) {
+				Log.warn("Operations and bin names are mutually exclusive.");
 			}
 
-			for (Operation operation : operations) {
-				if (! operation.type.isWrite) {
-					throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Read operations not allowed in background query");
+			if (background) {
+				for (Operation operation : operations) {
+					if (! operation.type.isWrite) {
+						throw new AerospikeException(ResultCode.PARAMETER_ERROR,
+							"Background query operations must be write-only. Use query for read-only operations.");
+					}
+					estimateOperationSize(operation);
 				}
-				estimateOperationSize(operation);
+			}
+			else {
+				for (Operation operation : operations) {
+					if (operation.type.isWrite) {
+						throw new AerospikeException(ResultCode.PARAMETER_ERROR,
+							"Query operations must be read-only. Use background query for write-only operations.");
+					}
+					estimateOperationSize(operation);
+				}
 			}
 			operationCount = operations.length;
 		}
