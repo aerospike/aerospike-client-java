@@ -26,6 +26,7 @@ import com.aerospike.client.policy.InfoPolicy;
 
 public final class Version implements Comparable<Version> {
 	public static final Version SERVER_VERSION_8_1 = new Version(8, 1, 0, 0);
+	public static final Version SERVER_VERSION_8_1_2 = new Version(8, 1, 2, 0);
 	public static final Version SERVER_VERSION_PSCAN = new Version(4, 9, 0, 3);
 	public static final Version SERVER_VERSION_QUERY_SHOW = new Version(5, 7, 0, 0);
 	public static final Version SERVER_VERSION_PQUERY_BATCH_ANY = new Version(6, 0, 0, 0);
