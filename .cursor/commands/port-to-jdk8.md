@@ -27,7 +27,13 @@ The target branch name MUST be derived from the source branch name by appending 
    ```
 4. **Cherry-pick** the commits from the source branch onto the target branch. If there are conflicts, resolve them with the Java 8 adaptations listed below.
 5. **Adapt** the code for Java 8 compatibility (see adaptation rules below).
-6. **Build** to verify:
+6. **Purge Maven cache** to avoid stale JDK 21 artifacts causing build failures:
+   ```
+   mvn dependency:purge-local-repository \
+     -DreResolve=true \
+     -DactTransitively=false
+   ```
+7. **Build** to verify:
    ```
    mvn clean install
    ```
