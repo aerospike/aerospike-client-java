@@ -39,7 +39,7 @@ The target branch name MUST be derived from the source branch name by appending 
    ```
 7. **Build** to verify:
    ```
-   mvn clean install
+   mvn clean install -U
    ```
 
 ## Java 21 to Java 8 Adaptation Rules
@@ -95,4 +95,4 @@ When porting code, apply these transformations:
 ### Important
 - Preserve the original commit messages when cherry-picking
 - If a file does not exist on `stage-jdk8`, check if the functionality lives in a different file or should be skipped
-- After all changes, run `mvn clean install` and fix any compilation errors
+- After all changes, run `mvn clean install -U` and fix any compilation errors
