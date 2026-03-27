@@ -18,6 +18,7 @@ package com.aerospike.test.sync.query;
 
 import static org.junit.Assert.assertEquals;
 
+import org.junit.Assume;
 import org.junit.Test;
 
 import com.aerospike.client.AerospikeException;
@@ -31,11 +32,13 @@ import com.aerospike.client.exp.Expression;
 import com.aerospike.client.exp.LoopVarPart;
 import com.aerospike.client.query.IndexType;
 import com.aerospike.client.task.IndexTask;
+import com.aerospike.client.util.Version;
 import com.aerospike.test.sync.TestSync;
 
 public class TestIndex extends TestSync {
 	private static final String indexName = "testindex";
 	private static final String binName = "testbin";
+	private static final String setIndexName = "testsetindex";
 
 	@Test
 	public void createDrop() {
@@ -67,6 +70,49 @@ public class TestIndex extends TestSync {
 			int code = Info.parseResultCode(response);
 
 			assertEquals(code, 201);
+		}
+	}
+
+	@Test
+	public void setIndexCreateDrop() {
+		Version serverVersion = client.getCluster().getRandomNode().getServerVersion();
+		Assume.assumeTrue("Set index tests require server version 8.1.2 or later",
+			serverVersion.isGreaterOrEqual(Version.SERVER_VERSION_8_1_2));
+
+		IndexTask task;
+
+		// Drop set index if it already exists.
+		try {
+			task = client.dropIndex(args.indexPolicy, args.namespace, args.set, setIndexName);
+			task.waitTillComplete();
+		}
+		catch (AerospikeException ae) {
+			if (ae.getResultCode() != ResultCode.INDEX_NOTFOUND) {
+				throw ae;
+			}
+		}
+
+		task = client.createIndex(args.indexPolicy, args.namespace, args.set, setIndexName);
+		task.waitTillComplete();
+
+		// Verify the set index exists on all nodes.
+		Node[] nodes = client.getNodes();
+
+		for (Node node : nodes) {
+			String cmd = IndexTask.buildExistsCommand(args.namespace, setIndexName, node.serverVersion);
+			String response = Info.request(node, cmd);
+			assertEquals("true", response);
+		}
+
+		task = client.dropIndex(args.indexPolicy, args.namespace, args.set, setIndexName);
+		task.waitTillComplete();
+
+		// Ensure all nodes have dropped the set index.
+		for (Node node : nodes) {
+			String cmd = IndexTask.buildStatusCommand(args.namespace, setIndexName, node.serverVersion);
+			String response = Info.request(node, cmd);
+			int code = Info.parseResultCode(response);
+			assertEquals(201, code);
 		}
 	}
 

@@ -38,5 +38,12 @@ public enum IndexCollectionType {
 	/**
 	 * Index map values.
 	 */
-	MAPVALUES;
+	MAPVALUES,
+
+	/**
+	 * Set index.
+	 * No bin, type, context, or expression parameters are used.
+	 * Requires server version 8.1.2+.
+	 */
+	SET;
 }
