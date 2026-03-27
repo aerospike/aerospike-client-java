@@ -27,9 +27,15 @@ The target branch name MUST be derived from the source branch name by appending 
    ```
 4. **Cherry-pick** the commits from the source branch onto the target branch. If there are conflicts, resolve them with the Java 8 adaptations listed below.
 5. **Adapt** the code for Java 8 compatibility (see adaptation rules below).
-6. **Build** to verify:
+6. **Purge Maven cache** to avoid stale JDK 21 artifacts causing build failures:
    ```
-   mvn clean install
+   mvn dependency:purge-local-repository \
+     -DreResolve=true \
+     -DactTransitively=false
+   ```
+7. **Build** to verify:
+   ```
+   mvn clean install -U
    ```
 
 ## Java 21 to Java 8 Adaptation Rules
@@ -85,4 +91,4 @@ When porting code, apply these transformations:
 ### Important
 - Preserve the original commit messages when cherry-picking
 - If a file does not exist on `stage-jdk8`, check if the functionality lives in a different file or should be skipped
-- After all changes, run `mvn clean install` and fix any compilation errors
+- After all changes, run `mvn clean install -U` and fix any compilation errors

@@ -32,9 +32,15 @@ The target branch name MUST be derived from the source branch name by removing t
    ```
 4. **Cherry-pick** the commits from the source branch onto the target branch. If there are conflicts, resolve them with the Java 21 adaptations listed below.
 5. **Adapt** the code for Java 21 idioms (see adaptation rules below).
-6. **Build** to verify:
+6. **Purge Maven cache** to avoid stale JDK 8 artifacts causing build failures:
    ```
-   mvn clean install
+   mvn dependency:purge-local-repository \
+     -DreResolve=true \
+     -DactTransitively=false
+   ```
+7. **Build** to verify:
+   ```
+   mvn clean install -U
    ```
 
 ## Java 8 to Java 21 Adaptation Rules
@@ -86,4 +92,4 @@ When porting code, apply these modernization transformations where appropriate:
 - **Be conservative with modernization**: Only modernize code that is part of the change being ported. Do not refactor surrounding unchanged code.
 - Preserve the original commit messages when cherry-picking
 - If a file does not exist on `stage`, check if the functionality lives in a different file or should be skipped
-- After all changes, run `mvn clean install` and fix any compilation errors
+- After all changes, run `mvn clean install -U` and fix any compilation errors
