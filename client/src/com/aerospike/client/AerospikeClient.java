@@ -4705,6 +4705,30 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	//--------------------------------------------------------
 
 	/**
+	 * Create a set index for the given namespace and set.
+	 * A set index is a secondary index specialized for record presence per set;
+	 * no bin, type, context, or expression parameters are used.
+	 * This asynchronous server call will return before command is complete.
+	 * The user can optionally wait for command completion by using the returned
+	 * IndexTask instance.
+	 * Requires server version 8.1.2+.
+	 *
+	 * @param policy				generic configuration parameters, pass in null for defaults
+	 * @param namespace				namespace - equivalent to database name
+	 * @param setName				set name (required for set indexes)
+	 * @param indexName				name of set index
+	 * @throws AerospikeException	if index create fails
+	 */
+	public final IndexTask createIndex(
+		Policy policy,
+		String namespace,
+		String setName,
+		String indexName
+	) throws AerospikeException {
+		return createIndex(policy, namespace, setName, indexName, null, null, IndexCollectionType.SET);
+	}
+
+	/**
 	 * Create scalar secondary index.
 	 * This asynchronous server call will return before command is complete.
 	 * The user can optionally wait for command completion by using the returned
@@ -5379,43 +5403,49 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		sb.append(";indexname=");
 		sb.append(indexName);
 
-		if (exp != null && exp.size() > 0) {
-			String base64 = exp.getBase64();
+		if (indexCollectionType == IndexCollectionType.SET) {
+			sb.append(";indextype=set");
+		}
+		else {
+			if (exp != null && exp.size() > 0) {
+				String base64 = exp.getBase64();
 
-			sb.append(";exp=");
-			sb.append(base64);
-
-			if (indexCollectionType != IndexCollectionType.DEFAULT) {
-				sb.append(";indextype=");
-				sb.append(indexCollectionType);
-			}
-
-			sb.append(";type=");
-			sb.append(indexType);
-		} else {
-			if (ctx != null && ctx.length > 0) {
-				byte[] bytes = Pack.pack(ctx);
-				String base64 = Crypto.encodeBase64(bytes);
-
-				sb.append(";context=");
+				sb.append(";exp=");
 				sb.append(base64);
-			}
 
-			if (indexCollectionType != IndexCollectionType.DEFAULT) {
-				sb.append(";indextype=");
-				sb.append(indexCollectionType);
-			}
+				if (indexCollectionType != IndexCollectionType.DEFAULT) {
+					sb.append(";indextype=");
+					sb.append(indexCollectionType);
+				}
 
-			if (node.getServerVersion().isGreaterOrEqual(Version.SERVER_VERSION_8_1)) {
-				sb.append(";bin=");
-				sb.append(binName);
+
 				sb.append(";type=");
 				sb.append(indexType);
 			} else {
-				sb.append(";indexdata=");
-				sb.append(binName);
-				sb.append(',');
-				sb.append(indexType);
+				if (ctx != null && ctx.length > 0) {
+					byte[] bytes = Pack.pack(ctx);
+					String base64 = Crypto.encodeBase64(bytes);
+
+					sb.append(";context=");
+					sb.append(base64);
+				}
+
+				if (indexCollectionType != IndexCollectionType.DEFAULT) {
+					sb.append(";indextype=");
+					sb.append(indexCollectionType);
+				}
+
+				if (node.getServerVersion().isGreaterOrEqual(Version.SERVER_VERSION_8_1)) {
+					sb.append(";bin=");
+					sb.append(binName);
+					sb.append(";type=");
+					sb.append(indexType);
+				} else {
+					sb.append(";indexdata=");
+					sb.append(binName);
+					sb.append(',');
+					sb.append(indexType);
+				}
 			}
 		}
 
