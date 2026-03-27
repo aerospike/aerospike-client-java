@@ -115,6 +115,11 @@ public final class IndexTask extends Task {
 
 			int begin = index + find.length();
 			int end = response.indexOf(';', begin);
+
+			if (end < 0) {
+				end = response.length();
+			}
+
 			String str = response.substring(begin, end);
 			int pct = Integer.parseInt(str);
 

@@ -1918,6 +1918,28 @@ public interface IAerospikeClient extends Closeable {
 	//--------------------------------------------------------
 
 	/**
+	 * Create a set index for the given namespace and set.
+	 * A set index is a secondary index specialized for record presence per set;
+	 * no bin, type, context, or expression parameters are used.
+	 * This asynchronous server call will return before command is complete.
+	 * The user can optionally wait for command completion by using the returned
+	 * IndexTask instance.
+	 * Requires server version 8.1.2+.
+	 *
+	 * @param policy				generic configuration parameters, pass in null for defaults
+	 * @param namespace				namespace - equivalent to database name
+	 * @param setName				set name (required for set indexes)
+	 * @param indexName				name of set index
+	 * @throws AerospikeException	if index create fails
+	 */
+	public IndexTask createIndex(
+		Policy policy,
+		String namespace,
+		String setName,
+		String indexName
+	) throws AerospikeException;
+
+	/**
 	 * Create scalar secondary index.
 	 * This asynchronous server call will return before command is complete.
 	 * The user can optionally wait for command completion by using the returned
