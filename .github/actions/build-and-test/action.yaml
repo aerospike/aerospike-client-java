@@ -20,9 +20,13 @@ inputs:
     required: true
     default: "true"
     description: Spin up aerospike enterprise server and run tests
-  server-type:
+  server-container-repo:
     required: true
-    description: Server type `aerospike-server` or `aerospike-enterprise-server` 
+    description: Server type `aerospike-server` or `aerospike-enterprise-server`
+  enable-tls:
+    required: false
+    default: "false"
+    description: Enable TLS for the Aerospike server and test connections
 
 runs:
   using: "composite"
@@ -42,16 +46,33 @@ runs:
     # Starting test bench
     - name: Run Aerospike
       if: ${{ inputs.run-tests == 'true' }}
-      uses: ./.github/actions/run-ee-server
+      id: setup-aerospike-server
+      uses: aerospike/shared-workflows/.github/actions/setup-aerospike-server@334ad55b790658d549747b0d154407dfc730acca # latest main
       with:
         server-tag: ${{ inputs.server-tag }}
-        server-type: ${{ inputs.server-type }}
+        server-container-repo: ${{ inputs.server-container-repo }}
         oidc-provider: ${{ inputs.oidc-provider }}
         oidc-audience: ${{ inputs.oidc-audience }}
+        enable-tls: ${{ inputs.enable-tls }}
+
+    - name: Import CA cert into JVM trust store
+      if: ${{ inputs.run-tests == 'true' && inputs.enable-tls == 'true' }}
+      shell: bash
+      run: |
+        keytool -import -trustcacerts \
+          -keystore $JAVA_HOME/lib/security/cacerts \
+          -storepass changeit -noprompt \
+          -alias aerospike-ca \
+          -file ${{ steps.setup-aerospike-server.outputs.tls-cert-dir }}/ca.crt
 
     # Running tests
     - name: Run tests
       shell: bash
       if: ${{ inputs.run-tests == 'true' }}
       working-directory: test
-      run: mvn test -DskipTests=false
+      run: |
+        if [ "${{ inputs.enable-tls }}" = "true" ]; then
+          mvn test -DskipTests=false "-Dargs=-tls -h 127.0.0.1:aerospike-tls:4333 -p 4333"
+        else
+          mvn test -DskipTests=false
+        fi

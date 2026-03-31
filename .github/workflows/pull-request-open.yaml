@@ -60,5 +60,5 @@ jobs:
       java-version: ${{ needs.make-matrix.outputs.java-version }}
       run-tests: true 
       server-tag: ${{ matrix.version }}
-      server-type: ${{ matrix.type }}
+      server-container-repo: ${{ matrix.type }}
     secrets: inherit

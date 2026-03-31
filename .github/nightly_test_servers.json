@@ -1,0 +1,32 @@
+{
+  "7.2.0.14_2": {
+    "version": "7.2.0.14_2",
+    "type": "database-docker-dev-local/aerospike-server-enterprise",
+    "tls": false
+  },
+  "7.2.0.14_2-tls": {
+    "version": "7.2.0.14_2",
+    "type": "database-docker-dev-local/aerospike-server-enterprise",
+    "tls": true
+  },
+  "8.1.0.3_2": {
+    "version": "8.1.0.3_2",
+    "type": "database-docker-dev-local/aerospike-server-enterprise",
+    "tls": false
+  },
+  "8.1.0.3_2-tls": {
+    "version": "8.1.0.3_2",
+    "type": "database-docker-dev-local/aerospike-server-enterprise",
+    "tls": true
+  },
+  "8.1.1.0_1": {
+    "version": "8.1.1.0_1",
+    "type": "database-docker-dev-local/aerospike-server-enterprise",
+    "tls": false
+  },
+  "8.1.1.0_1-tls": {
+    "version": "8.1.1.0_1",
+    "type": "database-docker-dev-local/aerospike-server-enterprise",
+    "tls": true
+  }
+}
