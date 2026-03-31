@@ -21,7 +21,7 @@ on:
       server-tag:
         type: string
         required: true
-      server-type:
+      server-container-repo:
         type: string
         required: true
     secrets:
@@ -32,7 +32,7 @@ on:
 
 jobs:
   build:
-    name: '${{ inputs.crypto-type }} build ${{inputs.source-branch}} using java-version ${{ inputs.java-version }} on ${{ inputs.server-type}}:${{ inputs.server-tag }}'
+    name: '${{ inputs.crypto-type }} build ${{inputs.source-branch}} using java-version ${{ inputs.java-version }} on ${{ inputs.server-container-repo}}:${{ inputs.server-tag }}'
     runs-on: ${{ vars.BUILD_CONTAINER_DISTRO_VERSION }}
     steps:
       - name: Checkout code
@@ -55,7 +55,7 @@ jobs:
         with:
           crypto-type: ${{ inputs.crypto-type }}
           server-tag: ${{ inputs.server-tag }}
-          server-type: ${{ inputs.server-type }}
+          server-container-repo: ${{ inputs.server-container-repo }}
           run-tests: ${{ inputs.run-tests }}
           oidc-provider: ${{ secrets.JFROG_OIDC_PROVIDER }}
           oidc-audience: ${{ secrets.JFROG_OIDC_AUDIENCE }}
