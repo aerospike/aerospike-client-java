@@ -35,6 +35,7 @@ import com.aerospike.test.sync.basic.TestCdtOperate;
 import com.aerospike.test.sync.basic.TestBitExp;
 import com.aerospike.test.sync.basic.TestConfigLoadYAML;
 import com.aerospike.test.sync.basic.TestDeleteBin;
+import com.aerospike.test.sync.basic.TestErrorDetailVerbosity;
 import com.aerospike.test.sync.basic.TestExpOperation;
 import com.aerospike.test.sync.basic.TestExpire;
 import com.aerospike.test.sync.basic.TestFilterExp;
@@ -89,6 +90,7 @@ import com.aerospike.client.AerospikeClientIndexTypeTest;
 	TestCdtOperate.class,
 	TestConfigLoadYAML.class,
 	TestDeleteBin.class,
+	TestErrorDetailVerbosity.class,
 	TestExpire.class,
 	TestExpOperation.class,
 	TestFilterExp.class,

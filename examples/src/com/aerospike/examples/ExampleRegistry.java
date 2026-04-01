@@ -73,6 +73,7 @@ public final class ExampleRegistry {
 			ExampleServerRequirement.ttlSupported());
 		registerSync(examples, "StoreKey", StoreKey.class, QueryExampleFixtures.storeKeyExample());
 		registerSync(examples, "DeleteBin", DeleteBin.class, ExampleFixtures.deleteBinExample());
+		registerSync(examples, "ErrorMessage", ErrorMessage.class);
 		registerSync(examples, "ListMap", ListMap.class);
 		registerSync(examples, "Operate", Operate.class, ExampleFixtures.operateExample());
 		registerSync(examples, "OperateBit", OperateBit.class, ExampleFixtures.operateBitExample());

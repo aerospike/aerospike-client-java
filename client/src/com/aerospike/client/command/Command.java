@@ -109,6 +109,7 @@ public class Command {
 	public static final int INFO4_TXN_ROLL_FORWARD		= (1 << 1); // Roll forward transaction.
 	public static final int INFO4_TXN_ROLL_BACK			= (1 << 2); // Roll back transaction.
 	public static final int INFO4_TXN_ON_LOCKING_ONLY	= (1 << 4); // Must be able to lock record in transaction.
+	public static final int INFO4_ERROR_VERBOSITY_SHIFT = 5; // info4 bits 5-6: error detail verbosity level
 
 	public static final byte STATE_READ_AUTH_HEADER = 1;
 	public static final byte STATE_READ_HEADER = 2;
@@ -2395,6 +2396,8 @@ public class Command {
 			txnAttr |= Command.INFO4_TXN_ON_LOCKING_ONLY;
 		}
 
+		txnAttr |= (policy.errorDetailVerbosity << Command.INFO4_ERROR_VERBOSITY_SHIFT);
+
 		if (policy.xdr) {
 			readAttr |= Command.INFO1_XDR;
 		}
@@ -2472,6 +2475,8 @@ public class Command {
 		if (policy.onLockingOnly) {
 			txnAttr |= Command.INFO4_TXN_ON_LOCKING_ONLY;
 		}
+
+		txnAttr |= (policy.errorDetailVerbosity << Command.INFO4_ERROR_VERBOSITY_SHIFT);
 
 		if (policy.xdr) {
 			readAttr |= Command.INFO1_XDR;
@@ -2553,8 +2558,9 @@ public class Command {
 		dataBuffer[9] = (byte)readAttr;
 		dataBuffer[10] = (byte)writeAttr;
 		dataBuffer[11] = (byte)infoAttr;
+		dataBuffer[12] = (byte)(policy.errorDetailVerbosity << Command.INFO4_ERROR_VERBOSITY_SHIFT);
 
-		for (int i = 12; i < 18; i++) {
+		for (int i = 13; i < 18; i++) {
 			dataBuffer[i] = 0;
 		}
 		Buffer.intToBytes(policy.readTouchTtlPercent, dataBuffer, 18);
@@ -2593,8 +2599,9 @@ public class Command {
 		dataBuffer[9] = (byte)readAttr;
 		dataBuffer[10] = (byte)0;
 		dataBuffer[11] = (byte)infoAttr;
+		dataBuffer[12] = (byte)(policy.errorDetailVerbosity << Command.INFO4_ERROR_VERBOSITY_SHIFT);
 
-		for (int i = 12; i < 18; i++) {
+		for (int i = 13; i < 18; i++) {
 			dataBuffer[i] = 0;
 		}
 		Buffer.intToBytes(policy.readTouchTtlPercent, dataBuffer, 18);
