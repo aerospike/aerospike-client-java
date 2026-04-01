@@ -78,7 +78,9 @@ public class ReadCommand extends SyncReadCommand {
 			return;
 		}
 
-		throw new AerospikeException(rp.resultCode);
+		throw (rp.serverMessage != null) ?
+			new AerospikeException(rp.resultCode, rp.serverMessage) :
+			new AerospikeException(rp.resultCode);
 	}
 
 	public Record getRecord() {

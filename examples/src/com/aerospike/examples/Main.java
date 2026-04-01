@@ -52,6 +52,7 @@ public class Main extends JPanel {
 		"Touch",
 		"StoreKey",
 		"DeleteBin",
+		"ErrorMessage",
 		"ListMap",
 		"Operate",
 		"OperateBit",

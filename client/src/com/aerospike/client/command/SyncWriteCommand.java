@@ -73,6 +73,11 @@ public abstract class SyncWriteCommand extends SyncCommand {
 		if (node.areMetricsEnabled()) {
 			node.addBytesIn(namespace, rp.bytesIn);
 		}
+		if (rp.serverMessage != null) {
+			this.serverMessage = rp.serverMessage;
+		}
 		return rp.resultCode;
 	}
+
+	protected String serverMessage;
 }

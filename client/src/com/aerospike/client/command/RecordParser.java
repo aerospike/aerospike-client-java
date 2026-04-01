@@ -38,6 +38,7 @@ public final class RecordParser {
 	public final int opCount;
 	public int dataOffset;
 	public long bytesIn;
+	public String serverMessage;
 
 	/**
 	 * Sync record parser.
@@ -159,7 +160,7 @@ public final class RecordParser {
 
 	public void parseFields(Txn txn, Key key, boolean hasWrite) {
 		if (txn == null) {
-			skipFields();
+			parseFieldsError();
 			return;
 		}
 
@@ -179,6 +180,9 @@ public final class RecordParser {
 				else {
 					throw new AerospikeException("Record version field has invalid size: " + size);
 				}
+			}
+			else if (type == FieldType.ERROR_MESSAGE && size > 0) {
+				serverMessage = parseErrorDetails(dataOffset, size);
 			}
 			dataOffset += size;
 		}
@@ -206,12 +210,229 @@ public final class RecordParser {
 		}
 	}
 
-	private void skipFields() {
-		// There can be fields in the response (setname etc).
-		// But for now, ignore them. Expose them to the API if needed in the future.
+	private void parseFieldsError() {
 		for (int i = 0; i < fieldCount; i++) {
-			int fieldlen = Buffer.bytesToInt(dataBuffer, dataOffset);
-			dataOffset += 4 + fieldlen;
+			int len = Buffer.bytesToInt(dataBuffer, dataOffset);
+			dataOffset += 4;
+
+			int type = dataBuffer[dataOffset++];
+			int size = len - 1;
+
+			if (type == FieldType.ERROR_MESSAGE && size > 0) {
+				serverMessage = parseErrorDetails(dataOffset, size);
+			}
+			dataOffset += size;
+		}
+	}
+
+	/**
+	 * Parse error detail msgpack map from server response.
+	 * Map keys: 1 = subcode (uint), 2 = message (string).
+	 * Returns formatted error message string.
+	 */
+	private String parseErrorDetails(int offset, int size) {
+		int end = offset + size;
+
+		if (offset >= end) {
+			return null;
+		}
+
+		// Read fixmap header.
+		int b = dataBuffer[offset++] & 0xFF;
+		int count;
+
+		if ((b & 0xF0) == 0x80) {
+			count = b & 0x0F;
+		}
+		else {
+			return null;
+		}
+
+		if (count <= 0) {
+			return null;
+		}
+
+		String message = null;
+		long subcode = -1;
+
+		for (int i = 0; i < count && offset < end; i++) {
+			// Read key (positive fixint or uint8).
+			int key;
+			b = dataBuffer[offset++] & 0xFF;
+
+			if (b <= 0x7F) {
+				key = b;
+			}
+			else if (b == 0xCC && offset < end) {
+				key = dataBuffer[offset++] & 0xFF;
+			}
+			else {
+				break;
+			}
+
+			switch (key) {
+			case 1: // AS_ERROR_DETAIL_KEY_SUBCODE
+				subcode = unpackUint(offset, end);
+				offset = skipMsgpackValue(offset, end);
+				break;
+
+			case 2: // AS_ERROR_DETAIL_KEY_MESSAGE
+				int[] strResult = unpackStr(offset, end);
+				if (strResult != null) {
+					message = new String(dataBuffer, strResult[0], strResult[1], java.nio.charset.StandardCharsets.UTF_8);
+					offset = strResult[0] + strResult[1];
+				}
+				else {
+					offset = skipMsgpackValue(offset, end);
+				}
+				break;
+
+			default:
+				offset = skipMsgpackValue(offset, end);
+				break;
+			}
+		}
+
+		if (message != null && subcode >= 0) {
+			return message + " (subcode=" + subcode + ")";
+		}
+		else if (subcode >= 0) {
+			return "error subcode=" + subcode;
+		}
+		else if (message != null) {
+			return message;
+		}
+		return null;
+	}
+
+	/**
+	 * Unpack a msgpack unsigned integer value. Returns -1 on failure.
+	 */
+	private long unpackUint(int offset, int end) {
+		if (offset >= end) {
+			return -1;
+		}
+
+		int b = dataBuffer[offset] & 0xFF;
+
+		if (b <= 0x7F) {
+			return b;
+		}
+		else if (b == 0xCC && offset + 1 < end) {
+			return dataBuffer[offset + 1] & 0xFF;
+		}
+		else if (b == 0xCD && offset + 2 < end) {
+			return Buffer.bytesToShort(dataBuffer, offset + 1) & 0xFFFF;
+		}
+		else if (b == 0xCE && offset + 4 < end) {
+			return Buffer.bytesToInt(dataBuffer, offset + 1) & 0xFFFFFFFFL;
+		}
+		else if (b == 0xCF && offset + 8 < end) {
+			return Buffer.bytesToLong(dataBuffer, offset + 1);
+		}
+		return -1;
+	}
+
+	/**
+	 * Unpack a msgpack string. Returns [offset, length] or null on failure.
+	 */
+	private int[] unpackStr(int offset, int end) {
+		if (offset >= end) {
+			return null;
+		}
+
+		int b = dataBuffer[offset++] & 0xFF;
+		int len;
+
+		if ((b & 0xE0) == 0xA0) {
+			len = b & 0x1F;
+		}
+		else if (b == 0xD9 && offset < end) {
+			len = dataBuffer[offset++] & 0xFF;
+		}
+		else if (b == 0xDA && offset + 1 < end) {
+			len = Buffer.bytesToShort(dataBuffer, offset) & 0xFFFF;
+			offset += 2;
+		}
+		else {
+			return null;
+		}
+
+		if (offset + len > end) {
+			return null;
+		}
+
+		return new int[]{offset, len};
+	}
+
+	/**
+	 * Skip a single msgpack value, returning the new offset.
+	 */
+	private int skipMsgpackValue(int offset, int end) {
+		if (offset >= end) {
+			return end;
+		}
+
+		int b = dataBuffer[offset++] & 0xFF;
+
+		// Positive fixint / negative fixint
+		if (b <= 0x7F || b >= 0xE0) {
+			return offset;
+		}
+		// fixstr
+		if ((b & 0xE0) == 0xA0) {
+			return offset + (b & 0x1F);
+		}
+		// fixmap
+		if ((b & 0xF0) == 0x80) {
+			int count = (b & 0x0F) * 2;
+			for (int i = 0; i < count && offset < end; i++) {
+				offset = skipMsgpackValue(offset, end);
+			}
+			return offset;
+		}
+		// fixarray
+		if ((b & 0xF0) == 0x90) {
+			int count = b & 0x0F;
+			for (int i = 0; i < count && offset < end; i++) {
+				offset = skipMsgpackValue(offset, end);
+			}
+			return offset;
+		}
+
+		switch (b) {
+		case 0xC0: // nil
+		case 0xC2: // false
+		case 0xC3: // true
+			return offset;
+		case 0xCC: // uint8
+		case 0xD0: // int8
+			return offset + 1;
+		case 0xCD: // uint16
+		case 0xD1: // int16
+			return offset + 2;
+		case 0xCE: // uint32
+		case 0xD2: // int32
+		case 0xCA: // float32
+			return offset + 4;
+		case 0xCF: // uint64
+		case 0xD3: // int64
+		case 0xCB: // float64
+			return offset + 8;
+		case 0xD9: // str8
+		case 0xC4: // bin8
+			if (offset < end) {
+				return offset + 1 + (dataBuffer[offset] & 0xFF);
+			}
+			return end;
+		case 0xDA: // str16
+		case 0xC5: // bin16
+			if (offset + 1 < end) {
+				return offset + 2 + (Buffer.bytesToShort(dataBuffer, offset) & 0xFFFF);
+			}
+			return end;
+		default:
+			return end;
 		}
 	}
 
