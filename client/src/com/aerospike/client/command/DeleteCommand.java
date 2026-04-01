@@ -59,7 +59,9 @@ public final class DeleteCommand extends SyncWriteCommand {
 			return;
 		}
 
-		throw new AerospikeException(resultCode);
+		throw (serverMessage != null) ?
+			new AerospikeException(resultCode, serverMessage) :
+			new AerospikeException(resultCode);
 	}
 
 	public boolean existed() {

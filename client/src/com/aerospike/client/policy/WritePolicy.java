@@ -297,6 +297,12 @@ public final class WritePolicy extends Policy {
 				Log.info("Set" + preText + " WritePolicy.durableDelete = " + this.durableDelete);
 			}
 		}
+		if (dynWC.errorDetailVerbosity != null && this.errorDetailVerbosity != dynWC.errorDetailVerbosity.value) {
+			this.errorDetailVerbosity = dynWC.errorDetailVerbosity.value;
+			if (logUpdate) {
+				Log.info("Set" + preText + " WritePolicy.errorDetailVerbosity = " + this.errorDetailVerbosity);
+			}
+		}
 	}
 
 	// Include setters to facilitate Spring's ConfigurationProperties.

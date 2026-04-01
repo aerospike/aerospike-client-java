@@ -36,6 +36,7 @@ public class DynamicWriteConfig {
     public IntProperty maxRetries;
     public BooleanProperty durableDelete;
     public DoubleProperty sleepMultiplier;
+    public IntProperty errorDetailVerbosity;
 
     public DynamicWriteConfig() {}
 
@@ -63,6 +64,8 @@ public class DynamicWriteConfig {
 
     public void setSleepMultiplier(DoubleProperty sleepMultiplier) { this.sleepMultiplier = sleepMultiplier; }
 
+    public void setErrorDetailVerbosity(IntProperty errorDetailVerbosity) { this.errorDetailVerbosity = errorDetailVerbosity; }
+
     public IntProperty getConnectTimeout() { return connectTimeout; }
 
     public BooleanProperty getFailOnFilteredOut() { return failOnFilteredOut; }
@@ -85,6 +88,8 @@ public class DynamicWriteConfig {
 
     public DoubleProperty getSleepMultiplier() { return sleepMultiplier; }
 
+    public IntProperty getErrorDetailVerbosity() { return errorDetailVerbosity; }
+
     @Override
     public String toString() {
         StringBuffer propsString = new StringBuffer("{");
@@ -99,7 +104,8 @@ public class DynamicWriteConfig {
             propsString.append(" total_timeout=").append(totalTimeout.value).append(", ");
             propsString.append(" max_retries=").append(maxRetries.value).append(", ");
             propsString.append(" durable_delete=").append(durableDelete.value).append(", ");
-            propsString.append(" sleep_multiplier=").append(sleepMultiplier.value);
+            propsString.append(" sleep_multiplier=").append(sleepMultiplier.value).append(", ");
+            propsString.append(" error_detail_verbosity=").append(errorDetailVerbosity != null ? errorDetailVerbosity.value : "null");
         } catch (Exception e) {
             Log.error(e.toString());
         }

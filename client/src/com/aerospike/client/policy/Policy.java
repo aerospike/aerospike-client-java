@@ -273,6 +273,18 @@ public class Policy {
 	public boolean failOnFilteredOut;
 
 	/**
+	 * Request server error detail fields in responses.
+	 * <ul>
+	 * <li>0 - disabled (no error details).</li>
+	 * <li>1 - subcode only.</li>
+	 * <li>2 - subcode + message.</li>
+	 * </ul>
+	 * <p>
+	 * Default: 0
+	 */
+	public int errorDetailVerbosity;
+
+	/**
 	 * Copy policy from another policy.
 	 */
 	public Policy(Policy other) {
@@ -292,6 +304,7 @@ public class Policy {
 		this.compress = other.compress;
 		this.failOnFilteredOut = other.failOnFilteredOut;
 		this.sleepMultiplier = other.sleepMultiplier;
+		this.errorDetailVerbosity = other.errorDetailVerbosity;
 	}
 
 	/**
@@ -405,6 +418,8 @@ public class Policy {
 
 	public void setSleepMultiplier(double sleepMultiplier) { this.sleepMultiplier = sleepMultiplier; }
 
+	public void setErrorDetailVerbosity(int errorDetailVerbosity) { this.errorDetailVerbosity = errorDetailVerbosity; }
+
 	@Override
 	public boolean equals(Object o) {
 		if (this == o) {
@@ -414,12 +429,12 @@ public class Policy {
 			return false;
 		}
 		Policy policy = (Policy) o;
-		return connectTimeout == policy.connectTimeout && socketTimeout == policy.socketTimeout && totalTimeout == policy.totalTimeout && timeoutDelay == policy.timeoutDelay && maxRetries == policy.maxRetries && sleepBetweenRetries == policy.sleepBetweenRetries && Double.compare(policy.sleepMultiplier, sleepMultiplier) == 0 && readTouchTtlPercent == policy.readTouchTtlPercent && sendKey == policy.sendKey && compress == policy.compress && failOnFilteredOut == policy.failOnFilteredOut && Objects.equals(txn, policy.txn) && readModeAP == policy.readModeAP && readModeSC == policy.readModeSC && replica == policy.replica && Objects.equals(filterExp, policy.filterExp);
+		return connectTimeout == policy.connectTimeout && socketTimeout == policy.socketTimeout && totalTimeout == policy.totalTimeout && timeoutDelay == policy.timeoutDelay && maxRetries == policy.maxRetries && sleepBetweenRetries == policy.sleepBetweenRetries && Double.compare(policy.sleepMultiplier, sleepMultiplier) == 0 && readTouchTtlPercent == policy.readTouchTtlPercent && sendKey == policy.sendKey && compress == policy.compress && failOnFilteredOut == policy.failOnFilteredOut && errorDetailVerbosity == policy.errorDetailVerbosity && Objects.equals(txn, policy.txn) && readModeAP == policy.readModeAP && readModeSC == policy.readModeSC && replica == policy.replica && Objects.equals(filterExp, policy.filterExp);
 	}
 
 	@Override
 	public int hashCode() {
-		return Objects.hash(txn, readModeAP, readModeSC, replica, filterExp, connectTimeout, socketTimeout, totalTimeout, timeoutDelay, maxRetries, sleepBetweenRetries, sleepMultiplier, readTouchTtlPercent, sendKey, compress, failOnFilteredOut);
+		return Objects.hash(txn, readModeAP, readModeSC, replica, filterExp, connectTimeout, socketTimeout, totalTimeout, timeoutDelay, maxRetries, sleepBetweenRetries, sleepMultiplier, readTouchTtlPercent, sendKey, compress, failOnFilteredOut, errorDetailVerbosity);
 	}
 
 	private void updateFromConfig(ConfigurationProvider configProvider, boolean log) {
@@ -507,6 +522,12 @@ public class Policy {
 			this.maxRetries = dynRC.maxRetries.value;
 			if (logUpdate) {
 				Log.info("Set Policy.maxRetries = " + this.maxRetries);
+			}
+		}
+		if (dynRC.errorDetailVerbosity != null && this.errorDetailVerbosity != dynRC.errorDetailVerbosity.value) {
+			this.errorDetailVerbosity = dynRC.errorDetailVerbosity.value;
+			if (logUpdate) {
+				Log.info("Set Policy.errorDetailVerbosity = " + this.errorDetailVerbosity);
 			}
 		}
 	}
