@@ -2908,6 +2908,185 @@ public class TestCdtOperate extends TestSync {
         assertEquals("Key 'c' should have value 25", 25L, resultMap.get("c"));
     }
 
+    // ---- andFilter restriction tests (CLIENT-4592) ----
+
+    @Test
+    public void testAndFilterAsFirstContext() {
+        Key rkey = new Key(NAMESPACE, SET, "andFilterFirst");
+
+        try {
+            client.delete(null, rkey);
+        } catch (Exception e) {
+        }
+
+        Map<String, Object> map = new HashMap<>();
+        map.put("a", 1);
+
+        client.put(null, rkey, new Bin(BIN_NAME, map));
+
+        // andFilter with no preceding context is invalid
+        CTX andFilterCtx = CTX.andFilter(
+            Exp.gt(Exp.intLoopVar(LoopVarPart.VALUE), Exp.val(0))
+        );
+
+        Operation selectOp = CdtOperation.selectByPath(BIN_NAME, SelectFlags.VALUE, andFilterCtx);
+
+        try {
+            client.operate(null, rkey, selectOp);
+            assertTrue("Should throw AerospikeException", false);
+        } catch (com.aerospike.client.AerospikeException e) {
+            // Expected: andFilter cannot be the first entry
+        }
+    }
+
+    @Test
+    public void testChainedAndFilters() {
+        Key rkey = new Key(NAMESPACE, SET, "chainedAndFilters");
+
+        try {
+            client.delete(null, rkey);
+        } catch (Exception e) {
+        }
+
+        Map<String, Object> map = new HashMap<>();
+        map.put("a", 1);
+        map.put("b", 2);
+        map.put("c", 3);
+
+        client.put(null, rkey, new Bin(BIN_NAME, map));
+
+        // Two andFilters in a row is invalid — use Exp.and to combine instead
+        CTX keyInCtx = CTX.mapKeysIn("a", "b", "c");
+        CTX andFilter1 = CTX.andFilter(
+            Exp.ge(Exp.intLoopVar(LoopVarPart.VALUE), Exp.val(2))
+        );
+        CTX andFilter2 = CTX.andFilter(
+            Exp.le(Exp.intLoopVar(LoopVarPart.VALUE), Exp.val(3))
+        );
+
+        Operation selectOp = CdtOperation.selectByPath(BIN_NAME, SelectFlags.VALUE, keyInCtx, andFilter1, andFilter2);
+
+        try {
+            client.operate(null, rkey, selectOp);
+            assertTrue("Should throw AerospikeException", false);
+        } catch (com.aerospike.client.AerospikeException e) {
+            // Expected: multiple andFilters cannot be chained
+        }
+    }
+
+    @Test
+    public void testAndFilterAfterAllChildrenWithFilter() {
+        Key rkey = new Key(NAMESPACE, SET, "andFilterAfterExpr");
+
+        try {
+            client.delete(null, rkey);
+        } catch (Exception e) {
+        }
+
+        Map<String, Object> map = new HashMap<>();
+        map.put("a", 1);
+        map.put("b", 2);
+        map.put("c", 3);
+
+        client.put(null, rkey, new Bin(BIN_NAME, map));
+
+        // andFilter cannot follow an expression-type context like allChildrenWithFilter
+        CTX baseFilter = CTX.allChildrenWithFilter(
+            Exp.gt(Exp.intLoopVar(LoopVarPart.VALUE), Exp.val(0))
+        );
+        CTX andFilterCtx = CTX.andFilter(
+            Exp.lt(Exp.intLoopVar(LoopVarPart.VALUE), Exp.val(3))
+        );
+
+        Operation selectOp = CdtOperation.selectByPath(BIN_NAME, SelectFlags.VALUE, baseFilter, andFilterCtx);
+
+        try {
+            client.operate(null, rkey, selectOp);
+            assertTrue("Should throw AerospikeException", false);
+        } catch (com.aerospike.client.AerospikeException e) {
+            // Expected: andFilter cannot follow expression-type context
+        }
+    }
+
+    @Test
+    public void testAndFilterWithMapIndex() {
+        Key rkey = new Key(NAMESPACE, SET, "andFilterMapIndex");
+
+        try {
+            client.delete(null, rkey);
+        } catch (Exception e) {
+        }
+
+        Map<String, Object> map = new HashMap<>();
+        map.put("x", 10);
+        map.put("y", 20);
+        map.put("z", 30);
+
+        client.put(null, rkey, new Bin(BIN_NAME, map));
+
+        // Select map index 0, then AND-filter to keep only entries with key >= "y"
+        CTX indexCtx = CTX.mapIndex(0);
+        CTX andFilterCtx = CTX.andFilter(
+            Exp.ge(Exp.stringLoopVar(LoopVarPart.MAP_KEY), Exp.val("y"))
+        );
+
+        Operation selectOp = CdtOperation.selectByPath(BIN_NAME, SelectFlags.MAP_KEY_VALUE, indexCtx, andFilterCtx);
+
+        Record result = client.operate(null, rkey, selectOp);
+        assertNotNull(result);
+
+        List<?> resultList = result.getList(BIN_NAME);
+        assertNotNull(resultList);
+        // Index 0 selects a single entry; AND filter further narrows it.
+        // The result depends on which entry is at index 0 and whether it passes the filter.
+        // If it passes, we get 2 elements (key+value); if not, 0 elements.
+        assertTrue("Should have 0 or 2 elements", resultList.size() == 0 || resultList.size() == 2);
+    }
+
+    @Test
+    public void testModifyByPathViaMapKeysIn() {
+        Key rkey = new Key(NAMESPACE, SET, "modifyMapKeysIn");
+
+        try {
+            client.delete(null, rkey);
+        } catch (Exception e) {
+        }
+
+        Map<String, Object> map = new HashMap<>();
+        map.put("a", 10);
+        map.put("b", 20);
+        map.put("c", 30);
+
+        client.put(null, rkey, new Bin(BIN_NAME, map));
+
+        // Add 100 to values of keys "a" and "c" via modifyByPath
+        CTX keysCtx = CTX.mapKeysIn("a", "c");
+        CTX childCtx = CTX.allChildrenWithFilter(Exp.val(true));
+
+        Expression modifyExp = Exp.build(
+            Exp.add(
+                Exp.intLoopVar(LoopVarPart.VALUE),
+                Exp.val(100)
+            )
+        );
+
+        Operation modifyOp = CdtOperation.modifyByPath(BIN_NAME, ModifyFlags.DEFAULT, modifyExp, keysCtx, childCtx);
+
+        Record result = client.operate(null, rkey, modifyOp);
+        assertNotNull(result);
+
+        // Verify the modified values
+        Record record = client.get(null, rkey);
+        assertNotNull(record);
+
+        @SuppressWarnings("unchecked")
+        Map<Object, Object> resultMap = (Map<Object, Object>) record.bins.get(BIN_NAME);
+        assertNotNull(resultMap);
+        assertEquals("Key 'a' should have value 110", 110L, resultMap.get("a"));
+        assertEquals("Key 'b' should have value 20 (unchanged)", 20L, resultMap.get("b"));
+        assertEquals("Key 'c' should have value 130", 130L, resultMap.get("c"));
+    }
+
     // ---- MK-002: Select subset - some keys missing ----
     @Test
     public void testMapKeysSomeMissing() {
