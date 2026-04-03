@@ -2994,25 +2994,59 @@ public class TestCdtOperate extends TestSync {
         } catch (Exception e) {
         }
 
-        Map<String, Object> map = new HashMap<>();
-        map.put("a", 10);
-        map.put("b", 20);
-        map.put("c", 30);
+        // Nested structure matching C client test pattern:
+        // {inventory: {w1: {item_a: {count: 100}, item_b: {count: 200}},
+        //              w2: {item_a: {count: 50},  item_b: {count: 75}},
+        //              w3: {item_a: {count: 10},  item_b: {count: 20}}}}
+        Map<String, Object> w1_a = new HashMap<>();
+        w1_a.put("count", 100);
+        Map<String, Object> w1_b = new HashMap<>();
+        w1_b.put("count", 200);
+        Map<String, Object> w1 = new HashMap<>();
+        w1.put("item_a", w1_a);
+        w1.put("item_b", w1_b);
 
-        client.put(null, rkey, new Bin(BIN_NAME, map));
+        Map<String, Object> w2_a = new HashMap<>();
+        w2_a.put("count", 50);
+        Map<String, Object> w2_b = new HashMap<>();
+        w2_b.put("count", 75);
+        Map<String, Object> w2 = new HashMap<>();
+        w2.put("item_a", w2_a);
+        w2.put("item_b", w2_b);
 
-        // Add 100 to values of keys "a" and "c" via modifyByPath
-        CTX keysCtx = CTX.mapKeysIn("a", "c");
-        CTX childCtx = CTX.allChildrenWithFilter(Exp.val(true));
+        Map<String, Object> w3_a = new HashMap<>();
+        w3_a.put("count", 10);
+        Map<String, Object> w3_b = new HashMap<>();
+        w3_b.put("count", 20);
+        Map<String, Object> w3 = new HashMap<>();
+        w3.put("item_a", w3_a);
+        w3.put("item_b", w3_b);
+
+        Map<String, Object> inventory = new HashMap<>();
+        inventory.put("w1", w1);
+        inventory.put("w2", w2);
+        inventory.put("w3", w3);
+
+        Map<String, Object> top = new HashMap<>();
+        top.put("inventory", inventory);
+
+        client.put(null, rkey, new Bin(BIN_NAME, top));
+
+        // Add 1000 to count in all items of w1 and w2 via modifyByPath
+        // Context: mapKey("inventory") -> mapKeysIn("w1","w2") -> allChildren() -> mapKey("count")
+        CTX invKey = CTX.mapKey(Value.get("inventory"));
+        CTX keysCtx = CTX.mapKeysIn("w1", "w2");
+        CTX childCtx = CTX.allChildren();
+        CTX countKey = CTX.mapKey(Value.get("count"));
 
         Expression modifyExp = Exp.build(
             Exp.add(
                 Exp.intLoopVar(LoopVarPart.VALUE),
-                Exp.val(100)
+                Exp.val(1000)
             )
         );
 
-        Operation modifyOp = CdtOperation.modifyByPath(BIN_NAME, ModifyFlags.DEFAULT, modifyExp, keysCtx, childCtx);
+        Operation modifyOp = CdtOperation.modifyByPath(BIN_NAME, ModifyFlags.DEFAULT, modifyExp, invKey, keysCtx, childCtx, countKey);
 
         Record result = client.operate(null, rkey, modifyOp);
         assertNotNull(result);
@@ -3023,10 +3057,24 @@ public class TestCdtOperate extends TestSync {
 
         @SuppressWarnings("unchecked")
         Map<Object, Object> resultMap = (Map<Object, Object>) record.bins.get(BIN_NAME);
-        assertNotNull(resultMap);
-        assertEquals("Key 'a' should have value 110", 110L, resultMap.get("a"));
-        assertEquals("Key 'b' should have value 20 (unchanged)", 20L, resultMap.get("b"));
-        assertEquals("Key 'c' should have value 130", 130L, resultMap.get("c"));
+        @SuppressWarnings("unchecked")
+        Map<Object, Object> resultInv = (Map<Object, Object>) resultMap.get("inventory");
+
+        @SuppressWarnings("unchecked")
+        Map<Object, Object> resultW1 = (Map<Object, Object>) resultInv.get("w1");
+        @SuppressWarnings("unchecked")
+        Map<Object, Object> resultW1A = (Map<Object, Object>) resultW1.get("item_a");
+        assertEquals("w1.item_a.count should be 1100", 1100L, resultW1A.get("count"));
+
+        @SuppressWarnings("unchecked")
+        Map<Object, Object> resultW1B = (Map<Object, Object>) resultW1.get("item_b");
+        assertEquals("w1.item_b.count should be 1200", 1200L, resultW1B.get("count"));
+
+        @SuppressWarnings("unchecked")
+        Map<Object, Object> resultW3 = (Map<Object, Object>) resultInv.get("w3");
+        @SuppressWarnings("unchecked")
+        Map<Object, Object> resultW3A = (Map<Object, Object>) resultW3.get("item_a");
+        assertEquals("w3.item_a.count should be unchanged at 10", 10L, resultW3A.get("count"));
     }
 
     // ---- MK-002: Select subset - some keys missing ----
