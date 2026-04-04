@@ -236,9 +236,12 @@ public final class Statement {
 	 * Set operations to be performed on query/execute.
 	 * <p>
 	 * For foreground queries ({@link com.aerospike.client.AerospikeClient#query(com.aerospike.client.policy.QueryPolicy, Statement)}),
-	 * only read operations are allowed (e.g., {@link Operation#get(String)},
-	 * {@link com.aerospike.client.exp.ExpOperation#read(String, com.aerospike.client.exp.Expression, com.aerospike.client.exp.ExpReadFlags)}).
-	 * Read operations act as bin projections, limiting which bins are returned.
+	 * only read operations are allowed. Read operations act as bin projections, limiting which bins are returned.
+	 * <p>
+	 * Basic read operations ({@link Operation#get(String)}, {@link Operation#get()},
+	 * {@link Operation#getHeader()}) are supported on server versions prior to 8.1.2.
+	 * Extended read operations (e.g., {@link com.aerospike.client.exp.ExpOperation#read(String, com.aerospike.client.exp.Expression, com.aerospike.client.exp.ExpReadFlags)},
+	 * CDT read operations, bit read operations, HLL read operations) require server version 8.1.2+.
 	 * <p>
 	 * For background execute ({@link com.aerospike.client.AerospikeClient#execute(com.aerospike.client.policy.WritePolicy, Statement, Operation...)}),
 	 * only write operations are allowed (e.g., {@link com.aerospike.client.exp.ExpOperation#write}).

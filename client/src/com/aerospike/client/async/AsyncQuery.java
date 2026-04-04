@@ -53,7 +53,7 @@ public final class AsyncQuery extends AsyncMultiCommand {
 
 	@Override
 	protected void writeBuffer() {
-		setQuery(parent.cluster, policy, statement, taskId, false, null);
+		setQuery(parent.cluster, policy, statement, taskId, false, null, node);
 	}
 
 	@Override

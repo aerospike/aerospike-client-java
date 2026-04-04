@@ -46,7 +46,7 @@ public final class ServerCommand extends MultiCommand {
 
 	@Override
 	protected final void writeBuffer() {
-		setQuery(cluster, policy, statement, taskId, true, null);
+		setQuery(cluster, policy, statement, taskId, true, null, getNode());
 	}
 
 	@Override
