@@ -54,7 +54,7 @@ public final class QueryRecordCommand extends MultiCommand {
 
 	@Override
 	protected final void writeBuffer() {
-		setQuery(cluster, policy, statement, taskId, false, null);
+		setQuery(cluster, policy, statement, taskId, false, null, getNode());
 	}
 
 	@Override
