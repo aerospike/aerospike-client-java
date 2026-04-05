@@ -293,6 +293,16 @@ public final class CTX {
 	 * to be included in the result. Typically used after {@link #mapKeysIn(String...)}
 	 * or other selection contexts to further narrow the results.
 	 *
+	 * <p>Restrictions:
+	 * <ul>
+	 *   <li>Only one {@code andFilter} is allowed per context level. Multiple {@code andFilter}
+	 *       calls cannot be chained. To combine multiple conditions, use {@link Exp#and(Exp...)}
+	 *       within a single {@code andFilter}.</li>
+	 *   <li>The preceding context entry must not be an expression type (i.e. {@code andFilter}
+	 *       cannot follow {@link #allChildrenWithFilter(Exp)} or {@link #allChildren()}).</li>
+	 *   <li>{@code andFilter} cannot be the first entry in the context chain.</li>
+	 * </ul>
+	 *
 	 * <pre>{@code
 	 * // Given map: {a: 5, b: 15, c: 25, d: 35}
 	 * // Select keys "a", "b", "c" AND keep only entries where value > 10.
