@@ -66,10 +66,6 @@ public class TestQueryOperations extends TestSync {
 
 	@BeforeClass
 	public static void prepare() {
-		Version serverVersion = client.getCluster().getRandomNode().getServerVersion();
-		Assume.assumeTrue("Bin projection tests require server version 8.1.2 or later",
-			serverVersion.isGreaterOrEqual(8, 1, 2, 0));
-
 		try {
 			IndexTask itask = client.createIndex(args.indexPolicy, args.namespace, args.set, indexName, binName1, IndexType.NUMERIC);
 			itask.waitTillComplete();
@@ -100,6 +96,9 @@ public class TestQueryOperations extends TestSync {
 
 	@Test
 	public void queryProjectMultipleBins() {
+		Assume.assumeTrue("Ops projection extended requires server version 8.1.2 or later",
+			client.getCluster().getRandomNode().getServerVersion().isGreaterOrEqual(8, 1, 2, 0));
+
 		Statement stmt = new Statement();
 		stmt.setNamespace(args.namespace);
 		stmt.setSetName(args.set);
@@ -174,6 +173,9 @@ public class TestQueryOperations extends TestSync {
 
 	@Test
 	public void queryProjectBinsViaExpressionRead() {
+		Assume.assumeTrue("Ops projection extended requires server version 8.1.2 or later",
+			client.getCluster().getRandomNode().getServerVersion().isGreaterOrEqual(8, 1, 2, 0));
+
 		Statement stmt = new Statement();
 		stmt.setNamespace(args.namespace);
 		stmt.setSetName(args.set);
@@ -211,6 +213,9 @@ public class TestQueryOperations extends TestSync {
 
 	@Test
 	public void queryProjectBinsViaExpressionReadWithFilter() {
+		Assume.assumeTrue("Ops projection extended requires server version 8.1.2 or later",
+			client.getCluster().getRandomNode().getServerVersion().isGreaterOrEqual(8, 1, 2, 0));
+
 		int begin = 1;
 		int end = 10;
 
@@ -253,6 +258,9 @@ public class TestQueryOperations extends TestSync {
 
 	@Test
 	public void queryProjectMixedGetAndExpressionRead() {
+		Assume.assumeTrue("Ops projection extended requires server version 8.1.2 or later",
+			client.getCluster().getRandomNode().getServerVersion().isGreaterOrEqual(8, 1, 2, 0));
+
 		int begin = 1;
 		int end = 10;
 
@@ -294,6 +302,9 @@ public class TestQueryOperations extends TestSync {
 
 	@Test
 	public void queryWithExpReadOperation() {
+		Assume.assumeTrue("Ops projection extended requires server version 8.1.2 or later",
+			client.getCluster().getRandomNode().getServerVersion().isGreaterOrEqual(8, 1, 2, 0));
+
 		int begin = 1;
 		int end = 10;
 
@@ -332,6 +343,9 @@ public class TestQueryOperations extends TestSync {
 
 	@Test
 	public void queryWithMultipleExpReadOperations() {
+		Assume.assumeTrue("Ops projection extended requires server version 8.1.2 or later",
+			client.getCluster().getRandomNode().getServerVersion().isGreaterOrEqual(8, 1, 2, 0));
+
 		int begin = 5;
 		int end = 15;
 
@@ -378,6 +392,9 @@ public class TestQueryOperations extends TestSync {
 
 	@Test
 	public void queryWithExpReadAndFilterExp() {
+		Assume.assumeTrue("Ops projection extended requires server version 8.1.2 or later",
+			client.getCluster().getRandomNode().getServerVersion().isGreaterOrEqual(8, 1, 2, 0));
+
 		int begin = 1;
 		int end = 20;
 
@@ -524,7 +541,13 @@ public class TestQueryOperations extends TestSync {
 		}
 		catch (AerospikeException ae) {
 			assertEquals(ResultCode.PARAMETER_ERROR, ae.getResultCode());
-			assertTrue(ae.getMessage().contains("read-only"));
+			Version serverVersion = client.getCluster().getRandomNode().getServerVersion();
+			if (serverVersion.isGreaterOrEqual(Version.SERVER_VERSION_8_1_2)) {
+				assertTrue(ae.getMessage().contains("read-only"));
+			}
+			else {
+				assertTrue(ae.getMessage().contains("basic read operations"));
+			}
 		}
 	}
 
@@ -596,6 +619,9 @@ public class TestQueryOperations extends TestSync {
 
 	@Test
 	public void queryWithExpReadNoFilter() {
+		Assume.assumeTrue("Ops projection extended requires server version 8.1.2 or later",
+			client.getCluster().getRandomNode().getServerVersion().isGreaterOrEqual(8, 1, 2, 0));
+
 		Statement stmt = new Statement();
 		stmt.setNamespace(args.namespace);
 		stmt.setSetName(args.set);
@@ -626,6 +652,9 @@ public class TestQueryOperations extends TestSync {
 
 	@Test
 	public void queryWithExpReadConditional() {
+		Assume.assumeTrue("Ops projection extended requires server version 8.1.2 or later",
+			client.getCluster().getRandomNode().getServerVersion().isGreaterOrEqual(8, 1, 2, 0));
+
 		int begin = 1;
 		int end = 20;
 
@@ -723,6 +752,9 @@ public class TestQueryOperations extends TestSync {
 
 	@Test
 	public void queryWithExpReadEvalNoFail() {
+		Assume.assumeTrue("Ops projection extended requires server version 8.1.2 or later",
+			client.getCluster().getRandomNode().getServerVersion().isGreaterOrEqual(8, 1, 2, 0));
+
 		int begin = 1;
 		int end = 5;
 

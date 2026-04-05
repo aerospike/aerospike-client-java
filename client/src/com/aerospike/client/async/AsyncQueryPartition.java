@@ -61,7 +61,7 @@ public final class AsyncQueryPartition extends AsyncMultiCommand {
 
 	@Override
 	protected void writeBuffer() {
-		setQuery(parent.cluster, policy, statement, taskId, false, nodePartitions);
+		setQuery(parent.cluster, policy, statement, taskId, false, nodePartitions, nodePartitions.node);
 	}
 
 	@Override

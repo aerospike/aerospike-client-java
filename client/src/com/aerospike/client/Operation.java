@@ -123,6 +123,17 @@ public final class Operation {
 	}
 
 	/**
+	 * Return whether the given operation type is a basic read operation
+	 * ({@link Type#READ} or {@link Type#READ_HEADER}).
+	 * Basic reads are supported for query operations projection on server versions prior to 8.1.2.
+	 * Extended read operations (e.g., {@link Type#CDT_READ}, {@link Type#EXP_READ})
+	 * require server version 8.1.2+.
+	 */
+	public static boolean isBasicRead(Type type) {
+		return type == Type.READ || type == Type.READ_HEADER;
+	}
+
+	/**
 	 * Type of operation.
 	 */
 	public final Type type;
