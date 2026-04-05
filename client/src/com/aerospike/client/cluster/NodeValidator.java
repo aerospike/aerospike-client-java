@@ -364,6 +364,10 @@ public final class NodeValidator {
 			features |= Node.HAS_BATCH_ANY;
 			features |= Node.HAS_PARTITION_QUERY;
 		}
+
+		if (serverVersion.isGreaterOrEqual(Version.SERVER_VERSION_8_1_2)) {
+			features |= Node.HAS_QUERY_OPS_PROJECTION_EXT;
+		}
 	}
 
 	private void validateClusterName(Cluster cluster, HashMap<String,String> map) {

@@ -36,6 +36,7 @@ import com.aerospike.client.Record;
 import com.aerospike.client.ResultCode;
 import com.aerospike.client.Value;
 import com.aerospike.client.cluster.Cluster;
+import com.aerospike.client.cluster.Node;
 import com.aerospike.client.configuration.*;
 import com.aerospike.client.configuration.serializers.*;
 import com.aerospike.client.exp.Expression;
@@ -1925,13 +1926,15 @@ public class Command {
 		Statement statement,
 		long taskId,
 		boolean background,
-		NodePartitions nodePartitions
+		NodePartitions nodePartitions,
+		Node node
 	) {
 		byte[] functionArgBuffer = null;
 		int fieldCount = 0;
 		int filterSize = 0;
 		int binNameSize = 0;
 		boolean isNew = cluster.hasPartitionQuery;
+		boolean hasQueryOpsProjectionExt = node.hasQueryOpsProjectionExt();
 
 		begin();
 
@@ -2099,6 +2102,10 @@ public class Command {
 					if (operation.type.isWrite) {
 						throw new AerospikeException(ResultCode.PARAMETER_ERROR,
 							"Query operations must be read-only. Use background query for write-only operations.");
+					}
+					if (!hasQueryOpsProjectionExt && !Operation.isBasicRead(operation.type)) {
+						throw new AerospikeException(ResultCode.PARAMETER_ERROR,
+							"Only basic read operations are supported for query operations projection in server versions prior to 8.1.2.");
 					}
 					estimateOperationSize(operation);
 				}
