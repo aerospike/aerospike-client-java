@@ -62,7 +62,7 @@ public final class QueryAggregateCommand extends MultiCommand {
 
 	@Override
 	protected final void writeBuffer() throws AerospikeException {
-		setQuery(cluster, policy, statement, taskId, false, null);
+		setQuery(cluster, policy, statement, taskId, false, null, getNode());
 	}
 
 	@Override

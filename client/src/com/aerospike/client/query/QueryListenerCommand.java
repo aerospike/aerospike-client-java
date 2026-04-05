@@ -70,7 +70,7 @@ public final class QueryListenerCommand extends MultiCommand {
 
 	@Override
 	protected final void writeBuffer() {
-		setQuery(cluster, policy, statement, taskId, false, nodePartitions);
+		setQuery(cluster, policy, statement, taskId, false, nodePartitions, nodePartitions.node);
 	}
 
 	@Override
