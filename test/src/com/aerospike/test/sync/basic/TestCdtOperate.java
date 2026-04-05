@@ -2850,6 +2850,233 @@ public class TestCdtOperate extends TestSync {
         assertEquals("Key 'c' should have value 25", 25L, resultMap.get("c"));
     }
 
+    // ---- andFilter restriction tests (CLIENT-4592) ----
+
+    @Test
+    public void testAndFilterAsFirstContext() {
+        Key rkey = new Key(NAMESPACE, SET, "andFilterFirst");
+
+        try {
+            client.delete(null, rkey);
+        } catch (Exception e) {
+        }
+
+        Map<String, Object> map = new HashMap<>();
+        map.put("a", 1);
+
+        client.put(null, rkey, new Bin(BIN_NAME, map));
+
+        // andFilter with no preceding context is invalid
+        CTX andFilterCtx = CTX.andFilter(
+            Exp.gt(Exp.intLoopVar(LoopVarPart.VALUE), Exp.val(0))
+        );
+
+        Operation selectOp = CdtOperation.selectByPath(BIN_NAME, SelectFlags.VALUE, andFilterCtx);
+
+        try {
+            client.operate(null, rkey, selectOp);
+            assertTrue("Should throw AerospikeException", false);
+        } catch (com.aerospike.client.AerospikeException e) {
+            // Expected: andFilter cannot be the first entry
+        }
+    }
+
+    @Test
+    public void testChainedAndFilters() {
+        Key rkey = new Key(NAMESPACE, SET, "chainedAndFilters");
+
+        try {
+            client.delete(null, rkey);
+        } catch (Exception e) {
+        }
+
+        Map<String, Object> map = new HashMap<>();
+        map.put("a", 1);
+        map.put("b", 2);
+        map.put("c", 3);
+
+        client.put(null, rkey, new Bin(BIN_NAME, map));
+
+        // Two andFilters in a row is invalid — use Exp.and to combine instead
+        CTX keyInCtx = CTX.mapKeysIn("a", "b", "c");
+        CTX andFilter1 = CTX.andFilter(
+            Exp.ge(Exp.intLoopVar(LoopVarPart.VALUE), Exp.val(2))
+        );
+        CTX andFilter2 = CTX.andFilter(
+            Exp.le(Exp.intLoopVar(LoopVarPart.VALUE), Exp.val(3))
+        );
+
+        Operation selectOp = CdtOperation.selectByPath(BIN_NAME, SelectFlags.VALUE, keyInCtx, andFilter1, andFilter2);
+
+        try {
+            client.operate(null, rkey, selectOp);
+            assertTrue("Should throw AerospikeException", false);
+        } catch (com.aerospike.client.AerospikeException e) {
+            // Expected: multiple andFilters cannot be chained
+        }
+    }
+
+    @Test
+    public void testAndFilterAfterAllChildrenWithFilter() {
+        Key rkey = new Key(NAMESPACE, SET, "andFilterAfterExpr");
+
+        try {
+            client.delete(null, rkey);
+        } catch (Exception e) {
+        }
+
+        Map<String, Object> map = new HashMap<>();
+        map.put("a", 1);
+        map.put("b", 2);
+        map.put("c", 3);
+
+        client.put(null, rkey, new Bin(BIN_NAME, map));
+
+        // andFilter cannot follow an expression-type context like allChildrenWithFilter
+        CTX baseFilter = CTX.allChildrenWithFilter(
+            Exp.gt(Exp.intLoopVar(LoopVarPart.VALUE), Exp.val(0))
+        );
+        CTX andFilterCtx = CTX.andFilter(
+            Exp.lt(Exp.intLoopVar(LoopVarPart.VALUE), Exp.val(3))
+        );
+
+        Operation selectOp = CdtOperation.selectByPath(BIN_NAME, SelectFlags.VALUE, baseFilter, andFilterCtx);
+
+        try {
+            client.operate(null, rkey, selectOp);
+            assertTrue("Should throw AerospikeException", false);
+        } catch (com.aerospike.client.AerospikeException e) {
+            // Expected: andFilter cannot follow expression-type context
+        }
+    }
+
+    @Test
+    public void testAndFilterWithMapIndex() {
+        Key rkey = new Key(NAMESPACE, SET, "andFilterMapIndex");
+
+        try {
+            client.delete(null, rkey);
+        } catch (Exception e) {
+        }
+
+        Map<String, Object> map = new HashMap<>();
+        map.put("x", 10);
+        map.put("y", 20);
+        map.put("z", 30);
+
+        client.put(null, rkey, new Bin(BIN_NAME, map));
+
+        // Select map index 0, then AND-filter to keep only entries with key >= "y"
+        CTX indexCtx = CTX.mapIndex(0);
+        CTX andFilterCtx = CTX.andFilter(
+            Exp.ge(Exp.stringLoopVar(LoopVarPart.MAP_KEY), Exp.val("y"))
+        );
+
+        Operation selectOp = CdtOperation.selectByPath(BIN_NAME, SelectFlags.MAP_KEY_VALUE, indexCtx, andFilterCtx);
+
+        Record result = client.operate(null, rkey, selectOp);
+        assertNotNull(result);
+
+        List<?> resultList = result.getList(BIN_NAME);
+        assertNotNull(resultList);
+        // Index 0 selects a single entry; AND filter further narrows it.
+        // The result depends on which entry is at index 0 and whether it passes the filter.
+        // If it passes, we get 2 elements (key+value); if not, 0 elements.
+        assertTrue("Should have 0 or 2 elements", resultList.size() == 0 || resultList.size() == 2);
+    }
+
+    @Test
+    public void testModifyByPathViaMapKeysIn() {
+        Key rkey = new Key(NAMESPACE, SET, "modifyMapKeysIn");
+
+        try {
+            client.delete(null, rkey);
+        } catch (Exception e) {
+        }
+
+        // Nested structure matching C client test pattern:
+        // {inventory: {w1: {item_a: {count: 100}, item_b: {count: 200}},
+        //              w2: {item_a: {count: 50},  item_b: {count: 75}},
+        //              w3: {item_a: {count: 10},  item_b: {count: 20}}}}
+        Map<String, Object> w1_a = new HashMap<>();
+        w1_a.put("count", 100);
+        Map<String, Object> w1_b = new HashMap<>();
+        w1_b.put("count", 200);
+        Map<String, Object> w1 = new HashMap<>();
+        w1.put("item_a", w1_a);
+        w1.put("item_b", w1_b);
+
+        Map<String, Object> w2_a = new HashMap<>();
+        w2_a.put("count", 50);
+        Map<String, Object> w2_b = new HashMap<>();
+        w2_b.put("count", 75);
+        Map<String, Object> w2 = new HashMap<>();
+        w2.put("item_a", w2_a);
+        w2.put("item_b", w2_b);
+
+        Map<String, Object> w3_a = new HashMap<>();
+        w3_a.put("count", 10);
+        Map<String, Object> w3_b = new HashMap<>();
+        w3_b.put("count", 20);
+        Map<String, Object> w3 = new HashMap<>();
+        w3.put("item_a", w3_a);
+        w3.put("item_b", w3_b);
+
+        Map<String, Object> inventory = new HashMap<>();
+        inventory.put("w1", w1);
+        inventory.put("w2", w2);
+        inventory.put("w3", w3);
+
+        Map<String, Object> top = new HashMap<>();
+        top.put("inventory", inventory);
+
+        client.put(null, rkey, new Bin(BIN_NAME, top));
+
+        // Add 1000 to count in all items of w1 and w2 via modifyByPath
+        // Context: mapKey("inventory") -> mapKeysIn("w1","w2") -> allChildren() -> mapKey("count")
+        CTX invKey = CTX.mapKey(Value.get("inventory"));
+        CTX keysCtx = CTX.mapKeysIn("w1", "w2");
+        CTX childCtx = CTX.allChildren();
+        CTX countKey = CTX.mapKey(Value.get("count"));
+
+        Expression modifyExp = Exp.build(
+            Exp.add(
+                Exp.intLoopVar(LoopVarPart.VALUE),
+                Exp.val(1000)
+            )
+        );
+
+        Operation modifyOp = CdtOperation.modifyByPath(BIN_NAME, ModifyFlags.DEFAULT, modifyExp, invKey, keysCtx, childCtx, countKey);
+
+        Record result = client.operate(null, rkey, modifyOp);
+        assertNotNull(result);
+
+        // Verify the modified values
+        Record record = client.get(null, rkey);
+        assertNotNull(record);
+
+        @SuppressWarnings("unchecked")
+        Map<Object, Object> resultMap = (Map<Object, Object>) record.bins.get(BIN_NAME);
+        @SuppressWarnings("unchecked")
+        Map<Object, Object> resultInv = (Map<Object, Object>) resultMap.get("inventory");
+
+        @SuppressWarnings("unchecked")
+        Map<Object, Object> resultW1 = (Map<Object, Object>) resultInv.get("w1");
+        @SuppressWarnings("unchecked")
+        Map<Object, Object> resultW1A = (Map<Object, Object>) resultW1.get("item_a");
+        assertEquals("w1.item_a.count should be 1100", 1100L, resultW1A.get("count"));
+
+        @SuppressWarnings("unchecked")
+        Map<Object, Object> resultW1B = (Map<Object, Object>) resultW1.get("item_b");
+        assertEquals("w1.item_b.count should be 1200", 1200L, resultW1B.get("count"));
+
+        @SuppressWarnings("unchecked")
+        Map<Object, Object> resultW3 = (Map<Object, Object>) resultInv.get("w3");
+        @SuppressWarnings("unchecked")
+        Map<Object, Object> resultW3A = (Map<Object, Object>) resultW3.get("item_a");
+        assertEquals("w3.item_a.count should be unchanged at 10", 10L, resultW3A.get("count"));
+    }
+
     // ---- MK-002: Select subset - some keys missing ----
     @Test
     public void testMapKeysSomeMissing() {
