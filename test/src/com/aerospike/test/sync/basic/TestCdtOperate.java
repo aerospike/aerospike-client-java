@@ -2777,6 +2777,8 @@ public class TestCdtOperate extends TestSync {
 
     @Test
     public void testCDTOperateMapKeyInList() {
+        Assume.assumeTrue("Tests require server version 8.1.2 or later",
+            args.serverVersion.isGreaterOrEqual(8, 1, 2, 0));
         Key rkey = new Key(NAMESPACE, SET, "cdtOpMapKeyInList");
 
         try {
@@ -2810,6 +2812,8 @@ public class TestCdtOperate extends TestSync {
 
     @Test
     public void testCDTOperateSameLevelFilter() {
+        Assume.assumeTrue("Tests require server version 8.1.2 or later",
+            args.serverVersion.isGreaterOrEqual(8, 1, 2, 0));
         Key rkey = new Key(NAMESPACE, SET, "cdtOpSameLevelFilter");
 
         try {
@@ -2854,6 +2858,8 @@ public class TestCdtOperate extends TestSync {
 
     @Test
     public void testAndFilterAsFirstContext() {
+        Assume.assumeTrue("Tests require server version 8.1.2 or later",
+            args.serverVersion.isGreaterOrEqual(8, 1, 2, 0));
         Key rkey = new Key(NAMESPACE, SET, "andFilterFirst");
 
         try {
@@ -2918,6 +2924,8 @@ public class TestCdtOperate extends TestSync {
 
     @Test
     public void testAndFilterAfterAllChildrenWithFilter() {
+        Assume.assumeTrue("Tests require server version 8.1.2 or later",
+            args.serverVersion.isGreaterOrEqual(8, 1, 2, 0));
         Key rkey = new Key(NAMESPACE, SET, "andFilterAfterExpr");
 
         try {
@@ -2987,6 +2995,8 @@ public class TestCdtOperate extends TestSync {
 
     @Test
     public void testModifyByPathViaMapKeysIn() {
+        Assume.assumeTrue("Tests require server version 8.1.2 or later",
+            args.serverVersion.isGreaterOrEqual(8, 1, 2, 0));
         Key rkey = new Key(NAMESPACE, SET, "modifyMapKeysIn");
 
         try {
@@ -3080,6 +3090,8 @@ public class TestCdtOperate extends TestSync {
     // ---- MK-002: Select subset - some keys missing ----
     @Test
     public void testMapKeysSomeMissing() {
+        Assume.assumeTrue("Tests require server version 8.1.2 or later",
+            args.serverVersion.isGreaterOrEqual(8, 1, 2, 0));
         Key rkey = new Key(NAMESPACE, SET, "mkSomeMissing");
 
         try {
@@ -3108,6 +3120,8 @@ public class TestCdtOperate extends TestSync {
     // ---- MK-003: Empty key list ----
     @Test
     public void testMapKeysEmptyKeyList() {
+        Assume.assumeTrue("Tests require server version 8.1.2 or later",
+            args.serverVersion.isGreaterOrEqual(8, 1, 2, 0));
         Key rkey = new Key(NAMESPACE, SET, "mkEmptyKeys");
 
         try {
@@ -3135,6 +3149,8 @@ public class TestCdtOperate extends TestSync {
     // ---- MK-004: Empty map ----
     @Test
     public void testMapKeysEmptyMap() {
+        Assume.assumeTrue("Tests require server version 8.1.2 or later",
+            args.serverVersion.isGreaterOrEqual(8, 1, 2, 0));
         Key rkey = new Key(NAMESPACE, SET, "mkEmptyMap");
 
         try {
@@ -3159,6 +3175,8 @@ public class TestCdtOperate extends TestSync {
     // ---- MK-005: Single key selection ----
     @Test
     public void testMapKeysSingleKey() {
+        Assume.assumeTrue("Tests require server version 8.1.2 or later",
+            args.serverVersion.isGreaterOrEqual(8, 1, 2, 0));
         Key rkey = new Key(NAMESPACE, SET, "mkSingleKey");
 
         try {
@@ -3188,6 +3206,8 @@ public class TestCdtOperate extends TestSync {
     // ---- MK-006: All keys selected ----
     @Test
     public void testMapKeysAllKeys() {
+        Assume.assumeTrue("Tests require server version 8.1.2 or later",
+            args.serverVersion.isGreaterOrEqual(8, 1, 2, 0));
         Key rkey = new Key(NAMESPACE, SET, "mkAllKeys");
 
         try {
@@ -3217,6 +3237,8 @@ public class TestCdtOperate extends TestSync {
     // ---- MK-007: Key order - results follow map key order, not input list order ----
     @Test
     public void testMapKeysOrder() {
+        Assume.assumeTrue("Tests require server version 8.1.2 or later",
+            args.serverVersion.isGreaterOrEqual(8, 1, 2, 0));
         Key rkey = new Key(NAMESPACE, SET, "mkOrder");
 
         try {
@@ -3250,6 +3272,8 @@ public class TestCdtOperate extends TestSync {
     // ---- MK-008: Non-string keys (integer keys) ----
     @Test
     public void testMapKeysIntegerKeys() {
+        Assume.assumeTrue("Tests require server version 8.1.2 or later",
+            args.serverVersion.isGreaterOrEqual(8, 1, 2, 0));
         Key rkey = new Key(NAMESPACE, SET, "mkIntKeys");
 
         try {
@@ -3280,6 +3304,8 @@ public class TestCdtOperate extends TestSync {
     // ---- MK-009: Nested map with mapKeysIn context ----
     @Test
     public void testMapKeysNested() {
+        Assume.assumeTrue("Tests require server version 8.1.2 or later",
+            args.serverVersion.isGreaterOrEqual(8, 1, 2, 0));
         Key rkey = new Key(NAMESPACE, SET, "mkNested");
 
         try {
@@ -3316,6 +3342,8 @@ public class TestCdtOperate extends TestSync {
     // ---- MV-001: Basic mapValues - extract all values from a map ----
     @Test
     public void testMapValuesBasic() {
+        Assume.assumeTrue("Tests require server version 8.1.2 or later",
+            args.serverVersion.isGreaterOrEqual(8, 1, 2, 0));
         Key rkey = new Key(NAMESPACE, SET, "mvBasic");
 
         try {
@@ -3350,6 +3378,8 @@ public class TestCdtOperate extends TestSync {
     // ---- MV-002: mapValues on empty map ----
     @Test
     public void testMapValuesEmptyMap() {
+        Assume.assumeTrue("Tests require server version 8.1.2 or later",
+            args.serverVersion.isGreaterOrEqual(8, 1, 2, 0));
         Key rkey = new Key(NAMESPACE, SET, "mvEmptyMap");
 
         try {
@@ -3377,6 +3407,8 @@ public class TestCdtOperate extends TestSync {
     // ---- MV-003: mapValues on single-entry map ----
     @Test
     public void testMapValuesSingleEntry() {
+        Assume.assumeTrue("Tests require server version 8.1.2 or later",
+            args.serverVersion.isGreaterOrEqual(8, 1, 2, 0));
         Key rkey = new Key(NAMESPACE, SET, "mvSingleEntry");
 
         try {
@@ -3407,6 +3439,8 @@ public class TestCdtOperate extends TestSync {
     // ---- MV-004: mapValues with integer keys ----
     @Test
     public void testMapValuesIntegerKeys() {
+        Assume.assumeTrue("Tests require server version 8.1.2 or later",
+            args.serverVersion.isGreaterOrEqual(8, 1, 2, 0));
         Key rkey = new Key(NAMESPACE, SET, "mvIntKeys");
 
         try {
@@ -3441,6 +3475,8 @@ public class TestCdtOperate extends TestSync {
     // ---- MV-005: mapValues combined with inList filter ----
     @Test
     public void testMapValuesWithInList() {
+        Assume.assumeTrue("Tests require server version 8.1.2 or later",
+            args.serverVersion.isGreaterOrEqual(8, 1, 2, 0));
         Key rkey = new Key(NAMESPACE, SET, "mvInList");
 
         try {
@@ -3489,6 +3525,8 @@ public class TestCdtOperate extends TestSync {
     // ---- MV-006: mapValues with string values ----
     @Test
     public void testMapValuesStringValues() {
+        Assume.assumeTrue("Tests require server version 8.1.2 or later",
+            args.serverVersion.isGreaterOrEqual(8, 1, 2, 0));
         Key rkey = new Key(NAMESPACE, SET, "mvStringVals");
 
         try {
@@ -3521,6 +3559,8 @@ public class TestCdtOperate extends TestSync {
     // ---- MV-007: mapValues list size check ----
     @Test
     public void testMapValuesListSize() {
+        Assume.assumeTrue("Tests require server version 8.1.2 or later",
+            args.serverVersion.isGreaterOrEqual(8, 1, 2, 0));
         Key rkey = new Key(NAMESPACE, SET, "mvListSize");
 
         try {

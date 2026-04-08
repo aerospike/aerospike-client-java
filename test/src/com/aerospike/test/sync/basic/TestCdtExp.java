@@ -1589,6 +1589,8 @@ public class TestCdtExp extends TestSync {
 
     @Test
     public void testInList() {
+        Assume.assumeTrue("Tests require server version 8.1.2 or later",
+            args.serverVersion.isGreaterOrEqual(8, 1, 2, 0));
         Key key = new Key(NAMESPACE, SET, "cdtExpInList");
 
         try {
@@ -1632,6 +1634,8 @@ public class TestCdtExp extends TestSync {
 
     @Test
     public void testMapKeys() {
+        Assume.assumeTrue("Tests require server version 8.1.2 or later",
+            args.serverVersion.isGreaterOrEqual(8, 1, 2, 0));
         Key key = new Key(NAMESPACE, SET, "cdtExpMapKeys");
 
         try {
@@ -1666,6 +1670,8 @@ public class TestCdtExp extends TestSync {
 
     @Test
     public void testMapValues() {
+        Assume.assumeTrue("Tests require server version 8.1.2 or later",
+            args.serverVersion.isGreaterOrEqual(8, 1, 2, 0));
         Key key = new Key(NAMESPACE, SET, "cdtExpMapValues");
 
         try {
