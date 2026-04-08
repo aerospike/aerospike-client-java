@@ -2912,6 +2912,7 @@ public class TestCdtOperate extends TestSync {
 
     @Test
     public void testAndFilterAsFirstContext() {
+        checkMinServerVersion(8, 1, 2, 0);
         Key rkey = new Key(NAMESPACE, SET, "andFilterFirst");
 
         try {
@@ -2976,6 +2977,7 @@ public class TestCdtOperate extends TestSync {
 
     @Test
     public void testAndFilterAfterAllChildrenWithFilter() {
+        checkMinServerVersion(8, 1, 2, 0);
         Key rkey = new Key(NAMESPACE, SET, "andFilterAfterExpr");
 
         try {
@@ -3045,6 +3047,7 @@ public class TestCdtOperate extends TestSync {
 
     @Test
     public void testModifyByPathViaMapKeysIn() {
+        checkMinServerVersion(8, 1, 2, 0);
         Key rkey = new Key(NAMESPACE, SET, "modifyMapKeysIn");
 
         try {
