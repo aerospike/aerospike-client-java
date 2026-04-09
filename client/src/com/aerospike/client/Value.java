@@ -67,7 +67,12 @@ public abstract class Value {
 	public static final Value INFINITY = new InfinityValue();
 
 	/**
-	 * Wildcard value to be used in CDT range comparisons only.
+	 * Wildcard value to be used in CDT get/remove ByValue and ByValueList operations.
+	 * This includes:
+	 * {@link com.aerospike.client.cdt.ListOperation#getByValue},
+	 * {@link com.aerospike.client.cdt.ListOperation#getByValueList}
+	 * {@link com.aerospike.client.cdt.MapOperation#getByValue}
+	 * {@link com.aerospike.client.cdt.MapOperation#getByValueList}
 	 */
 	public static final Value WILDCARD = new WildcardValue();
 
