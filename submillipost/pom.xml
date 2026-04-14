@@ -1,0 +1,74 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <groupId>com.aerospike</groupId>
+  <artifactId>submillipost-parent</artifactId>
+  <version>1.0.0-SNAPSHOT</version>
+  <name>submillipost-parent</name>
+  <packaging>pom</packaging>
+  <description>SubMilliPost — Canonical Aerospike example application</description>
+
+  <modules>
+    <module>submillipost-api</module>
+    <!-- CLI module deferred until REST API is fully tested -->
+    <!-- <module>submillipost-cli</module> -->
+  </modules>
+
+  <properties>
+    <java.version>21</java.version>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <spring-boot.version>3.4.4</spring-boot.version>
+    <aerospike-client.version>10.0.0</aerospike-client.version>
+    <zero-allocation-hashing.version>0.16</zero-allocation-hashing.version>
+    <testcontainers.version>1.20.4</testcontainers.version>
+    <maven-compiler-plugin.version>3.14.0</maven-compiler-plugin.version>
+  </properties>
+
+  <dependencyManagement>
+    <dependencies>
+      <dependency>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-dependencies</artifactId>
+        <version>${spring-boot.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+
+      <dependency>
+        <groupId>com.aerospike</groupId>
+        <artifactId>aerospike-client-jdk21</artifactId>
+        <version>${aerospike-client.version}</version>
+      </dependency>
+
+      <dependency>
+        <groupId>net.openhft</groupId>
+        <artifactId>zero-allocation-hashing</artifactId>
+        <version>${zero-allocation-hashing.version}</version>
+      </dependency>
+
+      <dependency>
+        <groupId>org.testcontainers</groupId>
+        <artifactId>testcontainers-bom</artifactId>
+        <version>${testcontainers.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+    </dependencies>
+  </dependencyManagement>
+
+  <build>
+    <pluginManagement>
+      <plugins>
+        <plugin>
+          <artifactId>maven-compiler-plugin</artifactId>
+          <version>${maven-compiler-plugin.version}</version>
+          <configuration>
+            <release>${java.version}</release>
+          </configuration>
+        </plugin>
+      </plugins>
+    </pluginManagement>
+  </build>
+</project>

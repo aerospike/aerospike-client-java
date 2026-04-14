@@ -26,6 +26,8 @@
     <module>examples</module>
     <module>benchmarks</module>
     <module>test</module>
+    <!-- submillipost is a standalone app, open submillipost/pom.xml directly in IntelliJ -->
+    <!-- <module>submillipost</module> -->
   </modules>
 
   <properties>
