@@ -14,7 +14,7 @@
   <description>SubMilliPost REST API Server</description>
 
   <dependencies>
-    <!-- Aerospike client -->
+    <!-- Aerospike client (sync API) -->
     <dependency>
       <groupId>com.aerospike</groupId>
       <artifactId>aerospike-client-jdk21</artifactId>
@@ -24,22 +24,6 @@
     <dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-web</artifactId>
-    </dependency>
-
-    <!-- xxHash64 for note/comment ID generation -->
-    <dependency>
-      <groupId>net.openhft</groupId>
-      <artifactId>zero-allocation-hashing</artifactId>
-    </dependency>
-
-    <!-- Netty (required by Aerospike client) -->
-    <dependency>
-      <groupId>io.netty</groupId>
-      <artifactId>netty-transport</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>io.netty</groupId>
-      <artifactId>netty-handler</artifactId>
     </dependency>
 
     <!-- Test -->

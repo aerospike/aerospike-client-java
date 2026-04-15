@@ -21,7 +21,6 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <spring-boot.version>3.4.4</spring-boot.version>
     <aerospike-client.version>10.0.0</aerospike-client.version>
-    <zero-allocation-hashing.version>0.16</zero-allocation-hashing.version>
     <maven-compiler-plugin.version>3.14.0</maven-compiler-plugin.version>
     <maven-enforcer-plugin.version>3.5.0</maven-enforcer-plugin.version>
   </properties>
@@ -40,12 +39,6 @@
         <groupId>com.aerospike</groupId>
         <artifactId>aerospike-client-jdk21</artifactId>
         <version>${aerospike-client.version}</version>
-      </dependency>
-
-      <dependency>
-        <groupId>net.openhft</groupId>
-        <artifactId>zero-allocation-hashing</artifactId>
-        <version>${zero-allocation-hashing.version}</version>
       </dependency>
     </dependencies>
   </dependencyManagement>
