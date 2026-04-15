@@ -22,7 +22,6 @@
     <spring-boot.version>3.4.4</spring-boot.version>
     <aerospike-client.version>10.0.0</aerospike-client.version>
     <zero-allocation-hashing.version>0.16</zero-allocation-hashing.version>
-    <testcontainers.version>1.20.4</testcontainers.version>
     <maven-compiler-plugin.version>3.14.0</maven-compiler-plugin.version>
   </properties>
 
@@ -46,14 +45,6 @@
         <groupId>net.openhft</groupId>
         <artifactId>zero-allocation-hashing</artifactId>
         <version>${zero-allocation-hashing.version}</version>
-      </dependency>
-
-      <dependency>
-        <groupId>org.testcontainers</groupId>
-        <artifactId>testcontainers-bom</artifactId>
-        <version>${testcontainers.version}</version>
-        <type>pom</type>
-        <scope>import</scope>
       </dependency>
     </dependencies>
   </dependencyManagement>

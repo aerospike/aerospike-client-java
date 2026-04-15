@@ -23,6 +23,8 @@ public class AppConfig {
         private String host;
         private int port;
         private String namespace;
+        /** When true, client uses alternate service/peers info commands (some cloud / multi-homed setups). */
+        private boolean useServicesAlternate;
 
         public String getHost() { return host; }
         public void setHost(String host) { this.host = host; }
@@ -32,5 +34,10 @@ public class AppConfig {
 
         public String getNamespace() { return namespace; }
         public void setNamespace(String namespace) { this.namespace = namespace; }
+
+        public boolean isUseServicesAlternate() { return useServicesAlternate; }
+        public void setUseServicesAlternate(boolean useServicesAlternate) {
+            this.useServicesAlternate = useServicesAlternate;
+        }
     }
 }
