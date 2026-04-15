@@ -13,11 +13,10 @@ public class AerospikeConfig {
 
     private static final Logger log = LoggerFactory.getLogger(AerospikeConfig.class);
 
+
     @Bean(destroyMethod = "close")
     public IAerospikeClient aerospikeClient(AppConfig appConfig) {
         var policy = new ClientPolicy();
-        policy.timeout = 10_000;
-        policy.loginTimeout = 10_000;
         policy.writePolicyDefault.sendKey = true;
         policy.readPolicyDefault.sendKey = true;
 
