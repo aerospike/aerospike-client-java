@@ -21,4 +21,18 @@ public final class Bins {
 
         private User() {}
     }
+
+    public static final class Post {
+        public static final String TITLE = "title";
+        public static final String SUBTITLE = "subtitle";
+        public static final String BODY = "body";
+        public static final String AUTHORS = "authors";
+        public static final String PUB_DATE_MS = "pub_date_ms";
+        public static final String LIKE_CNT = "like_cnt";
+        public static final String REPOST_CNT = "repost_cnt";
+        public static final String CREATED_AT_MS = "created_at_ms";
+        public static final String STATUS = "status";
+
+        private Post() {}
+    }
 }

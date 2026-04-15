@@ -2,7 +2,7 @@ package com.aerospike.submillipost;
 
 import com.aerospike.client.IAerospikeClient;
 import com.aerospike.submillipost.config.AppConfig;
-import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.TestInstance;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -15,6 +15,7 @@ import org.springframework.test.context.ActiveProfiles;
 public abstract class AerospikeTestBase {
 
     private static final String USER_SET = "users";
+    private static final String POST_SET = "posts";
 
     @Autowired
     private IAerospikeClient aerospikeClient;
@@ -22,9 +23,10 @@ public abstract class AerospikeTestBase {
     @Autowired
     private AppConfig appConfig;
 
-    @BeforeAll
-    void truncateUsersSet() {
+    @BeforeEach
+    void truncateSets() {
         var ns = appConfig.getAerospike().getNamespace();
         aerospikeClient.truncate(null, ns, USER_SET, null);
+        aerospikeClient.truncate(null, ns, POST_SET, null);
     }
 }

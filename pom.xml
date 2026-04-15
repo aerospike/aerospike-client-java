@@ -26,8 +26,7 @@
     <module>examples</module>
     <module>benchmarks</module>
     <module>test</module>
-    <!-- submillipost is a standalone app, open submillipost/pom.xml directly in IntelliJ -->
-    <!-- <module>submillipost</module> -->
+    <!-- submillipost: standalone app (not built by default). For IDE classpath in the monorepo, enable Maven profile "submillipost" or open submillipost/pom.xml as its own project. -->
   </modules>
 
   <properties>
@@ -175,4 +174,14 @@
       </plugins>
     </pluginManagement>
   </build>
+
+  <!-- Optional: add submillipost to the reactor so IntelliJ/other IDEs resolve main sources for tests (e.g. AppConfig). Default CI: mvn install does NOT activate this profile. -->
+  <profiles>
+    <profile>
+      <id>submillipost</id>
+      <modules>
+        <module>submillipost</module>
+      </modules>
+    </profile>
+  </profiles>
 </project>

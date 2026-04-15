@@ -4,8 +4,15 @@ import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Bin;
 import com.aerospike.client.IAerospikeClient;
 import com.aerospike.client.Key;
+import com.aerospike.client.Operation;
 import com.aerospike.client.Record;
 import com.aerospike.client.ResultCode;
+import com.aerospike.client.Value;
+import com.aerospike.client.cdt.ListOperation;
+import com.aerospike.client.cdt.ListOrder;
+import com.aerospike.client.cdt.ListPolicy;
+import com.aerospike.client.cdt.ListReturnType;
+import com.aerospike.client.cdt.ListWriteFlags;
 import com.aerospike.client.policy.RecordExistsAction;
 import com.aerospike.client.policy.WritePolicy;
 import com.aerospike.submillipost.config.AppConfig;
@@ -24,6 +31,10 @@ import static com.aerospike.submillipost.repository.Bins.User.*;
 public class UserRepository {
 
     private static final String SET = "users";
+
+    private static final ListPolicy ORDERED_UNIQUE_NO_FAIL = new ListPolicy(
+            ListOrder.ORDERED,
+            ListWriteFlags.ADD_UNIQUE | ListWriteFlags.NO_FAIL);
 
     private final IAerospikeClient client;
     private final String namespace;
@@ -89,6 +100,66 @@ public class UserRepository {
     public boolean delete(String handle) {
         var key = new Key(namespace, SET, handle);
         return client.delete(null, key);
+    }
+
+    /**
+     * Append a post_id to the author's post_ids list and increment post_cnt
+     * in a single atomic record operation. Uses ORDERED + ADD_UNIQUE + NO_FAIL
+     * so retries don't create duplicates and don't fail if already present.
+     */
+    public void addPostToAuthor(String handle, String postId) {
+        var key = new Key(namespace, SET, handle);
+        client.operate(null, key,
+                ListOperation.append(ORDERED_UNIQUE_NO_FAIL, POST_IDS, Value.get(postId)),
+                Operation.add(new Bin(POST_CNT, 1)));
+    }
+
+    /**
+     * Remove a post_id from the author's post_ids list and decrement post_cnt.
+     * Idempotent: no-op if post_id not present (decrement still happens, so only
+     * call after confirming membership at the service layer if needed).
+     */
+    public void removePostFromAuthor(String handle, String postId) {
+        var key = new Key(namespace, SET, handle);
+        client.operate(null, key,
+                ListOperation.removeByValue(POST_IDS, Value.get(postId), ListReturnType.NONE),
+                Operation.add(new Bin(POST_CNT, -1)));
+    }
+
+    public void addBlocked(String handle, String target) {
+        var key = new Key(namespace, SET, handle);
+        client.operate(null, key,
+                ListOperation.append(ORDERED_UNIQUE_NO_FAIL, BLOCKED, Value.get(target)));
+    }
+
+    public void removeBlocked(String handle, String target) {
+        var key = new Key(namespace, SET, handle);
+        client.operate(null, key,
+                ListOperation.removeByValue(BLOCKED, Value.get(target), ListReturnType.NONE));
+    }
+
+    /**
+     * Return the blocked list for a user, or empty list if bin missing.
+     * Returns null if the user record does not exist.
+     */
+    @SuppressWarnings("unchecked")
+    public List<String> listBlocked(String handle) {
+        var key = new Key(namespace, SET, handle);
+        Record record = client.get(null, key, BLOCKED);
+        if (record == null) {
+            return null;
+        }
+        return (List<String>) Optional.ofNullable(record.getValue(BLOCKED))
+                .orElse(Collections.emptyList());
+    }
+
+    /**
+     * True if ownerHandle's blocked list contains candidateHandle.
+     * False if owner doesn't exist, blocked bin missing, or candidate absent.
+     */
+    public boolean isBlocked(String ownerHandle, String candidateHandle) {
+        var blocked = listBlocked(ownerHandle);
+        return blocked != null && blocked.contains(candidateHandle);
     }
 
     @SuppressWarnings("unchecked")
