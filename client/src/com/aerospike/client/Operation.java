@@ -111,7 +111,10 @@ public final class Operation {
 		BIT_MODIFY(13, true),
 		DELETE(14, true),
 		HLL_READ(15, false),
-		HLL_MODIFY(16, true);
+		HLL_MODIFY(16, true),
+		STRING_READ(17, false),
+		STRING_MODIFY(18, true),
+		TO_STRING(19, false);
 
 		public final int protocolType;
 		public final boolean isWrite;
