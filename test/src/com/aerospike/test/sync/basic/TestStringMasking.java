@@ -17,6 +17,7 @@
 package com.aerospike.test.sync.basic;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.fail;
 
@@ -85,7 +86,7 @@ public class TestStringMasking extends TestSync {
 	@BeforeClass
 	public static void setupUsersAndRule() {
 		Assume.assumeTrue("Skipping: server version < 8.1.3 (string ops + masking)",
-			args.serverVersion.isGreaterOrEqual(8, 1, 3, 0));
+			args.serverVersion.isGreaterOrEqual(8, 1, 2, 0));
 		Assume.assumeTrue("Skipping: admin credentials not provided",
 			args.user != null && !args.user.isEmpty()
 				&& args.password != null && !args.password.isEmpty());
@@ -183,21 +184,21 @@ public class TestStringMasking extends TestSync {
 	@Test
 	public void unprivilegedContainsOnMaskedBinIsFalse() {
 		Record r = unprivClient.operate(null, KEY, StringOperation.contains(MASKED_BIN, "hello"));
-		assertEquals(0L, r.getLong(MASKED_BIN));
+		assertFalse(r.getBoolean(MASKED_BIN));
 	}
 
 	@Test
 	public void unprivilegedStartsEndsOnMaskedBinAreFalse() {
 		Record sw = unprivClient.operate(null, KEY, StringOperation.startsWith(MASKED_BIN, "hello"));
 		Record ew = unprivClient.operate(null, KEY, StringOperation.endsWith(MASKED_BIN, "world"));
-		assertEquals(0L, sw.getLong(MASKED_BIN));
-		assertEquals(0L, ew.getLong(MASKED_BIN));
+		assertFalse(sw.getBoolean(MASKED_BIN));
+		assertFalse(ew.getBoolean(MASKED_BIN));
 	}
 
 	@Test
 	public void unprivilegedRegexCompareOnMaskedBinDoesNotMatchReal() {
 		Record r = unprivClient.operate(null, KEY, StringOperation.regexCompare(MASKED_BIN, "hello.*"));
-		assertEquals(0L, r.getLong(MASKED_BIN));
+		assertFalse(r.getBoolean(MASKED_BIN));
 	}
 
 	@Test

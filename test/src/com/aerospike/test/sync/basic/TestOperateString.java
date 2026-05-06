@@ -18,6 +18,7 @@ package com.aerospike.test.sync.basic;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import java.util.Arrays;
@@ -148,50 +149,50 @@ public class TestOperateString extends TestSync {
 	}
 
 	@Test
-	public void containsReturnsBooleanIntegers() {
+	public void containsReturnsBoolean() {
 		put("hello world");
 		Record present = operate(StringOperation.contains(BIN, "hello"));
 		Record absent = operate(StringOperation.contains(BIN, "xyz"));
-		assertEquals(1L, present.getLong(BIN));
-		assertEquals(0L, absent.getLong(BIN));
+		assertTrue(present.getBoolean(BIN));
+		assertFalse(absent.getBoolean(BIN));
 	}
 
 	@Test
 	public void startsWithMatchesPrefix() {
 		put("Hello123World");
-		assertEquals(1L, operate(StringOperation.startsWith(BIN, "Hello")).getLong(BIN));
-		assertEquals(0L, operate(StringOperation.startsWith(BIN, "World")).getLong(BIN));
+		assertTrue(operate(StringOperation.startsWith(BIN, "Hello")).getBoolean(BIN));
+		assertFalse(operate(StringOperation.startsWith(BIN, "World")).getBoolean(BIN));
 	}
 
 	@Test
 	public void endsWithMatchesSuffix() {
 		put("Hello123World");
-		assertEquals(1L, operate(StringOperation.endsWith(BIN, "World")).getLong(BIN));
-		assertEquals(0L, operate(StringOperation.endsWith(BIN, "Hello")).getLong(BIN));
+		assertTrue(operate(StringOperation.endsWith(BIN, "World")).getBoolean(BIN));
+		assertFalse(operate(StringOperation.endsWith(BIN, "Hello")).getBoolean(BIN));
 	}
 
 	@Test
 	public void isUpperOnlyTrueForUppercase() {
 		put("HELLO");
-		assertEquals(1L, operate(StringOperation.isUpper(BIN)).getLong(BIN));
+		assertTrue(operate(StringOperation.isUpper(BIN)).getBoolean(BIN));
 		put("hello");
-		assertEquals(0L, operate(StringOperation.isUpper(BIN)).getLong(BIN));
+		assertFalse(operate(StringOperation.isUpper(BIN)).getBoolean(BIN));
 	}
 
 	@Test
 	public void isLowerOnlyTrueForLowercase() {
 		put("hello");
-		assertEquals(1L, operate(StringOperation.isLower(BIN)).getLong(BIN));
+		assertTrue(operate(StringOperation.isLower(BIN)).getBoolean(BIN));
 		put("HELLO");
-		assertEquals(0L, operate(StringOperation.isLower(BIN)).getLong(BIN));
+		assertFalse(operate(StringOperation.isLower(BIN)).getBoolean(BIN));
 	}
 
 	@Test
 	public void isNumericMatchesIntegerStrings() {
 		put("12345");
-		assertEquals(1L, operate(StringOperation.isNumeric(BIN)).getLong(BIN));
+		assertTrue(operate(StringOperation.isNumeric(BIN)).getBoolean(BIN));
 		put("Hello123World");
-		assertEquals(0L, operate(StringOperation.isNumeric(BIN)).getLong(BIN));
+		assertFalse(operate(StringOperation.isNumeric(BIN)).getBoolean(BIN));
 	}
 
 	@Test
@@ -225,16 +226,16 @@ public class TestOperateString extends TestSync {
 	@Test
 	public void regexCompareDistinguishesMatchVsMiss() {
 		put("Hello123World");
-		assertEquals(1L, operate(StringOperation.regexCompare(BIN, "[0-9]+")).getLong(BIN));
+		assertTrue(operate(StringOperation.regexCompare(BIN, "[0-9]+")).getBoolean(BIN));
 		put("HELLO");
-		assertEquals(0L, operate(StringOperation.regexCompare(BIN, "[0-9]+")).getLong(BIN));
+		assertFalse(operate(StringOperation.regexCompare(BIN, "[0-9]+")).getBoolean(BIN));
 	}
 
 	@Test
 	public void regexCompareHonorsCaseInsensitiveFlag() {
 		put("HELLO");
-		assertEquals(1L, operate(StringOperation.regexCompare(
-			BIN, "hello", StringRegexFlags.CASE_INSENSITIVE)).getLong(BIN));
+		assertTrue(operate(StringOperation.regexCompare(
+			BIN, "hello", StringRegexFlags.CASE_INSENSITIVE)).getBoolean(BIN));
 	}
 
 	@Test
@@ -516,10 +517,10 @@ public class TestOperateString extends TestSync {
 			StringOperation.toInteger("number_str"),
 			StringOperation.isUpper("upper_str"));
 
-		// strlen and toInteger return INT; isUpper returns 0/1.
+		// strlen and toInteger return INT; isUpper returns BOOL.
 		assertEquals(15L, r.getLong("text"));
 		assertEquals(12345L, r.getLong("number_str"));
-		assertEquals(1L, r.getLong("upper_str"));
+		assertTrue(r.getBoolean("upper_str"));
 	}
 
 	@Test

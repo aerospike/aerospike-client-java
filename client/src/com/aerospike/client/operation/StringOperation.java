@@ -133,8 +133,8 @@ public final class StringOperation {
 	}
 
 	/**
-	 * Create string {@code contains} operation. Server returns 1 if the bin contains
-	 * {@code needle} as a substring, 0 otherwise.
+	 * Create string {@code contains} operation. Server returns true if the bin contains
+	 * {@code needle} as a substring, false otherwise.
 	 */
 	public static Operation contains(String binName, String needle) {
 		byte[] bytes = Pack.pack(CONTAINS, Value.get(needle));
@@ -142,8 +142,8 @@ public final class StringOperation {
 	}
 
 	/**
-	 * Create string {@code startsWith} operation. Server returns 1 if the bin begins with
-	 * {@code prefix}, 0 otherwise.
+	 * Create string {@code startsWith} operation. Server returns true if the bin begins with
+	 * {@code prefix}, false otherwise.
 	 */
 	public static Operation startsWith(String binName, String prefix) {
 		byte[] bytes = Pack.pack(STARTS_WITH, Value.get(prefix));
@@ -151,8 +151,8 @@ public final class StringOperation {
 	}
 
 	/**
-	 * Create string {@code endsWith} operation. Server returns 1 if the bin ends with
-	 * {@code suffix}, 0 otherwise.
+	 * Create string {@code endsWith} operation. Server returns true if the bin ends with
+	 * {@code suffix}, false otherwise.
 	 */
 	public static Operation endsWith(String binName, String suffix) {
 		byte[] bytes = Pack.pack(ENDS_WITH, Value.get(suffix));
@@ -187,8 +187,8 @@ public final class StringOperation {
 	}
 
 	/**
-	 * Create string {@code isNumeric} operation. Server returns 1 if the bin contains a valid
-	 * integer or float, 0 otherwise.
+	 * Create string {@code isNumeric} operation. Server returns true if the bin contains a valid
+	 * integer or float, false otherwise.
 	 */
 	public static Operation isNumeric(String binName) {
 		byte[] bytes = Pack.pack(IS_NUMERIC);
@@ -205,8 +205,8 @@ public final class StringOperation {
 	}
 
 	/**
-	 * Create string {@code isUpper} operation. Server returns 1 if every cased character
-	 * in the bin is uppercase, 0 otherwise.
+	 * Create string {@code isUpper} operation. Server returns true if every cased character
+	 * in the bin is uppercase, false otherwise.
 	 */
 	public static Operation isUpper(String binName) {
 		byte[] bytes = Pack.pack(IS_UPPER);
@@ -214,8 +214,8 @@ public final class StringOperation {
 	}
 
 	/**
-	 * Create string {@code isLower} operation. Server returns 1 if every cased character
-	 * in the bin is lowercase, 0 otherwise.
+	 * Create string {@code isLower} operation. Server returns true if every cased character
+	 * in the bin is lowercase, false otherwise.
 	 */
 	public static Operation isLower(String binName) {
 		byte[] bytes = Pack.pack(IS_LOWER);
@@ -260,7 +260,7 @@ public final class StringOperation {
 
 	/**
 	 * Create string {@code regexCompare} operation. Server matches {@code pattern} (ICU
-	 * regex syntax) against the bin and returns 1 on match, 0 otherwise.
+	 * regex syntax) against the bin and returns true on match, false otherwise.
 	 */
 	public static Operation regexCompare(String binName, String pattern) {
 		byte[] bytes = Pack.pack(REGEX_COMPARE, Value.get(pattern));
@@ -458,7 +458,8 @@ public final class StringOperation {
 		int regexFlags
 	) {
 		List<Value> list = pair(pattern, replacement);
-		byte[] bytes = Pack.pack(REGEX_REPLACE, list, regexFlags, policy.flags);
+		// Server's regex_replace op table accepts only [list, regexFlags]; no slot for policy flags.
+		byte[] bytes = Pack.pack(REGEX_REPLACE, list, regexFlags);
 		return new Operation(Operation.Type.STRING_MODIFY, binName, new Value.BytesValue(bytes, ParticleType.STRING));
 	}
 
