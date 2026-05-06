@@ -52,8 +52,7 @@ public final class StringExp {
 	private static final int TO_BLOB = 13;
 	private static final int SPLIT = 14;
 	private static final int B64_DECODE = 15;
-	private static final int B64_ENCODE = 16;
-	private static final int REGEX_COMPARE = 17;
+	private static final int REGEX_COMPARE = 16;
 
 	// Modify ops
 	private static final int INSERT = 50;
@@ -239,14 +238,6 @@ public final class StringExp {
 	public static Exp b64Decode(Exp src) {
 		byte[] bytes = Pack.pack(B64_DECODE);
 		return addRead(src, bytes, Exp.Type.BLOB);
-	}
-
-	/**
-	 * Create expression that base64-encodes a blob source as a string.
-	 */
-	public static Exp b64Encode(Exp src) {
-		byte[] bytes = Pack.pack(B64_ENCODE);
-		return addRead(src, bytes, Exp.Type.STRING);
 	}
 
 	/**
