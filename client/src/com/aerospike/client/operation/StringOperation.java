@@ -21,6 +21,7 @@ import java.util.List;
 
 import com.aerospike.client.Operation;
 import com.aerospike.client.Value;
+import com.aerospike.client.cdt.CTX;
 import com.aerospike.client.command.ParticleType;
 import com.aerospike.client.util.Pack;
 import com.aerospike.client.util.Packer;
@@ -32,8 +33,9 @@ import com.aerospike.client.util.Packer;
  * count from the end of the string ({@code -1} = last character). Out-of-bounds
  * indexes are clamped to the valid range; no error is returned.
  * <p>
- * String operations require server version 8.1.3 or later. Operations on string
- * items nested in lists/maps are not currently supported by the server.
+ * String operations require server version 8.1.3 or later. A non-empty {@link CTX}
+ * argument navigates into a string nested inside a list or map bin; with no CTX
+ * the operation targets the bin itself.
  */
 public final class StringOperation {
 	// Read ops
@@ -82,8 +84,8 @@ public final class StringOperation {
 	 * Create string {@code strlen} operation.
 	 * Server returns the number of unicode codepoints in the string bin (int64).
 	 */
-	public static Operation strlen(String binName) {
-		byte[] bytes = Pack.pack(STRLEN);
+	public static Operation strlen(String binName, CTX... ctx) {
+		byte[] bytes = Pack.pack(STRLEN, ctx);
 		return new Operation(Operation.Type.STRING_READ, binName, new Value.BytesValue(bytes, ParticleType.STRING));
 	}
 
@@ -91,8 +93,8 @@ public final class StringOperation {
 	 * Create string {@code substr} operation that reads from {@code start} to the end of the string.
 	 * Negative indexes count from the end.
 	 */
-	public static Operation substr(String binName, int start) {
-		byte[] bytes = Pack.pack(SUBSTR, start);
+	public static Operation substr(String binName, int start, CTX... ctx) {
+		byte[] bytes = Pack.pack(SUBSTR, start, ctx);
 		return new Operation(Operation.Type.STRING_READ, binName, new Value.BytesValue(bytes, ParticleType.STRING));
 	}
 
@@ -100,8 +102,8 @@ public final class StringOperation {
 	 * Create string {@code substr} operation that reads {@code length} codepoints starting at {@code start}.
 	 * Negative indexes count from the end of the string.
 	 */
-	public static Operation substr(String binName, int start, int length) {
-		byte[] bytes = Pack.pack(SUBSTR, start, length);
+	public static Operation substr(String binName, int start, int length, CTX... ctx) {
+		byte[] bytes = Pack.pack(SUBSTR, start, length, ctx);
 		return new Operation(Operation.Type.STRING_READ, binName, new Value.BytesValue(bytes, ParticleType.STRING));
 	}
 
@@ -109,8 +111,8 @@ public final class StringOperation {
 	 * Create string {@code charAt} operation. Server returns the character at {@code index} as a string.
 	 * Negative indexes count from the end of the string.
 	 */
-	public static Operation charAt(String binName, int index) {
-		byte[] bytes = Pack.pack(CHAR_AT, index);
+	public static Operation charAt(String binName, int index, CTX... ctx) {
+		byte[] bytes = Pack.pack(CHAR_AT, index, ctx);
 		return new Operation(Operation.Type.STRING_READ, binName, new Value.BytesValue(bytes, ParticleType.STRING));
 	}
 
@@ -118,8 +120,8 @@ public final class StringOperation {
 	 * Create string {@code find} operation. Server returns the codepoint index of the first
 	 * occurrence of {@code needle}, or -1 if not found.
 	 */
-	public static Operation find(String binName, String needle) {
-		byte[] bytes = Pack.pack(FIND, Value.get(needle));
+	public static Operation find(String binName, String needle, CTX... ctx) {
+		byte[] bytes = Pack.pack(FIND, Value.get(needle), ctx);
 		return new Operation(Operation.Type.STRING_READ, binName, new Value.BytesValue(bytes, ParticleType.STRING));
 	}
 
@@ -127,8 +129,8 @@ public final class StringOperation {
 	 * Create string {@code find} operation. Server returns the codepoint index of the
 	 * {@code occurrence}-th match of {@code needle} (1 = first match), or -1 if not found.
 	 */
-	public static Operation find(String binName, String needle, int occurrence) {
-		byte[] bytes = packCmdValueInt(FIND, Value.get(needle), occurrence);
+	public static Operation find(String binName, String needle, int occurrence, CTX... ctx) {
+		byte[] bytes = packCmdValueInt(FIND, Value.get(needle), occurrence, ctx);
 		return new Operation(Operation.Type.STRING_READ, binName, new Value.BytesValue(bytes, ParticleType.STRING));
 	}
 
@@ -136,8 +138,8 @@ public final class StringOperation {
 	 * Create string {@code contains} operation. Server returns true if the bin contains
 	 * {@code needle} as a substring, false otherwise.
 	 */
-	public static Operation contains(String binName, String needle) {
-		byte[] bytes = Pack.pack(CONTAINS, Value.get(needle));
+	public static Operation contains(String binName, String needle, CTX... ctx) {
+		byte[] bytes = Pack.pack(CONTAINS, Value.get(needle), ctx);
 		return new Operation(Operation.Type.STRING_READ, binName, new Value.BytesValue(bytes, ParticleType.STRING));
 	}
 
@@ -145,8 +147,8 @@ public final class StringOperation {
 	 * Create string {@code startsWith} operation. Server returns true if the bin begins with
 	 * {@code prefix}, false otherwise.
 	 */
-	public static Operation startsWith(String binName, String prefix) {
-		byte[] bytes = Pack.pack(STARTS_WITH, Value.get(prefix));
+	public static Operation startsWith(String binName, String prefix, CTX... ctx) {
+		byte[] bytes = Pack.pack(STARTS_WITH, Value.get(prefix), ctx);
 		return new Operation(Operation.Type.STRING_READ, binName, new Value.BytesValue(bytes, ParticleType.STRING));
 	}
 
@@ -154,8 +156,8 @@ public final class StringOperation {
 	 * Create string {@code endsWith} operation. Server returns true if the bin ends with
 	 * {@code suffix}, false otherwise.
 	 */
-	public static Operation endsWith(String binName, String suffix) {
-		byte[] bytes = Pack.pack(ENDS_WITH, Value.get(suffix));
+	public static Operation endsWith(String binName, String suffix, CTX... ctx) {
+		byte[] bytes = Pack.pack(ENDS_WITH, Value.get(suffix), ctx);
 		return new Operation(Operation.Type.STRING_READ, binName, new Value.BytesValue(bytes, ParticleType.STRING));
 	}
 
@@ -163,8 +165,8 @@ public final class StringOperation {
 	 * Create string {@code toInteger} operation. Server parses the string as an int64.
 	 * Returns AEROSPIKE_ERR_PARAMETER if the bin cannot be parsed as an integer.
 	 */
-	public static Operation toInteger(String binName) {
-		byte[] bytes = Pack.pack(TO_INTEGER);
+	public static Operation toInteger(String binName, CTX... ctx) {
+		byte[] bytes = Pack.pack(TO_INTEGER, ctx);
 		return new Operation(Operation.Type.STRING_READ, binName, new Value.BytesValue(bytes, ParticleType.STRING));
 	}
 
@@ -172,8 +174,8 @@ public final class StringOperation {
 	 * Create string {@code toDouble} operation. Server parses the string as a 64-bit float.
 	 * Returns AEROSPIKE_ERR_PARAMETER if the bin cannot be parsed as a double.
 	 */
-	public static Operation toDouble(String binName) {
-		byte[] bytes = Pack.pack(TO_DOUBLE);
+	public static Operation toDouble(String binName, CTX... ctx) {
+		byte[] bytes = Pack.pack(TO_DOUBLE, ctx);
 		return new Operation(Operation.Type.STRING_READ, binName, new Value.BytesValue(bytes, ParticleType.STRING));
 	}
 
@@ -181,8 +183,8 @@ public final class StringOperation {
 	 * Create string {@code byteLength} operation. Server returns the UTF-8 byte length
 	 * of the string (int64).
 	 */
-	public static Operation byteLength(String binName) {
-		byte[] bytes = Pack.pack(BYTE_LENGTH);
+	public static Operation byteLength(String binName, CTX... ctx) {
+		byte[] bytes = Pack.pack(BYTE_LENGTH, ctx);
 		return new Operation(Operation.Type.STRING_READ, binName, new Value.BytesValue(bytes, ParticleType.STRING));
 	}
 
@@ -190,8 +192,8 @@ public final class StringOperation {
 	 * Create string {@code isNumeric} operation. Server returns true if the bin contains a valid
 	 * integer or float, false otherwise.
 	 */
-	public static Operation isNumeric(String binName) {
-		byte[] bytes = Pack.pack(IS_NUMERIC);
+	public static Operation isNumeric(String binName, CTX... ctx) {
+		byte[] bytes = Pack.pack(IS_NUMERIC, ctx);
 		return new Operation(Operation.Type.STRING_READ, binName, new Value.BytesValue(bytes, ParticleType.STRING));
 	}
 
@@ -199,8 +201,8 @@ public final class StringOperation {
 	 * Create string {@code isNumeric} operation that filters by {@code numericType}
 	 * (see {@link StringNumericType}).
 	 */
-	public static Operation isNumeric(String binName, int numericType) {
-		byte[] bytes = Pack.pack(IS_NUMERIC, numericType);
+	public static Operation isNumeric(String binName, int numericType, CTX... ctx) {
+		byte[] bytes = Pack.pack(IS_NUMERIC, numericType, ctx);
 		return new Operation(Operation.Type.STRING_READ, binName, new Value.BytesValue(bytes, ParticleType.STRING));
 	}
 
@@ -208,8 +210,8 @@ public final class StringOperation {
 	 * Create string {@code isUpper} operation. Server returns true if every cased character
 	 * in the bin is uppercase, false otherwise.
 	 */
-	public static Operation isUpper(String binName) {
-		byte[] bytes = Pack.pack(IS_UPPER);
+	public static Operation isUpper(String binName, CTX... ctx) {
+		byte[] bytes = Pack.pack(IS_UPPER, ctx);
 		return new Operation(Operation.Type.STRING_READ, binName, new Value.BytesValue(bytes, ParticleType.STRING));
 	}
 
@@ -217,8 +219,8 @@ public final class StringOperation {
 	 * Create string {@code isLower} operation. Server returns true if every cased character
 	 * in the bin is lowercase, false otherwise.
 	 */
-	public static Operation isLower(String binName) {
-		byte[] bytes = Pack.pack(IS_LOWER);
+	public static Operation isLower(String binName, CTX... ctx) {
+		byte[] bytes = Pack.pack(IS_LOWER, ctx);
 		return new Operation(Operation.Type.STRING_READ, binName, new Value.BytesValue(bytes, ParticleType.STRING));
 	}
 
@@ -226,8 +228,8 @@ public final class StringOperation {
 	 * Create string {@code toBlob} operation. Server returns the UTF-8 bytes of the string
 	 * as a blob.
 	 */
-	public static Operation toBlob(String binName) {
-		byte[] bytes = Pack.pack(TO_BLOB);
+	public static Operation toBlob(String binName, CTX... ctx) {
+		byte[] bytes = Pack.pack(TO_BLOB, ctx);
 		return new Operation(Operation.Type.STRING_READ, binName, new Value.BytesValue(bytes, ParticleType.STRING));
 	}
 
@@ -235,8 +237,8 @@ public final class StringOperation {
 	 * Create string {@code split} operation that splits by Unicode codepoint
 	 * (each codepoint becomes its own list element).
 	 */
-	public static Operation split(String binName) {
-		byte[] bytes = Pack.pack(SPLIT);
+	public static Operation split(String binName, CTX... ctx) {
+		byte[] bytes = Pack.pack(SPLIT, ctx);
 		return new Operation(Operation.Type.STRING_READ, binName, new Value.BytesValue(bytes, ParticleType.STRING));
 	}
 
@@ -244,8 +246,8 @@ public final class StringOperation {
 	 * Create string {@code split} operation that splits by {@code separator}.
 	 * Server returns a list of strings.
 	 */
-	public static Operation split(String binName, String separator) {
-		byte[] bytes = Pack.pack(SPLIT, Value.get(separator));
+	public static Operation split(String binName, String separator, CTX... ctx) {
+		byte[] bytes = Pack.pack(SPLIT, Value.get(separator), ctx);
 		return new Operation(Operation.Type.STRING_READ, binName, new Value.BytesValue(bytes, ParticleType.STRING));
 	}
 
@@ -253,8 +255,8 @@ public final class StringOperation {
 	 * Create string {@code b64Decode} operation. Server base64-decodes the string and
 	 * returns a blob.
 	 */
-	public static Operation b64Decode(String binName) {
-		byte[] bytes = Pack.pack(B64_DECODE);
+	public static Operation b64Decode(String binName, CTX... ctx) {
+		byte[] bytes = Pack.pack(B64_DECODE, ctx);
 		return new Operation(Operation.Type.STRING_READ, binName, new Value.BytesValue(bytes, ParticleType.STRING));
 	}
 
@@ -262,16 +264,16 @@ public final class StringOperation {
 	 * Create string {@code regexCompare} operation. Server matches {@code pattern} (ICU
 	 * regex syntax) against the bin and returns true on match, false otherwise.
 	 */
-	public static Operation regexCompare(String binName, String pattern) {
-		byte[] bytes = Pack.pack(REGEX_COMPARE, Value.get(pattern));
+	public static Operation regexCompare(String binName, String pattern, CTX... ctx) {
+		byte[] bytes = Pack.pack(REGEX_COMPARE, Value.get(pattern), ctx);
 		return new Operation(Operation.Type.STRING_READ, binName, new Value.BytesValue(bytes, ParticleType.STRING));
 	}
 
 	/**
 	 * Create string {@code regexCompare} operation with {@link StringRegexFlags}.
 	 */
-	public static Operation regexCompare(String binName, String pattern, int regexFlags) {
-		byte[] bytes = packCmdValueInt(REGEX_COMPARE, Value.get(pattern), regexFlags);
+	public static Operation regexCompare(String binName, String pattern, int regexFlags, CTX... ctx) {
+		byte[] bytes = packCmdValueInt(REGEX_COMPARE, Value.get(pattern), regexFlags, ctx);
 		return new Operation(Operation.Type.STRING_READ, binName, new Value.BytesValue(bytes, ParticleType.STRING));
 	}
 
@@ -283,8 +285,8 @@ public final class StringOperation {
 	 * Create string {@code insert} operation that inserts {@code value} at codepoint
 	 * {@code index}. Negative indexes count from the end of the string.
 	 */
-	public static Operation insert(StringPolicy policy, String binName, int index, String value) {
-		byte[] bytes = Pack.pack(INSERT, index, Value.get(value), policy.flags);
+	public static Operation insert(StringPolicy policy, String binName, int index, String value, CTX... ctx) {
+		byte[] bytes = Pack.pack(INSERT, index, Value.get(value), policy.flags, ctx);
 		return new Operation(Operation.Type.STRING_MODIFY, binName, new Value.BytesValue(bytes, ParticleType.STRING));
 	}
 
@@ -292,18 +294,18 @@ public final class StringOperation {
 	 * Create string {@code overwrite} operation that overwrites characters starting at
 	 * codepoint {@code index} with {@code value}.
 	 */
-	public static Operation overwrite(StringPolicy policy, String binName, int index, String value) {
-		byte[] bytes = Pack.pack(OVERWRITE, index, Value.get(value), policy.flags);
+	public static Operation overwrite(StringPolicy policy, String binName, int index, String value, CTX... ctx) {
+		byte[] bytes = Pack.pack(OVERWRITE, index, Value.get(value), policy.flags, ctx);
 		return new Operation(Operation.Type.STRING_MODIFY, binName, new Value.BytesValue(bytes, ParticleType.STRING));
 	}
 
 	/**
 	 * Create string {@code concat} operation that appends {@code value} to the bin.
 	 */
-	public static Operation concat(StringPolicy policy, String binName, String value) {
+	public static Operation concat(StringPolicy policy, String binName, String value, CTX... ctx) {
 		List<Value> list = new ArrayList<Value>(1);
 		list.add(Value.get(value));
-		byte[] bytes = Pack.pack(CONCAT, list, policy.flags);
+		byte[] bytes = Pack.pack(CONCAT, list, policy.flags, ctx);
 		return new Operation(Operation.Type.STRING_MODIFY, binName, new Value.BytesValue(bytes, ParticleType.STRING));
 	}
 
@@ -311,9 +313,9 @@ public final class StringOperation {
 	 * Create string {@code concat} operation that appends every element of {@code values}
 	 * to the bin in order.
 	 */
-	public static Operation concat(StringPolicy policy, String binName, List<String> values) {
+	public static Operation concat(StringPolicy policy, String binName, List<String> values, CTX... ctx) {
 		List<Value> list = toValueList(values);
-		byte[] bytes = Pack.pack(CONCAT, list, policy.flags);
+		byte[] bytes = Pack.pack(CONCAT, list, policy.flags, ctx);
 		return new Operation(Operation.Type.STRING_MODIFY, binName, new Value.BytesValue(bytes, ParticleType.STRING));
 	}
 
@@ -321,8 +323,8 @@ public final class StringOperation {
 	 * Create string {@code snip} operation that removes characters starting at codepoint
 	 * {@code start} through the end of the string.
 	 */
-	public static Operation snip(StringPolicy policy, String binName, int start) {
-		byte[] bytes = Pack.pack(SNIP, start, policy.flags);
+	public static Operation snip(StringPolicy policy, String binName, int start, CTX... ctx) {
+		byte[] bytes = Pack.pack(SNIP, start, policy.flags, ctx);
 		return new Operation(Operation.Type.STRING_MODIFY, binName, new Value.BytesValue(bytes, ParticleType.STRING));
 	}
 
@@ -330,8 +332,8 @@ public final class StringOperation {
 	 * Create string {@code snip} operation that removes characters from codepoint
 	 * {@code start} (inclusive) to {@code end} (exclusive).
 	 */
-	public static Operation snip(StringPolicy policy, String binName, int start, int end) {
-		byte[] bytes = Pack.pack(SNIP, start, end, policy.flags);
+	public static Operation snip(StringPolicy policy, String binName, int start, int end, CTX... ctx) {
+		byte[] bytes = Pack.pack(SNIP, start, end, policy.flags, ctx);
 		return new Operation(Operation.Type.STRING_MODIFY, binName, new Value.BytesValue(bytes, ParticleType.STRING));
 	}
 
@@ -339,9 +341,9 @@ public final class StringOperation {
 	 * Create string {@code replace} operation that replaces the first occurrence of
 	 * {@code needle} with {@code replacement}.
 	 */
-	public static Operation replace(StringPolicy policy, String binName, String needle, String replacement) {
+	public static Operation replace(StringPolicy policy, String binName, String needle, String replacement, CTX... ctx) {
 		List<Value> list = pair(needle, replacement);
-		byte[] bytes = Pack.pack(REPLACE, list, policy.flags);
+		byte[] bytes = Pack.pack(REPLACE, list, policy.flags, ctx);
 		return new Operation(Operation.Type.STRING_MODIFY, binName, new Value.BytesValue(bytes, ParticleType.STRING));
 	}
 
@@ -349,25 +351,25 @@ public final class StringOperation {
 	 * Create string {@code replaceAll} operation that replaces every occurrence of
 	 * {@code needle} with {@code replacement}.
 	 */
-	public static Operation replaceAll(StringPolicy policy, String binName, String needle, String replacement) {
+	public static Operation replaceAll(StringPolicy policy, String binName, String needle, String replacement, CTX... ctx) {
 		List<Value> list = pair(needle, replacement);
-		byte[] bytes = Pack.pack(REPLACE_ALL, list, policy.flags);
+		byte[] bytes = Pack.pack(REPLACE_ALL, list, policy.flags, ctx);
 		return new Operation(Operation.Type.STRING_MODIFY, binName, new Value.BytesValue(bytes, ParticleType.STRING));
 	}
 
 	/**
 	 * Create string {@code upper} operation that uppercases the bin in place.
 	 */
-	public static Operation upper(StringPolicy policy, String binName) {
-		byte[] bytes = Pack.pack(UPPER, policy.flags);
+	public static Operation upper(StringPolicy policy, String binName, CTX... ctx) {
+		byte[] bytes = Pack.pack(UPPER, policy.flags, ctx);
 		return new Operation(Operation.Type.STRING_MODIFY, binName, new Value.BytesValue(bytes, ParticleType.STRING));
 	}
 
 	/**
 	 * Create string {@code lower} operation that lowercases the bin in place.
 	 */
-	public static Operation lower(StringPolicy policy, String binName) {
-		byte[] bytes = Pack.pack(LOWER, policy.flags);
+	public static Operation lower(StringPolicy policy, String binName, CTX... ctx) {
+		byte[] bytes = Pack.pack(LOWER, policy.flags, ctx);
 		return new Operation(Operation.Type.STRING_MODIFY, binName, new Value.BytesValue(bytes, ParticleType.STRING));
 	}
 
@@ -375,8 +377,8 @@ public final class StringOperation {
 	 * Create string {@code caseFold} operation. Server applies a locale-independent case
 	 * fold (lowercase) to the bin.
 	 */
-	public static Operation caseFold(StringPolicy policy, String binName) {
-		byte[] bytes = Pack.pack(CASE_FOLD, policy.flags);
+	public static Operation caseFold(StringPolicy policy, String binName, CTX... ctx) {
+		byte[] bytes = Pack.pack(CASE_FOLD, policy.flags, ctx);
 		return new Operation(Operation.Type.STRING_MODIFY, binName, new Value.BytesValue(bytes, ParticleType.STRING));
 	}
 
@@ -384,8 +386,8 @@ public final class StringOperation {
 	 * Create string {@code normalizeNFC} operation. Server normalizes the bin to Unicode
 	 * NFC form.
 	 */
-	public static Operation normalizeNFC(StringPolicy policy, String binName) {
-		byte[] bytes = Pack.pack(NORMALIZE_NFC, policy.flags);
+	public static Operation normalizeNFC(StringPolicy policy, String binName, CTX... ctx) {
+		byte[] bytes = Pack.pack(NORMALIZE_NFC, policy.flags, ctx);
 		return new Operation(Operation.Type.STRING_MODIFY, binName, new Value.BytesValue(bytes, ParticleType.STRING));
 	}
 
@@ -393,8 +395,8 @@ public final class StringOperation {
 	 * Create string {@code trimStart} operation that removes whitespace from the start
 	 * of the bin.
 	 */
-	public static Operation trimStart(StringPolicy policy, String binName) {
-		byte[] bytes = Pack.pack(TRIM_START, policy.flags);
+	public static Operation trimStart(StringPolicy policy, String binName, CTX... ctx) {
+		byte[] bytes = Pack.pack(TRIM_START, policy.flags, ctx);
 		return new Operation(Operation.Type.STRING_MODIFY, binName, new Value.BytesValue(bytes, ParticleType.STRING));
 	}
 
@@ -402,8 +404,8 @@ public final class StringOperation {
 	 * Create string {@code trimEnd} operation that removes whitespace from the end of
 	 * the bin.
 	 */
-	public static Operation trimEnd(StringPolicy policy, String binName) {
-		byte[] bytes = Pack.pack(TRIM_END, policy.flags);
+	public static Operation trimEnd(StringPolicy policy, String binName, CTX... ctx) {
+		byte[] bytes = Pack.pack(TRIM_END, policy.flags, ctx);
 		return new Operation(Operation.Type.STRING_MODIFY, binName, new Value.BytesValue(bytes, ParticleType.STRING));
 	}
 
@@ -411,8 +413,8 @@ public final class StringOperation {
 	 * Create string {@code trim} operation that removes whitespace from both ends of
 	 * the bin.
 	 */
-	public static Operation trim(StringPolicy policy, String binName) {
-		byte[] bytes = Pack.pack(TRIM, policy.flags);
+	public static Operation trim(StringPolicy policy, String binName, CTX... ctx) {
+		byte[] bytes = Pack.pack(TRIM, policy.flags, ctx);
 		return new Operation(Operation.Type.STRING_MODIFY, binName, new Value.BytesValue(bytes, ParticleType.STRING));
 	}
 
@@ -421,8 +423,8 @@ public final class StringOperation {
 	 * until the bin reaches {@code targetLength} codepoints. No-op if already at or above
 	 * target length.
 	 */
-	public static Operation padStart(StringPolicy policy, String binName, int targetLength, String padString) {
-		byte[] bytes = Pack.pack(PAD_START, targetLength, Value.get(padString), policy.flags);
+	public static Operation padStart(StringPolicy policy, String binName, int targetLength, String padString, CTX... ctx) {
+		byte[] bytes = Pack.pack(PAD_START, targetLength, Value.get(padString), policy.flags, ctx);
 		return new Operation(Operation.Type.STRING_MODIFY, binName, new Value.BytesValue(bytes, ParticleType.STRING));
 	}
 
@@ -431,8 +433,8 @@ public final class StringOperation {
 	 * until the bin reaches {@code targetLength} codepoints. No-op if already at or above
 	 * target length.
 	 */
-	public static Operation padEnd(StringPolicy policy, String binName, int targetLength, String padString) {
-		byte[] bytes = Pack.pack(PAD_END, targetLength, Value.get(padString), policy.flags);
+	public static Operation padEnd(StringPolicy policy, String binName, int targetLength, String padString, CTX... ctx) {
+		byte[] bytes = Pack.pack(PAD_END, targetLength, Value.get(padString), policy.flags, ctx);
 		return new Operation(Operation.Type.STRING_MODIFY, binName, new Value.BytesValue(bytes, ParticleType.STRING));
 	}
 
@@ -440,8 +442,8 @@ public final class StringOperation {
 	 * Create string {@code repeat} operation that repeats the bin contents {@code count}
 	 * times.
 	 */
-	public static Operation repeat(StringPolicy policy, String binName, int count) {
-		byte[] bytes = Pack.pack(REPEAT, count, policy.flags);
+	public static Operation repeat(StringPolicy policy, String binName, int count, CTX... ctx) {
+		byte[] bytes = Pack.pack(REPEAT, count, policy.flags, ctx);
 		return new Operation(Operation.Type.STRING_MODIFY, binName, new Value.BytesValue(bytes, ParticleType.STRING));
 	}
 
@@ -455,11 +457,12 @@ public final class StringOperation {
 		String binName,
 		String pattern,
 		String replacement,
-		int regexFlags
+		int regexFlags,
+		CTX... ctx
 	) {
 		List<Value> list = pair(pattern, replacement);
 		// Server's regex_replace op table accepts only [list, regexFlags]; no slot for policy flags.
-		byte[] bytes = Pack.pack(REGEX_REPLACE, list, regexFlags);
+		byte[] bytes = Pack.pack(REGEX_REPLACE, list, regexFlags, ctx);
 		return new Operation(Operation.Type.STRING_MODIFY, binName, new Value.BytesValue(bytes, ParticleType.STRING));
 	}
 
@@ -473,7 +476,7 @@ public final class StringOperation {
 	 * other bin type.
 	 * <p>
 	 * The wire format for this op carries no payload; the bin is referenced solely by
-	 * the operation header.
+	 * the operation header, so {@link CTX} navigation is not supported.
 	 */
 	public static Operation toString(String binName) {
 		return new Operation(Operation.Type.TO_STRING, binName, Value.getAsNull());
@@ -498,9 +501,10 @@ public final class StringOperation {
 		return list;
 	}
 
-	private static byte[] packCmdValueInt(int command, Value value, int v) {
+	private static byte[] packCmdValueInt(int command, Value value, int v, CTX[] ctx) {
 		Packer packer = new Packer();
 		for (int i = 0; i < 2; i++) {
+			Pack.init(packer, ctx);
 			packer.packArrayBegin(3);
 			packer.packInt(command);
 			value.pack(packer);
