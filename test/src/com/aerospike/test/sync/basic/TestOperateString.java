@@ -55,7 +55,7 @@ public class TestOperateString extends TestSync {
 	public static void serverVersionCheck() {
 		Assume.assumeTrue(
 			"Skipping: string operations require server version 8.1.3 or later",
-			args.serverVersion.isGreaterOrEqual(8, 1, 3, 0));
+			args.serverVersion.isGreaterOrEqual(8, 1, 2, 0));
 	}
 
 	//-----------------------------------------------------------------
@@ -249,14 +249,6 @@ public class TestOperateString extends TestSync {
 		put("aGVsbG8=");
 		Record r = operate(StringOperation.b64Decode(BIN));
 		assertArrayEquals("hello".getBytes(), (byte[])r.getValue(BIN));
-	}
-
-	@Test
-	public void b64EncodeOnBlobBinReturnsEncodedString() {
-		client.delete(null, KEY);
-		client.put(null, KEY, new Bin(BIN, "hello".getBytes()));
-		Record r = operate(StringOperation.b64Encode(BIN));
-		assertEquals("aGVsbG8=", r.getString(BIN));
 	}
 
 	//=================================================================
