@@ -22,14 +22,45 @@ import com.aerospike.client.util.Pack;
 import com.aerospike.client.util.Packer;
 
 /**
- * String expression generator. See {@link com.aerospike.client.exp.Exp}.
+ * String expression generator. Produces {@link Exp} nodes that read or transform
+ * string values inside an Aerospike {@link Expression}. Mirrors the operations
+ * exposed by {@link com.aerospike.client.operation.StringOperation}, but composes
+ * inside expressions instead of being sent as standalone operate ops.
  * <p>
- * The string source argument in these methods is any expression that yields a
- * string: a bin reference (e.g. {@link Exp#stringBin(String)}), a string literal
- * ({@link Exp#val(String)}), or a nested string expression. Expressions that
- * modify a string value return the modified string; the bin is not changed.
+ * Each builder takes an {@code Exp src} that produces the string to operate on.
+ * Common sources:
+ * <ul>
+ * <li>{@link Exp#stringBin(String)} — read a string bin.</li>
+ * <li>{@link Exp#val(String)} — a string literal.</li>
+ * <li>Another {@code StringExp} expression — chains read/transform ops.</li>
+ * </ul>
+ * <p>
+ * Modify-style expressions (e.g. {@link #upper}, {@link #replace}) return the
+ * <strong>modified string value</strong>; they do not mutate the underlying bin.
+ * To persist a change, write the returned value back via
+ * {@link com.aerospike.client.exp.Exp.Build} or use
+ * {@link com.aerospike.client.operation.StringOperation} for direct ops.
+ * <p>
+ * Index orientation is left-to-right with codepoint addressing. Negative indexes
+ * count from the end of the string ({@code -1} = last codepoint). Out-of-bounds
+ * indexes are clamped to the valid range; no error is returned.
+ * <p>
+ * Unlike {@link com.aerospike.client.operation.StringOperation}, these builders
+ * do <strong>not</strong> accept a {@link com.aerospike.client.cdt.CTX}. To apply
+ * a string expression to a value nested inside a list or map, compose with
+ * {@link com.aerospike.client.exp.ListExp#getByIndex} or
+ * {@link com.aerospike.client.exp.MapExp#getByKey} (which do take CTX) to extract
+ * the leaf, then pass the resulting {@code Exp} as {@code src}.
  * <p>
  * String expressions require server version 8.1.3 or later.
+ *
+ * <pre>{@code
+ * // Filter records whose "name" bin starts with "hello".
+ * Expression filter = Exp.build(
+ *     Exp.eq(
+ *         StringExp.startsWith(Exp.val("hello"), Exp.stringBin("name")),
+ *         Exp.val(1)));
+ * }</pre>
  */
 public final class StringExp {
 	private static final int MODULE = 3;       // CALL_STRING
@@ -78,7 +109,22 @@ public final class StringExp {
 	//-----------------------------------------------------------------
 
 	/**
-	 * Create expression that returns the codepoint length of the source string.
+	 * Create expression that returns the number of Unicode codepoints in {@code src}
+	 * as an int64. Equivalent to {@link String#codePointCount(int, int)} on the source.
+	 * <p>
+	 * The returned value is the codepoint count — <strong>not</strong> the count of
+	 * user-perceived characters (grapheme clusters). They agree for ASCII / simple
+	 * Latin text but diverge for combining marks, emoji modifiers, and ZWJ sequences
+	 * (see {@link com.aerospike.client.operation.StringOperation#strlen} for examples).
+	 * For UTF-8 byte length, use {@link #byteLength(Exp)}.
+	 *
+	 * <pre>{@code
+	 * // "hello world" -> 11
+	 * Exp len = StringExp.strlen(Exp.stringBin("text"));
+	 * }</pre>
+	 *
+	 * @param src	source string expression
+	 * @return		integer-typed expression yielding the codepoint count
 	 */
 	public static Exp strlen(Exp src) {
 		byte[] bytes = Pack.pack(STRLEN);
@@ -86,7 +132,18 @@ public final class StringExp {
 	}
 
 	/**
-	 * Create expression that returns the substring from {@code start} to the end of the source.
+	 * Create expression that returns the substring of {@code src} from codepoint
+	 * {@code start} to the end. Negative {@code start} counts from the end of the
+	 * string.
+	 *
+	 * <pre>{@code
+	 * // "hello world" from 6 -> "world"
+	 * Exp tail = StringExp.substr(Exp.val(6), Exp.stringBin("text"));
+	 * }</pre>
+	 *
+	 * @param start	starting codepoint index (negative counts from end)
+	 * @param src	source string expression
+	 * @return		string-typed expression yielding the substring
 	 */
 	public static Exp substr(Exp start, Exp src) {
 		byte[] bytes = Pack.pack(SUBSTR, start);
@@ -94,7 +151,18 @@ public final class StringExp {
 	}
 
 	/**
-	 * Create expression that returns {@code length} codepoints starting at {@code start}.
+	 * Create expression that returns {@code length} codepoints of {@code src} starting
+	 * at codepoint {@code start}. Negative indexes count from the end.
+	 *
+	 * <pre>{@code
+	 * // "hello world" from 0, length 5 -> "hello"
+	 * Exp head = StringExp.substr(Exp.val(0), Exp.val(5), Exp.stringBin("text"));
+	 * }</pre>
+	 *
+	 * @param start		starting codepoint index (negative counts from end)
+	 * @param length	number of codepoints to read (clamped to remaining length)
+	 * @param src		source string expression
+	 * @return			string-typed expression yielding the substring
 	 */
 	public static Exp substr(Exp start, Exp length, Exp src) {
 		byte[] bytes = Pack.pack(SUBSTR, start, length);
@@ -102,7 +170,17 @@ public final class StringExp {
 	}
 
 	/**
-	 * Create expression that returns the character at {@code index} as a string.
+	 * Create expression that returns the codepoint at {@code index} of {@code src}
+	 * as a one-codepoint string. Negative indexes count from the end.
+	 *
+	 * <pre>{@code
+	 * // "Hello123World" at 5 -> "1"
+	 * Exp c = StringExp.charAt(Exp.val(5), Exp.stringBin("text"));
+	 * }</pre>
+	 *
+	 * @param index	codepoint index (negative counts from end)
+	 * @param src	source string expression
+	 * @return		string-typed expression yielding a single-codepoint string
 	 */
 	public static Exp charAt(Exp index, Exp src) {
 		byte[] bytes = Pack.pack(CHAR_AT, index);
@@ -110,8 +188,17 @@ public final class StringExp {
 	}
 
 	/**
-	 * Create expression that returns the codepoint index of the first match of
-	 * {@code needle} in the source, or -1 if not found.
+	 * Create expression that returns the codepoint index of the first occurrence of
+	 * {@code needle} in {@code src}, or {@code -1} if not found.
+	 *
+	 * <pre>{@code
+	 * // "hello world" find "world" -> 6
+	 * Exp idx = StringExp.find(Exp.val("world"), Exp.stringBin("text"));
+	 * }</pre>
+	 *
+	 * @param needle	substring to search for (any expression yielding a string)
+	 * @param src		source string expression
+	 * @return			integer-typed expression: codepoint index, or -1 if absent
 	 */
 	public static Exp find(Exp needle, Exp src) {
 		byte[] bytes = Pack.pack(FIND, needle);
@@ -120,7 +207,18 @@ public final class StringExp {
 
 	/**
 	 * Create expression that returns the codepoint index of the {@code occurrence}-th
-	 * match of {@code needle}, or -1 if not found.
+	 * match of {@code needle} ({@code 1} = first, {@code -1} = last), or {@code -1}
+	 * if not found.
+	 *
+	 * <pre>{@code
+	 * // "ababab" 2nd occurrence of "ab" -> 2
+	 * Exp idx = StringExp.find(Exp.val("ab"), Exp.val(2), Exp.stringBin("text"));
+	 * }</pre>
+	 *
+	 * @param needle		substring to search for
+	 * @param occurrence	1-based occurrence to return (negative counts from the last)
+	 * @param src			source string expression
+	 * @return				integer-typed expression: codepoint index, or -1 if absent
 	 */
 	public static Exp find(Exp needle, Exp occurrence, Exp src) {
 		byte[] bytes = Pack.pack(FIND, needle, occurrence);
@@ -128,7 +226,18 @@ public final class StringExp {
 	}
 
 	/**
-	 * Create expression that returns 1 if the source contains {@code needle}, 0 otherwise.
+	 * Create expression that tests whether {@code src} contains {@code needle} as a
+	 * substring. Returns an integer flag: {@code 1} on match, {@code 0} otherwise.
+	 *
+	 * <pre>{@code
+	 * Expression filter = Exp.build(Exp.eq(
+	 *     StringExp.contains(Exp.val("hello"), Exp.stringBin("text")),
+	 *     Exp.val(1)));
+	 * }</pre>
+	 *
+	 * @param needle	substring to test for
+	 * @param src		source string expression
+	 * @return			integer-typed expression: 1 on match, 0 otherwise
 	 */
 	public static Exp contains(Exp needle, Exp src) {
 		byte[] bytes = Pack.pack(CONTAINS, needle);
@@ -136,7 +245,16 @@ public final class StringExp {
 	}
 
 	/**
-	 * Create expression that returns 1 if the source begins with {@code prefix}, 0 otherwise.
+	 * Create expression that tests whether {@code src} begins with {@code prefix}.
+	 * Returns an integer flag: {@code 1} on match, {@code 0} otherwise.
+	 *
+	 * <pre>{@code
+	 * Exp matched = StringExp.startsWith(Exp.val("Hello"), Exp.stringBin("text"));
+	 * }</pre>
+	 *
+	 * @param prefix	prefix to test for
+	 * @param src		source string expression
+	 * @return			integer-typed expression: 1 on match, 0 otherwise
 	 */
 	public static Exp startsWith(Exp prefix, Exp src) {
 		byte[] bytes = Pack.pack(STARTS_WITH, prefix);
@@ -144,7 +262,16 @@ public final class StringExp {
 	}
 
 	/**
-	 * Create expression that returns 1 if the source ends with {@code suffix}, 0 otherwise.
+	 * Create expression that tests whether {@code src} ends with {@code suffix}.
+	 * Returns an integer flag: {@code 1} on match, {@code 0} otherwise.
+	 *
+	 * <pre>{@code
+	 * Exp matched = StringExp.endsWith(Exp.val("World"), Exp.stringBin("text"));
+	 * }</pre>
+	 *
+	 * @param suffix	suffix to test for
+	 * @param src		source string expression
+	 * @return			integer-typed expression: 1 on match, 0 otherwise
 	 */
 	public static Exp endsWith(Exp suffix, Exp src) {
 		byte[] bytes = Pack.pack(ENDS_WITH, suffix);
@@ -152,7 +279,16 @@ public final class StringExp {
 	}
 
 	/**
-	 * Create expression that parses the source as int64.
+	 * Create expression that parses {@code src} as an int64. The expression returns
+	 * an error if the source cannot be parsed as an integer.
+	 *
+	 * <pre>{@code
+	 * // "12345" -> 12345
+	 * Exp n = StringExp.toInteger(Exp.stringBin("text"));
+	 * }</pre>
+	 *
+	 * @param src	source string expression
+	 * @return		integer-typed expression yielding the parsed int64
 	 */
 	public static Exp toInteger(Exp src) {
 		byte[] bytes = Pack.pack(TO_INTEGER);
@@ -160,7 +296,16 @@ public final class StringExp {
 	}
 
 	/**
-	 * Create expression that parses the source as a 64-bit float.
+	 * Create expression that parses {@code src} as a 64-bit float. The expression
+	 * returns an error if the source cannot be parsed as a double.
+	 *
+	 * <pre>{@code
+	 * // "3.14" -> 3.14
+	 * Exp v = StringExp.toDouble(Exp.stringBin("text"));
+	 * }</pre>
+	 *
+	 * @param src	source string expression
+	 * @return		float-typed expression yielding the parsed double
 	 */
 	public static Exp toDouble(Exp src) {
 		byte[] bytes = Pack.pack(TO_DOUBLE);
@@ -168,7 +313,17 @@ public final class StringExp {
 	}
 
 	/**
-	 * Create expression that returns the UTF-8 byte length of the source.
+	 * Create expression that returns the UTF-8 byte length of {@code src} as an int64.
+	 * Differs from {@link #strlen} for non-ASCII content where one codepoint can encode
+	 * to multiple bytes.
+	 *
+	 * <pre>{@code
+	 * // "hello" -> 5
+	 * Exp len = StringExp.byteLength(Exp.stringBin("text"));
+	 * }</pre>
+	 *
+	 * @param src	source string expression
+	 * @return		integer-typed expression yielding the UTF-8 byte length
 	 */
 	public static Exp byteLength(Exp src) {
 		byte[] bytes = Pack.pack(BYTE_LENGTH);
@@ -176,7 +331,15 @@ public final class StringExp {
 	}
 
 	/**
-	 * Create expression that returns 1 if the source parses as a number, 0 otherwise.
+	 * Create expression that tests whether {@code src} contains a valid integer or
+	 * float literal. Returns an integer flag: {@code 1} on match, {@code 0} otherwise.
+	 *
+	 * <pre>{@code
+	 * Exp numeric = StringExp.isNumeric(Exp.stringBin("text"));
+	 * }</pre>
+	 *
+	 * @param src	source string expression
+	 * @return		integer-typed expression: 1 if numeric, 0 otherwise
 	 */
 	public static Exp isNumeric(Exp src) {
 		byte[] bytes = Pack.pack(IS_NUMERIC);
@@ -184,8 +347,18 @@ public final class StringExp {
 	}
 
 	/**
-	 * Create expression that returns 1 if the source parses as a number of the requested
-	 * {@link com.aerospike.client.operation.StringNumericType}, 0 otherwise.
+	 * Create expression that tests whether {@code src} parses as a number of the
+	 * requested {@link com.aerospike.client.operation.StringNumericType}. Returns an
+	 * integer flag: {@code 1} on match, {@code 0} otherwise.
+	 *
+	 * <pre>{@code
+	 * // restrict to integer-only validation
+	 * Exp isInt = StringExp.isNumeric(StringNumericType.INT, Exp.stringBin("text"));
+	 * }</pre>
+	 *
+	 * @param numericType	one of the {@link com.aerospike.client.operation.StringNumericType} constants
+	 * @param src			source string expression
+	 * @return				integer-typed expression: 1 if numeric of the given type, 0 otherwise
 	 */
 	public static Exp isNumeric(int numericType, Exp src) {
 		byte[] bytes = Pack.pack(IS_NUMERIC, numericType);
@@ -193,7 +366,15 @@ public final class StringExp {
 	}
 
 	/**
-	 * Create expression that returns 1 if every cased character in the source is uppercase.
+	 * Create expression that tests whether every cased codepoint in {@code src} is
+	 * uppercase. Returns an integer flag: {@code 1} on match, {@code 0} otherwise.
+	 *
+	 * <pre>{@code
+	 * Exp upper = StringExp.isUpper(Exp.stringBin("text"));
+	 * }</pre>
+	 *
+	 * @param src	source string expression
+	 * @return		integer-typed expression: 1 if all-uppercase, 0 otherwise
 	 */
 	public static Exp isUpper(Exp src) {
 		byte[] bytes = Pack.pack(IS_UPPER);
@@ -201,7 +382,15 @@ public final class StringExp {
 	}
 
 	/**
-	 * Create expression that returns 1 if every cased character in the source is lowercase.
+	 * Create expression that tests whether every cased codepoint in {@code src} is
+	 * lowercase. Returns an integer flag: {@code 1} on match, {@code 0} otherwise.
+	 *
+	 * <pre>{@code
+	 * Exp lower = StringExp.isLower(Exp.stringBin("text"));
+	 * }</pre>
+	 *
+	 * @param src	source string expression
+	 * @return		integer-typed expression: 1 if all-lowercase, 0 otherwise
 	 */
 	public static Exp isLower(Exp src) {
 		byte[] bytes = Pack.pack(IS_LOWER);
@@ -209,7 +398,15 @@ public final class StringExp {
 	}
 
 	/**
-	 * Create expression that returns the UTF-8 bytes of the source as a blob.
+	 * Create expression that returns the UTF-8 bytes of {@code src} as a blob.
+	 *
+	 * <pre>{@code
+	 * // "hello" -> [0x68, 0x65, 0x6c, 0x6c, 0x6f]
+	 * Exp blob = StringExp.toBlob(Exp.stringBin("text"));
+	 * }</pre>
+	 *
+	 * @param src	source string expression
+	 * @return		blob-typed expression yielding the UTF-8 byte array
 	 */
 	public static Exp toBlob(Exp src) {
 		byte[] bytes = Pack.pack(TO_BLOB);
@@ -217,7 +414,16 @@ public final class StringExp {
 	}
 
 	/**
-	 * Create expression that splits the source by Unicode codepoint and returns a list of strings.
+	 * Create expression that splits {@code src} by Unicode codepoint — each codepoint
+	 * becomes its own list element.
+	 *
+	 * <pre>{@code
+	 * // "abc" -> ["a", "b", "c"]
+	 * Exp parts = StringExp.split(Exp.stringBin("text"));
+	 * }</pre>
+	 *
+	 * @param src	source string expression
+	 * @return		list-typed expression yielding a list of single-codepoint strings
 	 */
 	public static Exp split(Exp src) {
 		byte[] bytes = Pack.pack(SPLIT);
@@ -225,7 +431,18 @@ public final class StringExp {
 	}
 
 	/**
-	 * Create expression that splits the source by {@code separator} and returns a list of strings.
+	 * Create expression that splits {@code src} by the {@code separator} substring.
+	 * If the separator is absent, the result is a singleton list containing the whole
+	 * source.
+	 *
+	 * <pre>{@code
+	 * // "one,two,three" with "," -> ["one", "two", "three"]
+	 * Exp tokens = StringExp.split(Exp.val(","), Exp.stringBin("text"));
+	 * }</pre>
+	 *
+	 * @param separator	substring used to split the source
+	 * @param src		source string expression
+	 * @return			list-typed expression yielding the token list
 	 */
 	public static Exp split(Exp separator, Exp src) {
 		byte[] bytes = Pack.pack(SPLIT, separator);
@@ -233,7 +450,16 @@ public final class StringExp {
 	}
 
 	/**
-	 * Create expression that base64-decodes the source and returns a blob.
+	 * Create expression that base64-decodes {@code src} and returns the decoded
+	 * bytes as a blob.
+	 *
+	 * <pre>{@code
+	 * // "aGVsbG8=" -> "hello".getBytes()
+	 * Exp decoded = StringExp.b64Decode(Exp.stringBin("text"));
+	 * }</pre>
+	 *
+	 * @param src	source string expression holding base64 text
+	 * @return		blob-typed expression yielding the decoded bytes
 	 */
 	public static Exp b64Decode(Exp src) {
 		byte[] bytes = Pack.pack(B64_DECODE);
@@ -241,7 +467,17 @@ public final class StringExp {
 	}
 
 	/**
-	 * Create expression that returns 1 if {@code pattern} (ICU regex) matches the source, 0 otherwise.
+	 * Create expression that tests whether {@code pattern} (ICU regex syntax) matches
+	 * {@code src}. Returns an integer flag: {@code 1} on match, {@code 0} otherwise.
+	 *
+	 * <pre>{@code
+	 * // matches if "text" contains any digit run
+	 * Exp matched = StringExp.regexCompare(Exp.val("[0-9]+"), Exp.stringBin("text"));
+	 * }</pre>
+	 *
+	 * @param pattern	ICU-syntax regex pattern (must be valid UTF-8)
+	 * @param src		source string expression
+	 * @return			integer-typed expression: 1 on match, 0 otherwise
 	 */
 	public static Exp regexCompare(Exp pattern, Exp src) {
 		byte[] bytes = Pack.pack(REGEX_COMPARE, pattern);
@@ -249,8 +485,20 @@ public final class StringExp {
 	}
 
 	/**
-	 * Create expression that returns 1 if {@code pattern} (ICU regex) matches the source under
-	 * {@link StringRegexFlags}, 0 otherwise.
+	 * Create expression that tests whether {@code pattern} matches {@code src} under
+	 * the supplied {@link StringRegexFlags}. Flags can be combined with bitwise OR.
+	 * Returns an integer flag: {@code 1} on match, {@code 0} otherwise.
+	 *
+	 * <pre>{@code
+	 * Exp matched = StringExp.regexCompare(
+	 *     Exp.val("hello"), StringRegexFlags.CASE_INSENSITIVE,
+	 *     Exp.stringBin("text"));
+	 * }</pre>
+	 *
+	 * @param pattern		ICU-syntax regex pattern (must be valid UTF-8)
+	 * @param regexFlags	bitwise-OR of {@link StringRegexFlags} constants
+	 * @param src			source string expression
+	 * @return				integer-typed expression: 1 on match, 0 otherwise
 	 */
 	public static Exp regexCompare(Exp pattern, int regexFlags, Exp src) {
 		byte[] bytes = Pack.pack(REGEX_COMPARE, pattern, regexFlags);
@@ -262,8 +510,21 @@ public final class StringExp {
 	//-----------------------------------------------------------------
 
 	/**
-	 * Create expression that inserts {@code value} at codepoint {@code index} of the source
-	 * and returns the resulting string.
+	 * Create expression that splices {@code value} into {@code src} at codepoint
+	 * {@code index} and returns the resulting string. Negative indexes count from the
+	 * end. Does not modify the underlying bin.
+	 *
+	 * <pre>{@code
+	 * // "hello world" insert " beautiful" at 5 -> "hello beautiful world"
+	 * Exp out = StringExp.insert(StringPolicy.Default,
+	 *     Exp.val(5), Exp.val(" beautiful"), Exp.stringBin("text"));
+	 * }</pre>
+	 *
+	 * @param policy	write policy controlling NO_FAIL semantics
+	 * @param index		codepoint index at which to insert (negative counts from end)
+	 * @param value		text to insert
+	 * @param src		source string expression
+	 * @return			string-typed expression yielding the modified string
 	 */
 	public static Exp insert(StringPolicy policy, Exp index, Exp value, Exp src) {
 		byte[] bytes = Pack.pack(INSERT, index, value, policy.flags);
@@ -271,8 +532,22 @@ public final class StringExp {
 	}
 
 	/**
-	 * Create expression that overwrites characters starting at codepoint {@code index} with
-	 * {@code value} and returns the resulting string.
+	 * Create expression that overwrites codepoints in {@code src} starting at codepoint
+	 * {@code index} with {@code value}, returning the resulting string. The result may
+	 * grow beyond the original length when {@code value} extends past the end. Does not
+	 * modify the underlying bin.
+	 *
+	 * <pre>{@code
+	 * // "hello world" overwrite "earth" at 6 -> "hello earth"
+	 * Exp out = StringExp.overwrite(StringPolicy.Default,
+	 *     Exp.val(6), Exp.val("earth"), Exp.stringBin("text"));
+	 * }</pre>
+	 *
+	 * @param policy	write policy controlling NO_FAIL semantics
+	 * @param index		codepoint index at which to start overwriting
+	 * @param value		text to write
+	 * @param src		source string expression
+	 * @return			string-typed expression yielding the modified string
 	 */
 	public static Exp overwrite(StringPolicy policy, Exp index, Exp value, Exp src) {
 		byte[] bytes = Pack.pack(OVERWRITE, index, value, policy.flags);
@@ -280,9 +555,21 @@ public final class StringExp {
 	}
 
 	/**
-	 * Create expression that concatenates {@code values} (a list of strings) onto the source
-	 * and returns the resulting string. Single-string callers can wrap their value in a
-	 * 1-element list via {@link Exp#val(java.util.List)}.
+	 * Create expression that concatenates {@code values} (a list of strings) onto
+	 * {@code src} in order, returning the resulting string. Does not modify the
+	 * underlying bin.
+	 *
+	 * <pre>{@code
+	 * // "hello" + [" ", "big", " world"] -> "hello big world"
+	 * Exp out = StringExp.concat(StringPolicy.Default,
+	 *     Exp.val(Arrays.asList(" ", "big", " world")),
+	 *     Exp.stringBin("text"));
+	 * }</pre>
+	 *
+	 * @param policy	write policy controlling NO_FAIL semantics
+	 * @param values	expression yielding a list of strings to append
+	 * @param src		source string expression
+	 * @return			string-typed expression yielding the modified string
 	 */
 	public static Exp concat(StringPolicy policy, Exp values, Exp src) {
 		byte[] bytes = Pack.pack(CONCAT, values, policy.flags);
@@ -290,8 +577,20 @@ public final class StringExp {
 	}
 
 	/**
-	 * Create expression that removes characters from codepoint {@code start} to the end of
-	 * the source and returns the resulting string.
+	 * Create expression that removes codepoints from {@code src} starting at codepoint
+	 * {@code start} through the end, returning the resulting string. Does not modify
+	 * the underlying bin.
+	 *
+	 * <pre>{@code
+	 * // "hello world" snip from 5 -> "hello"
+	 * Exp out = StringExp.snip(StringPolicy.Default,
+	 *     Exp.val(5), Exp.stringBin("text"));
+	 * }</pre>
+	 *
+	 * @param policy	write policy controlling NO_FAIL semantics
+	 * @param start		first codepoint to remove (inclusive)
+	 * @param src		source string expression
+	 * @return			string-typed expression yielding the modified string
 	 */
 	public static Exp snip(StringPolicy policy, Exp start, Exp src) {
 		byte[] bytes = Pack.pack(SNIP, start, policy.flags);
@@ -299,8 +598,21 @@ public final class StringExp {
 	}
 
 	/**
-	 * Create expression that removes characters from codepoint {@code start} (inclusive) to
-	 * {@code end} (exclusive) and returns the resulting string.
+	 * Create expression that removes the half-open codepoint range {@code [start, end)}
+	 * from {@code src} and returns the resulting string. Does not modify the underlying
+	 * bin.
+	 *
+	 * <pre>{@code
+	 * // "hello beautiful world" snip [5, 15) -> "hello world"
+	 * Exp out = StringExp.snip(StringPolicy.Default,
+	 *     Exp.val(5), Exp.val(15), Exp.stringBin("text"));
+	 * }</pre>
+	 *
+	 * @param policy	write policy controlling NO_FAIL semantics
+	 * @param start		first codepoint to remove (inclusive)
+	 * @param end		one past the last codepoint to remove (exclusive)
+	 * @param src		source string expression
+	 * @return			string-typed expression yielding the modified string
 	 */
 	public static Exp snip(StringPolicy policy, Exp start, Exp end, Exp src) {
 		byte[] bytes = Pack.pack(SNIP, start, end, policy.flags);
@@ -308,8 +620,21 @@ public final class StringExp {
 	}
 
 	/**
-	 * Create expression that replaces the first occurrence of {@code needle} with {@code replacement}
-	 * and returns the resulting string.
+	 * Create expression that replaces the first occurrence of {@code needle} in
+	 * {@code src} with {@code replacement} and returns the resulting string. Does not
+	 * modify the underlying bin.
+	 *
+	 * <pre>{@code
+	 * // "hello world world" replace "world"->"earth" -> "hello earth world"
+	 * Exp out = StringExp.replace(StringPolicy.Default,
+	 *     Exp.val("world"), Exp.val("earth"), Exp.stringBin("text"));
+	 * }</pre>
+	 *
+	 * @param policy		write policy controlling NO_FAIL semantics
+	 * @param needle		substring to find
+	 * @param replacement	text to substitute (may be empty to delete the match)
+	 * @param src			source string expression
+	 * @return				string-typed expression yielding the modified string
 	 */
 	public static Exp replace(StringPolicy policy, Exp needle, Exp replacement, Exp src) {
 		byte[] bytes = packReplace(REPLACE, needle, replacement, policy.flags);
@@ -317,8 +642,21 @@ public final class StringExp {
 	}
 
 	/**
-	 * Create expression that replaces every occurrence of {@code needle} with {@code replacement}
-	 * and returns the resulting string.
+	 * Create expression that replaces every occurrence of {@code needle} in {@code src}
+	 * with {@code replacement} and returns the resulting string. Does not modify the
+	 * underlying bin.
+	 *
+	 * <pre>{@code
+	 * // "aabaa" replaceAll "a"->"x" -> "xxbxx"
+	 * Exp out = StringExp.replaceAll(StringPolicy.Default,
+	 *     Exp.val("a"), Exp.val("x"), Exp.stringBin("text"));
+	 * }</pre>
+	 *
+	 * @param policy		write policy controlling NO_FAIL semantics
+	 * @param needle		substring to find
+	 * @param replacement	text to substitute (may be empty to delete each match)
+	 * @param src			source string expression
+	 * @return				string-typed expression yielding the modified string
 	 */
 	public static Exp replaceAll(StringPolicy policy, Exp needle, Exp replacement, Exp src) {
 		byte[] bytes = packReplace(REPLACE_ALL, needle, replacement, policy.flags);
@@ -326,7 +664,16 @@ public final class StringExp {
 	}
 
 	/**
-	 * Create expression that returns the source uppercased.
+	 * Create expression that returns {@code src} uppercased. Does not modify the
+	 * underlying bin.
+	 *
+	 * <pre>{@code
+	 * Exp out = StringExp.upper(StringPolicy.Default, Exp.stringBin("text"));
+	 * }</pre>
+	 *
+	 * @param policy	write policy controlling NO_FAIL semantics
+	 * @param src		source string expression
+	 * @return			string-typed expression yielding the uppercased string
 	 */
 	public static Exp upper(StringPolicy policy, Exp src) {
 		byte[] bytes = Pack.pack(UPPER, policy.flags);
@@ -334,7 +681,16 @@ public final class StringExp {
 	}
 
 	/**
-	 * Create expression that returns the source lowercased.
+	 * Create expression that returns {@code src} lowercased. Does not modify the
+	 * underlying bin.
+	 *
+	 * <pre>{@code
+	 * Exp out = StringExp.lower(StringPolicy.Default, Exp.stringBin("text"));
+	 * }</pre>
+	 *
+	 * @param policy	write policy controlling NO_FAIL semantics
+	 * @param src		source string expression
+	 * @return			string-typed expression yielding the lowercased string
 	 */
 	public static Exp lower(StringPolicy policy, Exp src) {
 		byte[] bytes = Pack.pack(LOWER, policy.flags);
@@ -342,7 +698,17 @@ public final class StringExp {
 	}
 
 	/**
-	 * Create expression that returns the source case-folded (locale-independent lowercase).
+	 * Create expression that returns {@code src} case-folded (locale-independent
+	 * lowercase). Useful for normalized comparison keys. Does not modify the underlying
+	 * bin.
+	 *
+	 * <pre>{@code
+	 * Exp out = StringExp.caseFold(StringPolicy.Default, Exp.stringBin("text"));
+	 * }</pre>
+	 *
+	 * @param policy	write policy controlling NO_FAIL semantics
+	 * @param src		source string expression
+	 * @return			string-typed expression yielding the case-folded string
 	 */
 	public static Exp caseFold(StringPolicy policy, Exp src) {
 		byte[] bytes = Pack.pack(CASE_FOLD, policy.flags);
@@ -350,7 +716,16 @@ public final class StringExp {
 	}
 
 	/**
-	 * Create expression that returns the source normalized to Unicode NFC form.
+	 * Create expression that returns {@code src} normalized to Unicode NFC form.
+	 * Already-normalized strings are unchanged. Does not modify the underlying bin.
+	 *
+	 * <pre>{@code
+	 * Exp out = StringExp.normalizeNFC(StringPolicy.Default, Exp.stringBin("text"));
+	 * }</pre>
+	 *
+	 * @param policy	write policy controlling NO_FAIL semantics
+	 * @param src		source string expression
+	 * @return			string-typed expression yielding the NFC-normalized string
 	 */
 	public static Exp normalizeNFC(StringPolicy policy, Exp src) {
 		byte[] bytes = Pack.pack(NORMALIZE_NFC, policy.flags);
@@ -358,7 +733,17 @@ public final class StringExp {
 	}
 
 	/**
-	 * Create expression that returns the source with whitespace removed from the start.
+	 * Create expression that returns {@code src} with whitespace removed from the start.
+	 * Does not modify the underlying bin.
+	 *
+	 * <pre>{@code
+	 * // "  hello  " -> "hello  "
+	 * Exp out = StringExp.trimStart(StringPolicy.Default, Exp.stringBin("text"));
+	 * }</pre>
+	 *
+	 * @param policy	write policy controlling NO_FAIL semantics
+	 * @param src		source string expression
+	 * @return			string-typed expression yielding the left-trimmed string
 	 */
 	public static Exp trimStart(StringPolicy policy, Exp src) {
 		byte[] bytes = Pack.pack(TRIM_START, policy.flags);
@@ -366,7 +751,17 @@ public final class StringExp {
 	}
 
 	/**
-	 * Create expression that returns the source with whitespace removed from the end.
+	 * Create expression that returns {@code src} with whitespace removed from the end.
+	 * Does not modify the underlying bin.
+	 *
+	 * <pre>{@code
+	 * // "  hello  " -> "  hello"
+	 * Exp out = StringExp.trimEnd(StringPolicy.Default, Exp.stringBin("text"));
+	 * }</pre>
+	 *
+	 * @param policy	write policy controlling NO_FAIL semantics
+	 * @param src		source string expression
+	 * @return			string-typed expression yielding the right-trimmed string
 	 */
 	public static Exp trimEnd(StringPolicy policy, Exp src) {
 		byte[] bytes = Pack.pack(TRIM_END, policy.flags);
@@ -374,7 +769,17 @@ public final class StringExp {
 	}
 
 	/**
-	 * Create expression that returns the source with whitespace removed from both ends.
+	 * Create expression that returns {@code src} with whitespace removed from both
+	 * ends. Does not modify the underlying bin.
+	 *
+	 * <pre>{@code
+	 * // "  hello world  " -> "hello world"
+	 * Exp out = StringExp.trim(StringPolicy.Default, Exp.stringBin("text"));
+	 * }</pre>
+	 *
+	 * @param policy	write policy controlling NO_FAIL semantics
+	 * @param src		source string expression
+	 * @return			string-typed expression yielding the trimmed string
 	 */
 	public static Exp trim(StringPolicy policy, Exp src) {
 		byte[] bytes = Pack.pack(TRIM, policy.flags);
@@ -382,8 +787,21 @@ public final class StringExp {
 	}
 
 	/**
-	 * Create expression that pads the start of the source to {@code targetLength} codepoints
-	 * using {@code padString}.
+	 * Create expression that prepends {@code padString} to {@code src} repeatedly until
+	 * the result reaches {@code targetLength} codepoints. No-op when the source is
+	 * already at or above the target length. Does not modify the underlying bin.
+	 *
+	 * <pre>{@code
+	 * // "hello" pad to 10 with "*" -> "*****hello"
+	 * Exp out = StringExp.padStart(StringPolicy.Default,
+	 *     Exp.val(10), Exp.val("*"), Exp.stringBin("text"));
+	 * }</pre>
+	 *
+	 * @param policy		write policy controlling NO_FAIL semantics
+	 * @param targetLength	codepoint length to pad up to
+	 * @param padString		text used to fill (repeated as needed)
+	 * @param src			source string expression
+	 * @return				string-typed expression yielding the padded string
 	 */
 	public static Exp padStart(StringPolicy policy, Exp targetLength, Exp padString, Exp src) {
 		byte[] bytes = Pack.pack(PAD_START, targetLength, padString, policy.flags);
@@ -391,8 +809,21 @@ public final class StringExp {
 	}
 
 	/**
-	 * Create expression that pads the end of the source to {@code targetLength} codepoints
-	 * using {@code padString}.
+	 * Create expression that appends {@code padString} to {@code src} repeatedly until
+	 * the result reaches {@code targetLength} codepoints. No-op when the source is
+	 * already at or above the target length. Does not modify the underlying bin.
+	 *
+	 * <pre>{@code
+	 * // "hello" pad to 10 with "." -> "hello....."
+	 * Exp out = StringExp.padEnd(StringPolicy.Default,
+	 *     Exp.val(10), Exp.val("."), Exp.stringBin("text"));
+	 * }</pre>
+	 *
+	 * @param policy		write policy controlling NO_FAIL semantics
+	 * @param targetLength	codepoint length to pad up to
+	 * @param padString		text used to fill (repeated as needed)
+	 * @param src			source string expression
+	 * @return				string-typed expression yielding the padded string
 	 */
 	public static Exp padEnd(StringPolicy policy, Exp targetLength, Exp padString, Exp src) {
 		byte[] bytes = Pack.pack(PAD_END, targetLength, padString, policy.flags);
@@ -400,7 +831,19 @@ public final class StringExp {
 	}
 
 	/**
-	 * Create expression that returns the source repeated {@code count} times.
+	 * Create expression that returns {@code src} repeated {@code count} times. Does
+	 * not modify the underlying bin.
+	 *
+	 * <pre>{@code
+	 * // "ab" repeat 3 -> "ababab"
+	 * Exp out = StringExp.repeat(StringPolicy.Default,
+	 *     Exp.val(3), Exp.stringBin("text"));
+	 * }</pre>
+	 *
+	 * @param policy	write policy controlling NO_FAIL semantics
+	 * @param count		number of repetitions (must be non-negative)
+	 * @param src		source string expression
+	 * @return			string-typed expression yielding the repeated string
 	 */
 	public static Exp repeat(StringPolicy policy, Exp count, Exp src) {
 		byte[] bytes = Pack.pack(REPEAT, count, policy.flags);
@@ -408,9 +851,24 @@ public final class StringExp {
 	}
 
 	/**
-	 * Create expression that replaces matches of {@code pattern} (ICU regex) with
-	 * {@code replacement} and returns the resulting string. Use
-	 * {@link StringRegexFlags#GLOBAL} to replace all matches.
+	 * Create expression that replaces matches of {@code pattern} (ICU regex syntax) in
+	 * {@code src} with {@code replacement} and returns the resulting string. Pass
+	 * {@link StringRegexFlags#GLOBAL} to replace every match. Flag values may be
+	 * combined with bitwise OR. Does not modify the underlying bin.
+	 *
+	 * <pre>{@code
+	 * // "abc123def456" regexReplace "[0-9]+"->"NUM" with GLOBAL -> "abcNUMdefNUM"
+	 * Exp out = StringExp.regexReplace(StringPolicy.Default,
+	 *     Exp.val("[0-9]+"), Exp.val("NUM"), StringRegexFlags.GLOBAL,
+	 *     Exp.stringBin("text"));
+	 * }</pre>
+	 *
+	 * @param policy		write policy controlling NO_FAIL semantics
+	 * @param pattern		ICU-syntax regex pattern (must be valid UTF-8)
+	 * @param replacement	replacement text (must be valid UTF-8)
+	 * @param regexFlags	bitwise-OR of {@link StringRegexFlags} constants
+	 * @param src			source string expression
+	 * @return				string-typed expression yielding the modified string
 	 */
 	public static Exp regexReplace(
 		StringPolicy policy,
@@ -429,7 +887,16 @@ public final class StringExp {
 
 	/**
 	 * Create expression that returns the string representation of {@code src}, where
-	 * {@code src} may be any expression yielding an integer, float, string, or blob value.
+	 * {@code src} may be any expression yielding an integer, float, string, or blob
+	 * value. Returns an error for any other source type.
+	 *
+	 * <pre>{@code
+	 * // integer bin "n" = 42 -> "42"
+	 * Exp s = StringExp.toString(Exp.intBin("n"));
+	 * }</pre>
+	 *
+	 * @param src	source expression (integer, float, string, or blob)
+	 * @return		string-typed expression yielding the string representation
 	 */
 	public static Exp toString(Exp src) {
 		byte[] bytes = emptyArray();
@@ -449,6 +916,9 @@ public final class StringExp {
 	}
 
 	// [cmd, [needle, repl], flags] — needle/replacement nested inside a 2-element list.
+	// Specialized packing method. Leaving in StringExp instead of moving to Pack since the 
+	// structure is specific to string replace operations and doesn't fit the usual pattern
+	// of a command followed by a flat list of arguments.
 	private static byte[] packReplace(int command, Exp needle, Exp replacement, int flags) {
 		Packer packer = new Packer();
 		for (int i = 0; i < 2; i++) {
@@ -464,6 +934,9 @@ public final class StringExp {
 	}
 
 	// [REGEX_REPLACE, [pattern, repl], regexFlags, flags]
+	// Specialized packing method. Leaving in StringExp instead of moving to Pack since the 
+	// structure is specific to string replace operations and doesn't fit the usual pattern 
+	// of a command followed by a flat list of arguments.
 	private static byte[] packRegexReplace(Exp pattern, Exp replacement, int regexFlags, int flags) {
 		Packer packer = new Packer();
 		for (int i = 0; i < 2; i++) {
