@@ -863,7 +863,9 @@ public final class StringExp {
 	 *     Exp.stringBin("text"));
 	 * }</pre>
 	 *
-	 * @param policy		write policy controlling NO_FAIL semantics
+	 * @param policy		kept for API symmetry with the other modify ops; unused — the
+	 *						regex_replace server op does not accept policy flags
+	 *						(see implementation note)
 	 * @param pattern		ICU-syntax regex pattern (must be valid UTF-8)
 	 * @param replacement	replacement text (must be valid UTF-8)
 	 * @param regexFlags	bitwise-OR of {@link StringRegexFlags} constants
@@ -877,7 +879,7 @@ public final class StringExp {
 		int regexFlags,
 		Exp src
 	) {
-		byte[] bytes = packRegexReplace(pattern, replacement, regexFlags, policy.flags);
+		byte[] bytes = packRegexReplace(pattern, replacement, regexFlags);
 		return addModify(src, bytes);
 	}
 
@@ -933,20 +935,21 @@ public final class StringExp {
 		return packer.getBuffer();
 	}
 
-	// [REGEX_REPLACE, [pattern, repl], regexFlags, flags]
-	// Specialized packing method. Leaving in StringExp instead of moving to Pack since the 
-	// structure is specific to string replace operations and doesn't fit the usual pattern 
-	// of a command followed by a flat list of arguments.
-	private static byte[] packRegexReplace(Exp pattern, Exp replacement, int regexFlags, int flags) {
+	// [REGEX_REPLACE, [pattern, repl], regexFlags] — 3 elements.
+	// Server's regex_replace op table accepts only [list, regexFlags]; no slot for
+	// policy flags (max_args=2 in particle_string.c:476). Specialized packing method
+	// kept in StringExp instead of moving to Pack since the structure is specific to
+	// string replace operations and doesn't fit the usual pattern of a command
+	// followed by a flat list of arguments.
+	private static byte[] packRegexReplace(Exp pattern, Exp replacement, int regexFlags) {
 		Packer packer = new Packer();
 		for (int i = 0; i < 2; i++) {
-			packer.packArrayBegin(4);
+			packer.packArrayBegin(3);
 			packer.packInt(REGEX_REPLACE);
 			packer.packArrayBegin(2);
 			pattern.pack(packer);
 			replacement.pack(packer);
 			packer.packInt(regexFlags);
-			packer.packInt(flags);
 			if (i == 0) packer.createBuffer();
 		}
 		return packer.getBuffer();
