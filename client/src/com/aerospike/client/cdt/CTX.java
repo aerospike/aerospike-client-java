@@ -172,12 +172,19 @@ public final class CTX {
 	 * // result: [10, 30]
 	 * }</pre>
 	 *
-	 * @param keys	string map keys to select
+	 * @param keys	string map keys to select; Null string
+	 * 			elements are not rejected here; they are packed as nil in the key list. Servers
+	 * 			that accept the operation typically match only non-nil keys in the filter (nil
+	 * 			entries are ignored).
 	 * @return		a map key-list context
+	 * @throws IllegalArgumentException if {@code keys} is null
 	 * @see #andFilter(Exp)
 	 * @see CdtOperation#selectByPath(String, int, CTX...)
 	 */
 	public static CTX mapKeysIn(String... keys) {
+		if (keys == null) {
+			throw new IllegalArgumentException("keys must not be null");
+		}
 		return new CTX(0x2a, Value.get(Arrays.asList(keys)));
 	}
 
@@ -254,35 +261,26 @@ public final class CTX {
 	}
 
 	/**
-	 * Select map entries whose keys are contained in the provided double keys.
+	 * Select map entries whose keys are contained in the provided key list.
+	 * Each element is one CDT map key as a {@link Value} (for example string, integer, or
+	 * blob via {@link Value#get(byte[])}). Aerospike map keys are restricted to integer, string,
+	 * and blob types; mixed key types are allowed in one invocation when the map stores them.
+	 * <p>
+	 * Typed overloads such as {@link #mapKeysIn(String...)} or {@link #mapKeysIn(int...)}
+	 * remain convenient for a single key type; use this form for blob keys or when one
+	 * context must name keys of more than one CDT type.
 	 *
-	 * @param keys	double map keys to select
+	 * @param keys	non-null keys
 	 * @return		a map key-list context
+	 * @throws IllegalArgumentException if the {@code keys} array reference is null
 	 * @see #mapKeysIn(String...)
+	 * @see CdtOperation#selectByPath(String, int, CTX...)
 	 */
-	public static CTX mapKeysIn(double... keys) {
-		// Manual boxing required: Arrays.asList() on a primitive array wraps it as a single element, not per-element.
-		List<Double> list = new ArrayList<>(keys.length);
-		for (double k : keys) {
-			list.add(k);
+	public static CTX mapKeysIn(Value... keys) {
+		if (keys == null) {
+			throw new IllegalArgumentException("keys must not be null");
 		}
-		return new CTX(0x2a, Value.get(list));
-	}
-
-	/**
-	 * Select map entries whose keys are contained in the provided float keys.
-	 *
-	 * @param keys	float map keys to select
-	 * @return		a map key-list context
-	 * @see #mapKeysIn(String...)
-	 */
-	public static CTX mapKeysIn(float... keys) {
-		// Manual boxing required: Arrays.asList() on a primitive array wraps it as a single element, not per-element.
-		List<Float> list = new ArrayList<>(keys.length);
-		for (float k : keys) {
-			list.add(k);
-		}
-		return new CTX(0x2a, Value.get(list));
+		return new CTX(0x2a, Value.get(keys));
 	}
 
 	/**
