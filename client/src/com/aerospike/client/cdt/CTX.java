@@ -32,6 +32,11 @@ import com.aerospike.client.util.Unpacker;
  * Nested CDT context.  Identifies the location of nested list/map to apply the operation.
  * for the current level.  An array of CTX identifies location of the list/map on multiple
  * levels on nesting.
+ * <p>
+ * Published Javadoc for {@code mapKeysIn} lists {@link #mapKeysIn(Value...)} and
+ * {@link #mapKeysIn(String...)} only; {@code int}, {@code long}, {@code byte}, and
+ * {@code short} varargs overloads remain public for compatibility but are {@code @hidden}
+ * and omitted from the generated API documentation.
  */
 public final class CTX {
 	/**
@@ -189,15 +194,8 @@ public final class CTX {
 	}
 
 	/**
-	 * Select map entries whose keys are contained in the provided integer keys.
-	 *
-	 * <pre>{@code
-	 * CTX ctx = CTX.mapKeysIn(1, 2, 3);
-	 * }</pre>
-	 *
-	 * @param keys	integer map keys to select
-	 * @return		a map key-list context
-	 * @see #mapKeysIn(String...)
+	 * @hidden
+	 * Public for compatibility; omitted from generated Javadoc. Prefer {@link #mapKeysIn(Value...)} for integer keys.
 	 */
 	public static CTX mapKeysIn(int... keys) {
 		// Manual boxing required: Arrays.asList() on a primitive array wraps it as a single element, not per-element.
@@ -209,15 +207,8 @@ public final class CTX {
 	}
 
 	/**
-	 * Select map entries whose keys are contained in the provided long keys.
-	 *
-	 * <pre>{@code
-	 * CTX ctx = CTX.mapKeysIn(1L, 2L, 3L);
-	 * }</pre>
-	 *
-	 * @param keys	long map keys to select
-	 * @return		a map key-list context
-	 * @see #mapKeysIn(String...)
+	 * @hidden
+	 * Public for compatibility; omitted from generated Javadoc. Prefer {@link #mapKeysIn(Value...)}.
 	 */
 	public static CTX mapKeysIn(long... keys) {
 		// Manual boxing required: Arrays.asList() on a primitive array wraps it as a single element, not per-element.
@@ -229,11 +220,9 @@ public final class CTX {
 	}
 
 	/**
-	 * Select map entries whose keys are contained in the provided byte keys.
-	 *
-	 * @param keys	byte map keys to select
-	 * @return		a map key-list context
-	 * @see #mapKeysIn(String...)
+	 * @hidden
+	 * Public for compatibility; omitted from generated Javadoc. Encodes small integer keys, not blob keys;
+	 * use {@link Value#get(byte[])} inside {@link #mapKeysIn(Value...)} for blob map keys.
 	 */
 	public static CTX mapKeysIn(byte... keys) {
 		// Manual boxing required: Arrays.asList() on a primitive array wraps it as a single element, not per-element.
@@ -245,11 +234,8 @@ public final class CTX {
 	}
 
 	/**
-	 * Select map entries whose keys are contained in the provided short keys.
-	 *
-	 * @param keys	short map keys to select
-	 * @return		a map key-list context
-	 * @see #mapKeysIn(String...)
+	 * @hidden
+	 * Public for compatibility; omitted from generated Javadoc. Prefer {@link #mapKeysIn(Value...)}.
 	 */
 	public static CTX mapKeysIn(short... keys) {
 		// Manual boxing required: Arrays.asList() on a primitive array wraps it as a single element, not per-element.
@@ -266,9 +252,9 @@ public final class CTX {
 	 * blob via {@link Value#get(byte[])}). Aerospike map keys are restricted to integer, string,
 	 * and blob types; mixed key types are allowed in one invocation when the map stores them.
 	 * <p>
-	 * Typed overloads such as {@link #mapKeysIn(String...)} or {@link #mapKeysIn(int...)}
-	 * remain convenient for a single key type; use this form for blob keys or when one
-	 * context must name keys of more than one CDT type.
+	 * Additional {@code int}, {@code long}, {@code byte}, and {@code short} varargs overloads exist
+	 * for source compatibility; they are excluded from generated Javadoc ({@code @hidden}). Prefer
+	 * this method for integer or mixed-type keys, and {@link #mapKeysIn(String...)} for string-only keys.
 	 *
 	 * @param keys	non-null keys
 	 * @return		a map key-list context
