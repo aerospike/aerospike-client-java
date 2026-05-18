@@ -106,6 +106,32 @@ public class TestErrorDetailParser extends TestBase {
 		assertEquals("oops", rp.serverMessage);
 	}
 
+	@Test
+	public void parsesKeysInReverseOrder() {
+		// Server is allowed to emit the map keys in any order; result must be identical.
+		byte[] detail = fixmap2(
+			pair(intKey(2), fixstr("swap")),
+			pair(intKey(1), fixint(7))
+		);
+		RecordParser rp = parserFor(detail);
+		rp.parseFields(null, null, false);
+		assertEquals("swap (subcode=7)", rp.serverMessage);
+	}
+
+	@Test
+	public void parsesMultiByteUtf8Message() {
+		// Mix BMP and supplementary-plane code points so we exercise both
+		// 2/3-byte and 4-byte UTF-8 sequences.
+		String multibyte = "αβγ · 测试 · 🚀";
+		byte[] detail = fixmap2(
+			pair(intKey(1), fixint(1)),
+			pair(intKey(2), fixstr(multibyte))
+		);
+		RecordParser rp = parserFor(detail);
+		rp.parseFields(null, null, false);
+		assertEquals(multibyte + " (subcode=1)", rp.serverMessage);
+	}
+
 	// ---------- Parser: msgpack types that the original hand-rolled decoder didn't handle (fix #2) ----------
 
 	@Test
@@ -130,6 +156,20 @@ public class TestErrorDetailParser extends TestBase {
 	}
 
 	@Test
+	public void parsesMap32Header() {
+		// 0xDF + 4-byte big-endian count. Only 2 entries here — exercising the
+		// header path, not the count.
+		ByteArrayOutputStream payload = new ByteArrayOutputStream();
+		payload.write(0xDF);
+		writeInt(payload, 2);
+		writeBytes(payload, pair(intKey(1), fixint(9)));
+		writeBytes(payload, pair(intKey(2), fixstr("m32")));
+		RecordParser rp = parserFor(payload.toByteArray());
+		rp.parseFields(null, null, false);
+		assertEquals("m32 (subcode=9)", rp.serverMessage);
+	}
+
+	@Test
 	public void parsesStr32Message() {
 		// 100-char message that we choose to encode with str32 to verify that path works.
 		String big = repeat('x', 100);
@@ -149,6 +189,32 @@ public class TestErrorDetailParser extends TestBase {
 		RecordParser rp = parserFor(payload.toByteArray());
 		rp.parseFields(null, null, false);
 		assertEquals(big + " (subcode=5)", rp.serverMessage);
+	}
+
+	@Test
+	public void parsesSubcodeAsFixint() {
+		// 0..127 — encoded as a single positive-fixint byte.
+		byte[] detail = fixmap2(
+			pair(intKey(1), fixint(127)),
+			pair(intKey(2), fixstr("fx"))
+		);
+		RecordParser rp = parserFor(detail);
+		rp.parseFields(null, null, false);
+		assertEquals("fx (subcode=127)", rp.serverMessage);
+	}
+
+	@Test
+	public void parsesSubcodeAsUint8() {
+		// 200 doesn't fit in fixint (max 127) so server would emit uint8 (0xCC NN).
+		ByteArrayOutputStream payload = new ByteArrayOutputStream();
+		payload.write(0x82);
+		writeBytes(payload, intKey(1));
+		payload.write(0xCC);
+		payload.write(200);
+		writeBytes(payload, pair(intKey(2), fixstr("u8")));
+		RecordParser rp = parserFor(payload.toByteArray());
+		rp.parseFields(null, null, false);
+		assertEquals("u8 (subcode=200)", rp.serverMessage);
 	}
 
 	@Test
@@ -185,12 +251,81 @@ public class TestErrorDetailParser extends TestBase {
 		assertEquals("x (subcode=70000)", rp.serverMessage);
 	}
 
+	@Test
+	public void parsesSubcodeAsUint64() {
+		// 5,000,000,000 doesn't fit in uint32; forces the 0xCF / 8-byte path.
+		long value = 5_000_000_000L;
+		ByteArrayOutputStream payload = new ByteArrayOutputStream();
+		payload.write(0x82);
+		writeBytes(payload, intKey(1));
+		payload.write(0xCF);
+		writeLong(payload, value);
+		writeBytes(payload, pair(intKey(2), fixstr("u64")));
+		RecordParser rp = parserFor(payload.toByteArray());
+		rp.parseFields(null, null, false);
+		assertEquals("u64 (subcode=" + value + ")", rp.serverMessage);
+	}
+
+	@Test
+	public void parsesMessageAsStr8() {
+		// 0xD9 + 1-byte length. Server may pick str8 even for short strings;
+		// the parser must accept whichever encoding it gets.
+		String msg = "string8";
+		byte[] data = msg.getBytes(StandardCharsets.UTF_8);
+		ByteArrayOutputStream payload = new ByteArrayOutputStream();
+		payload.write(0x82);
+		writeBytes(payload, pair(intKey(1), fixint(3)));
+		writeBytes(payload, intKey(2));
+		payload.write(0xD9);
+		payload.write(data.length);
+		writeBytes(payload, data);
+		RecordParser rp = parserFor(payload.toByteArray());
+		rp.parseFields(null, null, false);
+		assertEquals(msg + " (subcode=3)", rp.serverMessage);
+	}
+
+	@Test
+	public void parsesMessageAsStr16() {
+		// 0xDA + 2-byte length.
+		String msg = "string16";
+		byte[] data = msg.getBytes(StandardCharsets.UTF_8);
+		ByteArrayOutputStream payload = new ByteArrayOutputStream();
+		payload.write(0x82);
+		writeBytes(payload, pair(intKey(1), fixint(4)));
+		writeBytes(payload, intKey(2));
+		payload.write(0xDA);
+		writeShort(payload, data.length);
+		writeBytes(payload, data);
+		RecordParser rp = parserFor(payload.toByteArray());
+		rp.parseFields(null, null, false);
+		assertEquals(msg + " (subcode=4)", rp.serverMessage);
+	}
+
 	// ---------- Parser: defensive/edge cases ----------
 
 	@Test
 	public void emptyMapProducesNoMessage() {
 		// 0x80 = fixmap, 0 entries → parseErrorDetails returns null.
 		RecordParser rp = parserFor(new byte[]{(byte)0x80});
+		rp.parseFields(null, null, false);
+		assertNull(rp.serverMessage);
+	}
+
+	@Test
+	public void truncatedValueReturnsNullNotThrow() {
+		// fixmap-1, key=1, uint16 prefix — but value bytes are missing.
+		// Parser must return null and MUST NOT throw or read past the buffer.
+		byte[] detail = new byte[]{(byte)0x81, 0x01, (byte)0xCD};
+		RecordParser rp = parserFor(detail);
+		rp.parseFields(null, null, false);
+		assertNull(rp.serverMessage);
+	}
+
+	@Test
+	public void truncatedMapHeaderReturnsNull() {
+		// 0xDE (map16 prefix) with NO count bytes following.
+		byte[] detail = new byte[]{(byte)0xDE};
+		RecordParser rp = parserFor(detail);
 		rp.parseFields(null, null, false);
 		assertNull(rp.serverMessage);
 	}
@@ -345,6 +480,17 @@ public class TestErrorDetailParser extends TestBase {
 		out.write((v >> 16) & 0xFF);
 		out.write((v >> 8) & 0xFF);
 		out.write(v & 0xFF);
+	}
+
+	private static void writeLong(ByteArrayOutputStream out, long v) {
+		out.write((int)((v >> 56) & 0xFF));
+		out.write((int)((v >> 48) & 0xFF));
+		out.write((int)((v >> 40) & 0xFF));
+		out.write((int)((v >> 32) & 0xFF));
+		out.write((int)((v >> 24) & 0xFF));
+		out.write((int)((v >> 16) & 0xFF));
+		out.write((int)((v >> 8) & 0xFF));
+		out.write((int)(v & 0xFF));
 	}
 
 	private static String repeat(char c, int n) {
