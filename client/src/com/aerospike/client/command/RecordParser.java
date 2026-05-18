@@ -42,6 +42,18 @@ public final class RecordParser {
 	public String serverMessage;
 
 	/**
+	 * Build a failure exception that includes the server's extended-error
+	 * detail when present. Route all non-OK throws through here so the
+	 * detail is never silently dropped on special-case result codes such
+	 * as FILTERED_OUT or KEY_NOT_FOUND_ERROR.
+	 */
+	public static AerospikeException toException(int resultCode, String serverMessage) {
+		return (serverMessage != null) ?
+			new AerospikeException(resultCode, serverMessage) :
+			new AerospikeException(resultCode);
+	}
+
+	/**
 	 * Sync record parser.
 	 */
 	public RecordParser(Connection conn, byte[] buffer) throws IOException {
