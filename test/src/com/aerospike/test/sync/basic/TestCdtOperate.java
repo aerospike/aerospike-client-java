@@ -2778,6 +2778,8 @@ public class TestCdtOperate extends TestSync {
 
     @Test
     public void hllLoopVarFilterOnNestedHLLs() {
+        // Nested HLL values + hllLoopVar in path read: minimum server 8.1.1.
+        checkMinServerVersion(8, 1, 1, 0);
         Key rkey = new Key(NAMESPACE, SET, "hllLoopVarFilterKey");
         client.delete(null, rkey);
 
@@ -3014,6 +3016,8 @@ public class TestCdtOperate extends TestSync {
 
     @Test
     public void testAndFilterWithMapIndex() {
+        // mapIndex + andFilter on CDT select path: minimum server 8.1.1.
+        checkMinServerVersion(8, 1, 1, 0);
         Key rkey = new Key(NAMESPACE, SET, "andFilterMapIndex");
 
         try {
