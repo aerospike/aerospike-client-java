@@ -66,12 +66,16 @@ public class AsyncRead extends AsyncReadBase {
 
 		if (rp.resultCode == ResultCode.FILTERED_OUT) {
 			if (policy.failOnFilteredOut) {
-				throw new AerospikeException(rp.resultCode);
+				throw (rp.serverMessage != null) ?
+					new AerospikeException(rp.resultCode, rp.serverMessage) :
+					new AerospikeException(rp.resultCode);
 			}
 			return true;
 		}
 
-		throw new AerospikeException(rp.resultCode);
+		throw (rp.serverMessage != null) ?
+			new AerospikeException(rp.resultCode, rp.serverMessage) :
+			new AerospikeException(rp.resultCode);
 	}
 
 	@Override

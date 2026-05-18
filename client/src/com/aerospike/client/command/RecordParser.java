@@ -237,12 +237,20 @@ public final class RecordParser {
 			return null;
 		}
 
-		// Read fixmap header.
+		// Read map header (fixmap, map16, map32).
 		int b = dataBuffer[offset++] & 0xFF;
 		int count;
 
 		if ((b & 0xF0) == 0x80) {
 			count = b & 0x0F;
+		}
+		else if (b == 0xDE && offset + 2 <= end) {
+			count = Buffer.bytesToShort(dataBuffer, offset) & 0xFFFF;
+			offset += 2;
+		}
+		else if (b == 0xDF && offset + 4 <= end) {
+			count = Buffer.bytesToInt(dataBuffer, offset);
+			offset += 4;
 		}
 		else {
 			return null;
@@ -354,11 +362,15 @@ public final class RecordParser {
 			len = Buffer.bytesToShort(dataBuffer, offset) & 0xFFFF;
 			offset += 2;
 		}
+		else if (b == 0xDB && offset + 3 < end) {
+			len = Buffer.bytesToInt(dataBuffer, offset);
+			offset += 4;
+		}
 		else {
 			return null;
 		}
 
-		if (offset + len > end) {
+		if (len < 0 || offset + len > end) {
 			return null;
 		}
 
@@ -431,6 +443,36 @@ public final class RecordParser {
 				return offset + 2 + (Buffer.bytesToShort(dataBuffer, offset) & 0xFFFF);
 			}
 			return end;
+		case 0xDB: // str32
+		case 0xC6: // bin32
+			if (offset + 3 < end) {
+				return offset + 4 + Buffer.bytesToInt(dataBuffer, offset);
+			}
+			return end;
+		case 0xDC: // array16
+		case 0xDE: { // map16
+			if (offset + 1 >= end) {
+				return end;
+			}
+			int count = (Buffer.bytesToShort(dataBuffer, offset) & 0xFFFF) * ((b == 0xDE) ? 2 : 1);
+			offset += 2;
+			for (int i = 0; i < count && offset < end; i++) {
+				offset = skipMsgpackValue(offset, end);
+			}
+			return offset;
+		}
+		case 0xDD: // array32
+		case 0xDF: { // map32
+			if (offset + 3 >= end) {
+				return end;
+			}
+			int count = Buffer.bytesToInt(dataBuffer, offset) * ((b == 0xDF) ? 2 : 1);
+			offset += 4;
+			for (int i = 0; i < count && offset < end; i++) {
+				offset = skipMsgpackValue(offset, end);
+			}
+			return offset;
+		}
 		default:
 			return end;
 		}

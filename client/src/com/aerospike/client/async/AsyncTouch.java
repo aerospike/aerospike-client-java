@@ -57,7 +57,9 @@ public final class AsyncTouch extends AsyncWriteBase {
 
 		if (resultCode == ResultCode.KEY_NOT_FOUND_ERROR) {
 			if (existsListener == null) {
-				throw new AerospikeException(resultCode);
+				throw (serverMessage != null) ?
+					new AerospikeException(resultCode, serverMessage) :
+					new AerospikeException(resultCode);
 			}
 			touched = false;
 			return true;
@@ -65,13 +67,17 @@ public final class AsyncTouch extends AsyncWriteBase {
 
 		if (resultCode == ResultCode.FILTERED_OUT) {
 			if (policy.failOnFilteredOut) {
-				throw new AerospikeException(resultCode);
+				throw (serverMessage != null) ?
+					new AerospikeException(resultCode, serverMessage) :
+					new AerospikeException(resultCode);
 			}
 			touched = false;
 			return true;
 		}
 
-		throw new AerospikeException(resultCode);
+		throw (serverMessage != null) ?
+			new AerospikeException(resultCode, serverMessage) :
+			new AerospikeException(resultCode);
 	}
 
 	@Override

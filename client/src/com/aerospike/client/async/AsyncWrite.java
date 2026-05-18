@@ -59,12 +59,16 @@ public final class AsyncWrite extends AsyncWriteBase {
 
 		if (resultCode == ResultCode.FILTERED_OUT) {
 			if (policy.failOnFilteredOut) {
-				throw new AerospikeException(resultCode);
+				throw (serverMessage != null) ?
+					new AerospikeException(resultCode, serverMessage) :
+					new AerospikeException(resultCode);
 			}
 			return true;
 		}
 
-		throw new AerospikeException(resultCode);
+		throw (serverMessage != null) ?
+			new AerospikeException(resultCode, serverMessage) :
+			new AerospikeException(resultCode);
 	}
 
 	@Override
