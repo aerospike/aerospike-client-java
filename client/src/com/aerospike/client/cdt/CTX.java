@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -32,11 +32,6 @@ import com.aerospike.client.util.Unpacker;
  * Nested CDT context.  Identifies the location of nested list/map to apply the operation.
  * for the current level.  An array of CTX identifies location of the list/map on multiple
  * levels on nesting.
- * <p>
- * Published Javadoc for {@code mapKeysIn} lists {@link #mapKeysIn(Value...)} and
- * {@link #mapKeysIn(String...)} only; {@code int}, {@code long}, {@code byte}, and
- * {@code short} varargs overloads remain public for compatibility but are {@code @hidden}
- * and omitted from the generated API documentation.
  */
 public final class CTX {
 	/**
@@ -177,19 +172,12 @@ public final class CTX {
 	 * // result: [10, 30]
 	 * }</pre>
 	 *
-	 * @param keys	string map keys to select; Null string
-	 * 			elements are not rejected here; they are packed as nil in the key list. Servers
-	 * 			that accept the operation typically match only non-nil keys in the filter (nil
-	 * 			entries are ignored).
+	 * @param keys	string map keys to select
 	 * @return		a map key-list context
-	 * @throws IllegalArgumentException if {@code keys} is null
 	 * @see #andFilter(Exp)
 	 * @see CdtOperation#selectByPath(String, int, CTX...)
 	 */
 	public static CTX mapKeysIn(String... keys) {
-		if (keys == null) {
-			throw new IllegalArgumentException("keys must not be null");
-		}
 		return new CTX(0x2a, Value.get(Arrays.asList(keys)));
 	}
 
@@ -251,21 +239,13 @@ public final class CTX {
 	 * Each element is one CDT map key as a {@link Value} (for example string, integer, or
 	 * blob via {@link Value#get(byte[])}). Aerospike map keys are restricted to integer, string,
 	 * and blob types; mixed key types are allowed in one invocation when the map stores them.
-	 * <p>
-	 * Additional {@code int}, {@code long}, {@code byte}, and {@code short} varargs overloads exist
-	 * for source compatibility; they are excluded from generated Javadoc ({@code @hidden}). Prefer
-	 * this method for integer or mixed-type keys, and {@link #mapKeysIn(String...)} for string-only keys.
 	 *
-	 * @param keys	non-null keys
+	 * @param keys	map keys as {@link Value} instances
 	 * @return		a map key-list context
-	 * @throws IllegalArgumentException if the {@code keys} array reference is null
 	 * @see #mapKeysIn(String...)
 	 * @see CdtOperation#selectByPath(String, int, CTX...)
 	 */
 	public static CTX mapKeysIn(Value... keys) {
-		if (keys == null) {
-			throw new IllegalArgumentException("keys must not be null");
-		}
 		return new CTX(0x2a, Value.get(keys));
 	}
 

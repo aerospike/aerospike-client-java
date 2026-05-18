@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2025 Aerospike, Inc.
+ * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -19,6 +19,8 @@ package com.aerospike.test.sync.basic;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -28,10 +30,12 @@ import java.util.Map;
 import org.junit.Assume;
 import org.junit.Test;
 
+import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Bin;
 import com.aerospike.client.Key;
 import com.aerospike.client.Operation;
 import com.aerospike.client.Record;
+import com.aerospike.client.ResultCode;
 import com.aerospike.client.Value;
 import com.aerospike.client.cdt.CdtOperation;
 import com.aerospike.client.cdt.CTX;
@@ -2778,7 +2782,6 @@ public class TestCdtOperate extends TestSync {
 
     @Test
     public void hllLoopVarFilterOnNestedHLLs() {
-        // Nested HLL values + hllLoopVar in path read: minimum server 8.1.1.
         checkMinServerVersion(8, 1, 1, 0);
         Key rkey = new Key(NAMESPACE, SET, "hllLoopVarFilterKey");
         client.delete(null, rkey);
@@ -3016,7 +3019,6 @@ public class TestCdtOperate extends TestSync {
 
     @Test
     public void testAndFilterWithMapIndex() {
-        // mapIndex + andFilter on CDT select path: minimum server 8.1.1.
         checkMinServerVersion(8, 1, 1, 0);
         Key rkey = new Key(NAMESPACE, SET, "andFilterMapIndex");
 
@@ -3049,6 +3051,24 @@ public class TestCdtOperate extends TestSync {
         // The result depends on which entry is at index 0 and whether it passes the filter.
         // If it passes, we get 2 elements (key+value); if not, 0 elements.
         assertTrue("Should have 0 or 2 elements", resultList.size() == 0 || resultList.size() == 2);
+    }
+
+    @Test
+    public void testPutNullSlotInValueArrayThrowsSerialize() {
+        Key rkey = new Key(NAMESPACE, SET, "nullValueArraySlot");
+        try {
+            client.delete(null, rkey);
+        } catch (Exception e) {
+        }
+
+        Value[] arr = new Value[] { Value.get("a"), null };
+
+        AerospikeException.Serialize ex = assertThrows(
+            AerospikeException.Serialize.class,
+            () -> client.put(null, rkey, new Bin(BIN_NAME, Value.get(arr))));
+
+        assertTrue("expected NPE from null Value slot while packing",
+            ex.getCause() instanceof NullPointerException);
     }
 
     @Test
@@ -3201,15 +3221,8 @@ public class TestCdtOperate extends TestSync {
         assertEquals("Empty key list should return empty result", 0, values.size());
     }
 
-    @Test(expected = IllegalArgumentException.class)
-    public void testMapKeysInStringVarargsNullArrayThrowsIllegalArgumentException() {
-        CTX.mapKeysIn((String[]) null);
-    }
-
     @Test
-    public void testMapKeysInStringVarargsNullKeyElementPackedAsNil() {
-        Assume.assumeTrue("Tests require server version 8.1.2 or later",
-            args.serverVersion.isGreaterOrEqual(8, 1, 2, 0));
+    public void testMapKeysInStringVarargsWithNullKeyElement() {
         Key rkey = new Key(NAMESPACE, SET, "mkNullStringKeyElt");
 
         try {
@@ -3229,10 +3242,32 @@ public class TestCdtOperate extends TestSync {
         assertNotNull(result);
         List<?> values = result.getList(BIN_NAME);
         assertNotNull(values);
-        // Nil in the key filter list is packed from null String; server accepts the op and
-        // returns only matches for non-nil keys (here: "a" -> 1).
         assertEquals(1, values.size());
         assertTrue(values.contains(1L) || values.contains(1));
+    }
+
+    @Test
+    public void testMapKeysInValueVarargsNullArrayUsesNullValueAndServerRejects() {
+        CTX ctx = CTX.mapKeysIn((Value[]) null);
+        assertSame(Value.NULL, ctx.value);
+
+        Key rkey = new Key(NAMESPACE, SET, "mkNullValueKeysArray");
+        try {
+            client.delete(null, rkey);
+        } catch (Exception e) {
+        }
+
+        Map<String, Object> map = new HashMap<>();
+        map.put("a", 1);
+        client.put(null, rkey, new Bin(BIN_NAME, map));
+
+        try {
+            client.operate(null, rkey,
+                CdtOperation.selectByPath(BIN_NAME, SelectFlags.VALUE, ctx));
+            assertTrue("operate should fail: nil is not a valid mapKeysIn key list", false);
+        } catch (AerospikeException e) {
+            assertEquals(ResultCode.PARAMETER_ERROR, e.getResultCode());
+        }
     }
 
     // ---- MK-004: Empty map ----
@@ -3553,11 +3588,6 @@ public class TestCdtOperate extends TestSync {
         assertTrue(values.contains("vStr"));
         assertTrue(values.contains("vInt"));
         assertTrue(values.contains("vBlob"));
-    }
-
-    @Test(expected = IllegalArgumentException.class)
-    public void testMapKeysInValueVarargsRejectsNullArray() {
-        CTX.mapKeysIn((Value[]) null);
     }
 
     // ---- MV-001: Basic mapValues - extract all values from a map ----
