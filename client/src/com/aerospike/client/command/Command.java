@@ -110,6 +110,7 @@ public class Command {
 	public static final int INFO4_TXN_ROLL_BACK			= (1 << 2); // Roll back transaction.
 	public static final int INFO4_TXN_ON_LOCKING_ONLY	= (1 << 4); // Must be able to lock record in transaction.
 	public static final int INFO4_ERROR_VERBOSITY_SHIFT = 5; // info4 bits 5-6: error detail verbosity level
+	public static final int INFO4_ERROR_VERBOSITY_MASK = 0x60; // 0b0110_0000: bits 5-6 only
 
 	public static final byte STATE_READ_AUTH_HEADER = 1;
 	public static final byte STATE_READ_HEADER = 2;
@@ -2396,7 +2397,7 @@ public class Command {
 			txnAttr |= Command.INFO4_TXN_ON_LOCKING_ONLY;
 		}
 
-		txnAttr |= (policy.errorDetailVerbosity << Command.INFO4_ERROR_VERBOSITY_SHIFT);
+		txnAttr |= (policy.errorDetailVerbosity << Command.INFO4_ERROR_VERBOSITY_SHIFT) & Command.INFO4_ERROR_VERBOSITY_MASK;
 
 		if (policy.xdr) {
 			readAttr |= Command.INFO1_XDR;
@@ -2476,7 +2477,7 @@ public class Command {
 			txnAttr |= Command.INFO4_TXN_ON_LOCKING_ONLY;
 		}
 
-		txnAttr |= (policy.errorDetailVerbosity << Command.INFO4_ERROR_VERBOSITY_SHIFT);
+		txnAttr |= (policy.errorDetailVerbosity << Command.INFO4_ERROR_VERBOSITY_SHIFT) & Command.INFO4_ERROR_VERBOSITY_MASK;
 
 		if (policy.xdr) {
 			readAttr |= Command.INFO1_XDR;
@@ -2558,7 +2559,7 @@ public class Command {
 		dataBuffer[9] = (byte)readAttr;
 		dataBuffer[10] = (byte)writeAttr;
 		dataBuffer[11] = (byte)infoAttr;
-		dataBuffer[12] = (byte)(policy.errorDetailVerbosity << Command.INFO4_ERROR_VERBOSITY_SHIFT);
+		dataBuffer[12] = (byte)((policy.errorDetailVerbosity << Command.INFO4_ERROR_VERBOSITY_SHIFT) & Command.INFO4_ERROR_VERBOSITY_MASK);
 
 		for (int i = 13; i < 18; i++) {
 			dataBuffer[i] = 0;
@@ -2599,7 +2600,7 @@ public class Command {
 		dataBuffer[9] = (byte)readAttr;
 		dataBuffer[10] = (byte)0;
 		dataBuffer[11] = (byte)infoAttr;
-		dataBuffer[12] = (byte)(policy.errorDetailVerbosity << Command.INFO4_ERROR_VERBOSITY_SHIFT);
+		dataBuffer[12] = (byte)((policy.errorDetailVerbosity << Command.INFO4_ERROR_VERBOSITY_SHIFT) & Command.INFO4_ERROR_VERBOSITY_MASK);
 
 		for (int i = 13; i < 18; i++) {
 			dataBuffer[i] = 0;
