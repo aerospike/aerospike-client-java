@@ -99,24 +99,14 @@ public final class Packer {
 	public void packValueArray(Value[] values) {
 		packArrayBegin(values.length);
 		for (Value value : values) {
-			if (value == null) {
-				packNil();
-			}
-			else {
-				value.pack(this);
-			}
+			value.pack(this);
 		}
 	}
 
 	public void packValueList(List<Value> list) {
 		packArrayBegin(list.size());
 		for (Value value : list) {
-			if (value == null) {
-				packNil();
-			}
-			else {
-				value.pack(this);
-			}
+			value.pack(this);
 		}
 	}
 
