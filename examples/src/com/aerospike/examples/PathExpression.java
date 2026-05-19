@@ -25,8 +25,11 @@ import com.aerospike.client.Bin;
 import com.aerospike.client.IAerospikeClient;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
+import com.aerospike.client.Value;
 import com.aerospike.client.cdt.CTX;
 import com.aerospike.client.cdt.CdtOperation;
+import com.aerospike.client.cdt.MapOperation;
+import com.aerospike.client.cdt.MapPolicy;
 import com.aerospike.client.cdt.SelectFlags;
 import com.aerospike.client.exp.Exp;
 import com.aerospike.client.exp.ExpOperation;
@@ -41,12 +44,13 @@ public class PathExpression extends Example {
 	}
 
 	/**
-	 * Demonstrate path expression enhancements: CTX.mapKeysIn, CTX.andFilter,
-	 * Exp.inList, Exp.mapKeysIn, and Exp.mapValues.
+	 * Demonstrate path expression enhancements: CTX.mapKeysIn (string and {@link Value} varargs),
+	 * CTX.andFilter, Exp.inList, Exp.mapKeysIn, and Exp.mapValues.
 	 */
 	@Override
 	public void runExample(IAerospikeClient client, Parameters params) throws Exception {
 		runMapKeysSelect(client, params);
+		runMapKeysInValueMixedSelect(client, params);
 		runMapKeysWithAndFilter(client, params);
 		runInListExpression(client, params);
 		runMapKeysExpression(client, params);
@@ -80,6 +84,34 @@ public class PathExpression extends Example {
 		);
 
 		console.info("selectByPath mapKeysIn [Charlie, John]: " + record.getList(binName));
+	}
+
+	/**
+	 * Use {@link CTX#mapKeysIn(Value...)} to select map entries when keys use more than one
+	 * CDT type (here: string, integer, and blob) in a single path context. Requires server 8.1.2+.
+	 */
+	private void runMapKeysInValueMixedSelect(IAerospikeClient client, Parameters params) {
+		Key key = new Key(params.namespace, params.set, "pathexp6");
+		String binName = "mapbin";
+
+		client.delete(params.writePolicy, key);
+
+		byte[] regionKey = new byte[] { 'u', 's', '-', 'e', 'a', 's', 't' };
+		Map<Value, Value> map = new HashMap<>();
+		map.put(Value.get("sku"), Value.get("standard"));
+		map.put(Value.get(1001L), Value.get("express"));
+		map.put(Value.get(regionKey), Value.get("regional-offer"));
+
+		client.operate(params.writePolicy, key,
+			MapOperation.putItems(MapPolicy.Default, binName, map));
+
+		console.info("Mixed-key map stored (string sku, long 1001, blob region key).");
+
+		CTX ctx = CTX.mapKeysIn(Value.get("sku"), Value.get(1001L), Value.get(regionKey));
+		Record record = client.operate(params.writePolicy, key,
+			CdtOperation.selectByPath(binName, SelectFlags.VALUE, ctx));
+
+		console.info("selectByPath mapKeysIn(Value...) [sku, 1001, region]: " + record.getList(binName));
 	}
 
 	/**

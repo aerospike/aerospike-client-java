@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2025 Aerospike, Inc.
+ * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -19,6 +19,8 @@ package com.aerospike.test.sync.basic;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -26,15 +28,20 @@ import java.util.List;
 import java.util.Map;
 
 import org.junit.Assume;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
+import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Bin;
 import com.aerospike.client.Key;
 import com.aerospike.client.Operation;
 import com.aerospike.client.Record;
+import com.aerospike.client.ResultCode;
 import com.aerospike.client.Value;
 import com.aerospike.client.cdt.CdtOperation;
 import com.aerospike.client.cdt.CTX;
+import com.aerospike.client.cdt.MapOperation;
+import com.aerospike.client.cdt.MapPolicy;
 import com.aerospike.client.cdt.MapReturnType;
 import com.aerospike.client.cdt.ModifyFlags;
 import com.aerospike.client.cdt.SelectFlags;
@@ -3046,6 +3053,24 @@ public class TestCdtOperate extends TestSync {
     }
 
     @Test
+    public void testPutNullSlotInValueArrayThrowsSerialize() {
+        Key rkey = new Key(NAMESPACE, SET, "nullValueArraySlot");
+        try {
+            client.delete(null, rkey);
+        } catch (Exception e) {
+        }
+
+        Value[] arr = new Value[] { Value.get("a"), null };
+
+        AerospikeException.Serialize ex = assertThrows(
+            AerospikeException.Serialize.class,
+            () -> client.put(null, rkey, new Bin(BIN_NAME, Value.get(arr))));
+
+        assertTrue("expected NPE from null Value slot while packing",
+            ex.getCause() instanceof NullPointerException);
+    }
+
+    @Test
     public void testModifyByPathViaMapKeysIn() {
         checkMinServerVersion(8, 1, 2, 0);
         Key rkey = new Key(NAMESPACE, SET, "modifyMapKeysIn");
@@ -3193,6 +3218,57 @@ public class TestCdtOperate extends TestSync {
         List<?> values = result.getList(BIN_NAME);
         assertNotNull(values);
         assertEquals("Empty key list should return empty result", 0, values.size());
+    }
+
+    @Test
+    public void testMapKeysInStringVarargsWithNullKeyElement() {
+        Assume.assumeTrue("Tests require server version 8.1.2 or later",
+                args.serverVersion.isGreaterOrEqual(8, 1, 2, 0));
+        Key rkey = new Key(NAMESPACE, SET, "mkNullStringKeyElt");
+
+        try {
+            client.delete(null, rkey);
+        } catch (Exception e) {
+        }
+
+        Map<String, Object> map = new HashMap<>();
+        map.put("a", 1);
+        map.put("b", 2);
+        client.put(null, rkey, new Bin(BIN_NAME, map));
+
+        CTX ctx = CTX.mapKeysIn("a", null);
+        Operation op = CdtOperation.selectByPath(BIN_NAME, SelectFlags.VALUE, ctx);
+
+        Record result = client.operate(null, rkey, op);
+        assertNotNull(result);
+        List<?> values = result.getList(BIN_NAME);
+        assertNotNull(values);
+        assertEquals(1, values.size());
+        assertTrue(values.contains(1L) || values.contains(1));
+    }
+
+    @Test
+    public void testMapKeysInValueVarargsNullArrayUsesNullValueAndServerRejects() {
+        CTX ctx = CTX.mapKeysIn((Value[]) null);
+        assertSame(Value.NULL, ctx.value);
+
+        Key rkey = new Key(NAMESPACE, SET, "mkNullValueKeysArray");
+        try {
+            client.delete(null, rkey);
+        } catch (Exception e) {
+        }
+
+        Map<String, Object> map = new HashMap<>();
+        map.put("a", 1);
+        client.put(null, rkey, new Bin(BIN_NAME, map));
+
+        try {
+            client.operate(null, rkey,
+                CdtOperation.selectByPath(BIN_NAME, SelectFlags.VALUE, ctx));
+            assertTrue("operate should fail: nil is not a valid mapKeysIn key list", false);
+        } catch (AerospikeException e) {
+            assertEquals(ResultCode.PARAMETER_ERROR, e.getResultCode());
+        }
     }
 
     // ---- MK-004: Empty map ----
@@ -3380,6 +3456,129 @@ public class TestCdtOperate extends TestSync {
         assertEquals("Should have 2 values from nested map", 2, values.size());
         assertTrue("Should contain 1", values.contains(1L));
         assertTrue("Should contain 3", values.contains(3L));
+    }
+
+    @Test
+    public void testMapKeysInIntVarargsSelectsLongKeys() {
+        Assume.assumeTrue("Tests require server version 8.1.2 or later",
+            args.serverVersion.isGreaterOrEqual(8, 1, 2, 0));
+        Key rkey = new Key(NAMESPACE, SET, "mk4752IntAsInt");
+
+        try {
+            client.delete(null, rkey);
+        } catch (Exception e) {
+        }
+
+        Map<Long, String> map = new HashMap<>();
+        map.put(1L, "one");
+        map.put(2L, "two");
+        map.put(3L, "three");
+        client.put(null, rkey, new Bin(BIN_NAME, map));
+
+        CTX ctxInt = CTX.mapKeysIn(1, 2);
+        Record intResult = client.operate(null, rkey,
+            CdtOperation.selectByPath(BIN_NAME, SelectFlags.VALUE, ctxInt));
+
+        assertNotNull(intResult);
+        List<?> intValues = intResult.getList(BIN_NAME);
+        assertNotNull(intValues);
+        assertEquals(2, intValues.size());
+        assertTrue(intValues.contains("one"));
+        assertTrue(intValues.contains("two"));
+    }
+
+    @Test
+    public void testMapKeysInShortVarargsMatchesIntegerKeys() {
+        Assume.assumeTrue("Tests require server version 8.1.2 or later",
+            args.serverVersion.isGreaterOrEqual(8, 1, 2, 0));
+        Key rkey = new Key(NAMESPACE, SET, "mk4752ShortAsInt");
+
+        try {
+            client.delete(null, rkey);
+        } catch (Exception e) {
+        }
+
+        Map<Long, String> map = new HashMap<>();
+        map.put(1L, "one");
+        map.put(2L, "two");
+        map.put(3L, "three");
+        client.put(null, rkey, new Bin(BIN_NAME, map));
+
+        CTX ctx = CTX.mapKeysIn((short) 1, (short) 2);
+        Record result = client.operate(null, rkey,
+            CdtOperation.selectByPath(BIN_NAME, SelectFlags.VALUE, ctx));
+
+        assertNotNull(result);
+        List<?> values = result.getList(BIN_NAME);
+        assertNotNull(values);
+        assertEquals(2, values.size());
+        assertTrue(values.contains("one"));
+        assertTrue(values.contains("two"));
+    }
+
+    @Test
+    @SuppressWarnings("deprecation")
+    public void testMapKeysInByteVarargsDoesNotSelectBlobKeyedEntries() {
+        Assume.assumeTrue("Tests require server version 8.1.2 or later",
+            args.serverVersion.isGreaterOrEqual(8, 1, 2, 0));
+        Key rkey = new Key(NAMESPACE, SET, "mk4752BlobKeys");
+
+        try {
+            client.delete(null, rkey);
+        } catch (Exception e) {
+        }
+
+        byte[] blobKey1 = new byte[]{0x10, 0x20};
+        byte[] blobKey2 = new byte[]{0x30, 0x40};
+
+        Map<Value, Value> map = new HashMap<>();
+        map.put(Value.get(blobKey1), Value.get("blobValA"));
+        map.put(Value.get(blobKey2), Value.get("blobValB"));
+
+        client.operate(null, rkey,
+            MapOperation.putItems(MapPolicy.Default, BIN_NAME, map));
+
+        CTX ctx = CTX.mapKeysIn((byte) 0x10, (byte) 0x30);
+        Record result = client.operate(null, rkey,
+            CdtOperation.selectByPath(BIN_NAME, SelectFlags.VALUE, ctx));
+
+        assertNotNull(result);
+        List<?> values = result.getList(BIN_NAME);
+        assertNotNull(values);
+        assertEquals("byte... packs integer keys, not blob keys; no match on blob-keyed map", 0, values.size());
+    }
+
+    @Test
+    public void testMapKeysInValueVarargsMixedKeys() {
+        Assume.assumeTrue("Tests require server version 8.1.2 or later",
+            args.serverVersion.isGreaterOrEqual(8, 1, 2, 0));
+        Key rkey = new Key(NAMESPACE, SET, "mk4752ValueMixed");
+
+        try {
+            client.delete(null, rkey);
+        } catch (Exception e) {
+        }
+
+        byte[] blobKey = new byte[]{7, 8, 9};
+        Map<Value, Value> map = new HashMap<>();
+        map.put(Value.get("sk"), Value.get("vStr"));
+        map.put(Value.get(42L), Value.get("vInt"));
+        map.put(Value.get(blobKey), Value.get("vBlob"));
+
+        client.operate(null, rkey,
+            MapOperation.putItems(MapPolicy.Default, BIN_NAME, map));
+
+        CTX ctx = CTX.mapKeysIn(Value.get("sk"), Value.get(42L), Value.get(blobKey));
+        Record result = client.operate(null, rkey,
+            CdtOperation.selectByPath(BIN_NAME, SelectFlags.VALUE, ctx));
+
+        assertNotNull(result);
+        List<?> values = result.getList(BIN_NAME);
+        assertNotNull(values);
+        assertEquals(3, values.size());
+        assertTrue(values.contains("vStr"));
+        assertTrue(values.contains("vInt"));
+        assertTrue(values.contains("vBlob"));
     }
 
     // ---- MV-001: Basic mapValues - extract all values from a map ----
