@@ -3172,6 +3172,8 @@ public class TestCdtOperate extends TestSync {
 
     @Test
     public void testMapKeysInStringVarargsWithNullKeyElement() {
+        Assume.assumeTrue("Tests require server version 8.1.2 or later",
+                args.serverVersion.isGreaterOrEqual(8, 1, 2, 0));
         Key rkey = new Key(NAMESPACE, SET, "mkNullStringKeyElt");
 
         try {
@@ -3413,10 +3415,10 @@ public class TestCdtOperate extends TestSync {
     }
 
     @Test
-    public void testMapKeysInByteVarargsMatchesIntegerKeys() {
+    public void testMapKeysInIntVarargsSelectsLongKeys() {
         Assume.assumeTrue("Tests require server version 8.1.2 or later",
             args.serverVersion.isGreaterOrEqual(8, 1, 2, 0));
-        Key rkey = new Key(NAMESPACE, SET, "mk4752ByteAsInt");
+        Key rkey = new Key(NAMESPACE, SET, "mk4752IntAsInt");
 
         try {
             client.delete(null, rkey);
@@ -3428,17 +3430,6 @@ public class TestCdtOperate extends TestSync {
         map.put(2L, "two");
         map.put(3L, "three");
         client.put(null, rkey, new Bin(BIN_NAME, map));
-
-        CTX ctxByte = CTX.mapKeysIn((byte) 1, (byte) 2);
-        Record byteResult = client.operate(null, rkey,
-            CdtOperation.selectByPath(BIN_NAME, SelectFlags.VALUE, ctxByte));
-
-        assertNotNull(byteResult);
-        List<?> byteValues = byteResult.getList(BIN_NAME);
-        assertNotNull(byteValues);
-        assertEquals(2, byteValues.size());
-        assertTrue(byteValues.contains("one"));
-        assertTrue(byteValues.contains("two"));
 
         CTX ctxInt = CTX.mapKeysIn(1, 2);
         Record intResult = client.operate(null, rkey,
@@ -3482,6 +3473,7 @@ public class TestCdtOperate extends TestSync {
     }
 
     @Test
+    @SuppressWarnings("deprecation")
     public void testMapKeysInByteVarargsDoesNotSelectBlobKeyedEntries() {
         Assume.assumeTrue("Tests require server version 8.1.2 or later",
             args.serverVersion.isGreaterOrEqual(8, 1, 2, 0));

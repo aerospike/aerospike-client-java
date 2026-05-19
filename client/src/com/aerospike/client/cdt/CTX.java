@@ -182,8 +182,15 @@ public final class CTX {
 	}
 
 	/**
-	 * @hidden
-	 * Public for compatibility; omitted from generated Javadoc. Prefer {@link #mapKeysIn(Value...)} for integer keys.
+	 * Select map entries whose keys are contained in the provided integer keys.
+	 *
+	 * <pre>{@code
+	 * CTX ctx = CTX.mapKeysIn(1, 2, 3);
+	 * }</pre>
+	 *
+	 * @param keys	integer map keys to select
+	 * @return		a map key-list context
+	 * @see #mapKeysIn(String...)
 	 */
 	public static CTX mapKeysIn(int... keys) {
 		// Manual boxing required: Arrays.asList() on a primitive array wraps it as a single element, not per-element.
@@ -195,8 +202,15 @@ public final class CTX {
 	}
 
 	/**
-	 * @hidden
-	 * Public for compatibility; omitted from generated Javadoc. Prefer {@link #mapKeysIn(Value...)}.
+	 * Select map entries whose keys are contained in the provided long keys.
+	 *
+	 * <pre>{@code
+	 * CTX ctx = CTX.mapKeysIn(1L, 2L, 3L);
+	 * }</pre>
+	 *
+	 * @param keys	long map keys to select
+	 * @return		a map key-list context
+	 * @see #mapKeysIn(String...)
 	 */
 	public static CTX mapKeysIn(long... keys) {
 		// Manual boxing required: Arrays.asList() on a primitive array wraps it as a single element, not per-element.
@@ -208,10 +222,18 @@ public final class CTX {
 	}
 
 	/**
-	 * @hidden
-	 * Public for compatibility; omitted from generated Javadoc. Encodes small integer keys, not blob keys;
-	 * use {@link Value#get(byte[])} inside {@link #mapKeysIn(Value...)} for blob map keys.
+	 * Select map entries whose keys are contained in the provided byte keys.
+	 *
+	 * @deprecated Each argument is encoded as a small integer map key, not as a blob key, so this overload does
+	 *             not select entries keyed by byte arrays. Use {@link #mapKeysIn(int...)} or {@link #mapKeysIn(long...)}
+	 *             for integer keys, or {@link #mapKeysIn(Value...)} with {@link Value#get(byte[])} for blob keys.
+	 *             This method will be removed in a future release.
+     *
+     * @param keys	byte map keys to select
+     * @return		a map key-list context
+     * @see #mapKeysIn(String...)
 	 */
+	@Deprecated
 	public static CTX mapKeysIn(byte... keys) {
 		// Manual boxing required: Arrays.asList() on a primitive array wraps it as a single element, not per-element.
 		List<Byte> list = new ArrayList<>(keys.length);
@@ -222,8 +244,11 @@ public final class CTX {
 	}
 
 	/**
-	 * @hidden
-	 * Public for compatibility; omitted from generated Javadoc. Prefer {@link #mapKeysIn(Value...)}.
+	 * Select map entries whose keys are contained in the provided short keys.
+	 *
+	 * @param keys	short map keys to select
+	 * @return		a map key-list context
+	 * @see #mapKeysIn(String...)
 	 */
 	public static CTX mapKeysIn(short... keys) {
 		// Manual boxing required: Arrays.asList() on a primitive array wraps it as a single element, not per-element.
