@@ -24,6 +24,7 @@ import com.aerospike.client.Value;
 import com.aerospike.client.cdt.CTX;
 import com.aerospike.client.command.ParticleType;
 import com.aerospike.client.util.Pack;
+import com.aerospike.client.util.Packer;
 
 /**
  * String operations. Create operations to be passed to the client {@code operate}
@@ -130,7 +131,7 @@ public final class StringOperation {
 	 * @return			read operation returning the codepoint count (int64)
 	 */
 	public static Operation strlen(String binName, CTX... ctx) {
-		byte[] bytes = Pack.pack(STRLEN, ctx);
+		byte[] bytes = packStringOp(STRLEN, ctx);
 		return new Operation(Operation.Type.STRING_READ, binName, new Value.BytesValue(bytes, ParticleType.STRING));
 	}
 
@@ -150,7 +151,7 @@ public final class StringOperation {
 	 * @return			read operation returning the substring
 	 */
 	public static Operation substr(String binName, int start, CTX... ctx) {
-		byte[] bytes = Pack.pack(SUBSTR, start, ctx);
+		byte[] bytes = packStringOp(SUBSTR, start, ctx);
 		return new Operation(Operation.Type.STRING_READ, binName, new Value.BytesValue(bytes, ParticleType.STRING));
 	}
 
@@ -170,7 +171,7 @@ public final class StringOperation {
 	 * @return			read operation returning the substring
 	 */
 	public static Operation substr(String binName, int start, int length, CTX... ctx) {
-		byte[] bytes = Pack.pack(SUBSTR, start, length, ctx);
+		byte[] bytes = packStringOp(SUBSTR, start, length, ctx);
 		return new Operation(Operation.Type.STRING_READ, binName, new Value.BytesValue(bytes, ParticleType.STRING));
 	}
 
@@ -190,7 +191,7 @@ public final class StringOperation {
 	 * @return			read operation returning a single-codepoint string
 	 */
 	public static Operation charAt(String binName, int index, CTX... ctx) {
-		byte[] bytes = Pack.pack(CHAR_AT, index, ctx);
+		byte[] bytes = packStringOp(CHAR_AT, index, ctx);
 		return new Operation(Operation.Type.STRING_READ, binName, new Value.BytesValue(bytes, ParticleType.STRING));
 	}
 
@@ -210,7 +211,7 @@ public final class StringOperation {
 	 * @return			read operation returning the codepoint index, or -1 if absent
 	 */
 	public static Operation find(String binName, String needle, CTX... ctx) {
-		byte[] bytes = Pack.pack(FIND, Value.get(needle), ctx);
+		byte[] bytes = packStringOp(FIND, Value.get(needle), ctx);
 		return new Operation(Operation.Type.STRING_READ, binName, new Value.BytesValue(bytes, ParticleType.STRING));
 	}
 
@@ -231,7 +232,7 @@ public final class StringOperation {
 	 * @return				read operation returning the codepoint index, or -1 if absent
 	 */
 	public static Operation find(String binName, String needle, int occurrence, CTX... ctx) {
-		byte[] bytes = Pack.pack(FIND, Value.get(needle), occurrence, ctx);
+		byte[] bytes = packStringOp(FIND, Value.get(needle), occurrence, ctx);
 		return new Operation(Operation.Type.STRING_READ, binName, new Value.BytesValue(bytes, ParticleType.STRING));
 	}
 
@@ -251,7 +252,7 @@ public final class StringOperation {
 	 * @return			read operation returning a boolean match flag
 	 */
 	public static Operation contains(String binName, String needle, CTX... ctx) {
-		byte[] bytes = Pack.pack(CONTAINS, Value.get(needle), ctx);
+		byte[] bytes = packStringOp(CONTAINS, Value.get(needle), ctx);
 		return new Operation(Operation.Type.STRING_READ, binName, new Value.BytesValue(bytes, ParticleType.STRING));
 	}
 
@@ -270,7 +271,7 @@ public final class StringOperation {
 	 * @return			read operation returning a boolean match flag
 	 */
 	public static Operation startsWith(String binName, String prefix, CTX... ctx) {
-		byte[] bytes = Pack.pack(STARTS_WITH, Value.get(prefix), ctx);
+		byte[] bytes = packStringOp(STARTS_WITH, Value.get(prefix), ctx);
 		return new Operation(Operation.Type.STRING_READ, binName, new Value.BytesValue(bytes, ParticleType.STRING));
 	}
 
@@ -289,7 +290,7 @@ public final class StringOperation {
 	 * @return			read operation returning a boolean match flag
 	 */
 	public static Operation endsWith(String binName, String suffix, CTX... ctx) {
-		byte[] bytes = Pack.pack(ENDS_WITH, Value.get(suffix), ctx);
+		byte[] bytes = packStringOp(ENDS_WITH, Value.get(suffix), ctx);
 		return new Operation(Operation.Type.STRING_READ, binName, new Value.BytesValue(bytes, ParticleType.STRING));
 	}
 
@@ -308,7 +309,7 @@ public final class StringOperation {
 	 * @return			read operation returning the parsed int64
 	 */
 	public static Operation toInteger(String binName, CTX... ctx) {
-		byte[] bytes = Pack.pack(TO_INTEGER, ctx);
+		byte[] bytes = packStringOp(TO_INTEGER, ctx);
 		return new Operation(Operation.Type.STRING_READ, binName, new Value.BytesValue(bytes, ParticleType.STRING));
 	}
 
@@ -327,7 +328,7 @@ public final class StringOperation {
 	 * @return			read operation returning the parsed double
 	 */
 	public static Operation toDouble(String binName, CTX... ctx) {
-		byte[] bytes = Pack.pack(TO_DOUBLE, ctx);
+		byte[] bytes = packStringOp(TO_DOUBLE, ctx);
 		return new Operation(Operation.Type.STRING_READ, binName, new Value.BytesValue(bytes, ParticleType.STRING));
 	}
 
@@ -346,7 +347,7 @@ public final class StringOperation {
 	 * @return			read operation returning the byte length (int64)
 	 */
 	public static Operation byteLength(String binName, CTX... ctx) {
-		byte[] bytes = Pack.pack(BYTE_LENGTH, ctx);
+		byte[] bytes = packStringOp(BYTE_LENGTH, ctx);
 		return new Operation(Operation.Type.STRING_READ, binName, new Value.BytesValue(bytes, ParticleType.STRING));
 	}
 
@@ -365,7 +366,7 @@ public final class StringOperation {
 	 * @return			read operation returning a boolean match flag
 	 */
 	public static Operation isNumeric(String binName, CTX... ctx) {
-		byte[] bytes = Pack.pack(IS_NUMERIC, ctx);
+		byte[] bytes = packStringOp(IS_NUMERIC, ctx);
 		return new Operation(Operation.Type.STRING_READ, binName, new Value.BytesValue(bytes, ParticleType.STRING));
 	}
 
@@ -386,7 +387,7 @@ public final class StringOperation {
 	 * @return				read operation returning a boolean match flag
 	 */
 	public static Operation isNumeric(String binName, int numericType, CTX... ctx) {
-		byte[] bytes = Pack.pack(IS_NUMERIC, numericType, ctx);
+		byte[] bytes = packStringOp(IS_NUMERIC, numericType, ctx);
 		return new Operation(Operation.Type.STRING_READ, binName, new Value.BytesValue(bytes, ParticleType.STRING));
 	}
 
@@ -404,7 +405,7 @@ public final class StringOperation {
 	 * @return			read operation returning a boolean match flag
 	 */
 	public static Operation isUpper(String binName, CTX... ctx) {
-		byte[] bytes = Pack.pack(IS_UPPER, ctx);
+		byte[] bytes = packStringOp(IS_UPPER, ctx);
 		return new Operation(Operation.Type.STRING_READ, binName, new Value.BytesValue(bytes, ParticleType.STRING));
 	}
 
@@ -422,7 +423,7 @@ public final class StringOperation {
 	 * @return			read operation returning a boolean match flag
 	 */
 	public static Operation isLower(String binName, CTX... ctx) {
-		byte[] bytes = Pack.pack(IS_LOWER, ctx);
+		byte[] bytes = packStringOp(IS_LOWER, ctx);
 		return new Operation(Operation.Type.STRING_READ, binName, new Value.BytesValue(bytes, ParticleType.STRING));
 	}
 
@@ -441,7 +442,7 @@ public final class StringOperation {
 	 * @return			read operation returning a byte[] blob
 	 */
 	public static Operation toBlob(String binName, CTX... ctx) {
-		byte[] bytes = Pack.pack(TO_BLOB, ctx);
+		byte[] bytes = packStringOp(TO_BLOB, ctx);
 		return new Operation(Operation.Type.STRING_READ, binName, new Value.BytesValue(bytes, ParticleType.STRING));
 	}
 
@@ -460,7 +461,7 @@ public final class StringOperation {
 	 * @return			read operation returning a list of single-codepoint strings
 	 */
 	public static Operation split(String binName, CTX... ctx) {
-		byte[] bytes = Pack.pack(SPLIT, ctx);
+		byte[] bytes = packStringOp(SPLIT, ctx);
 		return new Operation(Operation.Type.STRING_READ, binName, new Value.BytesValue(bytes, ParticleType.STRING));
 	}
 
@@ -480,7 +481,7 @@ public final class StringOperation {
 	 * @return			read operation returning a list of token strings
 	 */
 	public static Operation split(String binName, String separator, CTX... ctx) {
-		byte[] bytes = Pack.pack(SPLIT, Value.get(separator), ctx);
+		byte[] bytes = packStringOp(SPLIT, Value.get(separator), ctx);
 		return new Operation(Operation.Type.STRING_READ, binName, new Value.BytesValue(bytes, ParticleType.STRING));
 	}
 
@@ -499,7 +500,7 @@ public final class StringOperation {
 	 * @return			read operation returning the decoded byte[]
 	 */
 	public static Operation b64Decode(String binName, CTX... ctx) {
-		byte[] bytes = Pack.pack(B64_DECODE, ctx);
+		byte[] bytes = packStringOp(B64_DECODE, ctx);
 		return new Operation(Operation.Type.STRING_READ, binName, new Value.BytesValue(bytes, ParticleType.STRING));
 	}
 
@@ -519,7 +520,7 @@ public final class StringOperation {
 	 * @return			read operation returning a boolean match flag
 	 */
 	public static Operation regexCompare(String binName, String pattern, CTX... ctx) {
-		byte[] bytes = Pack.pack(REGEX_COMPARE, Value.get(pattern), ctx);
+		byte[] bytes = packStringOp(REGEX_COMPARE, Value.get(pattern), ctx);
 		return new Operation(Operation.Type.STRING_READ, binName, new Value.BytesValue(bytes, ParticleType.STRING));
 	}
 
@@ -541,7 +542,7 @@ public final class StringOperation {
 	 * @return			read operation returning a boolean match flag
 	 */
 	public static Operation regexCompare(String binName, String pattern, int regexFlags, CTX... ctx) {
-		byte[] bytes = Pack.pack(REGEX_COMPARE, Value.get(pattern), regexFlags, ctx);
+		byte[] bytes = packStringOp(REGEX_COMPARE, Value.get(pattern), regexFlags, ctx);
 		return new Operation(Operation.Type.STRING_READ, binName, new Value.BytesValue(bytes, ParticleType.STRING));
 	}
 
@@ -567,7 +568,7 @@ public final class StringOperation {
 	 * @return			modify operation
 	 */
 	public static Operation insert(StringPolicy policy, String binName, int index, String value, CTX... ctx) {
-		byte[] bytes = Pack.pack(INSERT, index, Value.get(value), policy.flags, ctx);
+		byte[] bytes = packStringOp(INSERT, index, Value.get(value), policy.flags, ctx);
 		return new Operation(Operation.Type.STRING_MODIFY, binName, new Value.BytesValue(bytes, ParticleType.STRING));
 	}
 
@@ -590,7 +591,7 @@ public final class StringOperation {
 	 * @return			modify operation
 	 */
 	public static Operation overwrite(StringPolicy policy, String binName, int index, String value, CTX... ctx) {
-		byte[] bytes = Pack.pack(OVERWRITE, index, Value.get(value), policy.flags, ctx);
+		byte[] bytes = packStringOp(OVERWRITE, index, Value.get(value), policy.flags, ctx);
 		return new Operation(Operation.Type.STRING_MODIFY, binName, new Value.BytesValue(bytes, ParticleType.STRING));
 	}
 
@@ -612,7 +613,7 @@ public final class StringOperation {
 	public static Operation concat(StringPolicy policy, String binName, String value, CTX... ctx) {
 		List<Value> list = new ArrayList<Value>(1);
 		list.add(Value.get(value));
-		byte[] bytes = Pack.pack(CONCAT, list, policy.flags, ctx);
+		byte[] bytes = packStringOp(CONCAT, list, policy.flags, ctx);
 		return new Operation(Operation.Type.STRING_MODIFY, binName, new Value.BytesValue(bytes, ParticleType.STRING));
 	}
 
@@ -634,7 +635,7 @@ public final class StringOperation {
 	 */
 	public static Operation concat(StringPolicy policy, String binName, List<String> values, CTX... ctx) {
 		List<Value> list = toValueList(values);
-		byte[] bytes = Pack.pack(CONCAT, list, policy.flags, ctx);
+		byte[] bytes = packStringOp(CONCAT, list, policy.flags, ctx);
 		return new Operation(Operation.Type.STRING_MODIFY, binName, new Value.BytesValue(bytes, ParticleType.STRING));
 	}
 
@@ -655,7 +656,7 @@ public final class StringOperation {
 	 * @return			modify operation
 	 */
 	public static Operation snip(StringPolicy policy, String binName, int start, CTX... ctx) {
-		byte[] bytes = Pack.pack(SNIP, start, policy.flags, ctx);
+		byte[] bytes = packStringOp(SNIP, start, policy.flags, ctx);
 		return new Operation(Operation.Type.STRING_MODIFY, binName, new Value.BytesValue(bytes, ParticleType.STRING));
 	}
 
@@ -677,7 +678,7 @@ public final class StringOperation {
 	 * @return			modify operation
 	 */
 	public static Operation snip(StringPolicy policy, String binName, int start, int end, CTX... ctx) {
-		byte[] bytes = Pack.pack(SNIP, start, end, policy.flags, ctx);
+		byte[] bytes = packStringOp(SNIP, start, end, policy.flags, ctx);
 		return new Operation(Operation.Type.STRING_MODIFY, binName, new Value.BytesValue(bytes, ParticleType.STRING));
 	}
 
@@ -700,7 +701,7 @@ public final class StringOperation {
 	 */
 	public static Operation replace(StringPolicy policy, String binName, String needle, String replacement, CTX... ctx) {
 		List<Value> list = pair(needle, replacement);
-		byte[] bytes = Pack.pack(REPLACE, list, policy.flags, ctx);
+		byte[] bytes = packStringOp(REPLACE, list, policy.flags, ctx);
 		return new Operation(Operation.Type.STRING_MODIFY, binName, new Value.BytesValue(bytes, ParticleType.STRING));
 	}
 
@@ -723,7 +724,7 @@ public final class StringOperation {
 	 */
 	public static Operation replaceAll(StringPolicy policy, String binName, String needle, String replacement, CTX... ctx) {
 		List<Value> list = pair(needle, replacement);
-		byte[] bytes = Pack.pack(REPLACE_ALL, list, policy.flags, ctx);
+		byte[] bytes = packStringOp(REPLACE_ALL, list, policy.flags, ctx);
 		return new Operation(Operation.Type.STRING_MODIFY, binName, new Value.BytesValue(bytes, ParticleType.STRING));
 	}
 
@@ -741,7 +742,7 @@ public final class StringOperation {
 	 * @return			modify operation
 	 */
 	public static Operation upper(StringPolicy policy, String binName, CTX... ctx) {
-		byte[] bytes = Pack.pack(UPPER, policy.flags, ctx);
+		byte[] bytes = packStringOp(UPPER, policy.flags, ctx);
 		return new Operation(Operation.Type.STRING_MODIFY, binName, new Value.BytesValue(bytes, ParticleType.STRING));
 	}
 
@@ -759,7 +760,7 @@ public final class StringOperation {
 	 * @return			modify operation
 	 */
 	public static Operation lower(StringPolicy policy, String binName, CTX... ctx) {
-		byte[] bytes = Pack.pack(LOWER, policy.flags, ctx);
+		byte[] bytes = packStringOp(LOWER, policy.flags, ctx);
 		return new Operation(Operation.Type.STRING_MODIFY, binName, new Value.BytesValue(bytes, ParticleType.STRING));
 	}
 
@@ -778,7 +779,7 @@ public final class StringOperation {
 	 * @return			modify operation
 	 */
 	public static Operation caseFold(StringPolicy policy, String binName, CTX... ctx) {
-		byte[] bytes = Pack.pack(CASE_FOLD, policy.flags, ctx);
+		byte[] bytes = packStringOp(CASE_FOLD, policy.flags, ctx);
 		return new Operation(Operation.Type.STRING_MODIFY, binName, new Value.BytesValue(bytes, ParticleType.STRING));
 	}
 
@@ -797,7 +798,7 @@ public final class StringOperation {
 	 * @return			modify operation
 	 */
 	public static Operation normalizeNFC(StringPolicy policy, String binName, CTX... ctx) {
-		byte[] bytes = Pack.pack(NORMALIZE_NFC, policy.flags, ctx);
+		byte[] bytes = packStringOp(NORMALIZE_NFC, policy.flags, ctx);
 		return new Operation(Operation.Type.STRING_MODIFY, binName, new Value.BytesValue(bytes, ParticleType.STRING));
 	}
 
@@ -817,7 +818,7 @@ public final class StringOperation {
 	 * @return			modify operation
 	 */
 	public static Operation trimStart(StringPolicy policy, String binName, CTX... ctx) {
-		byte[] bytes = Pack.pack(TRIM_START, policy.flags, ctx);
+		byte[] bytes = packStringOp(TRIM_START, policy.flags, ctx);
 		return new Operation(Operation.Type.STRING_MODIFY, binName, new Value.BytesValue(bytes, ParticleType.STRING));
 	}
 
@@ -837,7 +838,7 @@ public final class StringOperation {
 	 * @return			modify operation
 	 */
 	public static Operation trimEnd(StringPolicy policy, String binName, CTX... ctx) {
-		byte[] bytes = Pack.pack(TRIM_END, policy.flags, ctx);
+		byte[] bytes = packStringOp(TRIM_END, policy.flags, ctx);
 		return new Operation(Operation.Type.STRING_MODIFY, binName, new Value.BytesValue(bytes, ParticleType.STRING));
 	}
 
@@ -857,7 +858,7 @@ public final class StringOperation {
 	 * @return			modify operation
 	 */
 	public static Operation trim(StringPolicy policy, String binName, CTX... ctx) {
-		byte[] bytes = Pack.pack(TRIM, policy.flags, ctx);
+		byte[] bytes = packStringOp(TRIM, policy.flags, ctx);
 		return new Operation(Operation.Type.STRING_MODIFY, binName, new Value.BytesValue(bytes, ParticleType.STRING));
 	}
 
@@ -880,7 +881,7 @@ public final class StringOperation {
 	 * @return				modify operation
 	 */
 	public static Operation padStart(StringPolicy policy, String binName, int targetLength, String padString, CTX... ctx) {
-		byte[] bytes = Pack.pack(PAD_START, targetLength, Value.get(padString), policy.flags, ctx);
+		byte[] bytes = packStringOp(PAD_START, targetLength, Value.get(padString), policy.flags, ctx);
 		return new Operation(Operation.Type.STRING_MODIFY, binName, new Value.BytesValue(bytes, ParticleType.STRING));
 	}
 
@@ -903,7 +904,7 @@ public final class StringOperation {
 	 * @return				modify operation
 	 */
 	public static Operation padEnd(StringPolicy policy, String binName, int targetLength, String padString, CTX... ctx) {
-		byte[] bytes = Pack.pack(PAD_END, targetLength, Value.get(padString), policy.flags, ctx);
+		byte[] bytes = packStringOp(PAD_END, targetLength, Value.get(padString), policy.flags, ctx);
 		return new Operation(Operation.Type.STRING_MODIFY, binName, new Value.BytesValue(bytes, ParticleType.STRING));
 	}
 
@@ -924,7 +925,7 @@ public final class StringOperation {
 	 * @return			modify operation
 	 */
 	public static Operation repeat(StringPolicy policy, String binName, int count, CTX... ctx) {
-		byte[] bytes = Pack.pack(REPEAT, count, policy.flags, ctx);
+		byte[] bytes = packStringOp(REPEAT, count, policy.flags, ctx);
 		return new Operation(Operation.Type.STRING_MODIFY, binName, new Value.BytesValue(bytes, ParticleType.STRING));
 	}
 
@@ -960,7 +961,7 @@ public final class StringOperation {
 	) {
 		List<Value> list = pair(pattern, replacement);
 		// Server's regex_replace op table accepts only [list, regexFlags]; no slot for policy flags.
-		byte[] bytes = Pack.pack(REGEX_REPLACE, list, regexFlags, ctx);
+		byte[] bytes = packStringOp(REGEX_REPLACE, list, regexFlags, ctx);
 		return new Operation(Operation.Type.STRING_MODIFY, binName, new Value.BytesValue(bytes, ParticleType.STRING));
 	}
 
@@ -1022,4 +1023,158 @@ public final class StringOperation {
 		return list;
 	}
 
+	//-----------------------------------------------------------------
+	// Flat-CTX wire packer (string-op specific).
+	//
+	// When CTX is empty: emits [SUBOP, args...] — identical to Pack.pack.
+	// When CTX is non-empty: emits the FLAT envelope
+	//     [0xFF, [ctx_id_1, ctx_value_1, ...], SUBOP, args...]
+	// where SUBOP and its args are flattened into the outer array — there
+	// is no nested array around them. This matches particle_string.c's
+	// string_state_init (line ~735), which reads the sentinel, skips the
+	// ctx flat-list with msgpack_sz_vec, then reads the inner op as a
+	// direct uint64 (no msgpack_get_list_ele_count_vec call). The CDT
+	// module (cdt.c:3671) does call list_ele_count for the inner op and
+	// therefore requires a nested layout — the shared Pack.init helper
+	// emits that nested form, which is why these string-op overloads exist
+	// as a separate path.
+	//-----------------------------------------------------------------
+
+	// Outer array header + (optionally) the [0xFF, ctx_flat_list] prologue.
+	// innerCount = number of msgpack elements the caller will emit AFTER
+	// this prologue (the SUBOP integer plus any args, at the outer level).
+	private static void writeOuterHeader(Packer p, int innerCount, CTX[] ctx) {
+		boolean hasCtx = ctx != null && ctx.length > 0;
+		int outerSize = hasCtx ? (2 + innerCount) : innerCount;
+		p.packArrayBegin(outerSize);
+		if (hasCtx) {
+			p.packInt(0xFF);
+			p.packArrayBegin(ctx.length * 2);
+			for (CTX c : ctx) {
+				p.packInt(c.id);
+				if (c.value != null) {
+					c.value.pack(p);
+				}
+				else {
+					p.packByteArray(c.exp.getBytes(), 0, c.exp.getBytes().length);
+				}
+			}
+		}
+	}
+
+	// [SUBOP]
+	private static byte[] packStringOp(int subop, CTX[] ctx) {
+		Packer p = new Packer();
+		writeOuterHeader(p, 1, ctx);
+		p.packInt(subop);
+		p.createBuffer();
+		writeOuterHeader(p, 1, ctx);
+		p.packInt(subop);
+		return p.getBuffer();
+	}
+
+	// [SUBOP, v1]
+	private static byte[] packStringOp(int subop, int v1, CTX[] ctx) {
+		Packer p = new Packer();
+		writeOuterHeader(p, 2, ctx);
+		p.packInt(subop);
+		p.packInt(v1);
+		p.createBuffer();
+		writeOuterHeader(p, 2, ctx);
+		p.packInt(subop);
+		p.packInt(v1);
+		return p.getBuffer();
+	}
+
+	// [SUBOP, v1, v2]
+	private static byte[] packStringOp(int subop, int v1, int v2, CTX[] ctx) {
+		Packer p = new Packer();
+		writeOuterHeader(p, 3, ctx);
+		p.packInt(subop);
+		p.packInt(v1);
+		p.packInt(v2);
+		p.createBuffer();
+		writeOuterHeader(p, 3, ctx);
+		p.packInt(subop);
+		p.packInt(v1);
+		p.packInt(v2);
+		return p.getBuffer();
+	}
+
+	// [SUBOP, v1, v2, v3]
+	private static byte[] packStringOp(int subop, int v1, int v2, int v3, CTX[] ctx) {
+		Packer p = new Packer();
+		writeOuterHeader(p, 4, ctx);
+		p.packInt(subop);
+		p.packInt(v1);
+		p.packInt(v2);
+		p.packInt(v3);
+		p.createBuffer();
+		writeOuterHeader(p, 4, ctx);
+		p.packInt(subop);
+		p.packInt(v1);
+		p.packInt(v2);
+		p.packInt(v3);
+		return p.getBuffer();
+	}
+
+	// [SUBOP, v1]  (Value)
+	private static byte[] packStringOp(int subop, Value v1, CTX[] ctx) {
+		Packer p = new Packer();
+		writeOuterHeader(p, 2, ctx);
+		p.packInt(subop);
+		v1.pack(p);
+		p.createBuffer();
+		writeOuterHeader(p, 2, ctx);
+		p.packInt(subop);
+		v1.pack(p);
+		return p.getBuffer();
+	}
+
+	// [SUBOP, v1, v2]  (Value, int)
+	private static byte[] packStringOp(int subop, Value v1, int v2, CTX[] ctx) {
+		Packer p = new Packer();
+		writeOuterHeader(p, 3, ctx);
+		p.packInt(subop);
+		v1.pack(p);
+		p.packInt(v2);
+		p.createBuffer();
+		writeOuterHeader(p, 3, ctx);
+		p.packInt(subop);
+		v1.pack(p);
+		p.packInt(v2);
+		return p.getBuffer();
+	}
+
+	// [SUBOP, v1, v2, v3]  (int, Value, int)
+	private static byte[] packStringOp(int subop, int v1, Value v2, int v3, CTX[] ctx) {
+		Packer p = new Packer();
+		writeOuterHeader(p, 4, ctx);
+		p.packInt(subop);
+		p.packInt(v1);
+		v2.pack(p);
+		p.packInt(v3);
+		p.createBuffer();
+		writeOuterHeader(p, 4, ctx);
+		p.packInt(subop);
+		p.packInt(v1);
+		v2.pack(p);
+		p.packInt(v3);
+		return p.getBuffer();
+	}
+
+	// [SUBOP, list, v2]  (List<Value>, int)
+	private static byte[] packStringOp(int subop, List<Value> list, int v2, CTX[] ctx) {
+		Packer p = new Packer();
+		writeOuterHeader(p, 3, ctx);
+		p.packInt(subop);
+		p.packValueList(list);
+		p.packInt(v2);
+		p.createBuffer();
+		writeOuterHeader(p, 3, ctx);
+		p.packInt(subop);
+		p.packValueList(list);
+		p.packInt(v2);
+		return p.getBuffer();
+	}
 }

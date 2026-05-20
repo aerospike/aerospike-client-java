@@ -19,22 +19,31 @@ package com.aerospike.test.sync.basic;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.junit.Assume;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Bin;
 import com.aerospike.client.Key;
 import com.aerospike.client.Operation;
 import com.aerospike.client.Record;
+import com.aerospike.client.ResultCode;
+import com.aerospike.client.Value;
+import com.aerospike.client.cdt.CTX;
 import com.aerospike.client.operation.StringOperation;
 import com.aerospike.client.operation.StringPolicy;
 import com.aerospike.client.operation.StringRegexFlags;
+import com.aerospike.client.operation.StringWriteFlags;
 import com.aerospike.test.sync.TestSync;
 
 /**
@@ -560,5 +569,192 @@ public class TestOperateString extends TestSync {
 			assertTrue("expected String element but got " + (t == null ? "null" : t.getClass()),
 				t instanceof String);
 		}
+	}
+
+	//=================================================================
+	// CTX navigation — string nested in list/map bins
+	//
+	// Exercises the §2.3.1 CTX-wrapper wire envelope: the op-data is
+	// wrapped in a 3-element context-eval array (sub-op 0xFF) when CTX
+	// is non-empty. The server dispatches these through
+	// as_bin_string_modify_ctx_tr / its read-side twin, which is a
+	// separate code path from the top-level-bin variant exercised above.
+	//=================================================================
+
+	private static void putList(List<Value> values) {
+		client.delete(null, KEY);
+		client.put(null, KEY, new Bin(BIN, values));
+	}
+
+	private static void putMap(Map<Value, Value> entries) {
+		client.delete(null, KEY);
+		client.put(null, KEY, new Bin(BIN, entries));
+	}
+
+	@Test
+	public void readOpOnStringNestedInList() {
+		// list = ["alpha", "beta", "hello world"]; strlen at index 2 = 11
+		List<Value> list = new ArrayList<Value>();
+		list.add(Value.get("alpha"));
+		list.add(Value.get("beta"));
+		list.add(Value.get("hello world"));
+		putList(list);
+
+		Record r = operate(StringOperation.strlen(BIN, CTX.listIndex(2)));
+		assertEquals(11L, r.getLong(BIN));
+	}
+
+	@Test
+	public void readBooleanOpOnStringNestedInMap() {
+		// map = {"a": "Hello", "b": "World"}; startsWith("World","Wor") = true
+		Map<Value, Value> map = new HashMap<Value, Value>();
+		map.put(Value.get("a"), Value.get("Hello"));
+		map.put(Value.get("b"), Value.get("World"));
+		putMap(map);
+
+		Record r = operate(StringOperation.startsWith(BIN, "Wor", CTX.mapKey(Value.get("b"))));
+		assertTrue(r.getBoolean(BIN));
+	}
+
+	@Test
+	public void modifyOpOnStringNestedInList() {
+		// list = ["alpha", "beta", "gamma"]; upper at index 1 -> "BETA"
+		List<Value> list = new ArrayList<Value>();
+		list.add(Value.get("alpha"));
+		list.add(Value.get("beta"));
+		list.add(Value.get("gamma"));
+		putList(list);
+
+		operate(StringOperation.upper(POLICY, BIN, CTX.listIndex(1)));
+
+		List<?> after = client.get(null, KEY).getList(BIN);
+		assertEquals(Arrays.asList("alpha", "BETA", "gamma"), after);
+	}
+
+	@Test
+	public void modifyOpOnStringNestedInMap() {
+		// map = {"a": "hello world", "b": "foo"}; replace at key "a"
+		Map<Value, Value> map = new HashMap<Value, Value>();
+		map.put(Value.get("a"), Value.get("hello world"));
+		map.put(Value.get("b"), Value.get("foo"));
+		putMap(map);
+
+		operate(StringOperation.replace(POLICY, BIN, "world", "earth",
+			CTX.mapKey(Value.get("a"))));
+
+		Map<?, ?> after = client.get(null, KEY).getMap(BIN);
+		assertEquals("hello earth", after.get("a"));
+		assertEquals("foo", after.get("b"));
+	}
+
+	@Test
+	public void modifyOpOnStringDeeplyNestedListInMap() {
+		// map = {"items": ["one", "two", "three"]}; upper at items[1] -> "TWO"
+		List<Value> inner = new ArrayList<Value>();
+		inner.add(Value.get("one"));
+		inner.add(Value.get("two"));
+		inner.add(Value.get("three"));
+
+		Map<Value, Value> map = new HashMap<Value, Value>();
+		map.put(Value.get("items"), Value.get(inner));
+		putMap(map);
+
+		operate(StringOperation.upper(POLICY, BIN,
+			CTX.mapKey(Value.get("items")), CTX.listIndex(1)));
+
+		Map<?, ?> after = client.get(null, KEY).getMap(BIN);
+		List<?> items = (List<?>)after.get("items");
+		assertEquals(Arrays.asList("one", "TWO", "three"), items);
+	}
+
+	//=================================================================
+	// toString op — op-type 19, no payload, no sub-op id, no CTX
+	//
+	// Spec §2.6 and §4.1: covers integer/float/string/blob -> string
+	// conversions, plus the INCOMPATIBLE_TYPE error path for list/map
+	// bins that the wire format cannot represent.
+	//=================================================================
+
+	@Test
+	public void toStringConvertsIntegerBinToString() {
+		client.delete(null, KEY);
+		client.put(null, KEY, new Bin(BIN, 42));
+		Record r = operate(StringOperation.toString(BIN));
+		assertEquals("42", r.getString(BIN));
+	}
+
+	@Test
+	public void toStringConvertsDoubleBinToString() {
+		client.delete(null, KEY);
+		client.put(null, KEY, new Bin(BIN, 3.14));
+		Record r = operate(StringOperation.toString(BIN));
+		// Float-to-string formatting is server-side; assert it parses back.
+		assertEquals(3.14, Double.parseDouble(r.getString(BIN)), 0.0001);
+	}
+
+	@Test
+	public void toStringOnStringBinIsIdentity() {
+		put("hello");
+		Record r = operate(StringOperation.toString(BIN));
+		assertEquals("hello", r.getString(BIN));
+	}
+
+	@Test
+	public void toStringConvertsBlobBinToString() {
+		client.delete(null, KEY);
+		client.put(null, KEY, new Bin(BIN, new byte[] {'h', 'i'}));
+		Record r = operate(StringOperation.toString(BIN));
+		// Server's blob-to-string representation is well-defined for ASCII bytes.
+		assertEquals("hi", r.getString(BIN));
+	}
+
+	@Test
+	public void toStringOnListBinReturnsIncompatibleType() {
+		List<Value> list = new ArrayList<Value>();
+		list.add(Value.get("a"));
+		list.add(Value.get("b"));
+		putList(list);
+
+		AerospikeException ae = assertThrows(AerospikeException.class,
+			() -> operate(StringOperation.toString(BIN)));
+		assertEquals(ResultCode.BIN_TYPE_ERROR, ae.getResultCode());
+	}
+
+	//=================================================================
+	// NO_FAIL flag — missing-bin path
+	//
+	// particle_string.c:926: when the target bin does not exist, the
+	// server returns AS_OK with no bin written if NO_FAIL is set; without
+	// it, the server returns AS_ERR_BIN_NOT_FOUND. This is the actual
+	// scope of NO_FAIL on STRING_MODIFY — the server does NOT honor it
+	// for wrong-type bins (incompatible-type is hard-errored at line 872
+	// regardless of the flag).
+	//=================================================================
+
+	@Test
+	public void modifyOnMissingBinWithNoFailIsNoOp() {
+		// Record exists but the target bin does not — exercises the bin-level
+		// NO_FAIL path at particle_string.c:926 (not the record-level
+		// KEY_NOT_FOUND path that fires when the whole record is absent).
+		client.delete(null, KEY);
+		client.put(null, KEY, new Bin("other", "untouched"));
+
+		StringPolicy noFail = new StringPolicy(StringWriteFlags.NO_FAIL);
+		operate(StringOperation.upper(noFail, BIN));
+
+		// BIN must not have been created; the existing bin must be intact.
+		Record r = client.get(null, KEY);
+		assertEquals(null, r.getValue(BIN));
+		assertEquals("untouched", r.getString("other"));
+	}
+
+	@Test
+	public void modifyOnMissingBinWithoutNoFailRaises() {
+		client.delete(null, KEY);
+		client.put(null, KEY, new Bin("other", "untouched"));
+
+		AerospikeException ae = assertThrows(AerospikeException.class,
+			() -> operate(StringOperation.upper(POLICY, BIN)));
+		assertEquals(ResultCode.BIN_NOT_FOUND, ae.getResultCode());
 	}
 }

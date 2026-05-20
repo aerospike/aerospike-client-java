@@ -52,6 +52,7 @@ import com.aerospike.test.sync.basic.TestPutGet;
 import com.aerospike.test.sync.basic.TestReplace;
 import com.aerospike.test.sync.basic.TestScan;
 import com.aerospike.test.sync.basic.TestServerInfo;
+import com.aerospike.test.sync.basic.TestStringExp;
 import com.aerospike.test.sync.basic.TestStringMasking;
 import com.aerospike.test.sync.basic.TestTouch;
 import com.aerospike.test.sync.basic.TestTxn;
@@ -103,6 +104,7 @@ import com.aerospike.test.util.Args;
 	TestReplace.class,
 	TestScan.class,
 	TestServerInfo.class,
+	TestStringExp.class,
 	TestStringMasking.class,
 	TestTouch.class,
 	TestTxn.class,
