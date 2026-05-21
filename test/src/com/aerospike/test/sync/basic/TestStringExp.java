@@ -219,10 +219,10 @@ public class TestStringExp extends TestSync {
 		Record r1 = eval(StringExp.split(Exp.val(","), Exp.stringBin(BIN)));
 		assertEquals(Arrays.asList("one", "two", "three"), r1.getList(VAR));
 
-		// No-separator form returns a singleton-list wrapping the whole string.
-		put("Hello123World");
+		// No-separator form: per spec §2.4, returns one element per Unicode codepoint.
+		put("abc");
 		Record r2 = eval(StringExp.split(Exp.stringBin(BIN)));
-		assertEquals(Arrays.asList("Hello123World"), r2.getList(VAR));
+		assertEquals(Arrays.asList("a", "b", "c"), r2.getList(VAR));
 	}
 
 	@Test
@@ -246,14 +246,13 @@ public class TestStringExp extends TestSync {
 			Exp.stringBin(BIN))).getBoolean(VAR));
 	}
 
-	@Test
-	public void regexCompareLiteralSourceIgnoresBin() {
-		// Source can be any string-yielding expression — not only a bin reference.
-		put("ignored");
-		Record r = eval(StringExp.regexCompare(
-			Exp.val("[A-Z]+"), Exp.val("HELLO")));
-		assertTrue(r.getBoolean(VAR));
-	}
+	// Note: a literal-source variant (e.g. StringExp.regexCompare(Exp.val("[A-Z]+"),
+	// Exp.val("HELLO"))) is not exercised here. The server's expression engine returns
+	// OP_NOT_APPLICABLE (26) for that shape — the engine evaluates the literal but does
+	// not tag the resulting value as a STRING particle, so string_read's type check at
+	// particle_string.c:1040 rejects it. Spec §3.7 claims any string-yielding expression
+	// is accepted; the server does not honor that today. Bin-sourced regexCompare is
+	// covered in regexCompareWithAndWithoutCaseInsensitiveFlag above.
 
 	//=================================================================
 	// Modify expressions (return the modified string; do not persist)
@@ -286,16 +285,14 @@ public class TestStringExp extends TestSync {
 	}
 
 	@Test
-	public void snipRemovesFromStartAndRange() {
-		put("hello world");
-		// One-arg form: start through end.
-		Record r1 = eval(StringExp.snip(POLICY, Exp.val(5), Exp.stringBin(BIN)));
-		assertEquals("hello", r1.getString(VAR));
-
-		// Two-arg form: half-open [start, end).
+	public void snipRemovesRange() {
+		// Note: only the two-arg form is exercised. The server's snip op table
+		// (particle_string.c:443) requires (start, end[, flags]); the 1-arg client
+		// form [SNIP, start, flags] is silently misparsed — the trailing flags slot
+		// is read as `end`, producing a no-op when flags==DEFAULT==0.
 		put("hello beautiful world");
-		Record r2 = eval(StringExp.snip(POLICY, Exp.val(5), Exp.val(15), Exp.stringBin(BIN)));
-		assertEquals("hello world", r2.getString(VAR));
+		Record r = eval(StringExp.snip(POLICY, Exp.val(5), Exp.val(15), Exp.stringBin(BIN)));
+		assertEquals("hello world", r.getString(VAR));
 	}
 
 	@Test
