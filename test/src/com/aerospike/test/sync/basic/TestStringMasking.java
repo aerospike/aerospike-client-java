@@ -86,7 +86,7 @@ public class TestStringMasking extends TestSync {
 	@BeforeClass
 	public static void setupUsersAndRule() {
 		Assume.assumeTrue("Skipping: server version < 8.1.3 (string ops + masking)",
-			args.serverVersion.isGreaterOrEqual(8, 1, 2, 0));
+			args.serverVersion.isGreaterOrEqual(8, 1, 3, 0));
 		Assume.assumeTrue("Skipping: admin credentials not provided",
 			args.user != null && !args.user.isEmpty()
 				&& args.password != null && !args.password.isEmpty());
