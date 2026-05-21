@@ -241,7 +241,7 @@ public final class StringExp {
 	 */
 	public static Exp contains(Exp needle, Exp src) {
 		byte[] bytes = Pack.pack(CONTAINS, needle);
-		return addRead(src, bytes, Exp.Type.INT);
+		return addRead(src, bytes, Exp.Type.BOOL);
 	}
 
 	/**
@@ -258,7 +258,7 @@ public final class StringExp {
 	 */
 	public static Exp startsWith(Exp prefix, Exp src) {
 		byte[] bytes = Pack.pack(STARTS_WITH, prefix);
-		return addRead(src, bytes, Exp.Type.INT);
+		return addRead(src, bytes, Exp.Type.BOOL);
 	}
 
 	/**
@@ -275,7 +275,7 @@ public final class StringExp {
 	 */
 	public static Exp endsWith(Exp suffix, Exp src) {
 		byte[] bytes = Pack.pack(ENDS_WITH, suffix);
-		return addRead(src, bytes, Exp.Type.INT);
+		return addRead(src, bytes, Exp.Type.BOOL);
 	}
 
 	/**
@@ -343,7 +343,7 @@ public final class StringExp {
 	 */
 	public static Exp isNumeric(Exp src) {
 		byte[] bytes = Pack.pack(IS_NUMERIC);
-		return addRead(src, bytes, Exp.Type.INT);
+		return addRead(src, bytes, Exp.Type.BOOL);
 	}
 
 	/**
@@ -362,7 +362,7 @@ public final class StringExp {
 	 */
 	public static Exp isNumeric(int numericType, Exp src) {
 		byte[] bytes = Pack.pack(IS_NUMERIC, numericType);
-		return addRead(src, bytes, Exp.Type.INT);
+		return addRead(src, bytes, Exp.Type.BOOL);
 	}
 
 	/**
@@ -378,7 +378,7 @@ public final class StringExp {
 	 */
 	public static Exp isUpper(Exp src) {
 		byte[] bytes = Pack.pack(IS_UPPER);
-		return addRead(src, bytes, Exp.Type.INT);
+		return addRead(src, bytes, Exp.Type.BOOL);
 	}
 
 	/**
@@ -394,7 +394,7 @@ public final class StringExp {
 	 */
 	public static Exp isLower(Exp src) {
 		byte[] bytes = Pack.pack(IS_LOWER);
-		return addRead(src, bytes, Exp.Type.INT);
+		return addRead(src, bytes, Exp.Type.BOOL);
 	}
 
 	/**
@@ -481,7 +481,7 @@ public final class StringExp {
 	 */
 	public static Exp regexCompare(Exp pattern, Exp src) {
 		byte[] bytes = Pack.pack(REGEX_COMPARE, pattern);
-		return addRead(src, bytes, Exp.Type.INT);
+		return addRead(src, bytes, Exp.Type.BOOL);
 	}
 
 	/**
@@ -502,7 +502,7 @@ public final class StringExp {
 	 */
 	public static Exp regexCompare(Exp pattern, int regexFlags, Exp src) {
 		byte[] bytes = Pack.pack(REGEX_COMPARE, pattern, regexFlags);
-		return addRead(src, bytes, Exp.Type.INT);
+		return addRead(src, bytes, Exp.Type.BOOL);
 	}
 
 	//-----------------------------------------------------------------
@@ -901,7 +901,7 @@ public final class StringExp {
 	 * @return		string-typed expression yielding the string representation
 	 */
 	public static Exp toString(Exp src) {
-		byte[] bytes = emptyArray();
+		byte[] bytes = reprPayload();
 		return new Exp.Module(src, bytes, Exp.Type.STRING.code, MODULE_REPR);
 	}
 
@@ -917,15 +917,25 @@ public final class StringExp {
 		return new Exp.Module(src, bytes, Exp.Type.STRING.code, MODULE | Exp.MODIFY);
 	}
 
-	// [cmd, [needle, repl], flags] — needle/replacement nested inside a 2-element list.
-	// Specialized packing method. Leaving in StringExp instead of moving to Pack since the 
-	// structure is specific to string replace operations and doesn't fit the usual pattern
-	// of a command followed by a flat list of arguments.
+	// QUOTED opcode (mirrors Exp.QUOTED = 126; the constant is private in Exp.java).
+	// Used to mark an inner msgpack list as a literal — without it, the server's
+	// expression compiler at exp.c:3289 treats any bare nested list inside a CALL
+	// payload as a sub-expression and recursively compiles its first element as an
+	// opcode, which fails with PARAMETER_ERROR for our string-pair lists.
+	private static final int QUOTED = 126;
+
+	// [cmd, [QUOTED, [needle, repl]], flags] — needle/replacement nested inside a
+	// QUOTED-wrapped 2-element list so the expression compiler treats it as a literal
+	// rather than a sub-expression. The direct-op path packs the same logical shape
+	// (without QUOTED) because it bypasses the expression engine — see
+	// StringOperation.packStringOp(int, List<Value>, int, CTX[]).
 	private static byte[] packReplace(int command, Exp needle, Exp replacement, int flags) {
 		Packer packer = new Packer();
 		for (int i = 0; i < 2; i++) {
 			packer.packArrayBegin(3);
 			packer.packInt(command);
+			packer.packArrayBegin(2);
+			packer.packInt(QUOTED);
 			packer.packArrayBegin(2);
 			needle.pack(packer);
 			replacement.pack(packer);
@@ -935,17 +945,18 @@ public final class StringExp {
 		return packer.getBuffer();
 	}
 
-	// [REGEX_REPLACE, [pattern, repl], regexFlags] — 3 elements.
-	// Server's regex_replace op table accepts only [list, regexFlags]; no slot for
-	// policy flags (max_args=2 in particle_string.c:476). Specialized packing method
-	// kept in StringExp instead of moving to Pack since the structure is specific to
-	// string replace operations and doesn't fit the usual pattern of a command
-	// followed by a flat list of arguments.
+	// [REGEX_REPLACE, [QUOTED, [pattern, repl]], regexFlags] — same QUOTED wrapping as
+	// packReplace; without it the expression compiler tries to interpret the
+	// (pattern, replacement) pair as a function call. Note: the server's regex_replace
+	// op table is declared with max_args=2 (particle_string.c:476), so there is no
+	// trailing policy-flags slot — only the regexFlags integer.
 	private static byte[] packRegexReplace(Exp pattern, Exp replacement, int regexFlags) {
 		Packer packer = new Packer();
 		for (int i = 0; i < 2; i++) {
 			packer.packArrayBegin(3);
 			packer.packInt(REGEX_REPLACE);
+			packer.packArrayBegin(2);
+			packer.packInt(QUOTED);
 			packer.packArrayBegin(2);
 			pattern.pack(packer);
 			replacement.pack(packer);
@@ -955,10 +966,17 @@ public final class StringExp {
 		return packer.getBuffer();
 	}
 
-	private static byte[] emptyArray() {
+	// Single-zero payload [0] for CALL_REPR (StringExp.toString). The server's
+	// parse_op_call at exp.c:3244 rejects an empty list (ele_count == 0), so the
+	// payload must contain at least one element. The CALL_REPR dispatcher at
+	// exp.c:5019 ignores the sub-op id and goes straight to as_bin_to_string, so
+	// the value carried here is unused. The spec previously documented this as `[]`;
+	// the server is the source of truth — see §2.7 in the cross-client spec.
+	private static byte[] reprPayload() {
 		Packer packer = new Packer();
 		for (int i = 0; i < 2; i++) {
-			packer.packArrayBegin(0);
+			packer.packArrayBegin(1);
+			packer.packInt(0);
 			if (i == 0) packer.createBuffer();
 		}
 		return packer.getBuffer();
