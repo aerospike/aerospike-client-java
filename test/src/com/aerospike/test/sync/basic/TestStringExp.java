@@ -75,7 +75,7 @@ public class TestStringExp extends TestSync {
 	public static void serverVersionCheck() {
 		Assume.assumeTrue(
 			"Skipping: string expressions require server version 8.1.3 or later",
-			args.serverVersion.isGreaterOrEqual(8, 1, 2, 0));
+			args.serverVersion.isGreaterOrEqual(8, 1, 3, 0));
 	}
 
 	//-----------------------------------------------------------------

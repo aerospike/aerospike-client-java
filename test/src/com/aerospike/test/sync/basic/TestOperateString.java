@@ -65,7 +65,7 @@ public class TestOperateString extends TestSync {
 	public static void serverVersionCheck() {
 		Assume.assumeTrue(
 			"Skipping: string operations require server version 8.1.3 or later",
-			args.serverVersion.isGreaterOrEqual(8, 1, 2, 0));
+			args.serverVersion.isGreaterOrEqual(8, 1, 3, 0));
 	}
 
 	//-----------------------------------------------------------------
