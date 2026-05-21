@@ -318,6 +318,16 @@ public final class Pack {
 		return packer.toByteArray();
 	}
 
+	public static byte[] pack(int command, Exp v1, int v2, CTX... ctx) {
+		Packer packer = new Packer();
+		init(packer, ctx);
+		packer.packArrayBegin(3);
+		packer.packInt(command);
+		v1.pack(packer);
+		packer.packInt(v2);
+		return packer.toByteArray();
+	}
+
 	public static byte[] pack(int command, Exp v1, int v2, int v3, CTX... ctx) {
 		Packer packer = new Packer();
 		init(packer, ctx);
