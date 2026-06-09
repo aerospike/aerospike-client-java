@@ -115,6 +115,96 @@ public class TestOperateString extends TestSync {
 		assertEquals(5L, r.getLong(BIN));
 	}
 
+	//-----------------------------------------------------------------
+	// Multi-byte / codepoint-vs-byte tests
+	//
+	// Server-side indices and strlen are in Unicode code points, not bytes
+	// and not Java UTF-16 chars. These tests anchor the contract for Java
+	// callers whose String.length() intuition is UTF-16 code-unit count.
+	//-----------------------------------------------------------------
+
+	@Test
+	public void strlenCountsCodepointsNotJavaChars() {
+		// "café" = 4 codepoints; UTF-8 = 5 bytes; Java .length() = 4.
+		put("café");
+		assertEquals(4L, operate(StringOperation.strlen(BIN)).getLong(BIN));
+
+		// "日本語" = 3 codepoints; UTF-8 = 9 bytes; Java .length() = 3.
+		put("日本語");
+		assertEquals(3L, operate(StringOperation.strlen(BIN)).getLong(BIN));
+
+		// "👋hi" — emoji is U+1F44B, a supplementary codepoint encoded as
+		// a UTF-16 surrogate pair in Java. Codepoints = 3; Java .length() = 4.
+		put("👋hi");
+		assertEquals(3L, operate(StringOperation.strlen(BIN)).getLong(BIN));
+	}
+
+	@Test
+	public void byteLengthCountsBytesNotCodepoints() {
+		put("café");
+		assertEquals(5L, operate(StringOperation.byteLength(BIN)).getLong(BIN));
+		put("日本語");
+		assertEquals(9L, operate(StringOperation.byteLength(BIN)).getLong(BIN));
+		put("👋hi");
+		// 👋 = 4 UTF-8 bytes, "hi" = 2 bytes.
+		assertEquals(6L, operate(StringOperation.byteLength(BIN)).getLong(BIN));
+	}
+
+	@Test
+	public void substrIndexesCodepointsNotBytes() {
+		// "日本語hi" — substr(start=3, end=5) returns codepoints 3..4 = "hi".
+		// A byte-indexed substr would land mid-way through "日" (each CJK char
+		// occupies 3 UTF-8 bytes).
+		put("日本語hi");
+		Record r = operate(StringOperation.substr(BIN, 3, 5));
+		assertEquals("hi", r.getString(BIN));
+	}
+
+	@Test
+	public void charAtReturnsWholeCodepoint() {
+		// charAt at the emoji position should return the full 4-byte codepoint,
+		// not a half-surrogate.
+		put("a👋b");
+		Record r = operate(StringOperation.charAt(BIN, 1));
+		assertEquals("👋", r.getString(BIN));
+	}
+
+	@Test
+	public void findReturnsCodepointIndex() {
+		// "café-world": "world" starts at codepoint 5 (UTF-16 .indexOf would
+		// also return 5 here because "é" is a single Java char, but the contract
+		// is codepoint-indexed).
+		put("café-world");
+		assertEquals(5L, operate(StringOperation.find(BIN, "world")).getLong(BIN));
+
+		// "👋-world": "world" starts at codepoint index 2 (after emoji and dash).
+		// Java's .indexOf would return 3 (UTF-16 code-unit index), so this
+		// test catches a regression that returned UTF-16 indices.
+		put("👋-world");
+		assertEquals(2L, operate(StringOperation.find(BIN, "world")).getLong(BIN));
+	}
+
+	@Test
+	public void findAndContainsRequireMatchingNormalizationForm() {
+		// "café" can be stored as NFC (U+00E9, 1 codepoint, 2 UTF-8 bytes) or NFD
+		// (U+0065 U+0301, 2 codepoints, 3 UTF-8 bytes). They render identically but
+		// are distinct byte sequences. The server's find / contains uses ICU binary
+		// string search — NFC and NFD are NOT considered equal. Callers who need
+		// normalization-insensitive search must normalizeNFC the bin (and the needle)
+		// first. This test anchors the contract so a future change to ICU comparison
+		// mode does not silently flip the behavior.
+		final String NFC = "caf\u00E9";       // "café" composed
+		final String NFD = "cafe\u0301";      // "café" decomposed
+
+		put(NFC);
+		// NFC haystack vs NFC needle — match.
+		assertEquals(0L, operate(StringOperation.find(BIN, NFC)).getLong(BIN));
+		assertTrue(operate(StringOperation.contains(BIN, NFC)).getBoolean(BIN));
+		// NFC haystack vs NFD needle — no match (byte sequences differ).
+		assertEquals(-1L, operate(StringOperation.find(BIN, NFD)).getLong(BIN));
+		assertFalse(operate(StringOperation.contains(BIN, NFD)).getBoolean(BIN));
+	}
+
 	@Test
 	public void substrFromOffsetToEnd() {
 		put("hello world");
@@ -291,6 +381,19 @@ public class TestOperateString extends TestSync {
 		put("hello");
 		operate(StringOperation.normalizeNFC(POLICY, BIN));
 		assertEquals("hello", stringValue());
+	}
+
+	@Test
+	public void normalizeNFCComposesDecomposedSequence() {
+		// "e\u0301" is the NFD ("decomposed") form of "é": Latin small "e"
+		// followed by combining acute accent. normalizeNFC must compose it to
+		// U+00E9 (NFC, single codepoint) — proving the op actually transforms
+		// non-normalized input, not just the no-op case.
+		put("e\u0301");
+		operate(StringOperation.normalizeNFC(POLICY, BIN));
+		assertEquals("\u00E9", stringValue());
+		// Composed form is 1 codepoint; the decomposed input would be 2.
+		assertEquals(1L, operate(StringOperation.strlen(BIN)).getLong(BIN));
 	}
 
 	@Test
@@ -709,6 +812,22 @@ public class TestOperateString extends TestSync {
 	}
 
 	@Test
+	public void toStringOnBlobWithInvalidUtf8RaisesOpNotApplicable() {
+		// {0xED, 0xA0, 0x80} is the UTF-8 encoding of U+D800 (ill-formed
+		// surrogate). The server's blob→string conversion validates the bytes
+		// via cf_str_is_valid_utf8 and rejects non-well-formed input with
+		// OP_NOT_APPLICABLE (mirrors the server's ToStringTest.Blob_InvalidUtf8
+		// unit test). Companion to TestStringInvalidUtf8 which exercises the
+		// same fixture on the read/modify ops via a STRING-typed bin.
+		client.delete(null, KEY);
+		client.put(null, KEY, new Bin(BIN,
+			new byte[] {(byte)0xED, (byte)0xA0, (byte)0x80}));
+		AerospikeException ae = assertThrows(AerospikeException.class,
+			() -> operate(StringOperation.toString(BIN)));
+		assertEquals(ResultCode.OP_NOT_APPLICABLE, ae.getResultCode());
+	}
+
+	@Test
 	public void toStringOnListBinReturnsIncompatibleType() {
 		List<Value> list = new ArrayList<Value>();
 		list.add(Value.get("a"));
@@ -756,5 +875,62 @@ public class TestOperateString extends TestSync {
 		AerospikeException ae = assertThrows(AerospikeException.class,
 			() -> operate(StringOperation.upper(POLICY, BIN)));
 		assertEquals(ResultCode.BIN_NOT_FOUND, ae.getResultCode());
+	}
+
+	//=================================================================
+	// Prepare / parameter errors
+	//
+	// These exercise the server's prepare-phase validation
+	// (particle_string.c: find occurrence != 0, empty/negative pad
+	// arguments, repeat count >= 0, regex_replace pattern compile).
+	// All should surface as PARAMETER_ERROR; an invalid regex surfaces
+	// as OP_NOT_APPLICABLE per the server's ICU integration.
+	//=================================================================
+
+	private static void assertParamError(Operation op) {
+		AerospikeException ae = assertThrows(AerospikeException.class,
+			() -> operate(op));
+		assertEquals(ResultCode.PARAMETER_ERROR, ae.getResultCode());
+	}
+
+	@Test
+	public void findWithZeroOccurrenceRaisesParameter() {
+		put("hello");
+		// 0 is reserved as "no occurrence"; the server's find prepare rejects it.
+		assertParamError(StringOperation.find(BIN, "x", 0));
+	}
+
+	@Test
+	public void padStartWithEmptyPadStringRaisesParameter() {
+		put("hello");
+		assertParamError(StringOperation.padStart(POLICY, BIN, 10, ""));
+	}
+
+	@Test
+	public void padEndWithEmptyPadStringRaisesParameter() {
+		put("hello");
+		assertParamError(StringOperation.padEnd(POLICY, BIN, 10, ""));
+	}
+
+	@Test
+	public void padStartWithNegativeTargetRaisesParameter() {
+		put("hello");
+		assertParamError(StringOperation.padStart(POLICY, BIN, -1, "*"));
+	}
+
+	@Test
+	public void repeatWithNegativeCountRaisesParameter() {
+		put("hello");
+		assertParamError(StringOperation.repeat(POLICY, BIN, -1));
+	}
+
+	@Test
+	public void regexReplaceWithInvalidPatternRaisesParameterError() {
+		put("hello");
+		// Unclosed character class — PCRE2 compile fails inside the op.
+		// Server returns PARAMETER_ERROR (the server doc table lists this row as
+		// "OP_NOT_APPLICABLE / error"; observed behavior on 8.1.3 is PARAMETER).
+		assertParamError(StringOperation.regexReplace(
+			POLICY, BIN, "[unclosed", "NUM", StringRegexFlags.DEFAULT));
 	}
 }

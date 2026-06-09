@@ -156,22 +156,24 @@ public final class StringOperation {
 	}
 
 	/**
-	 * Create string {@code substr} operation that reads {@code length} codepoints
-	 * starting at {@code start}. Negative indexes count from the end of the string.
+	 * Create string {@code substr} operation that returns the codepoints of the bin
+	 * from {@code start} (inclusive) to {@code end} (exclusive). Negative indexes
+	 * count from the end of the string. If, after negative-index normalization,
+	 * {@code start >= end}, the result is the empty string.
 	 *
 	 * <pre>{@code
-	 * // "hello world" -> "hello"
+	 * // "hello world" [0, 5) -> "hello"
 	 * Record r = client.operate(null, key, StringOperation.substr("text", 0, 5));
 	 * }</pre>
 	 *
 	 * @param binName	name of the string bin
-	 * @param start		starting codepoint index (negative counts from end)
-	 * @param length	number of codepoints to read (clamped to remaining length)
+	 * @param start		starting codepoint index, inclusive (negative counts from end)
+	 * @param end		end codepoint index, exclusive (negative counts from end)
 	 * @param ctx		optional path into a string nested inside a list or map
 	 * @return			read operation returning the substring
 	 */
-	public static Operation substr(String binName, int start, int length, CTX... ctx) {
-		byte[] bytes = packStringOp(SUBSTR, start, length, ctx);
+	public static Operation substr(String binName, int start, int end, CTX... ctx) {
+		byte[] bytes = packStringOp(SUBSTR, start, end, ctx);
 		return new Operation(Operation.Type.STRING_READ, binName, new Value.BytesValue(bytes, ParticleType.STRING));
 	}
 
