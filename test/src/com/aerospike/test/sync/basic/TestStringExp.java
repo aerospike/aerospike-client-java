@@ -114,7 +114,7 @@ public class TestStringExp extends TestSync {
 		// Single-arg form: offset to end.
 		Record r1 = eval(StringExp.substr(Exp.val(6), Exp.stringBin(BIN)));
 		assertEquals("world", r1.getString(VAR));
-		// Two-arg form: [start, length).
+		// Two-arg form: [start, end) — end is exclusive.
 		Record r2 = eval(StringExp.substr(Exp.val(0), Exp.val(5), Exp.stringBin(BIN)));
 		assertEquals("hello", r2.getString(VAR));
 	}
@@ -179,6 +179,31 @@ public class TestStringExp extends TestSync {
 		put("hello");
 		Record r = eval(StringExp.byteLength(Exp.stringBin(BIN)));
 		assertEquals(5L, r.getLong(VAR));
+	}
+
+	//-----------------------------------------------------------------
+	// Codepoint-vs-byte anchors (mirror of TestOperateString)
+	//-----------------------------------------------------------------
+
+	@Test
+	public void strlenCountsCodepointsAndByteLengthCountsBytes() {
+		// "café" = 4 codepoints, 5 UTF-8 bytes; "日本語" = 3 codepoints, 9 bytes.
+		put("café");
+		assertEquals(4L, eval(StringExp.strlen(Exp.stringBin(BIN))).getLong(VAR));
+		assertEquals(5L, eval(StringExp.byteLength(Exp.stringBin(BIN))).getLong(VAR));
+
+		put("日本語");
+		assertEquals(3L, eval(StringExp.strlen(Exp.stringBin(BIN))).getLong(VAR));
+		assertEquals(9L, eval(StringExp.byteLength(Exp.stringBin(BIN))).getLong(VAR));
+	}
+
+	@Test
+	public void charAtReturnsWholeSupplementaryCodepoint() {
+		// 👋 is U+1F44B (4 UTF-8 bytes, a surrogate pair in Java UTF-16).
+		// charAt must return the whole codepoint, not a half-surrogate.
+		put("a👋b");
+		Record r = eval(StringExp.charAt(Exp.val(1), Exp.stringBin(BIN)));
+		assertEquals("👋", r.getString(VAR));
 	}
 
 	@Test

@@ -151,21 +151,23 @@ public final class StringExp {
 	}
 
 	/**
-	 * Create expression that returns {@code length} codepoints of {@code src} starting
-	 * at codepoint {@code start}. Negative indexes count from the end.
+	 * Create expression that returns the codepoints of {@code src} from {@code start}
+	 * (inclusive) to {@code end} (exclusive). Negative indexes count from the end.
+	 * If, after negative-index normalization, {@code start >= end}, the result is the
+	 * empty string.
 	 *
 	 * <pre>{@code
-	 * // "hello world" from 0, length 5 -> "hello"
+	 * // "hello world" [0, 5) -> "hello"
 	 * Exp head = StringExp.substr(Exp.val(0), Exp.val(5), Exp.stringBin("text"));
 	 * }</pre>
 	 *
-	 * @param start		starting codepoint index (negative counts from end)
-	 * @param length	number of codepoints to read (clamped to remaining length)
-	 * @param src		source string expression
-	 * @return			string-typed expression yielding the substring
+	 * @param start	starting codepoint index, inclusive (negative counts from end)
+	 * @param end	end codepoint index, exclusive (negative counts from end)
+	 * @param src	source string expression
+	 * @return		string-typed expression yielding the substring
 	 */
-	public static Exp substr(Exp start, Exp length, Exp src) {
-		byte[] bytes = Pack.pack(SUBSTR, start, length);
+	public static Exp substr(Exp start, Exp end, Exp src) {
+		byte[] bytes = Pack.pack(SUBSTR, start, end);
 		return addRead(src, bytes, Exp.Type.STRING);
 	}
 
