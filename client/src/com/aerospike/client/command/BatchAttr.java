@@ -206,7 +206,7 @@ public final class BatchAttr {
 		txnAttr = 0;
 		expiration = wp.expiration;
 		hasWrite = true;
-		sendKey = (sendKey || wp.sendKey);
+		this.sendKey = (sendKey || wp.sendKey);
 
 		switch (wp.generationPolicy) {
 		default:
@@ -285,7 +285,7 @@ public final class BatchAttr {
 		expiration = up.expiration;
 		generation = 0;
 		hasWrite = true;
-		sendKey = (sendKey || up.sendKey);
+		this.sendKey = (sendKey || up.sendKey);
 
 		if (durableDelete) {
 			writeAttr |= Command.INFO2_DURABLE_DELETE;
@@ -312,7 +312,7 @@ public final class BatchAttr {
 		txnAttr = 0;
 		expiration = 0;
 		hasWrite = true;
-		sendKey = (sendKey || dp.sendKey);
+		this.sendKey = (sendKey || dp.sendKey);
 
 		switch (dp.generationPolicy) {
 		default:
