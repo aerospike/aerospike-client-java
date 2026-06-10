@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2025 Aerospike, Inc.
+ * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -56,7 +56,7 @@ public final class BatchAttr {
 		}
 	}
 
-	public BatchAttr(BatchPolicy rp, BatchWritePolicy wp, Operation[] ops) {
+	public BatchAttr(BatchPolicy bp, BatchWritePolicy wp, Operation[] ops) {
 		boolean readAllBins = false;
 		boolean readHeader = false;
 		boolean hasRead = false;
@@ -81,7 +81,7 @@ public final class BatchAttr {
 		}
 
 		if (hasWriteOp) {
-			setWrite(wp);
+		    setWrite(bp, wp);
 
 			if (hasRead) {
 				readAttr |= Command.INFO1_READ;
@@ -97,7 +97,7 @@ public final class BatchAttr {
 			}
 		}
 		else {
-			setRead(rp);
+		    setRead(bp);
 
 			if (readAllBins) {
 				readAttr |= Command.INFO1_GET_ALL;
@@ -194,7 +194,11 @@ public final class BatchAttr {
 		}
 	}
 
-	public void setWrite(BatchWritePolicy wp) {
+	public void setWrite(BatchPolicy bp, BatchWritePolicy wp) {
+		setWrite(wp, bp.sendKey, wp.durableDelete);
+	}
+
+	public void setWrite(BatchWritePolicy wp, boolean sendKey, boolean durableDelete) {
 		filterExp = wp.filterExp;
 		readAttr = 0;
 		writeAttr = Command.INFO2_WRITE | Command.INFO2_RESPOND_ALL_OPS;
@@ -202,7 +206,7 @@ public final class BatchAttr {
 		txnAttr = 0;
 		expiration = wp.expiration;
 		hasWrite = true;
-		sendKey = wp.sendKey;
+		sendKey = (sendKey || wp.sendKey);
 
 		switch (wp.generationPolicy) {
 		default:
@@ -236,7 +240,7 @@ public final class BatchAttr {
 			break;
 		}
 
-		if (wp.durableDelete) {
+		if (durableDelete) {
 			writeAttr |= Command.INFO2_DURABLE_DELETE;
 		}
 
@@ -268,7 +272,11 @@ public final class BatchAttr {
 		}
 	}
 
-	public void setUDF(BatchUDFPolicy up) {
+	public void setUDF(BatchPolicy bp, BatchUDFPolicy up) {
+		setUDF(up, bp.sendKey, up.durableDelete);
+	}
+
+	public void setUDF(BatchUDFPolicy up, boolean sendKey, boolean durableDelete) {
 		filterExp = up.filterExp;
 		readAttr = 0;
 		writeAttr = Command.INFO2_WRITE;
@@ -277,9 +285,9 @@ public final class BatchAttr {
 		expiration = up.expiration;
 		generation = 0;
 		hasWrite = true;
-		sendKey = up.sendKey;
+		sendKey = (sendKey || up.sendKey);
 
-		if (up.durableDelete) {
+		if (durableDelete) {
 			writeAttr |= Command.INFO2_DURABLE_DELETE;
 		}
 
@@ -292,7 +300,11 @@ public final class BatchAttr {
 		}
 	}
 
-	public void setDelete(BatchDeletePolicy dp) {
+	public void setDelete(BatchPolicy bp, BatchDeletePolicy dp) {
+		setDelete(dp, bp.sendKey, dp.durableDelete);
+	}
+
+	public void setDelete(BatchDeletePolicy dp, boolean sendKey, boolean durableDelete) {
 		filterExp = dp.filterExp;
 		readAttr = 0;
 		writeAttr = Command.INFO2_WRITE | Command.INFO2_RESPOND_ALL_OPS | Command.INFO2_DELETE;
@@ -300,7 +312,7 @@ public final class BatchAttr {
 		txnAttr = 0;
 		expiration = 0;
 		hasWrite = true;
-		sendKey = dp.sendKey;
+		sendKey = (sendKey || dp.sendKey);
 
 		switch (dp.generationPolicy) {
 		default:
@@ -317,7 +329,7 @@ public final class BatchAttr {
 			break;
 		}
 
-		if (dp.durableDelete) {
+		if (durableDelete) {
 			writeAttr |= Command.INFO2_DURABLE_DELETE;
 		}
 

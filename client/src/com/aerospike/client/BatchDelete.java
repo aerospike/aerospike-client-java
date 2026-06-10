@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2025 Aerospike, Inc.
+ * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -17,10 +17,9 @@
 package com.aerospike.client;
 
 import com.aerospike.client.command.Command;
-import com.aerospike.client.configuration.*;
-import com.aerospike.client.configuration.serializers.*;
 import com.aerospike.client.policy.BatchDeletePolicy;
-import com.aerospike.client.policy.Policy;
+import com.aerospike.client.policy.BatchUDFPolicy;
+import com.aerospike.client.policy.BatchWritePolicy;
 
 /**
  * Batch delete operation.
@@ -55,61 +54,48 @@ public final class BatchDelete extends BatchRecord {
 		return Type.BATCH_DELETE;
 	}
 
-	/**
+    @Override
+    public boolean getSendKey(
+        BatchWritePolicy writePolicyDefault,
+        BatchUDFPolicy udfPolicyDefault,
+        BatchDeletePolicy deletePolicyDefault
+    ) {
+        return deletePolicyDefault.sendKey || (policy != null && policy.sendKey);
+    }
+
+    /**
 	 * Optimized reference equality check to determine batch wire protocol repeat flag.
 	 * For internal use only.
 	 */
 	@Override
-	public boolean equals(BatchRecord obj, ConfigurationProvider configProvider) {
-		if (getClass() != obj.getClass())
-			return false;
+	public boolean equals(Object obj) {
+		if (getClass() != obj.getClass()) {
+            return false;
+        }
 
 		BatchDelete other = (BatchDelete)obj;
 		if (policy != other.policy) {
 			return false;
 		}
 
-		boolean sendkey = false;
-		if (policy != null) {
-			sendkey = policy.sendKey;
-		}
-		if (configProvider != null) {
-			Configuration config = configProvider.fetchConfiguration();
-			if (config != null && config.hasDBDCsendKey()) {
-				sendkey = config.dynamicConfiguration.dynamicBatchDeleteConfig.sendKey.value;
-			}
-		}
-		return !sendkey;
+        return true;
 	}
 
 	/**
 	 * Return wire protocol size. For internal use only.
 	 */
 	@Override
-	public int size(Policy parentPolicy, ConfigurationProvider configProvider) {
+	public int size(boolean sendKey) {
 		int size = 2; // gen(2) = 2
 
-		if (policy != null) {
-			if (policy.filterExp != null) {
-				size += policy.filterExp.size();
-			}
-
-			boolean sendkey;
-			sendkey = policy.sendKey;
-			if (configProvider != null) {
-				Configuration config = configProvider.fetchConfiguration();
-				if (config != null && config.hasDBDCsendKey()) {
-					sendkey = config.dynamicConfiguration.dynamicBatchDeleteConfig.sendKey.value;
-				}
-			}
-
-			if (sendkey || parentPolicy.sendKey) {
-				size += key.userKey.estimateSize() + Command.FIELD_HEADER_SIZE + 1;
-			}
+		if (policy != null && policy.filterExp != null) {
+			size += policy.filterExp.size();
 		}
-		else if (parentPolicy.sendKey) {
-			size += key.userKey.estimateSize() + Command.FIELD_HEADER_SIZE + 1;
-		}
-		return size;
+
+		if (sendKey) {
+            size += key.userKey.estimateSize() + Command.FIELD_HEADER_SIZE + 1;
+        }
+
+        return size;
 	}
 }
