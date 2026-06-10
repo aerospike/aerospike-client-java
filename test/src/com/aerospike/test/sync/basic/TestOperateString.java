@@ -661,6 +661,17 @@ public class TestOperateString extends TestSync {
 	}
 
 	@Test
+	public void snipThenConcatInOneOperate() {
+		put("hello beautiful world");
+
+		operate(
+			StringOperation.snip(POLICY, BIN, 5, 15),
+			StringOperation.concat(POLICY, BIN, "!"));
+
+		assertEquals("hello world!", stringValue());
+	}
+
+	@Test
 	public void splitResultListEntriesAreReadableStrings() {
 		put("one,two,three");
 		Record r = operate(StringOperation.split(BIN, ","));
