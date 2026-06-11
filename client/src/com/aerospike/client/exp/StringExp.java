@@ -579,27 +579,6 @@ public final class StringExp {
 	}
 
 	/**
-	 * Create expression that removes codepoints from {@code src} starting at codepoint
-	 * {@code start} through the end, returning the resulting string. Does not modify
-	 * the underlying bin.
-	 *
-	 * <pre>{@code
-	 * // "hello world" snip from 5 -> "hello"
-	 * Exp out = StringExp.snip(StringPolicy.Default,
-	 *     Exp.val(5), Exp.stringBin("text"));
-	 * }</pre>
-	 *
-	 * @param policy	write policy controlling NO_FAIL semantics
-	 * @param start		first codepoint to remove (inclusive)
-	 * @param src		source string expression
-	 * @return			string-typed expression yielding the modified string
-	 */
-	public static Exp snip(StringPolicy policy, Exp start, Exp src) {
-		byte[] bytes = Pack.pack(SNIP, start, policy.flags);
-		return addModify(src, bytes);
-	}
-
-	/**
 	 * Create expression that removes the half-open codepoint range {@code [start, end)}
 	 * from {@code src} and returns the resulting string. Does not modify the underlying
 	 * bin.

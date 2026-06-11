@@ -642,27 +642,6 @@ public final class StringOperation {
 	}
 
 	/**
-	 * Create string {@code snip} operation that removes codepoints starting at
-	 * codepoint {@code start} through the end of the string.
-	 *
-	 * <pre>{@code
-	 * // "hello world" snip from 5 -> "hello"
-	 * client.operate(null, key,
-	 *     StringOperation.snip(StringPolicy.Default, "text", 5));
-	 * }</pre>
-	 *
-	 * @param policy	write policy controlling NO_FAIL semantics
-	 * @param binName	name of the string bin
-	 * @param start		first codepoint to remove (inclusive)
-	 * @param ctx		optional path into a string nested inside a list or map
-	 * @return			modify operation
-	 */
-	public static Operation snip(StringPolicy policy, String binName, int start, CTX... ctx) {
-		byte[] bytes = packStringOp(SNIP, start, policy.flags, ctx);
-		return new Operation(Operation.Type.STRING_MODIFY, binName, new Value.BytesValue(bytes, ParticleType.STRING));
-	}
-
-	/**
 	 * Create string {@code snip} operation that removes the half-open codepoint range
 	 * {@code [start, end)} from the bin.
 	 *
