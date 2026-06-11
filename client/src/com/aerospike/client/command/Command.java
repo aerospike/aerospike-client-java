@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2025 Aerospike, Inc.
+ * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -1107,7 +1107,9 @@ public class Command {
 
 			dataOffset += key.digest.length + 4;
 
-			if (canRepeat(policy, key, record, prev, ver, verPrev, configProvider)) {
+			boolean sendKey = resolveSendKey(policy, configProvider, writePolicy, udfPolicy, deletePolicy, record);
+
+			if (!sendKey && canRepeat(key, record, prev, ver, verPrev)) {
 				// Can set repeat previous namespace/bin names to save space.
 				dataOffset++;
 			}
@@ -1117,7 +1119,7 @@ public class Command {
 				dataOffset += Buffer.estimateSizeUtf8(key.namespace) + FIELD_HEADER_SIZE;
 				dataOffset += Buffer.estimateSizeUtf8(key.setName) + FIELD_HEADER_SIZE;
 				sizeTxnBatch(txn, ver, record.hasWrite);
-				dataOffset += record.size(policy, configProvider);
+				dataOffset += record.size(sendKey);
 				prev = record;
 				verPrev = ver;
 			}
@@ -1154,7 +1156,9 @@ public class Command {
 			System.arraycopy(digest, 0, dataBuffer, dataOffset, digest.length);
 			dataOffset += digest.length;
 
-			if (canRepeat(policy, key, record, prev, ver, verPrev, configProvider)) {
+            boolean sendKey = resolveSendKey(policy, configProvider, writePolicy, udfPolicy, deletePolicy, record);
+
+            if (!sendKey && canRepeat(key, record, prev, ver, verPrev)) {
 				// Can set repeat previous namespace/bin names to save space.
 				dataBuffer[dataOffset++] = BATCH_MSG_REPEAT;
 			}
@@ -1194,19 +1198,17 @@ public class Command {
 					case BATCH_WRITE: {
 						BatchWrite bw = (BatchWrite)record;
 						BatchWritePolicy bwp = (bw.policy != null)? bw.policy : writePolicy;
+						boolean durableDelete = bwp.durableDelete;
 
 						if (configProvider != null) {
 							Configuration config = configProvider.fetchConfiguration();
-							if (config != null) {
-								bwp.sendKey = (config.dynamicConfiguration.dynamicBatchWriteConfig.sendKey != null) ?
-										config.dynamicConfiguration.dynamicBatchWriteConfig.sendKey.value : bwp.sendKey;
-								bwp.durableDelete = (config.dynamicConfiguration.dynamicBatchWriteConfig.durableDelete !=
-										null) ? config.dynamicConfiguration.dynamicBatchWriteConfig.durableDelete.value :
-										bwp.durableDelete;
+							if (config != null &&
+							    config.dynamicConfiguration.dynamicBatchWriteConfig.durableDelete != null) {
+								durableDelete = config.dynamicConfiguration.dynamicBatchWriteConfig.durableDelete.value;
 							}
 						}
 
-						attr.setWrite(bwp);
+						attr.setWrite(bwp, sendKey, durableDelete);
 						attr.adjustWrite(bw.ops);
 						writeBatchOperations(key, txn, ver, bw.ops, attr, attr.filterExp);
 						break;
@@ -1215,18 +1217,17 @@ public class Command {
 					case BATCH_UDF: {
 						BatchUDF bu = (BatchUDF)record;
 						BatchUDFPolicy bup = (bu.policy != null)? bu.policy : udfPolicy;
+                        boolean durableDelete = bup.durableDelete;
+
 						if (configProvider != null) {
 							Configuration config = configProvider.fetchConfiguration();
-							if (config != null) {
-								bup.sendKey = (config.dynamicConfiguration.dynamicBatchUDFconfig.sendKey != null) ?
-										config.dynamicConfiguration.dynamicBatchUDFconfig.sendKey.value : bup.sendKey;
-								bup.durableDelete = (config.dynamicConfiguration.dynamicBatchUDFconfig.durableDelete !=
-										null) ? config.dynamicConfiguration.dynamicBatchUDFconfig.durableDelete.value :
-										bup.durableDelete;
+							if (config != null &&
+							    config.dynamicConfiguration.dynamicBatchUDFconfig.durableDelete != null) {
+								durableDelete = config.dynamicConfiguration.dynamicBatchUDFconfig.durableDelete.value;
 							}
 						}
 
-						attr.setUDF(bup);
+						attr.setUDF(bup, sendKey, durableDelete);
 						writeBatchWrite(key, txn, ver, attr, attr.filterExp, 3, 0);
 						writeField(bu.packageName, FieldType.UDF_PACKAGE_NAME);
 						writeField(bu.functionName, FieldType.UDF_FUNCTION);
@@ -1237,18 +1238,17 @@ public class Command {
 					case BATCH_DELETE: {
 						BatchDelete bd = (BatchDelete)record;
 						BatchDeletePolicy bdp = (bd.policy != null)? bd.policy : deletePolicy;
-						if (configProvider != null) {
+                        boolean durableDelete = bdp.durableDelete;
+
+                        if (configProvider != null) {
 							Configuration config = configProvider.fetchConfiguration();
-							if (config != null) {
-								bdp.sendKey = (config.dynamicConfiguration.dynamicBatchDeleteConfig.sendKey != null) ?
-										config.dynamicConfiguration.dynamicBatchDeleteConfig.sendKey.value : bdp.sendKey;
-								bdp.durableDelete = (config.dynamicConfiguration.dynamicBatchDeleteConfig.durableDelete !=
-										null) ? config.dynamicConfiguration.dynamicBatchDeleteConfig.durableDelete.value :
-										bdp.durableDelete;
+							if (config != null &&
+							    config.dynamicConfiguration.dynamicBatchDeleteConfig.durableDelete != null) {
+								durableDelete = config.dynamicConfiguration.dynamicBatchDeleteConfig.durableDelete.value;
 							}
 						}
 
-						attr.setDelete(bdp);
+						attr.setDelete(bdp, sendKey, durableDelete);
 						writeBatchWrite(key, txn, ver, attr, attr.filterExp, 0, 0);
 						break;
 					}
@@ -1263,6 +1263,36 @@ public class Command {
 		end();
 		compress(policy);
 	}
+
+    private static boolean resolveSendKey(
+        Policy parentPolicy,
+        ConfigurationProvider configProvider,
+        BatchWritePolicy writePolicyDefault,
+        BatchUDFPolicy udfPolicyDefault,
+        BatchDeletePolicy deletePolicyDefault,
+        BatchRecord rec
+    ) {
+        // Try parent BatchPolicy sendKey.
+        if (parentPolicy.sendKey) {
+            return true;
+        }
+
+        // Try cluster default sendKey
+        if (rec.getSendKey(writePolicyDefault, udfPolicyDefault, deletePolicyDefault)) {
+            return true;
+        }
+
+        // Try dynamic configuration override.
+        if (configProvider != null) {
+            Configuration config = configProvider.fetchConfiguration();
+
+            if (config != null && config.hasDBWCsendKey() &&
+                config.dynamicConfiguration.dynamicBatchWriteConfig.sendKey.value) {
+                return true;
+            }
+        }
+        return false;
+    }
 
 	public final void setBatchOperate(
 		BatchPolicy policy,
@@ -1522,38 +1552,23 @@ public class Command {
 	}
 
 	private static boolean canRepeat(
-		Policy policy,
 		Key key,
 		BatchRecord record,
 		BatchRecord prev,
 		Long ver,
-		Long verPrev,
-		ConfigurationProvider configProvider
+		Long verPrev
 	) {
 		// Avoid relatively expensive full equality checks for performance reasons.
 		// Use reference equality only in hope that common namespaces/bin names are set from
 		// fixed variables.  It's fine if equality not determined correctly because it just
 		// results in more space used. The batch will still be correct.
 		// Same goes for ver reference equality check.
-
 		if ( !(verPrev == ver && prev != null && prev.key.namespace == key.namespace &&
 				prev.key.setName == key.setName )) {
 			return false;
 		}
 
-		boolean sendkey = policy.sendKey;
-		if (configProvider != null) {
-			Configuration config = configProvider.fetchConfiguration();
-			if (config != null && config.hasDBWCsendKey()) {
-				sendkey = config.dynamicConfiguration.dynamicBatchWriteConfig.sendKey.value;
-			}
-		}
-		if (sendkey) {
-			return false;
-		}
-
 		return record.equals(prev);
-
 	}
 
 	private static boolean canRepeat(BatchAttr attr, Key key, Key keyPrev, Long ver, Long verPrev) {
@@ -1789,6 +1804,7 @@ public class Command {
 	// Scan
 	//--------------------------------------------------
 
+	@SuppressWarnings("deprecation")
 	public final void setScan(
 		Cluster cluster,
 		ScanPolicy policy,
@@ -2272,7 +2288,14 @@ public class Command {
 	//--------------------------------------------------
 
 	private final int estimateKeyAttrSize(Policy policy, Key key, BatchAttr attr, Expression filterExp) {
-		int fieldCount = estimateKeySize(policy, key, attr.hasWrite);
+        int fieldCount = estimateKeySize(key);
+
+        fieldCount += sizeTxn(key, policy.txn, attr.hasWrite);
+
+        if (attr.sendKey) {
+            dataOffset += key.userKey.estimateSize() + FIELD_HEADER_SIZE + 1;
+            fieldCount++;
+        }
 
 		if (filterExp != null) {
 			dataOffset += filterExp.size();
@@ -2634,7 +2657,12 @@ public class Command {
 		Buffer.shortToBytes(operationCount, dataBuffer, 28);
 		dataOffset = MSG_TOTAL_HEADER_SIZE;
 
-		writeKey(policy, key, attr.hasWrite);
+        writeKey(key);
+        writeTxn(policy.txn, attr.hasWrite);
+
+        if (attr.sendKey) {
+            writeField(key.userKey, FieldType.KEY);
+        }
 
 		if (filterExp != null) {
 			filterExp.write(this);
