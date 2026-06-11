@@ -434,7 +434,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	/**
 	 * Return the mergedClientPolicy.
 	 */
-	public ClientPolicy getClientPolicy() {
+	public final ClientPolicy getClientPolicy() {
 		return mergedClientPolicy;
 	}
 
