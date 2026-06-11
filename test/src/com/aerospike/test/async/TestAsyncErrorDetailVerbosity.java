@@ -54,6 +54,9 @@ public class TestAsyncErrorDetailVerbosity extends TestAsync {
 
 	@BeforeClass
 	public static void setup() {
+		org.junit.Assume.assumeTrue("Extended error-detail requires server version 8.1.3 or later",
+			args.serverVersion.isGreaterOrEqual(8, 1, 3, 0));
+
 		WritePolicy wp = new WritePolicy();
 		intKey = new Key(args.namespace, args.set, "edv-async-int-key");
 		client.put(wp, intKey, new Bin(binName, 1));

@@ -75,6 +75,9 @@ public class TestErrorDetailVerbosity extends TestSync {
 
 	@BeforeClass
 	public static void setup() {
+		org.junit.Assume.assumeTrue("Extended error-detail requires server version 8.1.3 or later",
+			args.serverVersion.isGreaterOrEqual(8, 1, 3, 0));
+
 		WritePolicy wp = new WritePolicy();
 		intKey = new Key(args.namespace, args.set, "edv-int-key");
 		strKey = new Key(args.namespace, args.set, "edv-str-key");
