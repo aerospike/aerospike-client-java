@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -18,9 +18,7 @@ package com.aerospike.client;
 
 import com.aerospike.client.command.Buffer;
 import com.aerospike.client.command.Command;
-import com.aerospike.client.configuration.*;
 import com.aerospike.client.policy.BatchReadPolicy;
-import com.aerospike.client.policy.Policy;
 
 /**
  * Batch key and read only operations with default policy.
@@ -131,9 +129,10 @@ public final class BatchRead extends BatchRecord {
 	 * For internal use only.
 	 */
 	@Override
-	public boolean equals(BatchRecord obj, ConfigurationProvider configProvider) {
-		if (getClass() != obj.getClass())
-			return false;
+	public boolean equals(Object obj) {
+		if (getClass() != obj.getClass()) {
+            return false;
+        }
 
 		BatchRead other = (BatchRead)obj;
 		return binNames == other.binNames && ops == other.ops && policy == other.policy && readAllBins == other.readAllBins;
@@ -143,7 +142,7 @@ public final class BatchRead extends BatchRecord {
 	 * Return wire protocol size. For internal use only.
 	 */
 	@Override
-	public int size(Policy parentPolicy, ConfigurationProvider configProvider) {
+	public int size(boolean sendKey) {
 		int size = 0;
 
 		if (policy != null) {
