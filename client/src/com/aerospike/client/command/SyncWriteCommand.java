@@ -76,8 +76,10 @@ public abstract class SyncWriteCommand extends SyncCommand {
 		if (rp.serverMessage != null) {
 			this.serverMessage = rp.serverMessage;
 		}
+		this.serverSubcode = rp.serverSubcode;
 		return rp.resultCode;
 	}
 
 	protected String serverMessage;
+	protected int serverSubcode = SubCode.NONE;
 }

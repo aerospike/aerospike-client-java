@@ -29,6 +29,7 @@ import com.aerospike.client.Bin;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
 import com.aerospike.client.ResultCode;
+import com.aerospike.client.SubCode;
 import com.aerospike.client.Value;
 import com.aerospike.client.cdt.ListOperation;
 import com.aerospike.client.cdt.ListOrder;
@@ -87,7 +88,7 @@ public class TestAsyncErrorDetailVerbosity extends TestAsync {
 		}, wp, listKey, ListOperation.insert(bounded, binName, 10, Value.get(5)));
 
 		waitTillComplete();
-		assertDetail(caught.get(), ResultCode.OP_NOT_APPLICABLE, "subcode=3");
+		assertSubcode(caught.get(), ResultCode.OP_NOT_APPLICABLE, SubCode.OPNOT_CDT_BOUNDED_LIST_OVERFLOW);
 	}
 
 	// AsyncDelete — generation mismatch surfaces the detail message. The status
@@ -233,25 +234,30 @@ public class TestAsyncErrorDetailVerbosity extends TestAsync {
 		waitTillComplete();
 	}
 
-	private static void assertDetail(AerospikeException ae, int expectedResultCode, String... expectedSubstrings) {
+	/**
+	 * Assert the server-supplied {@code (resultCode, subcode)} pair reached the
+	 * async exception, including the first-class numeric subcode.
+	 */
+	private static void assertSubcode(AerospikeException ae, int expectedResultCode, int expectedSubcode) {
 		org.junit.Assert.assertNotNull("Expected AerospikeException to be captured", ae);
 		org.junit.Assert.assertEquals("Unexpected result code", expectedResultCode, ae.getResultCode());
+		org.junit.Assert.assertEquals("Unexpected subcode", expectedSubcode, ae.getSubcode());
 
 		String msg = ae.getBaseMessage();
 		org.junit.Assert.assertNotNull("Expected server error message, got null. ae=" + ae, msg);
-
-		for (String expected : expectedSubstrings) {
-			org.junit.Assert.assertTrue("Expected '" + expected + "' in: " + msg, msg.contains(expected));
-		}
+		org.junit.Assert.assertTrue("Expected 'subcode=" + expectedSubcode + "' in: " + msg,
+			msg.contains("subcode=" + expectedSubcode));
 	}
 
 	/**
 	 * Assert that the server surfaced a contextual message but NO subcode
-	 * (AS_SUB_NONE): the "(subcode=...)" suffix must never appear.
+	 * (AS_SUB_NONE): {@link AerospikeException#getSubcode()} is {@link SubCode#NONE}
+	 * and the "(subcode=...)" suffix must never appear.
 	 */
 	private static void assertSubcodeAbsent(AerospikeException ae, int expectedResultCode, String expectedSubstring) {
 		org.junit.Assert.assertNotNull("Expected AerospikeException to be captured", ae);
 		org.junit.Assert.assertEquals("Unexpected result code", expectedResultCode, ae.getResultCode());
+		org.junit.Assert.assertEquals("Expected no subcode", SubCode.NONE, ae.getSubcode());
 
 		String msg = ae.getBaseMessage();
 		org.junit.Assert.assertNotNull("Expected server error message, got null. ae=" + ae, msg);

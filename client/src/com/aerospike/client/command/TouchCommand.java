@@ -51,7 +51,7 @@ public final class TouchCommand extends SyncWriteCommand {
 
 		if (resultCode == ResultCode.KEY_NOT_FOUND_ERROR) {
 			if (failOnNotFound) {
-				throw RecordParser.toException(resultCode, serverMessage);
+				throw RecordParser.toException(resultCode, serverMessage, serverSubcode);
 			}
 			touched = false;
 			return;
@@ -59,13 +59,13 @@ public final class TouchCommand extends SyncWriteCommand {
 
 		if (resultCode == ResultCode.FILTERED_OUT) {
 			if (writePolicy.failOnFilteredOut) {
-				throw RecordParser.toException(resultCode, serverMessage);
+				throw RecordParser.toException(resultCode, serverMessage, serverSubcode);
 			}
 			touched = false;
 			return;
 		}
 
-		throw RecordParser.toException(resultCode, serverMessage);
+		throw RecordParser.toException(resultCode, serverMessage, serverSubcode);
 	}
 
 	public boolean getTouched() {

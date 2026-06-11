@@ -54,7 +54,7 @@ public final class AsyncDelete extends AsyncWriteBase {
 		if (resultCode == ResultCode.FILTERED_OUT) {
 			if (policy.failOnFilteredOut) {
 				throw (serverMessage != null) ?
-					new AerospikeException(resultCode, serverMessage) :
+					new AerospikeException(resultCode, serverMessage, serverSubcode) :
 					new AerospikeException(resultCode);
 			}
 			existed = true;
@@ -62,7 +62,7 @@ public final class AsyncDelete extends AsyncWriteBase {
 		}
 
 		throw (serverMessage != null) ?
-			new AerospikeException(resultCode, serverMessage) :
+			new AerospikeException(resultCode, serverMessage, serverSubcode) :
 			new AerospikeException(resultCode);
 	}
 
