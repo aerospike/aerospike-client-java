@@ -66,11 +66,13 @@ public abstract class AsyncWriteBase extends AsyncCommand {
 	}
 
 	protected String serverMessage;
+	protected int serverSubcode; // SubCode.NONE (0) when absent
 
 	protected int parseHeader() {
 		RecordParser rp = new RecordParser(dataBuffer, dataOffset, receiveSize);
 		rp.parseFields(policy.txn, key, true);
 		this.serverMessage = rp.serverMessage;
+		this.serverSubcode = rp.serverSubcode;
 		return rp.resultCode;
 	}
 }

@@ -27,6 +27,7 @@ import com.aerospike.client.Key;
 import com.aerospike.client.Operation;
 import com.aerospike.client.Record;
 import com.aerospike.client.ResultCode;
+import com.aerospike.client.SubCode;
 import com.aerospike.client.Value;
 import com.aerospike.client.cdt.CTX;
 import com.aerospike.client.cdt.ListOperation;
@@ -136,6 +137,7 @@ public class TestErrorDetailVerbosity extends TestSync {
 		}
 		catch (AerospikeException ae) {
 			assertEquals(ResultCode.BIN_NOT_FOUND, ae.getResultCode());
+			assertEquals(SubCode.BIN_NOT_FOUND_HLL_CANNOT_CREATE_WITH_OP, ae.getSubcode());
 			String msg = ae.getBaseMessage();
 			assertNotNull(msg);
 			assertTrue("Expected subcode in: " + msg, msg.contains("subcode=1"));
@@ -159,6 +161,7 @@ public class TestErrorDetailVerbosity extends TestSync {
 		}
 		catch (AerospikeException ae) {
 			assertEquals(ResultCode.BIN_NOT_FOUND, ae.getResultCode());
+			assertEquals(SubCode.BIN_NOT_FOUND_HLL_CANNOT_CREATE_WITH_OP, ae.getSubcode());
 			String msg = ae.getBaseMessage();
 			assertNotNull(msg);
 			assertTrue("Expected message text in: " + msg, msg.contains("count op"));
@@ -257,7 +260,7 @@ public class TestErrorDetailVerbosity extends TestSync {
 		}
 		catch (AerospikeException ae) {
 			// AS_SUB_BIN_NOT_FOUND_HLL_CANNOT_CREATE_WITH_OP = 1
-			assertErrorDetails(ae, ResultCode.BIN_NOT_FOUND, "subcode=1");
+			assertSubcode(ae, ResultCode.BIN_NOT_FOUND, SubCode.BIN_NOT_FOUND_HLL_CANNOT_CREATE_WITH_OP);
 			return;
 		}
 		assertTrue("Expected AerospikeException", false);
@@ -273,7 +276,7 @@ public class TestErrorDetailVerbosity extends TestSync {
 		}
 		catch (AerospikeException ae) {
 			// AS_SUB_OPNOT_CDT_INDEX_OUT_OF_BOUNDS = 1
-			assertErrorDetails(ae, ResultCode.OP_NOT_APPLICABLE, "subcode=1");
+			assertSubcode(ae, ResultCode.OP_NOT_APPLICABLE, SubCode.OPNOT_CDT_INDEX_OUT_OF_BOUNDS);
 			return;
 		}
 		assertTrue("Expected AerospikeException", false);
@@ -289,7 +292,7 @@ public class TestErrorDetailVerbosity extends TestSync {
 		}
 		catch (AerospikeException ae) {
 			// AS_SUB_OPNOT_CDT_RANK_OUT_OF_BOUNDS = 2
-			assertErrorDetails(ae, ResultCode.OP_NOT_APPLICABLE, "subcode=2");
+			assertSubcode(ae, ResultCode.OP_NOT_APPLICABLE, SubCode.OPNOT_CDT_RANK_OUT_OF_BOUNDS);
 			return;
 		}
 		assertTrue("Expected AerospikeException", false);
@@ -307,7 +310,7 @@ public class TestErrorDetailVerbosity extends TestSync {
 		}
 		catch (AerospikeException ae) {
 			// AS_SUB_OPNOT_CDT_BOUNDED_LIST_OVERFLOW = 3
-			assertErrorDetails(ae, ResultCode.OP_NOT_APPLICABLE, "subcode=3");
+			assertSubcode(ae, ResultCode.OP_NOT_APPLICABLE, SubCode.OPNOT_CDT_BOUNDED_LIST_OVERFLOW);
 			return;
 		}
 		assertTrue("Expected AerospikeException", false);
@@ -327,7 +330,7 @@ public class TestErrorDetailVerbosity extends TestSync {
 		}
 		catch (AerospikeException ae) {
 			// AS_SUB_OPNOT_HLL_FOLD_INDEX_BITS_TOO_LARGE = 8
-			assertErrorDetails(ae, ResultCode.OP_NOT_APPLICABLE, "subcode=8");
+			assertSubcode(ae, ResultCode.OP_NOT_APPLICABLE, SubCode.OPNOT_HLL_FOLD_INDEX_BITS_TOO_LARGE);
 			return;
 		}
 		assertTrue("Expected AerospikeException", false);
@@ -346,7 +349,7 @@ public class TestErrorDetailVerbosity extends TestSync {
 		}
 		catch (AerospikeException ae) {
 			// AS_SUB_PARAM_BITS_OFFSET_OUT_OF_RANGE = 2
-			assertErrorDetails(ae, ResultCode.PARAMETER_ERROR, "subcode=2");
+			assertSubcode(ae, ResultCode.PARAMETER_ERROR, SubCode.PARAM_BITS_OFFSET_OUT_OF_RANGE);
 			return;
 		}
 		assertTrue("Expected AerospikeException", false);
@@ -365,7 +368,7 @@ public class TestErrorDetailVerbosity extends TestSync {
 		}
 		catch (AerospikeException ae) {
 			// AS_SUB_PARAM_BITS_SIZE_OUT_OF_RANGE = 3
-			assertErrorDetails(ae, ResultCode.PARAMETER_ERROR, "subcode=3");
+			assertSubcode(ae, ResultCode.PARAMETER_ERROR, SubCode.PARAM_BITS_SIZE_OUT_OF_RANGE);
 			return;
 		}
 		assertTrue("Expected AerospikeException", false);
@@ -383,7 +386,7 @@ public class TestErrorDetailVerbosity extends TestSync {
 		}
 		catch (AerospikeException ae) {
 			// AS_SUB_FILTERED_BINS = 2
-			assertErrorDetails(ae, ResultCode.FILTERED_OUT, "subcode=2");
+			assertSubcode(ae, ResultCode.FILTERED_OUT, SubCode.FILTERED_BINS);
 			return;
 		}
 		assertTrue("Expected AerospikeException", false);
@@ -437,7 +440,7 @@ public class TestErrorDetailVerbosity extends TestSync {
 		}
 		catch (AerospikeException ae) {
 			// AS_SUB_OPNOT_CDT_INDEX_OUT_OF_BOUNDS = 1
-			assertErrorDetails(ae, ResultCode.OP_NOT_APPLICABLE, "subcode=1");
+			assertSubcode(ae, ResultCode.OP_NOT_APPLICABLE, SubCode.OPNOT_CDT_INDEX_OUT_OF_BOUNDS);
 			return;
 		}
 		assertTrue("Expected AerospikeException", false);
@@ -693,7 +696,7 @@ public class TestErrorDetailVerbosity extends TestSync {
 		}
 		catch (AerospikeException ae) {
 			// AS_SUB_FILTERED_BINS = 2
-			assertErrorDetails(ae, ResultCode.FILTERED_OUT, "subcode=2");
+			assertSubcode(ae, ResultCode.FILTERED_OUT, SubCode.FILTERED_BINS);
 			return;
 		}
 		assertTrue("Expected AerospikeException", false);
@@ -719,25 +722,32 @@ public class TestErrorDetailVerbosity extends TestSync {
 		assertEquals(42, record.getInt(binName));
 	}
 
-	private void assertErrorDetails(AerospikeException ae, int expectedResultCode, String... expectedSubstrings) {
+	/**
+	 * Assert the server-supplied {@code (resultCode, subcode)} pair. The numeric
+	 * subcode must be exposed first-class via {@link AerospikeException#getSubcode()}
+	 * (not merely embedded in the message string), and the "subcode=N" suffix must
+	 * still appear in the message for parity with the C client.
+	 */
+	private void assertSubcode(AerospikeException ae, int expectedResultCode, int expectedSubcode) {
 		assertEquals("Unexpected result code", expectedResultCode, ae.getResultCode());
+		assertEquals("Unexpected subcode", expectedSubcode, ae.getSubcode());
 
 		String msg = ae.getBaseMessage();
 		assertNotNull("Expected server error message", msg);
-
-		for (String expected : expectedSubstrings) {
-			assertTrue("Expected '" + expected + "' in: " + msg, msg.contains(expected));
-		}
+		assertTrue("Expected 'subcode=" + expectedSubcode + "' in: " + msg,
+			msg.contains("subcode=" + expectedSubcode));
 	}
 
 	/**
 	 * Assert that the server surfaced a contextual message but NO subcode
-	 * (AS_SUB_NONE): the "(subcode=...)" suffix must never appear. Any
-	 * expectedSubstrings are required in the message; pass none to skip the
-	 * message-text check (mirrors a NULL expected_msg_substr in the C example).
+	 * (AS_SUB_NONE): {@link AerospikeException#getSubcode()} is {@link SubCode#NONE}
+	 * and the "(subcode=...)" suffix must never appear. Any expectedSubstrings are
+	 * required in the message; pass none to skip the message-text check (mirrors a
+	 * NULL expected_msg_substr in the C example).
 	 */
 	private void assertSubcodeAbsent(AerospikeException ae, int expectedResultCode, String... expectedSubstrings) {
 		assertEquals("Unexpected result code", expectedResultCode, ae.getResultCode());
+		assertEquals("Expected no subcode", SubCode.NONE, ae.getSubcode());
 
 		String msg = ae.getBaseMessage();
 		assertNotNull("Expected server error message", msg);

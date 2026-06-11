@@ -25,6 +25,7 @@ import java.util.zip.Inflater;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
+import com.aerospike.client.SubCode;
 import com.aerospike.client.Txn;
 import com.aerospike.client.cluster.Connection;
 import com.aerospike.client.command.Command.OpResults;
@@ -40,6 +41,7 @@ public final class RecordParser {
 	public int dataOffset;
 	public long bytesIn;
 	public String serverMessage;
+	public int serverSubcode = SubCode.NONE;
 
 	/**
 	 * Build a failure exception that includes the server's extended-error
@@ -48,9 +50,19 @@ public final class RecordParser {
 	 * as FILTERED_OUT or KEY_NOT_FOUND_ERROR.
 	 */
 	public static AerospikeException toException(int resultCode, String serverMessage) {
-		return (serverMessage != null) ?
+		return toException(resultCode, serverMessage, SubCode.NONE);
+	}
+
+	/**
+	 * Build a failure exception that carries the server's extended-error detail —
+	 * the human-readable message and the numeric subcode — when present.
+	 */
+	public static AerospikeException toException(int resultCode, String serverMessage, int subcode) {
+		AerospikeException ae = (serverMessage != null) ?
 			new AerospikeException(resultCode, serverMessage) :
 			new AerospikeException(resultCode);
+		ae.setSubcode(subcode);
+		return ae;
 	}
 
 	/**
@@ -312,6 +324,13 @@ public final class RecordParser {
 				offset = skipMsgpackValue(offset, end);
 				break;
 			}
+		}
+
+		// Retain the numeric subcode as a first-class value. The server only
+		// serializes subcodes >= 1 (AS_SUB_NONE = 0 is never sent), so a parsed
+		// subcode always overrides the SubCode.NONE default.
+		if (subcode >= 0) {
+			serverSubcode = (int)subcode;
 		}
 
 		if (message != null && subcode >= 0) {

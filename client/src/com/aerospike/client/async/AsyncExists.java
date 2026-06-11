@@ -56,7 +56,7 @@ public final class AsyncExists extends AsyncReadBase {
 		if (rp.resultCode == ResultCode.FILTERED_OUT) {
 			if (policy.failOnFilteredOut) {
 				throw (rp.serverMessage != null) ?
-					new AerospikeException(rp.resultCode, rp.serverMessage) :
+					new AerospikeException(rp.resultCode, rp.serverMessage, rp.serverSubcode) :
 					new AerospikeException(rp.resultCode);
 			}
 			exists = true;
@@ -64,7 +64,7 @@ public final class AsyncExists extends AsyncReadBase {
 		}
 
 		throw (rp.serverMessage != null) ?
-			new AerospikeException(rp.resultCode, rp.serverMessage) :
+			new AerospikeException(rp.resultCode, rp.serverMessage, rp.serverSubcode) :
 			new AerospikeException(rp.resultCode);
 	}
 

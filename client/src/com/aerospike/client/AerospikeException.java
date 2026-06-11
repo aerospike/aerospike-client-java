@@ -32,12 +32,19 @@ public class AerospikeException extends RuntimeException {
 	protected transient Policy policy;
 	protected List<AerospikeException> subExceptions;
 	protected int resultCode = ResultCode.CLIENT_ERROR;
+	protected int subcode = SubCode.NONE;
 	protected int iteration = -1;
 	protected boolean inDoubt;
 
 	public AerospikeException(int resultCode, String message) {
 		super(message);
 		this.resultCode = resultCode;
+	}
+
+	public AerospikeException(int resultCode, String message, int subcode) {
+		super(message);
+		this.resultCode = resultCode;
+		this.subcode = subcode;
 	}
 
 	public AerospikeException(int resultCode, Throwable e) {
@@ -182,6 +189,27 @@ public class AerospikeException extends RuntimeException {
 	 */
 	public final int getResultCode() {
 		return resultCode;
+	}
+
+	/**
+	 * Get the server-supplied error subcode, or {@link SubCode#NONE} (0) when the
+	 * server did not return one (verbosity disabled, or the failing branch had no
+	 * dispatchable subcode).
+	 * <p>
+	 * A subcode is only meaningful when interpreted together with
+	 * {@link #getResultCode()}: subcode integer values are scoped to their parent
+	 * result code and are NOT globally unique. Dispatch on the
+	 * {@code (resultCode, subcode)} pair. See {@link SubCode}.
+	 */
+	public final int getSubcode() {
+		return subcode;
+	}
+
+	/**
+	 * Set the server-supplied error subcode.
+	 */
+	public final void setSubcode(int subcode) {
+		this.subcode = subcode;
 	}
 
 	/**
