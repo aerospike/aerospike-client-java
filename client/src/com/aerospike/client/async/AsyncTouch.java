@@ -20,6 +20,7 @@ import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
 import com.aerospike.client.ResultCode;
 import com.aerospike.client.cluster.Cluster;
+import com.aerospike.client.command.RecordParser;
 import com.aerospike.client.listener.ExistsListener;
 import com.aerospike.client.listener.WriteListener;
 import com.aerospike.client.policy.WritePolicy;
@@ -57,9 +58,7 @@ public final class AsyncTouch extends AsyncWriteBase {
 
 		if (resultCode == ResultCode.KEY_NOT_FOUND_ERROR) {
 			if (existsListener == null) {
-				throw (serverMessage != null) ?
-					new AerospikeException(resultCode, serverMessage, serverSubcode) :
-					new AerospikeException(resultCode);
+				throw RecordParser.toException(resultCode, serverMessage, serverSubcode);
 			}
 			touched = false;
 			return true;
@@ -67,17 +66,13 @@ public final class AsyncTouch extends AsyncWriteBase {
 
 		if (resultCode == ResultCode.FILTERED_OUT) {
 			if (policy.failOnFilteredOut) {
-				throw (serverMessage != null) ?
-					new AerospikeException(resultCode, serverMessage, serverSubcode) :
-					new AerospikeException(resultCode);
+				throw RecordParser.toException(resultCode, serverMessage, serverSubcode);
 			}
 			touched = false;
 			return true;
 		}
 
-		throw (serverMessage != null) ?
-			new AerospikeException(resultCode, serverMessage, serverSubcode) :
-			new AerospikeException(resultCode);
+		throw RecordParser.toException(resultCode, serverMessage, serverSubcode);
 	}
 
 	@Override

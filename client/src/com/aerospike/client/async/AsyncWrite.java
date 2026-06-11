@@ -22,6 +22,7 @@ import com.aerospike.client.Key;
 import com.aerospike.client.Operation;
 import com.aerospike.client.ResultCode;
 import com.aerospike.client.cluster.Cluster;
+import com.aerospike.client.command.RecordParser;
 import com.aerospike.client.listener.WriteListener;
 import com.aerospike.client.policy.WritePolicy;
 
@@ -59,16 +60,12 @@ public final class AsyncWrite extends AsyncWriteBase {
 
 		if (resultCode == ResultCode.FILTERED_OUT) {
 			if (policy.failOnFilteredOut) {
-				throw (serverMessage != null) ?
-					new AerospikeException(resultCode, serverMessage, serverSubcode) :
-					new AerospikeException(resultCode);
+				throw RecordParser.toException(resultCode, serverMessage, serverSubcode);
 			}
 			return true;
 		}
 
-		throw (serverMessage != null) ?
-			new AerospikeException(resultCode, serverMessage, serverSubcode) :
-			new AerospikeException(resultCode);
+		throw RecordParser.toException(resultCode, serverMessage, serverSubcode);
 	}
 
 	@Override
