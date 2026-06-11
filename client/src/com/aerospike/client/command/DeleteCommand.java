@@ -53,13 +53,13 @@ public final class DeleteCommand extends SyncWriteCommand {
 
 		if (resultCode == ResultCode.FILTERED_OUT) {
 			if (writePolicy.failOnFilteredOut) {
-				throw RecordParser.toException(resultCode, serverMessage);
+				throw RecordParser.toException(resultCode, serverMessage, serverSubcode);
 			}
 			existed = true;
 			return;
 		}
 
-		throw RecordParser.toException(resultCode, serverMessage);
+		throw RecordParser.toException(resultCode, serverMessage, serverSubcode);
 	}
 
 	public boolean existed() {

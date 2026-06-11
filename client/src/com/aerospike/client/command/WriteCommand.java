@@ -52,11 +52,11 @@ public final class WriteCommand extends SyncWriteCommand {
 
 		if (resultCode == ResultCode.FILTERED_OUT) {
 			if (writePolicy.failOnFilteredOut) {
-				throw RecordParser.toException(resultCode, serverMessage);
+				throw RecordParser.toException(resultCode, serverMessage, serverSubcode);
 			}
 			return;
 		}
 
-		throw RecordParser.toException(resultCode, serverMessage);
+		throw RecordParser.toException(resultCode, serverMessage, serverSubcode);
 	}
 }
