@@ -328,9 +328,60 @@ public class TestBatch extends TestSync {
 	}
 
     @Test
+    public void batchWriteWithClusterSendKey() {
+        String prefix = "sendKeyCluster";
+        String set = "sendKeyCluster";
+        int size = 2;
+        Key[] keys = new Key[size];
+
+        for (int i = 0; i < size; i++) {
+            keys[i] = new Key(args.namespace, set, prefix + (i + 1));
+        }
+
+        client.truncate(null, args.namespace, set, null);
+
+        Bin bin = new Bin("bin5", "NewValue");
+
+        // Change global batch write sendKey.
+        BatchPolicy bp = client.getBatchParentPolicyWriteDefault();
+        boolean origSendKey = bp.sendKey;
+        bp.sendKey = true;
+
+        BatchResults bresults = client.operate(null, null, keys,
+            Operation.put(bin)
+            );
+
+        for (int i = 0; i < bresults.records.length; i++) {
+            BatchRecord br = bresults.records[i];
+            assertEquals(ResultCode.OK, br.resultCode);
+        }
+
+        // Reset global batch write sendKey.
+        bp.sendKey = origSendKey;
+
+        Statement stmt = new Statement();
+        stmt.setNamespace(args.namespace);
+        stmt.setSetName(set);
+
+        int count = 0;
+
+        try (RecordSet rs = client.query(null, stmt)) {
+            while (rs.next()) {
+                Value val = rs.getKey().userKey;
+                assertNotNull(val);
+
+                String key = val.toString();
+                assertTrue(key.startsWith(prefix));
+                count++;
+            }
+        }
+        assertEquals(size, count);
+    }
+
+    @Test
     public void batchWriteWithBatchPolicySendKey() {
-        String prefix = "sendKey1";
-        String set = "sendKey1";
+        String prefix = "sendKeyBP";
+        String set = "sendKeyBP";
         int size = 2;
         Key[] keys = new Key[size];
 
@@ -362,8 +413,11 @@ public class TestBatch extends TestSync {
 
         try (RecordSet rs = client.query(null, stmt)) {
             while (rs.next()) {
-                Key k = rs.getKey();
-                assertNotNull(k);
+                Value val = rs.getKey().userKey;
+                assertNotNull(val);
+
+                String key = val.toString();
+                assertTrue(key.startsWith(prefix));
                 count++;
             }
         }
@@ -372,8 +426,8 @@ public class TestBatch extends TestSync {
 
     @Test
     public void batchWriteWithBatchWritePolicySendKey() {
-        String prefix = "sendKey2";
-        String set = "sendKey2";
+        String prefix = "sendKeyBWP";
+        String set = "sendKeyBWP";
         int size = 2;
         Key[] keys = new Key[size];
 
@@ -405,8 +459,61 @@ public class TestBatch extends TestSync {
 
         try (RecordSet rs = client.query(null, stmt)) {
             while (rs.next()) {
-                Key k = rs.getKey();
-                assertNotNull(k);
+                Value val = rs.getKey().userKey;
+                assertNotNull(val);
+
+                String key = val.toString();
+                assertTrue(key.startsWith(prefix));
+                count++;
+            }
+        }
+        assertEquals(size, count);
+    }
+
+    @Test
+    public void batchWriteComplexGlobalSendKey() {
+        String prefix = "sendKeyCG";
+        String set = "sendKeyCG";
+        int size = 2;
+
+        client.truncate(null, args.namespace, set, null);
+
+        // Change global batch write sendKey.
+        BatchPolicy bp = client.getBatchParentPolicyWriteDefault();
+        boolean origSendKey = bp.sendKey;
+        bp.sendKey = true;
+
+        List<BatchRecord> records = new ArrayList<BatchRecord>();
+        Operation[] ops = Operation.array(Operation.put(new Bin("bin", "val")));
+
+        for (int i = 0; i < size; i++) {
+            Key key = new Key(args.namespace, set, prefix + (i + 1));
+            records.add(new BatchWrite(null, key, ops));
+        }
+
+        boolean status = client.operate(null, records);
+        assertTrue(status);
+
+        for (BatchRecord rec : records) {
+            assertEquals(ResultCode.OK, rec.resultCode);
+        }
+
+        // Reset global batch write sendKey.
+        bp.sendKey = origSendKey;
+
+        Statement stmt = new Statement();
+        stmt.setNamespace(args.namespace);
+        stmt.setSetName(set);
+
+        int count = 0;
+
+        try (RecordSet rs = client.query(null, stmt)) {
+            while (rs.next()) {
+                Value val = rs.getKey().userKey;
+                assertNotNull(val);
+
+                String key = val.toString();
+                assertTrue(key.startsWith(prefix));
                 count++;
             }
         }
@@ -415,7 +522,8 @@ public class TestBatch extends TestSync {
 
     @Test
     public void batchWriteComplexSendKey() {
-        String set = "sendKey3";
+        String prefix = "sendKeyC";
+        String set = "sendKeyC";
         int size = 2;
 
         client.truncate(null, args.namespace, set, null);
@@ -427,7 +535,7 @@ public class TestBatch extends TestSync {
         Operation[] ops = Operation.array(Operation.put(new Bin("bin", "val")));
 
         for (int i = 0; i < size; i++) {
-            Key key = new Key(args.namespace, set, i);
+            Key key = new Key(args.namespace, set, prefix + (i + 1));
             records.add(new BatchWrite(wp, key, ops));
         }
 
@@ -446,10 +554,13 @@ public class TestBatch extends TestSync {
 
         try (RecordSet rs = client.query(null, stmt)) {
             while (rs.next()) {
-                Key k = rs.getKey();
-                assertNotNull(k);
+                Value val = rs.getKey().userKey;
+                assertNotNull(val);
+
+                String key = val.toString();
+                assertTrue(key.startsWith(prefix));
                 count++;
-            }
+             }
         }
         assertEquals(size, count);
     }
