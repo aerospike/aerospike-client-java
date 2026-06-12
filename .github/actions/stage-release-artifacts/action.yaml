@@ -84,6 +84,21 @@ runs:
       run: |
         jf rt dl "${{ inputs.target-repository }}/com/aerospike/${{ steps.get-build-name.outputs.build-name }}/${{ inputs.artifact-version }}/*" --project clients .
 
+    # Prune signature files we do not need to publish. The *.md5.asc / *.sha1.asc
+    # detached signatures are not consumed downstream (Sonatype/GitHub), so we
+    # drop them here to avoid publishing artifacts we don't have to.
+    - name: Prune unwanted signature files
+      shell: bash
+      working-directory: ${{ fromJson(inputs.staging-folder)[0] }}
+      run: |
+        PRUNED=0
+        while IFS= read -r -d '' f; do
+          rm -f "$f"
+          echo "    removed $f"
+          PRUNED=$((PRUNED + 1))
+        done < <(find . -type f \( -name '*md5.asc' -o -name '*sha1.asc' \) -print0)
+        echo "Pruned ${PRUNED} signature file(s)"
+
     - name: Debug list downloaded content
       shell: bash
       working-directory: ${{ fromJson(inputs.staging-folder)[0] }}
