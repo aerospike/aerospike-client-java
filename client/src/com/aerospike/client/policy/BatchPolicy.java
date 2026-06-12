@@ -357,7 +357,10 @@ public class BatchPolicy extends Policy {
 			preText = " " + preText;
 		}
 
-		if (dyn.sendKey != null && trg.sendKey != dyn.sendKey.value) {
+		// Dynamic config sendKey only overrides when true.
+		// This was done to eliminate the possibility of accidentally disabling sendKey
+		// in dynamic config even when the user explicitly enabled sendKey in the API.
+		if (dyn.sendKey != null && dyn.sendKey.value && trg.sendKey != dyn.sendKey.value) {
 			trg.sendKey = dyn.sendKey.value;
 			if (logUpdate) {
 				Log.info("Set" + preText + " BatchPolicy.sendKey = " + trg.sendKey);
