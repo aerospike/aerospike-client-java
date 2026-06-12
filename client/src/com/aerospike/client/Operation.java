@@ -50,14 +50,24 @@ public final class Operation {
 
 	/**
 	 * Create string append database operation.
+	 *
+	 * @deprecated Use {@link com.aerospike.client.operation.StringOperation#append(com.aerospike.client.operation.StringPolicy, String, String, com.aerospike.client.cdt.CTX...)}
+	 * instead. This legacy operation performs a raw byte concatenation that is not Unicode/DBCS-aware;
+	 * the string-package equivalent provides consistent Unicode handling and policy/CTX support.
 	 */
+	@Deprecated(since = "10.1.0", forRemoval = true)
 	public static Operation append(Bin bin) {
 		return new Operation(Type.APPEND, bin.name, bin.value);
 	}
 
 	/**
 	 * Create string prepend database operation.
+	 *
+	 * @deprecated Use {@link com.aerospike.client.operation.StringOperation#prepend(com.aerospike.client.operation.StringPolicy, String, String, com.aerospike.client.cdt.CTX...)}
+	 * instead. This legacy operation performs a raw byte concatenation that is not Unicode/DBCS-aware;
+	 * the string-package equivalent provides consistent Unicode handling and policy/CTX support.
 	 */
+	@Deprecated(since = "10.1.0", forRemoval = true)
 	public static Operation prepend(Bin bin) {
 		return new Operation(Type.PREPEND, bin.name, bin.value);
 	}

@@ -593,6 +593,68 @@ public class TestOperateString extends TestSync {
 	}
 
 	@Test
+	public void appendAddsValueToEnd() {
+		put("hello");
+		operate(StringOperation.append(POLICY, BIN, " world"));
+		assertEquals("hello world", stringValue());
+	}
+
+	@Test
+	public void appendToEmptyStringYieldsValue() {
+		put("");
+		operate(StringOperation.append(POLICY, BIN, "hi"));
+		assertEquals("hi", stringValue());
+	}
+
+	@Test
+	public void appendPreservesMultibyteCodepoints() {
+		// Unicode/DBCS-aware: appending a multi-byte string must not corrupt
+		// either side. "日本" + "語" -> "日本語" (3 codepoints, 9 UTF-8 bytes).
+		put("日本");
+		operate(StringOperation.append(POLICY, BIN, "語"));
+		assertEquals("日本語", stringValue());
+		assertEquals(3L, operate(StringOperation.strlen(BIN)).getLong(BIN));
+	}
+
+	@Test
+	public void prependAddsValueToStart() {
+		put("world");
+		operate(StringOperation.prepend(POLICY, BIN, "hello "));
+		assertEquals("hello world", stringValue());
+	}
+
+	@Test
+	public void prependToEmptyStringYieldsValue() {
+		put("");
+		operate(StringOperation.prepend(POLICY, BIN, "hi"));
+		assertEquals("hi", stringValue());
+	}
+
+	@Test
+	public void prependPreservesMultibyteCodepoints() {
+		// Unicode/DBCS-aware: prepending a multi-byte string must not corrupt
+		// either side. "語" prepended with "日本" -> "日本語".
+		put("語");
+		operate(StringOperation.prepend(POLICY, BIN, "日本"));
+		assertEquals("日本語", stringValue());
+		assertEquals(3L, operate(StringOperation.strlen(BIN)).getLong(BIN));
+	}
+
+	@Test
+	public void appendOnMissingBinWithNoFailIsNoOp() {
+		// Mirrors the upper() missing-bin NO_FAIL test for the append op.
+		client.delete(null, KEY);
+		client.put(null, KEY, new Bin("other", "untouched"));
+
+		StringPolicy noFail = new StringPolicy(StringWriteFlags.NO_FAIL);
+		operate(StringOperation.append(noFail, BIN, "x"));
+
+		Record r = client.get(null, KEY);
+		assertEquals(null, r.getValue(BIN));
+		assertEquals("untouched", r.getString("other"));
+	}
+
+	@Test
 	public void regexReplaceTargetsFirstMatchByDefault() {
 		put("abc123def456");
 		operate(StringOperation.regexReplace(POLICY, BIN, "[0-9]+", "NUM", StringRegexFlags.DEFAULT));
@@ -644,8 +706,12 @@ public class TestOperateString extends TestSync {
 			StringOperation.upper(POLICY, BIN),
 			StringOperation.strlen(BIN));
 
-		// strlen runs after trim+upper so it sees the post-modification length.
-		assertEquals(11L, r.getLong(BIN));
+		// String ops set RESPOND_ALL_OPS (like BIT/EXP/HLL/MAP), so the three ops
+		// targeting the same bin come back as an ordered per-op result list rather
+		// than a single collapsed value. strlen runs last and therefore observes the
+		// post-trim+upper length.
+		List<?> results = r.getList(BIN);
+		assertEquals(11L, results.get(results.size() - 1));
 		assertEquals("HELLO WORLD", stringValue());
 	}
 
@@ -779,6 +845,37 @@ public class TestOperateString extends TestSync {
 		Map<?, ?> after = client.get(null, KEY).getMap(BIN);
 		List<?> items = (List<?>)after.get("items");
 		assertEquals(Arrays.asList("one", "TWO", "three"), items);
+	}
+
+	@Test
+	public void appendOnStringNestedInList() {
+		// list = ["alpha", "beta", "gamma"]; append "!" at index 1 -> "beta!"
+		List<Value> list = new ArrayList<Value>();
+		list.add(Value.get("alpha"));
+		list.add(Value.get("beta"));
+		list.add(Value.get("gamma"));
+		putList(list);
+
+		operate(StringOperation.append(POLICY, BIN, "!", CTX.listIndex(1)));
+
+		List<?> after = client.get(null, KEY).getList(BIN);
+		assertEquals(Arrays.asList("alpha", "beta!", "gamma"), after);
+	}
+
+	@Test
+	public void prependOnStringNestedInMap() {
+		// map = {"a": "world", "b": "foo"}; prepend "hello " at key "a"
+		Map<Value, Value> map = new HashMap<Value, Value>();
+		map.put(Value.get("a"), Value.get("world"));
+		map.put(Value.get("b"), Value.get("foo"));
+		putMap(map);
+
+		operate(StringOperation.prepend(POLICY, BIN, "hello ",
+			CTX.mapKey(Value.get("a"))));
+
+		Map<?, ?> after = client.get(null, KEY).getMap(BIN);
+		assertEquals("hello world", after.get("a"));
+		assertEquals("foo", after.get("b"));
 	}
 
 	//=================================================================
