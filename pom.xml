@@ -29,7 +29,7 @@
   </modules>
 
   <properties>
-    <revision>10.2.0</revision>
+    <revision>10.3.0</revision>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 
