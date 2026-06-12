@@ -1,10 +1,20 @@
 name: Promote to Prod
 
 permissions:
-  # This is required for requesting the OIDC token
+  # id-token: required for requesting the OIDC token (JFrog auth)
+  # contents: required for the source-branch checkout in the resolve job
   id-token: write
+  contents: read
 
 on:
+  # Release promotion is gated on pushing a version tag:
+  #   1.2.2        -> promote stage      -> master
+  #   1.2.2-jdk8   -> promote stage-jdk8 -> jdk8
+  # Tags are only pushed on a version bump, so this naturally fires on releases only.
+  push:
+    tags:
+      - '*.*.*' # matches 1.2.2 and 1.2.2-jdk8
+  # Manual fallback, unchanged behavior.
   workflow_dispatch:
     inputs:
       build-number:
@@ -19,13 +29,151 @@ on:
           - dev-test-main
 
 jobs:
+  # Resolve build-number + source/target branches for both entry points
+  # (manual dispatch passes them straight through; a tag push derives them).
+  resolve:
+    name: Resolve build number and branches
+    runs-on: ${{ vars.BUILD_CONTAINER_DISTRO_VERSION }}
+    outputs:
+      # Whichever branch ran wins; the skipped step's outputs are empty strings.
+      build-number: ${{ steps.dispatch.outputs.build-number || steps.aql.outputs.build-number }}
+      source-branch: ${{ steps.dispatch.outputs.source-branch || steps.parse.outputs.source-branch }}
+      target-branch: ${{ steps.dispatch.outputs.target-branch || steps.parse.outputs.target-branch }}
+    steps:
+      # ---- workflow_dispatch path: pass inputs through unchanged ----
+      - name: Resolve from manual inputs
+        id: dispatch
+        if: github.event_name == 'workflow_dispatch'
+        shell: bash
+        run: |
+          set -euo pipefail
+          TARGET="${{ inputs.target-branch }}"
+          # Preserve the existing mapping: master -> stage, everything else -> stage-jdk8.
+          if [[ "$TARGET" == "master" ]]; then
+            SOURCE="stage"
+          else
+            SOURCE="stage-jdk8"
+          fi
+          {
+            echo "build-number=${{ inputs.build-number }}"
+            echo "source-branch=$SOURCE"
+            echo "target-branch=$TARGET"
+          } >> "$GITHUB_OUTPUT"
+
+      # ---- tag path: derive track + version from the tag name ----
+      - name: Parse release tag
+        id: parse
+        if: github.event_name == 'push'
+        shell: bash
+        run: |
+          set -euo pipefail
+          TAG="${{ github.ref_name }}"
+          if [[ "$TAG" == *-jdk8 ]]; then
+            TRACK="jdk8"; SOURCE="stage-jdk8"; TARGET="jdk8"; VERSION="${TAG%-jdk8}"
+          else
+            TRACK="main"; SOURCE="stage"; TARGET="master"; VERSION="$TAG"
+          fi
+          echo "Tag '$TAG' -> track=$TRACK version=$VERSION source=$SOURCE target=$TARGET"
+          {
+            echo "track=$TRACK"
+            echo "version=$VERSION"
+            echo "source-branch=$SOURCE"
+            echo "target-branch=$TARGET"
+          } >> "$GITHUB_OUTPUT"
+
+      # Check out the source branch so we can read its pom.xml for the version guard.
+      - name: Checkout source branch
+        if: github.event_name == 'push'
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.parse.outputs.source-branch }}
+          fetch-depth: 1
+
+      # Hard-fail unless the tag version equals <revision> in pom.xml on the source branch.
+      # (-jdk8 is already stripped from VERSION above, so the same pom version matches both tracks.)
+      - name: Verify tag version matches pom.xml
+        if: github.event_name == 'push'
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION="${{ steps.parse.outputs.version }}"
+          POM_VERSION=$(sed -n 's/.*<revision>\([^<]*\)<\/revision>.*/\1/p' pom.xml | head -n1)
+          echo "tag version: '$VERSION'  pom <revision>: '$POM_VERSION'"
+          if [[ "$VERSION" != "$POM_VERSION" ]]; then
+            echo "ERROR: tag version '${VERSION}' does not match pom.xml <revision> '${POM_VERSION}' on '${{ steps.parse.outputs.source-branch }}'" >&2
+            exit 1
+          fi
+
+      - name: Set up JFrog credentials
+        if: github.event_name == 'push'
+        uses: jfrog/setup-jfrog-cli@v4
+        env:
+          JF_URL: https://aerospike.jfrog.io
+          JF_PROJECT: clients
+        with:
+          version: 2.72.2
+          oidc-provider-name: ${{ secrets.JFROG_OIDC_PROVIDER }}
+          oidc-audience: ${{ secrets.JFROG_OIDC_AUDIENCE }}
+
+      # Recover the staging build-number from the staged artifacts at the version path.
+      # JFrog stamps a build.number property on each artifact at publish time, so one AQL
+      # query keyed on the version returns it -- no enumeration. The track is scoped via the
+      # -jdk8 path segment so jdk8 and main never cross even if they share a version number.
+      - name: Resolve build number from staged artifacts
+        id: aql
+        if: github.event_name == 'push'
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION="${{ steps.parse.outputs.version }}"
+          TRACK="${{ steps.parse.outputs.track }}"
+
+          if [[ "$TRACK" == "jdk8" ]]; then
+            SECOND="{ \"path\": { \"\$match\":  \"com/aerospike/*-jdk8/${VERSION}\" } }"
+          else
+            SECOND="{ \"path\": { \"\$nmatch\": \"com/aerospike/*-jdk8/${VERSION}\" } }"
+          fi
+
+          AQL=$(cat <<EOF
+          items.find({
+            "repo": "clients-maven-stage-local",
+            "\$and": [
+              { "path": { "\$match": "com/aerospike/*/${VERSION}" } },
+              ${SECOND}
+            ]
+          }).include("name","path","property").sort({"\$desc": ["created"]}).limit(1)
+          EOF
+          )
+
+          echo "AQL:" >&2
+          echo "$AQL" >&2
+
+          SEARCH_JSON=$(jf rt curl -X POST api/search/aql \
+            -H "Content-Type: text/plain" \
+            -d "$AQL")
+
+          echo "Search result:" >&2
+          echo "$SEARCH_JSON" | jq '.results[0] // "No results"' >&2
+
+          BUILD_NUMBER=$(echo "$SEARCH_JSON" \
+            | jq -r '[.results[0].properties[]? | select(.key=="build.number") | .value][0] // empty')
+
+          if [[ -z "$BUILD_NUMBER" || "$BUILD_NUMBER" == "null" ]]; then
+            echo "ERROR: no staged release build found for version '${VERSION}' on '${TRACK}' track" >&2
+            echo "       (version never staged, staged only as -SNAPSHOT, or wrong tag)" >&2
+            exit 1
+          fi
+
+          echo "Resolved build number: $BUILD_NUMBER"
+          echo "build-number=$BUILD_NUMBER" >> "$GITHUB_OUTPUT"
+
   promote-from-stage-to-prod:
     name: Promote from stage to prod
+    needs: resolve
     uses: ./.github/workflows/promote.yaml
     with:
-      build-number: ${{ inputs.build-number }}
+      build-number: ${{ needs.resolve.outputs.build-number }}
       target-repository: clients-maven-stage-local
-      target-branch: ${{ inputs.target-branch }}
-      source-branch: ${{ inputs.target-branch == 'master' && 'stage' || 'stage-jdk8' }}
-      #source-branch: dev/versioning-from-ci
+      target-branch: ${{ needs.resolve.outputs.target-branch }}
+      source-branch: ${{ needs.resolve.outputs.source-branch }}
     secrets: inherit
