@@ -88,6 +88,8 @@ public final class StringOperation {
 	private static final int PAD_END = 64;
 	private static final int REPEAT = 65;
 	private static final int REGEX_REPLACE = 66;
+	private static final int APPEND = 67;
+	private static final int PREPEND = 68;
 
 	//-----------------------------------------------------------------
 	// Read operations
@@ -638,6 +640,54 @@ public final class StringOperation {
 	public static Operation concat(StringPolicy policy, String binName, List<String> values, CTX... ctx) {
 		List<Value> list = toValueList(values);
 		byte[] bytes = packStringOp(CONCAT, list, policy.flags, ctx);
+		return new Operation(Operation.Type.STRING_MODIFY, binName, new Value.BytesValue(bytes, ParticleType.STRING));
+	}
+
+	/**
+	 * Create string {@code append} operation that appends {@code value} to the end of the bin.
+	 * <p>
+	 * Unlike the legacy {@link com.aerospike.client.Operation#append(com.aerospike.client.Bin)}, this
+	 * operation is Unicode/DBCS-aware and shares the consistent {@link StringPolicy} / CTX interface of
+	 * the rest of the string package.
+	 *
+	 * <pre>{@code
+	 * // "hello" + append "!" -> "hello!"
+	 * client.operate(null, key,
+	 *     StringOperation.append(StringPolicy.Default, "text", "!"));
+	 * }</pre>
+	 *
+	 * @param policy	write policy controlling NO_FAIL semantics
+	 * @param binName	name of the string bin
+	 * @param value		text to append to the end of the string
+	 * @param ctx		optional path into a string nested inside a list or map
+	 * @return			modify operation
+	 */
+	public static Operation append(StringPolicy policy, String binName, String value, CTX... ctx) {
+		byte[] bytes = packStringOp(APPEND, Value.get(value), policy.flags, ctx);
+		return new Operation(Operation.Type.STRING_MODIFY, binName, new Value.BytesValue(bytes, ParticleType.STRING));
+	}
+
+	/**
+	 * Create string {@code prepend} operation that prepends {@code value} to the start of the bin.
+	 * <p>
+	 * Unlike the legacy {@link com.aerospike.client.Operation#prepend(com.aerospike.client.Bin)}, this
+	 * operation is Unicode/DBCS-aware and shares the consistent {@link StringPolicy} / CTX interface of
+	 * the rest of the string package.
+	 *
+	 * <pre>{@code
+	 * // "world" prepend "hello " -> "hello world"
+	 * client.operate(null, key,
+	 *     StringOperation.prepend(StringPolicy.Default, "text", "hello "));
+	 * }</pre>
+	 *
+	 * @param policy	write policy controlling NO_FAIL semantics
+	 * @param binName	name of the string bin
+	 * @param value		text to prepend to the start of the string
+	 * @param ctx		optional path into a string nested inside a list or map
+	 * @return			modify operation
+	 */
+	public static Operation prepend(StringPolicy policy, String binName, String value, CTX... ctx) {
+		byte[] bytes = packStringOp(PREPEND, Value.get(value), policy.flags, ctx);
 		return new Operation(Operation.Type.STRING_MODIFY, binName, new Value.BytesValue(bytes, ParticleType.STRING));
 	}
 

@@ -49,13 +49,13 @@ public final class OperateArgs {
 			case EXP_READ:
 			case HLL_READ:
 			case MAP_READ:
-				// Map operations require respondAllOps to be true.
+			case STRING_READ:
+			case TO_STRING:
+				// These operations require respondAllOps to be true.
 				respondAllOps = true;
 				// Fall through to read.
 			case CDT_READ:
 			case READ:
-			case STRING_READ:
-			case TO_STRING:
 				rattr |= Command.INFO1_READ;
 
 				// Read all bins if no bin is specified.
@@ -74,7 +74,8 @@ public final class OperateArgs {
 			case EXP_MODIFY:
 			case HLL_MODIFY:
 			case MAP_MODIFY:
-				// Map operations require respondAllOps to be true.
+			case STRING_MODIFY:
+				// These operations require respondAllOps to be true.
 				respondAllOps = true;
 				// Fall through to write.
 			default:

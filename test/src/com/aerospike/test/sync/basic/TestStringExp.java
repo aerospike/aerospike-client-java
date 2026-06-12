@@ -310,6 +310,36 @@ public class TestStringExp extends TestSync {
 	}
 
 	@Test
+	public void appendAddsValueToEnd() {
+		put("hello");
+		Record r = eval(StringExp.append(POLICY, Exp.val(" world"), Exp.stringBin(BIN)));
+		assertEquals("hello world", r.getString(VAR));
+	}
+
+	@Test
+	public void appendPreservesMultibyteCodepoints() {
+		// Unicode/DBCS-aware: "日本" + "語" -> "日本語".
+		put("日本");
+		Record r = eval(StringExp.append(POLICY, Exp.val("語"), Exp.stringBin(BIN)));
+		assertEquals("日本語", r.getString(VAR));
+	}
+
+	@Test
+	public void prependAddsValueToStart() {
+		put("world");
+		Record r = eval(StringExp.prepend(POLICY, Exp.val("hello "), Exp.stringBin(BIN)));
+		assertEquals("hello world", r.getString(VAR));
+	}
+
+	@Test
+	public void prependPreservesMultibyteCodepoints() {
+		// Unicode/DBCS-aware: "語" prepended with "日本" -> "日本語".
+		put("語");
+		Record r = eval(StringExp.prepend(POLICY, Exp.val("日本"), Exp.stringBin(BIN)));
+		assertEquals("日本語", r.getString(VAR));
+	}
+
+	@Test
 	public void snipRemovesRange() {
 		// Note: only the two-arg form is exercised. The server's snip op table
 		// (particle_string.c:443) requires (start, end[, flags]); the 1-arg client
