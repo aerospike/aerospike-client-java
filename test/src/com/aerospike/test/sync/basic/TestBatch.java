@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2025 Aerospike, Inc.
+ * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -20,6 +20,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -563,6 +564,74 @@ public class TestBatch extends TestSync {
              }
         }
         assertEquals(size, count);
+    }
+
+    @Test
+    public void batchReadWriteSendKey() {
+        String prefix = "sendKeyRW";
+        String set = "sendKeyRW";
+        Bin bin = new Bin("a", 35);
+        int size = 20;
+
+        client.truncate(null, args.namespace, set, null);
+
+        client.put(null, new Key(args.namespace, set, prefix + 9), bin);
+        client.put(null, new Key(args.namespace, set, prefix + 10), bin);
+        client.put(null, new Key(args.namespace, set, prefix + 11), bin);
+
+        List<BatchRecord> records = new ArrayList<BatchRecord>();
+        Operation[] writeOps = Operation.array(Operation.put(new Bin("bin", "val")));
+
+        for (int i = 0; i < size; i++) {
+            Key key = new Key(args.namespace, set, prefix + (i + 1));
+
+            if (i >= 8 && i <= 10) {
+                records.add(new BatchRead(key, true));
+            }
+            else {
+                records.add(new BatchWrite(key, writeOps));
+            }
+        }
+
+        BatchPolicy bp = client.copyBatchParentPolicyWriteDefault();
+        bp.sendKey = true;
+
+        boolean status = client.operate(bp, records);
+        assertTrue(status);
+
+        for (BatchRecord rec : records) {
+            assertEquals(ResultCode.OK, rec.resultCode);
+        }
+
+        Statement stmt = new Statement();
+        stmt.setNamespace(args.namespace);
+        stmt.setSetName(set);
+
+        int sendKeyCount = 0;
+        int otherCount = 0;
+
+        try (RecordSet rs = client.query(null, stmt)) {
+            while (rs.next()) {
+                Value val = rs.getKey().userKey;
+
+                if (val != null) {
+                    // Writes.
+                    String key = val.toString();
+                    assertTrue(key.startsWith(prefix));
+                    sendKeyCount++;
+                }
+                else {
+                    // Reads
+                    Record rec = rs.getRecord();
+                    int ival = rec.getInt(bin.name);
+
+                    assertEquals(35, ival);
+                    otherCount++;
+                }
+             }
+        }
+        assertEquals(size - 3, sendKeyCount);
+        assertEquals(3, otherCount);
     }
 
     @Test

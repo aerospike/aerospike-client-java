@@ -16,9 +16,12 @@
  */
 package com.aerospike.client;
 
+import com.aerospike.client.configuration.ConfigurationProvider;
+import com.aerospike.client.configuration.serializers.Configuration;
 import com.aerospike.client.policy.BatchDeletePolicy;
 import com.aerospike.client.policy.BatchUDFPolicy;
 import com.aerospike.client.policy.BatchWritePolicy;
+import com.aerospike.client.policy.Policy;
 
 /**
  * Batch key and record result.
@@ -125,13 +128,27 @@ public class BatchRecord {
 	}
 
     /**
-     * Return if sendKey is enabled. For internal use only.
+     * Return union of sendKey settings for writes.
      */
-    public boolean getSendKey(
+    public boolean resolveSendKey(
+        Policy parentPolicy,
+        ConfigurationProvider configProvider,
         BatchWritePolicy writePolicyDefault,
         BatchUDFPolicy udfPolicyDefault,
         BatchDeletePolicy deletePolicyDefault
     ) {
+        return false;
+    }
+
+    final boolean resolveSendKeyDynamicConfig(ConfigurationProvider configProvider) {
+        if (configProvider != null) {
+            Configuration config = configProvider.fetchConfiguration();
+
+            if (config != null && config.hasDBWCsendKey() &&
+                config.dynamicConfiguration.dynamicBatchWriteConfig.sendKey.value) {
+                return true;
+            }
+        }
         return false;
     }
 

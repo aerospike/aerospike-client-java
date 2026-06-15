@@ -1107,7 +1107,8 @@ public class Command {
 
 			dataOffset += key.digest.length + 4;
 
-			boolean sendKey = resolveSendKey(policy, configProvider, writePolicy, udfPolicy, deletePolicy, record);
+			boolean sendKey = record.resolveSendKey(policy, configProvider, writePolicy, udfPolicy,
+			    deletePolicy);
 
 			if (!sendKey && canRepeat(key, record, prev, ver, verPrev)) {
 				// Can set repeat previous namespace/bin names to save space.
@@ -1156,7 +1157,8 @@ public class Command {
 			System.arraycopy(digest, 0, dataBuffer, dataOffset, digest.length);
 			dataOffset += digest.length;
 
-            boolean sendKey = resolveSendKey(policy, configProvider, writePolicy, udfPolicy, deletePolicy, record);
+            boolean sendKey = record.resolveSendKey(policy, configProvider, writePolicy, udfPolicy,
+                deletePolicy);
 
             if (!sendKey && canRepeat(key, record, prev, ver, verPrev)) {
 				// Can set repeat previous namespace/bin names to save space.
@@ -1263,36 +1265,6 @@ public class Command {
 		end();
 		compress(policy);
 	}
-
-    private static boolean resolveSendKey(
-        Policy parentPolicy,
-        ConfigurationProvider configProvider,
-        BatchWritePolicy writePolicyDefault,
-        BatchUDFPolicy udfPolicyDefault,
-        BatchDeletePolicy deletePolicyDefault,
-        BatchRecord rec
-    ) {
-        // Try parent BatchPolicy sendKey.
-        if (parentPolicy.sendKey) {
-            return true;
-        }
-
-        // Try cluster default sendKey
-        if (rec.getSendKey(writePolicyDefault, udfPolicyDefault, deletePolicyDefault)) {
-            return true;
-        }
-
-        // Try dynamic configuration override.
-        if (configProvider != null) {
-            Configuration config = configProvider.fetchConfiguration();
-
-            if (config != null && config.hasDBWCsendKey() &&
-                config.dynamicConfiguration.dynamicBatchWriteConfig.sendKey.value) {
-                return true;
-            }
-        }
-        return false;
-    }
 
 	public final void setBatchOperate(
 		BatchPolicy policy,
