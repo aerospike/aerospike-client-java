@@ -75,7 +75,7 @@ public class TestStringExp extends TestSync {
 	public static void serverVersionCheck() {
 		Assume.assumeTrue(
 			"Skipping: string expressions require server version 8.1.3 or later",
-			args.serverVersion.isGreaterOrEqual(8, 1, 3, 0));
+			args.serverVersion.isGreaterOrEqual(8, 1, 2, 0));
 	}
 
 	//-----------------------------------------------------------------
@@ -135,6 +135,20 @@ public class TestStringExp extends TestSync {
 		// Occurrence overload (1-based) — second occurrence starts at index 2.
 		Record r2 = eval(StringExp.find(Exp.val("ab"), Exp.val(2), Exp.stringBin(BIN)));
 		assertEquals(2L, r2.getLong(VAR));
+	}
+
+	@Test
+	public void findSkipsOverlappingMatches() {
+		// Self-overlapping needle "aa" in "aaaa": after match at 0, search
+		// resumes at 2 — so the 2nd occurrence is at 2, not 1. Mirrors the
+		// StringOperation.find contract and ICU usearch behavior.
+		put("aaaa");
+		assertEquals(0L,
+			eval(StringExp.find(Exp.val("aa"), Exp.val(1), Exp.stringBin(BIN))).getLong(VAR));
+		assertEquals(2L,
+			eval(StringExp.find(Exp.val("aa"), Exp.val(2), Exp.stringBin(BIN))).getLong(VAR));
+		assertEquals(-1L,
+			eval(StringExp.find(Exp.val("aa"), Exp.val(3), Exp.stringBin(BIN))).getLong(VAR));
 	}
 
 	@Test
