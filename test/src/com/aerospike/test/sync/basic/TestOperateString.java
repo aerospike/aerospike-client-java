@@ -65,7 +65,7 @@ public class TestOperateString extends TestSync {
 	public static void serverVersionCheck() {
 		Assume.assumeTrue(
 			"Skipping: string operations require server version 8.1.3 or later",
-			args.serverVersion.isGreaterOrEqual(8, 1, 3, 0));
+			args.serverVersion.isGreaterOrEqual(8, 1, 2, 0));
 	}
 
 	//-----------------------------------------------------------------
@@ -245,6 +245,28 @@ public class TestOperateString extends TestSync {
 		put("hello world");
 		Record r = operate(StringOperation.find(BIN, "xyz"));
 		assertEquals(-1L, r.getLong(BIN));
+	}
+
+	@Test
+	public void findSkipsOverlappingMatchesAscii() {
+		// "aa" is a self-overlapping needle (prefix "a" == suffix "a"). After
+		// matching at index 0 the search resumes *after* the match (index 2),
+		// so the 2nd occurrence is at 2 — not 1. This matches replace() and
+		// the ICU usearch path used for non-ASCII haystacks.
+		put("aaaa");
+		assertEquals(0L, operate(StringOperation.find(BIN, "aa", 1)).getLong(BIN));
+		assertEquals(2L, operate(StringOperation.find(BIN, "aa", 2)).getLong(BIN));
+		assertEquals(-1L, operate(StringOperation.find(BIN, "aa", 3)).getLong(BIN));
+	}
+
+	@Test
+	public void findSkipsOverlappingMatchesUnicode() {
+		// Same overlap-skip rule on the ICU path. "👋👋" is self-overlapping in
+		// codepoints; matches land at codepoint indices 0 and 2, not 0 and 1.
+		put("👋👋👋👋");
+		assertEquals(0L, operate(StringOperation.find(BIN, "👋👋", 1)).getLong(BIN));
+		assertEquals(2L, operate(StringOperation.find(BIN, "👋👋", 2)).getLong(BIN));
+		assertEquals(-1L, operate(StringOperation.find(BIN, "👋👋", 3)).getLong(BIN));
 	}
 
 	@Test
@@ -506,6 +528,17 @@ public class TestOperateString extends TestSync {
 		put("hello");
 		operate(StringOperation.replaceAll(POLICY, BIN, "z", "!"));
 		assertEquals("hello", stringValue());
+	}
+
+	@Test
+	public void replaceAllSkipsOverlappingMatches() {
+		// Self-overlapping needle "aa" in "aaaa": replacement resumes after each
+		// match, yielding "XX" — not "XaX" (which would require allowing the
+		// 2nd match to start at index 1). Anchors the contract that find() now
+		// mirrors.
+		put("aaaa");
+		operate(StringOperation.replaceAll(POLICY, BIN, "aa", "X"));
+		assertEquals("XX", stringValue());
 	}
 
 	@Test
