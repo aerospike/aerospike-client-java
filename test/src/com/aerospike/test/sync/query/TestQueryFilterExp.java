@@ -24,6 +24,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.junit.AfterClass;
+import org.junit.Assume;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -37,7 +38,10 @@ import com.aerospike.client.command.ParticleType;
 import com.aerospike.client.exp.Exp;
 import com.aerospike.client.exp.ListExp;
 import com.aerospike.client.exp.MapExp;
+import com.aerospike.client.exp.StringExp;
+import com.aerospike.client.operation.StringRegexFlags;
 import com.aerospike.client.policy.QueryPolicy;
+import com.aerospike.client.policy.WritePolicy;
 import com.aerospike.client.query.Filter;
 import com.aerospike.client.query.IndexType;
 import com.aerospike.client.query.RecordSet;
@@ -64,9 +68,17 @@ public class TestQueryFilterExp extends TestSync {
 			}
 		}
 
+		// sendKey=true so Exp.key() can be evaluated server-side.
+		// The stored-key flag is set at record-create time; updates with sendKey=true
+		// will NOT retroactively store the key on records created without it. Delete
+		// any pre-existing records first so the puts below create fresh records.
+		WritePolicy wp = new WritePolicy();
+		wp.sendKey = true;
+
 		// Write records with string keys
 		for (int i = 1; i <= size; i++) {
 			Key key = new Key(args.namespace, setName, keyPrefix + i);
+			client.delete(null, key);
 			List<Integer> list = null;
 			Map<String,String> map = null;
 
@@ -97,8 +109,25 @@ public class TestQueryFilterExp extends TestSync {
 				list = new ArrayList<Integer>(0);
 				map = new HashMap<String,String>(0);
 			}
-			client.put(null, key, new Bin(binName, i), new Bin("bin2", i), new Bin("listbin", list), new Bin("mapbin", map));
+
+			// Rotate prefixes so StringExp predicates pick deterministic subsets:
+			// i % 3 == 0 -> "alpha-i", == 1 -> "beta-i", == 2 -> "gamma-i".
+			String prefix;
+			switch (i % 3) {
+				case 0:  prefix = "alpha"; break;
+				case 1:  prefix = "beta";  break;
+				default: prefix = "gamma"; break;
+			}
+			String str = prefix + "-" + i;
+
+			client.put(wp, key, new Bin(binName, i), new Bin("bin2", i), new Bin("listbin", list), new Bin("mapbin", map), new Bin("strbin", str));
 		}
+	}
+
+	private static void assumeStringExpSupported() {
+		Assume.assumeTrue(
+			"Skipping: string expressions require server version 8.1.3 or later",
+			args.serverVersion.isGreaterOrEqual(8, 1, 2, 0));
 	}
 
 	@AfterClass
@@ -633,6 +662,203 @@ public class TestQueryFilterExp extends TestSync {
 				count++;
 			}
 			assertEquals(10, count);
+		}
+		finally {
+			rs.close();
+		}
+	}
+
+	@Test
+	public void queryStringStartsWith() {
+		assumeStringExpSupported();
+
+		int begin = 1;
+		int end = 10;
+
+		Statement stmt = new Statement();
+		stmt.setNamespace(args.namespace);
+		stmt.setSetName(setName);
+		stmt.setFilter(Filter.range(binName, begin, end));
+
+		// strbin starts with "alpha" -> records 3, 6, 9.
+		QueryPolicy policy = new QueryPolicy();
+		policy.filterExp = Exp.build(
+			StringExp.startsWith(Exp.val("alpha"), Exp.stringBin("strbin")));
+
+		RecordSet rs = client.query(policy, stmt);
+
+		try {
+			int count = 0;
+
+			while (rs.next()) {
+				count++;
+			}
+			assertEquals(3, count);
+		}
+		finally {
+			rs.close();
+		}
+	}
+
+	@Test
+	public void queryStringContains() {
+		assumeStringExpSupported();
+
+		int begin = 1;
+		int end = 10;
+
+		Statement stmt = new Statement();
+		stmt.setNamespace(args.namespace);
+		stmt.setSetName(setName);
+		stmt.setFilter(Filter.range(binName, begin, end));
+
+		// strbin contains "amma" -> gamma records 2, 5, 8.
+		QueryPolicy policy = new QueryPolicy();
+		policy.filterExp = Exp.build(
+			StringExp.contains(Exp.val("amma"), Exp.stringBin("strbin")));
+
+		RecordSet rs = client.query(policy, stmt);
+
+		try {
+			int count = 0;
+
+			while (rs.next()) {
+				count++;
+			}
+			assertEquals(3, count);
+		}
+		finally {
+			rs.close();
+		}
+	}
+
+	@Test
+	public void queryStringEndsWith() {
+		assumeStringExpSupported();
+
+		int begin = 1;
+		int end = 10;
+
+		Statement stmt = new Statement();
+		stmt.setNamespace(args.namespace);
+		stmt.setSetName(setName);
+		stmt.setFilter(Filter.range(binName, begin, end));
+
+		// strbin ends with "-10" -> only record 10.
+		QueryPolicy policy = new QueryPolicy();
+		policy.filterExp = Exp.build(
+			StringExp.endsWith(Exp.val("-10"), Exp.stringBin("strbin")));
+
+		RecordSet rs = client.query(policy, stmt);
+
+		try {
+			int count = 0;
+
+			while (rs.next()) {
+				count++;
+			}
+			assertEquals(1, count);
+		}
+		finally {
+			rs.close();
+		}
+	}
+
+	@Test
+	public void queryStringRegexCompare() {
+		assumeStringExpSupported();
+
+		int begin = 1;
+		int end = 10;
+
+		Statement stmt = new Statement();
+		stmt.setNamespace(args.namespace);
+		stmt.setSetName(setName);
+		stmt.setFilter(Filter.range(binName, begin, end));
+
+		// strbin matches /^beta-/ -> records 1, 4, 7, 10.
+		QueryPolicy policy = new QueryPolicy();
+		policy.filterExp = Exp.build(
+			StringExp.regexCompare(Exp.val("^beta-"), Exp.stringBin("strbin")));
+
+		RecordSet rs = client.query(policy, stmt);
+
+		try {
+			int count = 0;
+
+			while (rs.next()) {
+				count++;
+			}
+			assertEquals(4, count);
+		}
+		finally {
+			rs.close();
+		}
+	}
+
+	@Test
+	public void queryStringContainsOnSetName() {
+		assumeStringExpSupported();
+
+		int begin = 1;
+		int end = 10;
+
+		Statement stmt = new Statement();
+		stmt.setNamespace(args.namespace);
+		stmt.setSetName(setName);
+		stmt.setFilter(Filter.range(binName, begin, end));
+
+		// setName ends with "flt" -> every record's set name contains "flt".
+		// Probe to determine whether the new string-ops family supports source
+		// expressions other than bin/CDT projections (e.g. Exp.setName(), Exp.key()).
+		QueryPolicy policy = new QueryPolicy();
+		policy.filterExp = Exp.build(
+			StringExp.contains(Exp.val("flt"), Exp.setName()));
+
+		RecordSet rs = client.query(policy, stmt);
+
+		try {
+			int count = 0;
+
+			while (rs.next()) {
+				count++;
+			}
+			assertEquals(10, count);
+		}
+		finally {
+			rs.close();
+		}
+	}
+
+	@Test
+	public void queryKeyStringRegexCompare() {
+		assumeStringExpSupported();
+
+		int begin = 1;
+		int end = 10;
+
+		Statement stmt = new Statement();
+		stmt.setNamespace(args.namespace);
+		stmt.setSetName(setName);
+		stmt.setFilter(Filter.range(binName, begin, end));
+
+		// User keys are "flt1".."flt50". Within range 1..10, /^flt3$/ matches "flt3".
+		QueryPolicy policy = new QueryPolicy();
+		policy.filterExp = Exp.build(
+			StringExp.regexCompare(
+				Exp.val("^flt3$"),
+				StringRegexFlags.DEFAULT,
+				Exp.key(Exp.Type.STRING)));
+
+		RecordSet rs = client.query(policy, stmt);
+
+		try {
+			int count = 0;
+
+			while (rs.next()) {
+				count++;
+			}
+			assertEquals(1, count);
 		}
 		finally {
 			rs.close();
