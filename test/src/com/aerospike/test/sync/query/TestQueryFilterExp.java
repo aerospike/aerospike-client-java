@@ -127,7 +127,7 @@ public class TestQueryFilterExp extends TestSync {
 	private static void assumeStringExpSupported() {
 		Assume.assumeTrue(
 			"Skipping: string expressions require server version 8.1.3 or later",
-			args.serverVersion.isGreaterOrEqual(8, 1, 2, 0));
+			args.serverVersion.isGreaterOrEqual(8, 1, 3, 0));
 	}
 
 	@AfterClass
