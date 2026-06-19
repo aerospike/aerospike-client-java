@@ -55,7 +55,7 @@ public final class Operation {
 	 * instead. This legacy operation performs a raw byte concatenation that is not Unicode/DBCS-aware;
 	 * the string-package equivalent provides consistent Unicode handling and policy/CTX support.
 	 */
-	@Deprecated(since = "10.1.0", forRemoval = true)
+	@Deprecated(since = "10.4.0", forRemoval = true)
 	public static Operation append(Bin bin) {
 		return new Operation(Type.APPEND, bin.name, bin.value);
 	}
@@ -67,7 +67,7 @@ public final class Operation {
 	 * instead. This legacy operation performs a raw byte concatenation that is not Unicode/DBCS-aware;
 	 * the string-package equivalent provides consistent Unicode handling and policy/CTX support.
 	 */
-	@Deprecated(since = "10.1.0", forRemoval = true)
+	@Deprecated(since = "10.4.0", forRemoval = true)
 	public static Operation prepend(Bin bin) {
 		return new Operation(Type.PREPEND, bin.name, bin.value);
 	}

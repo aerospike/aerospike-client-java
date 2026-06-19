@@ -463,7 +463,7 @@ public abstract class Exp {
 	 * This legacy comparison uses POSIX regex and is not Unicode/DBCS-aware; the string-package
 	 * equivalent uses ICU regex and provides consistent Unicode handling across the string ops.
 	 */
-	@Deprecated(since = "10.1.0", forRemoval = true)
+	@Deprecated(since = "10.4.0", forRemoval = true)
 	public static Exp regexCompare(String regex, int flags, Exp bin) {
 		return new Regex(bin, regex, flags);
 	}
