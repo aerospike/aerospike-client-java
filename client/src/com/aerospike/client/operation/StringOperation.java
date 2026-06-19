@@ -23,7 +23,6 @@ import com.aerospike.client.Operation;
 import com.aerospike.client.Value;
 import com.aerospike.client.cdt.CTX;
 import com.aerospike.client.command.ParticleType;
-import com.aerospike.client.util.Pack;
 import com.aerospike.client.util.Packer;
 
 /**
