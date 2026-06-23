@@ -18,6 +18,7 @@ package com.aerospike.client;
 
 import com.aerospike.client.command.Command;
 import com.aerospike.client.configuration.ConfigurationProvider;
+import com.aerospike.client.configuration.serializers.Configuration;
 import com.aerospike.client.policy.BatchDeletePolicy;
 import com.aerospike.client.policy.BatchUDFPolicy;
 import com.aerospike.client.policy.BatchWritePolicy;
@@ -70,7 +71,16 @@ public final class BatchDelete extends BatchRecord {
         if (parentPolicy.sendKey || deletePolicyDefault.sendKey || (policy != null && policy.sendKey)) {
             return true;
         }
-        return super.resolveSendKeyDynamicConfig(configProvider);
+
+        if (configProvider != null) {
+            Configuration config = configProvider.fetchConfiguration();
+
+            if (config != null && config.hasDBDCsendKey() &&
+                config.dynamicConfiguration.dynamicBatchDeleteConfig.sendKey.value) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**

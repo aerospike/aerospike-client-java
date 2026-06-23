@@ -17,7 +17,6 @@
 package com.aerospike.client;
 
 import com.aerospike.client.configuration.ConfigurationProvider;
-import com.aerospike.client.configuration.serializers.Configuration;
 import com.aerospike.client.policy.BatchDeletePolicy;
 import com.aerospike.client.policy.BatchUDFPolicy;
 import com.aerospike.client.policy.BatchWritePolicy;
@@ -140,19 +139,7 @@ public class BatchRecord {
         return false;
     }
 
-    final boolean resolveSendKeyDynamicConfig(ConfigurationProvider configProvider) {
-        if (configProvider != null) {
-            Configuration config = configProvider.fetchConfiguration();
-
-            if (config != null && config.hasDBWCsendKey() &&
-                config.dynamicConfiguration.dynamicBatchWriteConfig.sendKey.value) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-	/**
+    /**
 	 * Optimized reference equality check to determine batch wire protocol repeat flag.
 	 * For internal use only.
 	 */
