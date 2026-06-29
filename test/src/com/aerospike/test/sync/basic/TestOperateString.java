@@ -65,7 +65,7 @@ public class TestOperateString extends TestSync {
 	public static void serverVersionCheck() {
 		Assume.assumeTrue(
 			"Skipping: string operations require server version 8.1.3 or later",
-			args.serverVersion.isGreaterOrEqual(8, 1, 2, 0));
+			args.serverVersion.isGreaterOrEqual(8, 1, 3, 0));
 	}
 
 	//-----------------------------------------------------------------
@@ -674,16 +674,16 @@ public class TestOperateString extends TestSync {
 	}
 
 	@Test
-	public void appendOnMissingBinWithNoFailIsNoOp() {
-		// Mirrors the upper() missing-bin NO_FAIL test for the append op.
+	public void appendOnMissingBinCreatesTheBinFromEmpty() {
+		// Create-ops {insert, concat, append, prepend} bootstrap an empty string
+		// and create a missing bin. NO_FAIL is irrelevant — the op always succeeds.
 		client.delete(null, KEY);
 		client.put(null, KEY, new Bin("other", "untouched"));
 
-		StringPolicy noFail = new StringPolicy(StringWriteFlags.NO_FAIL);
-		operate(StringOperation.append(noFail, BIN, "x"));
+		operate(StringOperation.append(POLICY, BIN, "x"));
 
 		Record r = client.get(null, KEY);
-		assertEquals(null, r.getValue(BIN));
+		assertEquals("x", r.getString(BIN));
 		assertEquals("untouched", r.getString("other"));
 	}
 
@@ -981,26 +981,26 @@ public class TestOperateString extends TestSync {
 	}
 
 	//=================================================================
-	// NO_FAIL flag — missing-bin path
+	// Missing-bin path
 	//
-	// particle_string.c:926: when the target bin does not exist, the
-	// server returns AS_OK with no bin written if NO_FAIL is set; without
-	// it, the server returns AS_ERR_BIN_NOT_FOUND. This is the actual
-	// scope of NO_FAIL on STRING_MODIFY — the server does NOT honor it
-	// for wrong-type bins (incompatible-type is hard-errored at line 872
-	// regardless of the flag).
+	// Behavior keys off the op, not the flag. The eight additive
+	// create-ops {insert, overwrite, concat, append, prepend, padStart,
+	// padEnd, repeat} create a missing bin from an empty string;
+	// transform/subtractive ops are a silent no-op (success, bin not
+	// created). There is no BIN_NOT_FOUND path. NO_FAIL no longer governs
+	// this path — it only suppresses an in-op execution failure (and still
+	// does not suppress BIN_TYPE_ERROR on a wrong-type bin).
 	//=================================================================
 
 	@Test
-	public void modifyOnMissingBinWithNoFailIsNoOp() {
-		// Record exists but the target bin does not — exercises the bin-level
-		// NO_FAIL path at particle_string.c:926 (not the record-level
-		// KEY_NOT_FOUND path that fires when the whole record is absent).
+	public void modifyOnMissingBinIsNoOp() {
+		// A non-create modify op (upper) on a missing bin is a silent no-op
+		// (success, bin not created) regardless of NO_FAIL — there is no
+		// BIN_NOT_FOUND path. Record exists but the target bin does not.
 		client.delete(null, KEY);
 		client.put(null, KEY, new Bin("other", "untouched"));
 
-		StringPolicy noFail = new StringPolicy(StringWriteFlags.NO_FAIL);
-		operate(StringOperation.upper(noFail, BIN));
+		operate(StringOperation.upper(POLICY, BIN));
 
 		// BIN must not have been created; the existing bin must be intact.
 		Record r = client.get(null, KEY);
@@ -1009,13 +1009,95 @@ public class TestOperateString extends TestSync {
 	}
 
 	@Test
-	public void modifyOnMissingBinWithoutNoFailRaises() {
+	public void noFailDoesNotChangeMissingBinNoOp() {
+		// The missing-bin no-op for non-create ops is flag-independent; NO_FAIL
+		// neither creates the bin nor raises an error.
 		client.delete(null, KEY);
 		client.put(null, KEY, new Bin("other", "untouched"));
 
-		AerospikeException ae = assertThrows(AerospikeException.class,
-			() -> operate(StringOperation.upper(POLICY, BIN)));
-		assertEquals(ResultCode.BIN_NOT_FOUND, ae.getResultCode());
+		StringPolicy noFail = new StringPolicy(StringWriteFlags.NO_FAIL);
+		operate(StringOperation.upper(noFail, BIN));
+
+		Record r = client.get(null, KEY);
+		assertEquals(null, r.getValue(BIN));
+		assertEquals("untouched", r.getString("other"));
+	}
+
+	// All eight additive ops create a missing bin from empty in server 8.1.3
+	// (string ops + SERVER-97 PR 1452, which adds overwrite/repeat/padStart/
+	// padEnd to the create-op set). Transform/subtractive ops still no-op.
+	// append is covered above in the append section.
+
+	@Test
+	public void insertOnMissingBinCreatesTheBinFromEmpty() {
+		client.delete(null, KEY);
+		client.put(null, KEY, new Bin("other", "untouched"));
+
+		operate(StringOperation.insert(POLICY, BIN, 0, "hi"));
+
+		assertEquals("hi", client.get(null, KEY).getString(BIN));
+	}
+
+	@Test
+	public void concatOnMissingBinCreatesTheBinFromEmpty() {
+		client.delete(null, KEY);
+		client.put(null, KEY, new Bin("other", "untouched"));
+
+		operate(StringOperation.concat(POLICY, BIN, "hi"));
+
+		assertEquals("hi", client.get(null, KEY).getString(BIN));
+	}
+
+	@Test
+	public void prependOnMissingBinCreatesTheBinFromEmpty() {
+		client.delete(null, KEY);
+		client.put(null, KEY, new Bin("other", "untouched"));
+
+		operate(StringOperation.prepend(POLICY, BIN, "hi"));
+
+		assertEquals("hi", client.get(null, KEY).getString(BIN));
+	}
+
+	@Test
+	public void overwriteOnMissingBinCreatesTheBinFromEmpty() {
+		client.delete(null, KEY);
+		client.put(null, KEY, new Bin("other", "untouched"));
+
+		operate(StringOperation.overwrite(POLICY, BIN, 0, "hi"));
+
+		assertEquals("hi", client.get(null, KEY).getString(BIN));
+	}
+
+	@Test
+	public void padStartOnMissingBinCreatesTheBinFromEmpty() {
+		client.delete(null, KEY);
+		client.put(null, KEY, new Bin("other", "untouched"));
+
+		operate(StringOperation.padStart(POLICY, BIN, 5, "x"));
+
+		assertEquals("xxxxx", client.get(null, KEY).getString(BIN));
+	}
+
+	@Test
+	public void padEndOnMissingBinCreatesTheBinFromEmpty() {
+		client.delete(null, KEY);
+		client.put(null, KEY, new Bin("other", "untouched"));
+
+		operate(StringOperation.padEnd(POLICY, BIN, 5, "x"));
+
+		assertEquals("xxxxx", client.get(null, KEY).getString(BIN));
+	}
+
+	@Test
+	public void repeatOnMissingBinCreatesAnEmptyBin() {
+		// repeat(n) on empty = "" — the bin is created holding an empty string
+		// (server test: expect_string_bin(b, "")).
+		client.delete(null, KEY);
+		client.put(null, KEY, new Bin("other", "untouched"));
+
+		operate(StringOperation.repeat(POLICY, BIN, 3));
+
+		assertEquals("", client.get(null, KEY).getString(BIN));
 	}
 
 	//=================================================================
