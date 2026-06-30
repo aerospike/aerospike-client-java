@@ -23,6 +23,7 @@ import java.util.zip.DataFormatException;
 import java.util.zip.Inflater;
 
 import com.aerospike.client.AerospikeException;
+import com.aerospike.client.ExpressionTrace;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
 import com.aerospike.client.SubCode;
@@ -41,6 +42,7 @@ public final class RecordParser {
 	public long bytesIn;
 	public String serverMessage;
 	public int serverSubcode = SubCode.NONE;
+	public ExpressionTrace expTrace;
 
 	/**
 	 * Build a failure exception that includes the server's extended-error
@@ -49,7 +51,7 @@ public final class RecordParser {
 	 * as FILTERED_OUT or KEY_NOT_FOUND_ERROR.
 	 */
 	public static AerospikeException toException(int resultCode, String serverMessage) {
-		return toException(resultCode, serverMessage, SubCode.NONE);
+		return toException(resultCode, serverMessage, SubCode.NONE, null);
 	}
 
 	/**
@@ -57,10 +59,21 @@ public final class RecordParser {
 	 * the human-readable message and the numeric subcode — when present.
 	 */
 	public static AerospikeException toException(int resultCode, String serverMessage, int subcode) {
+		return toException(resultCode, serverMessage, subcode, null);
+	}
+
+	/**
+	 * Build a failure exception that carries the server's extended-error detail —
+	 * the human-readable message, the numeric subcode, and (on expression
+	 * build-failure paths at verbosity 3) the structured expression trace — when
+	 * present.
+	 */
+	public static AerospikeException toException(int resultCode, String serverMessage, int subcode, ExpressionTrace expTrace) {
 		AerospikeException ae = (serverMessage != null) ?
 			new AerospikeException(resultCode, serverMessage) :
 			new AerospikeException(resultCode);
 		ae.setSubcode(subcode);
+		ae.setExpressionTrace(expTrace);
 		return ae;
 	}
 
@@ -319,6 +332,11 @@ public final class RecordParser {
 				}
 				break;
 
+			case ExpressionTrace.AS_ERROR_DETAIL_KEY_EXP_TRACE: // nested expression-trace map (verbosity 3)
+				expTrace = parseExpTrace(offset, end);
+				offset = skipMsgpackValue(offset, end);
+				break;
+
 			default:
 				offset = skipMsgpackValue(offset, end);
 				break;
@@ -342,6 +360,164 @@ public final class RecordParser {
 			return message;
 		}
 		return null;
+	}
+
+	/**
+	 * Parse the nested expression-trace map (top-level error-detail key 3, only sent
+	 * at verbosity 3 on expression build-failure paths) into an {@link ExpressionTrace}.
+	 * <p>
+	 * Reuses the shared msgpack decoder. Treats every trace key as optional (never
+	 * requires key 1 — build failures carry AS_SUB_NONE), skips unknown trace keys,
+	 * tolerates the "..." path-truncation sentinel as an ordinary element, and never
+	 * throws on a missing/truncated trace. {@code lang} absent is left as -1 and
+	 * surfaces as msgpack via {@link ExpressionTrace#getLang()}. Returns null when the
+	 * value is not a readable, non-empty map.
+	 */
+	private ExpressionTrace parseExpTrace(int offset, int end) {
+		if (offset >= end) {
+			return null;
+		}
+
+		// Read nested map header (fixmap, map16, map32).
+		int b = dataBuffer[offset++] & 0xFF;
+		int count;
+
+		if ((b & 0xF0) == 0x80) {
+			count = b & 0x0F;
+		}
+		else if (b == 0xDE && offset + 2 <= end) {
+			count = Buffer.bytesToShort(dataBuffer, offset) & 0xFFFF;
+			offset += 2;
+		}
+		else if (b == 0xDF && offset + 4 <= end) {
+			count = Buffer.bytesToInt(dataBuffer, offset);
+			offset += 4;
+		}
+		else {
+			return null;
+		}
+
+		if (count <= 0) {
+			return null;
+		}
+
+		int phase = -1;
+		int byteOffset = -1;
+		String op = null;
+		int depth = -1;
+		String[] path = null;
+		String snippet = null;
+		int lang = -1;
+		int aelOffset = -1;
+		int aelSpan = -1;
+
+		for (int i = 0; i < count && offset < end; i++) {
+			// Read key (positive fixint or uint8).
+			int key;
+			b = dataBuffer[offset++] & 0xFF;
+
+			if (b <= 0x7F) {
+				key = b;
+			}
+			else if (b == 0xCC && offset < end) {
+				key = dataBuffer[offset++] & 0xFF;
+			}
+			else {
+				break;
+			}
+
+			switch (key) {
+			case ExpressionTrace.KEY_PHASE:
+				phase = (int)unpackUint(offset, end);
+				break;
+			case ExpressionTrace.KEY_BYTE_OFFSET:
+				byteOffset = (int)unpackUint(offset, end);
+				break;
+			case ExpressionTrace.KEY_OP:
+				op = unpackStrValue(offset, end);
+				break;
+			case ExpressionTrace.KEY_DEPTH:
+				depth = (int)unpackUint(offset, end);
+				break;
+			case ExpressionTrace.KEY_PATH:
+				path = unpackStrArray(offset, end);
+				break;
+			case ExpressionTrace.KEY_SNIPPET:
+				snippet = unpackStrValue(offset, end);
+				break;
+			case ExpressionTrace.KEY_LANG:
+				lang = (int)unpackUint(offset, end);
+				break;
+			case ExpressionTrace.KEY_AEL_OFFSET:
+				aelOffset = (int)unpackUint(offset, end);
+				break;
+			case ExpressionTrace.KEY_AEL_SPAN:
+				aelSpan = (int)unpackUint(offset, end);
+				break;
+			default:
+				// Unknown / reserved trace key (outcome, ael_line, ael_col, etc.) — skip.
+				break;
+			}
+
+			// Advance past the value regardless of whether the key was recognized.
+			offset = skipMsgpackValue(offset, end);
+		}
+
+		return new ExpressionTrace(phase, byteOffset, op, depth, path, snippet, lang, aelOffset, aelSpan);
+	}
+
+	/**
+	 * Unpack a msgpack string value to a Java String, or null if the value at the
+	 * offset is not a readable string.
+	 */
+	private String unpackStrValue(int offset, int end) {
+		int[] r = unpackStr(offset, end);
+		if (r == null) {
+			return null;
+		}
+		return new String(dataBuffer, r[0], r[1], java.nio.charset.StandardCharsets.UTF_8);
+	}
+
+	/**
+	 * Unpack a msgpack array of strings (the expression-trace path). Preserves element
+	 * order, keeps the "..." truncation sentinel as an ordinary element, and leaves a
+	 * null slot for any element that is not a readable string. Returns null when the
+	 * value is not a readable array.
+	 */
+	private String[] unpackStrArray(int offset, int end) {
+		if (offset >= end) {
+			return null;
+		}
+
+		int b = dataBuffer[offset++] & 0xFF;
+		int len;
+
+		if ((b & 0xF0) == 0x90) {
+			len = b & 0x0F;
+		}
+		else if (b == 0xDC && offset + 2 <= end) {
+			len = Buffer.bytesToShort(dataBuffer, offset) & 0xFFFF;
+			offset += 2;
+		}
+		else if (b == 0xDD && offset + 4 <= end) {
+			len = Buffer.bytesToInt(dataBuffer, offset);
+			offset += 4;
+		}
+		else {
+			return null;
+		}
+
+		if (len < 0) {
+			return null;
+		}
+
+		String[] result = new String[len];
+
+		for (int i = 0; i < len && offset < end; i++) {
+			result[i] = unpackStrValue(offset, end);
+			offset = skipMsgpackValue(offset, end);
+		}
+		return result;
 	}
 
 	/**

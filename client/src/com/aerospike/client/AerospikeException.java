@@ -33,6 +33,7 @@ public class AerospikeException extends RuntimeException {
 	protected List<AerospikeException> subExceptions;
 	protected int resultCode = ResultCode.CLIENT_ERROR;
 	protected int subcode = SubCode.NONE;
+	protected ExpressionTrace expTrace;
 	protected int iteration = -1;
 	protected boolean inDoubt;
 
@@ -210,6 +211,28 @@ public class AerospikeException extends RuntimeException {
 	 */
 	public final void setSubcode(int subcode) {
 		this.subcode = subcode;
+	}
+
+	/**
+	 * Get the server-supplied expression build trace, or {@code null} when absent.
+	 * <p>
+	 * Populated only at error-detail verbosity 3 (see
+	 * {@link com.aerospike.client.policy.Policy#errorDetailVerbosity}) on an expression
+	 * build failure — a metadata filter ({@code filter_exp}) or an {@code exp_read}/
+	 * {@code exp_write} operation that the server could not build. Such failures carry
+	 * {@link ResultCode#PARAMETER_ERROR} and {@link SubCode#NONE}. {@code null} on every
+	 * other failure (including non-expression failures at verbosity 3). See
+	 * {@link ExpressionTrace}.
+	 */
+	public final ExpressionTrace getExpressionTrace() {
+		return expTrace;
+	}
+
+	/**
+	 * Set the server-supplied expression build trace.
+	 */
+	public final void setExpressionTrace(ExpressionTrace expTrace) {
+		this.expTrace = expTrace;
 	}
 
 	/**

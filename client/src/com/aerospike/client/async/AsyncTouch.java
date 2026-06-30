@@ -58,7 +58,7 @@ public final class AsyncTouch extends AsyncWriteBase {
 
 		if (resultCode == ResultCode.KEY_NOT_FOUND_ERROR) {
 			if (existsListener == null) {
-				throw RecordParser.toException(resultCode, serverMessage, serverSubcode);
+				throw RecordParser.toException(resultCode, serverMessage, serverSubcode, expTrace);
 			}
 			touched = false;
 			return true;
@@ -66,13 +66,13 @@ public final class AsyncTouch extends AsyncWriteBase {
 
 		if (resultCode == ResultCode.FILTERED_OUT) {
 			if (policy.failOnFilteredOut) {
-				throw RecordParser.toException(resultCode, serverMessage, serverSubcode);
+				throw RecordParser.toException(resultCode, serverMessage, serverSubcode, expTrace);
 			}
 			touched = false;
 			return true;
 		}
 
-		throw RecordParser.toException(resultCode, serverMessage, serverSubcode);
+		throw RecordParser.toException(resultCode, serverMessage, serverSubcode, expTrace);
 	}
 
 	@Override

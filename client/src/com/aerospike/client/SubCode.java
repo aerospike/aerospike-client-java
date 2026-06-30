@@ -194,14 +194,11 @@ public final class SubCode {
 	public static final int OPNOT_STRING_UTF8_INVALID = 11;
 
 	//-------------------------------------------------------
-	// Pairs with ResultCode.FILTERED_OUT (27)  [AS_ERR_FILTERED_OUT]
+	// ResultCode.FILTERED_OUT (27) [AS_ERR_FILTERED_OUT] carries NO subcode:
+	// the server emits AS_SUB_NONE plus a contextual "filtered out ..." message.
+	// (The as_sub_filtered_t enum was removed server-side and never shipped, so
+	// no FILTERED_* constants are defined here. Match on the message, not a subcode.)
 	//-------------------------------------------------------
-
-	/** Record filtered out by a metadata-only filter expression. */
-	public static final int FILTERED_META = 1;
-
-	/** Record filtered out by a bin-reading filter expression. */
-	public static final int FILTERED_BINS = 2;
 
 	//-------------------------------------------------------
 	// Pairs with ResultCode.MRT_BLOCKED (120)  [AS_ERR_MRT_BLOCKED]

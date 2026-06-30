@@ -53,12 +53,12 @@ public final class AsyncOperateWrite extends AsyncWriteBase {
 
 		if (rp.resultCode == ResultCode.FILTERED_OUT) {
 			if (policy.failOnFilteredOut) {
-				throw RecordParser.toException(rp.resultCode, rp.serverMessage, rp.serverSubcode);
+				throw RecordParser.toException(rp.resultCode, rp.serverMessage, rp.serverSubcode, rp.expTrace);
 			}
 			return true;
 		}
 
-		throw RecordParser.toException(rp.resultCode, rp.serverMessage, rp.serverSubcode);
+		throw RecordParser.toException(rp.resultCode, rp.serverMessage, rp.serverSubcode, rp.expTrace);
 	}
 
 	@Override
