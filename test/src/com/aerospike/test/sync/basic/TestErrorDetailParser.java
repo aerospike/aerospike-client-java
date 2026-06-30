@@ -16,6 +16,7 @@
  */
 package com.aerospike.test.sync.basic;
 
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
@@ -26,6 +27,7 @@ import java.nio.charset.StandardCharsets;
 
 import org.junit.Test;
 
+import com.aerospike.client.ExpressionTrace;
 import com.aerospike.client.command.Command;
 import com.aerospike.client.command.FieldType;
 import com.aerospike.client.command.RecordParser;
@@ -371,6 +373,196 @@ public class TestErrorDetailParser extends TestBase {
 		assertNull(rp.serverMessage);
 	}
 
+	// ---------- Parser: verbosity-3 expression trace (nested key-3 map) ----------
+
+	@Test
+	public void parsesFullExpressionTrace() {
+		// Top-level: message (key 2) + nested expression-trace map (key 3).
+		byte[] trace = fixmap(
+			pair(intKey(ExpressionTrace.KEY_PHASE), fixint(ExpressionTrace.PHASE_BUILD)),
+			pair(intKey(ExpressionTrace.KEY_BYTE_OFFSET), fixint(7)),
+			pair(intKey(ExpressionTrace.KEY_OP), fixstr("cmp_eq")),
+			pair(intKey(ExpressionTrace.KEY_DEPTH), fixint(3)),
+			pair(intKey(ExpressionTrace.KEY_PATH), fixarray(fixstr("and"), fixstr("eq"), fixstr("cmp_eq"))),
+			pair(intKey(ExpressionTrace.KEY_SNIPPET), fixstr("eq(int,float)"))
+		);
+		byte[] detail = fixmap(
+			pair(intKey(2), fixstr("bad exp")),
+			pair(intKey(3), trace)
+		);
+		RecordParser rp = parserFor(detail);
+		rp.parseFields(null, null, false);
+
+		// Message still surfaces unchanged; subcode absent (no key 1).
+		assertEquals("bad exp", rp.serverMessage);
+
+		ExpressionTrace t = rp.expTrace;
+		assertNotNull("Expected a parsed expression trace", t);
+		assertEquals(ExpressionTrace.PHASE_BUILD, t.getPhase());
+		assertEquals(7, t.getByteOffset());
+		assertEquals("cmp_eq", t.getOp());
+		assertEquals(3, t.getDepth());
+		assertEquals("eq(int,float)", t.getSnippet());
+		// path order preserved root -> fault.
+		assertArrayEquals(new String[]{"and", "eq", "cmp_eq"}, t.getPath());
+		// lang absent => msgpack default.
+		assertEquals(ExpressionTrace.LANG_MSGPACK, t.getLang());
+	}
+
+	@Test
+	public void parsesTracePathTruncationSentinel() {
+		// True depth deeper than the path frame cap: server splices a "..." element
+		// between the outermost frames and the failing frame; depth reports the true count.
+		byte[] trace = fixmap(
+			pair(intKey(ExpressionTrace.KEY_PHASE), fixint(ExpressionTrace.PHASE_BUILD)),
+			pair(intKey(ExpressionTrace.KEY_DEPTH), fixint(20)),
+			pair(intKey(ExpressionTrace.KEY_PATH),
+				fixarray(fixstr("and"), fixstr("or"), fixstr("..."), fixstr("cmp_eq")))
+		);
+		byte[] detail = fixmap(pair(intKey(3), trace));
+		RecordParser rp = parserFor(detail);
+		rp.parseFields(null, null, false);
+
+		ExpressionTrace t = rp.expTrace;
+		assertNotNull(t);
+		assertEquals("depth reports the TRUE count, not the truncated path length", 20, t.getDepth());
+		String[] path = t.getPath();
+		assertNotNull(path);
+		assertEquals(4, path.length);
+		assertEquals(ExpressionTrace.PATH_TRUNCATION_SENTINEL, path[2]);
+		assertEquals("...", path[2]);
+		// Order preserved around the sentinel.
+		assertEquals("and", path[0]);
+		assertEquals("cmp_eq", path[3]);
+	}
+
+	@Test
+	public void parsesTraceWithSnippetAndPathAbsent() {
+		// Budget can drop snippet first, then path, leaving the structural core only.
+		byte[] trace = fixmap(
+			pair(intKey(ExpressionTrace.KEY_PHASE), fixint(ExpressionTrace.PHASE_BUILD)),
+			pair(intKey(ExpressionTrace.KEY_BYTE_OFFSET), fixint(12)),
+			pair(intKey(ExpressionTrace.KEY_OP), fixstr("add")),
+			pair(intKey(ExpressionTrace.KEY_DEPTH), fixint(2))
+		);
+		byte[] detail = fixmap(pair(intKey(3), trace));
+		RecordParser rp = parserFor(detail);
+		rp.parseFields(null, null, false);
+
+		ExpressionTrace t = rp.expTrace;
+		assertNotNull(t);
+		assertEquals(ExpressionTrace.PHASE_BUILD, t.getPhase());
+		assertEquals(12, t.getByteOffset());
+		assertEquals("add", t.getOp());
+		assertEquals(2, t.getDepth());
+		assertNull("snippet absent within a present trace", t.getSnippet());
+		assertNull("path absent within a present trace", t.getPath());
+	}
+
+	@Test
+	public void parsesTraceSkippingUnknownTraceKeys() {
+		// Reserved / future keys (outcome=7, ael_line=11, ael_col=12) and an unknown
+		// key 99 must be skipped without disturbing the recognized fields.
+		byte[] trace = fixmap(
+			pair(intKey(ExpressionTrace.KEY_OUTCOME), fixint(5)),       // 7 reserved
+			pair(intKey(ExpressionTrace.KEY_PHASE), fixint(ExpressionTrace.PHASE_BUILD)),
+			pair(intKey(ExpressionTrace.KEY_AEL_LINE), fixint(9)),      // 11 reserved
+			pair(intKey(ExpressionTrace.KEY_BYTE_OFFSET), fixint(4)),
+			pair(intKey(ExpressionTrace.KEY_AEL_COL), fixint(2)),       // 12 reserved
+			pair(intKey(99), fixstr("ignored"))                        // wholly unknown
+		);
+		byte[] detail = fixmap(pair(intKey(3), trace));
+		RecordParser rp = parserFor(detail);
+		rp.parseFields(null, null, false);
+
+		ExpressionTrace t = rp.expTrace;
+		assertNotNull(t);
+		assertEquals(ExpressionTrace.PHASE_BUILD, t.getPhase());
+		assertEquals(4, t.getByteOffset());
+		// Unknown keys did not corrupt absent fields.
+		assertNull(t.getOp());
+		assertEquals(-1, t.getDepth());
+	}
+
+	@Test
+	public void parsesTraceLangAbsentIsMsgpack() {
+		byte[] trace = fixmap(
+			pair(intKey(ExpressionTrace.KEY_PHASE), fixint(ExpressionTrace.PHASE_BUILD)),
+			pair(intKey(ExpressionTrace.KEY_BYTE_OFFSET), fixint(1))
+		);
+		byte[] detail = fixmap(pair(intKey(3), trace));
+		RecordParser rp = parserFor(detail);
+		rp.parseFields(null, null, false);
+
+		ExpressionTrace t = rp.expTrace;
+		assertNotNull(t);
+		assertEquals("absent lang must be treated as msgpack", ExpressionTrace.LANG_MSGPACK, t.getLang());
+		assertEquals(-1, t.getAelOffset());
+		assertEquals(-1, t.getAelSpan());
+	}
+
+	@Test
+	public void parsesTraceLangAelWithOffsets() {
+		// The reserved AEL branch: lang=2 plus ael_offset/ael_span must be exposed if present.
+		byte[] trace = fixmap(
+			pair(intKey(ExpressionTrace.KEY_PHASE), fixint(ExpressionTrace.PHASE_BUILD)),
+			pair(intKey(ExpressionTrace.KEY_LANG), fixint(ExpressionTrace.LANG_AEL)),
+			pair(intKey(ExpressionTrace.KEY_AEL_OFFSET), fixint(42)),
+			pair(intKey(ExpressionTrace.KEY_AEL_SPAN), fixint(6))
+		);
+		byte[] detail = fixmap(pair(intKey(3), trace));
+		RecordParser rp = parserFor(detail);
+		rp.parseFields(null, null, false);
+
+		ExpressionTrace t = rp.expTrace;
+		assertNotNull(t);
+		assertEquals(ExpressionTrace.LANG_AEL, t.getLang());
+		assertEquals(42, t.getAelOffset());
+		assertEquals(6, t.getAelSpan());
+	}
+
+	@Test
+	public void noKey3YieldsNoTrace() {
+		// A normal subcode+message response (verbosity 2 shape) must leave expTrace null.
+		byte[] detail = fixmap2(
+			pair(intKey(1), fixint(4)),
+			pair(intKey(2), fixstr("plain"))
+		);
+		RecordParser rp = parserFor(detail);
+		rp.parseFields(null, null, false);
+
+		assertEquals("plain (subcode=4)", rp.serverMessage);
+		assertNull("no key 3 => no expression trace", rp.expTrace);
+	}
+
+	@Test
+	public void messageStillSurfacesAlongsideTraceRegardlessOfKeyOrder() {
+		// Key 3 emitted BEFORE key 2: the message must still surface and the trace parse.
+		byte[] trace = fixmap(
+			pair(intKey(ExpressionTrace.KEY_PHASE), fixint(ExpressionTrace.PHASE_BUILD)),
+			pair(intKey(ExpressionTrace.KEY_OP), fixstr("eq"))
+		);
+		byte[] detail = fixmap(
+			pair(intKey(3), trace),
+			pair(intKey(2), fixstr("bad exp"))
+		);
+		RecordParser rp = parserFor(detail);
+		rp.parseFields(null, null, false);
+
+		assertEquals("bad exp", rp.serverMessage);
+		assertNotNull(rp.expTrace);
+		assertEquals("eq", rp.expTrace.getOp());
+	}
+
+	@Test
+	public void emptyTraceMapYieldsNoTrace() {
+		// A present-but-empty nested map (0 entries) is not a usable trace.
+		byte[] detail = fixmap(pair(intKey(3), fixmap()));
+		RecordParser rp = parserFor(detail);
+		rp.parseFields(null, null, false);
+		assertNull(rp.expTrace);
+	}
+
 	// ---------- helpers: wire format & msgpack composition ----------
 
 	/**
@@ -415,6 +607,28 @@ public class TestErrorDetailParser extends TestBase {
 			writeInt(out, size);
 			out.write(fieldTypes[i] & 0xFF);
 			writeBytes(out, data);
+		}
+		return out.toByteArray();
+	}
+
+	/** Variable-arity fixmap (0–15 key/value pairs). */
+	private static byte[] fixmap(byte[]... kvs) {
+		assertTrue("fixmap supports up to 15 entries", kvs.length <= 15);
+		ByteArrayOutputStream out = new ByteArrayOutputStream();
+		out.write(0x80 | kvs.length);
+		for (byte[] kv : kvs) {
+			writeBytes(out, kv);
+		}
+		return out.toByteArray();
+	}
+
+	/** Variable-arity fixarray (0–15 elements). */
+	private static byte[] fixarray(byte[]... elems) {
+		assertTrue("fixarray supports up to 15 entries", elems.length <= 15);
+		ByteArrayOutputStream out = new ByteArrayOutputStream();
+		out.write(0x90 | elems.length);
+		for (byte[] e : elems) {
+			writeBytes(out, e);
 		}
 		return out.toByteArray();
 	}

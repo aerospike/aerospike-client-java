@@ -55,13 +55,13 @@ public final class AsyncExists extends AsyncReadBase {
 
 		if (rp.resultCode == ResultCode.FILTERED_OUT) {
 			if (policy.failOnFilteredOut) {
-				throw RecordParser.toException(rp.resultCode, rp.serverMessage, rp.serverSubcode);
+				throw RecordParser.toException(rp.resultCode, rp.serverMessage, rp.serverSubcode, rp.expTrace);
 			}
 			exists = true;
 			return true;
 		}
 
-		throw RecordParser.toException(rp.resultCode, rp.serverMessage, rp.serverSubcode);
+		throw RecordParser.toException(rp.resultCode, rp.serverMessage, rp.serverSubcode, rp.expTrace);
 	}
 
 	@Override

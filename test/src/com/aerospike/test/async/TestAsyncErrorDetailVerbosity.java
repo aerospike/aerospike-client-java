@@ -26,6 +26,7 @@ import java.util.List;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Bin;
+import com.aerospike.client.ExpressionTrace;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
 import com.aerospike.client.ResultCode;
@@ -35,6 +36,9 @@ import com.aerospike.client.cdt.ListOperation;
 import com.aerospike.client.cdt.ListOrder;
 import com.aerospike.client.cdt.ListPolicy;
 import com.aerospike.client.cdt.ListWriteFlags;
+import com.aerospike.client.exp.Exp;
+import com.aerospike.client.exp.ExpOperation;
+import com.aerospike.client.exp.ExpWriteFlags;
 import com.aerospike.client.listener.DeleteListener;
 import com.aerospike.client.listener.ExistsListener;
 import com.aerospike.client.listener.RecordListener;
@@ -54,8 +58,12 @@ public class TestAsyncErrorDetailVerbosity extends TestAsync {
 
 	@BeforeClass
 	public static void setup() {
-		org.junit.Assume.assumeTrue("Extended error-detail requires server version 8.1.3 or later",
-			args.serverVersion.isGreaterOrEqual(8, 1, 3, 0));
+		// Extended error-detail (subcode/message) plus the verbosity-3 expression
+		// build trace (SERVER-1137). The SERVER-1137 feature branch is cut from the
+		// 8.1.1 line and reports its base version as 8.1.1.0-start-*, so gate at
+		// 8.1.1 rather than the 8.1.3 release that first shipped the base tier.
+		org.junit.Assume.assumeTrue("Extended error-detail requires server version 8.1.1 or later",
+			args.serverVersion.isGreaterOrEqual(8, 1, 1, 0));
 
 		WritePolicy wp = new WritePolicy();
 		intKey = new Key(args.namespace, args.set, "edv-async-int-key");
@@ -235,6 +243,115 @@ public class TestAsyncErrorDetailVerbosity extends TestAsync {
 		}, p, intKey);
 
 		waitTillComplete();
+	}
+
+	// ---------------------------------------------------------------------
+	// Verbosity 3: expression build-failure trace (SERVER-1137), async paths.
+	// A type-mismatched comparison fails to build on the server: as a filter_exp
+	// read it yields "invalid metadata expression in request"; as an exp_write op,
+	// "invalid expression in operation request". Both: PARAMETER_ERROR + NONE +
+	// a build-phase trace. Assert presence/shape, not exact byte_offset/snippet.
+	// ---------------------------------------------------------------------
+
+	/** Expression with type-mismatched operands (int vs float) -> server build failure. */
+	private static Exp badExp() {
+		return Exp.eq(Exp.val(5), Exp.val(6.0));
+	}
+
+	@Test
+	public void asyncFilterExpBuildFailureTrace() {
+		Policy p = new Policy();
+		p.errorDetailVerbosity = 3;
+		p.filterExp = Exp.build(badExp());
+
+		AtomicReference<AerospikeException> caught = new AtomicReference<>();
+
+		client.get(eventLoop, new RecordListener() {
+			public void onSuccess(Key key, Record record) {
+				setError(new Exception("Expected PARAMETER_ERROR build failure, got success"));
+				notifyComplete();
+			}
+			public void onFailure(AerospikeException e) {
+				caught.set(e);
+				notifyComplete();
+			}
+		}, p, intKey);
+
+		waitTillComplete();
+		assertBuildTrace(caught.get(), "invalid metadata expression in request");
+	}
+
+	@Test
+	public void asyncExpWriteBuildFailureTrace() {
+		WritePolicy wp = new WritePolicy();
+		wp.errorDetailVerbosity = 3;
+
+		AtomicReference<AerospikeException> caught = new AtomicReference<>();
+
+		client.operate(eventLoop, new RecordListener() {
+			public void onSuccess(Key key, Record record) {
+				setError(new Exception("Expected PARAMETER_ERROR build failure, got success"));
+				notifyComplete();
+			}
+			public void onFailure(AerospikeException e) {
+				caught.set(e);
+				notifyComplete();
+			}
+		}, wp, intKey, ExpOperation.write(binName, Exp.build(badExp()), ExpWriteFlags.DEFAULT));
+
+		waitTillComplete();
+		assertBuildTrace(caught.get(), "invalid expression in operation request");
+	}
+
+	@Test
+	public void asyncFilterExpBuildFailureVerbosity2HasNoTrace() {
+		// Additive-superset check: same inducer at verbosity 2 -> message, no trace.
+		Policy p = new Policy();
+		p.errorDetailVerbosity = 2;
+		p.filterExp = Exp.build(badExp());
+
+		AtomicReference<AerospikeException> caught = new AtomicReference<>();
+
+		client.get(eventLoop, new RecordListener() {
+			public void onSuccess(Key key, Record record) {
+				setError(new Exception("Expected PARAMETER_ERROR build failure, got success"));
+				notifyComplete();
+			}
+			public void onFailure(AerospikeException e) {
+				caught.set(e);
+				notifyComplete();
+			}
+		}, p, intKey);
+
+		waitTillComplete();
+
+		AerospikeException ae = caught.get();
+		org.junit.Assert.assertNotNull("Expected AerospikeException to be captured", ae);
+		org.junit.Assert.assertEquals(ResultCode.PARAMETER_ERROR, ae.getResultCode());
+		org.junit.Assert.assertEquals(SubCode.NONE, ae.getSubcode());
+		String msg = ae.getBaseMessage();
+		org.junit.Assert.assertNotNull(msg);
+		org.junit.Assert.assertTrue("Expected filter-build message in: " + msg,
+			msg.contains("invalid metadata expression in request"));
+		org.junit.Assert.assertNull("Verbosity 2 must surface NO expression trace", ae.getExpressionTrace());
+	}
+
+	/**
+	 * Assert a verbosity-3 expression build failure: PARAMETER_ERROR + SubCode.NONE +
+	 * the contextual message + a non-null build-phase trace.
+	 */
+	private static void assertBuildTrace(AerospikeException ae, String expectedSubstring) {
+		org.junit.Assert.assertNotNull("Expected AerospikeException to be captured", ae);
+		org.junit.Assert.assertEquals("Unexpected result code", ResultCode.PARAMETER_ERROR, ae.getResultCode());
+		org.junit.Assert.assertEquals("Expected no subcode", SubCode.NONE, ae.getSubcode());
+
+		String msg = ae.getBaseMessage();
+		org.junit.Assert.assertNotNull("Expected server error message, got null. ae=" + ae, msg);
+		org.junit.Assert.assertTrue("Expected '" + expectedSubstring + "' in: " + msg, msg.contains(expectedSubstring));
+
+		ExpressionTrace t = ae.getExpressionTrace();
+		org.junit.Assert.assertNotNull("Expected a non-null expression trace at verbosity 3", t);
+		org.junit.Assert.assertEquals("Expected a build-phase trace", ExpressionTrace.PHASE_BUILD, t.getPhase());
 	}
 
 	/**

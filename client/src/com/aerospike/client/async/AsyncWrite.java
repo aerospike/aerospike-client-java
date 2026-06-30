@@ -60,12 +60,12 @@ public final class AsyncWrite extends AsyncWriteBase {
 
 		if (resultCode == ResultCode.FILTERED_OUT) {
 			if (policy.failOnFilteredOut) {
-				throw RecordParser.toException(resultCode, serverMessage, serverSubcode);
+				throw RecordParser.toException(resultCode, serverMessage, serverSubcode, expTrace);
 			}
 			return true;
 		}
 
-		throw RecordParser.toException(resultCode, serverMessage, serverSubcode);
+		throw RecordParser.toException(resultCode, serverMessage, serverSubcode, expTrace);
 	}
 
 	@Override

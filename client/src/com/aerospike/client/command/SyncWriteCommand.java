@@ -77,9 +77,11 @@ public abstract class SyncWriteCommand extends SyncCommand {
 			this.serverMessage = rp.serverMessage;
 		}
 		this.serverSubcode = rp.serverSubcode;
+		this.expTrace = rp.expTrace;
 		return rp.resultCode;
 	}
 
 	protected String serverMessage;
 	protected int serverSubcode = SubCode.NONE;
+	protected ExpressionTrace expTrace;
 }
