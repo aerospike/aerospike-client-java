@@ -54,13 +54,13 @@ public final class AsyncDelete extends AsyncWriteBase {
 
 		if (resultCode == ResultCode.FILTERED_OUT) {
 			if (policy.failOnFilteredOut) {
-				throw RecordParser.toException(resultCode, serverMessage, serverSubcode);
+				throw RecordParser.toException(resultCode, serverMessage, serverSubcode, expTrace);
 			}
 			existed = true;
 			return true;
 		}
 
-		throw RecordParser.toException(resultCode, serverMessage, serverSubcode);
+		throw RecordParser.toException(resultCode, serverMessage, serverSubcode, expTrace);
 	}
 
 	@Override

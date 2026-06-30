@@ -73,12 +73,12 @@ public class ReadCommand extends SyncReadCommand {
 
 		if (rp.resultCode == ResultCode.FILTERED_OUT) {
 			if (policy.failOnFilteredOut) {
-				throw RecordParser.toException(rp.resultCode, rp.serverMessage, rp.serverSubcode);
+				throw RecordParser.toException(rp.resultCode, rp.serverMessage, rp.serverSubcode, rp.expTrace);
 			}
 			return;
 		}
 
-		throw RecordParser.toException(rp.resultCode, rp.serverMessage, rp.serverSubcode);
+		throw RecordParser.toException(rp.resultCode, rp.serverMessage, rp.serverSubcode, rp.expTrace);
 	}
 
 	public Record getRecord() {

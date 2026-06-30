@@ -21,8 +21,11 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
+import static org.junit.Assert.assertNull;
+
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Bin;
+import com.aerospike.client.ExpressionTrace;
 import com.aerospike.client.Key;
 import com.aerospike.client.Operation;
 import com.aerospike.client.Record;
@@ -41,6 +44,8 @@ import com.aerospike.client.cdt.MapPolicy;
 import com.aerospike.client.cdt.MapReturnType;
 import com.aerospike.client.cdt.MapWriteFlags;
 import com.aerospike.client.exp.Exp;
+import com.aerospike.client.exp.ExpOperation;
+import com.aerospike.client.exp.ExpWriteFlags;
 import com.aerospike.client.operation.BitOperation;
 import com.aerospike.client.operation.HLLOperation;
 import com.aerospike.client.operation.HLLPolicy;
@@ -75,8 +80,12 @@ public class TestErrorDetailVerbosity extends TestSync {
 
 	@BeforeClass
 	public static void setup() {
-		org.junit.Assume.assumeTrue("Extended error-detail requires server version 8.1.3 or later",
-			args.serverVersion.isGreaterOrEqual(8, 1, 3, 0));
+		// Extended error-detail (subcode/message) plus the verbosity-3 expression
+		// build trace (SERVER-1137). The SERVER-1137 feature branch is cut from the
+		// 8.1.1 line and reports its base version as 8.1.1.0-start-*, so gate at
+		// 8.1.1 rather than the 8.1.3 release that first shipped the base tier.
+		org.junit.Assume.assumeTrue("Extended error-detail requires server version 8.1.1 or later",
+			args.serverVersion.isGreaterOrEqual(8, 1, 1, 0));
 
 		WritePolicy wp = new WritePolicy();
 		intKey = new Key(args.namespace, args.set, "edv-int-key");
@@ -379,6 +388,8 @@ public class TestErrorDetailVerbosity extends TestSync {
 
 	@Test
 	public void testReadFilteredOut() {
+		// FILTERED_OUT carries no subcode (AS_SUB_NONE) and a contextual message;
+		// the server's as_sub_filtered_t enum was removed, so there is no version gate.
 		Policy p = new Policy();
 		p.errorDetailVerbosity = 2;
 		p.filterExp = Exp.build(Exp.eq(Exp.intBin(binName), Exp.val(99)));
@@ -388,8 +399,7 @@ public class TestErrorDetailVerbosity extends TestSync {
 			client.get(p, intKey);
 		}
 		catch (AerospikeException ae) {
-			// AS_SUB_FILTERED_BINS = 2
-			assertSubcode(ae, ResultCode.FILTERED_OUT, SubCode.FILTERED_BINS);
+			assertSubcodeAbsent(ae, ResultCode.FILTERED_OUT, "filtered out");
 			return;
 		}
 		assertTrue("Expected AerospikeException", false);
@@ -689,6 +699,8 @@ public class TestErrorDetailVerbosity extends TestSync {
 
 	@Test
 	public void testOperateFilteredOut() {
+		// FILTERED_OUT carries no subcode (AS_SUB_NONE) and a contextual message;
+		// the server's as_sub_filtered_t enum was removed, so there is no version gate.
 		WritePolicy wp = new WritePolicy();
 		wp.errorDetailVerbosity = 2;
 		wp.filterExp = Exp.build(Exp.eq(Exp.intBin(binName), Exp.val(99)));
@@ -698,8 +710,7 @@ public class TestErrorDetailVerbosity extends TestSync {
 			client.operate(wp, intKey, Operation.get(binName));
 		}
 		catch (AerospikeException ae) {
-			// AS_SUB_FILTERED_BINS = 2
-			assertSubcode(ae, ResultCode.FILTERED_OUT, SubCode.FILTERED_BINS);
+			assertSubcodeAbsent(ae, ResultCode.FILTERED_OUT, "filtered out");
 			return;
 		}
 		assertTrue("Expected AerospikeException", false);
@@ -723,6 +734,99 @@ public class TestErrorDetailVerbosity extends TestSync {
 
 		assertNotNull(record);
 		assertEquals(42, record.getInt(binName));
+	}
+
+	// ---------------------------------------------------------------------
+	// Verbosity 3: expression build-failure trace (SERVER-1137).
+	//
+	// A type-mismatched comparison expression fails to *build* on the server.
+	// As a filter_exp it yields "invalid metadata expression in request"; as an
+	// exp_write op it yields "invalid expression in operation request". Both carry
+	// PARAMETER_ERROR + SubCode.NONE and, at verbosity 3, a structured build trace.
+	// Assert trace PRESENCE and SHAPE, not exact byte_offset/snippet bytes.
+	// ---------------------------------------------------------------------
+
+	/** Expression whose operands are type-mismatched (int vs float), so the server build fails. */
+	private static Exp badExp() {
+		return Exp.eq(Exp.val(5), Exp.val(6.0));
+	}
+
+	@Test
+	public void testFilterExpBuildFailureTrace() {
+		Policy p = new Policy();
+		p.errorDetailVerbosity = 3;
+		p.filterExp = Exp.build(badExp());
+
+		try {
+			client.get(p, intKey);
+		}
+		catch (AerospikeException ae) {
+			assertEquals(ResultCode.PARAMETER_ERROR, ae.getResultCode());
+			assertEquals(SubCode.NONE, ae.getSubcode());
+
+			String msg = ae.getBaseMessage();
+			assertNotNull(msg);
+			assertTrue("Expected filter-build message in: " + msg,
+				msg.contains("invalid metadata expression in request"));
+
+			ExpressionTrace t = ae.getExpressionTrace();
+			assertNotNull("Expected a non-null expression trace at verbosity 3", t);
+			assertEquals("Expected a build-phase trace", ExpressionTrace.PHASE_BUILD, t.getPhase());
+			return;
+		}
+		assertTrue("Expected AerospikeException", false);
+	}
+
+	@Test
+	public void testExpWriteBuildFailureTrace() {
+		WritePolicy wp = new WritePolicy();
+		wp.errorDetailVerbosity = 3;
+
+		try {
+			client.operate(wp, intKey,
+				ExpOperation.write(binName, Exp.build(badExp()), ExpWriteFlags.DEFAULT));
+		}
+		catch (AerospikeException ae) {
+			assertEquals(ResultCode.PARAMETER_ERROR, ae.getResultCode());
+			assertEquals(SubCode.NONE, ae.getSubcode());
+
+			String msg = ae.getBaseMessage();
+			assertNotNull(msg);
+			assertTrue("Expected exp-op build message in: " + msg,
+				msg.contains("invalid expression in operation request"));
+
+			ExpressionTrace t = ae.getExpressionTrace();
+			assertNotNull("Expected a non-null expression trace at verbosity 3", t);
+			assertEquals("Expected a build-phase trace", ExpressionTrace.PHASE_BUILD, t.getPhase());
+			return;
+		}
+		assertTrue("Expected AerospikeException", false);
+	}
+
+	@Test
+	public void testFilterExpBuildFailureVerbosity2HasNoTrace() {
+		// Additive-superset check: the SAME inducer at verbosity 2 surfaces the same
+		// message but NO trace. Verbosity 3 = verbosity 2 + trace.
+		Policy p = new Policy();
+		p.errorDetailVerbosity = 2;
+		p.filterExp = Exp.build(badExp());
+
+		try {
+			client.get(p, intKey);
+		}
+		catch (AerospikeException ae) {
+			assertEquals(ResultCode.PARAMETER_ERROR, ae.getResultCode());
+			assertEquals(SubCode.NONE, ae.getSubcode());
+
+			String msg = ae.getBaseMessage();
+			assertNotNull(msg);
+			assertTrue("Expected filter-build message in: " + msg,
+				msg.contains("invalid metadata expression in request"));
+
+			assertNull("Verbosity 2 must surface NO expression trace", ae.getExpressionTrace());
+			return;
+		}
+		assertTrue("Expected AerospikeException", false);
 	}
 
 	/**
