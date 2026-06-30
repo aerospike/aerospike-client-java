@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2025 Aerospike, Inc.
+ * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -677,7 +677,7 @@ public class Node implements Closeable {
 		// Create sync connection.
 		Connection conn;
 
-		if (cluster.metricsEnabled) {
+		if (cluster.metricsEnabled && metrics != null) {
 			long begin = System.nanoTime();
 
 			conn = (cluster.tlsPolicy != null && !cluster.tlsPolicy.forLoginOnly) ?
@@ -1190,7 +1190,7 @@ public class Node implements Closeable {
 	 * Return error count. The value is cumulative and not reset per metrics interval.
 	 */
 	public long getErrorCount() {
-        return errorCounter.getTotal();
+		return errorCounter.getTotal();
 	}
 
 	/**
@@ -1204,7 +1204,7 @@ public class Node implements Closeable {
 	 * Return timeout count. The value is cumulative and not reset per metrics interval.
 	 */
 	public long getTimeoutCount() {
-        return timeoutCounter.getTotal();
+		return timeoutCounter.getTotal();
 	}
 
 	/**
