@@ -22,7 +22,7 @@ package com.aerospike.client;
  * When extended error detail is requested (see
  * {@link com.aerospike.client.policy.Policy#errorDetailVerbosity}), the server may
  * attach a numeric subcode to a failure response. The subcode is surfaced on
- * {@link AerospikeException#getSubcode()}.
+ * {@link AerospikeException#getSubCode()}.
  * <p>
  * <b>Match on the {@code (resultCode, subcode)} pair.</b> Subcode integer values are
  * scoped to their parent {@link ResultCode} and are <b>not</b> globally unique — the

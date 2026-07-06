@@ -62,8 +62,8 @@ public class TestAsyncErrorDetailVerbosity extends TestAsync {
 		// build trace (SERVER-1137). The SERVER-1137 feature branch is cut from the
 		// 8.1.1 line and reports its base version as 8.1.1.0-start-*, so gate at
 		// 8.1.1 rather than the 8.1.3 release that first shipped the base tier.
-		org.junit.Assume.assumeTrue("Extended error-detail requires server version 8.1.1 or later",
-			args.serverVersion.isGreaterOrEqual(8, 1, 1, 0));
+		org.junit.Assume.assumeTrue("Extended error-detail requires server version 8.1.3 or later",
+			args.serverVersion.isGreaterOrEqual(8, 1, 3, 0));
 
 		WritePolicy wp = new WritePolicy();
 		intKey = new Key(args.namespace, args.set, "edv-async-int-key");
@@ -328,7 +328,7 @@ public class TestAsyncErrorDetailVerbosity extends TestAsync {
 		AerospikeException ae = caught.get();
 		org.junit.Assert.assertNotNull("Expected AerospikeException to be captured", ae);
 		org.junit.Assert.assertEquals(ResultCode.PARAMETER_ERROR, ae.getResultCode());
-		org.junit.Assert.assertEquals(SubCode.NONE, ae.getSubcode());
+		org.junit.Assert.assertEquals(SubCode.NONE, ae.getSubCode());
 		String msg = ae.getBaseMessage();
 		org.junit.Assert.assertNotNull(msg);
 		org.junit.Assert.assertTrue("Expected filter-build message in: " + msg,
@@ -343,7 +343,7 @@ public class TestAsyncErrorDetailVerbosity extends TestAsync {
 	private static void assertBuildTrace(AerospikeException ae, String expectedSubstring) {
 		org.junit.Assert.assertNotNull("Expected AerospikeException to be captured", ae);
 		org.junit.Assert.assertEquals("Unexpected result code", ResultCode.PARAMETER_ERROR, ae.getResultCode());
-		org.junit.Assert.assertEquals("Expected no subcode", SubCode.NONE, ae.getSubcode());
+		org.junit.Assert.assertEquals("Expected no subcode", SubCode.NONE, ae.getSubCode());
 
 		String msg = ae.getBaseMessage();
 		org.junit.Assert.assertNotNull("Expected server error message, got null. ae=" + ae, msg);
@@ -361,7 +361,7 @@ public class TestAsyncErrorDetailVerbosity extends TestAsync {
 	private static void assertSubcode(AerospikeException ae, int expectedResultCode, int expectedSubcode) {
 		org.junit.Assert.assertNotNull("Expected AerospikeException to be captured", ae);
 		org.junit.Assert.assertEquals("Unexpected result code", expectedResultCode, ae.getResultCode());
-		org.junit.Assert.assertEquals("Unexpected subcode", expectedSubcode, ae.getSubcode());
+		org.junit.Assert.assertEquals("Unexpected subcode", expectedSubcode, ae.getSubCode());
 
 		String msg = ae.getBaseMessage();
 		org.junit.Assert.assertNotNull("Expected server error message, got null. ae=" + ae, msg);
@@ -371,13 +371,13 @@ public class TestAsyncErrorDetailVerbosity extends TestAsync {
 
 	/**
 	 * Assert that the server surfaced a contextual message but NO subcode
-	 * (AS_SUB_NONE): {@link AerospikeException#getSubcode()} is {@link SubCode#NONE}
+	 * (AS_SUB_NONE): {@link AerospikeException#getSubCode()} is {@link SubCode#NONE}
 	 * and the "(subcode=...)" suffix must never appear.
 	 */
 	private static void assertSubcodeAbsent(AerospikeException ae, int expectedResultCode, String expectedSubstring) {
 		org.junit.Assert.assertNotNull("Expected AerospikeException to be captured", ae);
 		org.junit.Assert.assertEquals("Unexpected result code", expectedResultCode, ae.getResultCode());
-		org.junit.Assert.assertEquals("Expected no subcode", SubCode.NONE, ae.getSubcode());
+		org.junit.Assert.assertEquals("Expected no subcode", SubCode.NONE, ae.getSubCode());
 
 		String msg = ae.getBaseMessage();
 		org.junit.Assert.assertNotNull("Expected server error message, got null. ae=" + ae, msg);

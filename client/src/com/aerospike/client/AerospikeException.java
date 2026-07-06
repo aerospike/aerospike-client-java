@@ -32,7 +32,7 @@ public class AerospikeException extends RuntimeException {
 	protected transient Policy policy;
 	protected List<AerospikeException> subExceptions;
 	protected int resultCode = ResultCode.CLIENT_ERROR;
-	protected int subcode = SubCode.NONE;
+	protected int subCode = SubCode.NONE;
 	protected ExpressionTrace expTrace;
 	protected int iteration = -1;
 	protected boolean inDoubt;
@@ -45,7 +45,7 @@ public class AerospikeException extends RuntimeException {
 	public AerospikeException(int resultCode, String message, int subcode) {
 		super(message);
 		this.resultCode = resultCode;
-		this.subcode = subcode;
+		this.subCode = subcode;
 	}
 
 	public AerospikeException(int resultCode, Throwable e) {
@@ -202,15 +202,15 @@ public class AerospikeException extends RuntimeException {
 	 * result code and are NOT globally unique. Dispatch on the
 	 * {@code (resultCode, subcode)} pair. See {@link SubCode}.
 	 */
-	public final int getSubcode() {
-		return subcode;
+	public final int getSubCode() {
+		return subCode;
 	}
 
 	/**
 	 * Set the server-supplied error subcode.
 	 */
-	public final void setSubcode(int subcode) {
-		this.subcode = subcode;
+	public final void setSubCode(int subcode) {
+		this.subCode = subcode;
 	}
 
 	/**

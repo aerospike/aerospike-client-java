@@ -72,7 +72,7 @@ public final class RecordParser {
 		AerospikeException ae = (serverMessage != null) ?
 			new AerospikeException(resultCode, serverMessage) :
 			new AerospikeException(resultCode);
-		ae.setSubcode(subcode);
+		ae.setSubCode(subcode);
 		ae.setExpressionTrace(expTrace);
 		return ae;
 	}
