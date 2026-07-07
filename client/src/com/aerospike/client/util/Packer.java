@@ -1062,4 +1062,13 @@ public final class Packer {
 			this.length = length;
 		}
 	}
+
+	public void createBuffer() {
+		buffer = new byte[offset];
+		offset = 0;
+	}
+
+	public byte[] getBuffer() {
+		return buffer;
+	}
 }
