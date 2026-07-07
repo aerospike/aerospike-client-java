@@ -93,6 +93,12 @@ public final class Packer {
 		this.buffer = ThreadLocalData.getBuffer();
 	}
 
+	// Pack into a private buffer instead of the shared thread-local buffer,
+	// which the outer packer is already writing into.
+	private Packer(int capacity) {
+		this.buffer = new byte[capacity];
+	}
+
 	/**
 	 * Pack unordered maps at any depth with entries sorted by key in the server's
 	 * canonical msgpack order, without adding an order flag ext header. Servers
@@ -139,7 +145,7 @@ public final class Packer {
 	public void packValueMap(Map<Value,Value> map) {
 		MapOrder order = getMapOrder(map);
 
-		if (sortMaps && buffer != null && order == MapOrder.UNORDERED && map.size() > 1) {
+		if (sortMaps && order == MapOrder.UNORDERED && map.size() > 1) {
 			packMapCanonical(map.entrySet(), map.size());
 			return;
 		}
@@ -157,7 +163,7 @@ public final class Packer {
 	}
 
 	public void packMap(Map<?,?> map, MapOrder order) {
-		if (sortMaps && buffer != null && order == MapOrder.UNORDERED && map.size() > 1) {
+		if (sortMaps && order == MapOrder.UNORDERED && map.size() > 1) {
 			packMapCanonical(map.entrySet(), map.size());
 			return;
 		}
@@ -170,7 +176,7 @@ public final class Packer {
 	}
 
 	public void packMap(List<? extends Entry<?,?>> list, MapOrder order) {
-		if (sortMaps && buffer != null && order == MapOrder.UNORDERED && list.size() > 1) {
+		if (sortMaps && order == MapOrder.UNORDERED && list.size() > 1) {
 			packMapCanonical(list, list.size());
 			return;
 		}
@@ -182,10 +188,9 @@ public final class Packer {
 		}
 	}
 
-	// Only called in the write pass (buffer != null). The packed size is
-	// independent of entry order, so the estimate pass uses the plain packMap
-	// body and the canonicalization work (key serialization, sort, duplicate
-	// check) runs exactly once per map.
+	// Key serialization, sorting and the duplicate-key check run once per map
+	// literal. Keys are packed through private-buffer packers so the shared
+	// thread-local buffer this packer is writing into is not disturbed.
 	private void packMapCanonical(Iterable<? extends Entry<?,?>> entries, int size) {
 		final byte[][] keys = new byte[size][];
 		Object[] values = new Object[size];
@@ -193,12 +198,10 @@ public final class Packer {
 		int i = 0;
 
 		for (Entry<?,?> entry : entries) {
-			Packer packer = new Packer();
+			Packer packer = new Packer(64);
 			packer.sortMaps = true;
 			packer.packObject(entry.getKey());
-			packer.createBuffer();
-			packer.packObject(entry.getKey());
-			keys[i] = packer.getBuffer();
+			keys[i] = packer.toByteArray();
 			values[i] = entry.getValue();
 			ranks[i] = i;
 			i++;
@@ -1058,14 +1061,5 @@ public final class Packer {
 			this.buffer = buffer;
 			this.length = length;
 		}
-	}
-
-	public void createBuffer() {
-		buffer = new byte[offset];
-		offset = 0;
-	}
-
-	public byte[] getBuffer() {
-		return buffer;
 	}
 }
