@@ -21,6 +21,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.TreeMap;
 
@@ -64,6 +65,56 @@ public class TestMapExp extends TestSync {
 		if (!(m instanceof TreeMap)) {
 			fail("Map not instance of TreeMap");
 		}
+	}
+
+	@Test
+	public void unsortedMapLiteral() {
+		// CLIENT-5039: unordered multi-key map literals must be canonicalized or
+		// server 8.1.2.3+ (AER-6930) rejects the expression with PARAMETER_ERROR.
+		// LinkedHashMap is an unordered (non-SortedMap) map with a deterministic,
+		// deliberately unsorted iteration order.
+		Map<String,String> map = new LinkedHashMap<>();
+		map.put("key5", "a");
+		map.put("key1", "e");
+		map.put("key4", "b");
+		map.put("key2", "d");
+		map.put("key3", "c");
+
+		Key key = new Key(args.namespace, args.set, "usml");
+		client.put(null, key, new Bin("m", "unused"));
+
+		Expression exp = Exp.build(MapExp.size(Exp.val(map)));
+
+		Record rec = client.operate(null, key, ExpOperation.read("sz", exp, ExpReadFlags.DEFAULT));
+		assertRecordFound(key, rec);
+		assertEquals(5L, rec.getLong("sz"));
+	}
+
+	@Test
+	public void nestedUnsortedMapLiteral() {
+		Map<Object,Object> inner = new LinkedHashMap<>();
+		inner.put(1402L, 1802L);
+		inner.put(834L, 1374L);
+
+		Map<Object,Object> map = new LinkedHashMap<>();
+		map.put("z", inner);
+		map.put("a", 1L);
+
+		Key key = new Key(args.namespace, args.set, "nusml");
+		client.put(null, key, new Bin("m", "unused"));
+
+		// Look up the nested map inside the literal — the whole literal, at every
+		// depth, must be in canonical form for the server to accept it.
+		Expression exp = Exp.build(
+			MapExp.getByKey(MapReturnType.VALUE, Exp.Type.MAP, Exp.val("z"), Exp.val(map)));
+
+		Record rec = client.operate(null, key, ExpOperation.read("res", exp, ExpReadFlags.DEFAULT));
+		assertRecordFound(key, rec);
+
+		Map<Object,Object> expected = new HashMap<>();
+		expected.put(1402L, 1802L);
+		expected.put(834L, 1374L);
+		assertEquals(expected, rec.getMap("res"));
 	}
 
 	@Test

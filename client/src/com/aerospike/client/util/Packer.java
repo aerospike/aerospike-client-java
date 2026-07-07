@@ -19,12 +19,14 @@ package com.aerospike.client.util;
 import static com.aerospike.client.Value.MapValue.getMapOrder;
 
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.UUID;
 
 import com.aerospike.client.AerospikeException;
+import com.aerospike.client.ResultCode;
 import com.aerospike.client.Value;
 import com.aerospike.client.cdt.MapOrder;
 import com.aerospike.client.command.Buffer;
@@ -91,9 +93,20 @@ public final class Packer {
 
 	private byte[] buffer;
 	private int offset;
+	private boolean sortMaps;
 
 	public Packer() {
 		// Default to null buffer in estimate buffer size mode.
+	}
+
+	/**
+	 * Pack unordered maps at any depth with entries sorted by key in the server's
+	 * canonical msgpack order, without adding an order flag ext header. Servers
+	 * that include AER-6930 (8.1.2.3+) require map value literals in expressions
+	 * to be in canonical form. Default is false.
+	 */
+	public void sortMaps(boolean sortMaps) {
+		this.sortMaps = sortMaps;
 	}
 
 	public void packValueArray(Value[] values) {
@@ -131,6 +144,11 @@ public final class Packer {
 
 	public void packValueMap(Map<Value,Value> map) {
 		MapOrder order = getMapOrder(map);
+
+		if (sortMaps && order == MapOrder.UNORDERED && map.size() > 1) {
+			packMapCanonical(map.entrySet(), map.size());
+			return;
+		}
 		packMapBegin(map.size(), order);
 
 		for (Entry<Value,Value> entry : map.entrySet()) {
@@ -145,6 +163,10 @@ public final class Packer {
 	}
 
 	public void packMap(Map<?,?> map, MapOrder order) {
+		if (sortMaps && order == MapOrder.UNORDERED && map.size() > 1) {
+			packMapCanonical(map.entrySet(), map.size());
+			return;
+		}
 		packMapBegin(map.size(), order);
 
 		for (Entry<?,?> entry : map.entrySet()) {
@@ -154,11 +176,433 @@ public final class Packer {
 	}
 
 	public void packMap(List<? extends Entry<?,?>> list, MapOrder order) {
+		if (sortMaps && order == MapOrder.UNORDERED && list.size() > 1) {
+			packMapCanonical(list, list.size());
+			return;
+		}
 		packMapBegin(list.size(), order);
 
 		for (Entry<?,?> entry : list) {
 			packObject(entry.getKey());
 			packObject(entry.getValue());
+		}
+	}
+
+	private void packMapCanonical(Iterable<? extends Entry<?,?>> entries, int size) {
+		final byte[][] keys = new byte[size][];
+		Object[] values = new Object[size];
+		Integer[] ranks = new Integer[size];
+		int i = 0;
+
+		for (Entry<?,?> entry : entries) {
+			Packer packer = new Packer();
+			packer.sortMaps = true;
+			packer.packObject(entry.getKey());
+			packer.createBuffer();
+			packer.packObject(entry.getKey());
+			keys[i] = packer.getBuffer();
+			values[i] = entry.getValue();
+			ranks[i] = i;
+			i++;
+		}
+
+		Arrays.sort(ranks, (a, b) -> CanonicalCompare.compare(keys[a], keys[b]));
+
+		for (i = 1; i < size; i++) {
+			if (CanonicalCompare.compare(keys[ranks[i - 1]], keys[ranks[i]]) == 0) {
+				throw new AerospikeException(ResultCode.PARAMETER_ERROR,
+					"Map keys pack to duplicate msgpack keys in expression map literal");
+			}
+		}
+
+		packMapBegin(size);
+
+		for (i = 0; i < size; i++) {
+			byte[] key = keys[ranks[i]];
+			packByteArray(key, 0, key.length);
+			packObject(values[ranks[i]]);
+		}
+	}
+
+	/**
+	 * Compare packed msgpack elements using the same ordering as the server's
+	 * msgpack_cmp (cf/src/msgpack_in.c).
+	 */
+	private static final class CanonicalCompare {
+		// Type ranks from the server's msgpack_type enum (cf/include/msgpack_in.h).
+		private static final int TYPE_NIL = 1;
+		private static final int TYPE_FALSE = 2;
+		private static final int TYPE_TRUE = 3;
+		private static final int TYPE_NEGINT = 4;
+		private static final int TYPE_INT = 5;
+		private static final int TYPE_STRING = 6;
+		private static final int TYPE_LIST = 7;
+		private static final int TYPE_MAP = 8;
+		private static final int TYPE_BYTES = 9;
+		private static final int TYPE_DOUBLE = 10;
+		private static final int TYPE_GEOJSON = 11;
+		private static final int TYPE_EXT = 12;
+		private static final int TYPE_WILDCARD = 13;
+		private static final int TYPE_INF = 14;
+
+		private final byte[] buf;
+		private int offset;
+
+		// State of most recently parsed element.
+		private int type;
+		private long iNum;
+		private double dNum;
+		private int dataOffset;
+		private int dataLen;
+		private int count;
+
+		private CanonicalCompare(byte[] buf) {
+			this.buf = buf;
+		}
+
+		private static int compare(byte[] b0, byte[] b1) {
+			return compareElement(new CanonicalCompare(b0), new CanonicalCompare(b1));
+		}
+
+		private static int compareElement(CanonicalCompare c0, CanonicalCompare c1) {
+			c0.parse();
+			c1.parse();
+
+			if (c0.type == TYPE_WILDCARD || c1.type == TYPE_WILDCARD) {
+				c0.skipParsed();
+				c1.skipParsed();
+				return 0;
+			}
+
+			if (c0.type != c1.type) {
+				return Integer.compare(c0.type, c1.type);
+			}
+
+			switch (c0.type) {
+			case TYPE_NEGINT:
+			case TYPE_INT:
+				return Long.compareUnsigned(c0.iNum, c1.iNum);
+
+			case TYPE_STRING:
+			case TYPE_BYTES:
+			case TYPE_GEOJSON:
+			case TYPE_EXT: {
+				int len = Math.min(c0.dataLen, c1.dataLen);
+
+				for (int i = 0; i < len; i++) {
+					int cmp = (c0.buf[c0.dataOffset + i] & 0xff) - (c1.buf[c1.dataOffset + i] & 0xff);
+
+					if (cmp != 0) {
+						return cmp;
+					}
+				}
+				return Integer.compare(c0.dataLen, c1.dataLen);
+			}
+
+			case TYPE_LIST: {
+				int n0 = c0.count;
+				int n1 = c1.count;
+				int n = Math.min(n0, n1);
+
+				for (int i = 0; i < n; i++) {
+					int cmp = compareElement(c0, c1);
+
+					if (cmp != 0) {
+						return cmp;
+					}
+				}
+				return Integer.compare(n0, n1);
+			}
+
+			case TYPE_MAP: {
+				if (c0.count != c1.count) {
+					return Integer.compare(c0.count, c1.count);
+				}
+
+				int n = c0.count * 2;
+
+				for (int i = 0; i < n; i++) {
+					int cmp = compareElement(c0, c1);
+
+					if (cmp != 0) {
+						return cmp;
+					}
+				}
+				return 0;
+			}
+
+			case TYPE_DOUBLE:
+				// Match C comparison semantics. Do not use Double.compare which
+				// orders -0.0 before 0.0 and NaN above all values.
+				if (c0.dNum > c1.dNum) {
+					return 1;
+				}
+				if (c0.dNum < c1.dNum) {
+					return -1;
+				}
+				return 0;
+
+			default:
+				// NIL, FALSE, TRUE and INF have no payload.
+				return 0;
+			}
+		}
+
+		private void skipParsed() {
+			int n;
+
+			switch (type) {
+			case TYPE_LIST:
+				n = count;
+				break;
+			case TYPE_MAP:
+				n = count * 2;
+				break;
+			default:
+				return;
+			}
+
+			for (int i = 0; i < n; i++) {
+				parse();
+				skipParsed();
+			}
+		}
+
+		private void parse() {
+			int b = buf[offset++] & 0xff;
+
+			switch (b) {
+			case 0xc0:
+				type = TYPE_NIL;
+				return;
+			case 0xc2:
+				type = TYPE_FALSE;
+				return;
+			case 0xc3:
+				type = TYPE_TRUE;
+				return;
+
+			case 0xcc:
+				iNum = buf[offset++] & 0xff;
+				type = TYPE_INT;
+				return;
+			case 0xcd:
+				iNum = readUint(2);
+				type = TYPE_INT;
+				return;
+			case 0xce:
+				iNum = readUint(4);
+				type = TYPE_INT;
+				return;
+			case 0xcf:
+				iNum = readUint(8);
+				type = TYPE_INT;
+				return;
+
+			case 0xd0:
+				iNum = buf[offset++];
+				type = (iNum < 0) ? TYPE_NEGINT : TYPE_INT;
+				return;
+			case 0xd1:
+				iNum = readSint(2);
+				type = (iNum < 0) ? TYPE_NEGINT : TYPE_INT;
+				return;
+			case 0xd2:
+				iNum = readSint(4);
+				type = (iNum < 0) ? TYPE_NEGINT : TYPE_INT;
+				return;
+			case 0xd3:
+				iNum = readSint(8);
+				type = (iNum < 0) ? TYPE_NEGINT : TYPE_INT;
+				return;
+
+			case 0xca:
+				dNum = Float.intBitsToFloat((int)readUint(4));
+				type = TYPE_DOUBLE;
+				return;
+			case 0xcb:
+				dNum = Double.longBitsToDouble(readUint(8));
+				type = TYPE_DOUBLE;
+				return;
+
+			case 0xc4:
+			case 0xd9:
+				setRaw(buf[offset++] & 0xff);
+				return;
+			case 0xc5:
+			case 0xda:
+				setRaw((int)readUint(2));
+				return;
+			case 0xc6:
+			case 0xdb:
+				setRaw((int)readUint(4));
+				return;
+
+			case 0xdc:
+				count = (int)readUint(2);
+				type = TYPE_LIST;
+				return;
+			case 0xdd:
+				count = (int)readUint(4);
+				type = TYPE_LIST;
+				return;
+			case 0xde:
+				count = (int)readUint(2);
+				type = TYPE_MAP;
+				return;
+			case 0xdf:
+				count = (int)readUint(4);
+				type = TYPE_MAP;
+				return;
+
+			case 0xd4: {
+				int extType = buf[offset++] & 0xff;
+
+				if (extType == 0xff) {
+					int val = buf[offset] & 0xff;
+
+					if (val == 0x00) {
+						offset++;
+						type = TYPE_WILDCARD;
+						return;
+					}
+
+					if (val == 0x01) {
+						offset++;
+						type = TYPE_INF;
+						return;
+					}
+				}
+				dataOffset = offset++;
+				dataLen = 1;
+				type = TYPE_EXT;
+				return;
+			}
+			case 0xd5:
+				setExt(2);
+				return;
+			case 0xd6:
+				setExt(4);
+				return;
+			case 0xd7:
+				setExt(8);
+				return;
+			case 0xd8:
+				setExt(16);
+				return;
+			case 0xc7: {
+				int len = buf[offset++] & 0xff;
+				int extType = buf[offset++] & 0xff;
+
+				if (extType == 0xff && len == 1) {
+					int val = buf[offset] & 0xff;
+
+					if (val == 0x00) {
+						offset++;
+						type = TYPE_WILDCARD;
+						return;
+					}
+
+					if (val == 0x01) {
+						offset++;
+						type = TYPE_INF;
+						return;
+					}
+				}
+				dataOffset = offset;
+				dataLen = len;
+				offset += len;
+				type = TYPE_EXT;
+				return;
+			}
+			case 0xc8:
+				setExt((int)readUint(2));
+				return;
+			case 0xc9:
+				setExt((int)readUint(4));
+				return;
+
+			default:
+				if (b < 0x80) {
+					iNum = b;
+					type = TYPE_INT;
+					return;
+				}
+
+				if (b >= 0xe0) {
+					iNum = (byte)b;
+					type = TYPE_NEGINT;
+					return;
+				}
+
+				if ((b & 0xe0) == 0xa0) {
+					setRaw(b & 0x1f);
+					return;
+				}
+
+				if ((b & 0xf0) == 0x80) {
+					count = b & 0x0f;
+					type = TYPE_MAP;
+					return;
+				}
+
+				if ((b & 0xf0) == 0x90) {
+					count = b & 0x0f;
+					type = TYPE_LIST;
+					return;
+				}
+				throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Unexpected msgpack header: " + b);
+			}
+		}
+
+		private void setRaw(int len) {
+			dataOffset = offset;
+			dataLen = len;
+			offset += len;
+
+			if (len == 0) {
+				type = TYPE_BYTES;
+				return;
+			}
+
+			switch (buf[dataOffset] & 0xff) {
+			case ParticleType.STRING:
+				type = TYPE_STRING;
+				return;
+			case ParticleType.GEOJSON:
+				type = TYPE_GEOJSON;
+				return;
+			default:
+				type = TYPE_BYTES;
+				return;
+			}
+		}
+
+		private void setExt(int len) {
+			// The ext type byte is not compared by the server.
+			offset++;
+			dataOffset = offset;
+			dataLen = len;
+			offset += len;
+			type = TYPE_EXT;
+		}
+
+		private long readUint(int size) {
+			long val = 0;
+
+			for (int i = 0; i < size; i++) {
+				val = (val << 8) | (buf[offset++] & 0xff);
+			}
+			return val;
+		}
+
+		private long readSint(int size) {
+			long val = buf[offset++];
+
+			for (int i = 1; i < size; i++) {
+				val = (val << 8) | (buf[offset++] & 0xff);
+			}
+			return val;
 		}
 	}
 
