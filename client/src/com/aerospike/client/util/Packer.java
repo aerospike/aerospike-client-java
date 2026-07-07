@@ -139,7 +139,7 @@ public final class Packer {
 	public void packValueMap(Map<Value,Value> map) {
 		MapOrder order = getMapOrder(map);
 
-		if (sortMaps && order == MapOrder.UNORDERED && map.size() > 1) {
+		if (sortMaps && buffer != null && order == MapOrder.UNORDERED && map.size() > 1) {
 			packMapCanonical(map.entrySet(), map.size());
 			return;
 		}
@@ -157,7 +157,7 @@ public final class Packer {
 	}
 
 	public void packMap(Map<?,?> map, MapOrder order) {
-		if (sortMaps && order == MapOrder.UNORDERED && map.size() > 1) {
+		if (sortMaps && buffer != null && order == MapOrder.UNORDERED && map.size() > 1) {
 			packMapCanonical(map.entrySet(), map.size());
 			return;
 		}
@@ -170,7 +170,7 @@ public final class Packer {
 	}
 
 	public void packMap(List<? extends Entry<?,?>> list, MapOrder order) {
-		if (sortMaps && order == MapOrder.UNORDERED && list.size() > 1) {
+		if (sortMaps && buffer != null && order == MapOrder.UNORDERED && list.size() > 1) {
 			packMapCanonical(list, list.size());
 			return;
 		}
@@ -182,6 +182,10 @@ public final class Packer {
 		}
 	}
 
+	// Only called in the write pass (buffer != null). The packed size is
+	// independent of entry order, so the estimate pass uses the plain packMap
+	// body and the canonicalization work (key serialization, sort, duplicate
+	// check) runs exactly once per map.
 	private void packMapCanonical(Iterable<? extends Entry<?,?>> entries, int size) {
 		final byte[][] keys = new byte[size][];
 		Object[] values = new Object[size];
@@ -200,10 +204,20 @@ public final class Packer {
 			i++;
 		}
 
-		Arrays.sort(ranks, (a, b) -> CanonicalCompare.compare(keys[a], keys[b]));
+		CanonicalCompare c0 = new CanonicalCompare();
+		CanonicalCompare c1 = new CanonicalCompare();
+
+		Arrays.sort(ranks, (a, b) -> {
+			c0.reset(keys[a]);
+			c1.reset(keys[b]);
+			return CanonicalCompare.compareElement(c0, c1);
+		});
 
 		for (i = 1; i < size; i++) {
-			if (CanonicalCompare.compare(keys[ranks[i - 1]], keys[ranks[i]]) == 0) {
+			c0.reset(keys[ranks[i - 1]]);
+			c1.reset(keys[ranks[i]]);
+
+			if (CanonicalCompare.compareElement(c0, c1) == 0) {
 				throw new AerospikeException(ResultCode.PARAMETER_ERROR,
 					"Map keys pack to duplicate msgpack keys in expression map literal");
 			}
@@ -239,7 +253,7 @@ public final class Packer {
 		private static final int TYPE_WILDCARD = 13;
 		private static final int TYPE_INF = 14;
 
-		private final byte[] buf;
+		private byte[] buf;
 		private int offset;
 
 		// State of most recently parsed element.
@@ -250,12 +264,9 @@ public final class Packer {
 		private int dataLen;
 		private int count;
 
-		private CanonicalCompare(byte[] buf) {
+		private void reset(byte[] buf) {
 			this.buf = buf;
-		}
-
-		private static int compare(byte[] b0, byte[] b1) {
-			return compareElement(new CanonicalCompare(b0), new CanonicalCompare(b1));
+			this.offset = 0;
 		}
 
 		private static int compareElement(CanonicalCompare c0, CanonicalCompare c1) {
