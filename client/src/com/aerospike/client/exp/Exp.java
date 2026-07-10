@@ -1723,9 +1723,13 @@ public abstract class Exp {
 		public void pack(Packer packer) {
 			// List values need an extra array and QUOTED in order to distinguish
 			// between a multiple argument array call and a local list.
+			// Value literals must be in canonical form (AER-6930): unordered maps
+			// at any depth are packed with keys sorted in server msgpack order.
+			packer.sortMaps(true);
 			packer.packArrayBegin(2);
 			packer.packInt(QUOTED);
 			packer.packList(list);
+			packer.sortMaps(false);
 		}
 	}
 
@@ -1738,7 +1742,11 @@ public abstract class Exp {
 
 		@Override
 		public void pack(Packer packer) {
+			// Value literals must be in canonical form (AER-6930): unordered maps
+			// at any depth are packed with keys sorted in server msgpack order.
+			packer.sortMaps(true);
 			packer.packMap(map);
+			packer.sortMaps(false);
 		}
 	}
 
