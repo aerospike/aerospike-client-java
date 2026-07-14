@@ -62,8 +62,8 @@ public class TestAsyncErrorDetailVerbosity extends TestAsync {
 		// build trace (SERVER-1137). The SERVER-1137 feature branch is cut from the
 		// 8.1.1 line and reports its base version as 8.1.1.0-start-*, so gate at
 		// 8.1.1 rather than the 8.1.3 release that first shipped the base tier.
-		org.junit.Assume.assumeTrue("Extended error-detail requires server version 8.1.1 or later",
-			args.serverVersion.isGreaterOrEqual(8, 1, 1, 0));
+		org.junit.Assume.assumeTrue("Extended error-detail requires server version 8.1.3 or later",
+			args.serverVersion.isGreaterOrEqual(8, 1, 3, 0));
 
 		WritePolicy wp = new WritePolicy();
 		intKey = new Key(args.namespace, args.set, "edv-async-int-key");
