@@ -38,6 +38,11 @@ jobs:
       artifact-version: ${{ steps.get-artifact-version.outputs.artifact-version }}
       release-notes: ${{ steps.get-release-notes.outputs.release-notes }}
     steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@df199fb7be9f65074067a9eb93f12bb4c5547cf2 # v2.13.3
+        with:
+          egress-policy: audit
+
       - name: Debug step
         run: |
           echo "build-number: ${{ inputs.build-number }}"
@@ -48,7 +53,7 @@ jobs:
 
       # Setting up jfrog cli
       - name: Setup jfrog shell
-        uses: jfrog/setup-jfrog-cli@v4
+        uses: jfrog/setup-jfrog-cli@5b06f730cc5a6f55d78b30753f8583454b08c0aa # v4.8.1
         env:
           JF_URL: ${{ vars.JFROG_PLATFORM_URL }}
           JF_PROJECT: clients
@@ -58,7 +63,7 @@ jobs:
 
       # Needed since we are using actions which are part of the repository
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
         with:
           # Fetch the whole history to prevent unrelated history errors
           fetch-depth: "0"
@@ -149,7 +154,7 @@ jobs:
 
       # Adding commit message for promotion
       - name: Add tagging message
-        uses: stefanzweifel/git-auto-commit-action@v4
+        uses: step-security/git-auto-commit-action@e2d505468267a3cb406af729d48d664de1f16393 # v6.0.2
         with:
           commit_message: "Promote to prod [skip ci]"
           commit_author: github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>
@@ -195,8 +200,13 @@ jobs:
         artifact-version: ${{ fromJson(needs.promote.outputs.artifact-version) }}
     steps:
       # Needed since we are using actions which are part of the repository
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@df199fb7be9f65074067a9eb93f12bb4c5547cf2 # v2.13.3
+        with:
+          egress-policy: audit
+
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
         with:
           ref: ${{ inputs.target-branch }}
           token: ${{ secrets.CLIENT_BOT_PAT }}
@@ -235,8 +245,13 @@ jobs:
     runs-on: ${{ vars.BUILD_CONTAINER_DISTRO_VERSION }}
     needs: [promote, publish-release-sonatype]
     steps: 
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@df199fb7be9f65074067a9eb93f12bb4c5547cf2 # v2.13.3
+        with:
+          egress-policy: audit
+
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
         with:
           ref: ${{ inputs.target-branch }}
           token: ${{ secrets.CLIENT_BOT_PAT }}

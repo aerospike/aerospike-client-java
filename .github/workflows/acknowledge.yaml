@@ -28,9 +28,14 @@ jobs:
   confirm-release:
     runs-on: ${{ vars.BUILD_CONTAINER_DISTRO_VERSION }}
     steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@df199fb7be9f65074067a9eb93f12bb4c5547cf2 # v2.13.3
+        with:
+          egress-policy: audit
+
       - name: Set up JFrog credentials l
         id: setup-jfrog-cli
-        uses: jfrog/setup-jfrog-cli@v4
+        uses: jfrog/setup-jfrog-cli@5b06f730cc5a6f55d78b30753f8583454b08c0aa # v4.8.1
         env:
           JF_URL: ${{ inputs.jfrog-platform-url }}
           JF_PROJECT: clients
