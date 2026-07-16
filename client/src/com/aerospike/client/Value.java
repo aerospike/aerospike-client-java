@@ -37,6 +37,7 @@ import com.aerospike.client.command.ParticleType;
 import com.aerospike.client.lua.LuaBytes;
 import com.aerospike.client.lua.LuaInstance;
 import com.aerospike.client.util.Packer;
+import com.aerospike.client.vector.Vector;
 
 /**
  * Polymorphic value classes used to efficiently serialize objects into the wire protocol.
@@ -238,6 +239,13 @@ public abstract class Value {
 	 */
 	public static Value getAsHLL(byte[] value) {
 		return (value == null)? NullValue.INSTANCE : new HLLValue(value);
+	}
+
+	/**
+	 * Get Vector or null value instance.
+	 */
+	public static Value getAsVector(final Vector value) {
+		return (value == null)? NullValue.INSTANCE : new VectorValue(value);
 	}
 
 	/**
@@ -1422,6 +1430,76 @@ public abstract class Value {
 		@Override
 		public int hashCode() {
 			return Arrays.hashCode(bytes);
+		}
+	}
+
+	/**
+	 * Vector value.
+	 */
+	public static final class VectorValue extends Value {
+		private final Vector vector;
+
+		public VectorValue(final Vector vector) {
+			this.vector = vector;
+		}
+
+		@Override
+		public int estimateSize() {
+			return vector.getWireSize();
+		}
+
+		@Override
+		public int write(final byte[] buffer, final int offset) {
+			return vector.writeTo(buffer, offset);
+		}
+
+		@Override
+		public void pack(final Packer packer) {
+			final byte[] bytes = new byte[vector.getWireSize()];
+			vector.writeTo(bytes, 0);
+			packer.packParticleBytes(bytes, ParticleType.VECTOR);
+		}
+
+		@Override
+		public void validateKeyType() {
+			throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid key type: Vector");
+		}
+
+		@Override
+		public int getType() {
+			return ParticleType.VECTOR;
+		}
+
+		@Override
+		public Object getObject() {
+			return vector;
+		}
+
+		public Vector getVector() {
+			return vector;
+		}
+
+		@Override
+		public LuaValue getLuaValue(final LuaInstance instance) {
+			// TODO: Lua bridging not yet implemented.
+			throw new UnsupportedOperationException("VectorValue.getLuaValue() not yet implemented");
+		}
+
+		@Override
+		public String toString() {
+			return vector.toString();
+		}
+
+		@Override
+		public boolean equals(final Object other) {
+			return (other != null &&
+				this.getClass().equals(other.getClass()) &&
+				this.vector.equals(((VectorValue)other).vector));
+		}
+
+		@Override
+		public int hashCode() {
+			return vector.hashCode();
 		}
 	}
 
