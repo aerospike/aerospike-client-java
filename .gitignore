@@ -13,6 +13,7 @@ apidocs
 *.iml
 .idea/
 .vscode
+.vs
 dependency-reduced-pom.xml
 gnu.config
 bouncycastle.config

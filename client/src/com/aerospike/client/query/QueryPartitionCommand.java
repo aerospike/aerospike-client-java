@@ -31,6 +31,7 @@ public final class QueryPartitionCommand extends MultiCommand {
 	private final Statement statement;
 	private final long taskId;
 	private final RecordSet recordSet;
+	private final ReduceSpec<Record, ?> reducer;
 	private final PartitionTracker tracker;
 	private final NodePartitions nodePartitions;
 
@@ -40,6 +41,7 @@ public final class QueryPartitionCommand extends MultiCommand {
 		Statement statement,
 		long taskId,
 		RecordSet recordSet,
+		ReduceSpec<Record, ?> reducer,
 		PartitionTracker tracker,
 		NodePartitions nodePartitions
 	) {
@@ -47,6 +49,7 @@ public final class QueryPartitionCommand extends MultiCommand {
 		this.statement = statement;
 		this.taskId = taskId;
 		this.recordSet = recordSet;
+		this.reducer = reducer;
 		this.tracker = tracker;
 		this.nodePartitions = nodePartitions;
 	}
@@ -99,7 +102,13 @@ public final class QueryPartitionCommand extends MultiCommand {
 		}
 
 		if (tracker.allowRecord(nodePartitions)) {
-			if (! recordSet.put(new KeyRecord(key, record))) {
+			if (reducer != null) {
+				// Feed the client-side global reduce combiner instead of streaming this
+				// partial result directly to the caller. The executor emits the merged
+				// result (if any) once all partitions have been received.
+				reducer.acceptPartial(record, key);
+			}
+			else if (! recordSet.put(new KeyRecord(key, record))) {
 				stop();
 				throw new AerospikeException.QueryTerminated();
 			}

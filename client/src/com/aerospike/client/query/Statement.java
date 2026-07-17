@@ -17,6 +17,7 @@
 package com.aerospike.client.query;
 
 import com.aerospike.client.Operation;
+import com.aerospike.client.Record;
 import com.aerospike.client.Value;
 import com.aerospike.client.util.RandomShift;
 
@@ -35,6 +36,14 @@ public final class Statement {
 	String functionName;
 	Value[] functionArgs;
 	Operation[] operations;
+	ReduceSpec<?, ?>[] reduceSpecs;
+	private ReduceSpec<?, ?> resolvedReduce;
+	private boolean reduceResolved;
+	private String orderByBin;
+	private BinDataType orderByType;
+	private Order orderByOrder;
+	private OrderByFlags orderByFlags;
+	private boolean orderBySet;
 	long taskId;
 	long maxRecords;
 	int recordsPerSecond;
@@ -258,6 +267,178 @@ public final class Statement {
 	 */
 	public Operation[] getOperations() {
 		return this.operations;
+	}
+
+	/**
+	 * Set reduce spec(s) for this query, used for client-side global reduce (e.g. Top-K,
+	 * SUM, COUNT, MIN, MAX). Accepts:
+	 * <ul>
+	 *   <li>zero args — clear any reduce (stream all matching records; default behavior)</li>
+	 *   <li>one scalar or Top-K spec — e.g. {@code setReduce(Reduce.sum("amt"))} or
+	 *       {@code setReduce(Reduce.topK("d", BinDataType.DOUBLE, Order.ASC, OrderByFlags.NONE, 10))}</li>
+	 *   <li>exactly one {@link Reduce#orderBy} + one {@link Reduce#limit} on the same bin —
+	 *       split Top-K, equivalent to {@link Reduce#topK}</li>
+	 * </ul>
+	 * Mutually exclusive with {@link #setAggregateFunction}. Replaces any previously set reduce
+	 * (this setter does not accumulate across calls, consistent with {@link #setOperations(Operation[])}
+	 * and {@link #setBinNames(String...)}).
+	 */
+	public void setReduce(ReduceSpec<?, ?>... reduceSpecs) {
+		this.reduceSpecs = reduceSpecs;
+		this.resolvedReduce = null;
+		this.reduceResolved = false;
+	}
+
+	/**
+	 * Return reduce spec(s) set by {@link #setReduce(ReduceSpec...)}.
+	 */
+	public ReduceSpec<?, ?>[] getReduce() {
+		return reduceSpecs;
+	}
+
+	/**
+	 * Sort order building block for {@link #setTopK(int)}. Equivalent to
+	 * {@code setOrderBy(binName, type, order, OrderByFlags.NONE)}.
+	 * <p>
+	 * Sugar: remembers the sort order for a subsequent {@link #setTopK(int)} call, which
+	 * together resolve internally to {@code setReduce(Reduce.topK(binName, type, order, flags, k))}.
+	 *
+	 * @param binName	bin name to order by
+	 * @param type		scalar type of {@code binName}
+	 * @param order		sort direction
+	 */
+	public void setOrderBy(String binName, BinDataType type, Order order) {
+		setOrderBy(binName, type, order, OrderByFlags.NONE);
+	}
+
+	/**
+	 * Sort order building block for {@link #setTopK(int)}.
+	 * <p>
+	 * Sugar: remembers the sort order for a subsequent {@link #setTopK(int)} call, which
+	 * together resolve internally to {@code setReduce(Reduce.topK(binName, type, order, flags, k))}.
+	 *
+	 * @param binName	bin name to order by
+	 * @param type		scalar type of {@code binName}
+	 * @param order		sort direction
+	 * @param flags		comparison options ({@link OrderByFlags#CASE_INSENSITIVE} for
+	 *                  {@link BinDataType#STRING} only)
+	 */
+	public void setOrderBy(String binName, BinDataType type, Order order, OrderByFlags flags) {
+		this.orderByBin = binName;
+		this.orderByType = type;
+		this.orderByOrder = order;
+		this.orderByFlags = flags;
+		this.orderBySet = true;
+	}
+
+	/**
+	 * Ordered LIMIT k reduce; must be preceded by a {@link #setOrderBy} call on this statement.
+	 * <p>
+	 * Sugar for {@code setReduce(Reduce.topK(binName, type, order, flags, k))} using the bin,
+	 * type, order, and flags from the preceding {@link #setOrderBy} call. Like
+	 * {@link #setReduce(ReduceSpec...)}, replaces any previously set reduce.
+	 *
+	 * @param k	maximum number of records to return, in {@code [1, 1000]}
+	 * @throws IllegalStateException if {@link #setOrderBy} was not called first
+	 */
+	public void setTopK(int k) {
+		if (! orderBySet) {
+			throw new IllegalStateException("setTopK() requires setOrderBy() to be called first");
+		}
+		setReduce(Reduce.topK(orderByBin, orderByType, orderByOrder, orderByFlags, k));
+	}
+
+	/**
+	 * Resolve the reduce spec(s) set by {@link #setReduce(ReduceSpec...)} into a single combiner
+	 * usable by a query executor. Returns {@code null} if no reduce was set. Composes a split
+	 * {@link Reduce#orderBy} + {@link Reduce#limit} pair into a single Top-K combiner.
+	 *
+	 * @throws IllegalArgumentException if the reduce specs are not a single reducer or a valid
+	 *                                   orderBy/limit pair on the same bin
+	 */
+	@SuppressWarnings("unchecked")
+	public <I, O> ReduceSpec<I, O> resolveReduce() {
+		if (! reduceResolved) {
+			resolvedReduce = computeResolveReduce();
+			reduceResolved = true;
+		}
+		return (ReduceSpec<I, O>)resolvedReduce;
+	}
+
+	@SuppressWarnings("unchecked")
+	private ReduceSpec<?, ?> computeResolveReduce() {
+		if (reduceSpecs == null || reduceSpecs.length == 0) {
+			return null;
+		}
+
+		boolean isSplit = reduceSpecs[0] instanceof OrderByReduceSpec || reduceSpecs[0] instanceof LimitReduceSpec;
+
+		if (reduceSpecs.length == 1 && !isSplit) {
+			return reduceSpecs[0];
+		}
+
+		ReduceSpec<Record, Record> orderBy = null;
+		ReduceSpec<Record, Record> limit = null;
+
+		for (ReduceSpec<?, ?> spec : reduceSpecs) {
+			if (spec instanceof OrderByReduceSpec) {
+				orderBy = (ReduceSpec<Record, Record>)spec;
+			}
+			else if (spec instanceof LimitReduceSpec) {
+				limit = (ReduceSpec<Record, Record>)spec;
+			}
+			else {
+				throw new IllegalArgumentException("Cannot mix topK parts (orderBy/limit) with other reducers");
+			}
+		}
+
+		if (orderBy == null || limit == null) {
+			throw new IllegalArgumentException("topK requires both an orderBy spec and a limit spec");
+		}
+		return TopKReduceSpec.compose(orderBy, limit);
+	}
+
+	/**
+	 * For internal use by query executors. Validate that this statement's reduce (if any) is
+	 * compatible with record-streaming queries (e.g.
+	 * {@link com.aerospike.client.AerospikeClient#query(com.aerospike.client.policy.QueryPolicy, Statement)}),
+	 * which return full records via a {@link RecordSet} and therefore only support a Top-K (or no)
+	 * reduce.
+	 *
+	 * @throws IllegalArgumentException if a scalar reduce (sum/count/min/max) is set
+	 */
+	public void validateRecordQuery() {
+		ReduceSpec<?, ?> reduce = resolveReduce();
+
+		if (reduce != null && !(reduce instanceof TopKReduceSpec)) {
+			throw new IllegalArgumentException(
+				"Statement has a scalar reduce (sum/count/min/max) set. Use queryReduce() instead of query().");
+		}
+	}
+
+	/**
+	 * For internal use by query executors. Validate that this statement's reduce is compatible
+	 * with scalar reduce queries (e.g.
+	 * {@link com.aerospike.client.AerospikeClient#queryReduce(com.aerospike.client.policy.QueryPolicy, Statement)}),
+	 * which return a single scalar result and therefore require a scalar reduce spec
+	 * (sum/count/min/max).
+	 *
+	 * @throws IllegalArgumentException if no reduce is set, or a Top-K reduce is set
+	 */
+	public void validateReduceQuery() {
+		ReduceSpec<?, ?> reduce = resolveReduce();
+
+		if (reduce == null) {
+			throw new IllegalArgumentException(
+				"Statement has no reduce set. Call setReduce() with a scalar reducer " +
+				"(Reduce.sum/count/min/max) before calling queryReduce().");
+		}
+
+		if (reduce instanceof TopKReduceSpec) {
+			throw new IllegalArgumentException(
+				"Statement has a Top-K reduce set. Use query() instead of queryReduce() " +
+				"for Top-K / orderBy+limit reduces.");
+		}
 	}
 
 	/**
