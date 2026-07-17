@@ -1736,6 +1736,28 @@ public interface IAerospikeClient extends Closeable {
 		throws AerospikeException;
 
 	/**
+	 * Execute a query with a scalar reduce spec set via {@link Statement#setReduce(com.aerospike.client.query.ReduceSpec...)}
+	 * ({@link com.aerospike.client.query.Reduce#sum}, {@link com.aerospike.client.query.Reduce#count},
+	 * {@link com.aerospike.client.query.Reduce#min}, or {@link com.aerospike.client.query.Reduce#max})
+	 * and return the merged scalar result. This method blocks until all nodes have responded.
+	 * <p>
+	 * For Top-K reduces ({@link com.aerospike.client.query.Reduce#topK} or the split
+	 * {@link com.aerospike.client.query.Reduce#orderBy} + {@link com.aerospike.client.query.Reduce#limit}
+	 * form) which return full records, use {@link #query(QueryPolicy, Statement)} instead; the
+	 * merged Top-K records are streamed through the returned {@link RecordSet} like any other query.
+	 * <p>
+	 * Requires server version 6.0+ if using a secondary index query.
+	 *
+	 * @param policy				query configuration parameters, pass in null for defaults
+	 * @param statement				query definition with a scalar reduce spec set
+	 * @return						merged scalar result
+	 * @throws IllegalArgumentException if no reduce is set, or a Top-K reduce is set
+	 * @throws AerospikeException	if query fails
+	 */
+	public com.aerospike.client.query.ReduceResult queryReduce(QueryPolicy policy, Statement statement)
+		throws AerospikeException;
+
+	/**
 	 * Asynchronously execute query on all server nodes.
 	 * This method registers the command with an event loop and returns.
 	 * The event loop thread will process the command and send the results to the listener.

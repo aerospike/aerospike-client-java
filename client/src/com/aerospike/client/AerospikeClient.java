@@ -126,6 +126,8 @@ import com.aerospike.client.query.QueryListenerExecutor;
 import com.aerospike.client.query.QueryPartitionExecutor;
 import com.aerospike.client.query.QueryRecordExecutor;
 import com.aerospike.client.query.RecordSet;
+import com.aerospike.client.query.ReduceResult;
+import com.aerospike.client.query.ReduceSpec;
 import com.aerospike.client.query.ResultSet;
 import com.aerospike.client.query.ServerCommand;
 import com.aerospike.client.query.Statement;
@@ -4428,6 +4430,8 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 */
 	public final RecordSet query(QueryPolicy policy, Statement statement)
 		throws AerospikeException {
+		statement.validateRecordQuery();
+
 		if (policy == null) {
 			policy = mergedQueryPolicyDefault;
 		} else if (configProvider != null) {
@@ -4446,6 +4450,62 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			executor.execute();
 			return executor.getRecordSet();
 		}
+	}
+
+	/**
+	 * Execute a query with a scalar reduce spec set via {@link Statement#setReduce(ReduceSpec...)}
+	 * ({@link com.aerospike.client.query.Reduce#sum}, {@link com.aerospike.client.query.Reduce#count},
+	 * {@link com.aerospike.client.query.Reduce#min}, or {@link com.aerospike.client.query.Reduce#max})
+	 * and return the merged scalar result. This method blocks until all nodes have responded.
+	 * <p>
+	 * For Top-K reduces ({@link com.aerospike.client.query.Reduce#topK} or the split
+	 * {@link com.aerospike.client.query.Reduce#orderBy} + {@link com.aerospike.client.query.Reduce#limit}
+	 * form) which return full records, use {@link #query(QueryPolicy, Statement)} instead; the
+	 * merged Top-K records are streamed through the returned {@link RecordSet} like any other query.
+	 * <p>
+	 * Requires server version 6.0+ if using a secondary index query.
+	 *
+	 * @param policy				query configuration parameters, pass in null for defaults
+	 * @param statement				query definition with a scalar reduce spec set
+	 * @return						merged scalar result
+	 * @throws IllegalArgumentException if no reduce is set, or a Top-K reduce is set
+	 * @throws AerospikeException	if query fails
+	 */
+	public final ReduceResult queryReduce(QueryPolicy policy, Statement statement)
+		throws AerospikeException {
+		statement.validateReduceQuery();
+
+		if (policy == null) {
+			policy = mergedQueryPolicyDefault;
+		} else if (configProvider != null) {
+			policy = new QueryPolicy(policy, configProvider);
+		}
+
+		Node[] nodes = cluster.validateNodes();
+
+		if (! (cluster.hasPartitionQuery || statement.getFilter() == null)) {
+			throw new AerospikeException(ResultCode.PARAMETER_ERROR,
+				"queryReduce() requires partition query support (server version 6.0+) when a query index filter is set");
+		}
+
+		PartitionTracker tracker = new PartitionTracker(policy, statement, nodes);
+		QueryPartitionExecutor executor = new QueryPartitionExecutor(cluster, policy, statement, nodes.length, tracker);
+		RecordSet rs = executor.getRecordSet();
+
+		try {
+			// Scalar reduce specs do not emit rows into the RecordSet; this loop simply
+			// blocks until the executor has fed every partition's records into the
+			// combiner and signals completion.
+			while (rs.next()) {
+				// Nothing to do; defensively drain in case a future scalar variant emits rows.
+			}
+		}
+		finally {
+			rs.close();
+		}
+
+		ReduceSpec<Record, ?> reducer = statement.resolveReduce();
+		return new ReduceResult(reducer.getScalarResult());
 	}
 
 	/**
@@ -4579,6 +4639,8 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 */
 	public final RecordSet queryNode(QueryPolicy policy, Statement statement, Node node)
 		throws AerospikeException {
+		statement.validateRecordQuery();
+
 		if (policy == null) {
 			policy = mergedQueryPolicyDefault;
 		} else if (configProvider != null) {
@@ -4614,6 +4676,8 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		Statement statement,
 		PartitionFilter partitionFilter
 	) throws AerospikeException {
+		statement.validateRecordQuery();
+
 		if (policy == null) {
 			policy = mergedQueryPolicyDefault;
 		} else if (configProvider != null) {
