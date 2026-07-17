@@ -31,6 +31,7 @@ import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Value;
 import com.aerospike.client.command.Buffer;
 import com.aerospike.client.command.ParticleType;
+import com.aerospike.client.vector.Vector;
 
 /**
  * De-serialize collection objects using MessagePack format specification:
@@ -238,6 +239,10 @@ public abstract class Unpacker<T> {
 
 		case ParticleType.HLL:
 			val = getHLL(Arrays.copyOfRange(buffer, offset, offset + count));
+			break;
+
+		case ParticleType.VECTOR:
+			val = getVector(Arrays.copyOfRange(buffer, offset, offset + count));
 			break;
 
 		case ParticleType.JBLOB:
@@ -454,6 +459,10 @@ public abstract class Unpacker<T> {
 		return getBlob(value);
 	}
 
+	protected T getVector(byte[] value) {
+		return getBlob(value);
+	}
+
 	public static Object unpackObjectList(byte[] buffer, int offset, int length) throws AerospikeException {
 		ObjectUnpacker unpacker = new ObjectUnpacker(buffer, offset, length);
 		return unpacker.unpackList();
@@ -526,6 +535,11 @@ public abstract class Unpacker<T> {
 		@Override
 		protected Object getHLL(byte[] value) {
 			return Value.getAsHLL(value);
+		}
+
+		@Override
+		protected Object getVector(byte[] value) {
+			return Vector.from(value, 0, value.length);
 		}
 	}
 }

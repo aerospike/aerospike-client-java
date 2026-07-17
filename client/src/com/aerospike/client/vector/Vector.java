@@ -189,6 +189,73 @@ public final class Vector {
 	}
 
 	/**
+	 * Deserialize a vector from wire format at the given buffer offset.
+	 *
+	 * @param buffer	buffer containing the vector wire format
+	 * @param offset	offset in buffer where the vector starts
+	 * @param length	number of bytes available for this vector (must be at least
+	 *                  {@link #HEADER_SIZE})
+	 */
+	public static Vector from(final byte[] buffer, final int offset, final int length) {
+		if (length < HEADER_SIZE) {
+			throw new IllegalArgumentException("Invalid vector length: " + length);
+		}
+
+		int pos = offset;
+
+		final byte version = buffer[pos++];
+		final ElementType elementType = ElementType.fromCode(buffer[pos++]);
+		final int dimensions = Buffer.littleBytesToInt(buffer, pos);
+		pos += 4;
+		pos += 2; // reserved
+
+		final int dataSize = dimensions * elementType.getByteSize();
+
+		if (length < HEADER_SIZE + dataSize) {
+			throw new IllegalArgumentException("Invalid vector length: " + length +
+				", expected at least " + (HEADER_SIZE + dataSize));
+		}
+
+		final ByteBuffer view = ByteBuffer.wrap(buffer, pos, dataSize).order(ByteOrder.LITTLE_ENDIAN);
+		final Object data;
+
+		switch (elementType) {
+			case FLOAT16: {
+				final short[] arr = new short[dimensions];
+				view.asShortBuffer().get(arr);
+				data = arr;
+				break;
+			}
+
+			case INT32: {
+				final int[] arr = new int[dimensions];
+				view.asIntBuffer().get(arr);
+				data = arr;
+				break;
+			}
+
+			case FLOAT32: {
+				final float[] arr = new float[dimensions];
+				view.asFloatBuffer().get(arr);
+				data = arr;
+				break;
+			}
+
+			case FLOAT64: {
+				final double[] arr = new double[dimensions];
+				view.asDoubleBuffer().get(arr);
+				data = arr;
+				break;
+			}
+
+			default:
+				throw new IllegalStateException("Unsupported vector element type: " + elementType);
+		}
+
+		return new Vector(version, elementType, dimensions, data);
+	}
+
+	/**
 	 * Create a vector of raw float16 (IEEE 754 half precision) elements.
 	 * Since Java has no native float16 type, each element is passed as its
 	 * raw 16-bit bit pattern.
