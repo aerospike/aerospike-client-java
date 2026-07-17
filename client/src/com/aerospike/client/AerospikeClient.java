@@ -920,11 +920,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 */
 	public final void put(WritePolicy policy, Key key, Bin... bins)
 		throws AerospikeException {
-		if (policy == null) {
-			policy = mergedWritePolicyDefault;
-		} else if (configProvider != null) {
-			policy = new WritePolicy(policy, configProvider);
-		}
+		policy = resolveWritePolicy(policy);
 
 		if (policy.txn != null) {
 			TxnMonitor.addKey(cluster, policy, key);
@@ -956,11 +952,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			eventLoop = cluster.eventLoops.next();
 		}
 
-		if (policy == null) {
-			policy = mergedWritePolicyDefault;
-		} else if (configProvider != null) {
-			policy = new WritePolicy(policy, configProvider);
-		}
+		policy = resolveWritePolicy(policy);
 
 		AsyncWrite command = new AsyncWrite(cluster, listener, policy, key, bins, Operation.Type.WRITE);
 		AsyncTxnMonitor.execute(eventLoop, cluster, policy, command);
@@ -983,11 +975,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 */
 	public final void append(WritePolicy policy, Key key, Bin... bins)
 		throws AerospikeException {
-		if (policy == null) {
-			policy = mergedWritePolicyDefault;
-		} else if (configProvider != null) {
-			policy = new WritePolicy(policy, configProvider);
-		}
+		policy = resolveWritePolicy(policy);
 
 		if (policy.txn != null) {
 			TxnMonitor.addKey(cluster, policy, key);
@@ -1020,11 +1008,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			eventLoop = cluster.eventLoops.next();
 		}
 
-		if (policy == null) {
-			policy = mergedWritePolicyDefault;
-		} else if (configProvider != null) {
-			policy = new WritePolicy(policy, configProvider);
-		}
+		policy = resolveWritePolicy(policy);
 
 		AsyncWrite command = new AsyncWrite(cluster, listener, policy, key, bins, Operation.Type.APPEND);
 		AsyncTxnMonitor.execute(eventLoop, cluster, policy, command);
@@ -1043,11 +1027,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 */
 	public final void prepend(WritePolicy policy, Key key, Bin... bins)
 		throws AerospikeException {
-		if (policy == null) {
-			policy = mergedWritePolicyDefault;
-		} else if (configProvider != null) {
-			policy = new WritePolicy(policy, configProvider);
-		}
+		policy = resolveWritePolicy(policy);
 
 		if (policy.txn != null) {
 			TxnMonitor.addKey(cluster, policy, key);
@@ -1080,11 +1060,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			eventLoop = cluster.eventLoops.next();
 		}
 
-		if (policy == null) {
-			policy = mergedWritePolicyDefault;
-		} else if (configProvider != null) {
-			policy = new WritePolicy(policy, configProvider);
-		}
+		policy = resolveWritePolicy(policy);
 
 		AsyncWrite command = new AsyncWrite(cluster, listener, policy, key, bins, Operation.Type.PREPEND);
 		AsyncTxnMonitor.execute(eventLoop, cluster, policy, command);
@@ -1107,11 +1083,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 */
 	public final void add(WritePolicy policy, Key key, Bin... bins)
 		throws AerospikeException {
-		if (policy == null) {
-			policy = mergedWritePolicyDefault;
-		} else if (configProvider != null) {
-			policy = new WritePolicy(policy, configProvider);
-		}
+		policy = resolveWritePolicy(policy);
 
 		if (policy.txn != null) {
 			TxnMonitor.addKey(cluster, policy, key);
@@ -1144,11 +1116,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			eventLoop = cluster.eventLoops.next();
 		}
 
-		if (policy == null) {
-			policy = mergedWritePolicyDefault;
-		} else if (configProvider != null) {
-			policy = new WritePolicy(policy, configProvider);
-		}
+		policy = resolveWritePolicy(policy);
 
 		AsyncWrite command = new AsyncWrite(cluster, listener, policy, key, bins, Operation.Type.ADD);
 		AsyncTxnMonitor.execute(eventLoop, cluster, policy, command);
@@ -1169,11 +1137,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 */
 	public final boolean delete(WritePolicy policy, Key key)
 		throws AerospikeException {
-		if (policy == null) {
-			policy = mergedWritePolicyDefault;
-		} else if (configProvider != null) {
-			policy = new WritePolicy(policy, configProvider);
-		}
+		policy = resolveWritePolicy(policy);
 
 		if (policy.txn != null) {
 			TxnMonitor.addKey(cluster, policy, key);
@@ -1204,11 +1168,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			eventLoop = cluster.eventLoops.next();
 		}
 
-		if (policy == null) {
-			policy = mergedWritePolicyDefault;
-		} else if (configProvider != null) {
-			policy = new WritePolicy(policy, configProvider);
-		}
+		policy = resolveWritePolicy(policy);
 
 		AsyncDelete command = new AsyncDelete(cluster, listener, policy, key);
 		AsyncTxnMonitor.execute(eventLoop, cluster, policy, command);
@@ -1502,11 +1462,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 */
 	public final void touch(WritePolicy policy, Key key)
 		throws AerospikeException {
-		if (policy == null) {
-			policy = mergedWritePolicyDefault;
-		} else if (configProvider != null) {
-			policy = new WritePolicy(policy, configProvider);
-		}
+		policy = resolveWritePolicy(policy);
 
 		if (policy.txn != null) {
 			TxnMonitor.addKey(cluster, policy, key);
@@ -1538,11 +1494,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			eventLoop = cluster.eventLoops.next();
 		}
 
-		if (policy == null) {
-			policy = mergedWritePolicyDefault;
-		} else if (configProvider != null) {
-			policy = new WritePolicy(policy, configProvider);
-		}
+		policy = resolveWritePolicy(policy);
 
 		AsyncTouch command = new AsyncTouch(cluster, listener, policy, key);
 		AsyncTxnMonitor.execute(eventLoop, cluster, policy, command);
@@ -1559,11 +1511,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 */
 	public final boolean touched(WritePolicy policy, Key key)
 		throws AerospikeException {
-		if (policy == null) {
-			policy = mergedWritePolicyDefault;
-		} else if (configProvider != null) {
-			policy = new WritePolicy(policy, configProvider);
-		}
+		policy = resolveWritePolicy(policy);
 
 		if (policy.txn != null) {
 			TxnMonitor.addKey(cluster, policy, key);
@@ -1597,11 +1545,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			eventLoop = cluster.eventLoops.next();
 		}
 
-		if (policy == null) {
-			policy = mergedWritePolicyDefault;
-		} else if (configProvider != null) {
-			policy = new WritePolicy(policy, configProvider);
-		}
+		policy = resolveWritePolicy(policy);
 
 		AsyncTouch command = new AsyncTouch(cluster, listener, policy, key);
 		AsyncTxnMonitor.execute(eventLoop, cluster, policy, command);
@@ -1622,11 +1566,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 */
 	public final boolean exists(Policy policy, Key key)
 		throws AerospikeException {
-		if (policy == null) {
-			policy = mergedReadPolicyDefault;
-		} else if (configProvider != null) {
-			policy = new Policy(policy, configProvider);
-		}
+		policy = resolveReadPolicy(policy);
 
 		if (policy.txn != null) {
 			policy.txn.prepareRead(key.namespace);
@@ -1657,11 +1597,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			eventLoop = cluster.eventLoops.next();
 		}
 
-		if (policy == null) {
-			policy = mergedReadPolicyDefault;
-		} else if (configProvider != null) {
-			policy = new Policy(policy, configProvider);
-		}
+		policy = resolveReadPolicy(policy);
 
 		if (policy.txn != null) {
 			policy.txn.prepareRead(key.namespace);
@@ -1852,11 +1788,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 */
 	public final Record get(Policy policy, Key key)
 		throws AerospikeException {
-		if (policy == null) {
-			policy = mergedReadPolicyDefault;
-		} else if (configProvider != null) {
-			policy = new Policy(policy, configProvider);
-		}
+		policy = resolveReadPolicy(policy);
 
 		if (policy.txn != null) {
 			policy.txn.prepareRead(key.namespace);
@@ -1887,11 +1819,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			eventLoop = cluster.eventLoops.next();
 		}
 
-		if (policy == null) {
-			policy = mergedReadPolicyDefault;
-		} else if (configProvider != null) {
-			policy = new Policy(policy, configProvider);
-		}
+		policy = resolveReadPolicy(policy);
 
 		if (policy.txn != null) {
 			policy.txn.prepareRead(key.namespace);
@@ -1913,11 +1841,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 */
 	public final Record get(Policy policy, Key key, String... binNames)
 		throws AerospikeException {
-		if (policy == null) {
-			policy = mergedReadPolicyDefault;
-		} else if (configProvider != null) {
-			policy = new Policy(policy, configProvider);
-		}
+		policy = resolveReadPolicy(policy);
 
 		if (policy.txn != null) {
 			policy.txn.prepareRead(key.namespace);
@@ -1949,11 +1873,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			eventLoop = cluster.eventLoops.next();
 		}
 
-		if (policy == null) {
-			policy = mergedReadPolicyDefault;
-		} else if (configProvider != null) {
-			policy = new Policy(policy, configProvider);
-		}
+		policy = resolveReadPolicy(policy);
 
 		if (policy.txn != null) {
 			policy.txn.prepareRead(key.namespace);
@@ -1974,11 +1894,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 */
 	public final Record getHeader(Policy policy, Key key)
 		throws AerospikeException {
-		if (policy == null) {
-			policy = mergedReadPolicyDefault;
-		} else if (configProvider != null) {
-			policy = new Policy(policy, configProvider);
-		}
+		policy = resolveReadPolicy(policy);
 
 		if (policy.txn != null) {
 			policy.txn.prepareRead(key.namespace);
@@ -2009,11 +1925,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			eventLoop = cluster.eventLoops.next();
 		}
 
-		if (policy == null) {
-			policy = mergedReadPolicyDefault;
-		} else if (configProvider != null) {
-			policy = new Policy(policy, configProvider);
-		}
+		policy = resolveReadPolicy(policy);
 
 		if (policy.txn != null) {
 			policy.txn.prepareRead(key.namespace);
@@ -2905,11 +2817,8 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	public final Record operate(WritePolicy policy, Key key, Operation... operations)
 		throws AerospikeException {
 		OperateArgs args = new OperateArgs(policy, mergedWritePolicyDefault, mergedOperatePolicyReadDefault, operations);
-		policy = args.writePolicy;
 
-		if (configProvider != null) {
-			policy = new WritePolicy(policy, configProvider);
-		}
+		policy = resolveOperatePolicy(args.writePolicy, args.hasWrite);
 
 		if (args.hasWrite) {
 			if (policy.txn != null) {
@@ -2961,11 +2870,8 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		}
 
 		OperateArgs args = new OperateArgs(policy, mergedWritePolicyDefault, mergedOperatePolicyReadDefault, operations);
-		policy = args.writePolicy;
 
-		if (configProvider != null) {
-			policy = new WritePolicy(policy, configProvider);
-		}
+		policy = resolveOperatePolicy(args.writePolicy, args.hasWrite);
 
 		if (args.hasWrite) {
 			AsyncOperateWrite command = new AsyncOperateWrite(cluster, listener, key, args);
@@ -3436,7 +3342,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			writePolicy = new BatchWritePolicy(writePolicy, configProvider);
 		}
 
-        BatchAttr attr = new BatchAttr(batchPolicy, writePolicy, ops);
+		BatchAttr attr = new BatchAttr(batchPolicy, writePolicy, ops);
 
 		if (batchPolicy.txn != null) {
 			TxnMonitor.addKeys(cluster, batchPolicy, keys);
@@ -3518,7 +3424,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			eventLoop = cluster.eventLoops.next();
 		}
 
-        boolean hasWrite = hasWrite(ops);
+		boolean hasWrite = hasWrite(ops);
 
 		if (batchPolicy == null) {
 			batchPolicy = hasWrite ?
@@ -3537,7 +3443,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			writePolicy = new BatchWritePolicy(writePolicy, configProvider);
 		}
 
-        BatchAttr attr = new BatchAttr(batchPolicy, writePolicy, ops);
+		BatchAttr attr = new BatchAttr(batchPolicy, writePolicy, ops);
 		BatchRecord[] records = new BatchRecord[keys.length];
 
 		for (int i = 0; i < keys.length; i++) {
@@ -3609,7 +3515,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			eventLoop = cluster.eventLoops.next();
 		}
 
-        boolean hasWrite = hasWrite(ops);
+		boolean hasWrite = hasWrite(ops);
 
 		if (batchPolicy == null) {
 			batchPolicy = hasWrite ?
@@ -3628,7 +3534,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			writePolicy = new BatchWritePolicy(writePolicy, configProvider);
 		}
 
-        BatchAttr attr = new BatchAttr(batchPolicy, writePolicy, ops);
+		BatchAttr attr = new BatchAttr(batchPolicy, writePolicy, ops);
 		boolean[] sent = new boolean[keys.length];
 		AsyncBatchExecutor.BatchRecordSequence executor = new AsyncBatchExecutor.BatchRecordSequence(
 			eventLoop, cluster, listener, sent);
@@ -3986,11 +3892,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 */
 	public final Object execute(WritePolicy policy, Key key, String packageName, String functionName, Value... functionArgs)
 		throws AerospikeException {
-		if (policy == null) {
-			policy = mergedWritePolicyDefault;
-		} else if (configProvider != null) {
-			policy = new WritePolicy(policy, configProvider);
-		}
+		policy = resolveWritePolicy(policy);
 
 		if (policy.txn != null) {
 			TxnMonitor.addKey(cluster, policy, key);
@@ -4059,11 +3961,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			eventLoop = cluster.eventLoops.next();
 		}
 
-		if (policy == null) {
-			policy = mergedWritePolicyDefault;
-		} else if (configProvider != null) {
-			policy = new WritePolicy(policy, configProvider);
-		}
+		policy = resolveWritePolicy(policy);
 
 		AsyncExecute command = new AsyncExecute(cluster, listener, policy, key, packageName, functionName, functionArgs);
 		AsyncTxnMonitor.execute(eventLoop, cluster, policy, command);
@@ -5581,12 +5479,53 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		return (error.code == 0)? ResultCode.SERVER_ERROR : error.code;
 	}
 
-    private static boolean hasWrite(Operation[] ops) {
-        for (Operation op : ops) {
-            if (op.type.isWrite) {
-                return true;
-            }
-        }
-        return false;
-    }
+	private static boolean hasWrite(Operation[] ops) {
+		for (Operation op : ops) {
+			if (op.type.isWrite) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	private Policy resolveReadPolicy(Policy policy) {
+		if (policy == null) {
+			return mergedReadPolicyDefault;
+		}
+
+		if (configProvider != null) {
+			policy = new Policy(policy, configProvider);
+		}
+		return policy;
+	}
+
+	private WritePolicy resolveWritePolicy(WritePolicy policy) {
+		if (policy == null) {
+			return mergedWritePolicyDefault;
+		}
+
+		if (configProvider != null) {
+			return new WritePolicy(policy, configProvider);
+		}
+
+		if (mergedWritePolicyDefault.sendKey && !policy.sendKey) {
+			WritePolicy wp = new WritePolicy(policy);
+			wp.sendKey = true;
+			return wp;
+		}
+		return policy;
+	}
+
+	private WritePolicy resolveOperatePolicy(WritePolicy policy, boolean hasWrite) {
+		if (configProvider != null) {
+			return new WritePolicy(policy, configProvider);
+		}
+
+		if (hasWrite && mergedWritePolicyDefault.sendKey && !policy.sendKey) {
+			WritePolicy wp = new WritePolicy(policy);
+			wp.sendKey = true;
+			return wp;
+		}
+		return policy;
+	}
 }
