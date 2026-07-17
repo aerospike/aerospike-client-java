@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2025 Aerospike, Inc.
+ * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -18,6 +18,7 @@ package com.aerospike.test.sync.basic;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -26,8 +27,11 @@ import org.junit.Test;
 import com.aerospike.client.Bin;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
+import com.aerospike.client.Value;
 import com.aerospike.client.policy.Policy;
 import com.aerospike.client.policy.WritePolicy;
+import com.aerospike.client.query.RecordSet;
+import com.aerospike.client.query.Statement;
 import com.aerospike.test.sync.TestSync;
 
 public class TestPutGet extends TestSync {
@@ -112,5 +116,47 @@ public class TestPutGet extends TestSync {
 			byte b = (byte)(i % 256);
 			assertEquals(b, rcv[i]);
 		}
+	}
+
+	@Test
+	public void putSendKey() {
+		String set = "sendKey";
+		String userKey = "putSendKey";
+		Key key = new Key(args.namespace, set, userKey);
+		Bin bin = new Bin("a", 32);
+
+		WritePolicy wp = new WritePolicy();
+		wp.sendKey = false;
+
+		// Change global batch write sendKey.
+		WritePolicy defaultPolicy = client.getWritePolicyDefault();
+		boolean origSendKey = defaultPolicy.sendKey;
+		defaultPolicy.sendKey = true;
+
+		try {
+			client.put(wp, key, bin);
+		}
+		finally {
+			// Reset global batch write sendKey.
+			defaultPolicy.sendKey = origSendKey;
+		}
+
+		Statement stmt = new Statement();
+		stmt.setNamespace(args.namespace);
+		stmt.setSetName(set);
+
+		int count = 0;
+
+		try (RecordSet rs = client.query(null, stmt)) {
+			while (rs.next()) {
+				Value val = rs.getKey().userKey;
+				assertNotNull(val);
+
+				String k = val.toString();
+				assertTrue(k.equals(userKey));
+				count++;
+			}
+		}
+		assertEquals(1, count);
 	}
 }
