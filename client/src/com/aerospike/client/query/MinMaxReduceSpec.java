@@ -29,7 +29,8 @@ import com.aerospike.client.command.Buffer;
  * ({@code ASC} picks the minimum, {@code DESC} picks the maximum).
  * <p>
  * Merge is commutative: the order in which {@link #acceptPartial(Record, Key)} is called
- * across nodes does not affect the result.
+ * across nodes does not affect the result. Not part of the public API surface beyond the
+ * {@link Reduce#min} / {@link Reduce#max} factory methods.
  */
 final class MinMaxReduceSpec implements ReduceSpec<Record, Number> {
 	private final String bin;
@@ -72,7 +73,8 @@ final class MinMaxReduceSpec implements ReduceSpec<Record, Number> {
 	@Override
 	public Number getScalarResult() {
 		if (best == null) {
-			throw new IllegalStateException("No partials accepted");
+			throw new IllegalStateException(
+				"getScalarResult() called before any records were accepted via acceptPartial()");
 		}
 		return best;
 	}

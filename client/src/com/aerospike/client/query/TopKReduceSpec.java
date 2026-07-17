@@ -33,7 +33,8 @@ import com.aerospike.client.command.Buffer;
  * <p>
  * Maintains a size-k heap keyed by the order bin, deduplicated by record digest (a record may
  * be re-scanned across partition migrations) with ties broken by digest ascending for stable,
- * deterministic results.
+ * deterministic results. Not part of the public API surface beyond the {@link Reduce#topK}
+ * factory method.
  */
 final class TopKReduceSpec implements ReduceSpec<Record, Record> {
 	private final String bin;
@@ -122,7 +123,8 @@ final class TopKReduceSpec implements ReduceSpec<Record, Record> {
 		Record[] all = getResult();
 
 		if (all.length == 0) {
-			throw new IllegalStateException("No partials accepted");
+			throw new IllegalStateException(
+				"getScalarResult() called before any records were accepted via acceptPartial()");
 		}
 		return all[0];
 	}

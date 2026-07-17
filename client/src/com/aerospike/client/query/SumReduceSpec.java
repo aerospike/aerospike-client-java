@@ -22,7 +22,8 @@ import com.aerospike.client.Record;
 /**
  * Scalar SUM reduce combiner. Backs {@link Reduce#sum(String)}.
  * <p>
- * Merge is commutative and associative: adds each record's bin value across all nodes.
+ * Merge is commutative and associative: adds each record's bin value across all nodes. Not
+ * part of the public API surface beyond the {@link Reduce#sum} factory method.
  */
 final class SumReduceSpec implements ReduceSpec<Record, Long> {
 	private final String bin;

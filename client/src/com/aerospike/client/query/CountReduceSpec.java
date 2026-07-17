@@ -22,7 +22,8 @@ import com.aerospike.client.Record;
 /**
  * Scalar COUNT reduce combiner. Backs {@link Reduce#count()}.
  * <p>
- * Counts one per {@link #acceptPartial(Record, Key)} call (one per matching record).
+ * Counts one per {@link #acceptPartial(Record, Key)} call (one per matching record). Not part
+ * of the public API surface beyond the {@link Reduce#count} factory method.
  */
 final class CountReduceSpec implements ReduceSpec<Record, Long> {
 	private long count;
