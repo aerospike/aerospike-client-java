@@ -20,14 +20,12 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.util.ArrayList;
 import java.util.List;
 
-import com.aerospike.client.util.Version;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -56,6 +54,7 @@ import com.aerospike.client.policy.WritePolicy;
 import com.aerospike.client.query.RecordSet;
 import com.aerospike.client.query.Statement;
 import com.aerospike.client.util.Util;
+import com.aerospike.client.util.Version;
 import com.aerospike.test.sync.TestSync;
 
 public class TestBatch extends TestSync {
@@ -484,12 +483,15 @@ public class TestBatch extends TestSync {
         boolean origSendKey = bp.sendKey;
         bp.sendKey = true;
 
+        BatchWritePolicy wp = new BatchWritePolicy();
+        wp.sendKey = false;
+
         List<BatchRecord> records = new ArrayList<BatchRecord>();
         Operation[] ops = Operation.array(Operation.put(new Bin("bin", "val")));
 
         for (int i = 0; i < size; i++) {
             Key key = new Key(args.namespace, set, prefix + (i + 1));
-            records.add(new BatchWrite(null, key, ops));
+            records.add(new BatchWrite(wp, key, ops));
         }
 
         boolean status = client.operate(null, records);
@@ -501,6 +503,65 @@ public class TestBatch extends TestSync {
 
         // Reset global batch write sendKey.
         bp.sendKey = origSendKey;
+
+        Statement stmt = new Statement();
+        stmt.setNamespace(args.namespace);
+        stmt.setSetName(set);
+
+        int count = 0;
+
+        try (RecordSet rs = client.query(null, stmt)) {
+            while (rs.next()) {
+                Value val = rs.getKey().userKey;
+                assertNotNull(val);
+
+                String key = val.toString();
+                assertTrue(key.startsWith(prefix));
+                count++;
+            }
+        }
+        assertEquals(size, count);
+    }
+
+    @Test
+    public void batchWriteComplexGlobalSendKeySingle() {
+        String prefix = "skCG2";
+        String set = "skCG2";
+        int size = 1;  // Ensure single key optimization is enabled.
+
+        client.truncate(null, args.namespace, set, null);
+
+        BatchWritePolicy wp = new BatchWritePolicy();
+        wp.sendKey = false;
+
+        List<BatchRecord> records = new ArrayList<BatchRecord>();
+        Operation[] ops = Operation.array(Operation.put(new Bin("bin", "val")));
+
+        for (int i = 0; i < size; i++) {
+            Key key = new Key(args.namespace, set, prefix + (i + 1));
+            records.add(new BatchWrite(wp, key, ops));
+        }
+
+        // Change global batch write sendKey.
+        BatchWritePolicy def = client.getBatchWritePolicyDefault();
+        boolean origSendKey = def.sendKey;
+        def.sendKey = true;
+
+        boolean status;
+
+        try {
+            status = client.operate(null, records);
+        }
+        finally {
+            // Reset global batch write sendKey.
+            def.sendKey = origSendKey;
+        }
+
+        assertTrue(status);
+
+        for (BatchRecord rec : records) {
+            assertEquals(ResultCode.OK, rec.resultCode);
+        }
 
         Statement stmt = new Statement();
         stmt.setNamespace(args.namespace);
