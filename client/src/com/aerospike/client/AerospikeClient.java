@@ -1198,12 +1198,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			batchPolicy = BatchPolicy.mergeWrite(batchPolicy, configProvider);
 		}
 
-		if (deletePolicy == null) {
-			deletePolicy = mergedBatchDeletePolicyDefault;
-		}
-		else if (configProvider != null) {
-			deletePolicy = new BatchDeletePolicy(deletePolicy, configProvider);
-		}
+		deletePolicy = resolveBatchDeletePolicy(deletePolicy);
 
 		BatchAttr attr = new BatchAttr();
 		attr.setDelete(batchPolicy, deletePolicy);
@@ -1285,12 +1280,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			batchPolicy = BatchPolicy.mergeWrite(batchPolicy, configProvider);
 		}
 
-		if (deletePolicy == null) {
-			deletePolicy = mergedBatchDeletePolicyDefault;
-		}
-		else if (configProvider != null) {
-			deletePolicy = new BatchDeletePolicy(deletePolicy, configProvider);
-		}
+        deletePolicy = resolveBatchDeletePolicy(deletePolicy);
 
 		BatchAttr attr = new BatchAttr();
 		attr.setDelete(batchPolicy, deletePolicy);
@@ -1363,12 +1353,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			batchPolicy = BatchPolicy.mergeWrite(batchPolicy, configProvider);
 		}
 
-		if (deletePolicy == null) {
-			deletePolicy = mergedBatchDeletePolicyDefault;
-		}
-		else if (configProvider != null) {
-			deletePolicy = new BatchDeletePolicy(deletePolicy, configProvider);
-		}
+        deletePolicy = resolveBatchDeletePolicy(deletePolicy);
 
 		BatchAttr attr = new BatchAttr();
 		attr.setDelete(batchPolicy, deletePolicy);
@@ -2957,14 +2942,8 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 					case BATCH_WRITE: {
 						BatchWrite bw = (BatchWrite)record;
 						BatchAttr attr = new BatchAttr();
-						BatchWritePolicy bwp;
-						if (bw.policy == null) {
-							bwp = mergedBatchWritePolicyDefault;
-						} else if (configProvider != null) {
-							bwp = new BatchWritePolicy(bw.policy, configProvider);
-						} else {
-							bwp = bw.policy;
-						}
+						BatchWritePolicy bwp = resolveBatchWritePolicy(bw.policy);
+
 						attr.setWrite(policy, bwp);
 						attr.adjustWrite(bw.ops);
 						attr.setOpSize(bw.ops);
@@ -2976,14 +2955,8 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 					case BATCH_UDF: {
 						BatchUDF bu = (BatchUDF)record;
 						BatchAttr attr = new BatchAttr();
-						BatchUDFPolicy bup;
-						if (bu.policy == null) {
-							bup = this.mergedBatchUDFPolicyDefault;
-						} else if (configProvider != null) {
-							bup = new BatchUDFPolicy(bu.policy, configProvider);
-						} else {
-							bup = bu.policy;
-						}
+						BatchUDFPolicy bup = resolveBatchUDFPolicy(bu.policy);
+
 						attr.setUDF(policy, bup);
 						commands[count++] = new BatchSingle.UDF(
 							cluster, policy, bu.packageName, bu.functionName, bu.functionArgs, attr, record, status,
@@ -2994,14 +2967,8 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 					case BATCH_DELETE: {
 						BatchDelete bd = (BatchDelete)record;
 						BatchAttr attr = new BatchAttr();
-						BatchDeletePolicy bdp;
-						if (bd.policy == null) {
-							bdp = this.mergedBatchDeletePolicyDefault;
-						} else if (configProvider != null) {
-							bdp = new BatchDeletePolicy(bd.policy, configProvider);
-						} else {
-							bdp = bd.policy;
-						}
+						BatchDeletePolicy bdp = resolveBatchDeletePolicy(bd.policy);
+
 						attr.setDelete(policy, bdp);
 						commands[count++] = new BatchSingle.Delete(cluster, policy, attr, record, status, bn.node);
 						break;
@@ -3097,15 +3064,9 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 					case BATCH_WRITE: {
 						BatchWrite bw = (BatchWrite)record;
 						BatchAttr attr = new BatchAttr();
-						BatchWritePolicy bwp;
-						if (bw.policy == null) {
-							bwp = mergedBatchWritePolicyDefault;
-						} else if (configProvider != null) {
-							bwp = new BatchWritePolicy(bw.policy, configProvider);
-						} else {
-							bwp = bw.policy;
-						}
-						attr.setWrite(policy, bwp);
+                        BatchWritePolicy bwp = resolveBatchWritePolicy(bw.policy);
+
+                        attr.setWrite(policy, bwp);
 						attr.adjustWrite(bw.ops);
 						attr.setOpSize(bw.ops);
 						commands[count++] = new AsyncBatchSingle.Write(executor, cluster, policy, attr, bw, bn.node);
@@ -3115,15 +3076,9 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 					case BATCH_UDF: {
 						BatchUDF bu = (BatchUDF)record;
 						BatchAttr attr = new BatchAttr();
-						BatchUDFPolicy bup;
-						if (bu.policy == null) {
-							bup = this.mergedBatchUDFPolicyDefault;
-						} else if (configProvider != null) {
-							bup = new BatchUDFPolicy(bu.policy, configProvider);
-						} else {
-							bup = bu.policy;
-						}
-						attr.setUDF(policy, bup);
+                        BatchUDFPolicy bup = resolveBatchUDFPolicy(bu.policy);
+
+                        attr.setUDF(policy, bup);
 						commands[count++] = new AsyncBatchSingle.UDF(executor, cluster, policy, attr, bu, bn.node);
 						break;
 					}
@@ -3131,15 +3086,9 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 					case BATCH_DELETE: {
 						BatchDelete bd = (BatchDelete)record;
 						BatchAttr attr = new BatchAttr();
-						BatchDeletePolicy bdp;
-						if (bd.policy == null) {
-							bdp = this.mergedBatchDeletePolicyDefault;
-						} else if (configProvider != null) {
-							bdp = new BatchDeletePolicy(bd.policy, configProvider);
-						} else {
-							bdp = bd.policy;
-						}
-						attr.setDelete(policy, bdp);
+                        BatchDeletePolicy bdp = resolveBatchDeletePolicy(bd.policy);
+
+                        attr.setDelete(policy, bdp);
 						commands[count++] = new AsyncBatchSingle.Delete(executor, cluster, policy, attr, record,
 							bn.node);
 						break;
@@ -3235,15 +3184,9 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 					case BATCH_WRITE: {
 						BatchWrite bw = (BatchWrite)record;
 						BatchAttr attr = new BatchAttr();
-						BatchWritePolicy bwp;
-						if (bw.policy == null) {
-							bwp = mergedBatchWritePolicyDefault;
-						} else if (configProvider != null) {
-							bwp = new BatchWritePolicy(bw.policy, configProvider);
-						} else {
-							bwp = bw.policy;
-						}
-						attr.setWrite(policy, bwp);
+                        BatchWritePolicy bwp = resolveBatchWritePolicy(bw.policy);
+
+                        attr.setWrite(policy, bwp);
 						attr.adjustWrite(bw.ops);
 						attr.setOpSize(bw.ops);
 						commands[count++] = new AsyncBatchSingle.WriteSequence(
@@ -3254,15 +3197,9 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 					case BATCH_UDF: {
 						BatchUDF bu = (BatchUDF)record;
 						BatchAttr attr = new BatchAttr();
-						BatchUDFPolicy bup;
-						if (bu.policy == null) {
-							bup = this.mergedBatchUDFPolicyDefault;
-						} else if (configProvider != null) {
-							bup = new BatchUDFPolicy(bu.policy, configProvider);
-						} else {
-							bup = bu.policy;
-						}
-						attr.setUDF(policy, bup);
+                        BatchUDFPolicy bup = resolveBatchUDFPolicy(bu.policy);
+
+                        attr.setUDF(policy, bup);
 						commands[count++] = new AsyncBatchSingle.UDFSequence(
 							executor, cluster, policy, attr, bu, bn.node, listener, i);
 						break;
@@ -3271,15 +3208,9 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 					case BATCH_DELETE: {
 						BatchDelete bd = (BatchDelete)record;
 						BatchAttr attr = new BatchAttr();
-						BatchDeletePolicy bdp;
-						if (bd.policy == null) {
-							bdp = this.mergedBatchDeletePolicyDefault;
-						} else if (configProvider != null) {
-							bdp = new BatchDeletePolicy(bd.policy, configProvider);
-						} else {
-							bdp = bd.policy;
-						}
-						attr.setDelete(policy, bdp);
+                        BatchDeletePolicy bdp = resolveBatchDeletePolicy(bd.policy);
+
+                        attr.setDelete(policy, bdp);
 						commands[count++] = new AsyncBatchSingle.DeleteSequence(
 							executor, cluster, policy, attr, bd, bn.node, listener, i);
 						break;
@@ -3335,12 +3266,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 				BatchPolicy.mergeRead(batchPolicy, configProvider);
 		}
 
-		if (writePolicy == null) {
-			writePolicy = mergedBatchWritePolicyDefault;
-		}
-		else if (configProvider != null) {
-			writePolicy = new BatchWritePolicy(writePolicy, configProvider);
-		}
+		writePolicy = resolveBatchWritePolicy(writePolicy);
 
 		BatchAttr attr = new BatchAttr(batchPolicy, writePolicy, ops);
 
@@ -3436,12 +3362,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 				BatchPolicy.mergeRead(batchPolicy, configProvider);
 		}
 
-		if (writePolicy == null) {
-			writePolicy = mergedBatchWritePolicyDefault;
-		}
-		else if (configProvider != null) {
-			writePolicy = new BatchWritePolicy(writePolicy, configProvider);
-		}
+        writePolicy = resolveBatchWritePolicy(writePolicy);
 
 		BatchAttr attr = new BatchAttr(batchPolicy, writePolicy, ops);
 		BatchRecord[] records = new BatchRecord[keys.length];
@@ -3527,12 +3448,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 				BatchPolicy.mergeRead(batchPolicy, configProvider);
 		}
 
-		if (writePolicy == null) {
-			writePolicy = mergedBatchWritePolicyDefault;
-		}
-		else if (configProvider != null) {
-			writePolicy = new BatchWritePolicy(writePolicy, configProvider);
-		}
+        writePolicy = resolveBatchWritePolicy(writePolicy);
 
 		BatchAttr attr = new BatchAttr(batchPolicy, writePolicy, ops);
 		boolean[] sent = new boolean[keys.length];
@@ -4002,12 +3918,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			batchPolicy = BatchPolicy.mergeWrite(batchPolicy, configProvider);
 		}
 
-		if (udfPolicy == null) {
-			udfPolicy = mergedBatchUDFPolicyDefault;
-		}
-		else if (configProvider != null) {
-			udfPolicy = new BatchUDFPolicy(udfPolicy, configProvider);
-		}
+		udfPolicy = resolveBatchUDFPolicy(udfPolicy);
 
 		BatchAttr attr = new BatchAttr();
 		attr.setUDF(batchPolicy, udfPolicy);
@@ -4098,12 +4009,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			batchPolicy = BatchPolicy.mergeWrite(batchPolicy, configProvider);
 		}
 
-		if (udfPolicy == null) {
-			udfPolicy = mergedBatchUDFPolicyDefault;
-		}
-		else if (configProvider != null) {
-			udfPolicy = new BatchUDFPolicy(udfPolicy, configProvider);
-		}
+        udfPolicy = resolveBatchUDFPolicy(udfPolicy);
 
 		BatchAttr attr = new BatchAttr();
 		attr.setUDF(batchPolicy, udfPolicy);
@@ -4184,12 +4090,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			batchPolicy = BatchPolicy.mergeWrite(batchPolicy, configProvider);
 		}
 
-		if (udfPolicy == null) {
-			udfPolicy = mergedBatchUDFPolicyDefault;
-		}
-		else if (configProvider != null) {
-			udfPolicy = new BatchUDFPolicy(udfPolicy, configProvider);
-		}
+        udfPolicy = resolveBatchUDFPolicy(udfPolicy);
 
 		BatchAttr attr = new BatchAttr();
 		attr.setUDF(batchPolicy, udfPolicy);
@@ -5528,4 +5429,55 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		}
 		return policy;
 	}
+
+    private BatchWritePolicy resolveBatchWritePolicy(BatchWritePolicy policy) {
+        if (policy == null) {
+            return mergedBatchWritePolicyDefault;
+        }
+
+        if (configProvider != null) {
+            return new BatchWritePolicy(policy, configProvider);
+        }
+
+        if (mergedBatchWritePolicyDefault.sendKey && !policy.sendKey) {
+            BatchWritePolicy wp = new BatchWritePolicy(policy);
+            wp.sendKey = true;
+            return wp;
+        }
+        return policy;
+    }
+
+    private BatchUDFPolicy resolveBatchUDFPolicy(BatchUDFPolicy policy) {
+        if (policy == null) {
+            return mergedBatchUDFPolicyDefault;
+        }
+
+        if (configProvider != null) {
+            return new BatchUDFPolicy(policy, configProvider);
+        }
+
+        if (mergedBatchUDFPolicyDefault.sendKey && !policy.sendKey) {
+            BatchUDFPolicy wp = new BatchUDFPolicy(policy);
+            wp.sendKey = true;
+            return wp;
+        }
+        return policy;
+    }
+
+    private BatchDeletePolicy resolveBatchDeletePolicy(BatchDeletePolicy policy) {
+        if (policy == null) {
+            return mergedBatchDeletePolicyDefault;
+        }
+
+        if (configProvider != null) {
+            return new BatchDeletePolicy(policy, configProvider);
+        }
+
+        if (mergedBatchDeletePolicyDefault.sendKey && !policy.sendKey) {
+            BatchDeletePolicy wp = new BatchDeletePolicy(policy);
+            wp.sendKey = true;
+            return wp;
+        }
+        return policy;
+    }
 }
