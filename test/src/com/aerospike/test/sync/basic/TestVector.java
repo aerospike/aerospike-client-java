@@ -22,14 +22,20 @@ import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.fail;
 
+import java.util.Collections;
+import java.util.List;
+
 import org.junit.Test;
 
 import com.aerospike.client.AerospikeException;
+import com.aerospike.client.Bin;
 import com.aerospike.client.ResultCode;
 import com.aerospike.client.Value;
 import com.aerospike.client.Value.VectorValue;
+import com.aerospike.client.command.Buffer;
 import com.aerospike.client.command.ParticleType;
 import com.aerospike.client.util.Packer;
+import com.aerospike.client.util.Unpacker;
 import com.aerospike.client.vector.Vector;
 import com.aerospike.client.vector.Vector.ElementType;
 import com.aerospike.test.util.TestBase;
@@ -292,13 +298,205 @@ public class TestVector extends TestBase {
 	}
 
 	//-------------------------------------------------------
+	// from (deserialization)
+	//-------------------------------------------------------
+
+	@Test
+	public void fromRoundTripsFloat16() {
+		short[] data = new short[] {0x3c00, (short)0xbc00, 0x4000};
+		Vector v = Vector.ofFloat16(data);
+
+		byte[] buffer = new byte[v.getWireSize()];
+		v.writeTo(buffer, 0);
+
+		Vector parsed = Vector.from(buffer, 0, buffer.length);
+		assertEquals(v, parsed);
+	}
+
+	@Test
+	public void fromRoundTripsInt32() {
+		int[] data = new int[] {-1, 0, 1, Integer.MAX_VALUE};
+		Vector v = Vector.ofInt32(data);
+
+		byte[] buffer = new byte[v.getWireSize()];
+		v.writeTo(buffer, 0);
+
+		Vector parsed = Vector.from(buffer, 0, buffer.length);
+		assertEquals(v, parsed);
+	}
+
+	@Test
+	public void fromRoundTripsFloat32() {
+		float[] data = new float[] {1.5f, -2.25f, 0.0f, 3.14159f, Float.MAX_VALUE};
+		Vector v = Vector.ofFloat32(data);
+
+		byte[] buffer = new byte[v.getWireSize()];
+		v.writeTo(buffer, 0);
+
+		Vector parsed = Vector.from(buffer, 0, buffer.length);
+		assertEquals(v, parsed);
+	}
+
+	@Test
+	public void fromRoundTripsFloat64() {
+		double[] data = new double[] {1.5, -2.25, Double.MAX_VALUE};
+		Vector v = Vector.ofFloat64(data);
+
+		byte[] buffer = new byte[v.getWireSize()];
+		v.writeTo(buffer, 0);
+
+		Vector parsed = Vector.from(buffer, 0, buffer.length);
+		assertEquals(v, parsed);
+	}
+
+	@Test
+	public void fromRespectsOffset() {
+		Vector v = Vector.ofInt32(new int[] {7, 8, 9});
+
+		byte[] buffer = new byte[4 + v.getWireSize()];
+		v.writeTo(buffer, 4);
+
+		Vector parsed = Vector.from(buffer, 4, buffer.length - 4);
+		assertEquals(v, parsed);
+	}
+
+	@Test
+	public void fromIgnoresTrailingBytes() {
+		Vector v = Vector.ofInt32(new int[] {1, 2, 3});
+
+		byte[] buffer = new byte[v.getWireSize() + 10];
+		v.writeTo(buffer, 0);
+
+		Vector parsed = Vector.from(buffer, 0, buffer.length);
+		assertEquals(v, parsed);
+	}
+
+	@Test
+	public void fromTooShortThrows() {
+		byte[] buffer = new byte[Vector.HEADER_SIZE - 1];
+
+		try {
+			Vector.from(buffer, 0, buffer.length);
+			fail("Expected IllegalArgumentException");
+		}
+		catch (IllegalArgumentException e) {
+			// expected
+		}
+	}
+
+	@Test
+	public void fromTruncatedDataThrows() {
+		Vector v = Vector.ofFloat32(new float[] {1.0f, 2.0f, 3.0f});
+
+		byte[] buffer = new byte[v.getWireSize()];
+		v.writeTo(buffer, 0);
+
+		try {
+			// Claim there's one fewer byte than the data actually requires.
+			Vector.from(buffer, 0, buffer.length - 1);
+			fail("Expected IllegalArgumentException");
+		}
+		catch (IllegalArgumentException e) {
+			// expected
+		}
+	}
+
+	@Test
+	public void fromInvalidElementTypeThrows() {
+		byte[] buffer = new byte[Vector.HEADER_SIZE];
+		buffer[0] = Vector.VERSION;
+		buffer[1] = (byte)0x7f; // invalid element type code
+
+		try {
+			Vector.from(buffer, 0, buffer.length);
+			fail("Expected IllegalArgumentException");
+		}
+		catch (IllegalArgumentException e) {
+			// expected
+		}
+	}
+
+	//-------------------------------------------------------
+	// Buffer.bytesToParticle (record deserialization)
+	//-------------------------------------------------------
+
+	@Test
+	public void bytesToParticleDeserializesVector() {
+		Vector v = Vector.ofFloat32(new float[] {1.5f, -2.25f, 3.0f});
+
+		byte[] buffer = new byte[v.getWireSize()];
+		v.writeTo(buffer, 0);
+
+		Object parsed = Buffer.bytesToParticle(ParticleType.VECTOR, buffer, 0, buffer.length);
+
+		assertEquals(Vector.class, parsed.getClass());
+		assertEquals(v, parsed);
+	}
+
+	//-------------------------------------------------------
+	// Unpacker (vector nested in list/map)
+	//-------------------------------------------------------
+
+	@Test
+	public void unpackerDeserializesNestedVector() {
+		Vector v = Vector.ofInt32(new int[] {1, 2, 3});
+		List<Value> list = Collections.singletonList(Value.get(v));
+
+		// Two-pass pack: size estimate then write.
+		Packer packer = new Packer();
+		packer.packValueList(list);
+		packer.createBuffer();
+		packer.packValueList(list);
+		byte[] packed = packer.getBuffer();
+
+		Object unpacked = Unpacker.unpackObjectList(packed, 0, packed.length);
+
+		List<?> unpackedList = (List<?>)unpacked;
+		assertEquals(1, unpackedList.size());
+		assertEquals(Vector.class, unpackedList.get(0).getClass());
+		assertEquals(v, unpackedList.get(0));
+	}
+
+	@Test
+	public void unpackerRoundTripsRawVectorInList() {
+		// A list bin built from raw (unwrapped) Vector elements, as opposed to
+		// Value.get(Vector) elements, must still pack and unpack correctly.
+		// This exercises Packer.packObject()/packList() -> Packer.packVector(),
+		// not Value.pack().
+		Vector v = Vector.ofFloat32(new float[] {1.5f, -2.25f, 3.0f});
+		List<Object> list = Collections.singletonList(v);
+
+		byte[] packed = Packer.pack(list);
+		Object unpacked = Unpacker.unpackObjectList(packed, 0, packed.length);
+
+		List<?> unpackedList = (List<?>)unpacked;
+		assertEquals(1, unpackedList.size());
+		assertEquals(Vector.class, unpackedList.get(0).getClass());
+		assertEquals(v, unpackedList.get(0));
+	}
+
+	@Test
+	public void binWithRawVectorInListPacksSuccessfully() {
+		// Regression test: Bin(String, List<?>) packs raw list elements via
+		// Packer.packObject(), which previously had no branch for Vector and
+		// threw "Unsupported type" for any list/map bin containing a raw Vector.
+		Vector v = Vector.ofInt32(new int[] {1, 2, 3});
+		Bin bin = new Bin("veclist", Collections.singletonList(v));
+
+		byte[] buffer = new byte[bin.value.estimateSize()];
+		int written = bin.value.write(buffer, 0);
+
+		assertEquals(buffer.length, written);
+	}
+
+	//-------------------------------------------------------
 	// VectorValue
 	//-------------------------------------------------------
 
 	@Test
-	public void getAsVector() {
+	public void getVectorValue() {
 		Vector v = Vector.ofFloat32(new float[] {1.0f, 2.0f});
-		Value value = Value.getAsVector(v);
+		Value value = Value.get(v);
 
 		assertEquals(ParticleType.VECTOR, value.getType());
 		assertSame(v, value.getObject());
@@ -306,14 +504,26 @@ public class TestVector extends TestBase {
 	}
 
 	@Test
-	public void getAsVectorNull() {
-		assertSame(Value.getAsNull(), Value.getAsVector(null));
+	public void getVectorNull() {
+		assertSame(Value.getAsNull(), Value.get((Vector)null));
+	}
+
+	@Test
+	public void getObjectWrapsNativeVector() {
+		// Deserialization yields a native Vector; Value.get(Object) must re-wrap
+		// it as a VectorValue so a read-then-write round trip preserves the type.
+		Vector v = Vector.ofInt32(new int[] {1, 2, 3});
+		Value value = Value.get((Object)v);
+
+		assertEquals(VectorValue.class, value.getClass());
+		assertEquals(ParticleType.VECTOR, value.getType());
+		assertSame(v, ((VectorValue)value).getVector());
 	}
 
 	@Test
 	public void valueEstimateSizeMatchesWireSize() {
 		Vector v = Vector.ofFloat32(new float[] {1.0f, 2.0f, 3.0f});
-		Value value = Value.getAsVector(v);
+		Value value = Value.get(v);
 
 		assertEquals(v.getWireSize(), value.estimateSize());
 	}
@@ -321,7 +531,7 @@ public class TestVector extends TestBase {
 	@Test
 	public void valueWriteMatchesVectorWriteTo() {
 		Vector v = Vector.ofFloat32(new float[] {1.5f, -2.25f, 3.0f});
-		Value value = Value.getAsVector(v);
+		Value value = Value.get(v);
 
 		byte[] expected = new byte[v.getWireSize()];
 		v.writeTo(expected, 0);
@@ -335,8 +545,8 @@ public class TestVector extends TestBase {
 
 	@Test
 	public void valueEquals() {
-		Value a = Value.getAsVector(Vector.ofInt32(new int[] {1, 2, 3}));
-		Value b = Value.getAsVector(Vector.ofInt32(new int[] {1, 2, 3}));
+		Value a = Value.get(Vector.ofInt32(new int[] {1, 2, 3}));
+		Value b = Value.get(Vector.ofInt32(new int[] {1, 2, 3}));
 
 		assertEquals(a, b);
 		assertEquals(a.hashCode(), b.hashCode());
@@ -344,7 +554,7 @@ public class TestVector extends TestBase {
 
 	@Test
 	public void validateKeyTypeThrows() {
-		Value value = Value.getAsVector(Vector.ofInt32(new int[] {1, 2, 3}));
+		Value value = Value.get(Vector.ofInt32(new int[] {1, 2, 3}));
 
 		try {
 			value.validateKeyType();
@@ -358,7 +568,7 @@ public class TestVector extends TestBase {
 	@Test
 	public void packProducesParticleBytes() {
 		Vector v = Vector.ofInt32(new int[] {1, 2, 3});
-		Value value = Value.getAsVector(v);
+		Value value = Value.get(v);
 
 		// Two-pass pack: size estimate then write.
 		Packer packer = new Packer();
@@ -378,6 +588,30 @@ public class TestVector extends TestBase {
 		byte[] payload = new byte[wire.length];
 		System.arraycopy(packed, payloadStart, payload, 0, wire.length);
 		assertArrayEquals(wire, payload);
+	}
+
+	//-------------------------------------------------------
+	// Bin
+	//-------------------------------------------------------
+
+	@Test
+	public void binConstructorWrapsVector() {
+		Vector v = Vector.ofFloat32(new float[] {1.0f, 2.0f, 3.0f});
+		Bin bin = new Bin("vecbin", v);
+
+		assertEquals("vecbin", bin.name);
+		assertEquals(VectorValue.class, bin.value.getClass());
+		assertEquals(ParticleType.VECTOR, bin.value.getType());
+		assertSame(v, ((VectorValue)bin.value).getVector());
+	}
+
+	@Test
+	public void binEqualsUsesVectorEquality() {
+		Bin a = new Bin("vecbin", Vector.ofInt32(new int[] {1, 2, 3}));
+		Bin b = new Bin("vecbin", Vector.ofInt32(new int[] {1, 2, 3}));
+
+		assertEquals(a, b);
+		assertEquals(a.hashCode(), b.hashCode());
 	}
 
 	//-------------------------------------------------------

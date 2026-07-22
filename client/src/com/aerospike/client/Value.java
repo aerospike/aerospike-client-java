@@ -228,6 +228,13 @@ public abstract class Value {
 	}
 
 	/**
+	 * Get vector or null value instance.
+	 */
+	public static Value get(Vector value) {
+		return (value == null)? NullValue.INSTANCE : new VectorValue(value);
+	}
+
+	/**
 	 * Get GeoJSON or null value instance.
 	 */
 	public static Value getAsGeoJSON(String value) {
@@ -239,13 +246,6 @@ public abstract class Value {
 	 */
 	public static Value getAsHLL(byte[] value) {
 		return (value == null)? NullValue.INSTANCE : new HLLValue(value);
-	}
-
-	/**
-	 * Get Vector or null value instance.
-	 */
-	public static Value getAsVector(final Vector value) {
-		return (value == null)? NullValue.INSTANCE : new VectorValue(value);
 	}
 
 	/**
@@ -291,6 +291,10 @@ public abstract class Value {
 
 		if (value instanceof Map<?,?>) {
 			return new MapValue((Map<?,?>)value);
+		}
+
+		if (value instanceof Vector) {
+			return new VectorValue((Vector)value);
 		}
 
 		if (value instanceof Double) {
@@ -1455,9 +1459,7 @@ public abstract class Value {
 
 		@Override
 		public void pack(final Packer packer) {
-			final byte[] bytes = new byte[vector.getWireSize()];
-			vector.writeTo(bytes, 0);
-			packer.packParticleBytes(bytes, ParticleType.VECTOR);
+			packer.packVector(vector);
 		}
 
 		@Override
@@ -1481,8 +1483,7 @@ public abstract class Value {
 
 		@Override
 		public LuaValue getLuaValue(final LuaInstance instance) {
-			// TODO: Lua bridging not yet implemented.
-			throw new UnsupportedOperationException("VectorValue.getLuaValue() not yet implemented");
+			throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid lua type: Vector");
 		}
 
 		@Override

@@ -189,6 +189,120 @@ public final class Vector {
 	}
 
 	/**
+	 * Return the raw element array in little-endian wire byte order, without the
+	 * 8-byte header. This is the layout expected as the query vector of a vector
+	 * distance expression (see {@link com.aerospike.client.exp.VectorExp#distance}),
+	 * where the server reinterprets the bytes using the stored bin's element type.
+	 * <p>
+	 * TODO(vector-exp-envelope): the server team's frozen contract for the vector
+	 * distance expression's query-vector argument has been decided to move to
+	 * sending the complete vector wire value (header + elements, i.e. what
+	 * {@link #writeTo} produces) rather than headerless elements. The server side
+	 * of that change has not shipped yet, so this method (and the elements-only
+	 * wire format {@link VectorExp#distance} currently sends) still matches the
+	 * server behavior available today. Once the server ships the new envelope,
+	 * {@link VectorExp#distance} should be updated to pack the full vector value
+	 * instead of calling this method.
+	 */
+	public byte[] getElementBytes() {
+		final int dataSize = dimensions * elementType.getByteSize();
+		final byte[] bytes = new byte[dataSize];
+		final ByteBuffer view = ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN);
+
+		switch (elementType) {
+			case FLOAT16:
+				view.asShortBuffer().put((short[])data);
+				break;
+
+			case INT32:
+				view.asIntBuffer().put((int[])data);
+				break;
+
+			case FLOAT32:
+				view.asFloatBuffer().put((float[])data);
+				break;
+
+			case FLOAT64:
+				view.asDoubleBuffer().put((double[])data);
+				break;
+
+			default:
+				throw new IllegalStateException("Unsupported vector element type: " + elementType);
+		}
+
+		return bytes;
+	}
+
+	/**
+	 * Deserialize a vector from wire format at the given buffer offset.
+	 *
+	 * @param buffer	buffer containing the vector wire format
+	 * @param offset	offset in buffer where the vector starts
+	 * @param length	number of bytes available for this vector (must be at least
+	 *                  {@link #HEADER_SIZE})
+	 */
+	public static Vector from(final byte[] buffer, final int offset, final int length) {
+		if (length < HEADER_SIZE) {
+			throw new IllegalArgumentException("Invalid vector length: " + length);
+		}
+
+		int pos = offset;
+
+		final byte version = buffer[pos++];
+		final ElementType elementType = ElementType.fromCode(buffer[pos++]);
+		final int dimensions = Buffer.littleBytesToInt(buffer, pos);
+		pos += 4; // advance past the 4-byte dimensions field read above
+		// TODO: these 2 bytes are currently treated as reserved, but it is ambiguous
+		// whether they are actually reserved or intended to hold vector flags.
+		pos += 2;
+
+		final int dataSize = dimensions * elementType.getByteSize();
+
+		if (length < HEADER_SIZE + dataSize) {
+			throw new IllegalArgumentException("Invalid vector length: " + length +
+				", expected at least " + (HEADER_SIZE + dataSize));
+		}
+
+		final ByteBuffer view = ByteBuffer.wrap(buffer, pos, dataSize).order(ByteOrder.LITTLE_ENDIAN);
+		final Object data;
+
+		switch (elementType) {
+			case FLOAT16: {
+				final short[] arr = new short[dimensions];
+				view.asShortBuffer().get(arr);
+				data = arr;
+				break;
+			}
+
+			case INT32: {
+				final int[] arr = new int[dimensions];
+				view.asIntBuffer().get(arr);
+				data = arr;
+				break;
+			}
+
+			case FLOAT32: {
+				final float[] arr = new float[dimensions];
+				view.asFloatBuffer().get(arr);
+				data = arr;
+				break;
+			}
+
+			case FLOAT64: {
+				final double[] arr = new double[dimensions];
+				view.asDoubleBuffer().get(arr);
+				data = arr;
+				break;
+			}
+
+			default:
+				throw new IllegalStateException("Unsupported vector element type: " + elementType);
+		}
+
+		return new Vector(version, elementType, dimensions, data);
+	}
+
+	/**
 	 * Create a vector of raw float16 (IEEE 754 half precision) elements.
 	 * Since Java has no native float16 type, each element is passed as its
 	 * raw 16-bit bit pattern.

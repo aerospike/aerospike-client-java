@@ -22,6 +22,7 @@ import java.util.Map.Entry;
 import java.util.SortedMap;
 
 import com.aerospike.client.cdt.MapOrder;
+import com.aerospike.client.vector.Vector;
 
 /**
  * Column name/value pair.
@@ -232,6 +233,17 @@ public final class Bin {
 	public Bin(String name, List<? extends Entry<?,?>> value, MapOrder mapOrder) {
 		this.name = name;
 		this.value = Value.get(value, mapOrder);
+	}
+
+	/**
+	 * Create bin with a vector value. The vector value will be serialized as a server vector type.
+	 *
+	 * @param name		bin name, current limit is 15 characters
+	 * @param value		bin value
+	 */
+	public Bin(String name, Vector value) {
+		this.name = name;
+		this.value = Value.get(value);
 	}
 
 	/**

@@ -31,6 +31,7 @@ import com.aerospike.client.Value;
 import com.aerospike.client.cdt.MapOrder;
 import com.aerospike.client.command.Buffer;
 import com.aerospike.client.command.ParticleType;
+import com.aerospike.client.vector.Vector;
 
 /**
  * Serialize collection objects using MessagePack format specification:
@@ -673,6 +674,12 @@ public final class Packer {
 		packByteArray(buffer, 0, buffer.length);
 	}
 
+	public void packVector(Vector val) {
+		byte[] buffer = new byte[val.getWireSize()];
+		val.writeTo(buffer, 0);
+		packParticleBytes(buffer, ParticleType.VECTOR);
+	}
+
 	private void packByteArrayBegin(int size) {
 		// Use string header codes for byte arrays.
 		packStringBegin(size);
@@ -728,6 +735,11 @@ public final class Packer {
 
 		if (obj instanceof Map<?,?>) {
 			packMap((Map<?,?>)obj);
+			return;
+		}
+
+		if (obj instanceof Vector) {
+			packVector((Vector)obj);
 			return;
 		}
 
