@@ -189,6 +189,51 @@ public final class Vector {
 	}
 
 	/**
+	 * Return the raw element array in little-endian wire byte order, without the
+	 * 8-byte header. This is the layout expected as the query vector of a vector
+	 * distance expression (see {@link com.aerospike.client.exp.VectorExp#distance}),
+	 * where the server reinterprets the bytes using the stored bin's element type.
+	 * <p>
+	 * TODO(vector-exp-envelope): the server team's frozen contract for the vector
+	 * distance expression's query-vector argument has been decided to move to
+	 * sending the complete vector wire value (header + elements, i.e. what
+	 * {@link #writeTo} produces) rather than headerless elements. The server side
+	 * of that change has not shipped yet, so this method (and the elements-only
+	 * wire format {@link VectorExp#distance} currently sends) still matches the
+	 * server behavior available today. Once the server ships the new envelope,
+	 * {@link VectorExp#distance} should be updated to pack the full vector value
+	 * instead of calling this method.
+	 */
+	public byte[] getElementBytes() {
+		final int dataSize = dimensions * elementType.getByteSize();
+		final byte[] bytes = new byte[dataSize];
+		final ByteBuffer view = ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN);
+
+		switch (elementType) {
+			case FLOAT16:
+				view.asShortBuffer().put((short[])data);
+				break;
+
+			case INT32:
+				view.asIntBuffer().put((int[])data);
+				break;
+
+			case FLOAT32:
+				view.asFloatBuffer().put((float[])data);
+				break;
+
+			case FLOAT64:
+				view.asDoubleBuffer().put((double[])data);
+				break;
+
+			default:
+				throw new IllegalStateException("Unsupported vector element type: " + elementType);
+		}
+
+		return bytes;
+	}
+
+	/**
 	 * Deserialize a vector from wire format at the given buffer offset.
 	 *
 	 * @param buffer	buffer containing the vector wire format

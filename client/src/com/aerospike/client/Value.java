@@ -1483,8 +1483,7 @@ public abstract class Value {
 
 		@Override
 		public LuaValue getLuaValue(final LuaInstance instance) {
-			// TODO: Lua bridging not yet implemented.
-			throw new UnsupportedOperationException("VectorValue.getLuaValue() not yet implemented");
+			throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid lua type: Vector");
 		}
 
 		@Override

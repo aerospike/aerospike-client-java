@@ -272,6 +272,20 @@ public abstract class Exp {
 	}
 
 	/**
+	 * Create vector bin expression for use with {@link VectorExp}.
+	 *
+	 * <pre>{@code
+	 * // Cosine distance between vector bin "v" and a query vector > 0.8
+	 * Exp.gt(
+	 *     VectorExp.distance(VectorDistanceMetric.COSINE, query, Exp.vectorBin("v")),
+	 *     Exp.val(0.8))
+	 * }</pre>
+	 */
+	public static Exp vectorBin(String name) {
+		return new Bin(name, Type.BLOB);
+	}
+
+	/**
 	 * Create expression that returns if bin of specified name exists.
 	 *
 	 * <pre>{@code
@@ -1433,6 +1447,7 @@ public abstract class Exp {
 	private static final int INT_RSCAN = 41;
 	private static final int MIN = 50;
 	private static final int MAX = 51;
+	private static final int VECTOR_DIST = 52;
 	private static final int DIGEST_MODULO = 64;
 	private static final int DEVICE_SIZE = 65;
 	private static final int LAST_UPDATE = 66;
@@ -1524,6 +1539,30 @@ public abstract class Exp {
 			packer.packInt(REGEX);
 			packer.packInt(flags);
 			packer.packString(regex);
+			bin.pack(packer);
+		}
+	}
+
+	/**
+	 * For internal use only. Built by {@link VectorExp#distance}.
+	 */
+	static final class VectorDist extends Exp {
+		private final int metric;
+		private final byte[] query;
+		private final Exp bin;
+
+		VectorDist(int metric, byte[] query, Exp bin) {
+			this.metric = metric;
+			this.query = query;
+			this.bin = bin;
+		}
+
+		@Override
+		public void pack(Packer packer) {
+			packer.packArrayBegin(4);
+			packer.packInt(VECTOR_DIST);
+			packer.packInt(metric);
+			packer.packParticleBytes(query);
 			bin.pack(packer);
 		}
 	}
