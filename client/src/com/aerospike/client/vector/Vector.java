@@ -251,8 +251,10 @@ public final class Vector {
 		final byte version = buffer[pos++];
 		final ElementType elementType = ElementType.fromCode(buffer[pos++]);
 		final int dimensions = Buffer.littleBytesToInt(buffer, pos);
-		pos += 4;
-		pos += 2; // reserved
+		pos += 4; // advance past the 4-byte dimensions field read above
+		// TODO: these 2 bytes are currently treated as reserved, but it is ambiguous
+		// whether they are actually reserved or intended to hold vector flags.
+		pos += 2;
 
 		final int dataSize = dimensions * elementType.getByteSize();
 
