@@ -19,6 +19,9 @@ package com.aerospike.test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Suite;
 
+import com.aerospike.client.query.TestReduceInternals;
+import com.aerospike.test.sync.basic.TestVector;
+import com.aerospike.test.sync.basic.TestVectorEdgeCases;
 import com.aerospike.test.sync.query.TestReduceSpec;
 
 /**
@@ -27,7 +30,10 @@ import com.aerospike.test.sync.query.TestReduceSpec;
  */
 @RunWith(Suite.class)
 @Suite.SuiteClasses({
-	TestReduceSpec.class
+	TestReduceSpec.class,
+	TestReduceInternals.class,
+	TestVector.class,
+	TestVectorEdgeCases.class
 })
 public class SuiteUnit {
 }

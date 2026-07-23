@@ -17,12 +17,17 @@
 package com.aerospike.test.sync.query;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CyclicBarrier;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.junit.Test;
 
@@ -572,5 +577,334 @@ public class TestReduceSpec {
 		Statement stmt = new Statement();
 		stmt.setReduce(Reduce.count());
 		stmt.validateReduceQuery(); // should not throw
+	}
+
+	//-------------------------------------------------------
+	// Scalar reducers: additional edge cases
+	//-------------------------------------------------------
+
+	@Test
+	public void sumOfZeroRecordsIsZero() {
+		assertEquals(0L, Reduce.sum(BIN).getScalarResult().longValue());
+	}
+
+	@Test
+	public void sumMissingBinTreatedAsZero() {
+		ReduceSpec<Record, Long> reducer = Reduce.sum(BIN);
+		reducer.acceptPartial(record("other", 5L), key("k1"));
+		reducer.acceptPartial(record(BIN, 3L), key("k2"));
+		assertEquals(3L, reducer.getScalarResult().longValue());
+	}
+
+	@Test
+	public void countOfZeroRecordsIsZero() {
+		assertEquals(0L, Reduce.count().getScalarResult().longValue());
+	}
+
+	@Test
+	public void sumOverflowThrows() {
+		ReduceSpec<Record, Long> reducer = Reduce.sum(BIN);
+		reducer.acceptPartial(record(BIN, Long.MAX_VALUE), key("k1"));
+
+		try {
+			reducer.acceptPartial(record(BIN, 1L), key("k2"));
+			fail("Expected ArithmeticException on overflow");
+		}
+		catch (ArithmeticException expected) {
+			// pass
+		}
+	}
+
+	@Test
+	public void minSkipsNullValues() {
+		ReduceSpec<Record, Number> reducer = Reduce.min(BIN, BinDataType.INTEGER);
+		reducer.acceptPartial(record("other", 1L), key("k1")); // BIN missing -> null, skipped
+		reducer.acceptPartial(record(BIN, 7L), key("k2"));
+		reducer.acceptPartial(record(BIN, 4L), key("k3"));
+		assertEquals(4L, reducer.getScalarResult().longValue());
+	}
+
+	@Test
+	public void minAllNullThrows() {
+		ReduceSpec<Record, Number> reducer = Reduce.min(BIN, BinDataType.INTEGER);
+		reducer.acceptPartial(record("other", 1L), key("k1"));
+
+		try {
+			reducer.getScalarResult();
+			fail("Expected IllegalStateException");
+		}
+		catch (IllegalStateException expected) {
+			// pass
+		}
+	}
+
+	@Test
+	public void minIntegerPreservesFullLongPrecision() {
+		// Two distinct longs that collapse to the same value when converted to double.
+		// The minimum of {Long.MAX_VALUE, Long.MAX_VALUE - 1} must be Long.MAX_VALUE - 1,
+		// regardless of insertion order.
+		ReduceSpec<Record, Number> reducer = Reduce.min(BIN, BinDataType.INTEGER);
+		reducer.acceptPartial(record(BIN, Long.MAX_VALUE), key("k1"));
+		reducer.acceptPartial(record(BIN, Long.MAX_VALUE - 1), key("k2"));
+
+		assertEquals(Long.MAX_VALUE - 1, reducer.getScalarResult().longValue());
+	}
+
+	@Test
+	public void maxIntegerPreservesFullLongPrecision() {
+		ReduceSpec<Record, Number> reducer = Reduce.max(BIN, BinDataType.INTEGER);
+		reducer.acceptPartial(record(BIN, Long.MIN_VALUE + 1), key("k1"));
+		reducer.acceptPartial(record(BIN, Long.MIN_VALUE), key("k2"));
+
+		assertEquals(Long.MIN_VALUE + 1, reducer.getScalarResult().longValue());
+	}
+
+	//-------------------------------------------------------
+	// Top-K: additional permutations
+	//-------------------------------------------------------
+
+	@Test
+	public void topKWithKOne() {
+		ReduceSpec<Record, Record> reducer = Reduce.topK(BIN, BinDataType.INTEGER, Order.DESC, OrderByFlags.NONE, 1);
+
+		for (int i = 1; i <= 5; i++) {
+			reducer.acceptPartial(record(BIN, (long)i), key("k" + i));
+		}
+
+		Record[] result = reducer.getResult();
+		assertEquals(1, result.length);
+		assertEquals(5L, result[0].getLong(BIN));
+		assertSame(result[0], reducer.getScalarResult());
+	}
+
+	@Test
+	public void topKUpperBoundKThousandAccepted() {
+		Reduce.topK(BIN, BinDataType.INTEGER, Order.DESC, OrderByFlags.NONE, 1000); // must not throw
+	}
+
+	@Test
+	public void topKScalarResultBeforeAnyAcceptThrows() {
+		ReduceSpec<Record, Record> reducer = Reduce.topK(BIN, BinDataType.INTEGER, Order.DESC, OrderByFlags.NONE, 3);
+
+		try {
+			reducer.getScalarResult();
+			fail("Expected IllegalStateException");
+		}
+		catch (IllegalStateException expected) {
+			// pass
+		}
+	}
+
+	@Test
+	public void topKDescTiesOrderedByDigestAscending() {
+		// All values equal; tie-break is digest-ascending and independent of Order direction.
+		ReduceSpec<Record, Record> asc = Reduce.topK(BIN, BinDataType.INTEGER, Order.ASC, OrderByFlags.NONE, 3);
+		ReduceSpec<Record, Record> desc = Reduce.topK(BIN, BinDataType.INTEGER, Order.DESC, OrderByFlags.NONE, 3);
+
+		String[] userKeys = {"alpha", "beta", "gamma", "delta", "epsilon"};
+
+		// Feed the exact same (key, record) instances to both reducers so identical selection
+		// and ordering can be asserted by reference.
+		for (String uk : userKeys) {
+			Record shared = record(BIN, 5L);
+			asc.acceptPartial(shared, key(uk));
+			desc.acceptPartial(shared, key(uk));
+		}
+
+		Record[] ra = asc.getResult();
+		Record[] rd = desc.getResult();
+		assertEquals(3, ra.length);
+		assertEquals(3, rd.length);
+
+		// Both orderings pick the same 3 records (the 3 with smallest digests) in the same order.
+		for (int i = 0; i < ra.length; i++) {
+			assertSame(ra[i], rd[i]);
+		}
+	}
+
+	@Test
+	public void topKBytesOrdering() {
+		ReduceSpec<Record, Record> reducer = Reduce.topK(BIN, BinDataType.BYTES, Order.ASC, OrderByFlags.NONE, 2);
+
+		reducer.acceptPartial(record(BIN, new byte[] {0x01, 0x02}), key("k1"));
+		reducer.acceptPartial(record(BIN, new byte[] {0x01}), key("k2"));
+		reducer.acceptPartial(record(BIN, new byte[] {(byte)0xff}), key("k3"));
+
+		Record[] result = reducer.getResult();
+		assertEquals(2, result.length);
+		// {0x01} is a prefix of {0x01,0x02} so it sorts first; 0xff is unsigned-largest.
+		assertEquals(1, result[0].getBytes(BIN).length);
+		assertEquals(2, result[1].getBytes(BIN).length);
+	}
+
+	@Test
+	public void topKCaseSensitiveStringOrdering() {
+		// Without CASE_INSENSITIVE, uppercase sorts before lowercase (ASCII order).
+		ReduceSpec<Record, Record> reducer = Reduce.topK(BIN, BinDataType.STRING, Order.ASC, OrderByFlags.NONE, 3);
+
+		reducer.acceptPartial(record(BIN, "banana"), key("k1"));
+		reducer.acceptPartial(record(BIN, "Apple"), key("k2"));
+		reducer.acceptPartial(record(BIN, "Cherry"), key("k3"));
+
+		Record[] result = reducer.getResult();
+		assertEquals("Apple", result[0].getString(BIN));
+		assertEquals("Cherry", result[1].getString(BIN));
+		assertEquals("banana", result[2].getString(BIN));
+	}
+
+	//-------------------------------------------------------
+	// Statement: additional permutations
+	//-------------------------------------------------------
+
+	@Test
+	public void statementResolveReduceDuplicateOrderByThrows() {
+		Statement stmt = new Statement();
+		stmt.setReduce(
+			Reduce.orderBy(BIN, BinDataType.INTEGER, Order.DESC, OrderByFlags.NONE),
+			Reduce.orderBy(BIN, BinDataType.INTEGER, Order.ASC, OrderByFlags.NONE),
+			Reduce.limit(BIN, 2));
+
+		try {
+			stmt.resolveReduce();
+			fail("Expected IllegalArgumentException for duplicate orderBy");
+		}
+		catch (IllegalArgumentException expected) {
+			// pass
+		}
+	}
+
+	@Test
+	public void statementResolveReduceDuplicateLimitThrows() {
+		Statement stmt = new Statement();
+		stmt.setReduce(
+			Reduce.orderBy(BIN, BinDataType.INTEGER, Order.DESC, OrderByFlags.NONE),
+			Reduce.limit(BIN, 2),
+			Reduce.limit(BIN, 3));
+
+		try {
+			stmt.resolveReduce();
+			fail("Expected IllegalArgumentException for duplicate limit");
+		}
+		catch (IllegalArgumentException expected) {
+			// pass
+		}
+	}
+
+	@Test
+	public void setReduceEmptyClearsReduce() {
+		Statement stmt = new Statement();
+		stmt.setReduce(Reduce.sum(BIN));
+		assertTrue(stmt.resolveReduce() != null);
+
+		stmt.setReduce(); // empty varargs
+		assertNull(stmt.resolveReduce());
+	}
+
+	//-------------------------------------------------------
+	// Concurrency: combiners are fed from one thread per node concurrently
+	//-------------------------------------------------------
+
+	@Test
+	public void sumIsThreadSafeUnderConcurrentAccept() throws Exception {
+		ReduceSpec<Record, Long> reducer = Reduce.sum(BIN);
+		int threads = 8;
+		int perThread = 20000;
+
+		runConcurrent(threads, (t) -> {
+			for (int i = 0; i < perThread; i++) {
+				reducer.acceptPartial(record(BIN, 1L), key("t" + t + "-k" + i));
+			}
+		});
+
+		assertEquals((long)threads * perThread, reducer.getScalarResult().longValue());
+	}
+
+	@Test
+	public void countIsThreadSafeUnderConcurrentAccept() throws Exception {
+		ReduceSpec<Record, Long> reducer = Reduce.count();
+		int threads = 8;
+		int perThread = 20000;
+
+		runConcurrent(threads, (t) -> {
+			for (int i = 0; i < perThread; i++) {
+				reducer.acceptPartial(record(BIN, 1L), key("t" + t + "-k" + i));
+			}
+		});
+
+		assertEquals((long)threads * perThread, reducer.getScalarResult().longValue());
+	}
+
+	@Test
+	public void minIsThreadSafeUnderConcurrentAccept() throws Exception {
+		ReduceSpec<Record, Number> reducer = Reduce.min(BIN, BinDataType.INTEGER);
+		int threads = 8;
+		int perThread = 20000;
+
+		runConcurrent(threads, (t) -> {
+			for (int i = 0; i < perThread; i++) {
+				// Global minimum is 0, produced by every thread at i == 0.
+				reducer.acceptPartial(record(BIN, (long)i), key("t" + t + "-k" + i));
+			}
+		});
+
+		assertEquals(0L, reducer.getScalarResult().longValue());
+	}
+
+	@Test
+	public void topKIsThreadSafeUnderConcurrentAccept() throws Exception {
+		ReduceSpec<Record, Record> reducer = Reduce.topK(BIN, BinDataType.INTEGER, Order.DESC, OrderByFlags.NONE, 5);
+		int threads = 8;
+		int perThread = 20000;
+		long total = (long)threads * perThread;
+
+		// Each thread produces a disjoint, globally-unique value range so the overall top 5 are
+		// distinct: total-1, total-2, ..., total-5.
+		runConcurrent(threads, (t) -> {
+			for (int i = 0; i < perThread; i++) {
+				long val = (long)t * perThread + i;
+				reducer.acceptPartial(record(BIN, val), key("t" + t + "-k" + i));
+			}
+		});
+
+		Record[] result = reducer.getResult();
+		assertEquals(5, result.length);
+		for (int i = 0; i < 5; i++) {
+			assertEquals(total - 1 - i, result[i].getLong(BIN));
+		}
+	}
+
+	private interface ThreadBody {
+		void run(int threadIndex);
+	}
+
+	private static void runConcurrent(int threadCount, ThreadBody body) throws Exception {
+		CyclicBarrier barrier = new CyclicBarrier(threadCount);
+		AtomicReference<Throwable> failure = new AtomicReference<>();
+		List<Thread> threads = new ArrayList<>();
+
+		for (int t = 0; t < threadCount; t++) {
+			final int idx = t;
+			Thread thread = new Thread(() -> {
+				try {
+					barrier.await();
+					body.run(idx);
+				}
+				catch (Throwable e) {
+					failure.compareAndSet(null, e);
+				}
+			});
+			threads.add(thread);
+			thread.start();
+		}
+
+		for (Thread thread : threads) {
+			thread.join();
+		}
+
+		Throwable t = failure.get();
+
+		if (t != null) {
+			throw new AssertionError("Concurrent acceptPartial threw: " + t, t);
+		}
 	}
 }

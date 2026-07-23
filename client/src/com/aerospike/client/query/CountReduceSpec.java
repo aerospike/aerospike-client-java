@@ -29,17 +29,17 @@ final class CountReduceSpec implements ReduceSpec<Record, Long> {
 	private long count;
 
 	@Override
-	public void acceptPartial(Record record, Key key) {
+	public synchronized void acceptPartial(Record record, Key key) {
 		count++;
 	}
 
 	@Override
-	public Long getScalarResult() {
+	public synchronized Long getScalarResult() {
 		return count;
 	}
 
 	@Override
-	public Long[] getResult() {
+	public synchronized Long[] getResult() {
 		return new Long[] { getScalarResult() };
 	}
 }
