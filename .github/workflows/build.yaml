@@ -71,9 +71,3 @@ jobs:
           files: test/target/surefire-reports/*.xml
           check_name: "Test Results (${{ inputs.crypto-type }} / ${{ inputs.server-tag }})"
 
-      - name: Publish Example Results
-        if: ${{ always() && inputs.run-examples }}
-        uses: EnricoMi/publish-unit-test-result-action@v2
-        with:
-          files: examples/target/example-reports/*.xml
-          check_name: "Example Results (${{ inputs.crypto-type }} / ${{ inputs.server-tag }})"
