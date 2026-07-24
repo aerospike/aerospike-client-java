@@ -90,9 +90,7 @@ public class StoreKey extends Example {
 		stmt.setBinNames(binName);
 		stmt.setFilter(Filter.range(binName, begin, end));
 
-		RecordSet rs = client().query(null, stmt);
-
-		try {
+		try (RecordSet rs = client().query(null, stmt)) {
 			int count = 0;
 
 			while (rs.next()) {
@@ -122,9 +120,6 @@ public class StoreKey extends Example {
 			if (count != 4) {
 				console.error("Query count mismatch. Expected 4. Received " + count);
 			}
-		}
-		finally {
-			rs.close();
 		}
 	}
 }

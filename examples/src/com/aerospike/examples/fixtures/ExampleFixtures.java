@@ -222,41 +222,11 @@ public final class ExampleFixtures {
 	}
 
 	public static ExampleFixture expireExample() {
-		return new ExampleFixture() {
-			@Override
-			public void setup(IAerospikeClient client, Parameters params) throws Exception {
-				FixtureSupport.deleteKeys(client, params, EXPIRE_KEY);
-			}
-
-			@Override
-			public void verify(IAerospikeClient client, Parameters params) {
-				ExampleAssertions.assertRecordMissing(client, params.readPolicy(), FixtureSupport.key(params, EXPIRE_KEY));
-			}
-
-			@Override
-			public void cleanup(IAerospikeClient client, Parameters params) {
-				FixtureSupport.deleteKeys(client, params, EXPIRE_KEY);
-			}
-		};
+		return missingRecordFixture(EXPIRE_KEY);
 	}
 
 	public static ExampleFixture touchExample() {
-		return new ExampleFixture() {
-			@Override
-			public void setup(IAerospikeClient client, Parameters params) throws Exception {
-				FixtureSupport.deleteKeys(client, params, TOUCH_KEY);
-			}
-
-			@Override
-			public void verify(IAerospikeClient client, Parameters params) {
-				ExampleAssertions.assertRecordMissing(client, params.readPolicy(), FixtureSupport.key(params, TOUCH_KEY));
-			}
-
-			@Override
-			public void cleanup(IAerospikeClient client, Parameters params) {
-				FixtureSupport.deleteKeys(client, params, TOUCH_KEY);
-			}
-		};
+		return missingRecordFixture(TOUCH_KEY);
 	}
 
 	public static ExampleFixture operateExample() {
@@ -459,6 +429,25 @@ public final class ExampleFixtures {
 		FixtureSupport.deleteKeys(client, params, keys);
 	}
 
+	private static ExampleFixture missingRecordFixture(String userKey) {
+		return new ExampleFixture() {
+			@Override
+			public void setup(IAerospikeClient client, Parameters params) {
+				FixtureSupport.deleteKeys(client, params, userKey);
+			}
+
+			@Override
+			public void verify(IAerospikeClient client, Parameters params) {
+				ExampleAssertions.assertRecordMissing(client, params.readPolicy(), FixtureSupport.key(params, userKey));
+			}
+
+			@Override
+			public void cleanup(IAerospikeClient client, Parameters params) {
+				FixtureSupport.deleteKeys(client, params, userKey);
+			}
+		};
+	}
+
 	private static Statement queryIntegerStatement(Parameters params) {
 		Statement stmt = new Statement();
 		stmt.setNamespace(params.namespace());
@@ -479,7 +468,7 @@ public final class ExampleFixtures {
 	}
 
 	private static Map<String,Object> mapOf(Object... entries) {
-		Map<String,Object> map = new LinkedHashMap<String,Object>();
+		Map<String,Object> map = new LinkedHashMap<>();
 
 		for (int i = 0; i < entries.length; i += 2) {
 			map.put((String)entries[i], entries[i + 1]);

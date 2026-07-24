@@ -105,9 +105,7 @@ public class QueryFilter extends Example {
 		stmt.setAggregateFunction("filter_example", "profile_filter", Value.get(passFilter));
 
 		// passFilter will be applied in filter_example.lua.
-		ResultSet rs = client().queryAggregate(null, stmt);
-
-		try {
+		try (ResultSet rs = client().queryAggregate(null, stmt)) {
 			int count = 0;
 
 			while (rs.next()) {
@@ -120,9 +118,6 @@ public class QueryFilter extends Example {
 			if (count == 0) {
 				console.error("Query failed. No records returned.");
 			}
-		}
-		finally {
-			rs.close();
 		}
 	}
 

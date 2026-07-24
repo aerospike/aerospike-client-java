@@ -60,7 +60,7 @@ public class OperateMap extends Example {
 		// Delete record if it already exists.
 		client().delete(writePolicy(), key);
 
-		Map<Value,Value> inputMap = new HashMap<Value,Value>();
+		Map<Value,Value> inputMap = new HashMap<>();
 		inputMap.put(Value.get(1), Value.get(55));
 		inputMap.put(Value.get(2), Value.get(33));
 
@@ -99,7 +99,7 @@ public class OperateMap extends Example {
 		// Delete record if it already exists.
 		client().delete(writePolicy(), key);
 
-		Map<Value,Value> inputMap = new HashMap<Value,Value>();
+		Map<Value,Value> inputMap = new HashMap<>();
 		inputMap.put(Value.get("Charlie"), Value.get(55));
 		inputMap.put(Value.get("Jim"), Value.get(98));
 		inputMap.put(Value.get("John"), Value.get(76));
@@ -145,27 +145,27 @@ public class OperateMap extends Example {
 		// Delete record if it already exists.
 		client().delete(writePolicy(), key);
 
-		List<Value> l1 = new ArrayList<Value>();
+		List<Value> l1 = new ArrayList<>();
 		l1.add(Value.get(new GregorianCalendar(2018, 1, 1).getTimeInMillis()));
 		l1.add(Value.get(1));
 
-		List<Value> l2 = new ArrayList<Value>();
+		List<Value> l2 = new ArrayList<>();
 		l2.add(Value.get(new GregorianCalendar(2018, 1, 2).getTimeInMillis()));
 		l2.add(Value.get(2));
 
-		List<Value> l3 = new ArrayList<Value>();
+		List<Value> l3 = new ArrayList<>();
 		l3.add(Value.get(new GregorianCalendar(2018, 2, 1).getTimeInMillis()));
 		l3.add(Value.get(3));
 
-		List<Value> l4 = new ArrayList<Value>();
+		List<Value> l4 = new ArrayList<>();
 		l4.add(Value.get(new GregorianCalendar(2018, 2, 2).getTimeInMillis()));
 		l4.add(Value.get(4));
 
-		List<Value> l5 = new ArrayList<Value>();
+		List<Value> l5 = new ArrayList<>();
 		l5.add(Value.get(new GregorianCalendar(2018, 2, 5).getTimeInMillis()));
 		l5.add(Value.get(5));
 
-		Map<Value,Value> inputMap = new HashMap<Value,Value>();
+		Map<Value,Value> inputMap = new HashMap<>();
 		inputMap.put(Value.get("Charlie"), Value.get(l1));
 		inputMap.put(Value.get("Jim"), Value.get(l2));
 		inputMap.put(Value.get("John"), Value.get(l3));
@@ -179,7 +179,7 @@ public class OperateMap extends Example {
 
 		console.info("Record: " + record);
 
-		List<Value> end = new ArrayList<Value>();
+		List<Value> end = new ArrayList<>();
 		end.add(Value.get(new GregorianCalendar(2018, 2, 2).getTimeInMillis()));
 		end.add(Value.getAsNull());
 
@@ -201,15 +201,15 @@ public class OperateMap extends Example {
 		// Delete record if it already exists.
 		client().delete(writePolicy(), key);
 
-		Map<Value,Value> m1 = new HashMap<Value,Value>();
+		Map<Value,Value> m1 = new HashMap<>();
 		m1.put(Value.get("key11"), Value.get(9));
 		m1.put(Value.get("key12"), Value.get(4));
 
-		Map<Value,Value> m2 = new HashMap<Value,Value>();
+		Map<Value,Value> m2 = new HashMap<>();
 		m2.put(Value.get("key21"), Value.get(3));
 		m2.put(Value.get("key22"), Value.get(5));
 
-		Map<Value,Value> inputMap = new HashMap<Value,Value>();
+		Map<Value,Value> inputMap = new HashMap<>();
 		inputMap.put(Value.get("key1"), Value.get(m1));
 		inputMap.put(Value.get("key2"), Value.get(m2));
 
@@ -234,15 +234,15 @@ public class OperateMap extends Example {
 		// Delete record if it already exists.
 		client().delete(writePolicy(), key);
 
-		Map<Value,Value> m1 = new HashMap<Value,Value>();
+		Map<Value,Value> m1 = new HashMap<>();
 		m1.put(Value.get("key21"), Value.get(7));
 		m1.put(Value.get("key22"), Value.get(6));
 
-		Map<Value,Value> m2 = new HashMap<Value,Value>();
+		Map<Value,Value> m2 = new HashMap<>();
 		m2.put(Value.get("a"), Value.get(3));
 		m2.put(Value.get("c"), Value.get(5));
 
-		Map<Value,Value> inputMap = new HashMap<Value,Value>();
+		Map<Value,Value> inputMap = new HashMap<>();
 		inputMap.put(Value.get("key1"), Value.get(m1));
 		inputMap.put(Value.get("key2"), Value.get(m2));
 
@@ -269,12 +269,12 @@ public class OperateMap extends Example {
 		// Delete record if it already exists.
 		client().delete(writePolicy(), key);
 
-		List<Value> l1 = new ArrayList<Value>();
+		List<Value> l1 = new ArrayList<>();
 		l1.add(Value.get(7));
 		l1.add(Value.get(9));
 		l1.add(Value.get(5));
 
-		Map<Value,Value> inputMap = new HashMap<Value,Value>();
+		Map<Value,Value> inputMap = new HashMap<>();
 		inputMap.put(Value.get("key1"), Value.get(l1));
 
 		// Create maps.

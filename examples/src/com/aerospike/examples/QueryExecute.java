@@ -114,9 +114,7 @@ public class QueryExecute extends Example {
 		stmt.setSetName(set());
 		stmt.setFilter(Filter.range(binName1, begin, end));
 
-		RecordSet rs = client().query(null, stmt);
-
-		try {
+		try (RecordSet rs = client().query(null, stmt)) {
 			int[] expectedList = new int[] {1,2,3,104,5,106,7,108,-1,10};
 			int expectedSize = size - 1;
 			int count = 0;
@@ -153,9 +151,6 @@ public class QueryExecute extends Example {
 			if (count != expectedSize) {
 				console.error("Query count mismatch. Expected " + expectedSize + ". Received " + count);
 			}
-		}
-		finally {
-			rs.close();
 		}
 	}
 }

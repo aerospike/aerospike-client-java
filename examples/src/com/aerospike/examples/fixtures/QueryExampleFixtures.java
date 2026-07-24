@@ -23,19 +23,14 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import com.aerospike.client.AerospikeException;
-import com.aerospike.client.Bin;
 import com.aerospike.client.IAerospikeClient;
-import com.aerospike.client.Key;
 import com.aerospike.client.Record;
 import com.aerospike.client.Value;
 import com.aerospike.client.exp.Exp;
 import com.aerospike.client.policy.QueryPolicy;
-import com.aerospike.client.policy.WritePolicy;
 import com.aerospike.client.query.Filter;
 import com.aerospike.client.query.IndexCollectionType;
-import com.aerospike.client.query.IndexType;
 import com.aerospike.client.query.PartitionFilter;
-import com.aerospike.client.query.QueryListener;
 import com.aerospike.client.query.RecordSet;
 import com.aerospike.client.query.ResultSet;
 import com.aerospike.client.query.Statement;
@@ -50,15 +45,8 @@ public final class QueryExampleFixtures {
 		return new ExampleFixture() {
 			@Override
 			public void setup(IAerospikeClient client, Parameters params) throws Exception {
-				FixtureSupport.createIndexIfMissing(client, params, params.set(), "queryindex", "querybin", IndexType.STRING);
+				FixtureSupport.dropIndexIfExists(client, params, "queryindex");
 				FixtureSupport.deleteKeyRange(client, params, "querykey", 1, 5);
-
-				for (int i = 1; i <= 5; i++) {
-					client.put(
-						params.writePolicy(),
-						FixtureSupport.key(params, "querykey" + i),
-						new Bin("querybin", "queryvalue" + i));
-				}
 			}
 
 			@Override
@@ -85,15 +73,8 @@ public final class QueryExampleFixtures {
 		return new ExampleFixture() {
 			@Override
 			public void setup(IAerospikeClient client, Parameters params) throws Exception {
-				FixtureSupport.createIndexIfMissing(client, params, params.set(), "skindex", "skbin", IndexType.NUMERIC);
+				FixtureSupport.dropIndexIfExists(client, params, "skindex");
 				FixtureSupport.deleteKeyRange(client, params, "skkey", 1, 10);
-
-				WritePolicy policy = new WritePolicy();
-				policy.sendKey = true;
-
-				for (int i = 1; i <= 10; i++) {
-					client.put(policy, FixtureSupport.key(params, "skkey" + i), new Bin("skbin", i));
-				}
 			}
 
 			@Override
@@ -114,27 +95,8 @@ public final class QueryExampleFixtures {
 		return new ExampleFixture() {
 			@Override
 			public void setup(IAerospikeClient client, Parameters params) throws Exception {
-				FixtureSupport.createIndexIfMissing(
-					client,
-					params,
-					params.set(),
-					"mapkey_index",
-					"map_bin",
-					IndexType.STRING,
-					IndexCollectionType.MAPKEYS);
+				FixtureSupport.dropIndexIfExists(client, params, "mapkey_index");
 				FixtureSupport.deleteKeyRange(client, params, "qkey", 1, 20);
-
-				for (int i = 1; i <= 20; i++) {
-					Map<String,String> map = new HashMap<String,String>();
-					map.put("mkey1", "qvalue" + i);
-					if (i % 2 == 0) {
-						map.put("mkey2", "qvalue" + i);
-					}
-					if (i % 3 == 0) {
-						map.put("mkey3", "qvalue" + i);
-					}
-					client.put(params.writePolicy(), FixtureSupport.key(params, "qkey" + i), new Bin("map_bin", map));
-				}
 			}
 
 			@Override
@@ -145,9 +107,7 @@ public final class QueryExampleFixtures {
 					"map_bin",
 					Filter.contains("map_bin", IndexCollectionType.MAPKEYS, "mkey2"));
 
-				RecordSet rs = client.query(null, stmt);
-
-				try {
+				try (RecordSet rs = client.query(null, stmt)) {
 					int count = 0;
 
 					while (rs.next()) {
@@ -155,7 +115,7 @@ public final class QueryExampleFixtures {
 						@SuppressWarnings("unchecked")
 						Map<String,Object> map = (Map<String,Object>)record.getValue("map_bin");
 
-						if (! map.containsKey("mkey2")) {
+						if (map == null || ! map.containsKey("mkey2")) {
 							throw new IllegalStateException("Expected query map to contain mkey2 but found " + map);
 						}
 						count++;
@@ -164,9 +124,6 @@ public final class QueryExampleFixtures {
 					if (count != 10) {
 						throw new IllegalStateException("Expected 10 query collection results but found " + count);
 					}
-				}
-				finally {
-					rs.close();
 				}
 			}
 
@@ -182,9 +139,8 @@ public final class QueryExampleFixtures {
 		return new ExampleFixture() {
 			@Override
 			public void setup(IAerospikeClient client, Parameters params) throws Exception {
-				FixtureSupport.createIndexIfMissing(client, params, params.set(), "asqindex", "asqbin", IndexType.NUMERIC);
+				FixtureSupport.dropIndexIfExists(client, params, "asqindex");
 				FixtureSupport.deleteKeyRange(client, params, "asqkey", 1, 50);
-				FixtureSupport.seedIntegerRange(client, params, "asqkey", "asqbin", 50);
 			}
 
 			@Override
@@ -205,25 +161,8 @@ public final class QueryExampleFixtures {
 		return new ExampleFixture() {
 			@Override
 			public void setup(IAerospikeClient client, Parameters params) throws Exception {
-				FixtureSupport.createIndexIfMissing(client, params, params.set(), "predidx", "idxbin", IndexType.NUMERIC);
+				FixtureSupport.dropIndexIfExists(client, params, "predidx");
 				FixtureSupport.deleteNumericKeyRange(client, params, params.set(), 1, 50);
-
-				for (int i = 1; i <= 50; i++) {
-					Bin bin1 = new Bin("idxbin", i);
-					Bin bin2 = new Bin("bin2", i * 10);
-					Bin bin3;
-
-					if (i % 4 == 0) {
-						bin3 = new Bin("bin3", "prefix-" + i + "-suffix");
-					}
-					else if (i % 2 == 0) {
-						bin3 = new Bin("bin3", "prefix-" + i + "-SUFFIX");
-					}
-					else {
-						bin3 = new Bin("bin3", "pre-" + i + "-suf");
-					}
-					client.put(params.writePolicy(), FixtureSupport.key(params, i), bin1, bin2, bin3);
-				}
 			}
 
 			@Override
@@ -245,12 +184,8 @@ public final class QueryExampleFixtures {
 		return new ExampleFixture() {
 			@Override
 			public void setup(IAerospikeClient client, Parameters params) throws Exception {
-				FixtureSupport.registerLua(client, params, "udf/filter_example.lua", "filter_example.lua");
-				FixtureSupport.createIndexIfMissing(client, params, params.set(), "profileindex", "name", IndexType.STRING);
+				FixtureSupport.dropIndexIfExists(client, params, "profileindex");
 				FixtureSupport.deleteKeys(client, params, "profilekey1", "profilekey2", "profilekey3");
-				client.put(params.writePolicy(), FixtureSupport.key(params, "profilekey1"), new Bin("name", "Charlie"), new Bin("password", "cpass"));
-				client.put(params.writePolicy(), FixtureSupport.key(params, "profilekey2"), new Bin("name", "Bill"), new Bin("password", "hknfpkj"));
-				client.put(params.writePolicy(), FixtureSupport.key(params, "profilekey3"), new Bin("name", "Doug"), new Bin("password", "dj6554"));
 			}
 
 			@Override
@@ -277,17 +212,8 @@ public final class QueryExampleFixtures {
 		return new ExampleFixture() {
 			@Override
 			public void setup(IAerospikeClient client, Parameters params) throws Exception {
-				FixtureSupport.registerLua(client, params, "udf/record_example.lua", "record_example.lua");
-				FixtureSupport.createIndexIfMissing(client, params, params.set(), "qeindex1", "qebin1", IndexType.NUMERIC);
+				FixtureSupport.dropIndexIfExists(client, params, "qeindex1");
 				FixtureSupport.deleteKeyRange(client, params, "qekey", 1, 10);
-
-				for (int i = 1; i <= 10; i++) {
-					client.put(
-						params.writePolicy(),
-						FixtureSupport.key(params, "qekey" + i),
-						new Bin("qebin1", i),
-						new Bin("qebin2", i));
-				}
 			}
 
 			@Override
@@ -314,13 +240,8 @@ public final class QueryExampleFixtures {
 		return new ExampleFixture() {
 			@Override
 			public void setup(IAerospikeClient client, Parameters params) throws Exception {
-				FixtureSupport.registerLua(client, params, "udf/sum_example.lua", "sum_example.lua");
-				FixtureSupport.createIndexIfMissing(client, params, params.set(), "aggindex", "aggbin", IndexType.NUMERIC);
+				FixtureSupport.dropIndexIfExists(client, params, "aggindex");
 				FixtureSupport.deleteKeyRange(client, params, "aggkey", 1, 10);
-
-				for (int i = 1; i <= 10; i++) {
-					client.put(params.writePolicy(), FixtureSupport.key(params, "aggkey" + i), new Bin("aggbin", i));
-				}
 			}
 
 			@Override
@@ -343,17 +264,8 @@ public final class QueryExampleFixtures {
 		return new ExampleFixture() {
 			@Override
 			public void setup(IAerospikeClient client, Parameters params) throws Exception {
-				FixtureSupport.registerLua(client, params, "udf/average_example.lua", "average_example.lua");
-				FixtureSupport.createIndexIfMissing(client, params, params.set(), "avgindex", "l2", IndexType.NUMERIC);
+				FixtureSupport.dropIndexIfExists(client, params, "avgindex");
 				FixtureSupport.deleteKeyRange(client, params, "avgkey", 1, 10);
-
-				for (int i = 1; i <= 10; i++) {
-					client.put(
-						params.writePolicy(),
-						FixtureSupport.key(params, "avgkey" + i),
-						new Bin("l1", i),
-						new Bin("l2", 1));
-				}
 			}
 
 			@Override
@@ -379,17 +291,8 @@ public final class QueryExampleFixtures {
 		return new ExampleFixture() {
 			@Override
 			public void setup(IAerospikeClient client, Parameters params) throws Exception {
-				FixtureSupport.createIndexIfMissing(client, params, params.set(), "queryindexloc", "querybinloc", IndexType.GEO2DSPHERE);
+				FixtureSupport.dropIndexIfExists(client, params, "queryindexloc");
 				FixtureSupport.deleteKeyRange(client, params, "querykeyloc", 0, 19);
-
-				for (int i = 0; i < 20; i++) {
-					double lng = -122 + (0.1 * i);
-					double lat = 37.5 + (0.1 * i);
-					client.put(
-						params.writePolicy(),
-						FixtureSupport.key(params, "querykeyloc" + i),
-						Bin.asGeoJSON("querybinloc", geoPoint(lng, lat)));
-				}
 			}
 
 			@Override
@@ -418,27 +321,8 @@ public final class QueryExampleFixtures {
 		return new ExampleFixture() {
 			@Override
 			public void setup(IAerospikeClient client, Parameters params) throws Exception {
-				FixtureSupport.registerLua(client, params, "udf/geo_filter_example.lua", "geo_filter_example.lua");
-				FixtureSupport.createIndexIfMissing(client, params, params.set(), "filterindexloc", "filterloc", IndexType.GEO2DSPHERE);
+				FixtureSupport.dropIndexIfExists(client, params, "filterindexloc");
 				FixtureSupport.deleteKeyRange(client, params, "filterkeyloc", 0, 19);
-
-				for (int i = 0; i < 20; i++) {
-					double lng = -122 + (0.1 * i);
-					double lat = 37.5 + (0.1 * i);
-					Bin bin1 = Bin.asGeoJSON("filterloc", geoPoint(lng, lat));
-					Bin bin2;
-
-					if (i % 7 == 0) {
-						bin2 = new Bin("filteramenity", "hospital");
-					}
-					else if (i % 2 == 0) {
-						bin2 = new Bin("filteramenity", "school");
-					}
-					else {
-						bin2 = new Bin("filteramenity", "store");
-					}
-					client.put(params.writePolicy(), FixtureSupport.key(params, "filterkeyloc" + i), bin1, bin2);
-				}
 			}
 
 			@Override
@@ -448,7 +332,7 @@ public final class QueryExampleFixtures {
 				stmt.setSetName(params.set());
 				stmt.setFilter(Filter.geoWithinRegion("filterloc", queryRegionPolygon()));
 				stmt.setAggregateFunction("geo_filter_example", "match_amenity", Value.get("school"));
-				assertAggregateCount(client.queryAggregate(null, stmt), 2);
+				assertAggregateCount(client.queryAggregate(null, stmt));
 			}
 
 			@Override
@@ -463,26 +347,10 @@ public final class QueryExampleFixtures {
 		return new ExampleFixture() {
 			@Override
 			public void setup(IAerospikeClient client, Parameters params) throws Exception {
-				FixtureSupport.createIndexIfMissing(
-					client,
-					params,
-					params.set(),
-					"geo_map",
-					"geo_map_bin",
-					IndexType.GEO2DSPHERE,
-					IndexCollectionType.MAPVALUES);
-				FixtureSupport.createIndexIfMissing(
-					client,
-					params,
-					params.set(),
-					"geo_list",
-					"geo_list_bin",
-					IndexType.GEO2DSPHERE,
-					IndexCollectionType.LIST);
+				FixtureSupport.dropIndexIfExists(client, params, "geo_map");
+				FixtureSupport.dropIndexIfExists(client, params, "geo_list");
 				FixtureSupport.deleteKeyRange(client, params, "map", 0, 999);
 				FixtureSupport.deleteKeyRange(client, params, "list", 0, 999);
-				seedGeoMapRecords(client, params);
-				seedGeoListRecords(client, params);
 			}
 
 			@Override
@@ -524,9 +392,8 @@ public final class QueryExampleFixtures {
 		return new ExampleFixture() {
 			@Override
 			public void setup(IAerospikeClient client, Parameters params) throws Exception {
-				FixtureSupport.createIndexIfMissing(client, params, "pq", "pqidx", "bin", IndexType.NUMERIC);
+				FixtureSupport.dropIndexIfExists(client, params, "pq", "pqidx");
 				FixtureSupport.deleteNumericKeyRange(client, params, "pq", 1, 190);
-				FixtureSupport.seedNumericKeys(client, params, "pq", "bin", 1, 190);
 			}
 
 			@Override
@@ -537,15 +404,10 @@ public final class QueryExampleFixtures {
 				int total = 0;
 
 				while (! filter.isDone()) {
-					RecordSet rs = client.queryPartitions(null, stmt, filter);
-
-					try {
+					try (RecordSet rs = client.queryPartitions(null, stmt, filter)) {
 						while (rs.next()) {
 							total++;
 						}
-					}
-					finally {
-						rs.close();
 					}
 				}
 
@@ -566,9 +428,8 @@ public final class QueryExampleFixtures {
 		return new ExampleFixture() {
 			@Override
 			public void setup(IAerospikeClient client, Parameters params) throws Exception {
-				FixtureSupport.createIndexIfMissing(client, params, "qr", "qridx", "bin", IndexType.NUMERIC);
+				FixtureSupport.dropIndexIfExists(client, params, "qr", "qridx");
 				FixtureSupport.deleteNumericKeyRange(client, params, "qr", 1, 200);
-				FixtureSupport.seedNumericKeys(client, params, "qr", "bin", 1, 200);
 			}
 
 			@Override
@@ -578,11 +439,9 @@ public final class QueryExampleFixtures {
 				AtomicInteger firstPass = new AtomicInteger();
 
 				try {
-					client.query(null, stmt, filter, new QueryListener() {
-						public void onRecord(Key key, Record record) throws AerospikeException {
-							if (firstPass.incrementAndGet() >= 50) {
-								throw new AerospikeException.QueryTerminated();
-							}
+					client.query(null, stmt, filter, (key, record) -> {
+						if (firstPass.incrementAndGet() >= 50) {
+							throw new AerospikeException.QueryTerminated();
 						}
 					});
 				}
@@ -594,11 +453,7 @@ public final class QueryExampleFixtures {
 				}
 
 				AtomicInteger resumed = new AtomicInteger();
-				client.query(null, stmt, filter, new QueryListener() {
-					public void onRecord(Key key, Record record) {
-						resumed.incrementAndGet();
-					}
-				});
+				client.query(null, stmt, filter, (key, record) -> resumed.incrementAndGet());
 
 				if (resumed.get() != 151) {
 					throw new IllegalStateException("Expected resumed query to return 151 records but found " + resumed.get());
@@ -638,8 +493,8 @@ public final class QueryExampleFixtures {
 
 	private static QueryPolicy queryExpPolicy2(IAerospikeClient client) {
 		QueryPolicy policy = client.copyQueryPolicyDefault();
-		Calendar beginTime = new GregorianCalendar(2020, 0, 1);
-		Calendar endTime = new GregorianCalendar(2021, 0, 1);
+		Calendar beginTime = new GregorianCalendar(2020, Calendar.JANUARY, 1);
+		Calendar endTime = new GregorianCalendar(2021, Calendar.JANUARY, 1);
 		policy.filterExp = Exp.build(
 			Exp.and(
 				Exp.ge(Exp.lastUpdate(), Exp.val(beginTime)),
@@ -657,61 +512,16 @@ public final class QueryExampleFixtures {
 		return statement(params, params.set(), null, Filter.range("idxbin", begin, end));
 	}
 
-	private static void seedGeoMapRecords(IAerospikeClient client, Parameters params) {
-		for (int i = 0; i < 1000; i++) {
-			Map<String,Value> map = new HashMap<String,Value>();
-
-			for (int jj = 0; jj < 10; ++jj) {
-				double plat = 0.0 + (0.01 * i);
-				double plng = 0.0 + (0.10 * jj);
-				map.put("mvpointkey_" + i + "_" + jj, Value.getAsGeoJSON(geoPoint(plng, plat)));
-
-				double rlat = 0.0 + (0.01 * i);
-				double rlng = 0.0 - (0.10 * jj);
-				map.put("mvregionkey_" + i + "_" + jj, Value.getAsGeoJSON(geoPolygon(rlng, rlat)));
-			}
-
-			client.put(
-				params.writePolicy(),
-				FixtureSupport.key(params, "map" + i),
-				new Bin("geo_map_bin", map),
-				new Bin("geo_uniq_bin", "other_bin_value_" + i));
-		}
-	}
-
-	private static void seedGeoListRecords(IAerospikeClient client, Parameters params) {
-		for (int i = 0; i < 1000; i++) {
-			java.util.List<Value> list = new java.util.ArrayList<Value>();
-
-			for (int jj = 0; jj < 10; ++jj) {
-				double plat = 0.0 + (0.01 * i);
-				double plng = 0.0 + (0.10 * jj);
-				list.add(Value.getAsGeoJSON(geoPoint(plng, plat)));
-
-				double rlat = 0.0 + (0.01 * i);
-				double rlng = 0.0 - (0.10 * jj);
-				list.add(Value.getAsGeoJSON(geoPolygon(rlng, rlat)));
-			}
-
-			client.put(
-				params.writePolicy(),
-				FixtureSupport.key(params, "list" + i),
-				new Bin("geo_list_bin", list),
-				new Bin("geo_uniq_bin", "other_bin_value_" + i));
-		}
-	}
-
-	private static void assertAggregateCount(ResultSet rs, int expected) {
+	private static void assertAggregateCount(ResultSet rs) {
 		try {
 			int count = 0;
 
 			while (rs.next()) {
-				rs.getObject();
 				count++;
 			}
 
-			if (count != expected) {
-				throw new IllegalStateException("Expected " + expected + " aggregate results but found " + count);
+			if (count != 2) {
+				throw new IllegalStateException("Expected 2 aggregate results but found " + count);
 			}
 		}
 		finally {
@@ -720,7 +530,7 @@ public final class QueryExampleFixtures {
 	}
 
 	private static Map<String,Object> mapOf(Object... entries) {
-		Map<String,Object> map = new HashMap<String,Object>();
+		Map<String,Object> map = new HashMap<>();
 
 		for (int i = 0; i < entries.length; i += 2) {
 			map.put((String)entries[i], entries[i + 1]);

@@ -31,7 +31,6 @@ import com.aerospike.client.query.Filter;
 import com.aerospike.client.query.IndexType;
 import com.aerospike.client.query.Statement;
 import com.aerospike.client.task.IndexTask;
-import com.aerospike.client.util.Util;
 
 public class AsyncQuery extends AsyncExample {
 	/**

@@ -70,45 +70,41 @@ public final class ExampleRunner {
 		this.params = params;
 	}
 
-	public ExampleRunResult runSync(List<ExampleDefinition> definitions) throws Exception {
-		List<ExampleResult> results = new ArrayList<ExampleResult>();
-		ClientPolicy policy = createClientPolicy(null);
-		IAerospikeClient client = createClient(policy);
-		ServerFacts serverFacts = loadServerFacts(client);
-
+	public ExampleRunResult runSync(List<ExampleDefinition> definitions) {
+		List<ExampleResult> results = new ArrayList<>();
 		try {
-			for (ExampleDefinition definition : definitions) {
-				results.add(runOneSync(definition, client, serverFacts));
+			ClientPolicy policy = createClientPolicy(null);
+			try (IAerospikeClient client = createClient(policy)) {
+				ServerFacts serverFacts = loadServerFacts(client);
+
+				for (ExampleDefinition definition : definitions) {
+					results.add(runOneSync(definition, client, serverFacts));
+				}
 			}
 		}
-		finally {
-			client.close();
+		catch (Throwable failure) {
+			logBootstrapFailure("Sync", failure);
+			return bootstrapFailure(definitions, "Sync", failure);
 		}
 		return new ExampleRunResult(results);
 	}
 
-	public ExampleRunResult runAsync(List<ExampleDefinition> definitions) throws Exception {
-		List<ExampleResult> results = new ArrayList<ExampleResult>();
-		EventLoops eventLoops = createEventLoops();
-
-		try {
+	public ExampleRunResult runAsync(List<ExampleDefinition> definitions) {
+		List<ExampleResult> results = new ArrayList<>();
+		try (EventLoops eventLoops = createEventLoops()) {
 			ClientPolicy policy = createClientPolicy(eventLoops);
-			IAerospikeClient client = createClient(policy);
-			ServerFacts serverFacts = loadServerFacts(client);
-
-			try {
+			try (IAerospikeClient client = createClient(policy)) {
+				ServerFacts serverFacts = loadServerFacts(client);
 				EventLoop eventLoop = eventLoops.get(0);
 
 				for (ExampleDefinition definition : definitions) {
 					results.add(runOneAsync(definition, client, eventLoop, serverFacts));
 				}
 			}
-			finally {
-				client.close();
-			}
 		}
-		finally {
-			eventLoops.close();
+		catch (Throwable failure) {
+			logBootstrapFailure("Async", failure);
+			return bootstrapFailure(definitions, "Async", failure);
 		}
 		return new ExampleRunResult(results);
 	}
@@ -238,7 +234,6 @@ public final class ExampleRunner {
 		eventPolicy.maxCommandsInQueue = params.maxCommandsInQueue;
 
 		switch (params.eventLoopType) {
-		default:
 		case DIRECT_NIO:
 			return new NioEventLoops(eventPolicy, 1);
 
@@ -261,6 +256,9 @@ public final class ExampleRunner {
 			EventLoopGroup group = new MultiThreadIoEventLoopGroup(1, IoUringIoHandler.newFactory());
 			return new NettyEventLoops(eventPolicy, group, params.eventLoopType);
 		}
+
+		default:
+			throw new IllegalArgumentException("Unsupported event loop type: " + params.eventLoopType);
 		}
 	}
 
@@ -272,8 +270,9 @@ public final class ExampleRunner {
 		}
 
 		Node node = nodes[0];
-		Version serverVersion = node.getServerVersion();
-		String editionFilter = serverVersion.isGreaterOrEqual(Version.SERVER_VERSION_8_1) ? "release" : "edition";
+		Version infoNodeVersion = node.getServerVersion();
+		Version serverVersion = minimumServerVersion(nodes);
+		String editionFilter = infoNodeVersion.isGreaterOrEqual(Version.SERVER_VERSION_8_1) ? "release" : "edition";
 		String namespaceFilter = "namespace/" + params.namespace();
 		Map<String,String> info = Info.request(null, node, editionFilter, namespaceFilter);
 		String editionToken = info.get(editionFilter);
@@ -290,10 +289,23 @@ public final class ExampleRunner {
 
 		Partitions partitions = client.getCluster().partitionMap.get(params.namespace());
 		boolean strongConsistencyNamespace = partitions != null && partitions.scMode;
-		int nsup = parseInt(namespaceTokens, "nsup-period");
-		boolean ttlSupported = nsup == 0 ? parseBoolean(namespaceTokens, "allow-ttl-without-nsup") : true;
+		int nsup = Integer.parseInt(parseString(namespaceTokens, "nsup-period"));
+		boolean ttlSupported = nsup != 0 || Boolean.parseBoolean(parseString(namespaceTokens, "allow-ttl-without-nsup"));
 		boolean enterpriseEdition = editionToken.equals("Aerospike Enterprise Edition") || editionToken.contains("Enterprise");
 		return new ServerFacts(serverVersion, enterpriseEdition, strongConsistencyNamespace, ttlSupported);
+	}
+
+	private Version minimumServerVersion(Node[] nodes) {
+		Version minimum = nodes[0].getServerVersion();
+
+		for (int i = 1; i < nodes.length; i++) {
+			Version candidate = nodes[i].getServerVersion();
+
+			if (! candidate.isGreaterOrEqual(minimum)) {
+				minimum = candidate;
+			}
+		}
+		return minimum;
 	}
 
 	private void enforceServerRequirement(ExampleDefinition definition, ServerFacts serverFacts)
@@ -307,14 +319,6 @@ public final class ExampleRunner {
 		if (unmetReason != null) {
 			throw new ExampleSkipException(unmetReason);
 		}
-	}
-
-	private static int parseInt(String namespaceTokens, String name) {
-		return Integer.parseInt(parseString(namespaceTokens, name));
-	}
-
-	private static boolean parseBoolean(String namespaceTokens, String name) {
-		return Boolean.parseBoolean(parseString(namespaceTokens, name));
 	}
 
 	private static String parseString(String namespaceTokens, String name) {
@@ -336,6 +340,26 @@ public final class ExampleRunner {
 
 	private void logFailure(String name, Throwable failure) {
 		console.error("%s failed%n%s", name, stackTraceOf(failure));
+	}
+
+	private void logBootstrapFailure(String mode, Throwable failure) {
+		console.error("%s runner bootstrap failed%n%s", mode, stackTraceOf(failure));
+	}
+
+	private ExampleRunResult bootstrapFailure(
+		List<ExampleDefinition> definitions,
+		String mode,
+		Throwable failure
+	) {
+		List<ExampleResult> results = new ArrayList<>(definitions.size());
+
+		for (ExampleDefinition definition : definitions) {
+			IllegalStateException wrapped = new IllegalStateException(
+				mode + " runner bootstrap failed before executing " + definition.name(),
+				failure);
+			results.add(ExampleResult.failed(definition.name(), 0, wrapped));
+		}
+		return new ExampleRunResult(results);
 	}
 
 	private Throwable cleanup(ExampleDefinition definition, IAerospikeClient client) {

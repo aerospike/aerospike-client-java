@@ -168,18 +168,13 @@ public final class ExampleAssertions {
 	}
 
 	public static long countQuery(IAerospikeClient client, QueryPolicy policy, Statement stmt) {
-		RecordSet recordSet = client.query(policy, stmt);
-
-		try {
+		try (RecordSet recordSet = client.query(policy, stmt)) {
 			long count = 0;
 
 			while (recordSet.next()) {
 				count++;
 			}
 			return count;
-		}
-		finally {
-			recordSet.close();
 		}
 	}
 
@@ -189,9 +184,7 @@ public final class ExampleAssertions {
 		Statement stmt,
 		long expectedCount
 	) {
-		RecordSet recordSet = client.query(policy, stmt);
-
-		try {
+		try (RecordSet recordSet = client.query(policy, stmt)) {
 			long count = 0;
 
 			while (recordSet.next()) {
@@ -208,9 +201,6 @@ public final class ExampleAssertions {
 					"Expected query to return " + expectedCount + " records but found " + count);
 			}
 		}
-		finally {
-			recordSet.close();
-		}
 	}
 
 	public static void assertQueryUniqueBinValueCount(
@@ -220,10 +210,8 @@ public final class ExampleAssertions {
 		String binName,
 		long expectedUniqueCount
 	) {
-		RecordSet recordSet = client.query(policy, stmt);
-
-		try {
-			Set<Object> uniques = new LinkedHashSet<Object>();
+		try (RecordSet recordSet = client.query(policy, stmt)) {
+			Set<Object> uniques = new LinkedHashSet<>();
 
 			while (recordSet.next()) {
 				Record record = recordSet.getRecord();
@@ -237,9 +225,6 @@ public final class ExampleAssertions {
 					binName,
 					uniques.size()));
 			}
-		}
-		finally {
-			recordSet.close();
 		}
 	}
 
@@ -270,8 +255,8 @@ public final class ExampleAssertions {
 	}
 
 	public static void assertRecordHasOnlyBins(Record record, Key key, String... expectedBins) {
-		Set<String> actualBins = new LinkedHashSet<String>(record.bins.keySet());
-		Set<String> expectedBinSet = new LinkedHashSet<String>(Arrays.asList(expectedBins));
+		Set<String> actualBins = new LinkedHashSet<>(record.bins.keySet());
+		Set<String> expectedBinSet = new LinkedHashSet<>(Arrays.asList(expectedBins));
 
 		if (! actualBins.equals(expectedBinSet)) {
 			throw new IllegalStateException(String.format(
@@ -390,7 +375,7 @@ public final class ExampleAssertions {
 			throw new IllegalStateException(label + " size mismatch: expected " + expected.size() + " but found " + actual.size());
 		}
 
-		Map<Object,Object> remaining = new LinkedHashMap<Object,Object>(actual);
+		Map<Object,Object> remaining = new LinkedHashMap<>(actual);
 
 		for (Map.Entry<?,?> entry : expected.entrySet()) {
 			Object matchingKey = removeMatchingKey(remaining.keySet(), entry.getKey());
@@ -428,16 +413,13 @@ public final class ExampleAssertions {
 	}
 
 	private static List<Object> readAggregateResults(ResultSet resultSet) {
-		try {
-			List<Object> results = new ArrayList<Object>();
+		try (ResultSet rs = resultSet) {
+			List<Object> results = new ArrayList<>();
 
-			while (resultSet.next()) {
-				results.add(resultSet.getObject());
+			while (rs.next()) {
+				results.add(rs.getObject());
 			}
 			return results;
-		}
-		finally {
-			resultSet.close();
 		}
 	}
 }

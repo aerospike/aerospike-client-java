@@ -82,11 +82,9 @@ public class AsyncTransaction extends AsyncExample {
 
 		console.info("Run abort");
 
-		AbortListener tal = new AbortListener() {
-			public void onSuccess(AbortStatus status) {
-				console.info("Txn aborted: " + txn.getId());
-				failRun(terminalFailure);
-			}
+		AbortListener tal = (AbortStatus status) -> {
+			console.info("Txn aborted: " + txn.getId());
+			failRun(terminalFailure);
 		};
 
 		try {

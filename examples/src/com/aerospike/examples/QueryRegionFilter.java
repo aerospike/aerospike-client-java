@@ -127,9 +127,7 @@ public class QueryRegionFilter extends Example {
 		stmt.setFilter(Filter.geoWithinRegion(binName1, rgnsb.toString()));
 		stmt.setAggregateFunction("geo_filter_example", "match_amenity", Value.get(amenStr));
 
-		ResultSet rs = client().queryAggregate(null, stmt);
-
-		try {
+		try (ResultSet rs = client().queryAggregate(null, stmt)) {
 			int count = 0;
 
 			while (rs.next()) {
@@ -141,9 +139,6 @@ public class QueryRegionFilter extends Example {
 			if (count != 2) {
 				console.error("wrong number of schools found. %d != 2", count);
 			}
-		}
-		finally {
-			rs.close();
 		}
 	}
 }

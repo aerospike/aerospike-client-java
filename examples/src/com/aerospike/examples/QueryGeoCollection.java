@@ -97,7 +97,7 @@ public class QueryGeoCollection extends Example {
 	private void writeMapRecords(String keyPrefix, String binName, String binName2, String valuePrefix, int size) throws Exception {
 		for (int i = 0; i < size; i++) {
 			Key key = new Key(namespace(), set(), keyPrefix + i);
-			HashMap<String, Value> map = new HashMap<String,Value>();
+			HashMap<String, Value> map = new HashMap<>();
 
 			for (int jj = 0; jj < 10; ++jj) {
 
@@ -126,7 +126,7 @@ public class QueryGeoCollection extends Example {
 	private void writeListRecords(String keyPrefix, String binName, String binName2, int size) throws Exception {
 		for (int i = 0; i < size; i++) {
 			Key key = new Key(namespace(), set(), keyPrefix + i);
-			List<Value> mylist = new ArrayList<Value>();
+			List<Value> mylist = new ArrayList<>();
 
 			for (int jj = 0; jj < 10; ++jj) {
 
@@ -165,11 +165,9 @@ public class QueryGeoCollection extends Example {
 		stmt.setSetName(set());
 		stmt.setFilter(Filter.geoWithinRegion(binName, indexType, rgnsb.toString()));
 
-		RecordSet rs = client().query(null, stmt);
-
-		try {
+		try (RecordSet rs = client().query(null, stmt)) {
 			int count = 0;
-			Set <String> uniques = new HashSet<String>();
+			Set<String> uniques = new HashSet<>();
 
 			while (rs.next()) {
 				Record record = rs.getRecord();
@@ -184,9 +182,6 @@ public class QueryGeoCollection extends Example {
 			else {
 				console.info("query succeeded with %d records %d unique",count,uniques.size());
 			}
-		}
-		finally {
-			rs.close();
 		}
 	}
 

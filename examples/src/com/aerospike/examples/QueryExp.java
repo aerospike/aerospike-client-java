@@ -118,16 +118,11 @@ public class QueryExp extends Example {
 					Exp.le(Exp.intBin("bin2"), Exp.val(140))),
 				Exp.eq(Exp.intBin("bin2"), Exp.val(360))));
 
-		RecordSet rs = client().query(policy, stmt);
-
-		try {
+		try (RecordSet rs = client().query(policy, stmt)) {
 			while (rs.next()) {
 				Record record = rs.getRecord();
-				console.info("Record: " + record.toString());
+				console.info("Record: " + record);
 			}
-		}
-		finally {
-			rs.close();
 		}
 	}
 
@@ -151,16 +146,11 @@ public class QueryExp extends Example {
 				Exp.ge(Exp.lastUpdate(), Exp.val(beginTime)),
 				Exp.lt(Exp.lastUpdate(), Exp.val(endTime))));
 
-		RecordSet rs = client().query(policy, stmt);
-
-		try {
+		try (RecordSet rs = client().query(policy, stmt)) {
 			while (rs.next()) {
 				Record record = rs.getRecord();
-				console.info("Record: " + record.toString());
+				console.info("Record: " + record);
 			}
-		}
-		finally {
-			rs.close();
 		}
 	}
 
@@ -180,16 +170,11 @@ public class QueryExp extends Example {
 		policy.filterExp = Exp.build(
 			Exp.regexCompare("prefix.*suffix", RegexFlag.ICASE | RegexFlag.NEWLINE, Exp.stringBin("bin3")));
 
-		RecordSet rs = client().query(policy, stmt);
-
-		try {
+		try (RecordSet rs = client().query(policy, stmt)) {
 			while (rs.next()) {
 				Record record = rs.getRecord();
-				console.info("Record: " + record.toString());
+				console.info("Record: " + record);
 			}
-		}
-		finally {
-			rs.close();
 		}
 	}
 }

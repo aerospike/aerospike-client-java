@@ -98,9 +98,7 @@ public class QueryAverage extends Example {
 		stmt.setFilter(Filter.range(binName, 0, 1000));
 		stmt.setAggregateFunction("average_example", "average");
 
-		ResultSet rs = client().queryAggregate(null, stmt);
-
-		try {
+		try (ResultSet rs = client().queryAggregate(null, stmt)) {
 			if (rs.next()) {
 				Object obj = rs.getObject();
 
@@ -123,9 +121,6 @@ public class QueryAverage extends Example {
 			else {
 				console.error("Query failed. No records returned.");
 			}
-		}
-		finally {
-			rs.close();
 		}
 	}
 }

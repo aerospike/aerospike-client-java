@@ -27,7 +27,7 @@ import com.aerospike.client.policy.ScanPolicy;
 
 public class ScanSeries extends Example implements ScanCallback {
 
-	private Map<String,Metrics> setMap = new HashMap<String,Metrics>();
+	private Map<String,Metrics> setMap = new HashMap<>();
 
 	/**
 	 * Scan all nodes in series and read all records in all sets.

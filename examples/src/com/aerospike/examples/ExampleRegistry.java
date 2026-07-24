@@ -49,7 +49,7 @@ public final class ExampleRegistry {
 	}
 
 	private static Map<String, ExampleDefinition> createExamples() {
-		Map<String, ExampleDefinition> examples = new LinkedHashMap<String, ExampleDefinition>();
+		Map<String, ExampleDefinition> examples = new LinkedHashMap<>();
 
 		registerSync(examples, "ServerInfo", ServerInfo.class);
 		registerSync(examples, "PutGet", PutGet.class, ExampleFixtures.putGetExample());

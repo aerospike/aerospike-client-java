@@ -16,6 +16,7 @@
  */
 package com.aerospike.examples.fixtures;
 
+import java.util.Arrays;
 import java.util.ArrayList;
 import java.util.GregorianCalendar;
 import java.util.HashMap;
@@ -238,7 +239,7 @@ public final class AdvancedExampleFixtures {
 		@SuppressWarnings("unchecked")
 		Map<String,Object> map = (Map<String,Object>)record.getValue("mapbin");
 
-		if (map.size() != 2 || ! map.containsKey("Harry") || ! map.containsKey("Bill")) {
+		if (map == null || map.size() != 2 || ! map.containsKey("Harry") || ! map.containsKey("Bill")) {
 			throw new IllegalStateException("Unexpected final mapkey contents: " + map);
 		}
 
@@ -249,16 +250,13 @@ public final class AdvancedExampleFixtures {
 	}
 
 	private static List<Object> list(Object... values) {
-		List<Object> list = new ArrayList<Object>(values.length);
-
-		for (Object value : values) {
-			list.add(value);
-		}
+		List<Object> list = new ArrayList<>(values.length);
+		list.addAll(Arrays.asList(values));
 		return list;
 	}
 
 	private static Map<String,Object> mapOf(Object... entries) {
-		Map<String,Object> map = new HashMap<String,Object>();
+		Map<String,Object> map = new HashMap<>();
 
 		for (int i = 0; i < entries.length; i += 2) {
 			map.put((String)entries[i], entries[i + 1]);

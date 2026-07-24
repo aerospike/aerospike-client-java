@@ -75,7 +75,7 @@ public class QueryCollection extends Example {
 	private void writeRecords(String keyPrefix, String binName, String mapKeyPrefix, String valuePrefix, int size) throws Exception {
 		for (int i = 1; i <= size; i++) {
 			Key key = new Key(namespace(), set(), keyPrefix + i);
-			HashMap<String,String> map = new HashMap<String,String>();
+			HashMap<String,String> map = new HashMap<>();
 
 			map.put(mapKeyPrefix+1, valuePrefix+i);
 			if (i%2 == 0) {
@@ -106,9 +106,7 @@ public class QueryCollection extends Example {
 		stmt.setBinNames(binName);
 		stmt.setFilter(Filter.contains(binName, IndexCollectionType.MAPKEYS, queryMapKey));
 
-		RecordSet rs = client().query(null, stmt);
-
-		try {
+		try (RecordSet rs = client().query(null, stmt)) {
 			int count = 0;
 
 			while (rs.next()) {
@@ -116,7 +114,7 @@ public class QueryCollection extends Example {
 				Record record = rs.getRecord();
 				Map<?,?> result = (Map<?,?>)record.getValue(binName);
 
-				if (result.containsKey(queryMapKey)) {
+				if (result != null && result.containsKey(queryMapKey)) {
 					/*console.info("Record found: ns=%s set=%s bin=%s key=%s value=%s",
 						key.namespace, key.setName, binName, Buffer.bytesToHexString(key.digest), result);
 					*/
@@ -132,9 +130,6 @@ public class QueryCollection extends Example {
 			} else {
 				console.info("Number of records %d",count);
 			}
-		}
-		finally {
-			rs.close();
 		}
 	}
 }

@@ -66,7 +66,7 @@ public class BatchOperate extends Example {
 			Bin bin1 = new Bin(BinName1, i);
 			Bin bin2 = new Bin(BinName2, i + 10);
 
-			List<Integer> list = new ArrayList<Integer>();
+			List<Integer> list = new ArrayList<>();
 
 			for (int j = 0; j < i; j++) {
 				list.add(j * i);
@@ -119,7 +119,7 @@ public class BatchOperate extends Example {
 		Operation[] ops4 = Operation.array(ExpOperation.read(ResultName1, exp2, ExpReadFlags.DEFAULT),
 										   ExpOperation.read(ResultName2, exp3, ExpReadFlags.DEFAULT));
 
-		List<BatchRead> records = new ArrayList<BatchRead>();
+		List<BatchRead> records = new ArrayList<>();
 		records.add(new BatchRead(new Key(namespace(), set(), KeyPrefix + 1), ops1));
 		// The following record is optimized (namespace,set,ops are only sent once) because
 		// namespace, set and ops all have the same pointer references as the previous entry.
@@ -242,7 +242,7 @@ public class BatchOperate extends Example {
 			ExpOperation.read(ResultName1, rexp2, ExpReadFlags.DEFAULT),
 			ExpOperation.read(ResultName2, rexp3, ExpReadFlags.DEFAULT));
 
-		List<BatchRecord> records = new ArrayList<BatchRecord>();
+		List<BatchRecord> records = new ArrayList<>();
 		records.add(new BatchWrite(new Key(namespace(), set(), KeyPrefix + 1), ops1));
 		records.add(new BatchRead(new Key(namespace(), set(), KeyPrefix + 2), ops2));
 		records.add(new BatchRead(new Key(namespace(), set(), KeyPrefix + 3), ops3));

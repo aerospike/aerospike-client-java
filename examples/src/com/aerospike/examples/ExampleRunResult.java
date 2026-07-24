@@ -24,7 +24,7 @@ public final class ExampleRunResult {
 	private final List<ExampleResult> results;
 
 	public ExampleRunResult(List<ExampleResult> results) {
-		this.results = Collections.unmodifiableList(new ArrayList<ExampleResult>(results));
+		this.results = Collections.unmodifiableList(new ArrayList<>(results));
 	}
 
 	public List<ExampleResult> results() {
@@ -52,7 +52,7 @@ public final class ExampleRunResult {
 			return this;
 		}
 
-		List<ExampleResult> combined = new ArrayList<ExampleResult>(results.size() + other.results.size());
+		List<ExampleResult> combined = new ArrayList<>(results.size() + other.results.size());
 		combined.addAll(results);
 		combined.addAll(other.results);
 		return new ExampleRunResult(combined);

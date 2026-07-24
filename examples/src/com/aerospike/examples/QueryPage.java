@@ -55,9 +55,7 @@ public class QueryPage extends Example {
 		for (int i = 0; i < 3 && ! filter.isDone(); i++) {
 			console.info("Query page: " + i);
 
-			RecordSet rs = client().queryPartitions(null, stmt, filter);
-
-			try {
+			try (RecordSet rs = client().queryPartitions(null, stmt, filter)) {
 				int count = 0;
 
 				while (rs.next()) {
@@ -65,9 +63,6 @@ public class QueryPage extends Example {
 				}
 
 				console.info("Records returned: " + count);
-			}
-			finally {
-				rs.close();
 			}
 		}
 	}

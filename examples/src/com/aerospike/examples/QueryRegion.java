@@ -107,9 +107,7 @@ public class QueryRegion extends Example {
 		stmt.setBinNames(binName);
 		stmt.setFilter(Filter.geoWithinRegion(binName, rgnsb.toString()));
 
-		RecordSet rs = client().query(null, stmt);
-
-		try {
+		try (RecordSet rs = client().query(null, stmt)) {
 			int count = 0;
 
 			while (rs.next()) {
@@ -127,9 +125,6 @@ public class QueryRegion extends Example {
 				console.error("Query count mismatch. Expected 6. Received " + count);
 			}
 		}
-		finally {
-			rs.close();
-		}
 	}
 
 	private void runRadiusQuery(String indexName, String binName) throws Exception {
@@ -146,9 +141,7 @@ public class QueryRegion extends Example {
 		stmt.setBinNames(binName);
 		stmt.setFilter(Filter.geoWithinRadius(binName, lon, lat, radius));
 
-		RecordSet rs = client().query(null, stmt);
-
-		try {
+		try (RecordSet rs = client().query(null, stmt)) {
 			int count = 0;
 
 			while (rs.next()) {
@@ -165,9 +158,6 @@ public class QueryRegion extends Example {
 			if (count != 4) {
 				console.error("Query count mismatch. Expected 4. Received " + count);
 			}
-		}
-		finally {
-			rs.close();
 		}
 	}
 }

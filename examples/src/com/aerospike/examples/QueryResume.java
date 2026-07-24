@@ -27,7 +27,6 @@ import com.aerospike.client.policy.Policy;
 import com.aerospike.client.query.Filter;
 import com.aerospike.client.query.IndexType;
 import com.aerospike.client.query.PartitionFilter;
-import com.aerospike.client.query.QueryListener;
 import com.aerospike.client.query.Statement;
 import com.aerospike.client.task.IndexTask;
 
@@ -57,18 +56,15 @@ public class QueryResume extends Example {
 		console.info("Start query");
 
 		try {
-			client().query(null, stmt, filter, new QueryListener() {
-
-				public void onRecord(Key key, Record record) {
-					// Terminate query after 50 records.
-					if (count.incrementAndGet() >= 50) {
-						// Terminate query. The query last record key will not be set
-						// and the current record will be returned again if the query resumes
-						// at a later time. It's designed this way to handle errors where
-						// the last record returned could not be processed (like a disk full
-						// error on a backup).
-						throw new AerospikeException.QueryTerminated();
-					}
+			client().query(null, stmt, filter, (Key key, Record record) -> {
+				// Terminate query after 50 records.
+				if (count.incrementAndGet() >= 50) {
+					// Terminate query. The query last record key will not be set
+					// and the current record will be returned again if the query resumes
+					// at a later time. It's designed this way to handle errors where
+					// the last record returned could not be processed (like a disk full
+					// error on a backup).
+					throw new AerospikeException.QueryTerminated();
 				}
 			});
 		}
@@ -83,11 +79,7 @@ public class QueryResume extends Example {
 		// Resume query now.
 		console.info("Start query resume");
 
-		client().query(null, stmt, filter, new QueryListener() {
-			public void onRecord(Key key, Record record) {
-				count.incrementAndGet();
-			}
-		});
+		client().query(null, stmt, filter, (Key key, Record record) -> count.incrementAndGet());
 
 		console.info("Records returned: " + count.get());
 	}

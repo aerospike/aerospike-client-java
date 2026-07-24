@@ -140,7 +140,7 @@ public class Main extends JPanel {
 
 				ExampleRunResult result = runExamplesWithResult(console, params, exampleNames);
 
-				if (reportPath != null && reportPath.length() > 0) {
+				if (reportPath != null && ! reportPath.isEmpty()) {
 					writeReport(console, reportPath, result);
 				}
 
@@ -168,11 +168,11 @@ public class Main extends JPanel {
 		PrintWriter pw = new PrintWriter(sw);
 		String syntax = Main.class.getName() + " [<options>] all|(<example1> <example2> ...)";
 		formatter.printHelp(pw, 100, syntax, "options:", options, 0, 2, null);
-		System.out.println(sw.toString());
+		System.out.println(sw);
 		System.out.println("examples:");
 
 		for (String name : ExampleRegistry.names()) {
-			System.out.println(name.toString());
+			System.out.println(name);
 		}
 		System.out.println();
 		System.out.println("All examples will be run if 'all' is specified as an example.");
@@ -258,9 +258,9 @@ public class Main extends JPanel {
 	}
 
 	private static ExampleRunResult runExamplesWithResult(Console console, Parameters params, String[] examples) throws Exception {
-		List<ExampleDefinition> syncExamples = new ArrayList<ExampleDefinition>();
-		List<ExampleDefinition> asyncExamples = new ArrayList<ExampleDefinition>();
-		List<ExampleResult> immediateResults = new ArrayList<ExampleResult>();
+		List<ExampleDefinition> syncExamples = new ArrayList<>();
+		List<ExampleDefinition> asyncExamples = new ArrayList<>();
+		List<ExampleResult> immediateResults = new ArrayList<>();
 		ExampleRunResult combinedResult = new ExampleRunResult(immediateResults);
 
 		for (String example : examples) {
@@ -313,7 +313,7 @@ public class Main extends JPanel {
 			String label = (exampleResult.status() == ExampleStatus.SKIPPED) ? "SKIPPED" : "FAILED";
 			String message = exampleResult.message();
 
-			if (message == null || message.length() == 0) {
+			if (message == null || message.isEmpty()) {
 				console.info("  %s: %s", label, exampleResult.name());
 			}
 			else {

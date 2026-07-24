@@ -48,7 +48,7 @@ public class ListMap extends Example {
 		Key key = new Key(namespace(), set(), "listkey1");
 		client().delete(writePolicy(), key);
 
-		ArrayList<String> list = new ArrayList<String>();
+		ArrayList<String> list = new ArrayList<>();
 		list.add("string1");
 		list.add("string2");
 		list.add("string3");
@@ -76,7 +76,7 @@ public class ListMap extends Example {
 		client().delete(writePolicy(), key);
 
 		byte[] blob = new byte[] {3, 52, 125};
-		ArrayList<Object> list = new ArrayList<Object>();
+		ArrayList<Object> list = new ArrayList<>();
 		list.add("string1");
 		list.add(2);
 		list.add(blob);
@@ -104,7 +104,7 @@ public class ListMap extends Example {
 		Key key = new Key(namespace(), set(), "mapkey1");
 		client().delete(writePolicy(), key);
 
-		HashMap<String,String> map = new HashMap<String,String>();
+		HashMap<String,String> map = new HashMap<>();
 		map.put("key1", "string1");
 		map.put("key2", "string2");
 		map.put("key3", "string3");
@@ -132,13 +132,13 @@ public class ListMap extends Example {
 		client().delete(writePolicy(), key);
 
 		byte[] blob = new byte[] {3, 52, 125};
-		List<Integer> list = new ArrayList<Integer>();
+		List<Integer> list = new ArrayList<>();
 		list.add(100034);
 		list.add(12384955);
 		list.add(3);
 		list.add(512);
 
-		HashMap<Object,Object> map = new HashMap<Object,Object>();
+		HashMap<Object,Object> map = new HashMap<>();
 		map.put("key1", "string1");
 		map.put("key2", 2);
 		map.put("key3", blob);
@@ -180,17 +180,17 @@ public class ListMap extends Example {
 		client().delete(writePolicy(), key);
 
 		byte[] blob = new byte[] {3, 52, 125};
-		ArrayList<Object> inner = new ArrayList<Object>();
+		ArrayList<Object> inner = new ArrayList<>();
 		inner.add("string2");
 		inner.add(5);
 
-		HashMap<Object,Object> innerMap = new HashMap<Object,Object>();
+		HashMap<Object,Object> innerMap = new HashMap<>();
 		innerMap.put("a", 1);
 		innerMap.put(2, "b");
 		innerMap.put(3, blob);
 		innerMap.put("list", inner);
 
-		ArrayList<Object> list = new ArrayList<Object>();
+		ArrayList<Object> list = new ArrayList<>();
 		list.add("string1");
 		list.add(8);
 		list.add(inner);

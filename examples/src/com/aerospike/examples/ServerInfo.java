@@ -16,8 +16,6 @@
  */
 package com.aerospike.examples;
 
-import java.util.Map;
-
 import com.aerospike.client.Info;
 import com.aerospike.client.cluster.Node;
 

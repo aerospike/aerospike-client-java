@@ -45,9 +45,7 @@ public class QueryInteger extends Example {
 		stmt.setBinNames(binName);
 		stmt.setFilter(Filter.range(binName, begin, end));
 
-		RecordSet rs = client().query(null, stmt);
-
-		try {
+		try (RecordSet rs = client().query(null, stmt)) {
 			int count = 0;
 
 			while (rs.next()) {
@@ -61,9 +59,6 @@ public class QueryInteger extends Example {
 				count++;
 			}
 			console.info("Query returned %d records.", count);
-		}
-		finally {
-			rs.close();
 		}
 	}
 }

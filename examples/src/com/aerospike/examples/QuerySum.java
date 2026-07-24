@@ -102,9 +102,7 @@ public class QuerySum extends Example {
 		// Alternately load aggregate function from resource
 		// stmt.setAggregateFunction(QuerySum.class.getClassLoader(), "udf/sum_example.lua", "sum_example", "sum_single_bin", Value.get(binName));
 
-		ResultSet rs = client().queryAggregate(null, stmt);
-
-		try {
+		try (ResultSet rs = client().queryAggregate(null, stmt)) {
 			int expected = 22; // 4 + 5 + 6 + 7
 			int count = 0;
 
@@ -132,9 +130,6 @@ public class QuerySum extends Example {
 			if (count == 0) {
 				console.error("Query failed. No records returned.");
 			}
-		}
-		finally {
-			rs.close();
 		}
 	}
 }

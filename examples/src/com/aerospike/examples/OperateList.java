@@ -48,7 +48,7 @@ public class OperateList extends Example {
 		// Delete record if it already exists.
 		client().delete(writePolicy(), key);
 
-		List<Value> inputList = new ArrayList<Value>();
+		List<Value> inputList = new ArrayList<>();
 		inputList.add(Value.get(55));
 		inputList.add(Value.get(77));
 
@@ -87,23 +87,23 @@ public class OperateList extends Example {
 		// Delete record if it already exists.
 		client().delete(writePolicy(), key);
 
-		List<Value> l1 = new ArrayList<Value>();
+		List<Value> l1 = new ArrayList<>();
 		l1.add(Value.get(7));
 		l1.add(Value.get(9));
 		l1.add(Value.get(5));
 
-		List<Value> l2 = new ArrayList<Value>();
+		List<Value> l2 = new ArrayList<>();
 		l2.add(Value.get(1));
 		l2.add(Value.get(2));
 		l2.add(Value.get(3));
 
-		List<Value> l3 = new ArrayList<Value>();
+		List<Value> l3 = new ArrayList<>();
 		l3.add(Value.get(6));
 		l3.add(Value.get(5));
 		l3.add(Value.get(4));
 		l3.add(Value.get(1));
 
-		List<Value> inputList = new ArrayList<Value>();
+		List<Value> inputList = new ArrayList<>();
 		inputList.add(Value.get(l1));
 		inputList.add(Value.get(l2));
 		inputList.add(Value.get(l3));

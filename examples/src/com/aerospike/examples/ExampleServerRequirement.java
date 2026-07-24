@@ -122,7 +122,7 @@ public final class ExampleServerRequirement {
 		boolean strongConsistencyNamespace,
 		boolean ttlSupported
 	) {
-		List<String> unmet = new ArrayList<String>(4);
+		List<String> unmet = new ArrayList<>(4);
 
 		if (requiresEnterpriseEdition && ! enterpriseEdition) {
 			unmet.add("requires Aerospike Enterprise Edition");

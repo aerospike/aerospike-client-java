@@ -108,16 +108,16 @@ public class UserDefinedFunction extends Example {
 	private void writeListMapUsingUdf() throws Exception {
 		Key key = new Key(namespace(), set(), "udfkey5");
 
-		ArrayList<Object> inner = new ArrayList<Object>();
+		ArrayList<Object> inner = new ArrayList<>();
 		inner.add("string2");
 		inner.add(8L);
 
-		HashMap<Object,Object> innerMap = new HashMap<Object,Object>();
+		HashMap<Object,Object> innerMap = new HashMap<>();
 		innerMap.put("a", 1L);
 		innerMap.put(2L, "b");
 		innerMap.put("list", inner);
 
-		ArrayList<Object> list = new ArrayList<Object>();
+		ArrayList<Object> list = new ArrayList<>();
 		list.add("string1");
 		list.add(4L);
 		list.add(inner);

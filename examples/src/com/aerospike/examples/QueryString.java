@@ -90,9 +90,7 @@ public class QueryString extends Example {
 		stmt.setBinNames(binName);
 		stmt.setFilter(Filter.equal(binName, filter));
 
-		RecordSet rs = client().query(null, stmt);
-
-		try {
+		try (RecordSet rs = client().query(null, stmt)) {
 			int count = 0;
 
 			while (rs.next()) {
@@ -113,9 +111,6 @@ public class QueryString extends Example {
 			if (count == 0) {
 				console.error("Query failed. No records returned.");
 			}
-		}
-		finally {
-			rs.close();
 		}
 	}
 }

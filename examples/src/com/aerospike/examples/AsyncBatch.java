@@ -32,7 +32,6 @@ import com.aerospike.client.listener.ExistsSequenceListener;
 import com.aerospike.client.listener.RecordArrayListener;
 import com.aerospike.client.listener.RecordSequenceListener;
 import com.aerospike.client.listener.WriteListener;
-import com.aerospike.client.util.Util;
 
 public class AsyncBatch extends AsyncExample {
 	private final String keyPrefix = "batchkey";
@@ -446,7 +445,7 @@ public class AsyncBatch extends AsyncExample {
 		// Batch gets into one call.
 		// Batch allows multiple namespaces in one call, but example test environment may only have one namespace.
 		String[] bins = new String[] {binName};
-		List<BatchRead> records = new ArrayList<BatchRead>();
+		List<BatchRead> records = new ArrayList<>();
 		records.add(new BatchRead(new Key(namespace(), set(), keyPrefix + 1), bins));
 		records.add(new BatchRead(new Key(namespace(), set(), keyPrefix + 2), true));
 		records.add(new BatchRead(new Key(namespace(), set(), keyPrefix + 3), true));

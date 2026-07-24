@@ -169,7 +169,7 @@ public class Batch extends Example {
 		// Batch gets into one call.
 		// Batch allows multiple namespaces in one call, but example test environment may only have one namespace.
 		String[] bins = new String[] {binName};
-		List<BatchRead> records = new ArrayList<BatchRead>();
+		List<BatchRead> records = new ArrayList<>();
 		records.add(new BatchRead(new Key(namespace(), set(), keyPrefix + 1), bins));
 		records.add(new BatchRead(new Key(namespace(), set(), keyPrefix + 2), true));
 		records.add(new BatchRead(new Key(namespace(), set(), keyPrefix + 3), true));
