@@ -52,6 +52,7 @@ jobs:
         uses: ./.github/actions/build-and-test
         with:
           crypto-type: ${{ inputs.crypto-type }}
+          run-tests: ${{ inputs.run-tests }}
           server-tag: ${{ inputs.server-tag }}
           server-container-repo: ${{ inputs.server-container-repo }}
           oidc-provider: ${{ secrets.JFROG_OIDC_PROVIDER }}
@@ -63,3 +64,10 @@ jobs:
         with:
           files: test/target/surefire-reports/*.xml
           check_name: "Test Results (${{ inputs.crypto-type }} / ${{ inputs.server-tag }})"
+
+      - name: Publish Example Results
+        if: ${{ always() && inputs.run-tests }}
+        uses: EnricoMi/publish-unit-test-result-action@v2
+        with:
+          files: examples/target/example-reports/*.xml
+          check_name: "Example Results (${{ inputs.crypto-type }} / ${{ inputs.server-tag }})"

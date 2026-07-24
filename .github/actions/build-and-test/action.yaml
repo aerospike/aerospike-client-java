@@ -76,3 +76,23 @@ runs:
         else
           mvn test -DskipTests=false
         fi
+
+    - name: Run examples
+      shell: bash
+      if: ${{ inputs.run-tests == 'true' }}
+      working-directory: examples
+      run: |
+        if [ "${{ inputs.enable-tls }}" = "true" ]; then
+          java -jar target/aerospike-examples-*-jar-with-dependencies.jar \
+            -h 127.0.0.1:aerospike-tls:4333 \
+            -p 4333 \
+            -tls \
+            --report target/example-reports/TEST-examples.xml \
+            all
+        else
+          java -jar target/aerospike-examples-*-jar-with-dependencies.jar \
+            -h 127.0.0.1 \
+            -p 3000 \
+            --report target/example-reports/TEST-examples.xml \
+            all
+        fi

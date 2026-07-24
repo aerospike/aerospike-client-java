@@ -18,6 +18,8 @@ package com.aerospike.examples;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -93,6 +95,7 @@ public class Main extends JPanel {
 
 			options.addOption("g", "gui", false, "Invoke GUI to selectively run tests.");
 			options.addOption("d", "debug", false, "Run in debug mode.");
+			options.addOption(null, "report", true, "Write JUnit XML example report to the given path.");
 			options.addOption("u", "usage", false, "Print usage.");
 
 			CommandLineParser parser = new DefaultParser();
@@ -103,6 +106,7 @@ public class Main extends JPanel {
 				return;
 			}
 			Parameters params = parseParameters(cl);
+			String reportPath = cl.getOptionValue("report");
 			String[] exampleNames = cl.getArgs();
 
 			if ((exampleNames.length == 0) && (!cl.hasOption("g"))) {
@@ -133,7 +137,14 @@ public class Main extends JPanel {
 			}
 			else {
 				Console console = new Console();
-				if (! runExamples(console, params, exampleNames)) {
+
+				ExampleRunResult result = runExamplesWithResult(console, params, exampleNames);
+
+				if (reportPath != null && reportPath.length() > 0) {
+					writeReport(console, reportPath, result);
+				}
+
+				if (result.hasFailures()) {
 					exitCode = 1;
 				}
 			}
@@ -243,10 +254,14 @@ public class Main extends JPanel {
 	 * Connect and run one or more client examples.
 	 */
 	public static boolean runExamples(Console console, Parameters params, String[] examples) throws Exception {
+		return ! runExamplesWithResult(console, params, examples).hasFailures();
+	}
+
+	private static ExampleRunResult runExamplesWithResult(Console console, Parameters params, String[] examples) throws Exception {
 		List<ExampleDefinition> syncExamples = new ArrayList<ExampleDefinition>();
 		List<ExampleDefinition> asyncExamples = new ArrayList<ExampleDefinition>();
-		boolean success = true;
-		ExampleRunResult combinedResult = new ExampleRunResult(new ArrayList<ExampleResult>());
+		List<ExampleResult> immediateResults = new ArrayList<ExampleResult>();
+		ExampleRunResult combinedResult = new ExampleRunResult(immediateResults);
 
 		for (String example : examples) {
 			try {
@@ -261,30 +276,22 @@ public class Main extends JPanel {
 			}
 			catch (IllegalArgumentException iae) {
 				console.error(iae.getMessage());
-				success = false;
+				immediateResults.add(ExampleResult.failed(example, 0, iae));
 			}
 		}
 
 		if (! syncExamples.isEmpty()) {
 			ExampleRunResult syncResult = new ExampleRunner(console, params).runSync(syncExamples);
 			combinedResult = combinedResult.append(syncResult);
-
-			if (syncResult.hasFailures()) {
-				success = false;
-			}
 		}
 
 		if (! asyncExamples.isEmpty()) {
 			ExampleRunResult asyncResult = new ExampleRunner(console, params).runAsync(asyncExamples);
 			combinedResult = combinedResult.append(asyncResult);
-
-			if (asyncResult.hasFailures()) {
-				success = false;
-			}
 		}
 
 		logSummary(console, combinedResult);
-		return success;
+		return combinedResult;
 	}
 
 	private static void logSummary(Console console, ExampleRunResult result) {
@@ -313,5 +320,11 @@ public class Main extends JPanel {
 				console.info("  %s: %s - %s", label, exampleResult.name(), message);
 			}
 		}
+	}
+
+	private static void writeReport(Console console, String reportPath, ExampleRunResult result) throws Exception {
+		Path path = Paths.get(reportPath);
+		JUnitXmlReportWriter.write(path, result);
+		console.info("Wrote example report to " + path);
 	}
 }
