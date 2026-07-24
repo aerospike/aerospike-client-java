@@ -93,7 +93,7 @@ final class TopKReduceSpec implements ReduceSpec<Record, Record> {
 	}
 
 	@Override
-	public void acceptPartial(Record record, Key key) {
+	public synchronized void acceptPartial(Record record, Key key) {
 		byte[] digest = key.digest;
 		String digestKey = digestKey(digest);
 		OrderKey candidate = new OrderKey(record, bin, type, order, flags, digest);
@@ -119,7 +119,7 @@ final class TopKReduceSpec implements ReduceSpec<Record, Record> {
 	}
 
 	@Override
-	public Record getScalarResult() {
+	public synchronized Record getScalarResult() {
 		Record[] all = getResult();
 
 		if (all.length == 0) {
@@ -130,7 +130,7 @@ final class TopKReduceSpec implements ReduceSpec<Record, Record> {
 	}
 
 	@Override
-	public Record[] getResult() {
+	public synchronized Record[] getResult() {
 		List<OrderKey> list = new ArrayList<>(heap);
 		list.sort(Comparator.naturalOrder()); // best first.
 
@@ -146,7 +146,7 @@ final class TopKReduceSpec implements ReduceSpec<Record, Record> {
 	 * Return the record keys corresponding to {@link #getResult()}, in the same order.
 	 * Used by the query executor to reconstruct key/record pairs for {@link RecordSet}.
 	 */
-	Key[] getResultKeys() {
+	synchronized Key[] getResultKeys() {
 		List<OrderKey> list = new ArrayList<>(heap);
 		list.sort(Comparator.naturalOrder()); // best first.
 

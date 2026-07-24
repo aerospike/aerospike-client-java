@@ -256,13 +256,21 @@ public final class Vector {
 		// whether they are actually reserved or intended to hold vector flags.
 		pos += 2;
 
-		final int dataSize = dimensions * elementType.getByteSize();
-
-		if (length < HEADER_SIZE + dataSize) {
-			throw new IllegalArgumentException("Invalid vector length: " + length +
-				", expected at least " + (HEADER_SIZE + dataSize));
+		if (dimensions < 0) {
+			throw new IllegalArgumentException("Invalid vector dimensions: " + dimensions);
 		}
 
+		// Use long math so a large dimensions count cannot overflow the int size computation
+		// (which could otherwise bypass the bounds check and trigger a huge allocation).
+		final long dataSizeLong = (long)dimensions * elementType.getByteSize();
+
+		if (length < HEADER_SIZE + dataSizeLong) {
+			throw new IllegalArgumentException("Invalid vector length: " + length +
+				", expected at least " + (HEADER_SIZE + dataSizeLong));
+		}
+
+		// Safe to narrow: dataSizeLong <= length - HEADER_SIZE, and length is an int.
+		final int dataSize = (int)dataSizeLong;
 		final ByteBuffer view = ByteBuffer.wrap(buffer, pos, dataSize).order(ByteOrder.LITTLE_ENDIAN);
 		final Object data;
 

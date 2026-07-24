@@ -382,9 +382,15 @@ public final class Statement {
 
 		for (ReduceSpec<?, ?> spec : reduceSpecs) {
 			if (spec instanceof OrderByReduceSpec) {
+				if (orderBy != null) {
+					throw new IllegalArgumentException("topK requires exactly one orderBy spec");
+				}
 				orderBy = (ReduceSpec<Record, Record>)spec;
 			}
 			else if (spec instanceof LimitReduceSpec) {
+				if (limit != null) {
+					throw new IllegalArgumentException("topK requires exactly one limit spec");
+				}
 				limit = (ReduceSpec<Record, Record>)spec;
 			}
 			else {

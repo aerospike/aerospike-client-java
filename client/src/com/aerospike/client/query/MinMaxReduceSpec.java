@@ -50,7 +50,7 @@ final class MinMaxReduceSpec implements ReduceSpec<Record, Number> {
 	}
 
 	@Override
-	public void acceptPartial(Record record, Key key) {
+	public synchronized void acceptPartial(Record record, Key key) {
 		Number value = readNumber(record);
 
 		if (value == null) {
@@ -71,7 +71,7 @@ final class MinMaxReduceSpec implements ReduceSpec<Record, Number> {
 	}
 
 	@Override
-	public Number getScalarResult() {
+	public synchronized Number getScalarResult() {
 		if (best == null) {
 			throw new IllegalStateException(
 				"getScalarResult() called before any records were accepted via acceptPartial()");
@@ -80,22 +80,38 @@ final class MinMaxReduceSpec implements ReduceSpec<Record, Number> {
 	}
 
 	@Override
-	public Number[] getResult() {
+	public synchronized Number[] getResult() {
 		return new Number[] { getScalarResult() };
 	}
 
 	/**
 	 * Records tied at the current MIN/MAX value, in the order they were first seen.
 	 */
-	Record[] getTiedRecords() {
+	synchronized Record[] getTiedRecords() {
 		return tiesByDigest.values().toArray(new Record[0]);
 	}
 
 	private Number readNumber(Record record) {
-		return type == BinDataType.DOUBLE ? record.getDouble(bin) : record.getLong(bin);
+		// Read the raw bin value first so a missing bin is skipped rather than treated as 0
+		// (Record.getLong / getDouble return 0 for absent bins).
+		if (record.getValue(bin) == null) {
+			return null;
+		}
+		// Use separate return statements rather than a single ternary: a
+		// (double ? : long) ternary triggers binary numeric promotion, which would widen the
+		// long branch to double and box every value as Double, losing 64-bit integer precision.
+		if (type == BinDataType.DOUBLE) {
+			return record.getDouble(bin);
+		}
+		return record.getLong(bin);
 	}
 
-	private static int compareNumber(Number a, Number b) {
+	private int compareNumber(Number a, Number b) {
+		// Compare integers as longs to preserve full 64-bit precision (values above 2^53
+		// are not exactly representable as double).
+		if (type == BinDataType.INTEGER) {
+			return Long.compare(a.longValue(), b.longValue());
+		}
 		return Double.compare(a.doubleValue(), b.doubleValue());
 	}
 

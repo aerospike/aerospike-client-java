@@ -34,17 +34,18 @@ final class SumReduceSpec implements ReduceSpec<Record, Long> {
 	}
 
 	@Override
-	public void acceptPartial(Record record, Key key) {
-		sum += record.getLong(bin);
+	public synchronized void acceptPartial(Record record, Key key) {
+		// Fail fast on overflow rather than silently wrapping around to a negative/garbage total.
+		sum = Math.addExact(sum, record.getLong(bin));
 	}
 
 	@Override
-	public Long getScalarResult() {
+	public synchronized Long getScalarResult() {
 		return sum;
 	}
 
 	@Override
-	public Long[] getResult() {
+	public synchronized Long[] getResult() {
 		return new Long[] { getScalarResult() };
 	}
 }
