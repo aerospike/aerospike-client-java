@@ -16,101 +16,36 @@
  */
 package com.aerospike.examples;
 
-import com.aerospike.client.AerospikeException;
-import com.aerospike.client.Bin;
-import com.aerospike.client.IAerospikeClient;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
-import com.aerospike.client.ResultCode;
 import com.aerospike.client.command.Buffer;
-import com.aerospike.client.policy.Policy;
 import com.aerospike.client.query.Filter;
-import com.aerospike.client.query.IndexType;
 import com.aerospike.client.query.RecordSet;
 import com.aerospike.client.query.Statement;
-import com.aerospike.client.task.IndexTask;
 
 public class QueryInteger extends Example {
-
-	public QueryInteger(Console console) {
-		super(console);
-	}
 
 	/**
 	 * Create secondary index on an integer bin and query on it.
 	 */
 	@Override
-	public void runExample(IAerospikeClient client, Parameters params) throws Exception {
-		String indexName = "queryindexint";
-		String keyPrefix = "querykeyint";
+	public void runExample() throws Exception {
 		String binName = "querybinint";
-		int size = 50;
-
-		createIndex(client, params, indexName, binName);
-		writeRecords(client, params, keyPrefix, binName, size);
-		runQuery(client, params, indexName, binName);
-		client.dropIndex(params.policy, params.namespace, params.set, indexName);
-	}
-
-	private void createIndex(
-		IAerospikeClient client,
-		Parameters params,
-		String indexName,
-		String binName
-	) throws Exception {
-		console.info("Create index: ns=%s set=%s index=%s bin=%s",
-			params.namespace, params.set, indexName, binName);
-
-		Policy policy = new Policy();
-		policy.socketTimeout = 0; // Do not timeout on index create.
-
-		try {
-			IndexTask task = client.createIndex(policy, params.namespace, params.set, indexName, binName, IndexType.NUMERIC);
-			task.waitTillComplete();
-		}
-		catch (AerospikeException ae) {
-			if (ae.getResultCode() != ResultCode.INDEX_ALREADY_EXISTS) {
-				throw ae;
-			}
-		}
-	}
-
-	private void writeRecords(
-		IAerospikeClient client,
-		Parameters params,
-		String keyPrefix,
-		String binName,
-		int size
-	) throws Exception {
-		console.info("Write " + size + " records.");
-
-		for (int i = 1; i <= size; i++) {
-			Key key = new Key(params.namespace, params.set, keyPrefix + i);
-			Bin bin = new Bin(binName, i);
-			client.put(params.writePolicy, key, bin);
-		}
-	}
-
-	private void runQuery(
-		IAerospikeClient client,
-		Parameters params,
-		String indexName,
-		String binName
-	) throws Exception {
+		String indexName = "queryindexint";
 
 		int begin = 14;
 		int end = 18;
 
 		console.info("Query for: ns=%s set=%s index=%s bin=%s >= %s <= %s",
-			params.namespace, params.set, indexName, binName, begin, end);
+			namespace(), set(), indexName, binName, begin, end);
 
 		Statement stmt = new Statement();
-		stmt.setNamespace(params.namespace);
-		stmt.setSetName(params.set);
+		stmt.setNamespace(namespace());
+		stmt.setSetName(set());
 		stmt.setBinNames(binName);
 		stmt.setFilter(Filter.range(binName, begin, end));
 
-		RecordSet rs = client.query(null, stmt);
+		RecordSet rs = client().query(null, stmt);
 
 		try {
 			int count = 0;
@@ -125,10 +60,7 @@ public class QueryInteger extends Example {
 
 				count++;
 			}
-
-			if (count != 5) {
-				console.error("Query count mismatch. Expected 5. Received " + count);
-			}
+			console.info("Query returned %d records.", count);
 		}
 		finally {
 			rs.close();

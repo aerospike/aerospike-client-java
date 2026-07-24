@@ -18,15 +18,12 @@ package com.aerospike.examples;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Bin;
-import com.aerospike.client.IAerospikeClient;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
-import com.aerospike.client.async.EventLoop;
 import com.aerospike.client.listener.RecordSequenceListener;
 import com.aerospike.client.listener.WriteListener;
 import com.aerospike.client.policy.ScanPolicy;
 import com.aerospike.client.query.PartitionFilter;
-import com.aerospike.client.util.Util;
 
 public class AsyncScanPage extends AsyncExample {
 	private static final String binName = "bin";
@@ -37,46 +34,27 @@ public class AsyncScanPage extends AsyncExample {
 	 * Asynchronous scan example.
 	 */
 	@Override
-	public void runExample(IAerospikeClient client, EventLoop eventLoop) {
+	public void runExample() {
 		console.info("Write " + size + " records.");
+		beginRun();
+		WritePhase listener = new WritePhase();
+		int launched = 0;
 
-		WriteListener listener = new WriteListener() {
-			private int count = 0;
+		try {
+			for (int i = 1; i <= size; i++) {
+				Key key = new Key(namespace(), setName, i);
+				Bin bin = new Bin(binName, i);
 
-			public void onSuccess(final Key key) {
-				// Use non-atomic increment because all writes are performed
-				// in the same event loop thread.
-				if (++count == size) {
-					runScan(client, eventLoop);
-				}
+				launched++;
+				client().put(eventLoop(), listener, writePolicy(), key, bin);
 			}
-
-			public void onFailure(AerospikeException e) {
-				console.error("Failed to put: " + e.getMessage());
-				notifyComplete();
-			}
-		};
-
-		for (int i = 1; i <= size; i++) {
-			Key key = new Key(params.namespace, setName, i);
-			Bin bin = new Bin(binName, i);
-
-			client.put(eventLoop, listener, writePolicy, key, bin);
 		}
-
-		// Wait until scan finishes before closing cluster.  This is only necessary
-		// when running the async scan example from the command line (which closes the
-		// cluster after control is relinquished by this example).
-
-		// The async scan will continue to run after cluster close if the scan was
-		// initiated before cluster close.  The problem is cluster close shuts down
-		// cluster tending immediately so any data partition migrations will not be
-		// received by the client when performing the scan.
-		waitTillComplete();
+		catch (Throwable t) {
+			listener.onLaunchFailure(launched, t);
+		}
 	}
 
-	private void runScan(IAerospikeClient client, EventLoop eventLoop) {
-		int pageSize = 30;
+	private void runScan(final int pageSize) throws Exception {
 
 		console.info("Scan max " + pageSize + " records.");
 
@@ -96,16 +74,77 @@ public class AsyncScanPage extends AsyncExample {
 			@Override
 			public void onSuccess() {
 				console.info("Records returned: " + count);
-				notifyComplete();
+				completeRun();
 			}
 
 			@Override
 			public void onFailure(AerospikeException e) {
-				console.error("Scan failed: " + Util.getErrorMessage(e));
-				notifyComplete();
+				failRun(e);
 			}
 		};
 
-		client.scanPartitions(eventLoop, listener, policy, filter, params.namespace, setName);
+		client().scanPartitions(eventLoop(), listener, policy, filter, namespace(), setName);
+	}
+
+	private class WritePhase implements WriteListener {
+		private int launched = size;
+		private int completed;
+		private Throwable failure;
+
+		public void onSuccess(Key key) {
+			onWriteComplete(null);
+		}
+
+		public void onFailure(AerospikeException e) {
+			onWriteComplete(e);
+		}
+
+		private void onLaunchFailure(int launched, Throwable t) {
+			this.launched = launched;
+
+			if (failure == null) {
+				failure = t;
+			}
+
+			if (launched == 0) {
+				failRun(failure);
+			}
+			else if (completed == launched) {
+				finish();
+			}
+		}
+
+		private void onWriteComplete(Throwable t) {
+			if (t != null && failure == null) {
+				failure = t;
+			}
+
+			if (++completed == launched) {
+				finish();
+			}
+		}
+
+		private void finish() {
+			if (failure != null) {
+				failRun(failure);
+				return;
+			}
+
+			try {
+				beginRun();
+
+				try {
+					runScan(30);
+					completeRun();
+				}
+				catch (Throwable t) {
+					failRun(t);
+					failRun(t);
+				}
+			}
+			catch (Throwable t) {
+				failRun(t);
+			}
+		}
 	}
 }

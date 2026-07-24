@@ -19,7 +19,6 @@ package com.aerospike.examples;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import com.aerospike.client.Bin;
-import com.aerospike.client.IAerospikeClient;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
 import com.aerospike.client.ScanCallback;
@@ -30,19 +29,15 @@ public class ScanPage extends Example implements ScanCallback {
 
 	private AtomicInteger recordCount;
 
-	public ScanPage(Console console) {
-		super(console);
-	}
-
 	/**
 	 * Scan in pages.
 	 */
 	@Override
-	public void runExample(IAerospikeClient client, Parameters params) throws Exception {
+	public void runExample() throws Exception {
 		String binName = "bin";
 		String setName = "page";
 
-		writeRecords(client, params, setName, binName, 190);
+		writeRecords(setName, binName, 190);
 
 		recordCount = new AtomicInteger();
 
@@ -56,14 +51,12 @@ public class ScanPage extends Example implements ScanCallback {
 			recordCount.set(0);
 
 			console.info("Scan page: " + i);
-			client.scanPartitions(policy, filter, params.namespace, setName, this);
+			client().scanPartitions(policy, filter, namespace(), setName, this);
 			console.info("Records returned: " + recordCount.get());
 		}
 	}
 
 	private void writeRecords(
-		IAerospikeClient client,
-		Parameters params,
 		String setName,
 		String binName,
 		int size
@@ -71,9 +64,9 @@ public class ScanPage extends Example implements ScanCallback {
 		console.info("Write " + size + " records.");
 
 		for (int i = 1; i <= size; i++) {
-			Key key = new Key(params.namespace, setName, i);
+			Key key = new Key(namespace(), setName, i);
 			Bin bin = new Bin(binName, i);
-			client.put(params.writePolicy, key, bin);
+			client().put(writePolicy(), key, bin);
 		}
 	}
 

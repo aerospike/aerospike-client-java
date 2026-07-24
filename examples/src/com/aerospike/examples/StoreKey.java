@@ -18,7 +18,6 @@ package com.aerospike.examples;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Bin;
-import com.aerospike.client.IAerospikeClient;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
 import com.aerospike.client.ResultCode;
@@ -32,40 +31,30 @@ import com.aerospike.client.task.IndexTask;
 
 public class StoreKey extends Example {
 
-	public StoreKey(Console console) {
-		super(console);
-	}
-
 	/**
 	 * Store user key on server using WritePolicy.sendKey option.
 	 */
 	@Override
-	public void runExample(IAerospikeClient client, Parameters params) throws Exception {
+	public void runExample() throws Exception {
 		String indexName = "skindex";
 		String keyPrefix = "skkey";
 		String binName = "skbin";
 		int size = 10;
 
-		createIndex(client, params, indexName, binName);
-		writeRecords(client, params, keyPrefix, binName, size);
-		runQuery(client, params, indexName, binName);
-		client.dropIndex(params.policy, params.namespace, params.set, indexName);
+		createIndex(indexName, binName);
+		writeRecords(keyPrefix, binName, size);
+		runQuery(indexName, binName);
 	}
 
-	private void createIndex(
-		IAerospikeClient client,
-		Parameters params,
-		String indexName,
-		String binName
-	) throws Exception {
+	private void createIndex(String indexName, String binName) throws Exception {
 		console.info("Create index: ns=%s set=%s index=%s bin=%s",
-			params.namespace, params.set, indexName, binName);
+			namespace(), set(), indexName, binName);
 
 		Policy policy = new Policy();
 		policy.socketTimeout = 0; // Do not timeout on index create.
 
 		try {
-			IndexTask task = client.createIndex(policy, params.namespace, params.set, indexName, binName, IndexType.NUMERIC);
+			IndexTask task = client().createIndex(policy, namespace(), set(), indexName, binName, IndexType.NUMERIC);
 			task.waitTillComplete();
 		}
 		catch (AerospikeException ae) {
@@ -75,44 +64,33 @@ public class StoreKey extends Example {
 		}
 	}
 
-	private void writeRecords(
-		IAerospikeClient client,
-		Parameters params,
-		String keyPrefix,
-		String binName,
-		int size
-	) throws Exception {
+	private void writeRecords(String keyPrefix, String binName, int size) throws Exception {
 		console.info("Write " + size + " records with store user key option.");
 		WritePolicy policy = new WritePolicy();
 		policy.sendKey = true;
 
 		for (int i = 1; i <= size; i++) {
-			Key key = new Key(params.namespace, params.set, keyPrefix + i);
+			Key key = new Key(namespace(), set(), keyPrefix + i);
 			Bin bin = new Bin(binName, i);
-			client.put(policy, key, bin);
+			client().put(policy, key, bin);
 		}
 	}
 
-	private void runQuery(
-		IAerospikeClient client,
-		Parameters params,
-		String indexName,
-		String binName
-	) throws Exception {
+	private void runQuery(String indexName, String binName) throws Exception {
 
 		int begin = 2;
 		int end = 5;
 
 		console.info("Query user key for: ns=%s set=%s index=%s bin=%s >= %s <= %s",
-			params.namespace, params.set, indexName, binName, begin, end);
+			namespace(), set(), indexName, binName, begin, end);
 
 		Statement stmt = new Statement();
-		stmt.setNamespace(params.namespace);
-		stmt.setSetName(params.set);
+		stmt.setNamespace(namespace());
+		stmt.setSetName(set());
 		stmt.setBinNames(binName);
 		stmt.setFilter(Filter.range(binName, begin, end));
 
-		RecordSet rs = client.query(null, stmt);
+		RecordSet rs = client().query(null, stmt);
 
 		try {
 			int count = 0;

@@ -20,11 +20,9 @@ import com.aerospike.client.AbortStatus;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Bin;
 import com.aerospike.client.CommitStatus;
-import com.aerospike.client.IAerospikeClient;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
 import com.aerospike.client.Txn;
-import com.aerospike.client.async.EventLoop;
 import com.aerospike.client.listener.AbortListener;
 import com.aerospike.client.listener.CommitListener;
 import com.aerospike.client.listener.DeleteListener;
@@ -37,132 +35,204 @@ import com.aerospike.client.policy.WritePolicy;
  * Asynchronous multi-record transaction example.
  */
 public class AsyncTransaction extends AsyncExample {
+	private Throwable terminalFailure;
+
 	@Override
-	public void runExample(IAerospikeClient client, EventLoop eventLoop) {
-		Txn txn = new Txn();
+	public void runExample() {
+		final Txn txn = new Txn();
+		terminalFailure = null;
 
 		console.info("Begin txn: " + txn.getId());
-		put(client, txn, eventLoop);
+		beginRun();
+
+		try {
+			new Sequence(txn, new Runner[] {
+				new PutStep("Run put", txn, new Key(namespace(), set(), 1), new Bin("a", "val1")),
+				new PutStep("Run another put", txn, new Key(namespace(), set(), 2), new Bin("b", "val2")),
+				new GetStep(txn, new Key(namespace(), set(), 3)),
+				new DeleteStep(txn, new Key(namespace(), set(), 3))
+			}).runNext();
+		}
+		catch (Throwable t) {
+			failRun(t);
+		}
 	}
 
-	public void put(IAerospikeClient client, Txn txn, EventLoop eventLoop) {
-		console.info("Run put");
-
-		WritePolicy wp = client.copyWritePolicyDefault();
-		wp.txn = txn;
-
-		Key key = new Key(params.namespace, params.set, 1);
-
-		WriteListener wl = new WriteListener() {
-			public void onSuccess(final Key key) {
-				putAnother(client, txn, eventLoop);
-			}
-
-			public void onFailure(AerospikeException e) {
-				console.error("Failed to write: namespace=%s set=%s key=%s exception=%s",
-						key.namespace, key.setName, key.userKey, e.getMessage());
-				abort(client, txn, eventLoop);
-			}
-		};
-
-		client.put(eventLoop, wl, wp, key, new Bin("a", "val1"));
-	}
-
-	public void putAnother(IAerospikeClient client, Txn txn, EventLoop eventLoop) {
-		console.info("Run another put");
-
-		WritePolicy wp = client.copyWritePolicyDefault();
-		wp.txn = txn;
-
-		Key key = new Key(params.namespace, params.set, 2);
-
-		WriteListener wl = new WriteListener() {
-			public void onSuccess(final Key key) {
-				get(client, txn, eventLoop);
-			}
-
-			public void onFailure(AerospikeException e) {
-				console.error("Failed to write: namespace=%s set=%s key=%s exception=%s",
-					key.namespace, key.setName, key.userKey, e.getMessage());
-				abort(client, txn, eventLoop);
-			}
-		};
-
-		client.put(eventLoop, wl, wp, key, new Bin("b", "val2"));
-	}
-
-	public void get(IAerospikeClient client, Txn txn, EventLoop eventLoop) {
-		console.info("Run get");
-
-		Policy p = client.copyReadPolicyDefault();
-		p.txn = txn;
-
-		Key key = new Key(params.namespace, params.set, 3);
-
-		RecordListener rl = new RecordListener() {
-			public void onSuccess(Key key, Record record) {
-				delete(client, txn, eventLoop);
-			}
-
-			public void onFailure(AerospikeException e) {
-				console.error("Failed to read: namespace=%s set=%s key=%s exception=%s",
-					key.namespace, key.setName, key.userKey, e.getMessage());
-				abort(client, txn, eventLoop);
-			}
-		};
-
-		client.get(eventLoop, rl, p, key);
-	}
-
-	public void delete(IAerospikeClient client, Txn txn, EventLoop eventLoop) {
-		console.info("Run delete");
-
-		WritePolicy dp = client.copyWritePolicyDefault();
-		dp.txn = txn;
-		dp.durableDelete = true;  // Required when running delete in a transaction.
-
-		Key key = new Key(params.namespace, params.set, 3);
-
-		DeleteListener dl = new DeleteListener() {
-			public void onSuccess(final Key key, boolean existed) {
-				commit(client, txn, eventLoop);
-			}
-
-			public void onFailure(AerospikeException e) {
-				console.error("Failed to delete: namespace=%s set=%s key=%s exception=%s",
-						key.namespace, key.setName, key.userKey, e.getMessage());
-				abort(client, txn, eventLoop);
-			}
-		};
-
-		client.delete(eventLoop, dl, dp, key);
-	}
-
-	public void commit(IAerospikeClient client, Txn txn, EventLoop eventLoop) {
+	private void commit(final Txn txn) {
 		console.info("Run commit");
 
 		CommitListener tcl = new CommitListener() {
 			public void onSuccess(CommitStatus status) {
 				console.info("Txn committed: " + txn.getId());
+				completeRun();
 			}
 
 			public void onFailure(AerospikeException.Commit ae) {
-				console.error("Txn commit failed: " + txn.getId());
+				failRun(ae);
 			}
 		};
 
-		client.commit(eventLoop, tcl, txn);
+		client().commit(eventLoop(), tcl, txn);
 	}
 
-	public void abort(IAerospikeClient client, Txn txn, EventLoop eventLoop) {
+	private void abort(final Txn txn, Throwable cause) {
+		if (terminalFailure == null) {
+			terminalFailure = cause;
+		}
+
 		console.info("Run abort");
 
 		AbortListener tal = new AbortListener() {
 			public void onSuccess(AbortStatus status) {
-				console.error("Txn aborted: " + txn.getId());
+				console.info("Txn aborted: " + txn.getId());
+				failRun(terminalFailure);
 			}
 		};
 
-		client.abort(eventLoop, tal, txn);
+		try {
+			client().abort(eventLoop(), tal, txn);
+		}
+		catch (Throwable t) {
+			if (terminalFailure != null && terminalFailure != t) {
+				terminalFailure.addSuppressed(t);
+				failRun(terminalFailure);
+			}
+			else {
+				failRun(t);
+			}
+		}
+	}
+
+	private class Sequence implements Listener {
+		private final Txn txn;
+		private final Runner[] runners;
+		private int index = -1;
+
+		private Sequence(Txn txn, Runner[] runners) {
+			this.txn = txn;
+			this.runners = runners;
+		}
+
+		private void runNext() {
+			if (++index == runners.length) {
+				try {
+					commit(txn);
+				}
+				catch (Throwable t) {
+					failRun(t);
+				}
+				return;
+			}
+
+			try {
+				runners[index].run(this);
+			}
+			catch (Throwable t) {
+				abort(txn, t);
+			}
+		}
+
+		public void onSuccess() {
+			runNext();
+		}
+
+		public void onFailure(Throwable failure) {
+			abort(txn, failure);
+		}
+	}
+
+	private class PutStep implements Runner {
+		private final String label;
+		private final Txn txn;
+		private final Key key;
+		private final Bin bin;
+
+		private PutStep(String label, Txn txn, Key key, Bin bin) {
+			this.label = label;
+			this.txn = txn;
+			this.key = key;
+			this.bin = bin;
+		}
+
+		public void run(final Listener listener) {
+			console.info(label);
+
+			WritePolicy wp = client().copyWritePolicyDefault();
+			wp.txn = txn;
+
+			client().put(eventLoop(), new WriteListener() {
+				public void onSuccess(Key key) {
+					listener.onSuccess();
+				}
+
+				public void onFailure(AerospikeException e) {
+					listener.onFailure(e);
+				}
+			}, wp, key, bin);
+		}
+	}
+
+	private class GetStep implements Runner {
+		private final Txn txn;
+		private final Key key;
+
+		private GetStep(Txn txn, Key key) {
+			this.txn = txn;
+			this.key = key;
+		}
+
+		public void run(final Listener listener) {
+			console.info("Run get");
+
+			Policy p = client().copyReadPolicyDefault();
+			p.txn = txn;
+
+			client().get(eventLoop(), new RecordListener() {
+				public void onSuccess(Key key, Record record) {
+					listener.onSuccess();
+				}
+
+				public void onFailure(AerospikeException e) {
+					listener.onFailure(e);
+				}
+			}, p, key);
+		}
+	}
+
+	private class DeleteStep implements Runner {
+		private final Txn txn;
+		private final Key key;
+
+		private DeleteStep(Txn txn, Key key) {
+			this.txn = txn;
+			this.key = key;
+		}
+
+		public void run(final Listener listener) {
+			console.info("Run delete");
+
+			WritePolicy dp = client().copyWritePolicyDefault();
+			dp.txn = txn;
+			dp.durableDelete = true;
+
+			client().delete(eventLoop(), new DeleteListener() {
+				public void onSuccess(Key key, boolean existed) {
+					listener.onSuccess();
+				}
+
+				public void onFailure(AerospikeException e) {
+					listener.onFailure(e);
+				}
+			}, dp, key);
+		}
+	}
+
+	private interface Runner {
+		void run(Listener listener);
+	}
+
+	private interface Listener {
+		void onSuccess();
+		void onFailure(Throwable failure);
 	}
 }

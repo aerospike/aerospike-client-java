@@ -20,7 +20,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import com.aerospike.client.IAerospikeClient;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
 import com.aerospike.client.ScanCallback;
@@ -30,28 +29,24 @@ public class ScanSeries extends Example implements ScanCallback {
 
 	private Map<String,Metrics> setMap = new HashMap<String,Metrics>();
 
-	public ScanSeries(Console console) {
-		super(console);
-	}
-
 	/**
 	 * Scan all nodes in series and read all records in all sets.
 	 */
 	@Override
-	public void runExample(IAerospikeClient client, Parameters params) throws Exception {
-		console.info("Scan series: namespace=" + params.namespace + " set=" + params.set);
+	public void runExample() throws Exception {
+		console.info("Scan series: namespace=" + namespace() + " set=" + set());
 
 		// Limit scan to recordsPerSecond.  This will take more time, but it will reduce
 		// the load on the server.
 		ScanPolicy policy = new ScanPolicy();
 		policy.recordsPerSecond = 5000;
 
-		List<String> nodeList = client.getNodeNames();
+		List<String> nodeList = client().getNodeNames();
 		long begin = System.currentTimeMillis();
 
 		for (String nodeName : nodeList) {
 			console.info("Scan node " + nodeName);
-			client.scanNode(policy, nodeName, params.namespace, params.set, this);
+			client().scanNode(policy, nodeName, namespace(), set(), this);
 
 			for (Map.Entry<String,Metrics> entry : setMap.entrySet()) {
 				console.info("Node " + nodeName + " set " + entry.getKey() + " count: " +  entry.getValue().count);

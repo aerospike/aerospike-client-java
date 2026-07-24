@@ -18,7 +18,6 @@ package com.aerospike.examples;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Bin;
-import com.aerospike.client.IAerospikeClient;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
 import com.aerospike.client.ResultCode;
@@ -32,41 +31,31 @@ import com.aerospike.client.task.IndexTask;
 
 public class QueryString extends Example {
 
-	public QueryString(Console console) {
-		super(console);
-	}
-
 	/**
 	 * Create secondary index on a string bin and query on it.
 	 */
 	@Override
-	public void runExample(IAerospikeClient client, Parameters params) throws Exception {
+	public void runExample() throws Exception {
 		String indexName = "queryindex";
 		String keyPrefix = "querykey";
 		String valuePrefix = "queryvalue";
 		String binName = "querybin";
 		int size = 5;
 
-		createIndex(client, params, indexName, binName);
-		writeRecords(client, params, keyPrefix, binName, valuePrefix, size);
-		runQuery(client, params, indexName, binName, valuePrefix);
-		client.dropIndex(params.policy, params.namespace, params.set, indexName);
+		createIndex(indexName, binName);
+		writeRecords(keyPrefix, binName, valuePrefix, size);
+		runQuery(indexName, binName, valuePrefix);
 	}
 
-	private void createIndex(
-		IAerospikeClient client,
-		Parameters params,
-		String indexName,
-		String binName
-	) throws Exception {
+	private void createIndex(String indexName, String binName) throws Exception {
 		console.info("Create index: ns=%s set=%s index=%s bin=%s",
-			params.namespace, params.set, indexName, binName);
+			namespace(), set(), indexName, binName);
 
 		Policy policy = new Policy();
 		policy.socketTimeout = 0; // Do not timeout on index create.
 
 		try {
-			IndexTask task = client.createIndex(policy, params.namespace, params.set, indexName, binName, IndexType.STRING);
+			IndexTask task = client().createIndex(policy, namespace(), set(), indexName, binName, IndexType.STRING);
 			task.waitTillComplete();
 		}
 		catch (AerospikeException ae) {
@@ -76,45 +65,32 @@ public class QueryString extends Example {
 		}
 	}
 
-	private void writeRecords(
-		IAerospikeClient client,
-		Parameters params,
-		String keyPrefix,
-		String binName,
-		String valuePrefix,
-		int size
-	) throws Exception {
+	private void writeRecords(String keyPrefix, String binName, String valuePrefix, int size) throws Exception {
 		for (int i = 1; i <= size; i++) {
-			Key key = new Key(params.namespace, params.set, keyPrefix + i);
+			Key key = new Key(namespace(), set(), keyPrefix + i);
 			Bin bin = new Bin(binName, valuePrefix + i);
 
 			console.info("Put: ns=%s set=%s key=%s bin=%s value=%s",
 				key.namespace, key.setName, key.userKey, bin.name, bin.value);
 
-			client.put(params.writePolicy, key, bin);
+			client().put(writePolicy(), key, bin);
 		}
 	}
 
-	private void runQuery(
-		IAerospikeClient client,
-		Parameters params,
-		String indexName,
-		String binName,
-		String valuePrefix
-	) throws Exception {
+	private void runQuery(String indexName, String binName, String valuePrefix) throws Exception {
 
 		String filter = valuePrefix + 3;
 
 		console.info("Query for: ns=%s set=%s index=%s bin=%s filter=%s",
-			params.namespace, params.set, indexName, binName, filter);
+			namespace(), set(), indexName, binName, filter);
 
 		Statement stmt = new Statement();
-		stmt.setNamespace(params.namespace);
-		stmt.setSetName(params.set);
+		stmt.setNamespace(namespace());
+		stmt.setSetName(set());
 		stmt.setBinNames(binName);
 		stmt.setFilter(Filter.equal(binName, filter));
 
-		RecordSet rs = client.query(null, stmt);
+		RecordSet rs = client().query(null, stmt);
 
 		try {
 			int count = 0;

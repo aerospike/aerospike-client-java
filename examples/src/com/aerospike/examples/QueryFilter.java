@@ -20,7 +20,6 @@ import java.util.Map;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Bin;
-import com.aerospike.client.IAerospikeClient;
 import com.aerospike.client.Key;
 import com.aerospike.client.Language;
 import com.aerospike.client.ResultCode;
@@ -35,46 +34,36 @@ import com.aerospike.client.task.RegisterTask;
 
 public class QueryFilter extends Example {
 
-	public QueryFilter(Console console) {
-		super(console);
-	}
-
 	/**
 	 * Query on a secondary index with a filter and then apply an additional filter in the
 	 * user defined function.
 	 */
 	@Override
-	public void runExample(IAerospikeClient client, Parameters params) throws Exception {
+	public void runExample() throws Exception {
 		String indexName = "profileindex";
 		String keyPrefix = "profilekey";
 		String binName = "name";
 
-		register(client, params);
-		createIndex(client, params, indexName, binName);
-		writeRecords(client, params, keyPrefix, binName);
-		runQuery(client, params, indexName, binName);
-		client.dropIndex(params.policy, params.namespace, params.set, indexName);
+		register();
+		createIndex(indexName, binName);
+		writeRecords(keyPrefix);
+		runQuery(indexName, binName);
 	}
 
-	private void register(IAerospikeClient client, Parameters params) throws Exception {
-		RegisterTask task = client.register(params.policy, "udf/filter_example.lua", "filter_example.lua", Language.LUA);
+	private void register() throws Exception {
+		RegisterTask task = client().register(readPolicy(), "udf/filter_example.lua", "filter_example.lua", Language.LUA);
 		task.waitTillComplete();
 	}
 
-	private void createIndex(
-		IAerospikeClient client,
-		Parameters params,
-		String indexName,
-		String binName
-	) throws Exception {
+	private void createIndex(String indexName, String binName) throws Exception {
 		console.info("Create index: ns=%s set=%s index=%s bin=%s",
-			params.namespace, params.set, indexName, binName);
+			namespace(), set(), indexName, binName);
 
 		Policy policy = new Policy();
 		policy.socketTimeout = 0; // Do not timeout on index create.
 
 		try {
-			IndexTask task = client.createIndex(policy, params.namespace, params.set, indexName, binName, IndexType.STRING);
+			IndexTask task = client().createIndex(policy, namespace(), set(), indexName, binName, IndexType.STRING);
 			task.waitTillComplete();
 		}
 		catch (AerospikeException ae) {
@@ -84,55 +73,39 @@ public class QueryFilter extends Example {
 		}
 	}
 
-	private void writeRecords(
-		IAerospikeClient client,
-		Parameters params,
-		String keyPrefix,
-		String binName
-	) throws Exception {
-		writeRecord(client, params, keyPrefix + 1, "Charlie", "cpass");
-		writeRecord(client, params, keyPrefix + 2, "Bill", "hknfpkj");
-		writeRecord(client, params, keyPrefix + 3, "Doug", "dj6554");
+	private void writeRecords(String keyPrefix) throws Exception {
+		writeRecord(keyPrefix + 1, "Charlie", "cpass");
+		writeRecord(keyPrefix + 2, "Bill", "hknfpkj");
+		writeRecord(keyPrefix + 3, "Doug", "dj6554");
 	}
 
-	private void writeRecord(
-		IAerospikeClient client,
-		Parameters params,
-		String userKey,
-		String name,
-		String password
-	) throws Exception {
-		Key key = new Key(params.namespace, params.set, userKey);
+	private void writeRecord(String userKey, String name, String password) throws Exception {
+		Key key = new Key(namespace(), set(), userKey);
 		Bin bin1 = new Bin("name", name);
 		Bin bin2 = new Bin("password", password);
 		console.info("Put: ns=%s set=%s key=%s bin=%s value=%s",
 			key.namespace, key.setName, key.userKey, bin1.name, bin1.value);
 
-		client.put(params.writePolicy, key, bin1, bin2);
+		client().put(writePolicy(), key, bin1, bin2);
 	}
 
 	@SuppressWarnings("unchecked")
-	private void runQuery(
-		IAerospikeClient client,
-		Parameters params,
-		String indexName,
-		String binName
-	) throws Exception {
+	private void runQuery(String indexName, String binName) throws Exception {
 
 		String nameFilter = "Bill";
 		String passFilter = "hknfpkj";
 
 		console.info("Query for: ns=%s set=%s index=%s name=%s pass=%s",
-			params.namespace, params.set, indexName, nameFilter, passFilter);
+			namespace(), set(), indexName, nameFilter, passFilter);
 
 		Statement stmt = new Statement();
-		stmt.setNamespace(params.namespace);
-		stmt.setSetName(params.set);
+		stmt.setNamespace(namespace());
+		stmt.setSetName(set());
 		stmt.setFilter(Filter.equal(binName, nameFilter));
 		stmt.setAggregateFunction("filter_example", "profile_filter", Value.get(passFilter));
 
 		// passFilter will be applied in filter_example.lua.
-		ResultSet rs = client.queryAggregate(null, stmt);
+		ResultSet rs = client().queryAggregate(null, stmt);
 
 		try {
 			int count = 0;

@@ -20,6 +20,7 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 
 import javax.swing.JPanel;
 
@@ -39,57 +40,12 @@ import com.aerospike.client.util.Util;
 public class Main extends JPanel {
 
 	private static final long serialVersionUID = 1L;
-	private static final String[] ExampleNames = new String[] {
-		"ServerInfo",
-		"PutGet",
-		"Replace",
-		"Add",
-		"Append",
-		"Prepend",
-		"Batch",
-		"Generation",
-		"Expire",
-		"Touch",
-		"StoreKey",
-		"DeleteBin",
-		"ListMap",
-		"Operate",
-		"OperateBit",
-		"OperateList",
-		"OperateMap",
-		"PathExpression",
-		"ScanPage",
-		"ScanParallel",
-		"ScanResume",
-		"ScanSeries",
-		"UserDefinedFunction",
-		"QueryInteger",
-		"QueryString",
-		"QueryFilter",
-		"QueryExp",
-		"QueryPage",
-		"QueryResume",
-		"QuerySum",
-		"QueryAverage",
-		"QueryCollection",
-		"QueryRegion",
-		"QueryRegionFilter",
-		"QueryGeoCollection",
-		"QueryExecute",
-		"AsyncPutGet",
-		"AsyncBatch",
-		"AsyncQuery",
-		"AsyncScan",
-		"AsyncScanPage",
-		"AsyncUserDefinedFunction"
-	};
-	public static String[] getAllExampleNames() { return ExampleNames; }
 
 	/**
 	 * Main entry point.
 	 */
 	public static void main(String[] args) {
-
+		int exitCode = 0;
 		try {
 			Options options = new Options();
 			options.addOption("h", "host", true,
@@ -154,13 +110,7 @@ public class Main extends JPanel {
 				return;
 			}
 
-			// Check for all.
-			for (String exampleName : exampleNames) {
-				if (exampleName.equalsIgnoreCase("all")) {
-					exampleNames = ExampleNames;
-					break;
-				}
-			}
+			exampleNames = expandExampleNames(exampleNames);
 
 			if (cl.hasOption("netty")) {
 				params.eventLoopType = EventLoopType.NETTY_NIO;
@@ -183,11 +133,18 @@ public class Main extends JPanel {
 			}
 			else {
 				Console console = new Console();
-				runExamples(console, params, exampleNames);
+				if (! runExamples(console, params, exampleNames)) {
+					exitCode = 1;
+				}
 			}
 		}
 		catch (Exception ex) {
 			ex.printStackTrace();
+			exitCode = 1;
+		}
+
+		if (exitCode != 0) {
+			System.exit(exitCode);
 		}
 	}
 
@@ -203,11 +160,20 @@ public class Main extends JPanel {
 		System.out.println(sw.toString());
 		System.out.println("examples:");
 
-		for (String name : ExampleNames) {
+		for (String name : ExampleRegistry.names()) {
 			System.out.println(name.toString());
 		}
 		System.out.println();
 		System.out.println("All examples will be run if 'all' is specified as an example.");
+	}
+
+	private static String[] expandExampleNames(String[] exampleNames) {
+		for (String exampleName : exampleNames) {
+			if (exampleName.equalsIgnoreCase("all")) {
+				return ExampleRegistry.names();
+			}
+		}
+		return exampleNames;
 	}
 
 	/**
@@ -276,25 +242,44 @@ public class Main extends JPanel {
 	/**
 	 * Connect and run one or more client examples.
 	 */
-	public static void runExamples(Console console, Parameters params, String[] examples) throws Exception {
-		ArrayList<String> syncExamples = new ArrayList<String>();
-		ArrayList<String> asyncExamples = new ArrayList<String>();
+	public static boolean runExamples(Console console, Parameters params, String[] examples) throws Exception {
+		List<ExampleDefinition> syncExamples = new ArrayList<ExampleDefinition>();
+		List<ExampleDefinition> asyncExamples = new ArrayList<ExampleDefinition>();
+		boolean success = true;
 
 		for (String example : examples) {
-			if (example.startsWith("Async")) {
-				asyncExamples.add(example);
+			try {
+				ExampleDefinition definition = ExampleRegistry.get(example);
+
+				if (definition.isAsync()) {
+					asyncExamples.add(definition);
+				}
+				else {
+					syncExamples.add(definition);
+				}
 			}
-			else {
-				syncExamples.add(example);
+			catch (IllegalArgumentException iae) {
+				console.error(iae.getMessage());
+				success = false;
 			}
 		}
 
-		if (syncExamples.size() > 0) {
-			Example.runExamples(console, params, syncExamples);
+		if (! syncExamples.isEmpty()) {
+			ExampleRunResult syncResult = new ExampleRunner(console, params).runSync(syncExamples);
+
+			if (syncResult.hasFailures()) {
+				success = false;
+			}
 		}
 
-		if (asyncExamples.size() > 0) {
-			AsyncExample.runExamples(console, params, asyncExamples);
+		if (! asyncExamples.isEmpty()) {
+			ExampleRunResult asyncResult = new ExampleRunner(console, params).runAsync(asyncExamples);
+
+			if (asyncResult.hasFailures()) {
+				success = false;
+			}
 		}
+
+		return success;
 	}
 }
