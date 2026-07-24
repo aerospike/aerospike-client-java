@@ -22,6 +22,11 @@ on:
         required: false
         default: false
         description: Spin up aerospike enterprise server and run tests
+      run-examples:
+        type: boolean
+        required: false
+        default: false
+        description: Run examples suite against Aerospike
       crypto-type:
         type: string
         required: true
@@ -53,6 +58,7 @@ jobs:
         with:
           crypto-type: ${{ inputs.crypto-type }}
           run-tests: ${{ inputs.run-tests }}
+          run-examples: ${{ inputs.run-examples }}
           server-tag: ${{ inputs.server-tag }}
           server-container-repo: ${{ inputs.server-container-repo }}
           oidc-provider: ${{ secrets.JFROG_OIDC_PROVIDER }}
@@ -66,7 +72,7 @@ jobs:
           check_name: "Test Results (${{ inputs.crypto-type }} / ${{ inputs.server-tag }})"
 
       - name: Publish Example Results
-        if: ${{ always() && inputs.run-tests }}
+        if: ${{ always() && inputs.run-examples }}
         uses: EnricoMi/publish-unit-test-result-action@v2
         with:
           files: examples/target/example-reports/*.xml

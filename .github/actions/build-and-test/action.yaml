@@ -20,6 +20,10 @@ inputs:
     required: true
     default: "true"
     description: Spin up aerospike enterprise server and run tests
+  run-examples:
+    required: false
+    default: "true"
+    description: Run examples suite against Aerospike
   server-container-repo:
     required: true
     description: Server type `aerospike-server` or `aerospike-enterprise-server`
@@ -45,7 +49,7 @@ runs:
 
     # Starting test bench
     - name: Run Aerospike
-      if: ${{ inputs.run-tests == 'true' }}
+      if: ${{ inputs.run-tests == 'true' || inputs.run-examples == 'true' }}
       id: setup-aerospike-server
       uses: aerospike/shared-workflows/.github/actions/setup-aerospike-server@334ad55b790658d549747b0d154407dfc730acca # latest main
       with:
@@ -56,7 +60,7 @@ runs:
         enable-tls: ${{ inputs.enable-tls }}
 
     - name: Import CA cert into JVM trust store
-      if: ${{ inputs.run-tests == 'true' && inputs.enable-tls == 'true' }}
+      if: ${{ (inputs.run-tests == 'true' || inputs.run-examples == 'true') && inputs.enable-tls == 'true' }}
       shell: bash
       run: |
         keytool -import -trustcacerts \
@@ -79,7 +83,7 @@ runs:
 
     - name: Run examples
       shell: bash
-      if: ${{ inputs.run-tests == 'true' }}
+      if: ${{ inputs.run-examples == 'true' }}
       working-directory: examples
       run: |
         if [ "${{ inputs.enable-tls }}" = "true" ]; then
