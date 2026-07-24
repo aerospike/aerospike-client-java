@@ -59,8 +59,18 @@ public final class ExampleRegistry {
 		registerSync(examples, "Prepend", Prepend.class, ExampleFixtures.prependExample());
 		registerSync(examples, "Batch", Batch.class);
 		registerSync(examples, "Generation", Generation.class, ExampleFixtures.generationExample());
-		registerSync(examples, "Expire", Expire.class, ExampleFixtures.expireExample());
-		registerSync(examples, "Touch", Touch.class, ExampleFixtures.touchExample());
+		registerSync(
+			examples,
+			"Expire",
+			Expire.class,
+			ExampleFixtures.expireExample(),
+			ExampleServerRequirement.ttlSupported());
+		registerSync(
+			examples,
+			"Touch",
+			Touch.class,
+			ExampleFixtures.touchExample(),
+			ExampleServerRequirement.ttlSupported());
 		registerSync(examples, "StoreKey", StoreKey.class, QueryExampleFixtures.storeKeyExample());
 		registerSync(examples, "DeleteBin", DeleteBin.class, ExampleFixtures.deleteBinExample());
 		registerSync(examples, "ListMap", ListMap.class);
@@ -68,7 +78,12 @@ public final class ExampleRegistry {
 		registerSync(examples, "OperateBit", OperateBit.class, ExampleFixtures.operateBitExample());
 		registerSync(examples, "OperateList", OperateList.class, AdvancedExampleFixtures.operateListExample());
 		registerSync(examples, "OperateMap", OperateMap.class, AdvancedExampleFixtures.operateMapExample());
-		registerSync(examples, "PathExpression", PathExpression.class);
+		registerSync(
+			examples,
+			"PathExpression",
+			PathExpression.class,
+			ExampleFixture.NONE,
+			ExampleServerRequirement.minimumServerVersion(8, 1, 2));
 		registerSync(examples, "ScanPage", ScanPage.class, AdvancedExampleFixtures.scanPageExample());
 		registerSync(examples, "ScanParallel", ScanParallel.class);
 		registerSync(examples, "ScanResume", ScanResume.class, AdvancedExampleFixtures.scanResumeExample());
@@ -88,14 +103,24 @@ public final class ExampleRegistry {
 		registerSync(examples, "QueryGeoCollection", QueryGeoCollection.class, QueryExampleFixtures.queryGeoCollectionExample());
 		registerSync(examples, "QueryExecute", QueryExecute.class, QueryExampleFixtures.queryExecuteExample());
 		registerSync(examples, "BatchOperate", BatchOperate.class, AdvancedExampleFixtures.batchOperateExample());
-		registerSync(examples, "Transaction", Transaction.class, AdvancedExampleFixtures.transactionExample());
+		registerSync(
+			examples,
+			"Transaction",
+			Transaction.class,
+			AdvancedExampleFixtures.transactionExample(),
+			ExampleServerRequirement.enterpriseEdition().andStrongConsistencyNamespace());
 		registerAsync(examples, "AsyncPutGet", AsyncPutGet.class, ExampleFixtures.asyncPutGetExample());
 		registerAsync(examples, "AsyncBatch", AsyncBatch.class, ExampleFixtures.asyncBatchExample());
 		registerAsync(examples, "AsyncQuery", AsyncQuery.class, QueryExampleFixtures.asyncQueryExample());
 		registerAsync(examples, "AsyncScan", AsyncScan.class);
 		registerAsync(examples, "AsyncScanPage", AsyncScanPage.class, AdvancedExampleFixtures.asyncScanPageExample());
 		registerAsync(examples, "AsyncUserDefinedFunction", AsyncUserDefinedFunction.class, ExampleFixtures.asyncUserDefinedFunctionExample());
-		registerAsync(examples, "AsyncTransaction", AsyncTransaction.class, AdvancedExampleFixtures.asyncTransactionExample());
+		registerAsync(
+			examples,
+			"AsyncTransaction",
+			AsyncTransaction.class,
+			AdvancedExampleFixtures.asyncTransactionExample(),
+			ExampleServerRequirement.enterpriseEdition().andStrongConsistencyNamespace());
 
 		return Collections.unmodifiableMap(examples);
 	}
@@ -112,9 +137,28 @@ public final class ExampleRegistry {
 		Map<String, ExampleDefinition> examples,
 		String name,
 		Class<?> cls,
+		ExampleServerRequirement serverRequirement
+	) {
+		registerSync(examples, name, cls, ExampleFixture.NONE, serverRequirement);
+	}
+
+	private static void registerSync(
+		Map<String, ExampleDefinition> examples,
+		String name,
+		Class<?> cls,
 		ExampleFixture fixture
 	) {
-		examples.put(name, new ExampleDefinition(name, ExampleMode.SYNC, cls, fixture));
+		registerSync(examples, name, cls, fixture, ExampleServerRequirement.NONE);
+	}
+
+	private static void registerSync(
+		Map<String, ExampleDefinition> examples,
+		String name,
+		Class<?> cls,
+		ExampleFixture fixture,
+		ExampleServerRequirement serverRequirement
+	) {
+		examples.put(name, new ExampleDefinition(name, ExampleMode.SYNC, cls, fixture, serverRequirement));
 	}
 
 	private static void registerAsync(
@@ -129,8 +173,27 @@ public final class ExampleRegistry {
 		Map<String, ExampleDefinition> examples,
 		String name,
 		Class<?> cls,
+		ExampleServerRequirement serverRequirement
+	) {
+		registerAsync(examples, name, cls, ExampleFixture.NONE, serverRequirement);
+	}
+
+	private static void registerAsync(
+		Map<String, ExampleDefinition> examples,
+		String name,
+		Class<?> cls,
 		ExampleFixture fixture
 	) {
-		examples.put(name, new ExampleDefinition(name, ExampleMode.ASYNC, cls, fixture));
+		registerAsync(examples, name, cls, fixture, ExampleServerRequirement.NONE);
+	}
+
+	private static void registerAsync(
+		Map<String, ExampleDefinition> examples,
+		String name,
+		Class<?> cls,
+		ExampleFixture fixture,
+		ExampleServerRequirement serverRequirement
+	) {
+		examples.put(name, new ExampleDefinition(name, ExampleMode.ASYNC, cls, fixture, serverRequirement));
 	}
 }

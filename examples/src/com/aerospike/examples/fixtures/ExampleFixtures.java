@@ -225,7 +225,6 @@ public final class ExampleFixtures {
 		return new ExampleFixture() {
 			@Override
 			public void setup(IAerospikeClient client, Parameters params) throws Exception {
-				FixtureSupport.requireTtl(FixtureSupport.capabilities(client, params), "Expire");
 				FixtureSupport.deleteKeys(client, params, EXPIRE_KEY);
 			}
 
@@ -245,7 +244,6 @@ public final class ExampleFixtures {
 		return new ExampleFixture() {
 			@Override
 			public void setup(IAerospikeClient client, Parameters params) throws Exception {
-				FixtureSupport.requireTtl(FixtureSupport.capabilities(client, params), "Touch");
 				FixtureSupport.deleteKeys(client, params, TOUCH_KEY);
 			}
 

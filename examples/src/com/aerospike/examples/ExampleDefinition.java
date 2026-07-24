@@ -21,6 +21,7 @@ public final class ExampleDefinition {
 	private final ExampleMode mode;
 	private final Class<?> exampleClass;
 	private final ExampleFixture fixture;
+	private final ExampleServerRequirement serverRequirement;
 
 	public ExampleDefinition(
 		String name,
@@ -28,10 +29,21 @@ public final class ExampleDefinition {
 		Class<?> exampleClass,
 		ExampleFixture fixture
 	) {
+		this(name, mode, exampleClass, fixture, ExampleServerRequirement.NONE);
+	}
+
+	public ExampleDefinition(
+		String name,
+		ExampleMode mode,
+		Class<?> exampleClass,
+		ExampleFixture fixture,
+		ExampleServerRequirement serverRequirement
+	) {
 		this.name = name;
 		this.mode = mode;
 		this.exampleClass = exampleClass;
 		this.fixture = (fixture == null) ? ExampleFixture.NONE : fixture;
+		this.serverRequirement = (serverRequirement == null) ? ExampleServerRequirement.NONE : serverRequirement;
 	}
 
 	public String name() {
@@ -48,6 +60,10 @@ public final class ExampleDefinition {
 
 	public ExampleFixture fixture() {
 		return fixture;
+	}
+
+	public ExampleServerRequirement serverRequirement() {
+		return serverRequirement;
 	}
 
 	public boolean isAsync() {

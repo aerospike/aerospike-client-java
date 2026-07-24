@@ -32,11 +32,40 @@ public final class ExampleRunResult {
 	}
 
 	public boolean hasFailures() {
+		return count(ExampleStatus.FAILED) > 0;
+	}
+
+	public int passedCount() {
+		return count(ExampleStatus.PASSED);
+	}
+
+	public int failedCount() {
+		return count(ExampleStatus.FAILED);
+	}
+
+	public int skippedCount() {
+		return count(ExampleStatus.SKIPPED);
+	}
+
+	public ExampleRunResult append(ExampleRunResult other) {
+		if (other == null || other.results.isEmpty()) {
+			return this;
+		}
+
+		List<ExampleResult> combined = new ArrayList<ExampleResult>(results.size() + other.results.size());
+		combined.addAll(results);
+		combined.addAll(other.results);
+		return new ExampleRunResult(combined);
+	}
+
+	private int count(ExampleStatus status) {
+		int count = 0;
+
 		for (ExampleResult result : results) {
-			if (result.failed()) {
-				return true;
+			if (result.status() == status) {
+				count++;
 			}
 		}
-		return false;
+		return count;
 	}
 }

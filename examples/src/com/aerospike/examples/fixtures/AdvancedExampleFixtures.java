@@ -215,7 +215,6 @@ public final class AdvancedExampleFixtures {
 		return new ExampleFixture() {
 			@Override
 			public void setup(IAerospikeClient client, Parameters params) throws Exception {
-				FixtureSupport.requireTransactions(FixtureSupport.capabilities(client, params), "Transaction");
 				FixtureSupport.deleteKeys(client, params, 1, 2, 3);
 			}
 

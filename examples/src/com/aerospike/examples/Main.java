@@ -246,6 +246,7 @@ public class Main extends JPanel {
 		List<ExampleDefinition> syncExamples = new ArrayList<ExampleDefinition>();
 		List<ExampleDefinition> asyncExamples = new ArrayList<ExampleDefinition>();
 		boolean success = true;
+		ExampleRunResult combinedResult = new ExampleRunResult(new ArrayList<ExampleResult>());
 
 		for (String example : examples) {
 			try {
@@ -266,6 +267,7 @@ public class Main extends JPanel {
 
 		if (! syncExamples.isEmpty()) {
 			ExampleRunResult syncResult = new ExampleRunner(console, params).runSync(syncExamples);
+			combinedResult = combinedResult.append(syncResult);
 
 			if (syncResult.hasFailures()) {
 				success = false;
@@ -274,12 +276,42 @@ public class Main extends JPanel {
 
 		if (! asyncExamples.isEmpty()) {
 			ExampleRunResult asyncResult = new ExampleRunner(console, params).runAsync(asyncExamples);
+			combinedResult = combinedResult.append(asyncResult);
 
 			if (asyncResult.hasFailures()) {
 				success = false;
 			}
 		}
 
+		logSummary(console, combinedResult);
 		return success;
+	}
+
+	private static void logSummary(Console console, ExampleRunResult result) {
+		if (result.results().isEmpty()) {
+			return;
+		}
+
+		console.info(
+			"Results: %d passed, %d skipped, %d failed",
+			result.passedCount(),
+			result.skippedCount(),
+			result.failedCount());
+
+		for (ExampleResult exampleResult : result.results()) {
+			if (exampleResult.status() == ExampleStatus.PASSED) {
+				continue;
+			}
+
+			String label = (exampleResult.status() == ExampleStatus.SKIPPED) ? "SKIPPED" : "FAILED";
+			String message = exampleResult.message();
+
+			if (message == null || message.length() == 0) {
+				console.info("  %s: %s", label, exampleResult.name());
+			}
+			else {
+				console.info("  %s: %s - %s", label, exampleResult.name(), message);
+			}
+		}
 	}
 }

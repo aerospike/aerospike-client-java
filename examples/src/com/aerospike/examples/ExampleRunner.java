@@ -20,16 +20,21 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.Host;
+import com.aerospike.client.Info;
 import com.aerospike.client.IAerospikeClient;
 import com.aerospike.client.async.EventLoop;
 import com.aerospike.client.async.EventLoops;
 import com.aerospike.client.async.EventPolicy;
 import com.aerospike.client.async.NettyEventLoops;
 import com.aerospike.client.async.NioEventLoops;
+import com.aerospike.client.cluster.Node;
+import com.aerospike.client.cluster.Partitions;
 import com.aerospike.client.policy.ClientPolicy;
+import com.aerospike.client.util.Version;
 import io.netty.channel.EventLoopGroup;
 import io.netty.channel.MultiThreadIoEventLoopGroup;
 import io.netty.channel.epoll.EpollIoHandler;
@@ -38,6 +43,25 @@ import io.netty.channel.nio.NioIoHandler;
 import io.netty.channel.uring.IoUringIoHandler;
 
 public final class ExampleRunner {
+	private static final class ServerFacts {
+		private final Version serverVersion;
+		private final boolean enterpriseEdition;
+		private final boolean strongConsistencyNamespace;
+		private final boolean ttlSupported;
+
+		private ServerFacts(
+			Version serverVersion,
+			boolean enterpriseEdition,
+			boolean strongConsistencyNamespace,
+			boolean ttlSupported
+		) {
+			this.serverVersion = serverVersion;
+			this.enterpriseEdition = enterpriseEdition;
+			this.strongConsistencyNamespace = strongConsistencyNamespace;
+			this.ttlSupported = ttlSupported;
+		}
+	}
+
 	private final Console console;
 	private final Parameters params;
 
@@ -50,10 +74,11 @@ public final class ExampleRunner {
 		List<ExampleResult> results = new ArrayList<ExampleResult>();
 		ClientPolicy policy = createClientPolicy(null);
 		IAerospikeClient client = createClient(policy);
+		ServerFacts serverFacts = loadServerFacts(client);
 
 		try {
 			for (ExampleDefinition definition : definitions) {
-				results.add(runOneSync(definition, client));
+				results.add(runOneSync(definition, client, serverFacts));
 			}
 		}
 		finally {
@@ -69,12 +94,13 @@ public final class ExampleRunner {
 		try {
 			ClientPolicy policy = createClientPolicy(eventLoops);
 			IAerospikeClient client = createClient(policy);
+			ServerFacts serverFacts = loadServerFacts(client);
 
 			try {
 				EventLoop eventLoop = eventLoops.get(0);
 
 				for (ExampleDefinition definition : definitions) {
-					results.add(runOneAsync(definition, client, eventLoop));
+					results.add(runOneAsync(definition, client, eventLoop, serverFacts));
 				}
 			}
 			finally {
@@ -87,7 +113,11 @@ public final class ExampleRunner {
 		return new ExampleRunResult(results);
 	}
 
-	private ExampleResult runOneSync(ExampleDefinition definition, IAerospikeClient client) {
+	private ExampleResult runOneSync(
+		ExampleDefinition definition,
+		IAerospikeClient client,
+		ServerFacts serverFacts
+	) {
 		if (definition.mode() != ExampleMode.SYNC) {
 			return ExampleResult.failed(
 				definition.name(),
@@ -99,8 +129,11 @@ public final class ExampleRunner {
 		long startNanos = System.nanoTime();
 		Throwable failure = null;
 		String skipMessage = null;
+		boolean cleanupNeeded = false;
 
+		console.info(definition.name() + " Begin");
 		try {
+			enforceServerRequirement(definition, serverFacts);
 			Object instance = definition.exampleClass().getDeclaredConstructor().newInstance();
 
 			if (! (instance instanceof Example)) {
@@ -108,8 +141,8 @@ public final class ExampleRunner {
 			}
 
 			Example example = (Example)instance;
-			console.info(definition.name() + " Begin");
 			example.initialize(client, params, console);
+			cleanupNeeded = true;
 			definition.fixture().setup(client, params);
 			example.runExample();
 			definition.fixture().verify(client, params);
@@ -123,12 +156,17 @@ public final class ExampleRunner {
 			failure = thrown;
 		}
 
-		Throwable cleanupFailure = cleanup(definition, client);
+		Throwable cleanupFailure = cleanupNeeded ? cleanup(definition, client) : null;
 		console.info(definition.name() + " End");
 		return finishResult(definition.name(), startNanos, errorCountBefore, failure, skipMessage, cleanupFailure);
 	}
 
-	private ExampleResult runOneAsync(ExampleDefinition definition, IAerospikeClient client, EventLoop eventLoop) {
+	private ExampleResult runOneAsync(
+		ExampleDefinition definition,
+		IAerospikeClient client,
+		EventLoop eventLoop,
+		ServerFacts serverFacts
+	) {
 		if (definition.mode() != ExampleMode.ASYNC) {
 			return ExampleResult.failed(
 				definition.name(),
@@ -140,8 +178,11 @@ public final class ExampleRunner {
 		long startNanos = System.nanoTime();
 		Throwable failure = null;
 		String skipMessage = null;
+		boolean cleanupNeeded = false;
 
+		console.info(definition.name() + " Begin");
 		try {
+			enforceServerRequirement(definition, serverFacts);
 			Object instance = definition.exampleClass().getDeclaredConstructor().newInstance();
 
 			if (! (instance instanceof AsyncExample)) {
@@ -149,8 +190,8 @@ public final class ExampleRunner {
 			}
 
 			AsyncExample example = (AsyncExample)instance;
-			console.info(definition.name() + " Begin");
 			example.initialize(client, eventLoop, params, console);
+			cleanupNeeded = true;
 			definition.fixture().setup(client, params);
 			example.runExample();
 			example.awaitCompletion();
@@ -165,7 +206,7 @@ public final class ExampleRunner {
 			failure = thrown;
 		}
 
-		Throwable cleanupFailure = cleanup(definition, client);
+		Throwable cleanupFailure = cleanupNeeded ? cleanup(definition, client) : null;
 		console.info(definition.name() + " End");
 		return finishResult(definition.name(), startNanos, errorCountBefore, failure, skipMessage, cleanupFailure);
 	}
@@ -221,6 +262,76 @@ public final class ExampleRunner {
 			return new NettyEventLoops(eventPolicy, group, params.eventLoopType);
 		}
 		}
+	}
+
+	private ServerFacts loadServerFacts(IAerospikeClient client) {
+		Node[] nodes = client.getNodes();
+
+		if (nodes == null || nodes.length == 0) {
+			throw new IllegalStateException("Connected client did not return any cluster nodes");
+		}
+
+		Node node = nodes[0];
+		Version serverVersion = node.getServerVersion();
+		String editionFilter = serverVersion.isGreaterOrEqual(Version.SERVER_VERSION_8_1) ? "release" : "edition";
+		String namespaceFilter = "namespace/" + params.namespace();
+		Map<String,String> info = Info.request(null, node, editionFilter, namespaceFilter);
+		String editionToken = info.get(editionFilter);
+
+		if (editionToken == null) {
+			throw new IllegalStateException("Failed to get server edition for example gating");
+		}
+
+		String namespaceTokens = info.get(namespaceFilter);
+
+		if (namespaceTokens == null) {
+			throw new IllegalStateException("Failed to get namespace info for " + params.namespace());
+		}
+
+		Partitions partitions = client.getCluster().partitionMap.get(params.namespace());
+		boolean strongConsistencyNamespace = partitions != null && partitions.scMode;
+		int nsup = parseInt(namespaceTokens, "nsup-period");
+		boolean ttlSupported = nsup == 0 ? parseBoolean(namespaceTokens, "allow-ttl-without-nsup") : true;
+		boolean enterpriseEdition = editionToken.equals("Aerospike Enterprise Edition") || editionToken.contains("Enterprise");
+		return new ServerFacts(serverVersion, enterpriseEdition, strongConsistencyNamespace, ttlSupported);
+	}
+
+	private void enforceServerRequirement(ExampleDefinition definition, ServerFacts serverFacts)
+		throws ExampleSkipException {
+		String unmetReason = definition.serverRequirement().unmetReason(
+			serverFacts.serverVersion,
+			serverFacts.enterpriseEdition,
+			serverFacts.strongConsistencyNamespace,
+			serverFacts.ttlSupported);
+
+		if (unmetReason != null) {
+			throw new ExampleSkipException(unmetReason);
+		}
+	}
+
+	private static int parseInt(String namespaceTokens, String name) {
+		return Integer.parseInt(parseString(namespaceTokens, name));
+	}
+
+	private static boolean parseBoolean(String namespaceTokens, String name) {
+		return Boolean.parseBoolean(parseString(namespaceTokens, name));
+	}
+
+	private static String parseString(String namespaceTokens, String name) {
+		String search = name + '=';
+		int begin = namespaceTokens.indexOf(search);
+
+		if (begin < 0) {
+			throw new IllegalStateException("Failed to find namespace config token: " + name);
+		}
+
+		begin += search.length();
+		int end = namespaceTokens.indexOf(';', begin);
+
+		if (end < 0) {
+			end = namespaceTokens.length();
+		}
+		return namespaceTokens.substring(begin, end);
 	}
 
 	private void logFailure(String name, Throwable failure) {

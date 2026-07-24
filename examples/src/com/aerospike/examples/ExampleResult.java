@@ -42,7 +42,12 @@ public final class ExampleResult {
 	}
 
 	public static ExampleResult failed(String name, long elapsedMillis, Throwable error) {
-		return new ExampleResult(name, ExampleStatus.FAILED, elapsedMillis, error, null);
+		return new ExampleResult(
+			name,
+			ExampleStatus.FAILED,
+			elapsedMillis,
+			error,
+			(error == null) ? null : error.getMessage());
 	}
 
 	public static ExampleResult skipped(String name, long elapsedMillis, String message) {
