@@ -110,8 +110,8 @@ public class QuerySum extends Example {
 				Object object = rs.getObject();
 				long sum;
 
-				if (object instanceof Long) {
-					sum = (Long)rs.getObject();
+				if (object instanceof Long value) {
+					sum = value;
 				}
 				else {
 					console.error("Return value not a long: " + object);

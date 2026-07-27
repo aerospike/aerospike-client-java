@@ -17,14 +17,13 @@
 package com.aerospike.examples;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 public final class ExampleRunResult {
 	private final List<ExampleResult> results;
 
 	public ExampleRunResult(List<ExampleResult> results) {
-		this.results = Collections.unmodifiableList(new ArrayList<>(results));
+		this.results = List.copyOf(results);
 	}
 
 	public List<ExampleResult> results() {

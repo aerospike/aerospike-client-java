@@ -19,7 +19,6 @@ package com.aerospike.examples;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
@@ -68,7 +67,7 @@ public final class JUnitXmlReportWriter {
 		}
 
 		xml.append("</testsuite>\n");
-		Files.write(reportPath, xml.toString().getBytes(StandardCharsets.UTF_8));
+		Files.writeString(reportPath, xml.toString());
 	}
 
 	private static String seconds(long millis) {

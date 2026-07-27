@@ -539,11 +539,37 @@ public final class QueryExampleFixtures {
 	}
 
 	private static String queryRegionPolygon() {
-		return "{     \"type\": \"Polygon\",     \"coordinates\": [         [[-122.500000, 37.000000],[-121.000000, 37.000000],          [-121.000000, 38.080000],[-122.500000, 38.080000],          [-122.500000, 37.000000]]     ]  } ";
+		return """
+			{
+			  "type": "Polygon",
+			  "coordinates": [
+			    [
+			      [-122.500000, 37.000000],
+			      [-121.000000, 37.000000],
+			      [-121.000000, 38.080000],
+			      [-122.500000, 38.080000],
+			      [-122.500000, 37.000000]
+			    ]
+			  ]
+			}
+			""";
 	}
 
 	private static String geoCollectionQueryRegion() {
-		return "{     \"type\": \"Polygon\",     \"coordinates\": [[        [-0.202, -0.202],         [ 0.202, -0.202],         [ 0.202,  0.202],         [-0.202,  0.202],         [-0.202, -0.202]     ]] } ";
+		return """
+			{
+			  "type": "Polygon",
+			  "coordinates": [
+			    [
+			      [-0.202, -0.202],
+			      [0.202, -0.202],
+			      [0.202, 0.202],
+			      [-0.202, 0.202],
+			      [-0.202, -0.202]
+			    ]
+			  ]
+			}
+			""";
 	}
 
 	private static String geoPoint(double lng, double lat) {

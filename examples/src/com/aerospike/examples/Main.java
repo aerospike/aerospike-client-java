@@ -19,7 +19,6 @@ package com.aerospike.examples;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -323,7 +322,7 @@ public class Main extends JPanel {
 	}
 
 	private static void writeReport(Console console, String reportPath, ExampleRunResult result) throws Exception {
-		Path path = Paths.get(reportPath);
+		Path path = Path.of(reportPath);
 		JUnitXmlReportWriter.write(path, result);
 		console.info("Wrote example report to " + path);
 	}

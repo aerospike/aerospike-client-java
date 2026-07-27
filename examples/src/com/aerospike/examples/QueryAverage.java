@@ -102,8 +102,7 @@ public class QueryAverage extends Example {
 			if (rs.next()) {
 				Object obj = rs.getObject();
 
-				if (obj instanceof Map<?,?>) {
-					Map<?,?> map = (Map<?,?>)obj;
+				if (obj instanceof Map<?,?> map) {
 					long sum = (Long)map.get("sum");
 					long count = (Long)map.get("count");
 					double avg = (double) sum / count;

@@ -106,13 +106,11 @@ public final class ExampleAssertions {
 		Record record = assertRecordExists(client, policy, key, binName);
 		Object value = record.getValue(binName);
 
-		if (! (value instanceof List<?>)) {
+		if (! (value instanceof List<?> list)) {
 			throw new IllegalStateException(String.format(
 				"Expected %s bin %s to contain a list but found %s",
 				describe(key), binName, value));
 		}
-
-		List<?> list = (List<?>)value;
 
 		if (list.isEmpty()) {
 			throw new IllegalStateException(String.format(
@@ -139,13 +137,11 @@ public final class ExampleAssertions {
 		Record record = assertRecordExists(client, policy, key, binName);
 		Object value = record.getValue(binName);
 
-		if (! (value instanceof byte[])) {
+		if (! (value instanceof byte[] actual)) {
 			throw new IllegalStateException(String.format(
 				"Expected %s bin %s to contain bytes but found %s",
 				describe(key), binName, value));
 		}
-
-		byte[] actual = (byte[])value;
 
 		if (! Arrays.equals(expected, actual)) {
 			throw new IllegalStateException(String.format(
@@ -268,7 +264,7 @@ public final class ExampleAssertions {
 	}
 
 	public static void assertRecordBinsDeepEquals(Record record, Key key, Map<String, ?> expectedBins) {
-		assertRecordHasOnlyBins(record, key, expectedBins.keySet().toArray(new String[0]));
+		assertRecordHasOnlyBins(record, key, expectedBins.keySet().toArray(String[]::new));
 
 		for (Map.Entry<String, ?> entry : expectedBins.entrySet()) {
 			assertDeepEquals(
@@ -287,7 +283,7 @@ public final class ExampleAssertions {
 
 		Object value = results.get(0);
 
-		if (! (value instanceof Number) || ((Number)value).longValue() != expected) {
+		if (! (value instanceof Number number) || number.longValue() != expected) {
 			throw new IllegalStateException("Expected aggregate result " + expected + " but found " + value);
 		}
 	}
@@ -301,12 +297,9 @@ public final class ExampleAssertions {
 
 		Object value = results.get(0);
 
-		if (! (value instanceof Map<?,?>)) {
+		if (! (value instanceof Map<?,?> actual)) {
 			throw new IllegalStateException("Expected aggregate result map but found " + value);
 		}
-
-		@SuppressWarnings("unchecked")
-		Map<Object,Object> actual = (Map<Object,Object>)value;
 
 		for (Map.Entry<String, ?> entry : expectedFields.entrySet()) {
 			if (! actual.containsKey(entry.getKey())) {
@@ -325,21 +318,21 @@ public final class ExampleAssertions {
 			throw new IllegalStateException(label + " mismatch: expected " + expected + " but found " + actual);
 		}
 
-		if (expected instanceof byte[] && actual instanceof byte[]) {
-			if (! Arrays.equals((byte[])expected, (byte[])actual)) {
+		if (expected instanceof byte[] expectedBytes && actual instanceof byte[] actualBytes) {
+			if (! Arrays.equals(expectedBytes, actualBytes)) {
 				throw new IllegalStateException(label + " mismatch: expected " +
-					Arrays.toString((byte[])expected) + " but found " + Arrays.toString((byte[])actual));
+					Arrays.toString(expectedBytes) + " but found " + Arrays.toString(actualBytes));
 			}
 			return;
 		}
 
-		if (expected instanceof List<?> && actual instanceof List<?>) {
-			assertListDeepEquals(label, (List<?>)expected, (List<?>)actual);
+		if (expected instanceof List<?> expectedList && actual instanceof List<?> actualList) {
+			assertListDeepEquals(label, expectedList, actualList);
 			return;
 		}
 
-		if (expected instanceof Map<?,?> && actual instanceof Map<?,?>) {
-			assertMapDeepEquals(label, (Map<?,?>)expected, (Map<?,?>)actual);
+		if (expected instanceof Map<?,?> expectedMap && actual instanceof Map<?,?> actualMap) {
+			assertMapDeepEquals(label, expectedMap, actualMap);
 			return;
 		}
 
@@ -352,8 +345,8 @@ public final class ExampleAssertions {
 		if (policy == null) {
 			return null;
 		}
-		return (policy instanceof QueryPolicy) ?
-			new QueryPolicy((QueryPolicy)policy) : new QueryPolicy(policy);
+		return (policy instanceof QueryPolicy queryPolicy) ?
+			new QueryPolicy(queryPolicy) : new QueryPolicy(policy);
 	}
 
 	private static String describe(Key key) {

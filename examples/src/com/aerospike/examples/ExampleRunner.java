@@ -43,23 +43,12 @@ import io.netty.channel.nio.NioIoHandler;
 import io.netty.channel.uring.IoUringIoHandler;
 
 public final class ExampleRunner {
-	private static final class ServerFacts {
-		private final Version serverVersion;
-		private final boolean enterpriseEdition;
-		private final boolean strongConsistencyNamespace;
-		private final boolean ttlSupported;
-
-		private ServerFacts(
-			Version serverVersion,
-			boolean enterpriseEdition,
-			boolean strongConsistencyNamespace,
-			boolean ttlSupported
-		) {
-			this.serverVersion = serverVersion;
-			this.enterpriseEdition = enterpriseEdition;
-			this.strongConsistencyNamespace = strongConsistencyNamespace;
-			this.ttlSupported = ttlSupported;
-		}
+	private record ServerFacts(
+		Version serverVersion,
+		boolean enterpriseEdition,
+		boolean strongConsistencyNamespace,
+		boolean ttlSupported
+	) {
 	}
 
 	private final Console console;
@@ -132,11 +121,9 @@ public final class ExampleRunner {
 			enforceServerRequirement(definition, serverFacts);
 			Object instance = definition.exampleClass().getDeclaredConstructor().newInstance();
 
-			if (! (instance instanceof Example)) {
+			if (! (instance instanceof Example example)) {
 				throw new IllegalArgumentException("Invalid sync example class: " + definition.exampleClass().getName());
 			}
-
-			Example example = (Example)instance;
 			example.initialize(client, params, console);
 			cleanupNeeded = true;
 			definition.fixture().setup(client, params);
@@ -181,11 +168,9 @@ public final class ExampleRunner {
 			enforceServerRequirement(definition, serverFacts);
 			Object instance = definition.exampleClass().getDeclaredConstructor().newInstance();
 
-			if (! (instance instanceof AsyncExample)) {
+			if (! (instance instanceof AsyncExample example)) {
 				throw new IllegalArgumentException("Invalid async example class: " + definition.exampleClass().getName());
 			}
-
-			AsyncExample example = (AsyncExample)instance;
 			example.initialize(client, eventLoop, params, console);
 			cleanupNeeded = true;
 			definition.fixture().setup(client, params);
@@ -311,10 +296,10 @@ public final class ExampleRunner {
 	private void enforceServerRequirement(ExampleDefinition definition, ServerFacts serverFacts)
 		throws ExampleSkipException {
 		String unmetReason = definition.serverRequirement().unmetReason(
-			serverFacts.serverVersion,
-			serverFacts.enterpriseEdition,
-			serverFacts.strongConsistencyNamespace,
-			serverFacts.ttlSupported);
+			serverFacts.serverVersion(),
+			serverFacts.enterpriseEdition(),
+			serverFacts.strongConsistencyNamespace(),
+			serverFacts.ttlSupported());
 
 		if (unmetReason != null) {
 			throw new ExampleSkipException(unmetReason);

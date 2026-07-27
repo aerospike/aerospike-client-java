@@ -85,11 +85,11 @@ public abstract class AsyncExample {
 		}
 
 		if (captured != null) {
-			if (captured instanceof Exception) {
-				throw (Exception)captured;
+			if (captured instanceof Exception exception) {
+				throw exception;
 			}
-			if (captured instanceof Error) {
-				throw (Error)captured;
+			if (captured instanceof Error error) {
+				throw error;
 			}
 			throw new RuntimeException(captured);
 		}

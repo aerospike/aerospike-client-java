@@ -45,7 +45,7 @@ public final class ExampleRegistry {
 	}
 
 	public static String[] names() {
-		return EXAMPLES.keySet().toArray(new String[0]);
+		return EXAMPLES.keySet().toArray(String[]::new);
 	}
 
 	private static Map<String, ExampleDefinition> createExamples() {
