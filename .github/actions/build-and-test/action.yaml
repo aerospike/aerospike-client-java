@@ -20,6 +20,10 @@ inputs:
     required: true
     default: "true"
     description: Spin up aerospike enterprise server and run tests
+  run-examples:
+    required: false
+    default: "true"
+    description: Run examples suite against Aerospike
   server-container-repo:
     required: true
     description: Server type `aerospike-server` or `aerospike-enterprise-server`
@@ -45,7 +49,7 @@ runs:
 
     # Starting test bench
     - name: Run Aerospike
-      if: ${{ inputs.run-tests == 'true' }}
+      if: ${{ inputs.run-tests == 'true' || inputs.run-examples == 'true' }}
       id: setup-aerospike-server
       uses: aerospike/shared-workflows/.github/actions/setup-aerospike-server@334ad55b790658d549747b0d154407dfc730acca # latest main
       with:
@@ -56,7 +60,7 @@ runs:
         enable-tls: ${{ inputs.enable-tls }}
 
     - name: Import CA cert into JVM trust store
-      if: ${{ inputs.run-tests == 'true' && inputs.enable-tls == 'true' }}
+      if: ${{ (inputs.run-tests == 'true' || inputs.run-examples == 'true') && inputs.enable-tls == 'true' }}
       shell: bash
       run: |
         keytool -import -trustcacerts \
@@ -75,4 +79,24 @@ runs:
           mvn test -DskipTests=false "-Dargs=-tls -h 127.0.0.1:aerospike-tls:4333 -p 4333"
         else
           mvn test -DskipTests=false
+        fi
+
+    - name: Run examples
+      shell: bash
+      if: ${{ inputs.run-examples == 'true' }}
+      working-directory: examples
+      run: |
+        if [ "${{ inputs.enable-tls }}" = "true" ]; then
+          java -jar target/aerospike-examples-*-jar-with-dependencies.jar \
+            -h 127.0.0.1:aerospike-tls:4333 \
+            -p 4333 \
+            -tls \
+            --report target/example-reports/TEST-examples.xml \
+            all
+        else
+          java -jar target/aerospike-examples-*-jar-with-dependencies.jar \
+            -h 127.0.0.1 \
+            -p 3000 \
+            --report target/example-reports/TEST-examples.xml \
+            all
         fi

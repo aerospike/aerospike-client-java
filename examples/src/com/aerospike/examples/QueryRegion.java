@@ -18,7 +18,6 @@ package com.aerospike.examples;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Bin;
-import com.aerospike.client.IAerospikeClient;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
 import com.aerospike.client.ResultCode;
@@ -32,41 +31,31 @@ import com.aerospike.client.task.IndexTask;
 
 public class QueryRegion extends Example {
 
-	public QueryRegion(Console console) {
-		super(console);
-	}
-
 	/**
 	 * Perform region/radius queries using a Geo index.
 	 */
 	@Override
-	public void runExample(IAerospikeClient client, Parameters params) throws Exception {
+	public void runExample() throws Exception {
 		String indexName = "queryindexloc";
 		String keyPrefix = "querykeyloc";
 		String binName = "querybinloc";
 		int size = 20;
 
-		createIndex(client, params, indexName, binName);
-		writeRecords(client, params, keyPrefix, binName, size);
-		runQuery(client, params, indexName, binName);
-		runRadiusQuery(client, params, indexName, binName);
-		client.dropIndex(params.policy, params.namespace, params.set, indexName);
+		createIndex(indexName, binName);
+		writeRecords(keyPrefix, binName, size);
+		runQuery(indexName, binName);
+		runRadiusQuery(indexName, binName);
 	}
 
-	private void createIndex(
-		IAerospikeClient client,
-		Parameters params,
-		String indexName,
-		String binName
-	) throws Exception {
+	private void createIndex(String indexName, String binName) throws Exception {
 		console.info("Create index: ns=%s set=%s index=%s bin=%s",
-			params.namespace, params.set, indexName, binName);
+			namespace(), set(), indexName, binName);
 
 		Policy policy = new Policy();
 		policy.socketTimeout = 0; // Do not timeout on index create.
 
 		try {
-			IndexTask task = client.createIndex(policy, params.namespace, params.set,
+			IndexTask task = client().createIndex(policy, namespace(), set(),
 												indexName, binName,
 												IndexType.GEO2DSPHERE);
 			task.waitTillComplete();
@@ -78,13 +67,7 @@ public class QueryRegion extends Example {
 		}
 	}
 
-	private void writeRecords(
-		IAerospikeClient client,
-		Parameters params,
-		String keyPrefix,
-		String binName,
-		int size
-	) throws Exception {
+	private void writeRecords(String keyPrefix, String binName, int size) throws Exception {
 		console.info("Write " + size + " records.");
 
 		for (int i = 0; i < size; i++) {
@@ -96,18 +79,13 @@ public class QueryRegion extends Example {
 			ptsb.append(", ");
 			ptsb.append(String.valueOf(lat));
 			ptsb.append("] }");
-			Key key = new Key(params.namespace, params.set, keyPrefix + i);
+			Key key = new Key(namespace(), set(), keyPrefix + i);
 			Bin bin = Bin.asGeoJSON(binName, ptsb.toString());
-			client.put(params.writePolicy, key, bin);
+			client().put(writePolicy(), key, bin);
 		}
 	}
 
-	private void runQuery(
-		IAerospikeClient client,
-		Parameters params,
-		String indexName,
-		String binName
-	) throws Exception {
+	private void runQuery(String indexName, String binName) throws Exception {
 
 		StringBuilder rgnsb = new StringBuilder();
 
@@ -121,17 +99,15 @@ public class QueryRegion extends Example {
 		rgnsb.append(" } ");
 
 		console.info("QueryRegion for: ns=%s set=%s index=%s bin=%s within %s",
-			params.namespace, params.set, indexName, binName, rgnsb);
+			namespace(), set(), indexName, binName, rgnsb);
 
 		Statement stmt = new Statement();
-		stmt.setNamespace(params.namespace);
-		stmt.setSetName(params.set);
+		stmt.setNamespace(namespace());
+		stmt.setSetName(set());
 		stmt.setBinNames(binName);
 		stmt.setFilter(Filter.geoWithinRegion(binName, rgnsb.toString()));
 
-		RecordSet rs = client.query(null, stmt);
-
-		try {
+		try (RecordSet rs = client().query(null, stmt)) {
 			int count = 0;
 
 			while (rs.next()) {
@@ -149,33 +125,23 @@ public class QueryRegion extends Example {
 				console.error("Query count mismatch. Expected 6. Received " + count);
 			}
 		}
-		finally {
-			rs.close();
-		}
 	}
 
-	private void runRadiusQuery(
-			IAerospikeClient client,
-			Parameters params,
-			String indexName,
-			String binName
-		) throws Exception {
+	private void runRadiusQuery(String indexName, String binName) throws Exception {
 
 		double lon= -122.0;
 		double lat= 37.5;
 		double radius=50000.0;
 		console.info("QueryRadius for: ns=%s set=%s index=%s bin=%s within long=%f lat=%f radius=%f",
-			params.namespace, params.set, indexName, binName, lon,lat,radius);
+			namespace(), set(), indexName, binName, lon, lat, radius);
 
 		Statement stmt = new Statement();
-		stmt.setNamespace(params.namespace);
-		stmt.setSetName(params.set);
+		stmt.setNamespace(namespace());
+		stmt.setSetName(set());
 		stmt.setBinNames(binName);
 		stmt.setFilter(Filter.geoWithinRadius(binName, lon, lat, radius));
 
-		RecordSet rs = client.query(null, stmt);
-
-		try {
+		try (RecordSet rs = client().query(null, stmt)) {
 			int count = 0;
 
 			while (rs.next()) {
@@ -192,9 +158,6 @@ public class QueryRegion extends Example {
 			if (count != 4) {
 				console.error("Query count mismatch. Expected 4. Received " + count);
 			}
-		}
-		finally {
-			rs.close();
 		}
 	}
 }

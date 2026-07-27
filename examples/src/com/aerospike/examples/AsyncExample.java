@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2024 Aerospike, Inc.
+ * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -16,161 +16,112 @@
  */
 package com.aerospike.examples;
 
-import com.aerospike.client.AerospikeClient;
-import com.aerospike.client.Host;
 import com.aerospike.client.IAerospikeClient;
-import com.aerospike.client.async.*;
-import com.aerospike.client.policy.ClientPolicy;
+import com.aerospike.client.async.EventLoop;
 import com.aerospike.client.policy.Policy;
 import com.aerospike.client.policy.WritePolicy;
-import com.aerospike.client.util.Util;
-import io.netty.channel.EventLoopGroup;
-import io.netty.channel.MultiThreadIoEventLoopGroup;
-import io.netty.channel.epoll.EpollIoHandler;
-import io.netty.channel.kqueue.KQueueIoHandler;
-import io.netty.channel.nio.NioIoHandler;
-import io.netty.channel.uring.IoUringIoHandler;
-
-import java.lang.reflect.Constructor;
-import java.util.List;
 
 public abstract class AsyncExample {
-	/**
-	 * Connect and run one or more asynchronous client examples.
-	 */
-	public static void runExamples(Console console, Parameters params, List<String> examples) throws Exception {
-		EventPolicy eventPolicy = new EventPolicy();
-		eventPolicy.maxCommandsInProcess = params.maxCommandsInProcess;
-		eventPolicy.maxCommandsInQueue = params.maxCommandsInQueue;
-
-		EventLoops eventLoops;
-
-		switch (params.eventLoopType) {
-			default:
-			case DIRECT_NIO: {
-				eventLoops = new NioEventLoops(eventPolicy, 1);
-				break;
-			}
-
-			case NETTY_NIO: {
-                EventLoopGroup group = new MultiThreadIoEventLoopGroup(1, NioIoHandler.newFactory());
-				eventLoops = new NettyEventLoops(eventPolicy, group, params.eventLoopType);
-				break;
-			}
-
-			case NETTY_EPOLL: {
-                EventLoopGroup group = new MultiThreadIoEventLoopGroup(1, EpollIoHandler.newFactory());
-				eventLoops = new NettyEventLoops(eventPolicy, group, params.eventLoopType);
-				break;
-			}
-
-			case NETTY_KQUEUE: {
-                EventLoopGroup group = new MultiThreadIoEventLoopGroup(1, KQueueIoHandler.newFactory());
-				eventLoops = new NettyEventLoops(eventPolicy, group, params.eventLoopType);
-				break;
-			}
-
-			case NETTY_IOURING: {
-                EventLoopGroup group = new MultiThreadIoEventLoopGroup(1, IoUringIoHandler.newFactory());
-				eventLoops = new NettyEventLoops(eventPolicy, group, params.eventLoopType);
-				break;
-			}
-		}
-
-		try {
-			ClientPolicy policy = new ClientPolicy();
-			policy.eventLoops = eventLoops;
-			policy.user = params.user;
-			policy.password = params.password;
-			policy.authMode = params.authMode;
-			policy.tlsPolicy = params.tlsPolicy;
-
-			params.policy = policy.readPolicyDefault;
-			params.writePolicy = policy.writePolicyDefault;
-
-			Host[] hosts = Host.parseHosts(params.host, params.port);
-
-			IAerospikeClient client = new AerospikeClient(policy, hosts);
-
-			try {
-				EventLoop eventLoop = eventLoops.get(0);
-				//params.setServerSpecific(client);
-
-				for (String exampleName : examples) {
-					runExample(exampleName, client, eventLoop, params, console);
-				}
-
-				// TODO: Remove sleep after adding functionality to wait until async commands complete.
-				System.out.println("Sleep 2 seconds");
-				Util.sleep(2000);
-				System.out.println("Sleep end");
-			}
-			finally {
-				client.close();
-			}
-		}
-		finally {
-			eventLoops.close();
-		}
-	}
-
-	/**
-	 * Run asynchronous client example.
-	 */
-	public static void runExample(String exampleName, IAerospikeClient client, EventLoop eventLoop, Parameters params, Console console) throws Exception {
-		String fullName = "com.aerospike.examples." + exampleName;
-		Class<?> cls = Class.forName(fullName);
-
-		if (AsyncExample.class.isAssignableFrom(cls)) {
-			Constructor<?> ctor = cls.getConstructor();
-			AsyncExample example = (AsyncExample)ctor.newInstance();
-			example.console = console;
-			example.params = params;
-			example.writePolicy = client.copyWritePolicyDefault();
-			example.policy = client.copyReadPolicyDefault();
-			example.run(client, eventLoop);
-		}
-		else {
-			console.error("Invalid example: " + exampleName);
-		}
-	}
-
 	protected Console console;
-	protected Parameters params;
-	protected WritePolicy writePolicy;
-	protected Policy policy;
-	private boolean completed;
+	private IAerospikeClient client;
+	private EventLoop eventLoop;
+	private Parameters params;
+	private int pendingRuns;
+	private boolean runStarted;
+	private Throwable failure;
 
-	public void run(IAerospikeClient client, EventLoop eventLoop) {
-		// Most async examples no longer wait for completion, so
-		// these examples are run in parallel with intertwined log
-		// messages.  It's done that way because most applications
-		// should be written this way for performance reasons.
-		//
-		// Fortunately, AerospikeClient.close() now waits for pending
-		// async commands to complete before closing.
-		console.info("Example: " + this.getClass().getSimpleName());
-		runExample(client, eventLoop);
+	void initialize(IAerospikeClient client, EventLoop eventLoop, Parameters params, Console console) {
+		this.client = client;
+		this.eventLoop = eventLoop;
+		this.params = params;
+		this.console = console;
+		this.pendingRuns = 0;
+		this.runStarted = false;
+		this.failure = null;
 	}
 
-	protected void resetComplete() {
-		completed = false;
+	protected final synchronized void beginRun() {
+		runStarted = true;
+		pendingRuns++;
 	}
 
-	protected synchronized void waitTillComplete() {
-		while (! completed) {
-			try {
-				super.wait();
-			}
-			catch (InterruptedException ie) {
-			}
+	protected final void completeRun() {
+		finishRun(null);
+	}
+
+	protected final void failRun(Throwable t) {
+		finishRun(t);
+	}
+
+	private synchronized void finishRun(Throwable t) {
+		if (t != null && failure == null) {
+			failure = t;
+		}
+
+		if (pendingRuns > 0) {
+			pendingRuns--;
+		}
+		else if (failure == null) {
+			failure = new IllegalStateException("Async example completed a run that was never started");
+		}
+
+		if (pendingRuns == 0) {
+			notifyAll();
 		}
 	}
 
-	protected synchronized void notifyComplete() {
-		completed = true;
-		super.notify();
+	void awaitCompletion() throws Exception {
+		Throwable captured;
+
+		synchronized (this) {
+			if (! runStarted) {
+				throw new IllegalStateException("Async example returned without starting a root run");
+			}
+
+			while (pendingRuns > 0) {
+				wait();
+			}
+			captured = failure;
+		}
+
+		if (captured != null) {
+			if (captured instanceof Exception) {
+				throw (Exception)captured;
+			}
+			if (captured instanceof Error) {
+				throw (Error)captured;
+			}
+			throw new RuntimeException(captured);
+		}
 	}
 
-	public abstract void runExample(IAerospikeClient client, EventLoop eventLoop);
+	protected IAerospikeClient client() {
+		return client;
+	}
+
+	protected EventLoop eventLoop() {
+		return eventLoop;
+	}
+
+	protected String namespace() {
+		return params.namespace;
+	}
+
+	protected String set() {
+		return params.set;
+	}
+
+	protected WritePolicy writePolicy() {
+		return params.writePolicy;
+	}
+
+	protected Policy readPolicy() {
+		return params.policy;
+	}
+
+	protected Parameters params() {
+		return params;
+	}
+
+	public abstract void runExample() throws Exception;
 }
