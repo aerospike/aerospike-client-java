@@ -17,7 +17,6 @@
 package com.aerospike.test.sync.query;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -33,17 +32,15 @@ import com.aerospike.client.query.BinDataType;
 import com.aerospike.client.query.Filter;
 import com.aerospike.client.query.IndexType;
 import com.aerospike.client.query.Order;
-import com.aerospike.client.query.OrderByFlags;
 import com.aerospike.client.query.RecordSet;
 import com.aerospike.client.query.Reduce;
-import com.aerospike.client.query.ReduceResult;
 import com.aerospike.client.query.Statement;
 import com.aerospike.client.task.IndexTask;
 import com.aerospike.test.sync.TestSync;
 
 /**
- * End-to-end tests for client-side map-reduce ({@link Reduce} / {@code queryReduce} / Top-K)
- * executed across the cluster.
+ * End-to-end tests for client-side Top-K map-reduce ({@link Reduce#topK}) executed across the
+ * cluster.
  * <p>
  * All tests are {@link Ignore}d until a server build that supports the reduce feature is available.
  * They are kept in {@code SuiteSync} so they compile in CI but are skipped at runtime.
@@ -88,57 +85,21 @@ public class TestQueryReduce extends TestSync {
 	}
 
 	@Test
-	public void reduceSum() {
-		Statement stmt = baseStatement();
-		stmt.setReduce(Reduce.sum(binName));
-
-		ReduceResult result = client.queryReduce(null, stmt);
-		assertEquals(55L, result.getLong()); // 1 + 2 + ... + 10
-	}
-
-	@Test
-	public void reduceCount() {
-		Statement stmt = baseStatement();
-		stmt.setReduce(Reduce.count());
-
-		ReduceResult result = client.queryReduce(null, stmt);
-		assertEquals((long)size, result.getLong());
-	}
-
-	@Test
-	public void reduceMin() {
-		Statement stmt = baseStatement();
-		stmt.setReduce(Reduce.min(binName, BinDataType.INTEGER));
-
-		ReduceResult result = client.queryReduce(null, stmt);
-		assertEquals(1L, result.getNumber().longValue());
-	}
-
-	@Test
-	public void reduceMax() {
-		Statement stmt = baseStatement();
-		stmt.setReduce(Reduce.max(binName, BinDataType.INTEGER));
-
-		ReduceResult result = client.queryReduce(null, stmt);
-		assertEquals((long)size, result.getNumber().longValue());
-	}
-
-	@Test
 	public void topKDescending() {
 		Statement stmt = baseStatement();
 		int k = 3;
-		stmt.setReduce(Reduce.topK(binName, BinDataType.INTEGER, Order.DESC, OrderByFlags.NONE, k));
+		stmt.setOrderBy(binName, BinDataType.INTEGER, Order.DESC);
+		stmt.setTopK(k);
 
 		assertTopK(stmt, k, new long[] {10, 9, 8});
 	}
 
 	@Test
-	public void topKSplitOrderByLimit() {
+	public void topKAscending() {
 		Statement stmt = baseStatement();
 		int k = 3;
-		stmt.setReduce(
-			Reduce.orderBy(binName, BinDataType.INTEGER, Order.ASC, OrderByFlags.NONE),
-			Reduce.limit(binName, k));
+		stmt.setOrderBy(binName, BinDataType.INTEGER, Order.ASC);
+		stmt.setTopK(k);
 
 		assertTopK(stmt, k, new long[] {1, 2, 3});
 	}
@@ -159,50 +120,5 @@ public class TestQueryReduce extends TestSync {
 		}
 
 		assertEquals(k, count);
-	}
-
-	//-------------------------------------------------------
-	// Client-side validation error paths
-	//-------------------------------------------------------
-
-	@Test
-	public void queryWithScalarReduceRejected() {
-		Statement stmt = baseStatement();
-		stmt.setReduce(Reduce.sum(binName));
-
-		try {
-			client.query(null, stmt);
-			fail("Expected IllegalArgumentException");
-		}
-		catch (IllegalArgumentException expected) {
-			// pass
-		}
-	}
-
-	@Test
-	public void queryReduceWithNoReduceRejected() {
-		Statement stmt = baseStatement();
-
-		try {
-			client.queryReduce(null, stmt);
-			fail("Expected IllegalArgumentException");
-		}
-		catch (IllegalArgumentException expected) {
-			// pass
-		}
-	}
-
-	@Test
-	public void queryReduceWithTopKRejected() {
-		Statement stmt = baseStatement();
-		stmt.setReduce(Reduce.topK(binName, BinDataType.INTEGER, Order.DESC, OrderByFlags.NONE, 3));
-
-		try {
-			client.queryReduce(null, stmt);
-			fail("Expected IllegalArgumentException");
-		}
-		catch (IllegalArgumentException expected) {
-			// pass
-		}
 	}
 }

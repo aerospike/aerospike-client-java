@@ -35,9 +35,7 @@ import com.aerospike.client.exp.VectorExp;
 import com.aerospike.client.policy.QueryPolicy;
 import com.aerospike.client.query.BinDataType;
 import com.aerospike.client.query.Order;
-import com.aerospike.client.query.OrderByFlags;
 import com.aerospike.client.query.RecordSet;
-import com.aerospike.client.query.Reduce;
 import com.aerospike.client.query.Statement;
 import com.aerospike.client.vector.Vector;
 import com.aerospike.client.vector.VectorDistanceMetric;
@@ -147,7 +145,8 @@ public class TestVectorExp extends TestSync {
 				Exp.build(VectorExp.distance(VectorDistanceMetric.EUCLIDEAN, query(0), Exp.vectorBin(vecBin))),
 				ExpReadFlags.DEFAULT)
 		});
-		stmt.setReduce(Reduce.topK(distBin, BinDataType.DOUBLE, Order.ASC, OrderByFlags.NONE, k));
+		stmt.setOrderBy(distBin, BinDataType.DOUBLE, Order.ASC);
+		stmt.setTopK(k);
 
 		RecordSet rs = client.query(null, stmt);
 		int count = 0;

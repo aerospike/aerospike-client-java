@@ -270,11 +270,10 @@ public final class Statement {
 	}
 
 	/**
-	 * Set reduce spec(s) for this query, used for client-side global reduce (e.g. Top-K,
-	 * SUM, COUNT, MIN, MAX). Accepts:
+	 * Set reduce spec(s) for this query, used for client-side global Top-K reduce. Accepts:
 	 * <ul>
 	 *   <li>zero args — clear any reduce (stream all matching records; default behavior)</li>
-	 *   <li>one scalar or Top-K spec — e.g. {@code setReduce(Reduce.sum("amt"))} or
+	 *   <li>one Top-K spec — e.g.
 	 *       {@code setReduce(Reduce.topK("d", BinDataType.DOUBLE, Order.ASC, OrderByFlags.NONE, 10))}</li>
 	 *   <li>exactly one {@link Reduce#orderBy} + one {@link Reduce#limit} on the same bin —
 	 *       split Top-K, equivalent to {@link Reduce#topK}</li>
@@ -282,17 +281,20 @@ public final class Statement {
 	 * Mutually exclusive with {@link #setAggregateFunction}. Replaces any previously set reduce
 	 * (this setter does not accumulate across calls, consistent with {@link #setOperations(Operation[])}
 	 * and {@link #setBinNames(String...)}).
+	 * <p>
+	 * Not public for now — {@link #setOrderBy} + {@link #setTopK} are the only supported public
+	 * entry points into the reduce framework while the API is still settling.
 	 */
-	public void setReduce(ReduceSpec<?, ?>... reduceSpecs) {
+	void setReduce(ReduceSpec<?, ?>... reduceSpecs) {
 		this.reduceSpecs = reduceSpecs;
 		this.resolvedReduce = null;
 		this.reduceResolved = false;
 	}
 
 	/**
-	 * Return reduce spec(s) set by {@link #setReduce(ReduceSpec...)}.
+	 * Return reduce spec(s) set by {@code setReduce}.
 	 */
-	public ReduceSpec<?, ?>[] getReduce() {
+	ReduceSpec<?, ?>[] getReduce() {
 		return reduceSpecs;
 	}
 
@@ -336,7 +338,7 @@ public final class Statement {
 	 * <p>
 	 * Sugar for {@code setReduce(Reduce.topK(binName, type, order, flags, k))} using the bin,
 	 * type, order, and flags from the preceding {@link #setOrderBy} call. Like
-	 * {@link #setReduce(ReduceSpec...)}, replaces any previously set reduce.
+	 * {@code setReduce}, replaces any previously set reduce.
 	 *
 	 * @param k	maximum number of records to return, in {@code [1, 1000]}
 	 * @throws IllegalStateException if {@link #setOrderBy} was not called first
@@ -349,15 +351,15 @@ public final class Statement {
 	}
 
 	/**
-	 * Resolve the reduce spec(s) set by {@link #setReduce(ReduceSpec...)} into a single combiner
-	 * usable by a query executor. Returns {@code null} if no reduce was set. Composes a split
+	 * Resolve the reduce spec(s) set by {@code setReduce} into a single combiner usable by a
+	 * query executor. Returns {@code null} if no reduce was set. Composes a split
 	 * {@link Reduce#orderBy} + {@link Reduce#limit} pair into a single Top-K combiner.
 	 *
 	 * @throws IllegalArgumentException if the reduce specs are not a single reducer or a valid
 	 *                                   orderBy/limit pair on the same bin
 	 */
 	@SuppressWarnings("unchecked")
-	public <I, O> ReduceSpec<I, O> resolveReduce() {
+	<I, O> ReduceSpec<I, O> resolveReduce() {
 		if (! reduceResolved) {
 			resolvedReduce = computeResolveReduce();
 			reduceResolved = true;
@@ -402,49 +404,6 @@ public final class Statement {
 			throw new IllegalArgumentException("topK requires both an orderBy spec and a limit spec");
 		}
 		return TopKReduceSpec.compose(orderBy, limit);
-	}
-
-	/**
-	 * For internal use by query executors. Validate that this statement's reduce (if any) is
-	 * compatible with record-streaming queries (e.g.
-	 * {@link com.aerospike.client.AerospikeClient#query(com.aerospike.client.policy.QueryPolicy, Statement)}),
-	 * which return full records via a {@link RecordSet} and therefore only support a Top-K (or no)
-	 * reduce.
-	 *
-	 * @throws IllegalArgumentException if a scalar reduce (sum/count/min/max) is set
-	 */
-	public void validateRecordQuery() {
-		ReduceSpec<?, ?> reduce = resolveReduce();
-
-		if (reduce != null && !(reduce instanceof TopKReduceSpec)) {
-			throw new IllegalArgumentException(
-				"Statement has a scalar reduce (sum/count/min/max) set. Use queryReduce() instead of query().");
-		}
-	}
-
-	/**
-	 * For internal use by query executors. Validate that this statement's reduce is compatible
-	 * with scalar reduce queries (e.g.
-	 * {@link com.aerospike.client.AerospikeClient#queryReduce(com.aerospike.client.policy.QueryPolicy, Statement)}),
-	 * which return a single scalar result and therefore require a scalar reduce spec
-	 * (sum/count/min/max).
-	 *
-	 * @throws IllegalArgumentException if no reduce is set, or a Top-K reduce is set
-	 */
-	public void validateReduceQuery() {
-		ReduceSpec<?, ?> reduce = resolveReduce();
-
-		if (reduce == null) {
-			throw new IllegalArgumentException(
-				"Statement has no reduce set. Call setReduce() with a scalar reducer " +
-				"(Reduce.sum/count/min/max) before calling queryReduce().");
-		}
-
-		if (reduce instanceof TopKReduceSpec) {
-			throw new IllegalArgumentException(
-				"Statement has a Top-K reduce set. Use query() instead of queryReduce() " +
-				"for Top-K / orderBy+limit reduces.");
-		}
 	}
 
 	/**
