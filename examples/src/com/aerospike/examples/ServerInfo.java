@@ -16,39 +16,32 @@
  */
 package com.aerospike.examples;
 
-import java.util.Map;
-
-import com.aerospike.client.IAerospikeClient;
 import com.aerospike.client.Info;
 import com.aerospike.client.cluster.Node;
 
 public class ServerInfo extends Example {
 
-	public ServerInfo(Console console) {
-		super(console);
-	}
-
 	/**
 	 * Query server configuration, cluster status and namespace configuration.
 	 */
 	@Override
-	public void runExample(IAerospikeClient client, Parameters params) throws Exception {
-		Node node = client.getNodes()[0];
-		GetNamespaceConfig(node, params);
+	public void runExample() throws Exception {
+		Node node = client().getNodes()[0];
+		GetNamespaceConfig(node);
 	}
 
 	/**
 	 * Query namespace configuration.
 	 */
-	private void GetNamespaceConfig(Node node, Parameters params) throws Exception {
+	private void GetNamespaceConfig(Node node) throws Exception {
 		console.write("Namespace Configuration");
-		String filter = "namespace/" + params.namespace;
+		String filter = "namespace/" + namespace();
 		String tokens = Info.request(null, node, filter);
 
 		if (tokens == null) {
 			throw new Exception(String.format(
 				"Failed to get namespace info: host=%s port=%d namespace=%s",
-				params.host, params.port, params.namespace));
+				params().host, params().port, namespace()));
 		}
 
 		LogNameValueTokens(tokens);

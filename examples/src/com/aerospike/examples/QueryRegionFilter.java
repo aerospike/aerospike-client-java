@@ -18,7 +18,6 @@ package com.aerospike.examples;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Bin;
-import com.aerospike.client.IAerospikeClient;
 import com.aerospike.client.Key;
 import com.aerospike.client.Language;
 import com.aerospike.client.ResultCode;
@@ -33,48 +32,38 @@ import com.aerospike.client.task.RegisterTask;
 
 public class QueryRegionFilter extends Example {
 
-	public QueryRegionFilter(Console console) {
-		super(console);
-	}
-
 	/**
 	 * Perform region query using a Geo index with an aggregation filter.
 	 */
 	@Override
-	public void runExample(IAerospikeClient client, Parameters params) throws Exception {
+	public void runExample() throws Exception {
 		String indexName = "filterindexloc";
 		String keyPrefix = "filterkeyloc";
 		String binName1 = "filterloc";
 		String binName2 = "filteramenity";
 		int size = 20;
 
-		register(client, params);
-		createIndex(client, params, indexName, binName1);
-		writeRecords(client, params, keyPrefix, binName1, binName2, size);
-		runQuery(client, params, indexName, binName1, binName2);
-		client.dropIndex(params.policy, params.namespace, params.set, indexName);
+		register();
+		createIndex(indexName, binName1);
+		writeRecords(keyPrefix, binName1, binName2, size);
+		runQuery(indexName, binName1, binName2);
 	}
 
-	private void register(IAerospikeClient client, Parameters params) throws Exception {
-		RegisterTask task = client.register(params.policy, "udf/geo_filter_example.lua",
+	private void register() throws Exception {
+		RegisterTask task = client().register(readPolicy(), "udf/geo_filter_example.lua",
 											"geo_filter_example.lua", Language.LUA);
 		task.waitTillComplete();
 	}
 
-	private void createIndex(
-		IAerospikeClient client,
-		Parameters params,
-		String indexName,
-		String binName
-	) throws Exception {
+	private void createIndex(String indexName, String binName) throws Exception {
 		console.info("Create index: ns=%s set=%s index=%s bin=%s",
-			params.namespace, params.set, indexName, binName);
+			namespace(), set(), indexName, binName);
 
 		Policy policy = new Policy();
 		policy.socketTimeout = 0; // Do not timeout on index create.
 
 		try {
-			IndexTask task = client.createIndex(policy, params.namespace, params.set,
+			IndexTask task = client().createIndex(policy, namespace(), set(),
 												indexName, binName,
 												IndexType.GEO2DSPHERE);
 			task.waitTillComplete();
@@ -86,14 +75,7 @@ public class QueryRegionFilter extends Example {
 		}
 	}
 
-	private void writeRecords(
-		IAerospikeClient client,
-		Parameters params,
-		String keyPrefix,
-		String binName1,
-		String binName2,
-		int size
-	) throws Exception {
+	private void writeRecords(String keyPrefix, String binName1, String binName2, int size) throws Exception {
 		console.info("Write " + size + " records.");
 
 		for (int i = 0; i < size; i++) {
@@ -105,7 +87,7 @@ public class QueryRegionFilter extends Example {
 			ptsb.append(", ");
 			ptsb.append(String.valueOf(lat));
 			ptsb.append("] }");
-			Key key = new Key(params.namespace, params.set, keyPrefix + i);
+			Key key = new Key(namespace(), set(), keyPrefix + i);
 			Bin bin1 = Bin.asGeoJSON(binName1, ptsb.toString());
 			Bin bin2;
 			if (i % 7 == 0) {
@@ -117,17 +99,11 @@ public class QueryRegionFilter extends Example {
 			else {
 				bin2 = new Bin(binName2, "store");
 			}
-			client.put(params.writePolicy, key, bin1, bin2);
+			client().put(writePolicy(), key, bin1, bin2);
 		}
 	}
 
-	private void runQuery(
-		IAerospikeClient client,
-		Parameters params,
-		String indexName,
-		String binName1,
-		String binName2
-	) throws Exception {
+	private void runQuery(String indexName, String binName1, String binName2) throws Exception {
 
 		StringBuilder rgnsb = new StringBuilder();
 
@@ -141,19 +117,17 @@ public class QueryRegionFilter extends Example {
 		rgnsb.append(" } ");
 
 		console.info("Query for: ns=%s set=%s index=%s bin1=%s bin2=%s within %s",
-					 params.namespace, params.set, indexName, binName1, binName2, rgnsb);
+					 namespace(), set(), indexName, binName1, binName2, rgnsb);
 
 		String amenStr = "school";
 
 		Statement stmt = new Statement();
-		stmt.setNamespace(params.namespace);
-		stmt.setSetName(params.set);
+		stmt.setNamespace(namespace());
+		stmt.setSetName(set());
 		stmt.setFilter(Filter.geoWithinRegion(binName1, rgnsb.toString()));
 		stmt.setAggregateFunction("geo_filter_example", "match_amenity", Value.get(amenStr));
 
-		ResultSet rs = client.queryAggregate(null, stmt);
-
-		try {
+		try (ResultSet rs = client().queryAggregate(null, stmt)) {
 			int count = 0;
 
 			while (rs.next()) {
@@ -165,9 +139,6 @@ public class QueryRegionFilter extends Example {
 			if (count != 2) {
 				console.error("wrong number of schools found. %d != 2", count);
 			}
-		}
-		finally {
-			rs.close();
 		}
 	}
 }

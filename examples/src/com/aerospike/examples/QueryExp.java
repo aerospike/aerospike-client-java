@@ -21,7 +21,6 @@ import java.util.GregorianCalendar;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Bin;
-import com.aerospike.client.IAerospikeClient;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
 import com.aerospike.client.ResultCode;
@@ -37,42 +36,33 @@ import com.aerospike.client.task.IndexTask;
 
 public class QueryExp extends Example {
 
-	public QueryExp(Console console) {
-		super(console);
-	}
-
 	/**
 	 * Perform secondary index query with a predicate filter.
 	 */
 	@Override
-	public void runExample(IAerospikeClient client, Parameters params) throws Exception {
+	public void runExample() throws Exception {
 		String indexName = "predidx";
 		String binName = "idxbin";
 		int size = 50;
 
-		createIndex(client, params, indexName, binName);
-		writeRecords(client, params, binName, size);
-		runQuery1(client, params, binName);
-		runQuery2(client, params, binName);
-		runQuery3(client, params, binName);
+		createIndex(indexName, binName);
+		writeRecords(binName, size);
+		runQuery1(binName);
+		runQuery2(binName);
+		runQuery3(binName);
 
-		//client.dropIndex(params.policy, params.namespace, params.set, indexName);
+		//client().dropIndex(readPolicy(), namespace(), set(), indexName);
 	}
 
-	private void createIndex(
-		IAerospikeClient client,
-		Parameters params,
-		String indexName,
-		String binName
-	) throws Exception {
+	private void createIndex(String indexName, String binName) throws Exception {
 		console.info("Create index: ns=%s set=%s index=%s bin=%s",
-			params.namespace, params.set, indexName, binName);
+			namespace(), set(), indexName, binName);
 
 		Policy policy = new Policy();
 		policy.socketTimeout = 0; // Do not timeout on index create.
 
 		try {
-			IndexTask task = client.createIndex(policy, params.namespace, params.set, indexName, binName, IndexType.NUMERIC);
+			IndexTask task = client().createIndex(policy, namespace(), set(), indexName, binName, IndexType.NUMERIC);
 			task.waitTillComplete();
 		}
 		catch (AerospikeException ae) {
@@ -82,16 +72,11 @@ public class QueryExp extends Example {
 		}
 	}
 
-	private void writeRecords(
-		IAerospikeClient client,
-		Parameters params,
-		String binName,
-		int size
-	) throws Exception {
+	private void writeRecords(String binName, int size) throws Exception {
 		console.info("Write " + size + " records.");
 
 		for (int i = 1; i <= size; i++) {
-			Key key = new Key(params.namespace, params.set, i);
+			Key key = new Key(namespace(), set(), i);
 			Bin bin1 = new Bin(binName, i);
 			Bin bin2 = new Bin("bin2", i * 10);
 			Bin bin3;
@@ -105,15 +90,11 @@ public class QueryExp extends Example {
 			else {
 				bin3 = new Bin("bin3", "pre-" + i + "-suf");
 			}
-			client.put(params.writePolicy, key, bin1, bin2, bin3);
+			client().put(writePolicy(), key, bin1, bin2, bin3);
 		}
 	}
 
-	private void runQuery1(
-		IAerospikeClient client,
-		Parameters params,
-		String binName
-	) throws Exception {
+	private void runQuery1(String binName) throws Exception {
 
 		int begin = 10;
 		int end = 40;
@@ -121,15 +102,15 @@ public class QueryExp extends Example {
 		console.info("Query Predicate: (bin2 > 126 && bin2 <= 140) || (bin2 = 360)");
 
 		Statement stmt = new Statement();
-		stmt.setNamespace(params.namespace);
-		stmt.setSetName(params.set);
+		stmt.setNamespace(namespace());
+		stmt.setSetName(set());
 
 		// Filter applied on query itself.  Filter can only reference an indexed bin.
 		stmt.setFilter(Filter.range(binName, begin, end));
 
 		// Predicates are applied on query results on server side.
 		// Predicates can reference any bin.
-		QueryPolicy policy = client.copyQueryPolicyDefault();
+		QueryPolicy policy = client().copyQueryPolicyDefault();
 		policy.filterExp = Exp.build(
 			Exp.or(
 				Exp.and(
@@ -137,24 +118,15 @@ public class QueryExp extends Example {
 					Exp.le(Exp.intBin("bin2"), Exp.val(140))),
 				Exp.eq(Exp.intBin("bin2"), Exp.val(360))));
 
-		RecordSet rs = client.query(policy, stmt);
-
-		try {
+		try (RecordSet rs = client().query(policy, stmt)) {
 			while (rs.next()) {
 				Record record = rs.getRecord();
-				console.info("Record: " + record.toString());
+				console.info("Record: " + record);
 			}
-		}
-		finally {
-			rs.close();
 		}
 	}
 
-	private void runQuery2(
-		IAerospikeClient client,
-		Parameters params,
-		String binName
-	) throws Exception {
+	private void runQuery2(String binName) throws Exception {
 
 		int begin = 10;
 		int end = 40;
@@ -164,34 +136,25 @@ public class QueryExp extends Example {
 		Calendar endTime = new GregorianCalendar(2021, 0, 1);
 
 		Statement stmt = new Statement();
-		stmt.setNamespace(params.namespace);
-		stmt.setSetName(params.set);
+		stmt.setNamespace(namespace());
+		stmt.setSetName(set());
 		stmt.setFilter(Filter.range(binName, begin, end));
 
-		QueryPolicy policy = client.copyQueryPolicyDefault();
+		QueryPolicy policy = client().copyQueryPolicyDefault();
 		policy.filterExp = Exp.build(
 			Exp.and(
 				Exp.ge(Exp.lastUpdate(), Exp.val(beginTime)),
 				Exp.lt(Exp.lastUpdate(), Exp.val(endTime))));
 
-		RecordSet rs = client.query(policy, stmt);
-
-		try {
+		try (RecordSet rs = client().query(policy, stmt)) {
 			while (rs.next()) {
 				Record record = rs.getRecord();
-				console.info("Record: " + record.toString());
+				console.info("Record: " + record);
 			}
-		}
-		finally {
-			rs.close();
 		}
 	}
 
-	private void runQuery3(
-		IAerospikeClient client,
-		Parameters params,
-		String binName
-	) throws Exception {
+	private void runQuery3(String binName) throws Exception {
 
 		int begin = 20;
 		int end = 30;
@@ -199,24 +162,19 @@ public class QueryExp extends Example {
 		console.info("Query Predicate: bin3 contains string with 'prefix' and 'suffix'");
 
 		Statement stmt = new Statement();
-		stmt.setNamespace(params.namespace);
-		stmt.setSetName(params.set);
+		stmt.setNamespace(namespace());
+		stmt.setSetName(set());
 		stmt.setFilter(Filter.range(binName, begin, end));
 
-		QueryPolicy policy = client.copyQueryPolicyDefault();
+		QueryPolicy policy = client().copyQueryPolicyDefault();
 		policy.filterExp = Exp.build(
 			Exp.regexCompare("prefix.*suffix", RegexFlag.ICASE | RegexFlag.NEWLINE, Exp.stringBin("bin3")));
 
-		RecordSet rs = client.query(policy, stmt);
-
-		try {
+		try (RecordSet rs = client().query(policy, stmt)) {
 			while (rs.next()) {
 				Record record = rs.getRecord();
-				console.info("Record: " + record.toString());
+				console.info("Record: " + record);
 			}
-		}
-		finally {
-			rs.close();
 		}
 	}
 }

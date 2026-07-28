@@ -19,7 +19,6 @@ package com.aerospike.examples;
 import java.util.List;
 
 import com.aerospike.client.Bin;
-import com.aerospike.client.IAerospikeClient;
 import com.aerospike.client.Key;
 import com.aerospike.client.Operation;
 import com.aerospike.client.Record;
@@ -28,34 +27,27 @@ import com.aerospike.client.operation.BitPolicy;
 
 public class OperateBit extends Example {
 
-	public OperateBit(Console console) {
-		super(console);
-	}
-
 	/**
 	 * Perform operations on a blob bin.
 	 */
 	@Override
-	public void runExample(IAerospikeClient client, Parameters params) throws Exception {
-		runSimpleExample(client, params);
+	public void runExample() throws Exception {
+		runSimpleExample();
 	}
 
 	/**
 	 * Simple example of bit functionality.
 	 */
-	public void runSimpleExample(IAerospikeClient client, Parameters params) throws Exception {
-		Key key = new Key(params.namespace, params.set, "bitkey");
+	public void runSimpleExample() throws Exception {
+		Key key = new Key(namespace(), set(), "bitkey");
 		String binName = "bitbin";
-
-		// Delete record if it already exists.
-		client.delete(params.writePolicy, key);
 
 		byte[] bytes = new byte[] {0b00000001, 0b00000010, 0b00000011, 0b00000100, 0b00000101};
 
-		client.put(params.writePolicy, key, new Bin(binName, bytes));
+		client().put(writePolicy(), key, new Bin(binName, bytes));
 
 		// Set last 3 bits of bitmap to true.
-		Record record = client.operate(params.writePolicy, key,
+		Record record = client().operate(writePolicy(), key,
 				BitOperation.set(BitPolicy.Default, binName, -3, 3, new byte[] {(byte)0b11100000}),
 				Operation.get(binName)
 				);
