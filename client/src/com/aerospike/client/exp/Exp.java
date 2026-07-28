@@ -1462,9 +1462,20 @@ public abstract class Exp {
 	private static final int QUOTED = 126;
 	public static final int CALL = 127;
 	public static final int MODIFY = 0x40;
+	private static final int TO_STRING = 99;
 	private static final long NANOS_PER_MILLIS = 1000000L;
 
 	public abstract void pack(Packer packer);
+
+	/**
+	 * For internal use only. Build the dedicated TO_STRING opcode node, encoded
+	 * as {@code [99, bin]}. Replaces the obsolete CALL_REPR (module 4) shape that
+	 * current servers reject with PARAMETER. Mirrors aerospike-client-c
+	 * CLIENT-5164 (PR #228).
+	 */
+	static Exp toStringExp(Exp bin) {
+		return new CmdExp(TO_STRING, bin);
+	}
 
 	/**
 	 * For internal use only.

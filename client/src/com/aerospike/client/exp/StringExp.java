@@ -64,7 +64,6 @@ import com.aerospike.client.util.Packer;
  */
 public final class StringExp {
 	private static final int MODULE = 3;       // CALL_STRING
-	private static final int MODULE_REPR = 4;  // CALL_REPR
 
 	// Read ops
 	private static final int STRLEN = 0;
@@ -928,8 +927,10 @@ public final class StringExp {
 	 * @return		string-typed expression yielding the string representation
 	 */
 	public static Exp toString(Exp src) {
-		byte[] bytes = reprPayload();
-		return new Exp.Module(src, bytes, Exp.Type.STRING.code, MODULE_REPR);
+		// Dedicated TO_STRING opcode (99), encoded as [99, bin]. The prior
+		// CALL_REPR (module 4) shape was rejected by current servers with
+		// PARAMETER. Mirrors aerospike-client-c CLIENT-5164 (PR #228).
+		return Exp.toStringExp(src);
 	}
 
 	//-----------------------------------------------------------------
@@ -988,22 +989,6 @@ public final class StringExp {
 			pattern.pack(packer);
 			replacement.pack(packer);
 			packer.packInt(regexFlags);
-			if (i == 0) packer.createBuffer();
-		}
-		return packer.getBuffer();
-	}
-
-	// Single-zero payload [0] for CALL_REPR (StringExp.toString). The server's
-	// parse_op_call at exp.c:3244 rejects an empty list (ele_count == 0), so the
-	// payload must contain at least one element. The CALL_REPR dispatcher at
-	// exp.c:5019 ignores the sub-op id and goes straight to as_bin_to_string, so
-	// the value carried here is unused. The spec previously documented this as `[]`;
-	// the server is the source of truth — see §2.7 in the cross-client spec.
-	private static byte[] reprPayload() {
-		Packer packer = new Packer();
-		for (int i = 0; i < 2; i++) {
-			packer.packArrayBegin(1);
-			packer.packInt(0);
 			if (i == 0) packer.createBuffer();
 		}
 		return packer.getBuffer();
