@@ -132,10 +132,8 @@ public final class QueryPartitionExecutor implements IQueryExecutor, Runnable {
 			done.set(false);
 
 			if (tracker.isComplete(cluster, policy)) {
-				// All partitions received. Emit the merged reduce result (if record-shaped,
-				// e.g. Top-K) now that every node/partition has fed the combiner. Scalar
-				// reduce results (sum/count/min/max) are not emitted here; the caller reads
-				// them directly off the combiner via Statement.resolveReduce().
+				// All partitions received. Emit the merged Top-K reduce result now that
+				// every node/partition has fed the combiner.
 				if (reducer instanceof TopKReduceSpec) {
 					TopKReduceSpec topK = (TopKReduceSpec)reducer;
 					Record[] records = topK.getResult();

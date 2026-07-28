@@ -21,13 +21,8 @@ import com.aerospike.client.Record;
 /**
  * Factory for {@link ReduceSpec} instances used with {@link Statement#setReduce(ReduceSpec...)}.
  * <p>
- * Two reduce shapes are supported:
- * <ul>
- *   <li><b>Ordered LIMIT k</b> ({@link #topK}, or {@link #orderBy} + {@link #limit} passed
- *       together) — returns up to k full records, globally ordered.</li>
- *   <li><b>Scalar</b> ({@link #sum}, {@link #count}, {@link #min}, {@link #max}) — returns a
- *       single commutative aggregate value.</li>
- * </ul>
+ * Supports ordered LIMIT k reduces ({@link #topK}, or {@link #orderBy} + {@link #limit} passed
+ * together) — returns up to k full records, globally ordered.
  */
 public final class Reduce {
 
@@ -70,42 +65,5 @@ public final class Reduce {
 	 */
 	public static ReduceSpec<Record, Record> limit(String bin, int limit) {
 		return new LimitReduceSpec(bin, limit);
-	}
-
-	/**
-	 * Sum of {@code bin} across all matching records. {@code bin} must be an integer bin
-	 * (or a projected bin from {@link Statement#setOperations(com.aerospike.client.Operation[])}
-	 * that evaluates to an integer).
-	 */
-	public static ReduceSpec<Record, Long> sum(String bin) {
-		return new SumReduceSpec(bin);
-	}
-
-	/**
-	 * Count of records matching the query filter and record predicate.
-	 */
-	public static ReduceSpec<Record, Long> count() {
-		return new CountReduceSpec();
-	}
-
-	/**
-	 * Minimum value of {@code bin} across all matching records.
-	 * {@link ReduceSpec#getScalarResult()} returns the minimum value.
-	 *
-	 * @param bin	bin name; must be {@link BinDataType#INTEGER} or {@link BinDataType#DOUBLE}
-	 * @param type	scalar type of {@code bin}
-	 */
-	public static ReduceSpec<Record, Number> min(String bin, BinDataType type) {
-		return new MinMaxReduceSpec(bin, type, Order.ASC);
-	}
-
-	/**
-	 * Maximum value of {@code bin} across all matching records.
-	 *
-	 * @param bin	bin name; must be {@link BinDataType#INTEGER} or {@link BinDataType#DOUBLE}
-	 * @param type	scalar type of {@code bin}
-	 */
-	public static ReduceSpec<Record, Number> max(String bin, BinDataType type) {
-		return new MinMaxReduceSpec(bin, type, Order.DESC);
 	}
 }

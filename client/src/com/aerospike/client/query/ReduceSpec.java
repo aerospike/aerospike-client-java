@@ -22,10 +22,9 @@ import com.aerospike.client.Key;
  * Client-side global reduce combiner for query results.
  * <p>
  * Each cluster node produces a partial result for a query (e.g. a locally bounded Top-K
- * heap, or a partial scalar aggregate). The query executor feeds every node's partial
- * results into {@link #acceptPartial(Object, Key)} in any order (nodes complete
- * concurrently), then reads the merged result via {@link #getScalarResult()} or
- * {@link #getResult()}.
+ * heap). The query executor feeds every node's partial results into
+ * {@link #acceptPartial(Object, Key)} in any order (nodes complete concurrently), then reads
+ * the merged result via {@link #getScalarResult()} or {@link #getResult()}.
  * <p>
  * Instances are created via {@link Reduce} factory methods and passed to
  * {@link Statement#setReduce(ReduceSpec...)}.
@@ -45,14 +44,13 @@ public interface ReduceSpec<TInput, TResult> {
 	void acceptPartial(TInput record, Key key);
 
 	/**
-	 * Return a single scalar view of the merged result (e.g. MAX value, SUM, or the
-	 * best-ranked record for a Top-K reduce).
+	 * Return a single scalar view of the merged result (e.g. the best-ranked record for a
+	 * Top-K reduce).
 	 */
 	TResult getScalarResult();
 
 	/**
-	 * Return the full merged result set (e.g. all Top-K records in order, or all records
-	 * tied at a MIN/MAX value).
+	 * Return the full merged result set (e.g. all Top-K records in order).
 	 */
 	TResult[] getResult();
 }

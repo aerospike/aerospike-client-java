@@ -68,83 +68,6 @@ public class TestReduceSpec {
 	}
 
 	//-------------------------------------------------------
-	// Scalar reducers: sum / count / min / max
-	//-------------------------------------------------------
-
-	@Test
-	public void sumIsCommutativeAndAssociative() {
-		ReduceSpec<Record, Long> reducer = Reduce.sum(BIN);
-
-		// Feed out of order, simulating partials arriving from different nodes.
-		reducer.acceptPartial(record(BIN, 5L), key("k3"));
-		reducer.acceptPartial(record(BIN, 10L), key("k1"));
-		reducer.acceptPartial(record(BIN, 7L), key("k2"));
-
-		assertEquals(22L, reducer.getScalarResult().longValue());
-		assertEquals(1, reducer.getResult().length);
-		assertEquals(22L, reducer.getResult()[0].longValue());
-	}
-
-	@Test
-	public void countIncrementsOncePerAccept() {
-		ReduceSpec<Record, Long> reducer = Reduce.count();
-
-		for (int i = 0; i < 7; i++) {
-			reducer.acceptPartial(record(BIN, i), key("k" + i));
-		}
-		assertEquals(7L, reducer.getScalarResult().longValue());
-	}
-
-	@Test
-	public void minPicksSmallestInteger() {
-		ReduceSpec<Record, Number> reducer = Reduce.min(BIN, BinDataType.INTEGER);
-
-		reducer.acceptPartial(record(BIN, 9L), key("k1"));
-		reducer.acceptPartial(record(BIN, 2L), key("k2"));
-		reducer.acceptPartial(record(BIN, 5L), key("k3"));
-
-		assertEquals(2L, reducer.getScalarResult().longValue());
-	}
-
-	@Test
-	public void maxPicksLargestDouble() {
-		ReduceSpec<Record, Number> reducer = Reduce.max(BIN, BinDataType.DOUBLE);
-
-		reducer.acceptPartial(record(BIN, 1.5), key("k1"));
-		reducer.acceptPartial(record(BIN, 9.25), key("k2"));
-		reducer.acceptPartial(record(BIN, 4.0), key("k3"));
-
-		assertEquals(9.25, reducer.getScalarResult().doubleValue(), 0.0001);
-	}
-
-	@Test
-	public void minMaxRejectsNonNumericBinDataType() {
-		try {
-			Reduce.min(BIN, BinDataType.STRING);
-			fail("Expected IllegalArgumentException");
-		}
-		catch (IllegalArgumentException expected) {
-			// pass
-		}
-	}
-
-	@Test
-	public void minMaxOrderIndependent() {
-		// Merge order should not affect the result (commutative).
-		ReduceSpec<Record, Number> a = Reduce.min(BIN, BinDataType.INTEGER);
-		a.acceptPartial(record(BIN, 3L), key("k1"));
-		a.acceptPartial(record(BIN, 1L), key("k2"));
-		a.acceptPartial(record(BIN, 2L), key("k3"));
-
-		ReduceSpec<Record, Number> b = Reduce.min(BIN, BinDataType.INTEGER);
-		b.acceptPartial(record(BIN, 2L), key("k3"));
-		b.acceptPartial(record(BIN, 1L), key("k2"));
-		b.acceptPartial(record(BIN, 3L), key("k1"));
-
-		assertEquals(a.getScalarResult(), b.getScalarResult());
-	}
-
-	//-------------------------------------------------------
 	// Top-K reducer
 	//-------------------------------------------------------
 
@@ -326,16 +249,6 @@ public class TestReduceSpec {
 	}
 
 	@Test
-	public void statementResolvesSingleScalarReduce() {
-		Statement stmt = new Statement();
-		stmt.setReduce(Reduce.sum(BIN));
-
-		ReduceSpec<Record, Long> resolved = stmt.resolveReduce();
-		resolved.acceptPartial(record(BIN, 4L), key("k1"));
-		assertEquals(4L, resolved.getScalarResult().longValue());
-	}
-
-	@Test
 	public void statementResolvesSingleTopK() {
 		Statement stmt = new Statement();
 		stmt.setReduce(Reduce.topK(BIN, BinDataType.INTEGER, Order.DESC, OrderByFlags.NONE, 2));
@@ -400,29 +313,13 @@ public class TestReduceSpec {
 	@Test
 	public void statementSetReduceResetsMemoizedResolution() {
 		Statement stmt = new Statement();
-		stmt.setReduce(Reduce.sum(BIN));
-		ReduceSpec<Record, Long> first = stmt.resolveReduce();
+		stmt.setReduce(Reduce.topK(BIN, BinDataType.INTEGER, Order.DESC, OrderByFlags.NONE, 2));
+		ReduceSpec<Record, Record> first = stmt.resolveReduce();
 
-		stmt.setReduce(Reduce.count());
-		ReduceSpec<Record, Long> second = stmt.resolveReduce();
+		stmt.setReduce(Reduce.topK(BIN, BinDataType.INTEGER, Order.ASC, OrderByFlags.NONE, 3));
+		ReduceSpec<Record, Record> second = stmt.resolveReduce();
 
 		assertTrue(first != second);
-	}
-
-	@Test
-	public void statementResolveReduceMixingTopKPartsWithScalarThrows() {
-		Statement stmt = new Statement();
-		stmt.setReduce(
-			Reduce.orderBy(BIN, BinDataType.INTEGER, Order.DESC, OrderByFlags.NONE),
-			Reduce.sum(BIN));
-
-		try {
-			stmt.resolveReduce();
-			fail("Expected IllegalArgumentException");
-		}
-		catch (IllegalArgumentException expected) {
-			// pass
-		}
 	}
 
 	@Test
@@ -507,7 +404,7 @@ public class TestReduceSpec {
 	@Test
 	public void setTopKOverridesPriorReduce() {
 		Statement stmt = new Statement();
-		stmt.setReduce(Reduce.sum(BIN));
+		stmt.setReduce(Reduce.topK(BIN, BinDataType.INTEGER, Order.ASC, OrderByFlags.NONE, 5));
 		stmt.setOrderBy(BIN, BinDataType.INTEGER, Order.DESC);
 		stmt.setTopK(3);
 
@@ -515,148 +412,6 @@ public class TestReduceSpec {
 		assertTrue(stmt.resolveReduce() instanceof ReduceSpec);
 		stmt.resolveReduce().acceptPartial(record(BIN, 1L), key("k1"));
 		assertEquals(1, stmt.resolveReduce().getResult().length);
-	}
-
-	//-------------------------------------------------------
-	// Statement validation used by the query executor entry points
-	//-------------------------------------------------------
-
-	@Test
-	public void validateRecordQueryAllowsNoReduce() {
-		new Statement().validateRecordQuery(); // should not throw
-	}
-
-	@Test
-	public void validateRecordQueryAllowsTopK() {
-		Statement stmt = new Statement();
-		stmt.setReduce(Reduce.topK(BIN, BinDataType.INTEGER, Order.DESC, OrderByFlags.NONE, 2));
-		stmt.validateRecordQuery(); // should not throw
-	}
-
-	@Test
-	public void validateRecordQueryRejectsScalarReduce() {
-		Statement stmt = new Statement();
-		stmt.setReduce(Reduce.sum(BIN));
-
-		try {
-			stmt.validateRecordQuery();
-			fail("Expected IllegalArgumentException");
-		}
-		catch (IllegalArgumentException expected) {
-			// pass
-		}
-	}
-
-	@Test
-	public void validateReduceQueryRejectsNoReduce() {
-		try {
-			new Statement().validateReduceQuery();
-			fail("Expected IllegalArgumentException");
-		}
-		catch (IllegalArgumentException expected) {
-			// pass
-		}
-	}
-
-	@Test
-	public void validateReduceQueryRejectsTopK() {
-		Statement stmt = new Statement();
-		stmt.setReduce(Reduce.topK(BIN, BinDataType.INTEGER, Order.DESC, OrderByFlags.NONE, 2));
-
-		try {
-			stmt.validateReduceQuery();
-			fail("Expected IllegalArgumentException");
-		}
-		catch (IllegalArgumentException expected) {
-			// pass
-		}
-	}
-
-	@Test
-	public void validateReduceQueryAllowsScalarReduce() {
-		Statement stmt = new Statement();
-		stmt.setReduce(Reduce.count());
-		stmt.validateReduceQuery(); // should not throw
-	}
-
-	//-------------------------------------------------------
-	// Scalar reducers: additional edge cases
-	//-------------------------------------------------------
-
-	@Test
-	public void sumOfZeroRecordsIsZero() {
-		assertEquals(0L, Reduce.sum(BIN).getScalarResult().longValue());
-	}
-
-	@Test
-	public void sumMissingBinTreatedAsZero() {
-		ReduceSpec<Record, Long> reducer = Reduce.sum(BIN);
-		reducer.acceptPartial(record("other", 5L), key("k1"));
-		reducer.acceptPartial(record(BIN, 3L), key("k2"));
-		assertEquals(3L, reducer.getScalarResult().longValue());
-	}
-
-	@Test
-	public void countOfZeroRecordsIsZero() {
-		assertEquals(0L, Reduce.count().getScalarResult().longValue());
-	}
-
-	@Test
-	public void sumOverflowThrows() {
-		ReduceSpec<Record, Long> reducer = Reduce.sum(BIN);
-		reducer.acceptPartial(record(BIN, Long.MAX_VALUE), key("k1"));
-
-		try {
-			reducer.acceptPartial(record(BIN, 1L), key("k2"));
-			fail("Expected ArithmeticException on overflow");
-		}
-		catch (ArithmeticException expected) {
-			// pass
-		}
-	}
-
-	@Test
-	public void minSkipsNullValues() {
-		ReduceSpec<Record, Number> reducer = Reduce.min(BIN, BinDataType.INTEGER);
-		reducer.acceptPartial(record("other", 1L), key("k1")); // BIN missing -> null, skipped
-		reducer.acceptPartial(record(BIN, 7L), key("k2"));
-		reducer.acceptPartial(record(BIN, 4L), key("k3"));
-		assertEquals(4L, reducer.getScalarResult().longValue());
-	}
-
-	@Test
-	public void minAllNullThrows() {
-		ReduceSpec<Record, Number> reducer = Reduce.min(BIN, BinDataType.INTEGER);
-		reducer.acceptPartial(record("other", 1L), key("k1"));
-
-		try {
-			reducer.getScalarResult();
-			fail("Expected IllegalStateException");
-		}
-		catch (IllegalStateException expected) {
-			// pass
-		}
-	}
-
-	@Test
-	public void minIntegerPreservesFullLongPrecision() {
-		// Two distinct longs that collapse to the same value when converted to double.
-		// The minimum of {Long.MAX_VALUE, Long.MAX_VALUE - 1} must be Long.MAX_VALUE - 1,
-		// regardless of insertion order.
-		ReduceSpec<Record, Number> reducer = Reduce.min(BIN, BinDataType.INTEGER);
-		reducer.acceptPartial(record(BIN, Long.MAX_VALUE), key("k1"));
-		reducer.acceptPartial(record(BIN, Long.MAX_VALUE - 1), key("k2"));
-
-		assertEquals(Long.MAX_VALUE - 1, reducer.getScalarResult().longValue());
-	}
-
-	@Test
-	public void maxIntegerPreservesFullLongPrecision() {
-		ReduceSpec<Record, Number> reducer = Reduce.max(BIN, BinDataType.INTEGER);
-		reducer.acceptPartial(record(BIN, Long.MIN_VALUE + 1), key("k1"));
-		reducer.acceptPartial(record(BIN, Long.MIN_VALUE), key("k2"));
-
-		assertEquals(Long.MIN_VALUE + 1, reducer.getScalarResult().longValue());
 	}
 
 	//-------------------------------------------------------
@@ -793,7 +548,7 @@ public class TestReduceSpec {
 	@Test
 	public void setReduceEmptyClearsReduce() {
 		Statement stmt = new Statement();
-		stmt.setReduce(Reduce.sum(BIN));
+		stmt.setReduce(Reduce.topK(BIN, BinDataType.INTEGER, Order.DESC, OrderByFlags.NONE, 2));
 		assertTrue(stmt.resolveReduce() != null);
 
 		stmt.setReduce(); // empty varargs
@@ -803,52 +558,6 @@ public class TestReduceSpec {
 	//-------------------------------------------------------
 	// Concurrency: combiners are fed from one thread per node concurrently
 	//-------------------------------------------------------
-
-	@Test
-	public void sumIsThreadSafeUnderConcurrentAccept() throws Exception {
-		ReduceSpec<Record, Long> reducer = Reduce.sum(BIN);
-		int threads = 8;
-		int perThread = 20000;
-
-		runConcurrent(threads, (t) -> {
-			for (int i = 0; i < perThread; i++) {
-				reducer.acceptPartial(record(BIN, 1L), key("t" + t + "-k" + i));
-			}
-		});
-
-		assertEquals((long)threads * perThread, reducer.getScalarResult().longValue());
-	}
-
-	@Test
-	public void countIsThreadSafeUnderConcurrentAccept() throws Exception {
-		ReduceSpec<Record, Long> reducer = Reduce.count();
-		int threads = 8;
-		int perThread = 20000;
-
-		runConcurrent(threads, (t) -> {
-			for (int i = 0; i < perThread; i++) {
-				reducer.acceptPartial(record(BIN, 1L), key("t" + t + "-k" + i));
-			}
-		});
-
-		assertEquals((long)threads * perThread, reducer.getScalarResult().longValue());
-	}
-
-	@Test
-	public void minIsThreadSafeUnderConcurrentAccept() throws Exception {
-		ReduceSpec<Record, Number> reducer = Reduce.min(BIN, BinDataType.INTEGER);
-		int threads = 8;
-		int perThread = 20000;
-
-		runConcurrent(threads, (t) -> {
-			for (int i = 0; i < perThread; i++) {
-				// Global minimum is 0, produced by every thread at i == 0.
-				reducer.acceptPartial(record(BIN, (long)i), key("t" + t + "-k" + i));
-			}
-		});
-
-		assertEquals(0L, reducer.getScalarResult().longValue());
-	}
 
 	@Test
 	public void topKIsThreadSafeUnderConcurrentAccept() throws Exception {
