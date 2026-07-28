@@ -32,7 +32,6 @@ import com.aerospike.client.query.BinDataType;
 import com.aerospike.client.query.Filter;
 import com.aerospike.client.query.IndexType;
 import com.aerospike.client.query.Order;
-import com.aerospike.client.query.OrderByFlags;
 import com.aerospike.client.query.RecordSet;
 import com.aerospike.client.query.Reduce;
 import com.aerospike.client.query.Statement;
@@ -89,30 +88,20 @@ public class TestQueryReduce extends TestSync {
 	public void topKDescending() {
 		Statement stmt = baseStatement();
 		int k = 3;
-		stmt.setReduce(Reduce.topK(binName, BinDataType.INTEGER, Order.DESC, OrderByFlags.NONE, k));
-
-		assertTopK(stmt, k, new long[] {10, 9, 8});
-	}
-
-	@Test
-	public void topKSplitOrderByLimit() {
-		Statement stmt = baseStatement();
-		int k = 3;
-		stmt.setReduce(
-			Reduce.orderBy(binName, BinDataType.INTEGER, Order.ASC, OrderByFlags.NONE),
-			Reduce.limit(binName, k));
-
-		assertTopK(stmt, k, new long[] {1, 2, 3});
-	}
-
-	@Test
-	public void topKViaSetOrderByAndSetTopK() {
-		Statement stmt = baseStatement();
-		int k = 3;
 		stmt.setOrderBy(binName, BinDataType.INTEGER, Order.DESC);
 		stmt.setTopK(k);
 
 		assertTopK(stmt, k, new long[] {10, 9, 8});
+	}
+
+	@Test
+	public void topKAscending() {
+		Statement stmt = baseStatement();
+		int k = 3;
+		stmt.setOrderBy(binName, BinDataType.INTEGER, Order.ASC);
+		stmt.setTopK(k);
+
+		assertTopK(stmt, k, new long[] {1, 2, 3});
 	}
 
 	private void assertTopK(Statement stmt, int k, long[] expected) {

@@ -27,19 +27,16 @@ import com.aerospike.client.query.BinDataType;
 import com.aerospike.client.query.Filter;
 import com.aerospike.client.query.IndexType;
 import com.aerospike.client.query.Order;
-import com.aerospike.client.query.OrderByFlags;
 import com.aerospike.client.query.RecordSet;
-import com.aerospike.client.query.Reduce;
 import com.aerospike.client.query.Statement;
 import com.aerospike.client.task.IndexTask;
 
 /**
- * Demonstrate client-side Top-K reduce using {@link Reduce#topK} (or the equivalent split
- * {@link Reduce#orderBy} + {@link Reduce#limit}).
+ * Demonstrate client-side Top-K reduce using {@link Statement#setOrderBy} + {@link Statement#setTopK}.
  * <p>
  * Note: the server does not yet send a per-node bounded Top-K result set for this reduce
  * (see docs/REDUCE-SPEC-DESIGN.md); every matching record is still sent to the client, which
- * merges them locally. Once {@link Statement#setReduce} is set, {@link IAerospikeClient#query}
+ * merges them locally. Once {@link Statement#setTopK} is set, {@link IAerospikeClient#query}
  * applies the reduce internally and streams only the final merged Top-K records through the
  * returned {@link RecordSet} — no manual combiner handling is needed.
  */
@@ -50,7 +47,7 @@ public class QueryTopK extends Example {
 	}
 
 	/**
-	 * Query records and select the top K by bin value using a ReduceSpec combiner.
+	 * Query records and select the top K by bin value using {@code setOrderBy}/{@code setTopK}.
 	 */
 	@Override
 	public void runExample(IAerospikeClient client, Parameters params) throws Exception {
@@ -124,11 +121,8 @@ public class QueryTopK extends Example {
 		stmt.setBinNames(binName);
 		stmt.setFilter(Filter.range(binName, begin, end));
 
-		// Split form is also valid and equivalent:
-		// stmt.setReduce(
-		//     Reduce.orderBy(binName, BinDataType.INTEGER, Order.DESC, OrderByFlags.NONE),
-		//     Reduce.limit(binName, k));
-		stmt.setReduce(Reduce.topK(binName, BinDataType.INTEGER, Order.DESC, OrderByFlags.NONE, k));
+		stmt.setOrderBy(binName, BinDataType.INTEGER, Order.DESC);
+		stmt.setTopK(k);
 
 		// client.query() merges every node's results and streams back only the final,
 		// globally-ordered top k records.

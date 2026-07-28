@@ -281,17 +281,20 @@ public final class Statement {
 	 * Mutually exclusive with {@link #setAggregateFunction}. Replaces any previously set reduce
 	 * (this setter does not accumulate across calls, consistent with {@link #setOperations(Operation[])}
 	 * and {@link #setBinNames(String...)}).
+	 * <p>
+	 * Not public for now — {@link #setOrderBy} + {@link #setTopK} are the only supported public
+	 * entry points into the reduce framework while the API is still settling.
 	 */
-	public void setReduce(ReduceSpec<?, ?>... reduceSpecs) {
+	void setReduce(ReduceSpec<?, ?>... reduceSpecs) {
 		this.reduceSpecs = reduceSpecs;
 		this.resolvedReduce = null;
 		this.reduceResolved = false;
 	}
 
 	/**
-	 * Return reduce spec(s) set by {@link #setReduce(ReduceSpec...)}.
+	 * Return reduce spec(s) set by {@code setReduce}.
 	 */
-	public ReduceSpec<?, ?>[] getReduce() {
+	ReduceSpec<?, ?>[] getReduce() {
 		return reduceSpecs;
 	}
 
@@ -335,7 +338,7 @@ public final class Statement {
 	 * <p>
 	 * Sugar for {@code setReduce(Reduce.topK(binName, type, order, flags, k))} using the bin,
 	 * type, order, and flags from the preceding {@link #setOrderBy} call. Like
-	 * {@link #setReduce(ReduceSpec...)}, replaces any previously set reduce.
+	 * {@code setReduce}, replaces any previously set reduce.
 	 *
 	 * @param k	maximum number of records to return, in {@code [1, 1000]}
 	 * @throws IllegalStateException if {@link #setOrderBy} was not called first
@@ -348,15 +351,15 @@ public final class Statement {
 	}
 
 	/**
-	 * Resolve the reduce spec(s) set by {@link #setReduce(ReduceSpec...)} into a single combiner
-	 * usable by a query executor. Returns {@code null} if no reduce was set. Composes a split
+	 * Resolve the reduce spec(s) set by {@code setReduce} into a single combiner usable by a
+	 * query executor. Returns {@code null} if no reduce was set. Composes a split
 	 * {@link Reduce#orderBy} + {@link Reduce#limit} pair into a single Top-K combiner.
 	 *
 	 * @throws IllegalArgumentException if the reduce specs are not a single reducer or a valid
 	 *                                   orderBy/limit pair on the same bin
 	 */
 	@SuppressWarnings("unchecked")
-	public <I, O> ReduceSpec<I, O> resolveReduce() {
+	<I, O> ReduceSpec<I, O> resolveReduce() {
 		if (! reduceResolved) {
 			resolvedReduce = computeResolveReduce();
 			reduceResolved = true;
