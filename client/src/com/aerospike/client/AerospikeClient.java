@@ -786,6 +786,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 				return tr.commit(mergedTxnRollPolicyDefault);
 
 			case VERIFIED:
+			case COMMIT_FAILED:
 				return tr.commit(mergedTxnRollPolicyDefault);
 
 			case COMMITTED:
@@ -829,6 +830,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 				break;
 
 			case VERIFIED:
+			case COMMIT_FAILED:
 				atr.commit(listener);
 				break;
 
@@ -844,10 +846,14 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	/**
 	 * Abort and rollback the given transaction.
 	 * <p>
+	 * Abort is not allowed after an in-doubt mark-roll-forward failure; the server may still
+	 * roll the transaction forward. Retry {@link #commit(Txn)} instead.
+	 * <p>
 	 * Requires server version 8.0+
 	 *
 	 * @param txn	transaction
 	 * @return		status of the abort
+	 * @throws AerospikeException	if transaction is already committed or commit failed in-doubt
 	 */
 	public final AbortStatus abort(Txn txn) {
 		TxnRoll tr = new TxnRoll(cluster, txn);
@@ -857,6 +863,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			case OPEN:
 			case VERIFIED:
 				return tr.abort(mergedTxnRollPolicyDefault);
+
+			case COMMIT_FAILED:
+				throw new AerospikeException(ResultCode.TXN_FAILED,
+					"Transaction commit failed. Abort is not allowed.");
 
 			case COMMITTED:
 				throw new AerospikeException(ResultCode.TXN_ALREADY_COMMITTED, "Transaction already committed");
@@ -869,6 +879,9 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	/**
 	 * Asynchronously abort and rollback the given transaction.
 	 * <p>
+	 * Abort is not allowed after an in-doubt mark-roll-forward failure; the server may still
+	 * roll the transaction forward. Retry {@link #commit(EventLoop, CommitListener, Txn)} instead.
+	 * <p>
 	 * This method registers the command with an event loop and returns.
 	 * The event loop thread will process the command and send the results to the listener.
 	 * <p>
@@ -878,7 +891,8 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * 						loop will be chosen by round-robin.
 	 * @param listener		where to send results
 	 * @param txn			transaction
-	 * @throws AerospikeException	if event loop registration fails
+	 * @throws AerospikeException	if event loop registration fails, or transaction is already
+	 * 								committed or commit failed in-doubt
 	 */
 	public final void abort(EventLoop eventLoop, AbortListener listener, Txn txn)
 		throws AerospikeException {
@@ -894,6 +908,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			case VERIFIED:
 				atr.abort(listener);
 				break;
+
+			case COMMIT_FAILED:
+				throw new AerospikeException(ResultCode.TXN_FAILED,
+					"Transaction commit failed. Abort is not allowed.");
 
 			case COMMITTED:
 				throw new AerospikeException(ResultCode.TXN_ALREADY_COMMITTED, "Transaction already committed");
