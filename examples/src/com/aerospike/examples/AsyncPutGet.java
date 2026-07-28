@@ -21,10 +21,8 @@ import java.net.ConnectException;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Bin;
-import com.aerospike.client.IAerospikeClient;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
-import com.aerospike.client.async.EventLoop;
 import com.aerospike.client.listener.RecordListener;
 import com.aerospike.client.listener.WriteListener;
 
@@ -33,62 +31,70 @@ public class AsyncPutGet extends AsyncExample {
 	 * Asynchronously write and read a bin using alternate methods.
 	 */
 	@Override
-	public void runExample(IAerospikeClient client, EventLoop eventLoop) {
-		Key key = new Key(params.namespace, params.set, "putgetkey");
+	public void runExample() {
+		Key key = new Key(namespace(), set(), "putgetkey");
 		Bin bin = new Bin("putgetbin", "value");
 
-		runPutGetInline(client, eventLoop, key, bin);
-		runPutGetWithRetry(client, eventLoop, key, bin);
+		beginRun();
+		try {
+			runPutGetInline(key, bin);
+		}
+		catch (Throwable t) {
+			failRun(t);
+		}
+
+		beginRun();
+		try {
+			runPutGetWithRetry(key, bin);
+		}
+		catch (Throwable t) {
+			failRun(t);
+		}
 	}
 
 	// Inline asynchronous put/get calls.
-	private void runPutGetInline(final IAerospikeClient client, final EventLoop eventLoop, final Key key, final Bin bin) {
-
+	private void runPutGetInline(final Key key, final Bin bin) {
 		console.info("Put inline: namespace=%s set=%s key=%s value=%s", key.namespace, key.setName, key.userKey, bin.value);
 
-		client.put(eventLoop, new WriteListener() {
+		client().put(eventLoop(), new WriteListener() {
 			public void onSuccess(final Key key) {
 				try {
 					// Write succeeded.  Now call read.
 					console.info("Get inline: namespace=%s set=%s key=%s", key.namespace, key.setName, key.userKey);
 
-					client.get(eventLoop, new RecordListener() {
+					client().get(eventLoop(), new RecordListener() {
 						public void onSuccess(final Key key, final Record record) {
-							validateBin(key, bin, record, "inline");
+							validateAndComplete(key, bin, record, "inline");
 						}
 
 						public void onFailure(AerospikeException e) {
-							console.error("Failed to get: namespace=%s set=%s key=%s exception=%s", key.namespace, key.setName, key.userKey, e.getMessage());
+							failRun(e);
 						}
-					}, policy, key);
+					}, readPolicy(), key);
 				}
-				catch (Exception e) {
-					console.error("Failed to get: namespace=%s set=%s key=%s exception=%s", key.namespace, key.setName, key.userKey, e.getMessage());
+				catch (Throwable t) {
+					failRun(t);
 				}
 			}
 
 			public void onFailure(AerospikeException e) {
-				console.error("Failed to put: namespace=%s set=%s key=%s exception=%s", key.namespace, key.setName, key.userKey, e.getMessage());
+				failRun(e);
 			}
-		}, writePolicy, key, bin);
+		}, writePolicy(), key, bin);
 	}
 
 	// Asynchronous put/get calls with retry.
-	private void runPutGetWithRetry(IAerospikeClient client, EventLoop eventLoop, Key key, Bin bin) {
+	private void runPutGetWithRetry(Key key, Bin bin) {
 		console.info("Put with retry: namespace=%s set=%s key=%s value=%s", key.namespace, key.setName, key.userKey, bin.value);
-		client.put(eventLoop, new WriteHandler(client, eventLoop, key, bin), writePolicy, key, bin);
+		client().put(eventLoop(), new WriteHandler(key, bin), writePolicy(), key, bin);
 	}
 
 	private class WriteHandler implements WriteListener {
-		private final IAerospikeClient client;
-		private final EventLoop eventLoop;
 		private final Key key;
 		private final Bin bin;
 		private int failCount = 0;
 
-		public WriteHandler(IAerospikeClient client, EventLoop eventLoop, Key key, Bin bin) {
-			this.client = client;
-			this.eventLoop = eventLoop;
+		public WriteHandler(Key key, Bin bin) {
 			this.key = key;
 			this.bin = bin;
 		}
@@ -98,10 +104,10 @@ public class AsyncPutGet extends AsyncExample {
 			try {
 				// Write succeeded.  Now call read.
 				console.info("Get with retry: namespace=%s set=%s key=%s", key.namespace, key.setName, key.userKey);
-				client.get(eventLoop, new ReadHandler(client, eventLoop, key, bin), policy, key);
+				client().get(eventLoop(), new ReadHandler(key, bin), readPolicy(), key);
 			}
-			catch (Exception e) {
-				console.error("Failed to get: namespace=%s set=%s key=%s exception=%s", key.namespace, key.setName, key.userKey, e.getMessage());
+			catch (Throwable t) {
+				failRun(t);
 			}
 		}
 
@@ -115,28 +121,25 @@ public class AsyncPutGet extends AsyncExample {
 				if (t != null && (t instanceof ConnectException || t instanceof IOException)) {
 					console.info("Retrying put: " + key.userKey);
 					try {
-						client.put(eventLoop, this, writePolicy, key, bin);
+						client().put(eventLoop(), this, writePolicy(), key, bin);
 						return;
 					}
-					catch (Exception ex) {
-						// Fall through to error case.
+					catch (Throwable retryFailure) {
+						failRun(retryFailure);
+						return;
 					}
 				}
 			}
-			console.error("Put failed: namespace=%s set=%s key=%s exception=%s", key.namespace, key.setName, key.userKey, e.getMessage());
+			failRun(e);
 		}
 	}
 
 	private class ReadHandler implements RecordListener {
-		private final IAerospikeClient client;
-		private final EventLoop eventLoop;
 		private final Key key;
 		private final Bin bin;
 		private int failCount = 0;
 
-		public ReadHandler(IAerospikeClient client, EventLoop eventLoop, Key key, Bin bin) {
-			this.client = client;
-			this.eventLoop = eventLoop;
+		public ReadHandler(Key key, Bin bin) {
 			this.key = key;
 			this.bin = bin;
 		}
@@ -144,7 +147,7 @@ public class AsyncPutGet extends AsyncExample {
 		// Read success callback.
 		public void onSuccess(Key key, Record record) {
 			// Verify received bin value is what was written.
-			validateBin(key, bin, record, "with retry");
+			validateAndComplete(key, bin, record, "with retry");
 		}
 
 		// Error callback.
@@ -157,28 +160,31 @@ public class AsyncPutGet extends AsyncExample {
 				if (t != null && (t instanceof ConnectException || t instanceof IOException)) {
 					console.info("Retrying get: " + key.userKey);
 					try {
-						client.get(eventLoop, this, policy, key);
+						client().get(eventLoop(), this, readPolicy(), key);
 						return;
 					}
-					catch (Exception ex) {
-						// Fall through to error case.
+					catch (Throwable retryFailure) {
+						failRun(retryFailure);
+						return;
 					}
 				}
 			}
-			console.error("Get failed: namespace=%s set=%s key=%s exception=%s", key.namespace, key.setName, key.userKey, e.getMessage());
+			failRun(e);
 		}
 	}
 
-	private void validateBin(Key key, Bin bin, Record record, String id) {
-		Object received = (record == null)? null : record.getValue(bin.name);
-		String expected = bin.value.toString();
+	private void validateAndComplete(Key key, Bin bin, Record record, String id) {
+		Object received = (record == null) ? null : record.getValue(bin.name);
+		Object expected = bin.value.getObject();
 
-		if (received != null && received.equals(expected)) {
+		if (expected.equals(received)) {
 			console.info("Bin matched %s: namespace=%s set=%s key=%s bin=%s value=%s",
 				id, key.namespace, key.setName, key.userKey, bin.name, received);
+			completeRun();
 		}
 		else {
-			console.error("Put/Get mismatch: Expected %s. Received %s.", expected, received);
+			failRun(new IllegalStateException(
+				String.format("Put/Get mismatch: expected=%s received=%s", expected, received)));
 		}
 	}
 }

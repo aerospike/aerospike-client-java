@@ -18,7 +18,6 @@ package com.aerospike.examples;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Bin;
-import com.aerospike.client.IAerospikeClient;
 import com.aerospike.client.Key;
 import com.aerospike.client.Language;
 import com.aerospike.client.Record;
@@ -35,48 +34,38 @@ import com.aerospike.client.task.RegisterTask;
 
 public class QueryExecute extends Example {
 
-	public QueryExecute(Console console) {
-		super(console);
-	}
-
 	/**
 	 * Apply user defined function on records that match the query filter.
 	 */
 	@Override
-	public void runExample(IAerospikeClient client, Parameters params) throws Exception {
+	public void runExample() throws Exception {
 		String indexName = "qeindex1";
 		String keyPrefix = "qekey";
 		String binName1 = "qebin1";
 		String binName2 = "qebin2";
 		int size = 10;
 
-		register(client, params);
-		createIndex(client, params, indexName, binName1);
-		writeRecords(client, params, keyPrefix, binName1, binName2, size);
-		runQueryExecute(client, params, indexName, binName1, binName2);
-		validateRecords(client, params, indexName, binName1, binName2, size);
-		client.dropIndex(params.policy, params.namespace, params.set, indexName);
+		register();
+		createIndex(indexName, binName1);
+		writeRecords(keyPrefix, binName1, binName2, size);
+		runQueryExecute(indexName, binName1, binName2);
+		validateRecords(indexName, binName1, binName2, size);
 	}
 
-	private void register(IAerospikeClient client, Parameters params) throws Exception {
-		RegisterTask task = client.register(params.policy, "udf/record_example.lua", "record_example.lua", Language.LUA);
+	private void register() throws Exception {
+		RegisterTask task = client().register(readPolicy(), "udf/record_example.lua", "record_example.lua", Language.LUA);
 		task.waitTillComplete();
 	}
 
-	private void createIndex(
-		IAerospikeClient client,
-		Parameters params,
-		String indexName,
-		String binName
-	) throws Exception {
+	private void createIndex(String indexName, String binName) throws Exception {
 		console.info("Create index: ns=%s set=%s index=%s bin=%s",
-			params.namespace, params.set, indexName, binName);
+			namespace(), set(), indexName, binName);
 
 		Policy policy = new Policy();
 		policy.socketTimeout = 0; // Do not timeout on index create.
 
 		try {
-			IndexTask task = client.createIndex(policy, params.namespace, params.set, indexName, binName, IndexType.NUMERIC);
+			IndexTask task = client().createIndex(policy, namespace(), set(), indexName, binName, IndexType.NUMERIC);
 			task.waitTillComplete();
 		}
 		catch (AerospikeException ae) {
@@ -86,68 +75,46 @@ public class QueryExecute extends Example {
 		}
 	}
 
-	private void writeRecords(
-		IAerospikeClient client,
-		Parameters params,
-		String keyPrefix,
-		String binName1,
-		String binName2,
-		int size
-	) throws Exception {
+	private void writeRecords(String keyPrefix, String binName1, String binName2, int size) throws Exception {
 		console.info("Write " + size + " records.");
 
 		for (int i = 1; i <= size; i++) {
-			Key key = new Key(params.namespace, params.set, keyPrefix + i);
-			client.put(params.writePolicy, key, new Bin(binName1, i), new Bin(binName2, i));
+			Key key = new Key(namespace(), set(), keyPrefix + i);
+			client().put(writePolicy(), key, new Bin(binName1, i), new Bin(binName2, i));
 		}
 	}
 
-	private void runQueryExecute(
-		IAerospikeClient client,
-		Parameters params,
-		String indexName,
-		String binName1,
-		String binName2
-	) throws Exception {
+	private void runQueryExecute(String indexName, String binName1, String binName2) throws Exception {
 		int begin = 3;
 		int end = 9;
 
 		console.info("For ns=%s set=%s index=%s bin=%s >= %s <= %s",
-			params.namespace, params.set, indexName, binName1, begin, end);
+			namespace(), set(), indexName, binName1, begin, end);
 		console.info("Even integers: add 100 to existing " + binName1);
 		console.info("Multiple of 5: delete " + binName2 + " bin");
 		console.info("Multiple of 9: delete record");
 
 		Statement stmt = new Statement();
-		stmt.setNamespace(params.namespace);
-		stmt.setSetName(params.set);
+		stmt.setNamespace(namespace());
+		stmt.setSetName(set());
 		stmt.setFilter(Filter.range(binName1, begin, end));
 
-		ExecuteTask task = client.execute(params.writePolicy, stmt, "record_example", "processRecord", Value.get(binName1), Value.get(binName2), Value.get(100));
+		ExecuteTask task = client().execute(writePolicy(), stmt, "record_example", "processRecord", Value.get(binName1), Value.get(binName2), Value.get(100));
 		task.waitTillComplete(3000, 3000);
 	}
 
-	private void validateRecords(
-		IAerospikeClient client,
-		Parameters params,
-		String indexName,
-		String binName1,
-		String binName2,
-		int size
-	) throws Exception {
+	private void validateRecords(String indexName, String binName1, String binName2, int size) throws Exception {
 		int begin = 1;
 		int end = size + 100;
 
 		console.info("Validate records");
 
 		Statement stmt = new Statement();
-		stmt.setNamespace(params.namespace);
-		stmt.setSetName(params.set);
+		stmt.setNamespace(namespace());
+		stmt.setSetName(set());
 		stmt.setFilter(Filter.range(binName1, begin, end));
 
-		RecordSet rs = client.query(null, stmt);
-
-		try {
+		try (RecordSet rs = client().query(null, stmt)) {
 			int[] expectedList = new int[] {1,2,3,104,5,106,7,108,-1,10};
 			int expectedSize = size - 1;
 			int count = 0;
@@ -184,9 +151,6 @@ public class QueryExecute extends Example {
 			if (count != expectedSize) {
 				console.error("Query count mismatch. Expected " + expectedSize + ". Received " + count);
 			}
-		}
-		finally {
-			rs.close();
 		}
 	}
 }

@@ -17,13 +17,10 @@
 package com.aerospike.examples;
 
 import com.aerospike.client.AerospikeException;
-import com.aerospike.client.IAerospikeClient;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
-import com.aerospike.client.async.EventLoop;
 import com.aerospike.client.listener.RecordSequenceListener;
 import com.aerospike.client.policy.ScanPolicy;
-import com.aerospike.client.util.Util;
 
 public class AsyncScan extends AsyncExample {
 
@@ -33,49 +30,45 @@ public class AsyncScan extends AsyncExample {
 	 * Asynchronous scan example.
 	 */
 	@Override
-	public void runExample(IAerospikeClient client, EventLoop eventLoop) {
-		console.info("Asynchronous scan: namespace=" + params.namespace + " set=" + params.set);
+	public void runExample() {
+		console.info("Asynchronous scan: namespace=" + namespace() + " set=" + set());
 		recordCount = 0;
 		final long begin = System.currentTimeMillis();
 		ScanPolicy policy = new ScanPolicy();
-		client.scanAll(eventLoop, new RecordSequenceListener() {
+		beginRun();
 
-			@Override
-			public void onRecord(Key key, Record record) throws AerospikeException {
-				recordCount++;
+		try {
+			client().scanAll(eventLoop(), new RecordSequenceListener() {
 
-				if ((recordCount % 10000) == 0) {
-					console.info("Records " + recordCount);
+				@Override
+				public void onRecord(Key key, Record record) throws AerospikeException {
+					recordCount++;
+
+					if ((recordCount % 10000) == 0) {
+						console.info("Records " + recordCount);
+					}
 				}
-			}
 
-			@Override
-			public void onSuccess() {
-				long end = System.currentTimeMillis();
-				double seconds =  (double)(end - begin) / 1000.0;
-				console.info("Total records returned: " + recordCount);
-				console.info("Elapsed time: " + seconds + " seconds");
-				double performance = Math.round((double)recordCount / seconds);
-				console.info("Records/second: " + performance);
-				notifyComplete();
-			}
+				@Override
+				public void onSuccess() {
+					long end = System.currentTimeMillis();
+					double seconds = (double)(end - begin) / 1000.0;
+					console.info("Total records returned: " + recordCount);
+					console.info("Elapsed time: " + seconds + " seconds");
+					double performance = Math.round((double)recordCount / seconds);
+					console.info("Records/second: " + performance);
+					completeRun();
+				}
 
-			@Override
-			public void onFailure(AerospikeException e) {
-				console.error("Scan failed: " + Util.getErrorMessage(e));
-				notifyComplete();
-			}
+				@Override
+				public void onFailure(AerospikeException e) {
+					failRun(e);
+				}
 
-		}, policy, params.namespace, params.set);
-
-		// Wait until scan finishes before closing cluster.  This is only necessary
-		// when running the async scan example from the command line (which closes the
-		// cluster after control is relinquished by this example).
-
-		// The async scan will continue to run after cluster close if the scan was
-		// initiated before cluster close.  The problem is cluster close shuts down
-		// cluster tending immediately so any data partition migrations will not be
-		// received by the client when performing the scan.
-		waitTillComplete();
+			}, policy, namespace(), set());
+		}
+		catch (Throwable t) {
+			failRun(t);
+		}
 	}
 }

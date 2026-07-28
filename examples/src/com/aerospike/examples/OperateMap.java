@@ -23,7 +23,6 @@ import java.util.List;
 import java.util.Map;
 
 import com.aerospike.client.Bin;
-import com.aerospike.client.IAerospikeClient;
 import com.aerospike.client.Key;
 import com.aerospike.client.Operation;
 import com.aerospike.client.Record;
@@ -38,46 +37,42 @@ import com.aerospike.client.cdt.MapReturnType;
 
 public class OperateMap extends Example {
 
-	public OperateMap(Console console) {
-		super(console);
-	}
-
 	/**
 	 * Perform operations on a map bin.
 	 */
 	@Override
-	public void runExample(IAerospikeClient client, Parameters params) {
-		runSimpleExample(client, params);
-		runScoreExample(client, params);
-		runListRangeExample(client, params);
-		runNestedExample(client, params);
-		runNestedMapCreateExample(client, params);
-		runNestedListCreateExample(client, params);
+	public void runExample() {
+		runSimpleExample();
+		runScoreExample();
+		runListRangeExample();
+		runNestedExample();
+		runNestedMapCreateExample();
+		runNestedListCreateExample();
 	}
 
 	/**
 	 * Simple example of map operate functionality.
 	 */
-	public void runSimpleExample(IAerospikeClient client, Parameters params) {
-		Key key = new Key(params.namespace, params.set, "mapkey");
+	public void runSimpleExample() {
+		Key key = new Key(namespace(), set(), "mapkey");
 		String binName = "mapbin";
 
 		// Delete record if it already exists.
-		client.delete(params.writePolicy, key);
+		client().delete(writePolicy(), key);
 
-		Map<Value,Value> inputMap = new HashMap<Value,Value>();
+		Map<Value,Value> inputMap = new HashMap<>();
 		inputMap.put(Value.get(1), Value.get(55));
 		inputMap.put(Value.get(2), Value.get(33));
 
 		// Write values to empty map.
-		Record record = client.operate(params.writePolicy, key,
+		Record record = client().operate(writePolicy(), key,
 				MapOperation.putItems(MapPolicy.Default, binName, inputMap)
 				);
 
 		console.info("Record: " + record);
 
 		// Pop value from map and also return new size of map.
-		record = client.operate(params.writePolicy, key,
+		record = client().operate(writePolicy(), key,
 				MapOperation.removeByKey(binName, Value.get(1), MapReturnType.VALUE),
 				MapOperation.size(binName)
 				);
@@ -97,28 +92,28 @@ public class OperateMap extends Example {
 	/**
 	 * Map score example.
 	 */
-	public void runScoreExample(IAerospikeClient client, Parameters params) {
-		Key key = new Key(params.namespace, params.set, "mapkey");
+	public void runScoreExample() {
+		Key key = new Key(namespace(), set(), "mapkey");
 		String binName = "mapbin";
 
 		// Delete record if it already exists.
-		client.delete(params.writePolicy, key);
+		client().delete(writePolicy(), key);
 
-		Map<Value,Value> inputMap = new HashMap<Value,Value>();
+		Map<Value,Value> inputMap = new HashMap<>();
 		inputMap.put(Value.get("Charlie"), Value.get(55));
 		inputMap.put(Value.get("Jim"), Value.get(98));
 		inputMap.put(Value.get("John"), Value.get(76));
 		inputMap.put(Value.get("Harry"), Value.get(82));
 
 		// Write values to empty map.
-		Record record = client.operate(params.writePolicy, key,
+		Record record = client().operate(writePolicy(), key,
 				MapOperation.putItems(MapPolicy.Default, binName, inputMap)
 				);
 
 		console.info("Record: " + record);
 
 		// Increment some user scores.
-		record = client.operate(params.writePolicy, key,
+		record = client().operate(writePolicy(), key,
 				MapOperation.increment(MapPolicy.Default, binName, Value.get("John"), Value.get(5)),
 				MapOperation.increment(MapPolicy.Default, binName, Value.get("Jim"), Value.get(-4))
 				);
@@ -126,7 +121,7 @@ public class OperateMap extends Example {
 		console.info("Record: " + record);
 
 		// Get top two scores.
-		record = client.operate(params.writePolicy, key,
+		record = client().operate(writePolicy(), key,
 				MapOperation.getByRankRange(binName, -2, 2, MapReturnType.KEY_VALUE)
 				);
 
@@ -143,34 +138,34 @@ public class OperateMap extends Example {
 	/**
 	 * Value list range example.
 	 */
-	public void runListRangeExample(IAerospikeClient client, Parameters params) {
-		Key key = new Key(params.namespace, params.set, "mapkey");
+	public void runListRangeExample() {
+		Key key = new Key(namespace(), set(), "mapkey");
 		String binName = "mapbin";
 
 		// Delete record if it already exists.
-		client.delete(params.writePolicy, key);
+		client().delete(writePolicy(), key);
 
-		List<Value> l1 = new ArrayList<Value>();
+		List<Value> l1 = new ArrayList<>();
 		l1.add(Value.get(new GregorianCalendar(2018, 1, 1).getTimeInMillis()));
 		l1.add(Value.get(1));
 
-		List<Value> l2 = new ArrayList<Value>();
+		List<Value> l2 = new ArrayList<>();
 		l2.add(Value.get(new GregorianCalendar(2018, 1, 2).getTimeInMillis()));
 		l2.add(Value.get(2));
 
-		List<Value> l3 = new ArrayList<Value>();
+		List<Value> l3 = new ArrayList<>();
 		l3.add(Value.get(new GregorianCalendar(2018, 2, 1).getTimeInMillis()));
 		l3.add(Value.get(3));
 
-		List<Value> l4 = new ArrayList<Value>();
+		List<Value> l4 = new ArrayList<>();
 		l4.add(Value.get(new GregorianCalendar(2018, 2, 2).getTimeInMillis()));
 		l4.add(Value.get(4));
 
-		List<Value> l5 = new ArrayList<Value>();
+		List<Value> l5 = new ArrayList<>();
 		l5.add(Value.get(new GregorianCalendar(2018, 2, 5).getTimeInMillis()));
 		l5.add(Value.get(5));
 
-		Map<Value,Value> inputMap = new HashMap<Value,Value>();
+		Map<Value,Value> inputMap = new HashMap<>();
 		inputMap.put(Value.get("Charlie"), Value.get(l1));
 		inputMap.put(Value.get("Jim"), Value.get(l2));
 		inputMap.put(Value.get("John"), Value.get(l3));
@@ -178,18 +173,18 @@ public class OperateMap extends Example {
 		inputMap.put(Value.get("Bill"), Value.get(l5));
 
 		// Write values to empty map.
-		Record record = client.operate(params.writePolicy, key,
+		Record record = client().operate(writePolicy(), key,
 				MapOperation.putItems(MapPolicy.Default, binName, inputMap)
 				);
 
 		console.info("Record: " + record);
 
-		List<Value> end = new ArrayList<Value>();
+		List<Value> end = new ArrayList<>();
 		end.add(Value.get(new GregorianCalendar(2018, 2, 2).getTimeInMillis()));
 		end.add(Value.getAsNull());
 
 		// Delete values < end.
-		record = client.operate(params.writePolicy, key,
+		record = client().operate(writePolicy(), key,
 				MapOperation.removeByValueRange(binName, null, Value.get(end), MapReturnType.COUNT)
 				);
 
@@ -199,103 +194,103 @@ public class OperateMap extends Example {
 	/**
 	 * Operate on a map of maps.
 	 */
-	public void runNestedExample(IAerospikeClient client, Parameters params) {
-		Key key = new Key(params.namespace, params.set, "mapkey2");
+	public void runNestedExample() {
+		Key key = new Key(namespace(), set(), "mapkey2");
 		String binName = "mapbin";
 
 		// Delete record if it already exists.
-		client.delete(params.writePolicy, key);
+		client().delete(writePolicy(), key);
 
-		Map<Value,Value> m1 = new HashMap<Value,Value>();
+		Map<Value,Value> m1 = new HashMap<>();
 		m1.put(Value.get("key11"), Value.get(9));
 		m1.put(Value.get("key12"), Value.get(4));
 
-		Map<Value,Value> m2 = new HashMap<Value,Value>();
+		Map<Value,Value> m2 = new HashMap<>();
 		m2.put(Value.get("key21"), Value.get(3));
 		m2.put(Value.get("key22"), Value.get(5));
 
-		Map<Value,Value> inputMap = new HashMap<Value,Value>();
+		Map<Value,Value> inputMap = new HashMap<>();
 		inputMap.put(Value.get("key1"), Value.get(m1));
 		inputMap.put(Value.get("key2"), Value.get(m2));
 
 		// Create maps.
-		client.put(params.writePolicy, key, new Bin(binName, inputMap));
+		client().put(writePolicy(), key, new Bin(binName, inputMap));
 
 		// Set map value to 11 for map key "key21" inside of map key "key2"
 		// and retrieve all maps.
-		Record record = client.operate(params.writePolicy, key,
+		Record record = client().operate(writePolicy(), key,
 				MapOperation.put(MapPolicy.Default, binName, Value.get("key21"), Value.get(11), CTX.mapKey(Value.get("key2"))),
 				Operation.get(binName)
 				);
 
-		record = client.get(params.policy, key);
+		record = client().get(readPolicy(), key);
 		console.info("Record: " + record);
 	}
 
-	public void runNestedMapCreateExample(IAerospikeClient client, Parameters params) {
-		Key key = new Key(params.namespace, params.set, "mapkey2");
+	public void runNestedMapCreateExample() {
+		Key key = new Key(namespace(), set(), "mapkey2");
 		String binName = "mapbin";
 
 		// Delete record if it already exists.
-		client.delete(params.writePolicy, key);
+		client().delete(writePolicy(), key);
 
-		Map<Value,Value> m1 = new HashMap<Value,Value>();
+		Map<Value,Value> m1 = new HashMap<>();
 		m1.put(Value.get("key21"), Value.get(7));
 		m1.put(Value.get("key22"), Value.get(6));
 
-		Map<Value,Value> m2 = new HashMap<Value,Value>();
+		Map<Value,Value> m2 = new HashMap<>();
 		m2.put(Value.get("a"), Value.get(3));
 		m2.put(Value.get("c"), Value.get(5));
 
-		Map<Value,Value> inputMap = new HashMap<Value,Value>();
+		Map<Value,Value> inputMap = new HashMap<>();
 		inputMap.put(Value.get("key1"), Value.get(m1));
 		inputMap.put(Value.get("key2"), Value.get(m2));
 
 		// Create maps.
-		client.put(params.writePolicy, key, new Bin(binName, inputMap));
+		client().put(writePolicy(), key, new Bin(binName, inputMap));
 
 		// Create key ordered map at "key2" only if map does not exist.
 		// Set map value to 4 for map key "key21" inside of map key "key2".
 		CTX ctx = CTX.mapKey(Value.get("key2"));
-		Record record = client.operate(params.writePolicy, key,
+		Record record = client().operate(writePolicy(), key,
 			MapOperation.create(binName, MapOrder.KEY_VALUE_ORDERED, ctx),
 			MapOperation.put(MapPolicy.Default, binName, Value.get("b"), Value.get(4), ctx),
 			Operation.get(binName)
 			);
 
-		record = client.get(params.policy, key);
+		record = client().get(readPolicy(), key);
 		console.info("Record: " + record);
 	}
 
-	public void runNestedListCreateExample(IAerospikeClient client, Parameters params) {
-		Key key = new Key(params.namespace, params.set, "mapkey3");
+	public void runNestedListCreateExample() {
+		Key key = new Key(namespace(), set(), "mapkey3");
 		String binName = "mapbin";
 
 		// Delete record if it already exists.
-		client.delete(params.writePolicy, key);
+		client().delete(writePolicy(), key);
 
-		List<Value> l1 = new ArrayList<Value>();
+		List<Value> l1 = new ArrayList<>();
 		l1.add(Value.get(7));
 		l1.add(Value.get(9));
 		l1.add(Value.get(5));
 
-		Map<Value,Value> inputMap = new HashMap<Value,Value>();
+		Map<Value,Value> inputMap = new HashMap<>();
 		inputMap.put(Value.get("key1"), Value.get(l1));
 
 		// Create maps.
-		client.put(params.writePolicy, key, new Bin(binName, inputMap));
+		client().put(writePolicy(), key, new Bin(binName, inputMap));
 
 		// Create ordered list at map's "key2" only if list does not exist.
 		// Append 2,1 to ordered list.
 		CTX ctx = CTX.mapKey(Value.get("key2"));
-		Record record = client.operate(params.writePolicy, key,
+		Record record = client().operate(writePolicy(), key,
 			ListOperation.create(binName, ListOrder.ORDERED, false, ctx),
 			ListOperation.append(binName, Value.get(2), ctx),
 			ListOperation.append(binName, Value.get(1), ctx),
 			Operation.get(binName)
 			);
 
-		record = client.get(params.policy, key);
+		record = client().get(readPolicy(), key);
 		console.info("Record: " + record);
 	}
 }

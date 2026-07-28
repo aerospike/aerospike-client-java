@@ -278,7 +278,7 @@ public class GuiDisplay implements ActionListener {
 		buttonGroup = new ButtonGroup();
 		JRadioButton jrb;
 
-		for (String example : Main.getAllExampleNames()) {
+		for (String example : ExampleRegistry.names()) {
 			jrb = new JRadioButton(example);
 			jrb.setActionCommand(example);
 			jrb.addActionListener(this);
