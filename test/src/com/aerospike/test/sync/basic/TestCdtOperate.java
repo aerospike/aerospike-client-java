@@ -2726,6 +2726,8 @@ public class TestCdtOperate extends TestSync {
 
     @Test
     public void hllLoopVarFilterOnNestedHLLs() {
+        Assume.assumeTrue("Tests require server version 8.1.2 or later",
+            args.serverVersion.isGreaterOrEqual(8, 1, 2, 0));
         Key rkey = new Key(NAMESPACE, SET, "hllLoopVarFilterKey");
         client.delete(null, rkey);
 
@@ -2895,6 +2897,8 @@ public class TestCdtOperate extends TestSync {
 
     @Test
     public void testChainedAndFilters() {
+        Assume.assumeTrue("Tests require server version 8.1.2 or later",
+            args.serverVersion.isGreaterOrEqual(8, 1, 2, 0));
         Key rkey = new Key(NAMESPACE, SET, "chainedAndFilters");
 
         try {
@@ -2966,6 +2970,8 @@ public class TestCdtOperate extends TestSync {
 
     @Test
     public void testAndFilterWithMapIndex() {
+        Assume.assumeTrue("Tests require server version 8.1.2 or later",
+            args.serverVersion.isGreaterOrEqual(8, 1, 2, 0));
         Key rkey = new Key(NAMESPACE, SET, "andFilterMapIndex");
 
         try {
