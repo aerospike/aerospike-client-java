@@ -32,6 +32,7 @@ public final class Txn {
 	public static enum State {
 		OPEN,
 		VERIFIED,
+		COMMIT_FAILED,
 		COMMITTED,
 		ABORTED;
 	}
@@ -168,8 +169,20 @@ public final class Txn {
 	        		throw new AerospikeException(ResultCode.TXN_ALREADY_ABORTED,
 	                		"Issuing commands to this transaction is forbidden because it has been aborted.");
 	    		case VERIFIED:
+	    		case COMMIT_FAILED:
 	        		throw new AerospikeException(ResultCode.TXN_FAILED,
 	                		"Issuing commands to this transaction is forbidden because it is currently being committed.");
+		}
+	}
+
+	/**
+	 * Transition to COMMIT_FAILED when mark-roll-forward fails in an in-doubt state.
+	 * The server may still roll the transaction forward; abort must not be called.
+	 * For internal use only.
+	 */
+	public void markCommitFailed() {
+		if (state != State.ABORTED && state != State.COMMITTED) {
+			state = State.COMMIT_FAILED;
 		}
 	}
 

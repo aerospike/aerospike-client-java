@@ -17,14 +17,17 @@
 package com.aerospike.test.sync.basic;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import com.aerospike.test.sync.TestSync;
 import org.junit.Test;
 import org.junit.BeforeClass;
 
+import com.aerospike.client.AbortStatus;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.BatchRecord;
 import com.aerospike.client.BatchResults;
@@ -43,6 +46,7 @@ import com.aerospike.client.Txn;
 
 public class TestTxn extends TestSync {
 	public static final String binName = "bin";
+	private static final String txnMonitorSet = "<ERO~MRT";
 
 	@BeforeClass
 	public static void register() {
@@ -123,7 +127,8 @@ public class TestTxn extends TestSync {
 				{ Txn.State.OPEN, null },
 				{ Txn.State.COMMITTED, ResultCode.TXN_ALREADY_COMMITTED },
 				{ Txn.State.ABORTED, ResultCode.TXN_ALREADY_ABORTED },
-				{ Txn.State.VERIFIED, ResultCode.TXN_FAILED }
+				{ Txn.State.VERIFIED, ResultCode.TXN_FAILED },
+				{ Txn.State.COMMIT_FAILED, ResultCode.TXN_FAILED }
 		};
 		Key key = new Key(args.namespace, args.set, "mrtkey21");
 
@@ -153,6 +158,112 @@ public class TestTxn extends TestSync {
 				}
 			}
 		}
+	}
+
+	@Test
+	public void txnAbortBlockedAfterCommitFailed() {
+		Key key = uniqueKey("mrtCommitFailedBlock");
+
+		client.put(null, key, new Bin(binName, "val1"));
+
+		Txn txn = new Txn();
+
+		WritePolicy wp = client.copyWritePolicyDefault();
+		wp.txn = txn;
+		client.put(wp, key, new Bin(binName, "val2"));
+
+		// Simulate an in-doubt outcome before mark-roll-forward fails.
+		txn.setInDoubt(true);
+		deleteTxnMonitor(txn);
+
+		try {
+			client.commit(txn);
+			fail("Expected commit to fail");
+		}
+		catch (AerospikeException.Commit ce) {
+			assertTrue(ce.getInDoubt());
+			assertEquals(Txn.State.COMMIT_FAILED, txn.getState());
+		}
+
+		try {
+			client.abort(txn);
+			fail("Expected abort to be blocked");
+		}
+		catch (AerospikeException ae) {
+			assertEquals(ResultCode.TXN_FAILED, ae.getResultCode());
+			assertEquals(Txn.State.COMMIT_FAILED, txn.getState());
+		}
+
+		// Commit retry is allowed from COMMIT_FAILED (may fail again at mark-roll-forward).
+		try {
+			client.commit(txn);
+		}
+		catch (AerospikeException.Commit ce) {
+			assertEquals(Txn.State.COMMIT_FAILED, txn.getState());
+		}
+		catch (AerospikeException ae) {
+			fail("Unexpected commit rejection: " + ae);
+		}
+	}
+
+	@Test
+	public void txnAbortAllowedAfterCleanMarkFailure() {
+		Key key = uniqueKey("mrtCleanMarkFail");
+
+		client.put(null, key, new Bin(binName, "val1"));
+
+		Txn txn = new Txn();
+
+		WritePolicy wp = client.copyWritePolicyDefault();
+		wp.txn = txn;
+		client.put(wp, key, new Bin(binName, "val2"));
+
+		deleteTxnMonitor(txn);
+
+		try {
+			client.commit(txn);
+			fail("Expected commit to fail");
+		}
+		catch (AerospikeException.Commit ce) {
+			Throwable cause = ce.getCause();
+
+			assertTrue(cause instanceof AerospikeException);
+			assertEquals(ResultCode.MRT_EXPIRED, ((AerospikeException)cause).getResultCode());
+			assertFalse(ce.getInDoubt());
+			assertFalse(txn.getInDoubt());
+			assertEquals(Txn.State.VERIFIED, txn.getState());
+		}
+
+		assertEquals(AbortStatus.OK, client.abort(txn));
+		assertEquals(Txn.State.ABORTED, txn.getState());
+
+		Record record = client.get(null, key);
+		assertBinEqual(key, record, binName, "val1");
+	}
+
+	@Test
+	public void txnAbortAllowedAfterVerifyFailure() {
+		Key key = uniqueKey("mrtVerifyFailAbort");
+
+		client.put(null, key, new Bin(binName, "val1"));
+
+		Txn txn = new Txn();
+
+		Policy rp = client.copyReadPolicyDefault();
+		rp.txn = txn;
+		client.get(rp, key);
+
+		client.put(null, key, new Bin(binName, "val3"));
+
+		try {
+			client.commit(txn);
+			fail("Expected commit to fail");
+		}
+		catch (AerospikeException.Commit ce) {
+			assertEquals(Txn.State.ABORTED, txn.getState());
+		}
+
+		assertEquals(AbortStatus.ALREADY_ABORTED, client.abort(txn));
 	}
 
 
@@ -505,5 +616,16 @@ public class TestTxn extends TestSync {
 			int received = rec.getInt(binName);
 			assertEquals(expected, received);
 		}
+	}
+
+	private Key uniqueKey(String prefix) {
+		return new Key(args.namespace, args.set, prefix + "-" + System.nanoTime());
+	}
+
+	private void deleteTxnMonitor(Txn txn) {
+		Key monitorKey = new Key(txn.getNamespace(), txnMonitorSet, txn.getId());
+		WritePolicy dwp = client.copyWritePolicyDefault();
+		dwp.durableDelete = true;
+		client.delete(dwp, monitorKey);
 	}
 }
