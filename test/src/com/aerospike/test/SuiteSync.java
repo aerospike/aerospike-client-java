@@ -21,6 +21,7 @@ import org.junit.BeforeClass;
 import org.junit.runner.RunWith;
 import org.junit.runners.Suite;
 
+import com.aerospike.client.TxnTest;
 import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.Host;
 import com.aerospike.client.IAerospikeClient;
@@ -103,6 +104,7 @@ import com.aerospike.test.util.Args;
 	TestScan.class,
 	TestServerInfo.class,
 	TestTouch.class,
+	TxnTest.class,
 	TestTxn.class,
 	TestUDF.class,
 	TestIndex.class,
