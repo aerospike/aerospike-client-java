@@ -30,6 +30,7 @@ import java.util.Map;
 import org.junit.Assume;
 import org.junit.BeforeClass;
 import org.junit.Test;
+import org.junit.function.ThrowingRunnable;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Bin;
@@ -3787,6 +3788,79 @@ public class TestCdtOperate extends TestSync {
 
         assertNotNull(result);
         assertTrue("Map values list size should be 3", result.getBoolean("sizeCheck"));
+    }
+
+    // ---- CLIENT-5184: reject invalid selectByPath / modifyByPath flags ----
+    //
+    // A negative flag, or one with bit 2 (the internal apply bit) set, is
+    // unconditionally invalid for either operation. The client must reject it with
+    // PARAMETER_ERROR rather than mask it (select cleared bit 2, modify set it) into
+    // a request the server happily executes -- for a negative input the rewritten low
+    // nibble aliases onto a valid server return type, so the misuse silently succeeds.
+    // The client validates eagerly while building the operation/expression, so the
+    // rejection surfaces at build time and needs no server round-trip.
+
+    private static void assertParameterError(ThrowingRunnable build) {
+        AerospikeException ae = assertThrows(AerospikeException.class, build);
+        assertEquals(ResultCode.PARAMETER_ERROR, ae.getResultCode());
+    }
+
+    // Legal SelectFlags values are the exposed constants 0..3 and 0x10 (and ORs). The
+    // negatives are the ticket's repro table; 4..7 cover the bit-2-set positives that
+    // the old "flags & ~4" mask would have silently cleared.
+    private static final int[] INVALID_SELECT_FLAGS = {-1, -2, -3, -9, -12, -16, 4, 5, 6, 7};
+
+    // Legal ModifyFlags values are DEFAULT (0) and NO_FAIL (0x10). Bit 2 is the
+    // internal apply bit and must never be caller-supplied.
+    private static final int[] INVALID_MODIFY_FLAGS = {-1, -2, -12, -16, 4, 5, 6, 7};
+
+    @Test
+    public void testSelectByPathRejectsInvalidFlags() {
+        for (int flag : INVALID_SELECT_FLAGS) {
+            final int f = flag;
+            assertParameterError(() -> CdtOperation.selectByPath(BIN_NAME, f, CTX.allChildren()));
+        }
+    }
+
+    @Test
+    public void testModifyByPathRejectsInvalidFlags() {
+        Expression modifyExp = Exp.build(Exp.add(Exp.intLoopVar(LoopVarPart.VALUE), Exp.val(5)));
+        for (int flag : INVALID_MODIFY_FLAGS) {
+            final int f = flag;
+            assertParameterError(() -> CdtOperation.modifyByPath(BIN_NAME, f, modifyExp, CTX.allChildren()));
+        }
+    }
+
+    @Test
+    public void testCdtExpSelectByPathRejectsInvalidFlags() {
+        for (int flag : INVALID_SELECT_FLAGS) {
+            final int f = flag;
+            assertParameterError(() -> CdtExp.selectByPath(Exp.Type.LIST, f, Exp.mapBin(BIN_NAME), CTX.allChildren()));
+        }
+    }
+
+    @Test
+    public void testCdtExpModifyByPathRejectsInvalidFlags() {
+        Exp modifyExp = Exp.add(Exp.intLoopVar(LoopVarPart.VALUE), Exp.val(5));
+        for (int flag : INVALID_MODIFY_FLAGS) {
+            final int f = flag;
+            assertParameterError(() -> CdtExp.modifyByPath(Exp.Type.MAP, f, modifyExp, Exp.mapBin(BIN_NAME), CTX.allChildren()));
+        }
+    }
+
+    // Regression: valid flags must still build. NO_FAIL (0x10) sets a high bit but not
+    // bit 2, so the new guard must let it through (end-to-end execution of DEFAULT and
+    // NO_FAIL flags is exercised by the tests above, e.g. testSelectNoFailFlag).
+    @Test
+    public void testValidPathFlagsStillAccepted() {
+        Expression modExp = Exp.build(Exp.add(Exp.intLoopVar(LoopVarPart.VALUE), Exp.val(5)));
+        Exp modExp2 = Exp.add(Exp.intLoopVar(LoopVarPart.VALUE), Exp.val(5));
+
+        // No exception expected.
+        CdtOperation.selectByPath(BIN_NAME, SelectFlags.NO_FAIL, CTX.allChildren());
+        CdtOperation.modifyByPath(BIN_NAME, ModifyFlags.NO_FAIL, modExp, CTX.allChildren());
+        CdtExp.selectByPath(Exp.Type.LIST, SelectFlags.NO_FAIL, Exp.mapBin(BIN_NAME), CTX.allChildren());
+        CdtExp.modifyByPath(Exp.Type.MAP, ModifyFlags.NO_FAIL, modExp2, Exp.mapBin(BIN_NAME), CTX.allChildren());
     }
 
 }
