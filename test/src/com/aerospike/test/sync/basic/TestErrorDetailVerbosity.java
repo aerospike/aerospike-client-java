@@ -125,7 +125,9 @@ public class TestErrorDetailVerbosity extends TestSync {
 		}
 		catch (AerospikeException ae) {
 			assertEquals(ResultCode.BIN_TYPE_ERROR, ae.getResultCode());
-			// With verbosity 0, the message should be the default ResultCode string.
+			// With verbosity 0 the server sends no detail: no subcode, and the message
+			// falls back to the default ResultCode string.
+			assertEquals(SubCode.NONE, ae.getSubcode());
 			String msg = ae.getBaseMessage();
 			assertEquals(ResultCode.getResultString(ResultCode.BIN_TYPE_ERROR), msg);
 			return;
