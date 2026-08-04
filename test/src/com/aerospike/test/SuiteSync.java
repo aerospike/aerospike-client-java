@@ -72,6 +72,7 @@ import com.aerospike.test.sync.query.TestQueryRPS;
 import com.aerospike.test.sync.query.TestQueryString;
 import com.aerospike.test.sync.query.TestQuerySum;
 import com.aerospike.test.util.Args;
+import com.aerospike.client.AerospikeClientIndexTypeTest;
 
 @RunWith(Suite.class)
 @Suite.SuiteClasses({
@@ -119,7 +120,8 @@ import com.aerospike.test.util.Args;
 	TestQueryOperations.class,
 	TestQueryRPS.class,
 	TestQueryString.class,
-	TestQuerySum.class
+	TestQuerySum.class,
+	AerospikeClientIndexTypeTest.class
 })
 public class SuiteSync {
 	public static IAerospikeClient client = null;

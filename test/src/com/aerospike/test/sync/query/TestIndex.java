@@ -47,6 +47,9 @@ public class TestIndex extends TestSync {
 	private static final String integerIndexName = "testintegerindex";
 	private static final String integerBinName = "testintegerbin";
 	private static final String integerKeyPrefix = "testintegerkey";
+	private static final String numericIndexName = "testnumericindex";
+	private static final String numericBinName = "testnumericbin";
+	private static final String numericKeyPrefix = "testnumerickey";
 
 	@Test
 	public void createDrop() {
@@ -181,6 +184,76 @@ public class TestIndex extends TestSync {
 
 		for (Node node : nodes) {
 			String cmd = IndexTask.buildStatusCommand(args.namespace, integerIndexName, node.getServerVersion());
+			String response = Info.request(node, cmd);
+			int code = Info.parseResultCode(response);
+
+			assertEquals(201, code);
+		}
+	}
+
+	@Test
+	public void numericIndexUpgradesToIntegerQueryDrop() {
+		// On server versions 8.1.3+ the client transparently upgrades a NUMERIC
+		// request to the "integer" index type. The server collapses "numeric" and
+		// "integer" to the same internal type, so the create spelling cannot be
+		// read back; this test instead verifies the upgraded index is created and
+		// remains queryable end-to-end. The wire-level mapping itself is asserted
+		// by AerospikeClientIndexTypeTest.
+		Assume.assumeTrue("NUMERIC to INTEGER upgrade requires server version 8.1.3 or later",
+			args.serverVersion.isGreaterOrEqual(8, 1, 3, 0));
+
+		IndexTask task;
+
+		// Drop index if it already exists.
+		try {
+			task = client.dropIndex(args.indexPolicy, args.namespace, args.set, numericIndexName);
+			task.waitTillComplete();
+		}
+		catch (AerospikeException ae) {
+			if (ae.getResultCode() != ResultCode.INDEX_NOTFOUND) {
+				throw ae;
+			}
+		}
+
+		task = client.createIndex(args.indexPolicy, args.namespace, args.set, numericIndexName, numericBinName, IndexType.NUMERIC);
+		task.waitTillComplete();
+
+		int size = 20;
+
+		for (int i = 1; i <= size; i++) {
+			Key key = new Key(args.namespace, args.set, numericKeyPrefix + i);
+			Bin bin = new Bin(numericBinName, i);
+			client.put(null, key, bin);
+		}
+
+		Statement stmt = new Statement();
+		stmt.setNamespace(args.namespace);
+		stmt.setSetName(args.set);
+		stmt.setBinNames(numericBinName);
+		stmt.setFilter(Filter.range(numericBinName, 4, 8));
+
+		RecordSet rs = client.query(null, stmt);
+
+		try {
+			int count = 0;
+
+			while (rs.next()) {
+				count++;
+			}
+			assertEquals(5, count);
+		}
+		finally {
+			rs.close();
+		}
+
+		task = client.dropIndex(args.indexPolicy, args.namespace, args.set, numericIndexName);
+		task.waitTillComplete();
+
+		// Ensure all nodes have dropped the index.
+		Node[] nodes = client.getNodes();
+
+		for (Node node : nodes) {
+			String cmd = IndexTask.buildStatusCommand(args.namespace, numericIndexName, node.getServerVersion());
 			String response = Info.request(node, cmd);
 			int code = Info.parseResultCode(response);
 
