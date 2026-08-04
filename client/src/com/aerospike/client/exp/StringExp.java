@@ -57,9 +57,7 @@ import com.aerospike.client.util.Packer;
  * <pre>{@code
  * // Filter records whose "name" bin starts with "hello".
  * Expression filter = Exp.build(
- *     Exp.eq(
- *         StringExp.startsWith(Exp.val("hello"), Exp.stringBin("name")),
- *         Exp.val(1)));
+ *     StringExp.startsWith(Exp.val("hello"), Exp.stringBin("name")));
  * }</pre>
  */
 public final class StringExp {
@@ -230,17 +228,16 @@ public final class StringExp {
 
 	/**
 	 * Create expression that tests whether {@code src} contains {@code needle} as a
-	 * substring. Returns an integer flag: {@code 1} on match, {@code 0} otherwise.
+	 * substring. Returns a boolean flag: {@code true} on match, {@code false} otherwise.
 	 *
 	 * <pre>{@code
-	 * Expression filter = Exp.build(Exp.eq(
-	 *     StringExp.contains(Exp.val("hello"), Exp.stringBin("text")),
-	 *     Exp.val(1)));
+	 * Expression filter = Exp.build(
+	 *     StringExp.contains(Exp.val("hello"), Exp.stringBin("text")));
 	 * }</pre>
 	 *
 	 * @param needle	substring to test for
 	 * @param src		source string expression
-	 * @return			integer-typed expression: 1 on match, 0 otherwise
+	 * @return			boolean-typed expression: true on match, false otherwise
 	 */
 	public static Exp contains(Exp needle, Exp src) {
 		byte[] bytes = Pack.pack(CONTAINS, needle);
@@ -249,7 +246,7 @@ public final class StringExp {
 
 	/**
 	 * Create expression that tests whether {@code src} begins with {@code prefix}.
-	 * Returns an integer flag: {@code 1} on match, {@code 0} otherwise.
+	 * Returns a boolean flag: {@code true} on match, {@code false} otherwise.
 	 *
 	 * <pre>{@code
 	 * Exp matched = StringExp.startsWith(Exp.val("Hello"), Exp.stringBin("text"));
@@ -257,7 +254,7 @@ public final class StringExp {
 	 *
 	 * @param prefix	prefix to test for
 	 * @param src		source string expression
-	 * @return			integer-typed expression: 1 on match, 0 otherwise
+	 * @return			boolean-typed expression: true on match, false otherwise
 	 */
 	public static Exp startsWith(Exp prefix, Exp src) {
 		byte[] bytes = Pack.pack(STARTS_WITH, prefix);
@@ -266,7 +263,7 @@ public final class StringExp {
 
 	/**
 	 * Create expression that tests whether {@code src} ends with {@code suffix}.
-	 * Returns an integer flag: {@code 1} on match, {@code 0} otherwise.
+	 * Returns a boolean flag: {@code true} on match, {@code false} otherwise.
 	 *
 	 * <pre>{@code
 	 * Exp matched = StringExp.endsWith(Exp.val("World"), Exp.stringBin("text"));
@@ -274,7 +271,7 @@ public final class StringExp {
 	 *
 	 * @param suffix	suffix to test for
 	 * @param src		source string expression
-	 * @return			integer-typed expression: 1 on match, 0 otherwise
+	 * @return			boolean-typed expression: true on match, false otherwise
 	 */
 	public static Exp endsWith(Exp suffix, Exp src) {
 		byte[] bytes = Pack.pack(ENDS_WITH, suffix);
@@ -335,14 +332,14 @@ public final class StringExp {
 
 	/**
 	 * Create expression that tests whether {@code src} contains a valid integer or
-	 * float literal. Returns an integer flag: {@code 1} on match, {@code 0} otherwise.
+	 * float literal. Returns a boolean flag: {@code true} on match, {@code false} otherwise.
 	 *
 	 * <pre>{@code
 	 * Exp numeric = StringExp.isNumeric(Exp.stringBin("text"));
 	 * }</pre>
 	 *
 	 * @param src	source string expression
-	 * @return		integer-typed expression: 1 if numeric, 0 otherwise
+	 * @return		boolean-typed expression: true if numeric, false otherwise
 	 */
 	public static Exp isNumeric(Exp src) {
 		byte[] bytes = Pack.pack(IS_NUMERIC);
@@ -351,8 +348,8 @@ public final class StringExp {
 
 	/**
 	 * Create expression that tests whether {@code src} parses as a number of the
-	 * requested {@link com.aerospike.client.operation.StringNumericType}. Returns an
-	 * integer flag: {@code 1} on match, {@code 0} otherwise.
+	 * requested {@link com.aerospike.client.operation.StringNumericType}. Returns a
+	 * boolean flag: {@code true} on match, {@code false} otherwise.
 	 *
 	 * <pre>{@code
 	 * // restrict to integer-only validation
@@ -361,7 +358,7 @@ public final class StringExp {
 	 *
 	 * @param numericType	one of the {@link com.aerospike.client.operation.StringNumericType} constants
 	 * @param src			source string expression
-	 * @return				integer-typed expression: 1 if numeric of the given type, 0 otherwise
+	 * @return				boolean-typed expression: true if numeric of the given type, false otherwise
 	 */
 	public static Exp isNumeric(int numericType, Exp src) {
 		byte[] bytes = Pack.pack(IS_NUMERIC, numericType);
@@ -370,14 +367,14 @@ public final class StringExp {
 
 	/**
 	 * Create expression that tests whether every cased codepoint in {@code src} is
-	 * uppercase. Returns an integer flag: {@code 1} on match, {@code 0} otherwise.
+	 * uppercase. Returns a boolean flag: {@code true} on match, {@code false} otherwise.
 	 *
 	 * <pre>{@code
 	 * Exp upper = StringExp.isUpper(Exp.stringBin("text"));
 	 * }</pre>
 	 *
 	 * @param src	source string expression
-	 * @return		integer-typed expression: 1 if all-uppercase, 0 otherwise
+	 * @return		boolean-typed expression: true if all-uppercase, false otherwise
 	 */
 	public static Exp isUpper(Exp src) {
 		byte[] bytes = Pack.pack(IS_UPPER);
@@ -386,14 +383,14 @@ public final class StringExp {
 
 	/**
 	 * Create expression that tests whether every cased codepoint in {@code src} is
-	 * lowercase. Returns an integer flag: {@code 1} on match, {@code 0} otherwise.
+	 * lowercase. Returns a boolean flag: {@code true} on match, {@code false} otherwise.
 	 *
 	 * <pre>{@code
 	 * Exp lower = StringExp.isLower(Exp.stringBin("text"));
 	 * }</pre>
 	 *
 	 * @param src	source string expression
-	 * @return		integer-typed expression: 1 if all-lowercase, 0 otherwise
+	 * @return		boolean-typed expression: true if all-lowercase, false otherwise
 	 */
 	public static Exp isLower(Exp src) {
 		byte[] bytes = Pack.pack(IS_LOWER);
@@ -471,7 +468,7 @@ public final class StringExp {
 
 	/**
 	 * Create expression that tests whether {@code pattern} (ICU regex syntax) matches
-	 * {@code src}. Returns an integer flag: {@code 1} on match, {@code 0} otherwise.
+	 * {@code src}. Returns a boolean flag: {@code true} on match, {@code false} otherwise.
 	 *
 	 * <pre>{@code
 	 * // matches if "text" contains any digit run
@@ -480,7 +477,7 @@ public final class StringExp {
 	 *
 	 * @param pattern	ICU-syntax regex pattern (must be valid UTF-8)
 	 * @param src		source string expression
-	 * @return			integer-typed expression: 1 on match, 0 otherwise
+	 * @return			boolean-typed expression: true on match, false otherwise
 	 */
 	public static Exp regexCompare(Exp pattern, Exp src) {
 		byte[] bytes = Pack.pack(REGEX_COMPARE, pattern);
@@ -490,7 +487,7 @@ public final class StringExp {
 	/**
 	 * Create expression that tests whether {@code pattern} matches {@code src} under
 	 * the supplied {@link StringRegexFlags}. Flags can be combined with bitwise OR.
-	 * Returns an integer flag: {@code 1} on match, {@code 0} otherwise.
+	 * Returns a boolean flag: {@code true} on match, {@code false} otherwise.
 	 *
 	 * <pre>{@code
 	 * Exp matched = StringExp.regexCompare(
@@ -501,7 +498,7 @@ public final class StringExp {
 	 * @param pattern		ICU-syntax regex pattern (must be valid UTF-8)
 	 * @param regexFlags	bitwise-OR of {@link StringRegexFlags} constants
 	 * @param src			source string expression
-	 * @return				integer-typed expression: 1 on match, 0 otherwise
+	 * @return				boolean-typed expression: true on match, false otherwise
 	 */
 	public static Exp regexCompare(Exp pattern, int regexFlags, Exp src) {
 		byte[] bytes = Pack.pack(REGEX_COMPARE, pattern, regexFlags);
