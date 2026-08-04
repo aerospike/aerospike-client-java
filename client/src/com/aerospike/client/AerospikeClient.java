@@ -5453,14 +5453,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		String createIndexCommand = currentServerVersion.isGreaterOrEqual(Version.SERVER_VERSION_8_1) ? "sindex-create:namespace=": "sindex-create:ns=";
 
 		// Server versions 8.1.3+ use the "integer" index type instead of "numeric".
-		// Map between the two based on the node's server version so existing NUMERIC
-		// callers work on newer servers and INTEGER callers work on older servers.
-		if (indexType == IndexType.NUMERIC && currentServerVersion.isGreaterOrEqual(Version.SERVER_VERSION_8_1_3)) {
-			indexType = IndexType.INTEGER;
-		}
-		else if (indexType == IndexType.INTEGER && currentServerVersion.isLessThan(Version.SERVER_VERSION_8_1_3)) {
-			indexType = IndexType.NUMERIC;
-		}
+		indexType = resolveIndexType(indexType, currentServerVersion);
 
 		sb.append(createIndexCommand);
 		sb.append(namespace);
@@ -5519,6 +5512,23 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		}
 
 		return sb.toString();
+	}
+
+	/**
+	 * Map the requested index type to the type the target server understands.
+	 * Server versions 8.1.3+ use "integer" instead of "numeric", so a NUMERIC
+	 * request is upgraded to INTEGER on those servers and an INTEGER request is
+	 * downgraded to NUMERIC on older servers. All other index types are returned
+	 * unchanged. Package-private for unit testing.
+	 */
+	static IndexType resolveIndexType(IndexType indexType, Version serverVersion) {
+		if (indexType == IndexType.NUMERIC && serverVersion.isGreaterOrEqual(Version.SERVER_VERSION_8_1_3)) {
+			return IndexType.INTEGER;
+		}
+		if (indexType == IndexType.INTEGER && serverVersion.isLessThan(Version.SERVER_VERSION_8_1_3)) {
+			return IndexType.NUMERIC;
+		}
+		return indexType;
 	}
 
 	private String buildDropIndexInfoCommand(Node node, String namespace, String setName, String indexName) {
