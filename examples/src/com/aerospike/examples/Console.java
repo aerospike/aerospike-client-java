@@ -18,6 +18,7 @@ package com.aerospike.examples;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import com.aerospike.client.Log;
 import com.aerospike.client.Log.Level;
@@ -25,6 +26,7 @@ import com.aerospike.client.Log.Level;
 public class Console implements Log.Callback {
 
 	private static final DateTimeFormatter TimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS");
+	private final AtomicInteger errorCount = new AtomicInteger();
 
 	public Console() {
 		Log.setCallback(this);
@@ -59,6 +61,9 @@ public class Console implements Log.Callback {
 	}
 
 	public void write(Level level, String message) {
+		if (level == Level.ERROR) {
+			errorCount.incrementAndGet();
+		}
 		write(LocalDateTime.now().format(TimeFormatter) + ' ' + level + ' ' + message);
 	}
 
@@ -68,6 +73,10 @@ public class Console implements Log.Callback {
 
 	public void write(String message) {
 		System.out.println(message);
+	}
+
+	public int errorCount() {
+		return errorCount.get();
 	}
 
 	@Override

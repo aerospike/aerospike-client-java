@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2024 Aerospike, Inc.
+ * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -16,7 +16,10 @@
  */
 package com.aerospike.client;
 
-import com.aerospike.client.configuration.*;
+import com.aerospike.client.configuration.ConfigurationProvider;
+import com.aerospike.client.policy.BatchDeletePolicy;
+import com.aerospike.client.policy.BatchUDFPolicy;
+import com.aerospike.client.policy.BatchWritePolicy;
 import com.aerospike.client.policy.Policy;
 
 /**
@@ -123,18 +126,32 @@ public class BatchRecord {
 		return null;
 	}
 
-	/**
+    /**
+     * Return union of sendKey settings for writes.
+     */
+    public boolean resolveSendKey(
+        Policy parentPolicy,
+        ConfigurationProvider configProvider,
+        BatchWritePolicy writePolicyDefault,
+        BatchUDFPolicy udfPolicyDefault,
+        BatchDeletePolicy deletePolicyDefault
+    ) {
+        return false;
+    }
+
+    /**
 	 * Optimized reference equality check to determine batch wire protocol repeat flag.
 	 * For internal use only.
 	 */
-	public boolean equals(BatchRecord other, ConfigurationProvider configProvider) {
+    @Override
+	public boolean equals(Object other) {
 		return false;
 	}
 
 	/**
 	 * Return wire protocol size. For internal use only.
 	 */
-	public int size(Policy parentPolicy, ConfigurationProvider configProvider) {
+	public int size(boolean sendKey) {
 		return 0;
 	}
 

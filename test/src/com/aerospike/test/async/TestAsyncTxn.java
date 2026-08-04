@@ -47,6 +47,7 @@ import com.aerospike.test.sync.basic.TestUDF;
 
 public class TestAsyncTxn extends TestAsync {
 	public static final String binName = "bin";
+	private static final String txnMonitorSet = "<ERO~MRT";
 
 	@BeforeClass
 	public static void register() {
@@ -335,6 +336,216 @@ public class TestAsyncTxn extends TestAsync {
 		};
 
 		execute(cmds);
+	}
+
+	@Test
+	public void asyncTxnAbortBlockedAfterCommitFailed() {
+		Key key = uniqueKey("asyncMrtCommitFailedBlock");
+
+		client.put(null, key, new Bin(binName, "val1"));
+
+		Txn txn = new Txn();
+
+		WritePolicy wp = client.copyWritePolicyDefault();
+		wp.txn = txn;
+		client.put(wp, key, new Bin(binName, "val2"));
+
+		txn.setInDoubt(true);
+		deleteTxnMonitor(txn);
+
+		client.commit(eventLoop, new CommitListener() {
+			public void onSuccess(CommitStatus status) {
+				setError(new AerospikeException("Unexpected commit success"));
+				notifyComplete();
+			}
+
+			public void onFailure(AerospikeException.Commit ce) {
+				if (! assertTrue(ce.getInDoubt())) {
+					notifyComplete();
+					return;
+				}
+
+				if (! assertEquals(Txn.State.COMMIT_FAILED, txn.getState())) {
+					notifyComplete();
+					return;
+				}
+
+				try {
+					client.abort(eventLoop, new AbortListener() {
+						public void onSuccess(AbortStatus status) {
+							setError(new AerospikeException("Unexpected abort success"));
+							notifyComplete();
+						}
+					}, txn);
+					setError(new AerospikeException("Expected abort to be blocked"));
+					notifyComplete();
+				}
+				catch (AerospikeException ae) {
+					if (! assertEquals(ResultCode.TXN_FAILED, ae.getResultCode())) {
+						notifyComplete();
+						return;
+					}
+
+					if (! assertEquals(Txn.State.COMMIT_FAILED, txn.getState())) {
+						notifyComplete();
+						return;
+					}
+
+					client.commit(eventLoop, new CommitListener() {
+						public void onSuccess(CommitStatus status) {
+							notifyComplete();
+						}
+
+						public void onFailure(AerospikeException.Commit ce) {
+							if (! assertEquals(Txn.State.COMMIT_FAILED, txn.getState())) {
+								notifyComplete();
+								return;
+							}
+							notifyComplete();
+						}
+					}, txn);
+				}
+			}
+		}, txn);
+
+		waitTillComplete();
+	}
+
+	@Test
+	public void asyncTxnAbortAllowedAfterCleanMarkFailure() {
+		Key key = uniqueKey("asyncMrtCleanMarkFail");
+
+		client.put(null, key, new Bin(binName, "val1"));
+
+		Txn txn = new Txn();
+
+		WritePolicy wp = client.copyWritePolicyDefault();
+		wp.txn = txn;
+		client.put(wp, key, new Bin(binName, "val2"));
+
+		deleteTxnMonitor(txn);
+
+		client.commit(eventLoop, new CommitListener() {
+			public void onSuccess(CommitStatus status) {
+				setError(new AerospikeException("Unexpected commit success"));
+				notifyComplete();
+			}
+
+			public void onFailure(AerospikeException.Commit ce) {
+				Throwable cause = ce.getCause();
+
+				if (! (cause instanceof AerospikeException)) {
+					setError(new AerospikeException("Expected AerospikeException cause"));
+					notifyComplete();
+					return;
+				}
+
+				if (! assertEquals(ResultCode.MRT_EXPIRED, ((AerospikeException)cause).getResultCode())) {
+					notifyComplete();
+					return;
+				}
+
+				if (! assertEquals(false, ce.getInDoubt())) {
+					notifyComplete();
+					return;
+				}
+
+				if (! assertEquals(false, txn.getInDoubt())) {
+					notifyComplete();
+					return;
+				}
+
+				if (! assertEquals(Txn.State.VERIFIED, txn.getState())) {
+					notifyComplete();
+					return;
+				}
+
+				client.abort(eventLoop, new AbortListener() {
+					public void onSuccess(AbortStatus status) {
+						if (! assertEquals(AbortStatus.OK, status)) {
+							notifyComplete();
+							return;
+						}
+
+						if (! assertEquals(Txn.State.ABORTED, txn.getState())) {
+							notifyComplete();
+							return;
+						}
+
+						client.get(eventLoop, new RecordListener() {
+							public void onSuccess(Key key, Record record) {
+								if (assertBinEqual(key, record, binName, "val1")) {
+									notifyComplete();
+								}
+								else {
+									notifyComplete();
+								}
+							}
+
+							public void onFailure(AerospikeException e) {
+								setError(e);
+								notifyComplete();
+							}
+						}, null, key);
+					}
+				}, txn);
+			}
+		}, txn);
+
+		waitTillComplete();
+	}
+
+	@Test
+	public void asyncTxnAbortAllowedAfterVerifyFailure() {
+		Key key = uniqueKey("asyncMrtVerifyFailAbort");
+
+		client.put(null, key, new Bin(binName, "val1"));
+
+		Txn txn = new Txn();
+
+		Policy rp = client.copyReadPolicyDefault();
+		rp.txn = txn;
+		client.get(rp, key);
+
+		client.put(null, key, new Bin(binName, "val3"));
+
+		client.commit(eventLoop, new CommitListener() {
+			public void onSuccess(CommitStatus status) {
+				setError(new AerospikeException("Unexpected commit success"));
+				notifyComplete();
+			}
+
+			public void onFailure(AerospikeException.Commit ce) {
+				if (! assertEquals(Txn.State.ABORTED, txn.getState())) {
+					notifyComplete();
+					return;
+				}
+
+				client.abort(eventLoop, new AbortListener() {
+					public void onSuccess(AbortStatus status) {
+						if (assertEquals(AbortStatus.ALREADY_ABORTED, status)) {
+							notifyComplete();
+						}
+						else {
+							notifyComplete();
+						}
+					}
+				}, txn);
+			}
+		}, txn);
+
+		waitTillComplete();
+	}
+
+	private Key uniqueKey(String prefix) {
+		return new Key(args.namespace, args.set, prefix + "-" + System.nanoTime());
+	}
+
+	private void deleteTxnMonitor(Txn txn) {
+		Key monitorKey = new Key(txn.getNamespace(), txnMonitorSet, txn.getId());
+		WritePolicy dwp = client.copyWritePolicyDefault();
+		dwp.durableDelete = true;
+		client.delete(dwp, monitorKey);
 	}
 
 	private void execute(Runner[] cmdArray) {

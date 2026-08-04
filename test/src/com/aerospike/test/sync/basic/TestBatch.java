@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2025 Aerospike, Inc.
+ * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -26,7 +26,6 @@ import static org.junit.Assert.fail;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.aerospike.client.util.Version;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -48,10 +47,14 @@ import com.aerospike.client.exp.ExpOperation;
 import com.aerospike.client.exp.ExpReadFlags;
 import com.aerospike.client.exp.ExpWriteFlags;
 import com.aerospike.client.exp.Expression;
+import com.aerospike.client.policy.BatchPolicy;
 import com.aerospike.client.policy.BatchReadPolicy;
 import com.aerospike.client.policy.BatchWritePolicy;
 import com.aerospike.client.policy.WritePolicy;
+import com.aerospike.client.query.RecordSet;
+import com.aerospike.client.query.Statement;
 import com.aerospike.client.util.Util;
+import com.aerospike.client.util.Version;
 import com.aerospike.test.sync.TestSync;
 
 public class TestBatch extends TestSync {
@@ -324,7 +327,375 @@ public class TestBatch extends TestSync {
 		}
 	}
 
-	@Test
+    @Test
+    public void batchWriteWithClusterSendKey() {
+        String prefix = "sendKeyCluster";
+        String set = "sendKeyCluster";
+        int size = 2;
+        Key[] keys = new Key[size];
+
+        for (int i = 0; i < size; i++) {
+            keys[i] = new Key(args.namespace, set, prefix + (i + 1));
+        }
+
+        client.truncate(null, args.namespace, set, null);
+
+        Bin bin = new Bin("bin5", "NewValue");
+
+        // Change global batch write sendKey.
+        BatchPolicy bp = client.getBatchParentPolicyWriteDefault();
+        boolean origSendKey = bp.sendKey;
+        bp.sendKey = true;
+
+        BatchResults bresults = client.operate(null, null, keys,
+            Operation.put(bin)
+            );
+
+        for (int i = 0; i < bresults.records.length; i++) {
+            BatchRecord br = bresults.records[i];
+            assertEquals(ResultCode.OK, br.resultCode);
+        }
+
+        // Reset global batch write sendKey.
+        bp.sendKey = origSendKey;
+
+        Statement stmt = new Statement();
+        stmt.setNamespace(args.namespace);
+        stmt.setSetName(set);
+
+        int count = 0;
+
+        try (RecordSet rs = client.query(null, stmt)) {
+            while (rs.next()) {
+                Value val = rs.getKey().userKey;
+                assertNotNull(val);
+
+                String key = val.toString();
+                assertTrue(key.startsWith(prefix));
+                count++;
+            }
+        }
+        assertEquals(size, count);
+    }
+
+    @Test
+    public void batchWriteWithBatchPolicySendKey() {
+        String prefix = "sendKeyBP";
+        String set = "sendKeyBP";
+        int size = 2;
+        Key[] keys = new Key[size];
+
+        for (int i = 0; i < size; i++) {
+            keys[i] = new Key(args.namespace, set, prefix + (i + 1));
+        }
+
+        client.truncate(null, args.namespace, set, null);
+
+        Bin bin = new Bin("bin5", "NewValue");
+
+        BatchPolicy bp = client.copyBatchParentPolicyWriteDefault();
+        bp.sendKey = true;
+
+        BatchResults bresults = client.operate(bp, null, keys,
+            Operation.put(bin)
+            );
+
+        for (int i = 0; i < bresults.records.length; i++) {
+            BatchRecord br = bresults.records[i];
+            assertEquals(ResultCode.OK, br.resultCode);
+        }
+
+        Statement stmt = new Statement();
+        stmt.setNamespace(args.namespace);
+        stmt.setSetName(set);
+
+        int count = 0;
+
+        try (RecordSet rs = client.query(null, stmt)) {
+            while (rs.next()) {
+                Value val = rs.getKey().userKey;
+                assertNotNull(val);
+
+                String key = val.toString();
+                assertTrue(key.startsWith(prefix));
+                count++;
+            }
+        }
+        assertEquals(size, count);
+    }
+
+    @Test
+    public void batchWriteWithBatchWritePolicySendKey() {
+        String prefix = "sendKeyBWP";
+        String set = "sendKeyBWP";
+        int size = 2;
+        Key[] keys = new Key[size];
+
+        for (int i = 0; i < size; i++) {
+            keys[i] = new Key(args.namespace, set, prefix + (i + 1));
+        }
+
+        client.truncate(null, args.namespace, set, null);
+
+        Bin bin = new Bin("bin5", "NewValue");
+
+        BatchWritePolicy bwp = client.copyBatchWritePolicyDefault();
+        bwp.sendKey = true;
+
+        BatchResults bresults = client.operate(null, bwp, keys,
+            Operation.put(bin)
+            );
+
+        for (int i = 0; i < bresults.records.length; i++) {
+            BatchRecord br = bresults.records[i];
+            assertEquals(ResultCode.OK, br.resultCode);
+        }
+
+        Statement stmt = new Statement();
+        stmt.setNamespace(args.namespace);
+        stmt.setSetName(set);
+
+        int count = 0;
+
+        try (RecordSet rs = client.query(null, stmt)) {
+            while (rs.next()) {
+                Value val = rs.getKey().userKey;
+                assertNotNull(val);
+
+                String key = val.toString();
+                assertTrue(key.startsWith(prefix));
+                count++;
+            }
+        }
+        assertEquals(size, count);
+    }
+
+    @Test
+    public void batchWriteComplexGlobalSendKey() {
+        String prefix = "sendKeyCG";
+        String set = "sendKeyCG";
+        int size = 2;
+
+        client.truncate(null, args.namespace, set, null);
+
+        // Change global batch write sendKey.
+        BatchPolicy bp = client.getBatchParentPolicyWriteDefault();
+        boolean origSendKey = bp.sendKey;
+        bp.sendKey = true;
+
+        BatchWritePolicy wp = new BatchWritePolicy();
+        wp.sendKey = false;
+
+        List<BatchRecord> records = new ArrayList<BatchRecord>();
+        Operation[] ops = Operation.array(Operation.put(new Bin("bin", "val")));
+
+        for (int i = 0; i < size; i++) {
+            Key key = new Key(args.namespace, set, prefix + (i + 1));
+            records.add(new BatchWrite(wp, key, ops));
+        }
+
+        boolean status = client.operate(null, records);
+        assertTrue(status);
+
+        for (BatchRecord rec : records) {
+            assertEquals(ResultCode.OK, rec.resultCode);
+        }
+
+        // Reset global batch write sendKey.
+        bp.sendKey = origSendKey;
+
+        Statement stmt = new Statement();
+        stmt.setNamespace(args.namespace);
+        stmt.setSetName(set);
+
+        int count = 0;
+
+        try (RecordSet rs = client.query(null, stmt)) {
+            while (rs.next()) {
+                Value val = rs.getKey().userKey;
+                assertNotNull(val);
+
+                String key = val.toString();
+                assertTrue(key.startsWith(prefix));
+                count++;
+            }
+        }
+        assertEquals(size, count);
+    }
+
+    @Test
+    public void batchWriteComplexGlobalSendKeySingle() {
+        String prefix = "skCG2";
+        String set = "skCG2";
+        int size = 1;  // Ensure single key optimization is enabled.
+
+        client.truncate(null, args.namespace, set, null);
+
+        BatchWritePolicy wp = new BatchWritePolicy();
+        wp.sendKey = false;
+
+        List<BatchRecord> records = new ArrayList<BatchRecord>();
+        Operation[] ops = Operation.array(Operation.put(new Bin("bin", "val")));
+
+        for (int i = 0; i < size; i++) {
+            Key key = new Key(args.namespace, set, prefix + (i + 1));
+            records.add(new BatchWrite(wp, key, ops));
+        }
+
+        // Change global batch write sendKey.
+        BatchWritePolicy def = client.getBatchWritePolicyDefault();
+        boolean origSendKey = def.sendKey;
+        def.sendKey = true;
+
+        boolean status;
+
+        try {
+            status = client.operate(null, records);
+        }
+        finally {
+            // Reset global batch write sendKey.
+            def.sendKey = origSendKey;
+        }
+
+        assertTrue(status);
+
+        for (BatchRecord rec : records) {
+            assertEquals(ResultCode.OK, rec.resultCode);
+        }
+
+        Statement stmt = new Statement();
+        stmt.setNamespace(args.namespace);
+        stmt.setSetName(set);
+
+        int count = 0;
+
+        try (RecordSet rs = client.query(null, stmt)) {
+            while (rs.next()) {
+                Value val = rs.getKey().userKey;
+                assertNotNull(val);
+
+                String key = val.toString();
+                assertTrue(key.startsWith(prefix));
+                count++;
+            }
+        }
+        assertEquals(size, count);
+    }
+
+    @Test
+    public void batchWriteComplexSendKey() {
+        String prefix = "sendKeyC";
+        String set = "sendKeyC";
+        int size = 2;
+
+        client.truncate(null, args.namespace, set, null);
+
+        BatchWritePolicy wp = new BatchWritePolicy();
+        wp.sendKey = true;
+
+        List<BatchRecord> records = new ArrayList<BatchRecord>();
+        Operation[] ops = Operation.array(Operation.put(new Bin("bin", "val")));
+
+        for (int i = 0; i < size; i++) {
+            Key key = new Key(args.namespace, set, prefix + (i + 1));
+            records.add(new BatchWrite(wp, key, ops));
+        }
+
+        boolean status = client.operate(null, records);
+        assertTrue(status);
+
+        for (BatchRecord rec : records) {
+            assertEquals(ResultCode.OK, rec.resultCode);
+        }
+
+        Statement stmt = new Statement();
+        stmt.setNamespace(args.namespace);
+        stmt.setSetName(set);
+
+        int count = 0;
+
+        try (RecordSet rs = client.query(null, stmt)) {
+            while (rs.next()) {
+                Value val = rs.getKey().userKey;
+                assertNotNull(val);
+
+                String key = val.toString();
+                assertTrue(key.startsWith(prefix));
+                count++;
+             }
+        }
+        assertEquals(size, count);
+    }
+
+    @Test
+    public void batchReadWriteSendKey() {
+        String prefix = "sendKeyRW";
+        String set = "sendKeyRW";
+        Bin bin = new Bin("a", 35);
+        int size = 20;
+
+        client.truncate(null, args.namespace, set, null);
+
+        client.put(null, new Key(args.namespace, set, prefix + 9), bin);
+        client.put(null, new Key(args.namespace, set, prefix + 10), bin);
+        client.put(null, new Key(args.namespace, set, prefix + 11), bin);
+
+        List<BatchRecord> records = new ArrayList<BatchRecord>();
+        Operation[] writeOps = Operation.array(Operation.put(new Bin("bin", "val")));
+
+        for (int i = 0; i < size; i++) {
+            Key key = new Key(args.namespace, set, prefix + (i + 1));
+
+            if (i >= 8 && i <= 10) {
+                records.add(new BatchRead(key, true));
+            }
+            else {
+                records.add(new BatchWrite(key, writeOps));
+            }
+        }
+
+        BatchPolicy bp = client.copyBatchParentPolicyWriteDefault();
+        bp.sendKey = true;
+
+        boolean status = client.operate(bp, records);
+        assertTrue(status);
+
+        for (BatchRecord rec : records) {
+            assertEquals(ResultCode.OK, rec.resultCode);
+        }
+
+        Statement stmt = new Statement();
+        stmt.setNamespace(args.namespace);
+        stmt.setSetName(set);
+
+        int sendKeyCount = 0;
+        int otherCount = 0;
+
+        try (RecordSet rs = client.query(null, stmt)) {
+            while (rs.next()) {
+                Value val = rs.getKey().userKey;
+
+                if (val != null) {
+                    // Writes.
+                    String key = val.toString();
+                    assertTrue(key.startsWith(prefix));
+                    sendKeyCount++;
+                }
+                else {
+                    // Reads
+                    Record rec = rs.getRecord();
+                    int ival = rec.getInt(bin.name);
+
+                    assertEquals(35, ival);
+                    otherCount++;
+                }
+             }
+        }
+        assertEquals(size - 3, sendKeyCount);
+        assertEquals(3, otherCount);
+    }
+
+    @Test
 	public void batchWriteComplex() {
 		Expression wexp1 = Exp.build(Exp.add(Exp.intBin(BinName), Exp.val(1000)));
 

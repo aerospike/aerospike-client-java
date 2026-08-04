@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -224,10 +224,16 @@ public final class CTX {
 	/**
 	 * Select map entries whose keys are contained in the provided byte keys.
 	 *
-	 * @param keys	byte map keys to select
-	 * @return		a map key-list context
-	 * @see #mapKeysIn(String...)
+	 * @deprecated Each argument is encoded as a small integer map key, not as a blob key, so this overload does
+	 *             not select entries keyed by byte arrays. Use {@link #mapKeysIn(int...)} or {@link #mapKeysIn(long...)}
+	 *             for integer keys, or {@link #mapKeysIn(Value...)} with {@link Value#get(byte[])} for blob keys.
+	 *             This method will be removed in a future release.
+     *
+     * @param keys	byte map keys to select
+     * @return		a map key-list context
+     * @see #mapKeysIn(String...)
 	 */
+	@Deprecated
 	public static CTX mapKeysIn(byte... keys) {
 		// Manual boxing required: Arrays.asList() on a primitive array wraps it as a single element, not per-element.
 		List<Byte> list = new ArrayList<>(keys.length);
@@ -254,35 +260,18 @@ public final class CTX {
 	}
 
 	/**
-	 * Select map entries whose keys are contained in the provided double keys.
+	 * Select map entries whose keys are contained in the provided key list.
+	 * Each element is one CDT map key as a {@link Value} (for example string, integer, or
+	 * blob via {@link Value#get(byte[])}). Aerospike map keys are restricted to integer, string,
+	 * and blob types; mixed key types are allowed in one invocation when the map stores them.
 	 *
-	 * @param keys	double map keys to select
+	 * @param keys	map keys as {@link Value} instances
 	 * @return		a map key-list context
 	 * @see #mapKeysIn(String...)
+	 * @see CdtOperation#selectByPath(String, int, CTX...)
 	 */
-	public static CTX mapKeysIn(double... keys) {
-		// Manual boxing required: Arrays.asList() on a primitive array wraps it as a single element, not per-element.
-		List<Double> list = new ArrayList<>(keys.length);
-		for (double k : keys) {
-			list.add(k);
-		}
-		return new CTX(0x2a, Value.get(list));
-	}
-
-	/**
-	 * Select map entries whose keys are contained in the provided float keys.
-	 *
-	 * @param keys	float map keys to select
-	 * @return		a map key-list context
-	 * @see #mapKeysIn(String...)
-	 */
-	public static CTX mapKeysIn(float... keys) {
-		// Manual boxing required: Arrays.asList() on a primitive array wraps it as a single element, not per-element.
-		List<Float> list = new ArrayList<>(keys.length);
-		for (float k : keys) {
-			list.add(k);
-		}
-		return new CTX(0x2a, Value.get(list));
+	public static CTX mapKeysIn(Value... keys) {
+		return new CTX(0x2a, Value.get(keys));
 	}
 
 	/**

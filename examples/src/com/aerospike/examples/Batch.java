@@ -21,53 +21,46 @@ import java.util.List;
 
 import com.aerospike.client.BatchRead;
 import com.aerospike.client.Bin;
-import com.aerospike.client.IAerospikeClient;
 import com.aerospike.client.Key;
 import com.aerospike.client.Log.Level;
 import com.aerospike.client.Record;
 
 public class Batch extends Example {
 
-	public Batch(Console console) {
-		super(console);
-	}
-
 	/**
 	 * Batch multiple gets in one call to the server.
 	 */
 	@Override
-	public void runExample(IAerospikeClient client, Parameters params) throws Exception {
+	public void runExample() throws Exception {
 		String keyPrefix = "batchkey";
 		String valuePrefix = "batchvalue";
 		String binName = "batchbin";
 		int size = 8;
 
-		writeRecords(client, params, keyPrefix, binName, valuePrefix, size);
-		batchExists(client, params, keyPrefix, size);
-		batchReads(client, params, keyPrefix, binName, size);
-		batchReadHeaders(client, params, keyPrefix, size);
-		batchReadComplex(client, params, keyPrefix, binName);
+		writeRecords(keyPrefix, binName, valuePrefix, size);
+		batchExists(keyPrefix, size);
+		batchReads(keyPrefix, binName, size);
+		batchReadHeaders(keyPrefix, size);
+		batchReadComplex(keyPrefix, binName);
 	}
 
 	/**
 	 * Write records individually.
 	 */
 	private void writeRecords(
-		IAerospikeClient client,
-		Parameters params,
 		String keyPrefix,
 		String binName,
 		String valuePrefix,
 		int size
 	) throws Exception {
 		for (int i = 1; i <= size; i++) {
-			Key key = new Key(params.namespace, params.set, keyPrefix + i);
+			Key key = new Key(namespace(), set(), keyPrefix + i);
 			Bin bin = new Bin(binName, valuePrefix + i);
 
 			console.info("Put: ns=%s set=%s key=%s bin=%s value=%s",
 				key.namespace, key.setName, key.userKey, bin.name, bin.value);
 
-			client.put(params.writePolicy, key, bin);
+			client().put(writePolicy(), key, bin);
 		}
 	}
 
@@ -75,18 +68,16 @@ public class Batch extends Example {
 	 * Check existence of records in one batch.
 	 */
 	private void batchExists (
-		IAerospikeClient client,
-		Parameters params,
 		String keyPrefix,
 		int size
 	) throws Exception {
 		// Batch into one call.
 		Key[] keys = new Key[size];
 		for (int i = 0; i < size; i++) {
-			keys[i] = new Key(params.namespace, params.set, keyPrefix + (i + 1));
+			keys[i] = new Key(namespace(), set(), keyPrefix + (i + 1));
 		}
 
-		boolean[] existsArray = client.exists(null, keys);
+		boolean[] existsArray = client().exists(null, keys);
 
 		for (int i = 0; i < existsArray.length; i++) {
 			Key key = keys[i];
@@ -100,8 +91,6 @@ public class Batch extends Example {
 	 * Read records in one batch.
 	 */
 	private void batchReads (
-		IAerospikeClient client,
-		Parameters params,
 		String keyPrefix,
 		String binName,
 		int size
@@ -109,10 +98,10 @@ public class Batch extends Example {
 		// Batch gets into one call.
 		Key[] keys = new Key[size];
 		for (int i = 0; i < size; i++) {
-			keys[i] = new Key(params.namespace, params.set, keyPrefix + (i + 1));
+			keys[i] = new Key(namespace(), set(), keyPrefix + (i + 1));
 		}
 
-		Record[] records = client.get(null, keys, binName);
+		Record[] records = client().get(null, keys, binName);
 
 		for (int i = 0; i < records.length; i++) {
 			Key key = keys[i];
@@ -137,18 +126,16 @@ public class Batch extends Example {
 	 * Read record header data in one batch.
 	 */
 	private void batchReadHeaders (
-		IAerospikeClient client,
-		Parameters params,
 		String keyPrefix,
 		int size
 	) throws Exception {
 		// Batch gets into one call.
 		Key[] keys = new Key[size];
 		for (int i = 0; i < size; i++) {
-			keys[i] = new Key(params.namespace, params.set, keyPrefix + (i + 1));
+			keys[i] = new Key(namespace(), set(), keyPrefix + (i + 1));
 		}
 
-		Record[] records = client.getHeader(null, keys);
+		Record[] records = client().getHeader(null, keys);
 
 		for (int i = 0; i < records.length; i++) {
 			Key key = keys[i];
@@ -176,31 +163,29 @@ public class Batch extends Example {
 	 * This requires Aerospike Server version >= 3.6.0.
 	 */
 	private void batchReadComplex (
-		IAerospikeClient client,
-		Parameters params,
 		String keyPrefix,
 		String binName
 	) throws Exception {
 		// Batch gets into one call.
 		// Batch allows multiple namespaces in one call, but example test environment may only have one namespace.
 		String[] bins = new String[] {binName};
-		List<BatchRead> records = new ArrayList<BatchRead>();
-		records.add(new BatchRead(new Key(params.namespace, params.set, keyPrefix + 1), bins));
-		records.add(new BatchRead(new Key(params.namespace, params.set, keyPrefix + 2), true));
-		records.add(new BatchRead(new Key(params.namespace, params.set, keyPrefix + 3), true));
-		records.add(new BatchRead(new Key(params.namespace, params.set, keyPrefix + 4), false));
-		records.add(new BatchRead(new Key(params.namespace, params.set, keyPrefix + 5), true));
-		records.add(new BatchRead(new Key(params.namespace, params.set, keyPrefix + 6), true));
-		records.add(new BatchRead(new Key(params.namespace, params.set, keyPrefix + 7), bins));
+		List<BatchRead> records = new ArrayList<>();
+		records.add(new BatchRead(new Key(namespace(), set(), keyPrefix + 1), bins));
+		records.add(new BatchRead(new Key(namespace(), set(), keyPrefix + 2), true));
+		records.add(new BatchRead(new Key(namespace(), set(), keyPrefix + 3), true));
+		records.add(new BatchRead(new Key(namespace(), set(), keyPrefix + 4), false));
+		records.add(new BatchRead(new Key(namespace(), set(), keyPrefix + 5), true));
+		records.add(new BatchRead(new Key(namespace(), set(), keyPrefix + 6), true));
+		records.add(new BatchRead(new Key(namespace(), set(), keyPrefix + 7), bins));
 
 		// This record should be found, but the requested bin will not be found.
-		records.add(new BatchRead(new Key(params.namespace, params.set, keyPrefix + 8), new String[] {"binnotfound"}));
+		records.add(new BatchRead(new Key(namespace(), set(), keyPrefix + 8), new String[] {"binnotfound"}));
 
 		// This record should not be found.
-		records.add(new BatchRead(new Key(params.namespace, params.set, "keynotfound"), bins));
+		records.add(new BatchRead(new Key(namespace(), set(), "keynotfound"), bins));
 
 		// Execute batch.
-		client.get(null, records);
+		client().get(null, records);
 
 		// Show results.
 		int found = 0;

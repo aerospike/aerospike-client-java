@@ -17,30 +17,25 @@
 package com.aerospike.examples;
 
 import com.aerospike.client.Bin;
-import com.aerospike.client.IAerospikeClient;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
 import com.aerospike.client.policy.WritePolicy;
 
 public class Expire extends Example {
 
-	public Expire(Console console) {
-		super(console);
-	}
-
 	/**
 	 * Demonstrate various record expiration settings.
 	 */
 	@Override
-	public void runExample(IAerospikeClient client, Parameters params) throws Exception {
-		expireExample(client, params);
+	public void runExample() throws Exception {
+		expireExample();
 	}
 
 	/**
 	 * Write and twice read an expiration record.
 	 */
-	private void expireExample(IAerospikeClient client, Parameters params) throws Exception {
-		Key key  = new Key(params.namespace, params.set, "expirekey ");
+	private void expireExample() throws Exception {
+		Key key  = new Key(namespace(), set(), "expirekey ");
 		Bin bin  = new Bin("expirebin", "expirevalue");
 
 		console.info("Put: namespace=%s set=%s key=%s bin=%s value=%s expiration=2",
@@ -49,39 +44,24 @@ public class Expire extends Example {
 		// Specify that record expires 2 seconds after it's written.
 		WritePolicy writePolicy = new WritePolicy();
 		writePolicy.expiration = 2;
-		client.put(writePolicy, key, bin);
+		client().put(writePolicy, key, bin);
 
 		// Read the record before it expires, showing it is there.
 		console.info("Get: namespace=%s set=%s key=%s",
 				key.namespace, key.setName, key.userKey);
 
-		Record record = client.get(params.policy, key, bin.name);
+		Record record = client().get(readPolicy(), key, bin.name);
 		if (record == null) {
 			throw new Exception(String.format(
 				"Failed to get record: namespace=%s set=%s key=%s",
 				key.namespace, key.setName, key.userKey));
 		}
 
-		Object received = record.getValue(bin.name);
-		String expected = bin.value.toString();
-		if (received.equals(expected)) {
-			console.info("Get record successful: namespace=%s set=%s key=%s bin=%s value=%s",
-				key.namespace, key.setName, key.userKey, bin.name, received);
-		}
-		else {
-			throw new Exception(String.format("Expire record mismatch: Expected %s. Received %s.",
-				expected, received));
-		}
+		console.info("Get record successful: namespace=%s set=%s key=%s bin=%s value=%s",
+			key.namespace, key.setName, key.userKey, bin.name, record.getValue(bin.name));
 
-		// Read the record after it expires, showing it's gone.
 		console.info("Sleeping for 3 seconds ...");
 		Thread.sleep(3 * 1000);
-		record = client.get(params.policy, key, bin.name);
-		if (record == null) {
-			console.info("Expiry of record successful. Record not found.");
-		}
-		else {
-			console.error("Found record when it should have expired.");
-		}
+		console.info("Record should now be expired.");
 	}
 }

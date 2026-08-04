@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2025 Aerospike, Inc.
+ * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -19,23 +19,30 @@ package com.aerospike.test.sync.basic;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.junit.BeforeClass;
 import org.junit.Assume;
+import org.junit.BeforeClass;
 import org.junit.Test;
+import org.junit.function.ThrowingRunnable;
 
+import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Bin;
 import com.aerospike.client.Key;
 import com.aerospike.client.Operation;
 import com.aerospike.client.Record;
+import com.aerospike.client.ResultCode;
 import com.aerospike.client.Value;
 import com.aerospike.client.cdt.CdtOperation;
 import com.aerospike.client.cdt.CTX;
+import com.aerospike.client.cdt.MapOperation;
+import com.aerospike.client.cdt.MapPolicy;
 import com.aerospike.client.cdt.MapReturnType;
 import com.aerospike.client.cdt.ModifyFlags;
 import com.aerospike.client.cdt.SelectFlags;
@@ -2720,6 +2727,8 @@ public class TestCdtOperate extends TestSync {
 
     @Test
     public void hllLoopVarFilterOnNestedHLLs() {
+        Assume.assumeTrue("Tests require server version 8.1.2 or later",
+            args.serverVersion.isGreaterOrEqual(8, 1, 2, 0));
         Key rkey = new Key(NAMESPACE, SET, "hllLoopVarFilterKey");
         client.delete(null, rkey);
 
@@ -2889,6 +2898,8 @@ public class TestCdtOperate extends TestSync {
 
     @Test
     public void testChainedAndFilters() {
+        Assume.assumeTrue("Tests require server version 8.1.2 or later",
+            args.serverVersion.isGreaterOrEqual(8, 1, 2, 0));
         Key rkey = new Key(NAMESPACE, SET, "chainedAndFilters");
 
         try {
@@ -2960,6 +2971,8 @@ public class TestCdtOperate extends TestSync {
 
     @Test
     public void testAndFilterWithMapIndex() {
+        Assume.assumeTrue("Tests require server version 8.1.2 or later",
+            args.serverVersion.isGreaterOrEqual(8, 1, 2, 0));
         Key rkey = new Key(NAMESPACE, SET, "andFilterMapIndex");
 
         try {
@@ -2991,6 +3004,24 @@ public class TestCdtOperate extends TestSync {
         // The result depends on which entry is at index 0 and whether it passes the filter.
         // If it passes, we get 2 elements (key+value); if not, 0 elements.
         assertTrue("Should have 0 or 2 elements", resultList.size() == 0 || resultList.size() == 2);
+    }
+
+    @Test
+    public void testPutNullSlotInValueArrayThrowsSerialize() {
+        Key rkey = new Key(NAMESPACE, SET, "nullValueArraySlot");
+        try {
+            client.delete(null, rkey);
+        } catch (Exception e) {
+        }
+
+        Value[] arr = new Value[] { Value.get("a"), null };
+
+        AerospikeException.Serialize ex = assertThrows(
+            AerospikeException.Serialize.class,
+            () -> client.put(null, rkey, new Bin(BIN_NAME, Value.get(arr))));
+
+        assertTrue("expected NPE from null Value slot while packing",
+            ex.getCause() instanceof NullPointerException);
     }
 
     @Test
@@ -3144,6 +3175,57 @@ public class TestCdtOperate extends TestSync {
         List<?> values = result.getList(BIN_NAME);
         assertNotNull(values);
         assertEquals("Empty key list should return empty result", 0, values.size());
+    }
+
+    @Test
+    public void testMapKeysInStringVarargsWithNullKeyElement() {
+        Assume.assumeTrue("Tests require server version 8.1.2 or later",
+                args.serverVersion.isGreaterOrEqual(8, 1, 2, 0));
+        Key rkey = new Key(NAMESPACE, SET, "mkNullStringKeyElt");
+
+        try {
+            client.delete(null, rkey);
+        } catch (Exception e) {
+        }
+
+        Map<String, Object> map = new HashMap<>();
+        map.put("a", 1);
+        map.put("b", 2);
+        client.put(null, rkey, new Bin(BIN_NAME, map));
+
+        CTX ctx = CTX.mapKeysIn("a", null);
+        Operation op = CdtOperation.selectByPath(BIN_NAME, SelectFlags.VALUE, ctx);
+
+        Record result = client.operate(null, rkey, op);
+        assertNotNull(result);
+        List<?> values = result.getList(BIN_NAME);
+        assertNotNull(values);
+        assertEquals(1, values.size());
+        assertTrue(values.contains(1L) || values.contains(1));
+    }
+
+    @Test
+    public void testMapKeysInValueVarargsNullArrayUsesNullValueAndServerRejects() {
+        CTX ctx = CTX.mapKeysIn((Value[]) null);
+        assertSame(Value.NULL, ctx.value);
+
+        Key rkey = new Key(NAMESPACE, SET, "mkNullValueKeysArray");
+        try {
+            client.delete(null, rkey);
+        } catch (Exception e) {
+        }
+
+        Map<String, Object> map = new HashMap<>();
+        map.put("a", 1);
+        client.put(null, rkey, new Bin(BIN_NAME, map));
+
+        try {
+            client.operate(null, rkey,
+                CdtOperation.selectByPath(BIN_NAME, SelectFlags.VALUE, ctx));
+            assertTrue("operate should fail: nil is not a valid mapKeysIn key list", false);
+        } catch (AerospikeException e) {
+            assertEquals(ResultCode.PARAMETER_ERROR, e.getResultCode());
+        }
     }
 
     // ---- MK-004: Empty map ----
@@ -3337,6 +3419,129 @@ public class TestCdtOperate extends TestSync {
         assertEquals("Should have 2 values from nested map", 2, values.size());
         assertTrue("Should contain 1", values.contains(1L));
         assertTrue("Should contain 3", values.contains(3L));
+    }
+
+    @Test
+    public void testMapKeysInIntVarargsSelectsLongKeys() {
+        Assume.assumeTrue("Tests require server version 8.1.2 or later",
+            args.serverVersion.isGreaterOrEqual(8, 1, 2, 0));
+        Key rkey = new Key(NAMESPACE, SET, "mk4752IntAsInt");
+
+        try {
+            client.delete(null, rkey);
+        } catch (Exception e) {
+        }
+
+        Map<Long, String> map = new HashMap<>();
+        map.put(1L, "one");
+        map.put(2L, "two");
+        map.put(3L, "three");
+        client.put(null, rkey, new Bin(BIN_NAME, map));
+
+        CTX ctxInt = CTX.mapKeysIn(1, 2);
+        Record intResult = client.operate(null, rkey,
+            CdtOperation.selectByPath(BIN_NAME, SelectFlags.VALUE, ctxInt));
+
+        assertNotNull(intResult);
+        List<?> intValues = intResult.getList(BIN_NAME);
+        assertNotNull(intValues);
+        assertEquals(2, intValues.size());
+        assertTrue(intValues.contains("one"));
+        assertTrue(intValues.contains("two"));
+    }
+
+    @Test
+    public void testMapKeysInShortVarargsMatchesIntegerKeys() {
+        Assume.assumeTrue("Tests require server version 8.1.2 or later",
+            args.serverVersion.isGreaterOrEqual(8, 1, 2, 0));
+        Key rkey = new Key(NAMESPACE, SET, "mk4752ShortAsInt");
+
+        try {
+            client.delete(null, rkey);
+        } catch (Exception e) {
+        }
+
+        Map<Long, String> map = new HashMap<>();
+        map.put(1L, "one");
+        map.put(2L, "two");
+        map.put(3L, "three");
+        client.put(null, rkey, new Bin(BIN_NAME, map));
+
+        CTX ctx = CTX.mapKeysIn((short) 1, (short) 2);
+        Record result = client.operate(null, rkey,
+            CdtOperation.selectByPath(BIN_NAME, SelectFlags.VALUE, ctx));
+
+        assertNotNull(result);
+        List<?> values = result.getList(BIN_NAME);
+        assertNotNull(values);
+        assertEquals(2, values.size());
+        assertTrue(values.contains("one"));
+        assertTrue(values.contains("two"));
+    }
+
+    @Test
+    @SuppressWarnings("deprecation")
+    public void testMapKeysInByteVarargsDoesNotSelectBlobKeyedEntries() {
+        Assume.assumeTrue("Tests require server version 8.1.2 or later",
+            args.serverVersion.isGreaterOrEqual(8, 1, 2, 0));
+        Key rkey = new Key(NAMESPACE, SET, "mk4752BlobKeys");
+
+        try {
+            client.delete(null, rkey);
+        } catch (Exception e) {
+        }
+
+        byte[] blobKey1 = new byte[]{0x10, 0x20};
+        byte[] blobKey2 = new byte[]{0x30, 0x40};
+
+        Map<Value, Value> map = new HashMap<>();
+        map.put(Value.get(blobKey1), Value.get("blobValA"));
+        map.put(Value.get(blobKey2), Value.get("blobValB"));
+
+        client.operate(null, rkey,
+            MapOperation.putItems(MapPolicy.Default, BIN_NAME, map));
+
+        CTX ctx = CTX.mapKeysIn((byte) 0x10, (byte) 0x30);
+        Record result = client.operate(null, rkey,
+            CdtOperation.selectByPath(BIN_NAME, SelectFlags.VALUE, ctx));
+
+        assertNotNull(result);
+        List<?> values = result.getList(BIN_NAME);
+        assertNotNull(values);
+        assertEquals("byte... packs integer keys, not blob keys; no match on blob-keyed map", 0, values.size());
+    }
+
+    @Test
+    public void testMapKeysInValueVarargsMixedKeys() {
+        Assume.assumeTrue("Tests require server version 8.1.2 or later",
+            args.serverVersion.isGreaterOrEqual(8, 1, 2, 0));
+        Key rkey = new Key(NAMESPACE, SET, "mk4752ValueMixed");
+
+        try {
+            client.delete(null, rkey);
+        } catch (Exception e) {
+        }
+
+        byte[] blobKey = new byte[]{7, 8, 9};
+        Map<Value, Value> map = new HashMap<>();
+        map.put(Value.get("sk"), Value.get("vStr"));
+        map.put(Value.get(42L), Value.get("vInt"));
+        map.put(Value.get(blobKey), Value.get("vBlob"));
+
+        client.operate(null, rkey,
+            MapOperation.putItems(MapPolicy.Default, BIN_NAME, map));
+
+        CTX ctx = CTX.mapKeysIn(Value.get("sk"), Value.get(42L), Value.get(blobKey));
+        Record result = client.operate(null, rkey,
+            CdtOperation.selectByPath(BIN_NAME, SelectFlags.VALUE, ctx));
+
+        assertNotNull(result);
+        List<?> values = result.getList(BIN_NAME);
+        assertNotNull(values);
+        assertEquals(3, values.size());
+        assertTrue(values.contains("vStr"));
+        assertTrue(values.contains("vInt"));
+        assertTrue(values.contains("vBlob"));
     }
 
     // ---- MV-001: Basic mapValues - extract all values from a map ----
@@ -3589,6 +3794,79 @@ public class TestCdtOperate extends TestSync {
 
         assertNotNull(result);
         assertTrue("Map values list size should be 3", result.getBoolean("sizeCheck"));
+    }
+
+    // ---- CLIENT-5184: reject invalid selectByPath / modifyByPath flags ----
+    //
+    // A negative flag, or one with bit 2 (the internal apply bit) set, is
+    // unconditionally invalid for either operation. The client must reject it with
+    // PARAMETER_ERROR rather than mask it (select cleared bit 2, modify set it) into
+    // a request the server happily executes -- for a negative input the rewritten low
+    // nibble aliases onto a valid server return type, so the misuse silently succeeds.
+    // The client validates eagerly while building the operation/expression, so the
+    // rejection surfaces at build time and needs no server round-trip.
+
+    private static void assertParameterError(ThrowingRunnable build) {
+        AerospikeException ae = assertThrows(AerospikeException.class, build);
+        assertEquals(ResultCode.PARAMETER_ERROR, ae.getResultCode());
+    }
+
+    // Legal SelectFlags values are the exposed constants 0..3 and 0x10 (and ORs). The
+    // negatives are the ticket's repro table; 4..7 cover the bit-2-set positives that
+    // the old "flags & ~4" mask would have silently cleared.
+    private static final int[] INVALID_SELECT_FLAGS = {-1, -2, -3, -9, -12, -16, 4, 5, 6, 7};
+
+    // Legal ModifyFlags values are DEFAULT (0) and NO_FAIL (0x10). Bit 2 is the
+    // internal apply bit and must never be caller-supplied.
+    private static final int[] INVALID_MODIFY_FLAGS = {-1, -2, -12, -16, 4, 5, 6, 7};
+
+    @Test
+    public void testSelectByPathRejectsInvalidFlags() {
+        for (int flag : INVALID_SELECT_FLAGS) {
+            final int f = flag;
+            assertParameterError(() -> CdtOperation.selectByPath(BIN_NAME, f, CTX.allChildren()));
+        }
+    }
+
+    @Test
+    public void testModifyByPathRejectsInvalidFlags() {
+        Expression modifyExp = Exp.build(Exp.add(Exp.intLoopVar(LoopVarPart.VALUE), Exp.val(5)));
+        for (int flag : INVALID_MODIFY_FLAGS) {
+            final int f = flag;
+            assertParameterError(() -> CdtOperation.modifyByPath(BIN_NAME, f, modifyExp, CTX.allChildren()));
+        }
+    }
+
+    @Test
+    public void testCdtExpSelectByPathRejectsInvalidFlags() {
+        for (int flag : INVALID_SELECT_FLAGS) {
+            final int f = flag;
+            assertParameterError(() -> CdtExp.selectByPath(Exp.Type.LIST, f, Exp.mapBin(BIN_NAME), CTX.allChildren()));
+        }
+    }
+
+    @Test
+    public void testCdtExpModifyByPathRejectsInvalidFlags() {
+        Exp modifyExp = Exp.add(Exp.intLoopVar(LoopVarPart.VALUE), Exp.val(5));
+        for (int flag : INVALID_MODIFY_FLAGS) {
+            final int f = flag;
+            assertParameterError(() -> CdtExp.modifyByPath(Exp.Type.MAP, f, modifyExp, Exp.mapBin(BIN_NAME), CTX.allChildren()));
+        }
+    }
+
+    // Regression: valid flags must still build. NO_FAIL (0x10) sets a high bit but not
+    // bit 2, so the new guard must let it through (end-to-end execution of DEFAULT and
+    // NO_FAIL flags is exercised by the tests above, e.g. testSelectNoFailFlag).
+    @Test
+    public void testValidPathFlagsStillAccepted() {
+        Expression modExp = Exp.build(Exp.add(Exp.intLoopVar(LoopVarPart.VALUE), Exp.val(5)));
+        Exp modExp2 = Exp.add(Exp.intLoopVar(LoopVarPart.VALUE), Exp.val(5));
+
+        // No exception expected.
+        CdtOperation.selectByPath(BIN_NAME, SelectFlags.NO_FAIL, CTX.allChildren());
+        CdtOperation.modifyByPath(BIN_NAME, ModifyFlags.NO_FAIL, modExp, CTX.allChildren());
+        CdtExp.selectByPath(Exp.Type.LIST, SelectFlags.NO_FAIL, Exp.mapBin(BIN_NAME), CTX.allChildren());
+        CdtExp.modifyByPath(Exp.Type.MAP, ModifyFlags.NO_FAIL, modExp2, Exp.mapBin(BIN_NAME), CTX.allChildren());
     }
 
 }

@@ -32,16 +32,14 @@ public class OperateString extends Example {
 
 	private static final String BIN = "text";
 
-	public OperateString(Console console) {
-		super(console);
-	}
-
 	/**
 	 * Demonstrate every {@link StringOperation} method.
 	 * Requires server version 8.1.3 or later.
 	 */
 	@Override
-	public void runExample(IAerospikeClient client, Parameters params) throws Exception {
+	public void runExample() throws Exception {
+		IAerospikeClient client = client();
+		Parameters params = params();
 		runReadOps(client, params);
 		runModifyOps(client, params);
 		runToString(client, params);

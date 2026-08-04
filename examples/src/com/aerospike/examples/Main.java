@@ -18,8 +18,10 @@ package com.aerospike.examples;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 
 import javax.swing.JPanel;
 
@@ -39,59 +41,12 @@ import com.aerospike.client.util.Util;
 public class Main extends JPanel {
 
 	private static final long serialVersionUID = 1L;
-	private static final String[] ExampleNames = new String[] {
-		"ServerInfo",
-		"PutGet",
-		"Replace",
-		"Add",
-		"Append",
-		"Prepend",
-		"Batch",
-		"Generation",
-		"Expire",
-		"Touch",
-		"StoreKey",
-		"DeleteBin",
-		"ListMap",
-		"Operate",
-		"OperateBit",
-		"OperateList",
-		"OperateMap",
-		"PathExpression",
-		"OperateString",
-		"StringExpression",
-		"ScanPage",
-		"ScanParallel",
-		"ScanResume",
-		"ScanSeries",
-		"UserDefinedFunction",
-		"QueryInteger",
-		"QueryString",
-		"QueryFilter",
-		"QueryExp",
-		"QueryPage",
-		"QueryResume",
-		"QuerySum",
-		"QueryAverage",
-		"QueryCollection",
-		"QueryRegion",
-		"QueryRegionFilter",
-		"QueryGeoCollection",
-		"QueryExecute",
-		"AsyncPutGet",
-		"AsyncBatch",
-		"AsyncQuery",
-		"AsyncScan",
-		"AsyncScanPage",
-		"AsyncUserDefinedFunction"
-	};
-	public static String[] getAllExampleNames() { return ExampleNames; }
 
 	/**
 	 * Main entry point.
 	 */
 	public static void main(String[] args) {
-
+		int exitCode = 0;
 		try {
 			Options options = new Options();
 			options.addOption("h", "host", true,
@@ -139,6 +94,7 @@ public class Main extends JPanel {
 
 			options.addOption("g", "gui", false, "Invoke GUI to selectively run tests.");
 			options.addOption("d", "debug", false, "Run in debug mode.");
+			options.addOption(null, "report", true, "Write JUnit XML example report to the given path.");
 			options.addOption("u", "usage", false, "Print usage.");
 
 			CommandLineParser parser = new DefaultParser();
@@ -149,6 +105,7 @@ public class Main extends JPanel {
 				return;
 			}
 			Parameters params = parseParameters(cl);
+			String reportPath = cl.getOptionValue("report");
 			String[] exampleNames = cl.getArgs();
 
 			if ((exampleNames.length == 0) && (!cl.hasOption("g"))) {
@@ -156,13 +113,7 @@ public class Main extends JPanel {
 				return;
 			}
 
-			// Check for all.
-			for (String exampleName : exampleNames) {
-				if (exampleName.equalsIgnoreCase("all")) {
-					exampleNames = ExampleNames;
-					break;
-				}
-			}
+			exampleNames = expandExampleNames(exampleNames);
 
 			if (cl.hasOption("netty")) {
 				params.eventLoopType = EventLoopType.NETTY_NIO;
@@ -185,11 +136,25 @@ public class Main extends JPanel {
 			}
 			else {
 				Console console = new Console();
-				runExamples(console, params, exampleNames);
+
+				ExampleRunResult result = runExamplesWithResult(console, params, exampleNames);
+
+				if (reportPath != null && ! reportPath.isEmpty()) {
+					writeReport(console, reportPath, result);
+				}
+
+				if (result.hasFailures()) {
+					exitCode = 1;
+				}
 			}
 		}
 		catch (Exception ex) {
 			ex.printStackTrace();
+			exitCode = 1;
+		}
+
+		if (exitCode != 0) {
+			System.exit(exitCode);
 		}
 	}
 
@@ -202,14 +167,23 @@ public class Main extends JPanel {
 		PrintWriter pw = new PrintWriter(sw);
 		String syntax = Main.class.getName() + " [<options>] all|(<example1> <example2> ...)";
 		formatter.printHelp(pw, 100, syntax, "options:", options, 0, 2, null);
-		System.out.println(sw.toString());
+		System.out.println(sw);
 		System.out.println("examples:");
 
-		for (String name : ExampleNames) {
-			System.out.println(name.toString());
+		for (String name : ExampleRegistry.names()) {
+			System.out.println(name);
 		}
 		System.out.println();
 		System.out.println("All examples will be run if 'all' is specified as an example.");
+	}
+
+	private static String[] expandExampleNames(String[] exampleNames) {
+		for (String exampleName : exampleNames) {
+			if (exampleName.equalsIgnoreCase("all")) {
+				return ExampleRegistry.names();
+			}
+		}
+		return exampleNames;
 	}
 
 	/**
@@ -278,25 +252,78 @@ public class Main extends JPanel {
 	/**
 	 * Connect and run one or more client examples.
 	 */
-	public static void runExamples(Console console, Parameters params, String[] examples) throws Exception {
-		ArrayList<String> syncExamples = new ArrayList<String>();
-		ArrayList<String> asyncExamples = new ArrayList<String>();
+	public static boolean runExamples(Console console, Parameters params, String[] examples) throws Exception {
+		return ! runExamplesWithResult(console, params, examples).hasFailures();
+	}
+
+	private static ExampleRunResult runExamplesWithResult(Console console, Parameters params, String[] examples) throws Exception {
+		List<ExampleDefinition> syncExamples = new ArrayList<>();
+		List<ExampleDefinition> asyncExamples = new ArrayList<>();
+		List<ExampleResult> immediateResults = new ArrayList<>();
+		ExampleRunResult combinedResult = new ExampleRunResult(immediateResults);
 
 		for (String example : examples) {
-			if (example.startsWith("Async")) {
-				asyncExamples.add(example);
+			try {
+				ExampleDefinition definition = ExampleRegistry.get(example);
+
+				if (definition.isAsync()) {
+					asyncExamples.add(definition);
+				}
+				else {
+					syncExamples.add(definition);
+				}
+			}
+			catch (IllegalArgumentException iae) {
+				console.error(iae.getMessage());
+				immediateResults.add(ExampleResult.failed(example, 0, iae));
+			}
+		}
+
+		if (! syncExamples.isEmpty()) {
+			ExampleRunResult syncResult = new ExampleRunner(console, params).runSync(syncExamples);
+			combinedResult = combinedResult.append(syncResult);
+		}
+
+		if (! asyncExamples.isEmpty()) {
+			ExampleRunResult asyncResult = new ExampleRunner(console, params).runAsync(asyncExamples);
+			combinedResult = combinedResult.append(asyncResult);
+		}
+
+		logSummary(console, combinedResult);
+		return combinedResult;
+	}
+
+	private static void logSummary(Console console, ExampleRunResult result) {
+		if (result.results().isEmpty()) {
+			return;
+		}
+
+		console.info(
+			"Results: %d passed, %d skipped, %d failed",
+			result.passedCount(),
+			result.skippedCount(),
+			result.failedCount());
+
+		for (ExampleResult exampleResult : result.results()) {
+			if (exampleResult.status() == ExampleStatus.PASSED) {
+				continue;
+			}
+
+			String label = (exampleResult.status() == ExampleStatus.SKIPPED) ? "SKIPPED" : "FAILED";
+			String message = exampleResult.message();
+
+			if (message == null || message.isEmpty()) {
+				console.info("  %s: %s", label, exampleResult.name());
 			}
 			else {
-				syncExamples.add(example);
+				console.info("  %s: %s - %s", label, exampleResult.name(), message);
 			}
 		}
+	}
 
-		if (syncExamples.size() > 0) {
-			Example.runExamples(console, params, syncExamples);
-		}
-
-		if (asyncExamples.size() > 0) {
-			AsyncExample.runExamples(console, params, asyncExamples);
-		}
+	private static void writeReport(Console console, String reportPath, ExampleRunResult result) throws Exception {
+		Path path = Path.of(reportPath);
+		JUnitXmlReportWriter.write(path, result);
+		console.info("Wrote example report to " + path);
 	}
 }

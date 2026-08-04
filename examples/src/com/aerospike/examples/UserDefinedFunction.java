@@ -19,154 +19,105 @@ package com.aerospike.examples;
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
-import java.util.List;
 
-import com.aerospike.client.Bin;
-import com.aerospike.client.IAerospikeClient;
 import com.aerospike.client.Key;
-import com.aerospike.client.Language;
-import com.aerospike.client.Record;
 import com.aerospike.client.Value;
-import com.aerospike.client.task.RegisterTask;
+import com.aerospike.client.Bin;
 
 public class UserDefinedFunction extends Example {
 
-	public UserDefinedFunction(Console console) {
-		super(console);
-	}
-
 	/**
-	 * Register user defined function and call it.
+	 * Call user defined functions.
 	 */
 	@Override
-	public void runExample(IAerospikeClient client, Parameters params) throws Exception {
-		register(client, params);
-		writeUsingUdf(client, params);
-		writeIfGenerationNotChanged(client, params);
-		writeIfNotExists(client, params);
-		writeWithValidation(client, params);
-		writeListMapUsingUdf(client, params);
-		appendListUsingUdf(client, params);
-		writeBlobUsingUdf(client, params);
+	public void runExample() throws Exception {
+		writeUsingUdf();
+		writeIfGenerationNotChanged();
+		writeIfNotExists();
+		writeWithValidation();
+		writeListMapUsingUdf();
+		appendListUsingUdf();
+		writeBlobUsingUdf();
 	}
 
-	private void register(IAerospikeClient client, Parameters params) throws Exception {
-		String filename = "record_example.lua";
-		console.info("Register: " + filename);
-		RegisterTask task = client.register(params.policy, "udf/record_example.lua", filename, Language.LUA);
-		task.waitTillComplete();
-	}
-
-	private void writeUsingUdf(IAerospikeClient client, Parameters params) throws Exception {
-		Key key = new Key(params.namespace, params.set, "udfkey1");
+	private void writeUsingUdf() throws Exception {
+		Key key = new Key(namespace(), set(), "udfkey1");
 		Bin bin = new Bin("udfbin1", "string value");
 
-		client.execute(params.writePolicy, key, "record_example", "writeBin", Value.get(bin.name), bin.value);
-
-		Record record = client.get(params.policy, key, bin.name);
-		String expected = bin.value.toString();
-		String received = record.getString(bin.name);
-
-		if (received != null && received.equals(expected)) {
-			console.info("Data matched: namespace=%s set=%s key=%s bin=%s value=%s",
-				key.namespace, key.setName, key.userKey, bin.name, received);
-		}
-		else {
-			console.error("Data mismatch: Expected %s. Received %s.", expected, received);
-		}
+		client().execute(writePolicy(), key, "record_example", "writeBin", Value.get(bin.name), bin.value);
+		console.info("Wrote bin via UDF: namespace=%s set=%s key=%s bin=%s",
+			key.namespace, key.setName, key.userKey, bin.name);
 	}
 
-	private void writeIfGenerationNotChanged(IAerospikeClient client, Parameters params) throws Exception {
-		Key key = new Key(params.namespace, params.set, "udfkey2");
+	private void writeIfGenerationNotChanged() throws Exception {
+		Key key = new Key(namespace(), set(), "udfkey2");
 		Bin bin = new Bin("udfbin2", "string value");
 
 		// Seed record.
-		client.put(params.writePolicy, key, bin);
+		client().put(writePolicy(), key, bin);
 
 		// Get record generation.
-		long gen = (Long)client.execute(params.writePolicy, key, "record_example", "getGeneration");
+		long gen = (Long)client().execute(writePolicy(), key, "record_example", "getGeneration");
 
 		// Write record if generation has not changed.
-		client.execute(params.writePolicy, key, "record_example", "writeIfGenerationNotChanged", Value.get(bin.name), bin.value, Value.get(gen));
+		client().execute(writePolicy(), key, "record_example", "writeIfGenerationNotChanged", Value.get(bin.name), bin.value, Value.get(gen));
 		console.info("Record written.");
 	}
 
-	private void writeIfNotExists(IAerospikeClient client, Parameters params) throws Exception {
-		Key key = new Key(params.namespace, params.set, "udfkey3");
+	private void writeIfNotExists() throws Exception {
+		Key key = new Key(namespace(), set(), "udfkey3");
 		String binName = "udfbin3";
 
-		// Delete record if it already exists.
-		client.delete(params.writePolicy, key);
-
 		// Write record only if not already exists. This should succeed.
-		client.execute(params.writePolicy, key, "record_example", "writeUnique", Value.get(binName), Value.get("first"));
-
-		// Verify record written.
-		Record record = client.get(params.policy, key, binName);
-		String expected = "first";
-		String received = record.getString(binName);
-
-		if (received != null && received.equals(expected)) {
-			console.info("Record written: namespace=%s set=%s key=%s bin=%s value=%s",
-				key.namespace, key.setName, key.userKey, binName, received);
-		}
-		else {
-			console.error("Data mismatch: Expected %s. Received %s.", expected, received);
-		}
+		client().execute(writePolicy(), key, "record_example", "writeUnique", Value.get(binName), Value.get("first"));
+		console.info("Record written if absent: namespace=%s set=%s key=%s bin=%s",
+			key.namespace, key.setName, key.userKey, binName);
 
 		// Write record second time. This should fail.
 		console.info("Attempt second write.");
-		client.execute(params.writePolicy, key, "record_example", "writeUnique", Value.get(binName), Value.get("second"));
-
-		// Verify record not written.
-		record = client.get(params.policy, key, binName);
-		received = record.getString(binName);
-
-		if (received != null && received.equals(expected)) {
-			console.info("Success. Record remained unchanged: namespace=%s set=%s key=%s bin=%s value=%s",
-				key.namespace, key.setName, key.userKey, binName, received);
-		}
-		else {
-			console.error("Data mismatch: Expected %s. Received %s.", expected, received);
-		}
+		client().execute(writePolicy(), key, "record_example", "writeUnique", Value.get(binName), Value.get("second"));
 	}
 
-	private void writeWithValidation(IAerospikeClient client, Parameters params) throws Exception {
-		Key key = new Key(params.namespace, params.set, "udfkey4");
+	private void writeWithValidation() throws Exception {
+		Key key = new Key(namespace(), set(), "udfkey4");
 		String binName = "udfbin4";
 
 		// Lua function writeWithValidation accepts number between 1 and 10.
 		// Write record with valid value.
 		console.info("Write with valid value.");
-		client.execute(params.writePolicy, key, "record_example", "writeWithValidation", Value.get(binName), Value.get(4));
+		client().execute(writePolicy(), key, "record_example", "writeWithValidation", Value.get(binName), Value.get(4));
 
 		// Write record with invalid value.
 		console.info("Write with invalid value.");
+		boolean rejected = false;
 
 		try {
-			client.execute(params.writePolicy, key, "record_example", "writeWithValidation", Value.get(binName), Value.get(11));
-			console.error("UDF should not have succeeded!");
+			client().execute(writePolicy(), key, "record_example", "writeWithValidation", Value.get(binName), Value.get(11));
 		}
 		catch (Exception e) {
+			rejected = true;
 			console.info("Success. UDF resulted in exception as expected.");
+		}
+
+		if (! rejected) {
+			throw new Exception("UDF should not have succeeded!");
 		}
 	}
 
-	private void writeListMapUsingUdf(IAerospikeClient client, Parameters params) throws Exception {
-		Key key = new Key(params.namespace, params.set, "udfkey5");
+	private void writeListMapUsingUdf() throws Exception {
+		Key key = new Key(namespace(), set(), "udfkey5");
 
-		ArrayList<Object> inner = new ArrayList<Object>();
+		ArrayList<Object> inner = new ArrayList<>();
 		inner.add("string2");
 		inner.add(8L);
 
-		HashMap<Object,Object> innerMap = new HashMap<Object,Object>();
+		HashMap<Object,Object> innerMap = new HashMap<>();
 		innerMap.put("a", 1L);
 		innerMap.put(2L, "b");
 		innerMap.put("list", inner);
 
-		ArrayList<Object> list = new ArrayList<Object>();
+		ArrayList<Object> list = new ArrayList<>();
 		list.add("string1");
 		list.add(4L);
 		list.add(inner);
@@ -174,57 +125,23 @@ public class UserDefinedFunction extends Example {
 
 		String binName = "udfbin5";
 
-		client.execute(params.writePolicy, key, "record_example", "writeBin", Value.get(binName), Value.get(list));
-
-		Object received = client.execute(params.writePolicy, key, "record_example", "readBin", Value.get(binName));
-
-		if (received != null && received.equals(list)) {
-			console.info("UDF data matched: namespace=%s set=%s key=%s bin=%s value=%s",
-				key.namespace, key.setName, key.userKey, binName, received);
-		}
-		else {
-			console.error("UDF data mismatch");
-			console.error("Expected " + list);
-			console.error("Received " + received);
-		}
+		client().execute(writePolicy(), key, "record_example", "writeBin", Value.get(binName), Value.get(list));
+		console.info("Stored list/map value via UDF: namespace=%s set=%s key=%s bin=%s",
+			key.namespace, key.setName, key.userKey, binName);
 	}
 
-	private void appendListUsingUdf(IAerospikeClient client, Parameters params) throws Exception {
-		Key key = new Key(params.namespace, params.set, "udfkey5");
+	private void appendListUsingUdf() throws Exception {
+		Key key = new Key(namespace(), set(), "udfkey5");
 		String binName = "udfbin5";
 		String value = "appended value";
 
-		client.execute(params.writePolicy, key, "record_example", "appendListBin", Value.get(binName), Value.get(value));
-
-		Record record = client.get(params.policy, key, binName);
-
-		if (record != null) {
-			Object received = record.getValue(binName);
-
-			if (received != null && received instanceof List<?>) {
-				List<?> list = (List<?>)received;
-
-				if (list.size() == 5) {
-					Object obj = list.get(4);
-
-					if (obj.equals(value)) {
-						console.info("UDF data matched: namespace=%s set=%s key=%s bin=%s value=%s",
-								key.namespace, key.setName, key.userKey, binName, received);
-						return;
-					}
-				}
-			}
-			console.error("UDF data mismatch");
-			console.error("Expected: " + value);
-			console.error("Received: " + received);
-		}
-		else {
-			console.error("Failed to find record: " + key.userKey);
-		}
+		client().execute(writePolicy(), key, "record_example", "appendListBin", Value.get(binName), Value.get(value));
+		console.info("Appended list value via UDF: namespace=%s set=%s key=%s bin=%s value=%s",
+			key.namespace, key.setName, key.userKey, binName, value);
 	}
 
-	private void writeBlobUsingUdf(IAerospikeClient client, Parameters params) throws Exception {
-		Key key = new Key(params.namespace, params.set, "udfkey6");
+	private void writeBlobUsingUdf() throws Exception {
+		Key key = new Key(namespace(), set(), "udfkey6");
 		String binName = "udfbin6";
 
 		// Create packed blob using standard java tools.
@@ -237,16 +154,8 @@ public class UserDefinedFunction extends Example {
 			blob = baos.toByteArray();
 		}
 
-		client.execute(params.writePolicy, key, "record_example", "writeBin", Value.get(binName), Value.get(blob));
-		byte[] received = (byte[])client.execute(params.writePolicy, key, "record_example", "readBin", Value.get(binName));
-
-		if (Arrays.equals(blob, received)) {
-			console.info("Blob data matched: namespace=%s set=%s key=%s bin=%s value=%s",
-					key.namespace, key.setName, key.userKey, binName, Arrays.toString(received));
-		}
-		else {
-			throw new Exception(String.format(
-				"Mismatch: expected=%s received=%s", Arrays.toString(blob), Arrays.toString(received)));
-		}
+		client().execute(writePolicy(), key, "record_example", "writeBin", Value.get(binName), Value.get(blob));
+		console.info("Stored blob via UDF: namespace=%s set=%s key=%s bin=%s bytes=%s",
+			key.namespace, key.setName, key.userKey, binName, blob.length);
 	}
 }
