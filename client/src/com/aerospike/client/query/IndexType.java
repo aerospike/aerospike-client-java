@@ -21,7 +21,7 @@ package com.aerospike.client.query;
  */
 public enum IndexType {
 	/**
-	 * Number index.
+	 * Number index. Use {@link #INTEGER} for server versions 8.1.3+.
 	 */
 	NUMERIC,
 
@@ -38,5 +38,11 @@ public enum IndexType {
 	/**
 	 * 2-dimensional spherical geospatial index.
 	 */
-	GEO2DSPHERE;
+	GEO2DSPHERE,
+
+	/**
+	 * Integer index. Requires server version 8.1.3+. Use {@link #NUMERIC} for
+	 * server versions prior to 8.1.3.
+	 */
+	INTEGER;
 }
