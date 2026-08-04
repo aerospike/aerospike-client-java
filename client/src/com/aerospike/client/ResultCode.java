@@ -250,6 +250,13 @@ public final class ResultCode {
 	public static final int LOST_CONFLICT = 28;
 
 	/**
+	 * String bin or string argument contains invalid UTF-8.
+	 * Returned by server 8.1.3+ string operations when the bin value or a
+	 * string argument fails the UTF-8 well-formedness gate.
+	 */
+	public static final int INVALID_ENCODING = 29;
+
+	/**
 	 * Write can't complete until XDR finishes shipping.
 	 */
 	public static final int XDR_KEY_BUSY = 32;
@@ -651,6 +658,9 @@ public final class ResultCode {
 
 		case LOST_CONFLICT:
 			return "Command failed due to conflict with XDR";
+
+		case INVALID_ENCODING:
+			return "Invalid UTF-8 encoding";
 
 		case XDR_KEY_BUSY:
 			return "Write can't complete until XDR finishes shipping";

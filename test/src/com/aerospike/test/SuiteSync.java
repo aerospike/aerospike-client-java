@@ -48,11 +48,15 @@ import com.aerospike.test.sync.basic.TestOperateBit;
 import com.aerospike.test.sync.basic.TestOperateHll;
 import com.aerospike.test.sync.basic.TestOperateList;
 import com.aerospike.test.sync.basic.TestOperateMap;
+import com.aerospike.test.sync.basic.TestOperateString;
 import com.aerospike.test.sync.basic.TestPutGet;
 import com.aerospike.test.sync.basic.TestQueryRoles;
 import com.aerospike.test.sync.basic.TestReplace;
 import com.aerospike.test.sync.basic.TestScan;
 import com.aerospike.test.sync.basic.TestServerInfo;
+import com.aerospike.test.sync.basic.TestStringExp;
+import com.aerospike.test.sync.basic.TestStringInvalidUtf8;
+import com.aerospike.test.sync.basic.TestStringMasking;
 import com.aerospike.test.sync.basic.TestTouch;
 import com.aerospike.test.sync.basic.TestTxn;
 import com.aerospike.test.sync.basic.TestUDF;
@@ -99,11 +103,15 @@ import com.aerospike.client.AerospikeClientIndexTypeTest;
 	TestOperateHll.class,
 	TestOperateList.class,
 	TestOperateMap.class,
+	TestOperateString.class,
 	TestPutGet.class,
 	TestQueryRoles.class,
 	TestReplace.class,
 	TestScan.class,
 	TestServerInfo.class,
+	TestStringExp.class,
+	TestStringInvalidUtf8.class,
+	TestStringMasking.class,
 	TestTouch.class,
 	TxnTest.class,
 	TestTxn.class,

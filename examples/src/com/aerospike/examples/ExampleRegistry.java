@@ -84,6 +84,8 @@ public final class ExampleRegistry {
 			PathExpression.class,
 			ExampleFixture.NONE,
 			ExampleServerRequirement.minimumServerVersion(8, 1, 2));
+		registerSync(examples, "OperateString", OperateString.class, ExampleServerRequirement.minimumServerVersion(8, 1, 3));
+		registerSync(examples, "StringExpression", StringExpression.class, ExampleServerRequirement.minimumServerVersion(8, 1, 3));
 		registerSync(examples, "ScanPage", ScanPage.class, AdvancedExampleFixtures.scanPageExample());
 		registerSync(examples, "ScanParallel", ScanParallel.class);
 		registerSync(examples, "ScanResume", ScanResume.class, AdvancedExampleFixtures.scanResumeExample());
