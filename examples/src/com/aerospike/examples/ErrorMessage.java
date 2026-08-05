@@ -33,12 +33,10 @@ import java.util.List;
 
 public class ErrorMessage extends Example {
 
-	public ErrorMessage(Console console) {
-		super(console);
-	}
-
 	@Override
-	public void runExample(IAerospikeClient client, Parameters params) throws Exception {
+	public void runExample() throws Exception {
+		IAerospikeClient client = client();
+		Parameters params = params();
 		String binName = "test-bin";
 		Key key = new Key(params.namespace, params.set, "error-message-key");
 
