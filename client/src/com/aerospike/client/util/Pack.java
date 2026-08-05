@@ -183,6 +183,26 @@ public final class Pack {
 		return packer.toByteArray();
 	}
 
+	public static byte[] pack(int command, Value value, int v1, CTX... ctx) {
+		Packer packer = new Packer();
+
+		init(packer, ctx);
+		packer.packArrayBegin(3);
+		packer.packInt(command);
+		value.pack(packer);
+		packer.packInt(v1);
+
+		packer.createBuffer();
+
+		init(packer, ctx);
+		packer.packArrayBegin(3);
+		packer.packInt(command);
+		value.pack(packer);
+		packer.packInt(v1);
+
+		return packer.getBuffer();
+	}
+
 	public static byte[] pack(int command, Value value, int v1, int v2, CTX... ctx) {
 		Packer packer = new Packer();
 		init(packer, ctx);
@@ -295,6 +315,16 @@ public final class Pack {
 		packer.packArrayBegin(2);
 		packer.packInt(command);
 		v1.pack(packer);
+		return packer.toByteArray();
+	}
+
+	public static byte[] pack(int command, Exp v1, int v2, CTX... ctx) {
+		Packer packer = new Packer();
+		init(packer, ctx);
+		packer.packArrayBegin(3);
+		packer.packInt(command);
+		v1.pack(packer);
+		packer.packInt(v2);
 		return packer.toByteArray();
 	}
 
