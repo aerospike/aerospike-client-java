@@ -173,6 +173,22 @@ public final class RecordParser {
 	}
 
 	/**
+	 * Error-detail-only parser. Wraps an existing response buffer so batch/multi
+	 * commands can reuse the shared msgpack error-detail decoder ({@link
+	 * #parseErrorDetails(int, int)}) over the command's own dataBuffer without a
+	 * full message header. Header fields are left zeroed. For internal use only.
+	 */
+	public RecordParser(byte[] dataBuffer) {
+		this.dataBuffer = dataBuffer;
+		this.resultCode = 0;
+		this.generation = 0;
+		this.expiration = 0;
+		this.fieldCount = 0;
+		this.opCount = 0;
+		this.dataOffset = 0;
+	}
+
+	/**
 	 * Async record parser.
 	 */
 	public RecordParser(byte[] buffer, int offset, int receiveSize) {
@@ -265,9 +281,11 @@ public final class RecordParser {
 	/**
 	 * Parse error detail msgpack map from server response.
 	 * Map keys: 1 = subcode (uint), 2 = message (string).
-	 * Returns formatted error message string.
+	 * Returns formatted error message string. Also populates
+	 * {@link #serverSubcode} and {@link #expTrace} as side effects.
+	 * For internal use only.
 	 */
-	private String parseErrorDetails(int offset, int size) {
+	String parseErrorDetails(int offset, int size) {
 		int end = offset + size;
 
 		if (offset >= end) {

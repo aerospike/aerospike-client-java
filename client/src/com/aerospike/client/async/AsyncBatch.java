@@ -76,6 +76,7 @@ public final class AsyncBatch {
 			BatchRead record = records.get(batchIndex);
 
 			parseFieldsRead(record.key);
+			applyErrorDetail(record);
 
 			if (resultCode == 0) {
 				record.setRecord(parseRecord());
@@ -131,6 +132,7 @@ public final class AsyncBatch {
 			BatchRead record = records.get(batchIndex);
 
 			parseFieldsRead(record.key);
+			applyErrorDetail(record);
 
 			if (resultCode == 0) {
 				record.setRecord(parseRecord());
@@ -416,6 +418,7 @@ public final class AsyncBatch {
 			BatchRecord record = records.get(batchIndex);
 
 			parseFields(record.key, record.hasWrite);
+			applyErrorDetail(record);
 
 			if (resultCode == 0) {
 				record.setRecord(parseRecord());
@@ -512,6 +515,7 @@ public final class AsyncBatch {
 			BatchRecord record = records.get(batchIndex);
 
 			parseFields(record.key, record.hasWrite);
+			applyErrorDetail(record);
 
 			if (resultCode == 0) {
 				record.setRecord(parseRecord());
@@ -609,6 +613,7 @@ public final class AsyncBatch {
 			BatchRecord record = records[batchIndex];
 
 			parseFields(record.key, record.hasWrite);
+			applyErrorDetail(record);
 
 			if (resultCode == 0) {
 				record.setRecord(parseRecord());
@@ -703,6 +708,7 @@ public final class AsyncBatch {
 				record = new BatchRecord(keyOrig, null, resultCode, Command.batchInDoubt(attr.hasWrite, commandSentCounter), attr.hasWrite);
 			}
 
+			applyErrorDetail(record);
 			sent[batchIndex] = true;
 			AsyncBatch.onRecord(listener, record, batchIndex);
 		}
@@ -783,6 +789,7 @@ public final class AsyncBatch {
 			BatchRecord record = records[batchIndex];
 
 			parseFields(record.key, record.hasWrite);
+			applyErrorDetail(record);
 
 			if (resultCode == 0) {
 				record.setRecord(parseRecord());
@@ -909,6 +916,7 @@ public final class AsyncBatch {
 				record = new BatchRecord(keyOrig, null, resultCode, Command.batchInDoubt(attr.hasWrite, commandSentCounter), attr.hasWrite);
 			}
 
+			applyErrorDetail(record);
 			sent[batchIndex] = true;
 			AsyncBatch.onRecord(listener, record, batchIndex);
 		}

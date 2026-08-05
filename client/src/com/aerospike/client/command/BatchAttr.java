@@ -39,6 +39,15 @@ public final class BatchAttr {
 	public boolean hasWrite;
 	public boolean sendKey;
 
+	/**
+	 * Error-detail verbosity folded into info4 bits 5-6 (see
+	 * {@link Command#INFO4_ERROR_VERBOSITY_SHIFT}/{@link Command#INFO4_ERROR_VERBOSITY_MASK}).
+	 * Batch-wide, taken from the parent BatchPolicy, and OR'd into each row's info4 by
+	 * {@code writeBatchRead}/{@code writeBatchWrite}. The set* methods never touch it,
+	 * so it survives per-row reuse of the attr.
+	 */
+	public int errorDetailBits;
+
 	public BatchAttr() {
 	}
 

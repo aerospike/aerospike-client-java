@@ -22,6 +22,7 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Suite;
 
 import com.aerospike.test.async.TestAsyncErrorDetailVerbosity;
+import com.aerospike.test.sync.basic.TestErrorDetailBatch;
 import com.aerospike.test.sync.basic.TestErrorDetailParser;
 import com.aerospike.test.sync.basic.TestErrorDetailPaths;
 import com.aerospike.test.sync.basic.TestErrorDetailSubcode;
@@ -38,6 +39,7 @@ import com.aerospike.test.sync.basic.TestExpErrorDetail;
  */
 @RunWith(Suite.class)
 @Suite.SuiteClasses({
+	TestErrorDetailBatch.class,
 	TestErrorDetailParser.class,
 	TestErrorDetailSubcode.class,
 	TestErrorDetailPaths.class,

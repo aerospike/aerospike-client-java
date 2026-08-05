@@ -51,6 +51,29 @@ public class BatchRecord {
 	public boolean inDoubt;
 
 	/**
+	 * Formatted server-side error detail (human-readable message and/or subcode) for this
+	 * record, populated when the batch opted into {@link Policy#errorDetailVerbosity} &gt; 0
+	 * and the server attached an extended error detail. {@code null} otherwise.
+	 * Requires server version 8.1.3+.
+	 */
+	public String serverMessage;
+
+	/**
+	 * Server-supplied error subcode for this record, or {@link SubCode#NONE} (0) when the
+	 * server did not send one. A subcode is only meaningful when interpreted together with
+	 * {@link #resultCode}: subcode integer values are scoped to their parent result code and
+	 * are NOT globally unique. See {@link SubCode}.
+	 */
+	public int subcode = SubCode.NONE;
+
+	/**
+	 * Server-supplied expression build trace for this record, sent only at
+	 * {@link Policy#errorDetailVerbosity} level 3 on expression build-failure paths.
+	 * {@code null} when absent. See {@link ExpressionTrace}.
+	 */
+	public ExpressionTrace expTrace;
+
+	/**
 	 * Does this command contain a write operation. For internal use only.
 	 */
 	public final boolean hasWrite;
@@ -93,6 +116,18 @@ public class BatchRecord {
 		this.record = null;
 		this.resultCode = ResultCode.NO_RESPONSE;
 		this.inDoubt = false;
+		this.serverMessage = null;
+		this.subcode = SubCode.NONE;
+		this.expTrace = null;
+	}
+
+	/**
+	 * Set the server-supplied error detail (extended error) for this record. For internal use only.
+	 */
+	public final void setErrorDetail(String serverMessage, int subcode, ExpressionTrace expTrace) {
+		this.serverMessage = serverMessage;
+		this.subcode = subcode;
+		this.expTrace = expTrace;
 	}
 
 	/**
