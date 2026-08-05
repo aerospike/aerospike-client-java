@@ -36,10 +36,6 @@ public class StringExpression extends Example {
 	private static final String BIN = "text";
 	private static final String VAR = "result";
 
-	public StringExpression(Console console) {
-		super(console);
-	}
-
 	/**
 	 * Demonstrate every {@link StringExp} expression builder. Each demo evaluates
 	 * the expression with {@code ExpOperation.read} and prints the result.
@@ -48,7 +44,9 @@ public class StringExpression extends Example {
 	 * Requires server version 8.1.3 or later.
 	 */
 	@Override
-	public void runExample(IAerospikeClient client, Parameters params) throws Exception {
+	public void runExample() throws Exception {
+		IAerospikeClient client = client();
+		Parameters params = params();
 		runReadExps(client, params);
 		runModifyExps(client, params);
 		runToString(client, params);

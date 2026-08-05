@@ -25,7 +25,6 @@ import com.aerospike.client.BatchRecord;
 import com.aerospike.client.BatchResults;
 import com.aerospike.client.BatchWrite;
 import com.aerospike.client.Bin;
-import com.aerospike.client.IAerospikeClient;
 import com.aerospike.client.Key;
 import com.aerospike.client.Operation;
 import com.aerospike.client.Record;
@@ -51,30 +50,23 @@ public class BatchOperate extends Example {
 	private static final String ResultName2 = "result2";
 	private static final int RecordCount = 8;
 
-	public BatchOperate(Console console) {
-		super(console);
-	}
-
 	@Override
-	public void runExample(IAerospikeClient client, Parameters params) {
-		writeRecords(client, params);
-		batchReadOperate(client, params);
-		batchReadOperateComplex(client, params);
-		batchListReadOperate(client, params);
-		batchListWriteOperate(client, params);
-		batchWriteOperateComplex(client, params);
+	public void runExample() {
+		writeRecords();
+		batchReadOperate();
+		batchReadOperateComplex();
+		batchListReadOperate();
+		batchListWriteOperate();
+		batchWriteOperateComplex();
 	}
 
-	private void writeRecords(
-		IAerospikeClient client,
-		Parameters params
-	) {
+	private void writeRecords() {
 		for (int i = 1; i <= RecordCount; i++) {
-			Key key = new Key(params.namespace, params.set, KeyPrefix + i);
+			Key key = new Key(namespace(), set(), KeyPrefix + i);
 			Bin bin1 = new Bin(BinName1, i);
 			Bin bin2 = new Bin(BinName2, i + 10);
 
-			List<Integer> list = new ArrayList<Integer>();
+			List<Integer> list = new ArrayList<>();
 
 			for (int j = 0; j < i; j++) {
 				list.add(j * i);
@@ -84,24 +76,24 @@ public class BatchOperate extends Example {
 			console.info("Put: ns=%s set=%s key=%s val1=%s val2=%s val3=%s",
 				key.namespace, key.setName, key.userKey, bin1.value, bin2.value, list.toString());
 
-			client.put(params.writePolicy, key, bin1, bin2, bin3);
+			client().put(writePolicy(), key, bin1, bin2, bin3);
 		}
 	}
 
 	/**
 	 * Perform read operation expressions in one batch.
 	 */
-	private void batchReadOperate(IAerospikeClient client, Parameters params) {
+	private void batchReadOperate() {
 		console.info("batchReadOperate");
 		Key[] keys = new Key[RecordCount];
 		for (int i = 0; i < RecordCount; i++) {
-			keys[i] = new Key(params.namespace, params.set, KeyPrefix + (i + 1));
+			keys[i] = new Key(namespace(), set(), KeyPrefix + (i + 1));
 		}
 
 		// bin1 * bin2
 		Expression exp = Exp.build(Exp.mul(Exp.intBin(BinName1), Exp.intBin(BinName2)));
 
-		Record[] records = client.get(null, keys, ExpOperation.read(ResultName1, exp, ExpReadFlags.DEFAULT));
+		Record[] records = client().get(null, keys, ExpOperation.read(ResultName1, exp, ExpReadFlags.DEFAULT));
 
 		for (int i = 0; i < records.length; i++) {
 			Record record = records[i];
@@ -112,7 +104,7 @@ public class BatchOperate extends Example {
 	/**
 	 * Read results using varying read operations in one batch.
 	 */
-	private void batchReadOperateComplex(IAerospikeClient client, Parameters params) {
+	private void batchReadOperateComplex() {
 		console.info("batchReadOperateComplex");
 		Expression exp1 = Exp.build(Exp.mul(Exp.intBin(BinName1), Exp.intBin(BinName2)));
 		Expression exp2 = Exp.build(Exp.add(Exp.intBin(BinName1), Exp.intBin(BinName2)));
@@ -127,17 +119,17 @@ public class BatchOperate extends Example {
 		Operation[] ops4 = Operation.array(ExpOperation.read(ResultName1, exp2, ExpReadFlags.DEFAULT),
 										   ExpOperation.read(ResultName2, exp3, ExpReadFlags.DEFAULT));
 
-		List<BatchRead> records = new ArrayList<BatchRead>();
-		records.add(new BatchRead(new Key(params.namespace, params.set, KeyPrefix + 1), ops1));
+		List<BatchRead> records = new ArrayList<>();
+		records.add(new BatchRead(new Key(namespace(), set(), KeyPrefix + 1), ops1));
 		// The following record is optimized (namespace,set,ops are only sent once) because
 		// namespace, set and ops all have the same pointer references as the previous entry.
-		records.add(new BatchRead(new Key(params.namespace, params.set, KeyPrefix + 2), ops1));
-		records.add(new BatchRead(new Key(params.namespace, params.set, KeyPrefix + 3), ops2));
-		records.add(new BatchRead(new Key(params.namespace, params.set, KeyPrefix + 4), ops3));
-		records.add(new BatchRead(new Key(params.namespace, params.set, KeyPrefix + 5), ops4));
+		records.add(new BatchRead(new Key(namespace(), set(), KeyPrefix + 2), ops1));
+		records.add(new BatchRead(new Key(namespace(), set(), KeyPrefix + 3), ops2));
+		records.add(new BatchRead(new Key(namespace(), set(), KeyPrefix + 4), ops3));
+		records.add(new BatchRead(new Key(namespace(), set(), KeyPrefix + 5), ops4));
 
 		// Execute batch.
-		client.get(null, records);
+		client().get(null, records);
 
 		// Show results.
 		int count = 0;
@@ -157,19 +149,19 @@ public class BatchOperate extends Example {
 	/**
 	 * Perform list read operations in one batch.
 	 */
-	private void batchListReadOperate(IAerospikeClient client, Parameters params) {
+	private void batchListReadOperate() {
 		console.info("batchListReadOperate");
 		Key[] keys = new Key[RecordCount];
 		for (int i = 0; i < RecordCount; i++) {
 			if (i == 5) {
-				keys[i] = new Key(params.namespace, params.set, "not found");
+				keys[i] = new Key(namespace(), set(), "not found");
 				continue;
 			}
-			keys[i] = new Key(params.namespace, params.set, KeyPrefix + (i + 1));
+			keys[i] = new Key(namespace(), set(), KeyPrefix + (i + 1));
 		}
 
 		// Get size and last element of list bin for all records.
-		Record[] records = client.get(null, keys,
+		Record[] records = client().get(null, keys,
 			ListOperation.size(BinName3),
 			ListOperation.getByIndex(BinName3, -1, ListReturnType.VALUE)
 			);
@@ -194,15 +186,15 @@ public class BatchOperate extends Example {
 	/**
 	 * Perform list read/write operations in one batch.
 	 */
-	private void batchListWriteOperate(IAerospikeClient client, Parameters params) {
+	private void batchListWriteOperate() {
 		console.info("batchListWriteOperate");
 		Key[] keys = new Key[RecordCount];
 		for (int i = 0; i < RecordCount; i++) {
-			keys[i] = new Key(params.namespace, params.set, KeyPrefix + (i + 1));
+			keys[i] = new Key(namespace(), set(), KeyPrefix + (i + 1));
 		}
 
 		// Add integer to list and get size and last element of list bin for all records.
-		BatchResults bresults = client.operate(null, null, keys,
+		BatchResults bresults = client().operate(null, null, keys,
 			ListOperation.append(ListPolicy.Default, BinName3, Value.get(999)),
 			ListOperation.size(BinName3),
 			ListOperation.getByIndex(BinName3, -1, ListReturnType.VALUE)
@@ -228,7 +220,7 @@ public class BatchOperate extends Example {
 	/**
 	 * Read/Write records using varying operations in one batch.
 	 */
-	private void batchWriteOperateComplex(IAerospikeClient client, Parameters params) {
+	private void batchWriteOperateComplex() {
 		console.info("batchWriteOperateComplex");
 		Expression wexp1 = Exp.build(Exp.add(Exp.intBin(BinName1), Exp.intBin(BinName2), Exp.val(1000)));
 		Expression rexp1 = Exp.build(Exp.mul(Exp.intBin(BinName1), Exp.intBin(BinName2)));
@@ -250,16 +242,16 @@ public class BatchOperate extends Example {
 			ExpOperation.read(ResultName1, rexp2, ExpReadFlags.DEFAULT),
 			ExpOperation.read(ResultName2, rexp3, ExpReadFlags.DEFAULT));
 
-		List<BatchRecord> records = new ArrayList<BatchRecord>();
-		records.add(new BatchWrite(new Key(params.namespace, params.set, KeyPrefix + 1), ops1));
-		records.add(new BatchRead(new Key(params.namespace, params.set, KeyPrefix + 2), ops2));
-		records.add(new BatchRead(new Key(params.namespace, params.set, KeyPrefix + 3), ops3));
-		records.add(new BatchWrite(new Key(params.namespace, params.set, KeyPrefix + 4), ops4));
-		records.add(new BatchRead(new Key(params.namespace, params.set, KeyPrefix + 5), ops5));
-		records.add(new BatchDelete(new Key(params.namespace, params.set, KeyPrefix + 6)));
+		List<BatchRecord> records = new ArrayList<>();
+		records.add(new BatchWrite(new Key(namespace(), set(), KeyPrefix + 1), ops1));
+		records.add(new BatchRead(new Key(namespace(), set(), KeyPrefix + 2), ops2));
+		records.add(new BatchRead(new Key(namespace(), set(), KeyPrefix + 3), ops3));
+		records.add(new BatchWrite(new Key(namespace(), set(), KeyPrefix + 4), ops4));
+		records.add(new BatchRead(new Key(namespace(), set(), KeyPrefix + 5), ops5));
+		records.add(new BatchDelete(new Key(namespace(), set(), KeyPrefix + 6)));
 
 		// Execute batch.
-		client.operate(null, records);
+		client().operate(null, records);
 
 		// Show results.
 		int i = 0;

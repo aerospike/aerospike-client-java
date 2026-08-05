@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2024 Aerospike, Inc.
+ * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -18,9 +18,11 @@ package com.aerospike.client;
 
 import com.aerospike.client.command.Buffer;
 import com.aerospike.client.command.Command;
-import com.aerospike.client.configuration.*;
-import com.aerospike.client.configuration.serializers.*;
+import com.aerospike.client.configuration.ConfigurationProvider;
+import com.aerospike.client.configuration.serializers.Configuration;
+import com.aerospike.client.policy.BatchDeletePolicy;
 import com.aerospike.client.policy.BatchUDFPolicy;
+import com.aerospike.client.policy.BatchWritePolicy;
 import com.aerospike.client.policy.Policy;
 import com.aerospike.client.util.Packer;
 
@@ -84,14 +86,41 @@ public final class BatchUDF extends BatchRecord {
 		return Type.BATCH_UDF;
 	}
 
-	/**
+    /**
+     * Return union of sendKey settings.
+     */
+    @Override
+    public boolean resolveSendKey(
+        Policy parentPolicy,
+        ConfigurationProvider configProvider,
+        BatchWritePolicy writePolicyDefault,
+        BatchUDFPolicy udfPolicyDefault,
+        BatchDeletePolicy deletePolicyDefault
+    ) {
+        if (parentPolicy.sendKey || udfPolicyDefault.sendKey || (policy != null && policy.sendKey)) {
+            return true;
+        }
+
+        if (configProvider != null) {
+            Configuration config = configProvider.fetchConfiguration();
+
+            if (config != null && config.hasDBUDFCsendKey() &&
+                config.dynamicConfiguration.dynamicBatchUDFconfig.sendKey.value) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
 	 * Optimized reference equality check to determine batch wire protocol repeat flag.
 	 * For internal use only.
 	 */
 	@Override
-	public boolean equals(BatchRecord obj, ConfigurationProvider configProvider) {
-		if (getClass() != obj.getClass())
-			return false;
+	public boolean equals(Object obj) {
+		if (getClass() != obj.getClass()) {
+            return false;
+        }
 
 		BatchUDF other = (BatchUDF)obj;
 
@@ -100,48 +129,23 @@ public final class BatchUDF extends BatchRecord {
 			return false;
 		}
 
-		boolean sendkey = false;
-		if (policy != null) {
-			sendkey = policy.sendKey;
-		}
-		if (configProvider != null) {
-			Configuration config = configProvider.fetchConfiguration();
-			if (config != null && config.hasDBUDFCsendKey()) {
-				sendkey = config.dynamicConfiguration.dynamicBatchUDFconfig.sendKey.value;
-			}
-		}
-
-		return !sendkey;
+		return true;
 	}
 
 	/**
 	 * Return wire protocol size. For internal use only.
 	 */
 	@Override
-	public int size(Policy parentPolicy, ConfigurationProvider configProvider) {
+	public int size(boolean sendKey) {
 		int size = 2; // gen(2) = 2
 
-		if (policy != null) {
-			if (policy.filterExp != null) {
-				size += policy.filterExp.size();
-			}
-
-			boolean sendkey;
-			sendkey = policy.sendKey;
-			if (configProvider != null) {
-				Configuration config = configProvider.fetchConfiguration();
-				if (config != null && config.hasDBUDFCsendKey()) {
-					sendkey = config.dynamicConfiguration.dynamicBatchUDFconfig.sendKey.value;
-				}
-			}
-
-			if (sendkey || parentPolicy.sendKey) {
-				size += key.userKey.estimateSize() + Command.FIELD_HEADER_SIZE + 1;
-			}
+		if (policy != null && policy.filterExp != null) {
+			size += policy.filterExp.size();
 		}
-		else if (parentPolicy.sendKey) {
-			size += key.userKey.estimateSize() + Command.FIELD_HEADER_SIZE + 1;
-		}
+
+		if (sendKey) {
+            size += key.userKey.estimateSize() + Command.FIELD_HEADER_SIZE + 1;
+        }
 
 		size += Buffer.estimateSizeUtf8(packageName) + Command.FIELD_HEADER_SIZE;
 		size += Buffer.estimateSizeUtf8(functionName) + Command.FIELD_HEADER_SIZE;

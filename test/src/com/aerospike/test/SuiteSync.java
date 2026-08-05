@@ -21,6 +21,7 @@ import org.junit.BeforeClass;
 import org.junit.runner.RunWith;
 import org.junit.runners.Suite;
 
+import com.aerospike.client.TxnTest;
 import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.Host;
 import com.aerospike.client.IAerospikeClient;
@@ -76,6 +77,7 @@ import com.aerospike.test.sync.query.TestQueryRPS;
 import com.aerospike.test.sync.query.TestQueryString;
 import com.aerospike.test.sync.query.TestQuerySum;
 import com.aerospike.test.util.Args;
+import com.aerospike.client.AerospikeClientIndexTypeTest;
 
 @RunWith(Suite.class)
 @Suite.SuiteClasses({
@@ -109,6 +111,7 @@ import com.aerospike.test.util.Args;
 	TestStringInvalidUtf8.class,
 	TestStringMasking.class,
 	TestTouch.class,
+	TxnTest.class,
 	TestTxn.class,
 	TestUDF.class,
 	TestIndex.class,
@@ -127,7 +130,8 @@ import com.aerospike.test.util.Args;
 	TestQueryOperations.class,
 	TestQueryRPS.class,
 	TestQueryString.class,
-	TestQuerySum.class
+	TestQuerySum.class,
+	AerospikeClientIndexTypeTest.class
 })
 public class SuiteSync {
 	public static IAerospikeClient client = null;

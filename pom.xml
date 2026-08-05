@@ -29,7 +29,7 @@
   </modules>
 
   <properties>
-    <revision>10.1.0</revision>
+    <revision>10.4.0</revision>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 
@@ -41,7 +41,7 @@
     <maven-javadoc-plugin.version>3.2.0</maven-javadoc-plugin.version>
 
     <snakeyaml.version>2.6</snakeyaml.version>
-    <netty.version>4.2.13.Final</netty.version>
+    <netty.version>4.2.15.Final</netty.version>
     <luaj-jse.version>3.0.1</luaj-jse.version>
     <jbcrypt.version>0.4</jbcrypt.version>
     <commons-cli.version>1.11.0</commons-cli.version>

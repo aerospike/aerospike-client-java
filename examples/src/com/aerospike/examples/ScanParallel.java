@@ -18,7 +18,6 @@ package com.aerospike.examples;
 
 import java.util.concurrent.atomic.AtomicInteger;
 
-import com.aerospike.client.IAerospikeClient;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
 import com.aerospike.client.ScanCallback;
@@ -28,20 +27,16 @@ public class ScanParallel extends Example implements ScanCallback {
 
 	private AtomicInteger recordCount;
 
-	public ScanParallel(Console console) {
-		super(console);
-	}
-
 	/**
 	 * Scan all nodes in parallel and read all records in a set.
 	 */
 	@Override
-	public void runExample(IAerospikeClient client, Parameters params) throws Exception {
-		console.info("Scan parallel: namespace=" + params.namespace + " set=" + params.set);
+	public void runExample() throws Exception {
+		console.info("Scan parallel: namespace=" + namespace() + " set=" + set());
 		recordCount = new AtomicInteger();
 		long begin = System.currentTimeMillis();
 		ScanPolicy policy = new ScanPolicy();
-		client.scanAll(policy, params.namespace, params.set, this);
+		client().scanAll(policy, namespace(), set(), this);
 
 		long end = System.currentTimeMillis();
 		double seconds =  (double)(end - begin) / 1000.0;

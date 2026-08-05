@@ -80,6 +80,7 @@ options:
 -nettyEpoll                         Use Netty epoll event loops for async examples (Linux only)
 -P,--password <arg>                 Password
 -p,--port <arg>                     Server default port (default: 3000)
+   --report <arg>                   Write JUnit XML example report to the given path
 -s,--set <arg>                      Set name. Use 'empty' for empty set (default: demoset)
 -te,--tlsEncryptOnly                Enable TLS encryption and disable TLS certificate validation
 -tls,--tlsEnable                    Use TLS/SSL sockets
@@ -101,6 +102,16 @@ options:
     ./run_examples -h localhost -p 3000 -n test -s demoset all
     ./run_examples -h localhost -p 3000 -n test -s demoset ServerInfo PutGet Generation
     ./run_examples -g -h localhost -p 3000 -n test -s demoset
+
+#### CI Reporting
+
+Write a JUnit XML report that can be published by CI:
+
+    ./run_examples all -h localhost -p 3000 -n test --report target/example-reports/TEST-examples.xml
+
+CI treats server-gated examples as skipped rather than failed. On the current PR matrix,
+`PathExpression` is skipped on server versions older than `8.1.2`, and `Transaction` /
+`AsyncTransaction` are skipped unless the target namespace is configured for strong consistency.
 
 #### TLS Example
 

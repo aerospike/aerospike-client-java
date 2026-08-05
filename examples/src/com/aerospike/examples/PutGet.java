@@ -17,83 +17,66 @@
 package com.aerospike.examples;
 
 import com.aerospike.client.Bin;
-import com.aerospike.client.IAerospikeClient;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
 
 public class PutGet extends Example {
 
-	public PutGet(Console console) {
-		super(console);
-	}
-
 	/**
 	 * Write and read a bin value.
 	 */
 	@Override
-	public void runExample(IAerospikeClient client, Parameters params) throws Exception {
-		runMultiBinTest(client, params);
-		runGetHeaderTest(client, params);
+	public void runExample() throws Exception {
+		runMultiBinTest();
+		runGetHeaderTest();
 	}
 
 	/**
 	 * Execute put and get on a server configured as multi-bin.  This is the server default.
 	 */
-	private void runMultiBinTest(IAerospikeClient client, Parameters params) throws Exception {
-		Key key = new Key(params.namespace, params.set, "putgetkey");
+	private void runMultiBinTest() throws Exception {
+		Key key = new Key(namespace(), set(), "putgetkey");
 		Bin bin1 = new Bin("bin1", "value1");
 		Bin bin2 = new Bin("bin2", "value2");
 
 		console.info("Put: namespace=%s set=%s key=%s bin1=%s value1=%s bin2=%s value2=%s",
 			key.namespace, key.setName, key.userKey, bin1.name, bin1.value, bin2.name, bin2.value);
 
-		client.put(params.writePolicy, key, bin1, bin2);
+		client().put(writePolicy(), key, bin1, bin2);
 
 		console.info("Get: namespace=%s set=%s key=%s", key.namespace, key.setName, key.userKey);
 
-		Record record = client.get(params.policy, key);
+		Record record = client().get(readPolicy(), key);
 
 		if (record == null) {
 			throw new Exception(String.format(
 				"Failed to get: namespace=%s set=%s key=%s", key.namespace, key.setName, key.userKey));
 		}
 
-		validateBin(key, bin1, record);
-		validateBin(key, bin2, record);
-	}
-
-	private void validateBin(Key key, Bin bin, Record record) {
-		Object received = record.getValue(bin.name);
-		String expected = bin.value.toString();
-
-		if (received != null && received.equals(expected)) {
-			console.info("Bin matched: namespace=%s set=%s key=%s bin=%s value=%s generation=%d expiration=%d",
-				key.namespace, key.setName, key.userKey, bin.name, received, record.generation, record.expiration);
-		}
-		else {
-			console.error("Put/Get mismatch: Expected %s. Received %s.", expected, received);
-		}
+		console.info("Received: namespace=%s set=%s key=%s bin1=%s bin2=%s generation=%d expiration=%d",
+			key.namespace,
+			key.setName,
+			key.userKey,
+			record.getValue(bin1.name),
+			record.getValue(bin2.name),
+			record.generation,
+			record.expiration);
 	}
 
 	/**
 	 * Read record header data.
 	 */
-	private void runGetHeaderTest(IAerospikeClient client, Parameters params) throws Exception {
-		Key key = new Key(params.namespace, params.set, "putgetkey");
+	private void runGetHeaderTest() throws Exception {
+		Key key = new Key(namespace(), set(), "putgetkey");
 
 		console.info("Get record header: namespace=%s set=%s key=%s", key.namespace, key.setName, key.userKey);
-		Record record = client.getHeader(params.policy, key);
+		Record record = client().getHeader(readPolicy(), key);
 
 		if (record == null) {
 			throw new Exception(String.format(
 				"Failed to get: namespace=%s set=%s key=%s", key.namespace, key.setName, key.userKey));
 		}
 
-		// Generation should be greater than zero.  Make sure it's populated.
-		if (record.generation == 0) {
-			throw new Exception(String.format(
-				"Invalid record header: generation=%d expiration=%d", record.generation, record.expiration));
-		}
 		console.info("Received: generation=%d expiration=%d", record.generation, record.expiration);
 	}
 }

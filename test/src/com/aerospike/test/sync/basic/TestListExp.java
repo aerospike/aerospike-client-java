@@ -17,10 +17,15 @@
 
 package com.aerospike.test.sync.basic;
 
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -33,6 +38,7 @@ import com.aerospike.client.Value;
 import com.aerospike.client.cdt.CTX;
 import com.aerospike.client.cdt.ListOperation;
 import com.aerospike.client.cdt.ListPolicy;
+import com.aerospike.client.cdt.MapOrder;
 import com.aerospike.client.exp.Exp;
 import com.aerospike.client.exp.ExpOperation;
 import com.aerospike.client.exp.ExpReadFlags;
@@ -40,6 +46,7 @@ import com.aerospike.client.exp.ExpWriteFlags;
 import com.aerospike.client.exp.Expression;
 import com.aerospike.client.exp.ListExp;
 import com.aerospike.client.policy.Policy;
+import com.aerospike.client.util.Packer;
 import com.aerospike.test.sync.TestSync;
 
 public class TestListExp extends TestSync {
@@ -149,5 +156,136 @@ public class TestListExp extends TestSync {
 
 		List<?> results2 = record.getList("var");
 		assertEquals(4, results2.size());
+	}
+
+	@Test
+	public void appendItemsUnsortedMapLiteral() {
+		// CLIENT-5039: server 8.1.2.3+ (AER-6930) rejects expression map literals
+		// that are not in canonical (key sorted) form.
+		client.operate(null, keyA,
+			ListOperation.appendItems(ListPolicy.Default, binA,
+				Arrays.asList(Value.get(0), Value.get(1))));
+
+		// LinkedHashMap is an unordered (non-SortedMap) HashMap with a
+		// deterministic, deliberately unsorted iteration order.
+		Map<String,Object> map = new LinkedHashMap<>();
+		map.put("zz", 4L);
+		map.put("aa", 1L);
+		map.put("mm", 2L);
+		map.put("cc", 3L);
+
+		Expression exp = Exp.build(
+			ListExp.size(
+				ListExp.appendItems(ListPolicy.Default, Exp.val(Arrays.asList((Object)map)),
+					Exp.listBin(binA))));
+
+		Record record = client.operate(null, keyA,
+			ExpOperation.read("result", exp, ExpReadFlags.DEFAULT));
+
+		assertEquals(3, record.getLong("result"));
+	}
+
+	@Test
+	public void appendItemsUnsortedIntKeyMapLiteral() {
+		// Exact CLIENT-5039 ticket repro: integer keys in non-sorted order.
+		client.operate(null, keyA,
+			ListOperation.appendItems(ListPolicy.Default, binA,
+				Arrays.asList(Value.get(0), Value.get(1))));
+
+		Map<Object,Object> map = new LinkedHashMap<>();
+		map.put(1402L, 1802L);
+		map.put(2003L, 3946L);
+		map.put(834L, 1374L);
+		map.put(3117L, 1295L);
+
+		Expression exp = Exp.build(
+			ListExp.appendItems(ListPolicy.Default, Exp.val(Arrays.asList((Object)map)),
+				Exp.listBin(binA)));
+
+		Record record = client.operate(null, keyA,
+			ExpOperation.read("result", exp, ExpReadFlags.DEFAULT));
+
+		assertEquals(3, record.getList("result").size());
+	}
+
+	@Test
+	public void nestedMapLiteralPacksCanonical() {
+		Map<Object,Object> inner = new LinkedHashMap<>();
+		inner.put("z", 26L);
+		inner.put("a", 1L);
+
+		Map<Object,Object> innerSorted = new LinkedHashMap<>();
+		innerSorted.put("a", 1L);
+		innerSorted.put("z", 26L);
+
+		// Maps nested in list literals canonicalize at any depth.
+		assertArrayEquals(
+			Exp.build(Exp.val(Arrays.asList((Object)0L, inner))).getBytes(),
+			Exp.build(Exp.val(Arrays.asList((Object)0L, innerSorted))).getBytes());
+
+		// Maps nested as values of single-key maps canonicalize too.
+		Map<Object,Object> outer = new LinkedHashMap<>();
+		outer.put("k", inner);
+
+		Map<Object,Object> outerSorted = new LinkedHashMap<>();
+		outerSorted.put("k", innerSorted);
+
+		assertArrayEquals(
+			Exp.build(Exp.val(outer)).getBytes(),
+			Exp.build(Exp.val(outerSorted)).getBytes());
+	}
+
+	@Test
+	public void unsortedMapLiteralPacksCanonical() {
+		Map<Object,Object> unsorted = new LinkedHashMap<>();
+		unsorted.put("z", 26L);
+		unsorted.put(5L, "five");
+		unsorted.put("a", 1L);
+		unsorted.put(-3L, "neg");
+
+		Map<Object,Object> sorted = new LinkedHashMap<>();
+		sorted.put(-3L, "neg");
+		sorted.put(5L, "five");
+		sorted.put("a", 1L);
+		sorted.put("z", 26L);
+
+		// Canonicalization is deterministic and adds no order header, so packed
+		// bytes match a same-content map inserted in canonical order.
+		assertArrayEquals(
+			Exp.build(Exp.val(unsorted)).getBytes(),
+			Exp.build(Exp.val(sorted)).getBytes());
+	}
+
+	@Test
+	public void operationPathPreservesInsertionOrder() {
+		Map<Object,Object> map = new LinkedHashMap<>();
+		map.put("z", 26L);
+		map.put("a", 1L);
+
+		Map<Object,Object> reversed = new LinkedHashMap<>();
+		reversed.put("a", 1L);
+		reversed.put("z", 26L);
+
+		// Non-expression packing (record writes, CDT operation arguments) must
+		// keep map iteration order and stay byte-identical to previous releases.
+		assertFalse(Arrays.equals(
+			Packer.pack(map, MapOrder.UNORDERED),
+			Packer.pack(reversed, MapOrder.UNORDERED)));
+	}
+
+	@Test
+	public void appendItemsOperationUnsortedMap() {
+		Map<Object,Object> map = new LinkedHashMap<>();
+		map.put("z", 26L);
+		map.put("a", 1L);
+		map.put("m", 13L);
+
+		client.operate(null, keyB,
+			ListOperation.appendItems(ListPolicy.Default, binB,
+				Arrays.asList(Value.get(0), Value.get(map))));
+
+		Record record = client.get(null, keyB, binB);
+		assertRecordFound(keyB, record);
+		assertEquals(2, record.getList(binB).size());
 	}
 }
