@@ -2673,7 +2673,11 @@ public class Command {
 		dataBuffer[9]  = (byte)attr.readAttr;
 		dataBuffer[10] = (byte)attr.writeAttr;
 		dataBuffer[11] = (byte)attr.infoAttr;
-		dataBuffer[12] = (byte)attr.txnAttr;
+		// Single-key batch commands (BatchSingle/AsyncBatchSingle) send standard single-record
+		// messages through this path, so the error-detail verbosity must be folded into info4
+		// bits 5-6 here from the parent policy — mirroring writeHeaderRead/Write. The batch-wide
+		// attr.errorDetailBits is only wired into the multi-record row writers.
+		dataBuffer[12] = (byte)(attr.txnAttr | ((policy.errorDetailVerbosity << Command.INFO4_ERROR_VERBOSITY_SHIFT) & Command.INFO4_ERROR_VERBOSITY_MASK));
 		dataBuffer[13] = 0; // clear the result code
 		Buffer.intToBytes(attr.generation, dataBuffer, 14);
 		Buffer.intToBytes(attr.expiration, dataBuffer, 18);

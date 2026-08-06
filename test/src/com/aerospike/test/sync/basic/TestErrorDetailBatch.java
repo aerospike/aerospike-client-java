@@ -30,6 +30,7 @@ import org.junit.Test;
 import com.aerospike.client.Bin;
 import com.aerospike.client.BatchRead;
 import com.aerospike.client.BatchRecord;
+import com.aerospike.client.BatchWrite;
 import com.aerospike.client.Key;
 import com.aerospike.client.Operation;
 import com.aerospike.client.ResultCode;
@@ -129,5 +130,70 @@ public class TestErrorDetailBatch extends TestSync {
 		assertEquals("No detail expected at verbosity 0", SubCode.NONE, errRow.subcode);
 		assertNull("No detail expected at verbosity 0", errRow.serverMessage);
 		assertNull("No detail expected at verbosity 0", errRow.expTrace);
+	}
+
+	/**
+	 * A batch containing exactly one record is dispatched down the single-key path
+	 * ({@code BatchSingle}/{@code AsyncBatchSingle}, chosen whenever a node receives a
+	 * single offset), which decodes the same field-45 detail but must surface it onto
+	 * the {@link BatchRecord} itself. This read case exercises {@code BatchSingle.ReadRecord}.
+	 * Regression guard: before the fix the detail was decoded and then dropped here, so
+	 * subcode/message came back cleared even with verbosity opted in.
+	 */
+	@Test
+	public void testSingleKeyBatchReadSurfacesSubcode() {
+		BatchPolicy bp = new BatchPolicy(client.getBatchParentPolicyWriteDefault());
+		bp.errorDetailVerbosity = 2;
+
+		BatchRead errRow = new BatchRead(listKey, new Operation[] {
+			ListOperation.get(binName, 99)
+		});
+
+		// Single-record batch -> offsetsSize == 1 -> single-key path.
+		List<BatchRecord> records = new ArrayList<>();
+		records.add(errRow);
+
+		client.operate(bp, records);
+
+		assertEquals("Unexpected result code", ResultCode.OP_NOT_APPLICABLE, errRow.resultCode);
+		assertEquals("Single-key read row lost its subcode",
+			SubCode.OPNOT_CDT_INDEX_OUT_OF_BOUNDS, errRow.subcode);
+		assertNotNull("Single-key read row lost its server message", errRow.serverMessage);
+		assertTrue("Expected 'subcode=" + SubCode.OPNOT_CDT_INDEX_OUT_OF_BOUNDS + "' in: " + errRow.serverMessage,
+			errRow.serverMessage.contains("subcode=" + SubCode.OPNOT_CDT_INDEX_OUT_OF_BOUNDS));
+	}
+
+	/**
+	 * Single-key write variant: a one-record batch write is dispatched to
+	 * {@code BatchSingle.OperateBatchRecord}, proving the detail reaches the
+	 * {@link BatchRecord} on the write path too. Appending a string to an integer bin is a
+	 * write op that fails with BIN_TYPE_ERROR and a server message. (This particular error
+	 * carries no subcode on the server, so the message is the detail asserted here; the read
+	 * case above covers subcode surfacing.)
+	 */
+	@Test
+	public void testSingleKeyBatchWriteSurfacesMessage() {
+		Key intKey = new Key(args.namespace, args.set, "edb-int-key");
+		client.put(new WritePolicy(), intKey, new Bin("i", 1));
+
+		BatchPolicy bp = new BatchPolicy(client.getBatchParentPolicyWriteDefault());
+		bp.errorDetailVerbosity = 2;
+
+		// Append (a write op) to an integer bin -> BIN_TYPE_ERROR with a server message.
+		BatchWrite errRow = new BatchWrite(intKey, new Operation[] {
+			Operation.append(new Bin("i", "bad-append"))
+		});
+
+		List<BatchRecord> records = new ArrayList<>();
+		records.add(errRow);
+
+		client.operate(bp, records);
+
+		// Before the fix the single-key write path opted out of verbosity and dropped the
+		// detail, so this message came back null.
+		assertEquals("Unexpected result code", ResultCode.BIN_TYPE_ERROR, errRow.resultCode);
+		assertNotNull("Single-key write row lost its server message", errRow.serverMessage);
+		assertTrue("Expected append-type detail, got: " + errRow.serverMessage,
+			errRow.serverMessage.toLowerCase().contains("append"));
 	}
 }

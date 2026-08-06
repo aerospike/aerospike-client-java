@@ -175,6 +175,7 @@ public final class BatchSingle {
 			}
 			else {
 				record.setError(rp.resultCode, false);
+				record.setErrorDetail(rp.serverMessage, rp.serverSubcode, rp.expTrace);
 				status.setRowError();
 			}
 		}
@@ -254,6 +255,7 @@ public final class BatchSingle {
 			}
 			else {
 				record.setError(rp.resultCode, Command.batchInDoubt(attr.hasWrite, commandSentCounter));
+				record.setErrorDetail(rp.serverMessage, rp.serverSubcode, rp.expTrace);
 				status.setRowError();
 			}
 		}
@@ -303,6 +305,7 @@ public final class BatchSingle {
 				// A KEY_NOT_FOUND_ERROR on a delete is benign, but still results in an overall
 				// batch status of false to be consistent with the original batch code.
 				record.setError(rp.resultCode, Command.batchInDoubt(true, commandSentCounter));
+				record.setErrorDetail(rp.serverMessage, rp.serverSubcode, rp.expTrace);
 				status.setRowError();
 			}
 		}
@@ -370,6 +373,7 @@ public final class BatchSingle {
 			}
 			else {
 				record.setError(rp.resultCode, Command.batchInDoubt(true, commandSentCounter));
+				record.setErrorDetail(rp.serverMessage, rp.serverSubcode, rp.expTrace);
 				status.setRowError();
 			}
 		}
