@@ -42,10 +42,10 @@ public class AerospikeException extends RuntimeException {
 		this.resultCode = resultCode;
 	}
 
-	public AerospikeException(int resultCode, String message, int subcode) {
+	public AerospikeException(int resultCode, String message, int subCode) {
 		super(message);
 		this.resultCode = resultCode;
-		this.subCode = subcode;
+		this.subCode = subCode;
 	}
 
 	public AerospikeException(int resultCode, Throwable e) {
@@ -202,15 +202,15 @@ public class AerospikeException extends RuntimeException {
 	 * result code and are NOT globally unique. Dispatch on the
 	 * {@code (resultCode, subcode)} pair. See {@link SubCode}.
 	 */
-	public final int getSubcode() {
+	public final int getSubCode() {
 		return subCode;
 	}
 
 	/**
 	 * Set the server-supplied error subcode.
 	 */
-	public final void setSubcode(int subcode) {
-		this.subCode = subcode;
+	public final void setSubCode(int subCode) {
+		this.subCode = subCode;
 	}
 
 	/**

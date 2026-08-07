@@ -124,9 +124,9 @@ public class BatchRecord {
 	/**
 	 * Set the server-supplied error detail (extended error) for this record. For internal use only.
 	 */
-	public final void setErrorDetail(String serverMessage, int subcode, ExpressionTrace expTrace) {
+	public final void setErrorDetail(String serverMessage, int subCode, ExpressionTrace expTrace) {
 		this.serverMessage = serverMessage;
-		this.subCode = subcode;
+		this.subCode = subCode;
 		this.expTrace = expTrace;
 	}
 
