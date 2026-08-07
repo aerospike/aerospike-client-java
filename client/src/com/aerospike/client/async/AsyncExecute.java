@@ -74,12 +74,12 @@ public final class AsyncExecute extends AsyncWriteBase {
 
 		if (rp.resultCode == ResultCode.FILTERED_OUT) {
 			if (policy.failOnFilteredOut) {
-				throw new AerospikeException(rp.resultCode);
+				throw RecordParser.toException(rp.resultCode, rp.serverMessage, rp.serverSubcode, rp.expTrace);
 			}
 			return true;
 		}
 
-		throw new AerospikeException(rp.resultCode);
+		throw RecordParser.toException(rp.resultCode, rp.serverMessage, rp.serverSubcode, rp.expTrace);
 	}
 
 	private void handleUdfError(int resultCode) {

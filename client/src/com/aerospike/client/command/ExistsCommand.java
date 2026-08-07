@@ -58,13 +58,13 @@ public final class ExistsCommand extends SyncReadCommand {
 
 		if (rp.resultCode == ResultCode.FILTERED_OUT) {
 			if (policy.failOnFilteredOut) {
-				throw new AerospikeException(rp.resultCode);
+				throw RecordParser.toException(rp.resultCode, rp.serverMessage, rp.serverSubcode, rp.expTrace);
 			}
 			exists = true;
 			return;
 		}
 
-		throw new AerospikeException(rp.resultCode);
+		throw RecordParser.toException(rp.resultCode, rp.serverMessage, rp.serverSubcode, rp.expTrace);
 	}
 
 	public boolean exists() {

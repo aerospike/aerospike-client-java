@@ -29,11 +29,13 @@ import com.aerospike.client.BatchRecord;
 import com.aerospike.client.BatchUDF;
 import com.aerospike.client.BatchWrite;
 import com.aerospike.client.Bin;
+import com.aerospike.client.ExpressionTrace;
 import com.aerospike.client.Key;
 import com.aerospike.client.Log;
 import com.aerospike.client.Operation;
 import com.aerospike.client.Record;
 import com.aerospike.client.ResultCode;
+import com.aerospike.client.SubCode;
 import com.aerospike.client.Value;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.Node;
@@ -108,6 +110,8 @@ public class Command {
 	public static final int INFO4_TXN_ROLL_FORWARD		= (1 << 1); // Roll forward transaction.
 	public static final int INFO4_TXN_ROLL_BACK			= (1 << 2); // Roll back transaction.
 	public static final int INFO4_TXN_ON_LOCKING_ONLY	= (1 << 4); // Must be able to lock record in transaction.
+	public static final int INFO4_ERROR_VERBOSITY_SHIFT = 5; // info4 bits 5-6: error detail verbosity level
+	public static final int INFO4_ERROR_VERBOSITY_MASK = 0x60; // 0b0110_0000: bits 5-6 only
 
 	public static final byte STATE_READ_AUTH_HEADER = 1;
 	public static final byte STATE_READ_HEADER = 2;
@@ -132,6 +136,15 @@ public class Command {
 
 	public byte[] dataBuffer;
 	public int dataOffset;
+
+	// Server error detail captured from the current batch row's ERROR_MESSAGE field
+	// (field 45), populated when the batch opted into errorDetailVerbosity > 0. Reset
+	// at the start of each per-row field walk (parseVersion/skipKey) and consumed by
+	// the batch parseRow via applyErrorDetail. For internal use only.
+	protected String serverMessage;
+	protected int serverSubcode = SubCode.NONE;
+	protected ExpressionTrace expTrace;
+
 	public final int maxRetries;
 	public final int serverTimeout;
 	public int socketTimeout;
@@ -391,6 +404,7 @@ public class Command {
 				dataOffset += Buffer.estimateSizeUtf8(key.namespace) + FIELD_HEADER_SIZE;
 				dataOffset += Buffer.estimateSizeUtf8(key.setName) + FIELD_HEADER_SIZE;
 				sizeTxnBatch(txn, ver, attr.hasWrite);
+				sizeBatchErrorVerbosity(txn, attr.errorDetailBits);
 				dataOffset += 2; // gen(2) = 2
 				keyPrev = key;
 				verPrev = ver;
@@ -1119,6 +1133,7 @@ public class Command {
 				dataOffset += Buffer.estimateSizeUtf8(key.namespace) + FIELD_HEADER_SIZE;
 				dataOffset += Buffer.estimateSizeUtf8(key.setName) + FIELD_HEADER_SIZE;
 				sizeTxnBatch(txn, ver, record.hasWrite);
+				sizeBatchErrorVerbosity(txn, batchErrorVerbosityBits(policy));
 				dataOffset += record.size(sendKey);
 				prev = record;
 				verPrev = ver;
@@ -1140,6 +1155,7 @@ public class Command {
 		dataBuffer[dataOffset++] = getBatchFlags(policy);
 
 		BatchAttr attr = new BatchAttr();
+		attr.errorDetailBits = batchErrorVerbosityBits(policy);
 		prev = null;
 		verPrev = null;
 
@@ -1275,6 +1291,7 @@ public class Command {
 	) {
 		// Estimate buffer size.
 		begin();
+		attr.errorDetailBits = batchErrorVerbosityBits(policy);
 		int max = batch.offsetsSize;
 		Txn txn = policy.txn;
 		Long[] versions = null;
@@ -1319,6 +1336,7 @@ public class Command {
 				dataOffset += Buffer.estimateSizeUtf8(key.namespace) + FIELD_HEADER_SIZE;
 				dataOffset += Buffer.estimateSizeUtf8(key.setName) + FIELD_HEADER_SIZE;
 				sizeTxnBatch(txn, ver, attr.hasWrite);
+				sizeBatchErrorVerbosity(txn, attr.errorDetailBits);
 
 				if (attr.sendKey) {
 					dataOffset += key.userKey.estimateSize() + FIELD_HEADER_SIZE + 1;
@@ -1417,6 +1435,7 @@ public class Command {
 	) {
 		// Estimate buffer size.
 		begin();
+		attr.errorDetailBits = batchErrorVerbosityBits(policy);
 		int max = batch.offsetsSize;
 		Txn txn = policy.txn;
 		Long[] versions = null;
@@ -1461,6 +1480,7 @@ public class Command {
 				dataOffset += Buffer.estimateSizeUtf8(key.namespace) + FIELD_HEADER_SIZE;
 				dataOffset += Buffer.estimateSizeUtf8(key.setName) + FIELD_HEADER_SIZE;
 				sizeTxnBatch(txn, ver, attr.hasWrite);
+				sizeBatchErrorVerbosity(txn, attr.errorDetailBits);
 
 				if (attr.sendKey) {
 					dataOffset += key.userKey.estimateSize() + FIELD_HEADER_SIZE + 1;
@@ -1588,6 +1608,26 @@ public class Command {
 		}
 	}
 
+	/**
+	 * Error-detail verbosity folded into the info4 bits (5-6) the server reads per batch
+	 * row to decide whether to attach a per-row error detail (field 45). Batch-wide, taken
+	 * from the parent BatchPolicy.
+	 */
+	private static int batchErrorVerbosityBits(BatchPolicy policy) {
+		return (policy.errorDetailVerbosity << Command.INFO4_ERROR_VERBOSITY_SHIFT) & Command.INFO4_ERROR_VERBOSITY_MASK;
+	}
+
+	/**
+	 * Account for the per-row info4 byte that carries the error-detail verbosity opt-in on
+	 * non-transaction batches. On transactions the info4 byte is already sized by
+	 * sizeTxnBatch, so this adds nothing.
+	 */
+	private void sizeBatchErrorVerbosity(Txn txn, int errBits) {
+		if (txn == null && errBits != 0) {
+			dataOffset++;
+		}
+	}
+
 	private void writeBatchHeader(Policy policy, int timeout, int fieldCount) {
 		int readAttr = Command.INFO1_BATCH;
 
@@ -1632,23 +1672,29 @@ public class Command {
 	}
 
 	private void writeBatchRead(Key key, Txn txn, Long ver, BatchAttr attr, Expression filter, int opCount) {
+		// info4 carries the transaction attributes and/or the error-detail verbosity bits.
+		// Emit the info4 byte whenever either is present so the server can read the per-row
+		// opt-in even for non-transaction batches.
+		int info4 = attr.txnAttr | attr.errorDetailBits;
+		boolean hasInfo4 = txn != null || info4 != 0;
+
+		int flags = BATCH_MSG_INFO | BATCH_MSG_TTL;
+		if (hasInfo4) {
+			flags |= BATCH_MSG_INFO4;
+		}
+		dataBuffer[dataOffset++] = (byte)flags;
+		dataBuffer[dataOffset++] = (byte)attr.readAttr;
+		dataBuffer[dataOffset++] = (byte)attr.writeAttr;
+		dataBuffer[dataOffset++] = (byte)attr.infoAttr;
+		if (hasInfo4) {
+			dataBuffer[dataOffset++] = (byte)info4;
+		}
+		Buffer.intToBytes(attr.expiration, dataBuffer, dataOffset);
+		dataOffset += 4;
 		if (txn != null) {
-			dataBuffer[dataOffset++] = (byte)(BATCH_MSG_INFO | BATCH_MSG_INFO4 | BATCH_MSG_TTL);
-			dataBuffer[dataOffset++] = (byte)attr.readAttr;
-			dataBuffer[dataOffset++] = (byte)attr.writeAttr;
-			dataBuffer[dataOffset++] = (byte)attr.infoAttr;
-			dataBuffer[dataOffset++] = (byte)attr.txnAttr;
-			Buffer.intToBytes(attr.expiration, dataBuffer, dataOffset);
-			dataOffset += 4;
 			writeBatchFieldsTxn(key, txn, ver, attr, filter, 0, opCount);
 		}
 		else {
-			dataBuffer[dataOffset++] = (byte)(BATCH_MSG_INFO | BATCH_MSG_TTL);
-			dataBuffer[dataOffset++] = (byte)attr.readAttr;
-			dataBuffer[dataOffset++] = (byte)attr.writeAttr;
-			dataBuffer[dataOffset++] = (byte)attr.infoAttr;
-			Buffer.intToBytes(attr.expiration, dataBuffer, dataOffset);
-			dataOffset += 4;
 			writeBatchFieldsReg(key, attr, filter, 0, opCount);
 		}
 	}
@@ -1662,27 +1708,28 @@ public class Command {
 		int fieldCount,
 		int opCount
 	) {
+		int info4 = attr.txnAttr | attr.errorDetailBits;
+		boolean hasInfo4 = txn != null || info4 != 0;
+
+		int flags = BATCH_MSG_INFO | BATCH_MSG_GEN | BATCH_MSG_TTL;
+		if (hasInfo4) {
+			flags |= BATCH_MSG_INFO4;
+		}
+		dataBuffer[dataOffset++] = (byte)flags;
+		dataBuffer[dataOffset++] = (byte)attr.readAttr;
+		dataBuffer[dataOffset++] = (byte)attr.writeAttr;
+		dataBuffer[dataOffset++] = (byte)attr.infoAttr;
+		if (hasInfo4) {
+			dataBuffer[dataOffset++] = (byte)info4;
+		}
+		Buffer.shortToBytes(attr.generation, dataBuffer, dataOffset);
+		dataOffset += 2;
+		Buffer.intToBytes(attr.expiration, dataBuffer, dataOffset);
+		dataOffset += 4;
 		if (txn != null) {
-			dataBuffer[dataOffset++] = (byte)(BATCH_MSG_INFO | BATCH_MSG_INFO4 | BATCH_MSG_GEN | BATCH_MSG_TTL);
-			dataBuffer[dataOffset++] = (byte)attr.readAttr;
-			dataBuffer[dataOffset++] = (byte)attr.writeAttr;
-			dataBuffer[dataOffset++] = (byte)attr.infoAttr;
-			dataBuffer[dataOffset++] = (byte)attr.txnAttr;
-			Buffer.shortToBytes(attr.generation, dataBuffer, dataOffset);
-			dataOffset += 2;
-			Buffer.intToBytes(attr.expiration, dataBuffer, dataOffset);
-			dataOffset += 4;
 			writeBatchFieldsTxn(key, txn, ver, attr, filter, fieldCount, opCount);
 		}
 		else {
-			dataBuffer[dataOffset++] = (byte)(BATCH_MSG_INFO | BATCH_MSG_GEN | BATCH_MSG_TTL);
-			dataBuffer[dataOffset++] = (byte)attr.readAttr;
-			dataBuffer[dataOffset++] = (byte)attr.writeAttr;
-			dataBuffer[dataOffset++] = (byte)attr.infoAttr;
-			Buffer.shortToBytes(attr.generation, dataBuffer, dataOffset);
-			dataOffset += 2;
-			Buffer.intToBytes(attr.expiration, dataBuffer, dataOffset);
-			dataOffset += 4;
 			writeBatchFieldsReg(key, attr, filter, fieldCount, opCount);
 		}
 	}
@@ -2394,6 +2441,8 @@ public class Command {
 			txnAttr |= Command.INFO4_TXN_ON_LOCKING_ONLY;
 		}
 
+		txnAttr |= (policy.errorDetailVerbosity << Command.INFO4_ERROR_VERBOSITY_SHIFT) & Command.INFO4_ERROR_VERBOSITY_MASK;
+
 		if (policy.xdr) {
 			readAttr |= Command.INFO1_XDR;
 		}
@@ -2471,6 +2520,8 @@ public class Command {
 		if (policy.onLockingOnly) {
 			txnAttr |= Command.INFO4_TXN_ON_LOCKING_ONLY;
 		}
+
+		txnAttr |= (policy.errorDetailVerbosity << Command.INFO4_ERROR_VERBOSITY_SHIFT) & Command.INFO4_ERROR_VERBOSITY_MASK;
 
 		if (policy.xdr) {
 			readAttr |= Command.INFO1_XDR;
@@ -2552,8 +2603,9 @@ public class Command {
 		dataBuffer[9] = (byte)readAttr;
 		dataBuffer[10] = (byte)writeAttr;
 		dataBuffer[11] = (byte)infoAttr;
+		dataBuffer[12] = (byte)((policy.errorDetailVerbosity << Command.INFO4_ERROR_VERBOSITY_SHIFT) & Command.INFO4_ERROR_VERBOSITY_MASK);
 
-		for (int i = 12; i < 18; i++) {
+		for (int i = 13; i < 18; i++) {
 			dataBuffer[i] = 0;
 		}
 		Buffer.intToBytes(policy.readTouchTtlPercent, dataBuffer, 18);
@@ -2592,8 +2644,9 @@ public class Command {
 		dataBuffer[9] = (byte)readAttr;
 		dataBuffer[10] = (byte)0;
 		dataBuffer[11] = (byte)infoAttr;
+		dataBuffer[12] = (byte)((policy.errorDetailVerbosity << Command.INFO4_ERROR_VERBOSITY_SHIFT) & Command.INFO4_ERROR_VERBOSITY_MASK);
 
-		for (int i = 12; i < 18; i++) {
+		for (int i = 13; i < 18; i++) {
 			dataBuffer[i] = 0;
 		}
 		Buffer.intToBytes(policy.readTouchTtlPercent, dataBuffer, 18);
@@ -2619,7 +2672,11 @@ public class Command {
 		dataBuffer[9]  = (byte)attr.readAttr;
 		dataBuffer[10] = (byte)attr.writeAttr;
 		dataBuffer[11] = (byte)attr.infoAttr;
-		dataBuffer[12] = (byte)attr.txnAttr;
+		// Single-key batch commands (BatchSingle/AsyncBatchSingle) send standard single-record
+		// messages through this path, so the error-detail verbosity must be folded into info4
+		// bits 5-6 here from the parent policy — mirroring writeHeaderRead/Write. The batch-wide
+		// attr.errorDetailBits is only wired into the multi-record row writers.
+		dataBuffer[12] = (byte)(attr.txnAttr | ((policy.errorDetailVerbosity << Command.INFO4_ERROR_VERBOSITY_SHIFT) & Command.INFO4_ERROR_VERBOSITY_MASK));
 		dataBuffer[13] = 0; // clear the result code
 		Buffer.intToBytes(attr.generation, dataBuffer, 14);
 		Buffer.intToBytes(attr.expiration, dataBuffer, 18);
@@ -2878,11 +2935,54 @@ public class Command {
 
 	protected final void skipKey(int fieldCount) {
 		// There can be fields in the response (setname etc).
-		// But for now, ignore them. Expose them to the API if needed in the future.
+		// But for now, ignore them, except for the per-row error detail (field 45).
+		// Expose the others to the API if needed in the future.
+		resetServerErrorDetail();
+
 		for (int i = 0; i < fieldCount; i++) {
 			int fieldlen = Buffer.bytesToInt(dataBuffer, dataOffset);
-			dataOffset += 4 + fieldlen;
+			dataOffset += 4;
+
+			int fieldtype = dataBuffer[dataOffset] & 0xFF;
+			int size = fieldlen - 1;
+
+			if (fieldtype == FieldType.ERROR_MESSAGE && size > 0) {
+				captureErrorDetail(dataOffset + 1, size);
+			}
+			dataOffset += fieldlen;
 		}
+	}
+
+	/**
+	 * Clear any per-row error detail captured for a prior batch record. Called at the
+	 * start of each row's field walk so a record without a field-45 detail does not
+	 * inherit the previous record's. For internal use only.
+	 */
+	protected final void resetServerErrorDetail() {
+		serverMessage = null;
+		serverSubcode = SubCode.NONE;
+		expTrace = null;
+	}
+
+	/**
+	 * Decode the ERROR_MESSAGE field (field 45) msgpack payload at [offset, offset+size)
+	 * for the current batch record, reusing the single-record error-detail decoder over
+	 * this command's dataBuffer. For internal use only.
+	 */
+	protected final void captureErrorDetail(int offset, int size) {
+		RecordParser rp = new RecordParser(dataBuffer);
+		serverMessage = rp.parseErrorDetails(offset, size);
+		serverSubcode = rp.serverSubcode;
+		expTrace = rp.expTrace;
+	}
+
+	/**
+	 * Copy the per-row error detail captured during the field walk onto the batch record
+	 * so callers can surface the server subcode, message, and expression trace. A record
+	 * without a field-45 detail receives the cleared (empty) values. For internal use only.
+	 */
+	protected final void applyErrorDetail(BatchRecord record) {
+		record.setErrorDetail(serverMessage, serverSubcode, expTrace);
 	}
 
 	protected final Key parseKey(int fieldCount, BVal bval) {
@@ -2929,6 +3029,7 @@ public class Command {
 
 	public Long parseVersion(int fieldCount) {
 		Long version = null;
+		resetServerErrorDetail();
 
 		for (int i = 0; i < fieldCount; i++) {
 			int len = Buffer.bytesToInt(dataBuffer, dataOffset);
@@ -2939,6 +3040,9 @@ public class Command {
 
 			if (type == FieldType.RECORD_VERSION && size == 7) {
 				version = Buffer.versionBytesToLong(dataBuffer, dataOffset);
+			}
+			else if (type == FieldType.ERROR_MESSAGE && size > 0) {
+				captureErrorDetail(dataOffset, size);
 			}
 			dataOffset += size;
 		}
