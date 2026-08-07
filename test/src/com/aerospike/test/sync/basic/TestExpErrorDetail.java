@@ -61,11 +61,11 @@ import com.aerospike.test.sync.TestSync;
  * <p>Four areas:
  * <ol>
  * <li>Eval-phase (PHASE_EVAL) expression traces for filter runtime faults:
- *     div/mod by zero, INT64_MIN overflow, CDT out-of-bounds (with subcode),
+ *     div/mod by zero, INT64_MIN overflow, CDT out-of-bounds (with sub-code),
  *     unordered-map compare.</li>
  * <li>Verbosity tier-1 suppression semantics: an AS_SUB_NONE error at
- *     verbosity 1 stages no error details at all, while a real-subcode CDT
- *     fault ships subcode-only (no message, no trace).</li>
+ *     verbosity 1 stages no error details at all, while a real sub-code CDT
+ *     fault ships sub-code only (no message, no trace).</li>
  * <li>Verb parity: build / fault / FALSE / absent / metadata-FALSE / tier-2 /
  *     clean-pass filter scenarios across put, delete and operate, including
  *     the verb-specific metadata-filter messages.</li>
@@ -140,7 +140,7 @@ public class TestExpErrorDetail extends TestSync {
 		return Exp.build(Exp.gt(Exp.div(Exp.val(5), Exp.val(0)), Exp.val(1)));
 	}
 
-	/** Eval fault: CDT list index 9 over [1,2,3] (carries a real subcode). */
+	/** Eval fault: CDT list index 9 over [1,2,3] (carries a real sub-code). */
 	private static Exp cdtOobExp() {
 		return ListExp.getByIndex(ListReturnType.VALUE, Exp.Type.INT, Exp.val(9), Exp.listBin(BIN_LIST));
 	}
@@ -221,7 +221,7 @@ public class TestExpErrorDetail extends TestSync {
 
 	/**
 	 * Assert the server staged NO error details (no field 45): the message
-	 * falls back to the default result-code string, there is no subcode and
+	 * falls back to the default result-code string, there is no sub-code and
 	 * no trace.
 	 */
 	private static void assertNoDetails(AerospikeException ae, int expectedRc) {
@@ -289,7 +289,7 @@ public class TestExpErrorDetail extends TestSync {
 
 	@Test
 	public void testFilterFaultCdtOutOfBoundsSubcodeAndTrace() {
-		// A CDT sub-op fault carries a real subcode through the FILTERED_OUT
+		// A CDT sub-op fault carries a real sub-code through the FILTERED_OUT
 		// status (the CDT layer's out-of-bounds subcode = 1).
 		Expression exp = Exp.build(Exp.eq(cdtOobExp(), Exp.val(1)));
 
@@ -304,9 +304,9 @@ public class TestExpErrorDetail extends TestSync {
 	// 2. Verbosity tier-1 suppression semantics.
 	//
 	// Python: CASES_FILTER_VERBOSITY / CASES_MP_VERBOSITY. Build failures and
-	// div-by-zero faults carry AS_SUB_NONE, so at tier 1 (subcode-only) they
-	// have nothing to send and field 45 is suppressed entirely; a real-subcode
-	// CDT fault ships subcode only (no message, no trace).
+	// div-by-zero faults carry AS_SUB_NONE, so at tier 1 (sub-code only) they
+	// have nothing to send and field 45 is suppressed entirely; a real sub-code
+	// CDT fault ships sub-code only (no message, no trace).
 	// ---------------------------------------------------------------------
 
 	@Test

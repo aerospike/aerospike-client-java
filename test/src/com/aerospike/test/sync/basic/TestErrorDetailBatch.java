@@ -42,14 +42,14 @@ import com.aerospike.client.policy.WritePolicy;
 import com.aerospike.test.sync.TestSync;
 
 /**
- * Live-server verification that the extended error detail (subcode / message) is
+ * Live-server verification that the extended error detail (sub-code / message) is
  * surfaced per row on batch commands, mirroring the single-record coverage in
  * {@link TestErrorDetailVerbosity} / {@link TestErrorDetailSubcode}.
  *
  * <p>The detail is batch-wide opt-in: the parent {@link BatchPolicy#errorDetailVerbosity}
  * is folded into each row's info4 verbosity bits, and the server attaches a per-row
  * error detail (field 45) that the client decodes onto {@link BatchRecord#serverMessage},
- * {@link BatchRecord#subcode}, and {@link BatchRecord#expTrace}. Requires an 8.1.3+ server.
+ * {@link BatchRecord#subCode}, and {@link BatchRecord#expTrace}. Requires an 8.1.3+ server.
  */
 public class TestErrorDetailBatch extends TestSync {
 
@@ -71,7 +71,7 @@ public class TestErrorDetailBatch extends TestSync {
 	}
 
 	/**
-	 * With verbosity opted in, an erroring batch row surfaces the server subcode and
+	 * With verbosity opted in, an erroring batch row surfaces the server sub-code and
 	 * message, while a successful row in the same batch carries no detail.
 	 */
 	@Test
@@ -79,7 +79,7 @@ public class TestErrorDetailBatch extends TestSync {
 		BatchPolicy bp = new BatchPolicy(client.getBatchParentPolicyWriteDefault());
 		bp.errorDetailVerbosity = 2;
 
-		// Error row: list get with an out-of-bounds index -> OP_NOT_APPLICABLE + CDT subcode.
+		// Error row: list get with an out-of-bounds index -> OP_NOT_APPLICABLE + CDT sub-code.
 		BatchRead errRow = new BatchRead(listKey, new Operation[] {
 			ListOperation.get(binName, 99)
 		});
@@ -94,9 +94,9 @@ public class TestErrorDetailBatch extends TestSync {
 
 		client.operate(bp, records);
 
-		// Error row carries the server subcode and formatted message.
+		// Error row carries the server sub-code and formatted message.
 		assertEquals("Unexpected result code", ResultCode.OP_NOT_APPLICABLE, errRow.resultCode);
-		assertEquals("Unexpected subcode", SubCode.OPNOT_CDT_INDEX_OUT_OF_BOUNDS, errRow.subcode);
+		assertEquals("Unexpected subcode", SubCode.OPNOT_CDT_INDEX_OUT_OF_BOUNDS, errRow.subCode);
 		assertNotNull("Expected server error message", errRow.serverMessage);
 		assertTrue("Expected 'subcode=" + SubCode.OPNOT_CDT_INDEX_OUT_OF_BOUNDS + "' in: " + errRow.serverMessage,
 			errRow.serverMessage.contains("subcode=" + SubCode.OPNOT_CDT_INDEX_OUT_OF_BOUNDS));
@@ -104,13 +104,13 @@ public class TestErrorDetailBatch extends TestSync {
 		// Success row carries no error detail.
 		assertEquals(ResultCode.OK, okRow.resultCode);
 		assertNull("OK row should have no server message", okRow.serverMessage);
-		assertEquals("OK row should have no subcode", SubCode.NONE, okRow.subcode);
+		assertEquals("OK row should have no subcode", SubCode.NONE, okRow.subCode);
 		assertNull("OK row should have no expression trace", okRow.expTrace);
 	}
 
 	/**
 	 * Without opting in (default verbosity 0), the row still reports the result code but
-	 * the server attaches no extended detail, so subcode/message stay cleared.
+	 * the server attaches no extended detail, so sub-code/message stay cleared.
 	 */
 	@Test
 	public void testBatchRowNoDetailWhenVerbosityOff() {
@@ -127,7 +127,7 @@ public class TestErrorDetailBatch extends TestSync {
 		client.operate(bp, records);
 
 		assertEquals("Unexpected result code", ResultCode.OP_NOT_APPLICABLE, errRow.resultCode);
-		assertEquals("No detail expected at verbosity 0", SubCode.NONE, errRow.subcode);
+		assertEquals("No detail expected at verbosity 0", SubCode.NONE, errRow.subCode);
 		assertNull("No detail expected at verbosity 0", errRow.serverMessage);
 		assertNull("No detail expected at verbosity 0", errRow.expTrace);
 	}
@@ -138,7 +138,7 @@ public class TestErrorDetailBatch extends TestSync {
 	 * single offset), which decodes the same field-45 detail but must surface it onto
 	 * the {@link BatchRecord} itself. This read case exercises {@code BatchSingle.ReadRecord}.
 	 * Regression guard: before the fix the detail was decoded and then dropped here, so
-	 * subcode/message came back cleared even with verbosity opted in.
+	 * sub-code/message came back cleared even with verbosity opted in.
 	 */
 	@Test
 	public void testSingleKeyBatchReadSurfacesSubcode() {
@@ -157,7 +157,7 @@ public class TestErrorDetailBatch extends TestSync {
 
 		assertEquals("Unexpected result code", ResultCode.OP_NOT_APPLICABLE, errRow.resultCode);
 		assertEquals("Single-key read row lost its subcode",
-			SubCode.OPNOT_CDT_INDEX_OUT_OF_BOUNDS, errRow.subcode);
+			SubCode.OPNOT_CDT_INDEX_OUT_OF_BOUNDS, errRow.subCode);
 		assertNotNull("Single-key read row lost its server message", errRow.serverMessage);
 		assertTrue("Expected 'subcode=" + SubCode.OPNOT_CDT_INDEX_OUT_OF_BOUNDS + "' in: " + errRow.serverMessage,
 			errRow.serverMessage.contains("subcode=" + SubCode.OPNOT_CDT_INDEX_OUT_OF_BOUNDS));
@@ -168,8 +168,8 @@ public class TestErrorDetailBatch extends TestSync {
 	 * {@code BatchSingle.OperateBatchRecord}, proving the detail reaches the
 	 * {@link BatchRecord} on the write path too. Appending a string to an integer bin is a
 	 * write op that fails with BIN_TYPE_ERROR and a server message. (This particular error
-	 * carries no subcode on the server, so the message is the detail asserted here; the read
-	 * case above covers subcode surfacing.)
+	 * carries no sub-code on the server, so the message is the detail asserted here; the read
+	 * case above covers sub-code surfacing.)
 	 */
 	@Test
 	public void testSingleKeyBatchWriteSurfacesMessage() {

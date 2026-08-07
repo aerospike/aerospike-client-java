@@ -51,7 +51,7 @@ public class BatchRecord {
 	public boolean inDoubt;
 
 	/**
-	 * Formatted server-side error detail (human-readable message and/or subcode) for this
+	 * Formatted server-side error detail (human-readable message and/or sub-code) for this
 	 * record, populated when the batch opted into {@link Policy#errorDetailVerbosity} &gt; 0
 	 * and the server attached an extended error detail. {@code null} otherwise.
 	 * Requires server version 8.1.3+.
@@ -59,12 +59,12 @@ public class BatchRecord {
 	public String serverMessage;
 
 	/**
-	 * Server-supplied error subcode for this record, or {@link SubCode#NONE} (0) when the
-	 * server did not send one. A subcode is only meaningful when interpreted together with
-	 * {@link #resultCode}: subcode integer values are scoped to their parent result code and
+	 * Server-supplied error sub-code for this record, or {@link SubCode#NONE} (0) when the
+	 * server did not send one. A sub-code is only meaningful when interpreted together with
+	 * {@link #resultCode}: sub-code integer values are scoped to their parent result code and
 	 * are NOT globally unique. See {@link SubCode}.
 	 */
-	public int subcode = SubCode.NONE;
+	public int subCode = SubCode.NONE;
 
 	/**
 	 * Server-supplied expression build trace for this record, sent only at
@@ -117,7 +117,7 @@ public class BatchRecord {
 		this.resultCode = ResultCode.NO_RESPONSE;
 		this.inDoubt = false;
 		this.serverMessage = null;
-		this.subcode = SubCode.NONE;
+		this.subCode = SubCode.NONE;
 		this.expTrace = null;
 	}
 
@@ -126,7 +126,7 @@ public class BatchRecord {
 	 */
 	public final void setErrorDetail(String serverMessage, int subcode, ExpressionTrace expTrace) {
 		this.serverMessage = serverMessage;
-		this.subcode = subcode;
+		this.subCode = subcode;
 		this.expTrace = expTrace;
 	}
 

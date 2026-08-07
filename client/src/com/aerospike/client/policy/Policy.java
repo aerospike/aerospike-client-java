@@ -276,9 +276,9 @@ public class Policy {
 	 * Request server error detail fields in responses.
 	 * <ul>
 	 * <li>0 - disabled (no error details).</li>
-	 * <li>1 - subcode only.</li>
-	 * <li>2 - subcode + message.</li>
-	 * <li>3 - subcode, message, and (on expression build-failure paths) a structured
+	 * <li>1 - sub-code only.</li>
+	 * <li>2 - sub-code + message.</li>
+	 * <li>3 - sub-code, message, and (on expression build-failure paths) a structured
 	 *     expression trace, surfaced on
 	 *     {@link com.aerospike.client.AerospikeException#getExpressionTrace()}.</li>
 	 * </ul>
