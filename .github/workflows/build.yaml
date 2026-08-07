@@ -22,6 +22,11 @@ on:
         required: false
         default: false
         description: Spin up aerospike enterprise server and run tests
+      run-examples:
+        type: boolean
+        required: false
+        default: false
+        description: Run examples suite against Aerospike
       crypto-type:
         type: string
         required: true
@@ -52,6 +57,8 @@ jobs:
         uses: ./.github/actions/build-and-test
         with:
           crypto-type: ${{ inputs.crypto-type }}
+          run-tests: ${{ inputs.run-tests }}
+          run-examples: ${{ inputs.run-examples }}
           server-tag: ${{ inputs.server-tag }}
           server-container-repo: ${{ inputs.server-container-repo }}
           oidc-provider: ${{ secrets.JFROG_OIDC_PROVIDER }}
@@ -63,3 +70,4 @@ jobs:
         with:
           files: test/target/surefire-reports/*.xml
           check_name: "Test Results (${{ inputs.crypto-type }} / ${{ inputs.server-tag }})"
+

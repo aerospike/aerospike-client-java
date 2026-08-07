@@ -24,7 +24,6 @@ import java.util.Set;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Bin;
-import com.aerospike.client.IAerospikeClient;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
 import com.aerospike.client.ResultCode;
@@ -39,21 +38,17 @@ import com.aerospike.client.task.IndexTask;
 
 public class QueryGeoCollection extends Example {
 
-	public QueryGeoCollection(Console console) {
-		super(console);
-	}
-
 	/**
 	 * Perform region queries using a Geo index on a collection.
 	 */
 	@Override
-	public void runExample(IAerospikeClient client, Parameters params) throws Exception {
+	public void runExample() throws Exception {
 
-		runMapExample(client,params);
-		runListExample(client,params);
+		runMapExample();
+		runListExample();
 	}
 
-	private void runMapExample(IAerospikeClient client, Parameters params) throws Exception {
+	private void runMapExample() throws Exception {
 		String indexName = "geo_map";
 		String keyPrefix = "map";
 		String mapValuePrefix = "mv";
@@ -62,14 +57,12 @@ public class QueryGeoCollection extends Example {
 		int size = 1000;
 
 		// create collection index on mapValue
-		createIndex(client, params, IndexCollectionType.MAPVALUES, indexName, binName);
-		writeMapRecords(client, params, keyPrefix, binName, binName2, mapValuePrefix, size);
-		runQuery(client, params, binName, binName2, IndexCollectionType.MAPVALUES);
-		client.dropIndex(params.policy, params.namespace, params.set, indexName);
-		deleteRecords(client,params, keyPrefix, size);
+		createIndex(IndexCollectionType.MAPVALUES, indexName, binName);
+		writeMapRecords(keyPrefix, binName, binName2, mapValuePrefix, size);
+		runQuery(binName, binName2, IndexCollectionType.MAPVALUES);
 	}
 
-	private void runListExample(IAerospikeClient client, Parameters params) throws Exception {
+	private void runListExample() throws Exception {
 		String indexName = "geo_list";
 		String keyPrefix = "list";
 		String binName = "geo_list_bin";
@@ -77,28 +70,20 @@ public class QueryGeoCollection extends Example {
 		int size = 1000;
 
 		// create collection index on list
-		createIndex(client, params, IndexCollectionType.LIST, indexName, binName);
-		writeListRecords(client, params, keyPrefix, binName, binName2, size);
-		runQuery(client, params, binName, binName2, IndexCollectionType.LIST);
-		client.dropIndex(params.policy, params.namespace, params.set, indexName);
-		deleteRecords(client,params, keyPrefix, size);
+		createIndex(IndexCollectionType.LIST, indexName, binName);
+		writeListRecords(keyPrefix, binName, binName2, size);
+		runQuery(binName, binName2, IndexCollectionType.LIST);
 	}
 
-	private void createIndex(
-		IAerospikeClient client,
-		Parameters params,
-		IndexCollectionType indexType,
-		String indexName,
-		String binName
-	) throws Exception {
+	private void createIndex(IndexCollectionType indexType, String indexName, String binName) throws Exception {
 		console.info("Create GeoJSON %s index: ns=%s set=%s index=%s bin=%s",
-			indexType, params.namespace, params.set, indexName, binName);
+			indexType, namespace(), set(), indexName, binName);
 
 		Policy policy = new Policy();
 		policy.socketTimeout = 0; // Do not timeout on index create.
 
 		try {
-			IndexTask task = client.createIndex(policy, params.namespace, params.set,
+			IndexTask task = client().createIndex(policy, namespace(), set(),
 					indexName, binName, IndexType.GEO2DSPHERE, indexType);
 			task.waitTillComplete();
 		}
@@ -109,18 +94,10 @@ public class QueryGeoCollection extends Example {
 		}
 	}
 
-	private void writeMapRecords(
-		IAerospikeClient client,
-		Parameters params,
-		String keyPrefix,
-		String binName,
-		String binName2,
-		String valuePrefix,
-		int size
-	) throws Exception {
+	private void writeMapRecords(String keyPrefix, String binName, String binName2, String valuePrefix, int size) throws Exception {
 		for (int i = 0; i < size; i++) {
-			Key key = new Key(params.namespace, params.set, keyPrefix + i);
-			HashMap<String, Value> map = new HashMap<String,Value>();
+			Key key = new Key(namespace(), set(), keyPrefix + i);
+			HashMap<String, Value> map = new HashMap<>();
 
 			for (int jj = 0; jj < 10; ++jj) {
 
@@ -140,23 +117,16 @@ public class QueryGeoCollection extends Example {
 			}
 			Bin bin = new Bin(binName, map);
 			Bin bin2 = new Bin(binName2, "other_bin_value_"+i);
-			client.put(params.writePolicy, key, bin, bin2);
+			client().put(writePolicy(), key, bin, bin2);
 		}
 
 		console.info("Write " + size + " records.");
 	}
 
-	private void writeListRecords(
-		IAerospikeClient client,
-		Parameters params,
-		String keyPrefix,
-		String binName,
-		String binName2,
-		int size
-	) throws Exception {
+	private void writeListRecords(String keyPrefix, String binName, String binName2, int size) throws Exception {
 		for (int i = 0; i < size; i++) {
-			Key key = new Key(params.namespace, params.set, keyPrefix + i);
-			List<Value> mylist = new ArrayList<Value>();
+			Key key = new Key(namespace(), set(), keyPrefix + i);
+			List<Value> mylist = new ArrayList<>();
 
 			for (int jj = 0; jj < 10; ++jj) {
 
@@ -177,35 +147,27 @@ public class QueryGeoCollection extends Example {
 
 			Bin bin = new Bin(binName, mylist);
 			Bin bin2 = new Bin(binName2, "other_bin_value_"+i);
-			client.put(params.writePolicy, key, bin, bin2);
+			client().put(writePolicy(), key, bin, bin2);
 		}
 
 		console.info("Write " + size + " records.");
 	}
 
-	private void runQuery(
-		IAerospikeClient client,
-		Parameters params,
-		String binName,
-		String binName2,
-		IndexCollectionType indexType
-	) throws Exception {
+	private void runQuery(String binName, String binName2, IndexCollectionType indexType) throws Exception {
 
 		console.info("Query for: ns=%s set=%s bin=%s %s within <region>",
-			params.namespace, params.set, binName, indexType.toString());
+			namespace(), set(), binName, indexType.toString());
 
 		StringBuilder rgnsb = generateQueryRegion();
 
 		Statement stmt = new Statement();
-		stmt.setNamespace(params.namespace);
-		stmt.setSetName(params.set);
+		stmt.setNamespace(namespace());
+		stmt.setSetName(set());
 		stmt.setFilter(Filter.geoWithinRegion(binName, indexType, rgnsb.toString()));
 
-		RecordSet rs = client.query(null, stmt);
-
-		try {
+		try (RecordSet rs = client().query(null, stmt)) {
 			int count = 0;
-			Set <String> uniques = new HashSet<String>();
+			Set<String> uniques = new HashSet<>();
 
 			while (rs.next()) {
 				Record record = rs.getRecord();
@@ -221,20 +183,12 @@ public class QueryGeoCollection extends Example {
 				console.info("query succeeded with %d records %d unique",count,uniques.size());
 			}
 		}
-		finally {
-			rs.close();
-		}
 	}
 
-	private void deleteRecords(
-		IAerospikeClient client,
-		Parameters params,
-		String keyPrefix,
-		int size
-	) throws Exception {
+	private void deleteRecords(String keyPrefix, int size) throws Exception {
 		for (int i = 0; i < size; i++) {
-			Key key = new Key(params.namespace, params.set, keyPrefix + i);
-			client.delete(params.writePolicy, key);
+			Key key = new Key(namespace(), set(), keyPrefix + i);
+			client().delete(writePolicy(), key);
 		}
 	}
 

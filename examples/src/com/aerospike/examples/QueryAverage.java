@@ -20,7 +20,6 @@ import java.util.Map;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Bin;
-import com.aerospike.client.IAerospikeClient;
 import com.aerospike.client.Key;
 import com.aerospike.client.Language;
 import com.aerospike.client.ResultCode;
@@ -34,48 +33,39 @@ import com.aerospike.client.task.RegisterTask;
 
 public class QueryAverage extends Example {
 
-	public QueryAverage(Console console) {
-		super(console);
-	}
-
 	/**
 	 * Create secondary index and query on it and apply aggregation user defined function.
 	 */
 	@Override
-	public void runExample(IAerospikeClient client, Parameters params) throws Exception {
+	public void runExample() throws Exception {
 		String indexName = "avgindex";
 		String keyPrefix = "avgkey";
 		String binName = "l2";
 		int size = 10;
 
-		register(client, params);
-		createIndex(client, params, indexName, binName);
-		writeRecords(client, params, keyPrefix, size);
-		runQuery(client, params, indexName, binName);
+		register();
+		createIndex(indexName, binName);
+		writeRecords(keyPrefix, size);
+		runQuery(indexName, binName);
 
 		// Do not drop index because after native client tests run.
-		//client.dropIndex(params.policy, params.namespace, params.set, indexName);
+		//client().dropIndex(readPolicy(), namespace(), set(), indexName);
 	}
 
-	private void register(IAerospikeClient client, Parameters params) throws Exception {
-		RegisterTask task = client.register(params.policy, "udf/average_example.lua", "average_example.lua", Language.LUA);
+	private void register() throws Exception {
+		RegisterTask task = client().register(readPolicy(), "udf/average_example.lua", "average_example.lua", Language.LUA);
 		task.waitTillComplete();
 	}
 
-	private void createIndex(
-		IAerospikeClient client,
-		Parameters params,
-		String indexName,
-		String binName
-	) throws Exception {
+	private void createIndex(String indexName, String binName) throws Exception {
 		console.info("Create index: ns=%s set=%s index=%s bin=%s",
-			params.namespace, params.set, indexName, binName);
+			namespace(), set(), indexName, binName);
 
 		Policy policy = new Policy();
 		policy.socketTimeout = 0; // Do not timeout on index create.
 
 		try {
-			IndexTask task = client.createIndex(policy, params.namespace, params.set, indexName, binName, IndexType.NUMERIC);
+			IndexTask task = client().createIndex(policy, namespace(), set(), indexName, binName, IndexType.NUMERIC);
 			task.waitTillComplete();
 		}
 		catch (AerospikeException ae) {
@@ -85,47 +75,34 @@ public class QueryAverage extends Example {
 		}
 	}
 
-	private void writeRecords(
-		IAerospikeClient client,
-		Parameters params,
-		String keyPrefix,
-		int size
-	) throws Exception {
+	private void writeRecords(String keyPrefix, int size) throws Exception {
 		for (int i = 1; i <= size; i++) {
-			Key key = new Key(params.namespace, params.set, keyPrefix + i);
+			Key key = new Key(namespace(), set(), keyPrefix + i);
 			Bin bin = new Bin("l1", i);
 
 			console.info("Put: ns=%s set=%s key=%s bin=%s value=%s",
 				key.namespace, key.setName, key.userKey, bin.name, bin.value);
 
-			client.put(params.writePolicy, key, bin, new Bin("l2", 1));
+			client().put(writePolicy(), key, bin, new Bin("l2", 1));
 		}
 	}
 
-	private void runQuery(
-		IAerospikeClient client,
-		Parameters params,
-		String indexName,
-		String binName
-	) throws Exception {
+	private void runQuery(String indexName, String binName) throws Exception {
 
 		console.info("Query for: ns=%s set=%s index=%s bin=%s",
-			params.namespace, params.set, indexName, binName);
+			namespace(), set(), indexName, binName);
 
 		Statement stmt = new Statement();
-		stmt.setNamespace(params.namespace);
-		stmt.setSetName(params.set);
+		stmt.setNamespace(namespace());
+		stmt.setSetName(set());
 		stmt.setFilter(Filter.range(binName, 0, 1000));
 		stmt.setAggregateFunction("average_example", "average");
 
-		ResultSet rs = client.queryAggregate(null, stmt);
-
-		try {
+		try (ResultSet rs = client().queryAggregate(null, stmt)) {
 			if (rs.next()) {
 				Object obj = rs.getObject();
 
-				if (obj instanceof Map<?,?>) {
-					Map<?,?> map = (Map<?,?>)obj;
+				if (obj instanceof Map<?,?> map) {
 					long sum = (Long)map.get("sum");
 					long count = (Long)map.get("count");
 					double avg = (double) sum / count;
@@ -143,9 +120,6 @@ public class QueryAverage extends Example {
 			else {
 				console.error("Query failed. No records returned.");
 			}
-		}
-		finally {
-			rs.close();
 		}
 	}
 }

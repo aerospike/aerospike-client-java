@@ -75,7 +75,8 @@ public class CdtOperation {
         if (binName == null || binName.isEmpty() || binName.length() > Bin.MAX_BIN_NAME_LENGTH) {
             throw new AerospikeException(ResultCode.PARAMETER_ERROR, "binName cannot be null, empty, or exceed " + Bin.MAX_BIN_NAME_LENGTH + " characters");
         }
-        if (ctx == null || ctx.length == 0) { 
+        validateFlags(flags, "select");
+        if (ctx == null || ctx.length == 0) {
             packedBytes = Pack.pack(CDT.Type.SELECT.value, flags);
         } else {
             packedBytes = packCdtSelect(CDT.Type.SELECT, flags, ctx);
@@ -130,7 +131,8 @@ public class CdtOperation {
         if (binName == null || binName.isEmpty() || binName.length() > Bin.MAX_BIN_NAME_LENGTH) {
             throw new AerospikeException(ResultCode.PARAMETER_ERROR, "binName cannot be null, empty, or exceed " + Bin.MAX_BIN_NAME_LENGTH + " characters");
         }
-        if (ctx == null || ctx.length == 0) { 
+        validateFlags(flags, "modify");
+        if (ctx == null || ctx.length == 0) {
             packedBytes = Pack.pack(CDT.Type.SELECT.value, flags, modifyExp);
         } else {
             packedBytes = packCdtModify(CDT.Type.SELECT, flags, modifyExp, ctx);
@@ -138,7 +140,23 @@ public class CdtOperation {
 
         return new Operation(Operation.Type.CDT_MODIFY, binName, Value.get(packedBytes, ParticleType.BLOB));
     }
-	
+
+	/**
+	 * Reject invalid path flags instead of masking them into a valid operation.
+	 * <p>
+	 * Legal select flags are the exposed {@link SelectFlags} constants (0..3 and 0x10)
+	 * and legal modify flags are the {@link ModifyFlags} constants (0 and 0x10); a
+	 * negative value, or one with bit 2 (the internal apply bit) set, is never valid.
+	 * Without this check the flag is rewritten before packing (select cleared bit 2,
+	 * modify sets it) and a negative value silently aliases onto a valid server return
+	 * type instead of erroring (CLIENT-5184).
+	 */
+	private static void validateFlags(int flags, String name) {
+	    if (flags < 0 || (flags & 4) != 0) {
+	        throw new AerospikeException(ResultCode.PARAMETER_ERROR, "invalid " + name + " flag " + flags);
+	    }
+	}
+
 	private static byte[] packCdtSelect(CDT.Type typeSelect, int flags, CTX... ctx) {
         Packer packer = new Packer();
 
@@ -155,9 +173,9 @@ public class CdtOperation {
                     packer.packByteArray(c.exp.getBytes(), 0, c.exp.getBytes().length);
             }
 
-	        // Ensure the apply flag is cleared, since no expression is provided.
-	        // This avoids problems if the caller accidentally sets bit 2 in the flags field.
-            packer.packInt(flags & ~4);
+            // Pack the validated select flag. selectByPath rejects any value with bit 2
+            // (the internal apply bit) set, so no mask is needed here (CLIENT-5184).
+            packer.packInt(flags);
 
             if (i == 0) {
                 packer.createBuffer();
