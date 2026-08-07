@@ -56,12 +56,12 @@ public final class OperateCommandWrite extends SyncWriteCommand {
 
 		if (rp.resultCode == ResultCode.FILTERED_OUT) {
 			if (policy.failOnFilteredOut) {
-				throw new AerospikeException(rp.resultCode);
+				throw RecordParser.toException(rp.resultCode, rp.serverMessage, rp.serverSubcode, rp.expTrace);
 			}
 			return;
 		}
 
-		throw new AerospikeException(rp.resultCode);
+		throw RecordParser.toException(rp.resultCode, rp.serverMessage, rp.serverSubcode, rp.expTrace);
 	}
 
 	public Record getRecord() {

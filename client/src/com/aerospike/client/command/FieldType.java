@@ -43,4 +43,5 @@ public final class FieldType {
 	public final static int QUERY_BINLIST = 40;
 	public final static int BATCH_INDEX = 41;
 	public final static int FILTER_EXP = 43;
+	public static final int ERROR_MESSAGE = 45;
 }

@@ -20,6 +20,7 @@ import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
 import com.aerospike.client.ResultCode;
 import com.aerospike.client.cluster.Cluster;
+import com.aerospike.client.command.RecordParser;
 import com.aerospike.client.listener.DeleteListener;
 import com.aerospike.client.policy.WritePolicy;
 
@@ -53,13 +54,13 @@ public final class AsyncDelete extends AsyncWriteBase {
 
 		if (resultCode == ResultCode.FILTERED_OUT) {
 			if (policy.failOnFilteredOut) {
-				throw new AerospikeException(resultCode);
+				throw RecordParser.toException(resultCode, serverMessage, serverSubcode, expTrace);
 			}
 			existed = true;
 			return true;
 		}
 
-		throw new AerospikeException(resultCode);
+		throw RecordParser.toException(resultCode, serverMessage, serverSubcode, expTrace);
 	}
 
 	@Override

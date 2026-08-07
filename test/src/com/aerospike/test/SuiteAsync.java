@@ -44,7 +44,8 @@ import org.junit.runners.Suite;
 	TestAsyncScan.class,
 	TestAsyncQuery.class,
 	TestAsyncTxn.class,
-	TestAsyncUDF.class
+	TestAsyncUDF.class,
+	TestAsyncErrorDetailVerbosity.class
 })
 public class SuiteAsync {
 	public static IAerospikeClient client = null;
