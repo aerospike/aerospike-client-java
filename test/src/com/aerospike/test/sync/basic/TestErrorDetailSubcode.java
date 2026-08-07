@@ -242,13 +242,13 @@ public class TestErrorDetailSubcode extends TestSync {
 
 	/**
 	 * Assert the server-supplied {@code (resultCode, sub-code)} pair. The numeric
-	 * sub-code must be exposed first-class via {@link AerospikeException#getSubcode()}
+	 * sub-code must be exposed first-class via {@link AerospikeException#getSubCode()}
 	 * (not merely embedded in the message string), and the "subcode=N" suffix must
 	 * still appear in the message for parity with the C client.
 	 */
 	private void assertSubcode(AerospikeException ae, int expectedResultCode, int expectedSubcode) {
 		assertEquals("Unexpected result code", expectedResultCode, ae.getResultCode());
-		assertEquals("Unexpected subcode", expectedSubcode, ae.getSubcode());
+		assertEquals("Unexpected subcode", expectedSubcode, ae.getSubCode());
 
 		String msg = ae.getBaseMessage();
 		assertNotNull("Expected server error message", msg);

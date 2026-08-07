@@ -127,7 +127,7 @@ public class TestErrorDetailVerbosity extends TestSync {
 			assertEquals(ResultCode.BIN_TYPE_ERROR, ae.getResultCode());
 			// With verbosity 0 the server sends no detail: no sub-code, and the message
 			// falls back to the default ResultCode string.
-			assertEquals(SubCode.NONE, ae.getSubcode());
+			assertEquals(SubCode.NONE, ae.getSubCode());
 			String msg = ae.getBaseMessage();
 			assertEquals(ResultCode.getResultString(ResultCode.BIN_TYPE_ERROR), msg);
 			return;
@@ -151,7 +151,7 @@ public class TestErrorDetailVerbosity extends TestSync {
 		}
 		catch (AerospikeException ae) {
 			assertEquals(ResultCode.BIN_NOT_FOUND, ae.getResultCode());
-			assertEquals(SubCode.BIN_NOT_FOUND_HLL_CANNOT_CREATE_WITH_OP, ae.getSubcode());
+			assertEquals(SubCode.BIN_NOT_FOUND_HLL_CANNOT_CREATE_WITH_OP, ae.getSubCode());
 			String msg = ae.getBaseMessage();
 			assertNotNull(msg);
 			assertTrue("Expected subcode in: " + msg, msg.contains("subcode=1"));
@@ -175,7 +175,7 @@ public class TestErrorDetailVerbosity extends TestSync {
 		}
 		catch (AerospikeException ae) {
 			assertEquals(ResultCode.BIN_NOT_FOUND, ae.getResultCode());
-			assertEquals(SubCode.BIN_NOT_FOUND_HLL_CANNOT_CREATE_WITH_OP, ae.getSubcode());
+			assertEquals(SubCode.BIN_NOT_FOUND_HLL_CANNOT_CREATE_WITH_OP, ae.getSubCode());
 			String msg = ae.getBaseMessage();
 			assertNotNull(msg);
 			assertTrue("Expected message text in: " + msg, msg.contains("count op"));
@@ -764,7 +764,7 @@ public class TestErrorDetailVerbosity extends TestSync {
 		}
 		catch (AerospikeException ae) {
 			assertEquals(ResultCode.PARAMETER_ERROR, ae.getResultCode());
-			assertEquals(SubCode.NONE, ae.getSubcode());
+			assertEquals(SubCode.NONE, ae.getSubCode());
 
 			String msg = ae.getBaseMessage();
 			assertNotNull(msg);
@@ -790,7 +790,7 @@ public class TestErrorDetailVerbosity extends TestSync {
 		}
 		catch (AerospikeException ae) {
 			assertEquals(ResultCode.PARAMETER_ERROR, ae.getResultCode());
-			assertEquals(SubCode.NONE, ae.getSubcode());
+			assertEquals(SubCode.NONE, ae.getSubCode());
 
 			String msg = ae.getBaseMessage();
 			assertNotNull(msg);
@@ -818,7 +818,7 @@ public class TestErrorDetailVerbosity extends TestSync {
 		}
 		catch (AerospikeException ae) {
 			assertEquals(ResultCode.PARAMETER_ERROR, ae.getResultCode());
-			assertEquals(SubCode.NONE, ae.getSubcode());
+			assertEquals(SubCode.NONE, ae.getSubCode());
 
 			String msg = ae.getBaseMessage();
 			assertNotNull(msg);
@@ -833,13 +833,13 @@ public class TestErrorDetailVerbosity extends TestSync {
 
 	/**
 	 * Assert the server-supplied {@code (resultCode, sub-code)} pair. The numeric
-	 * sub-code must be exposed first-class via {@link AerospikeException#getSubcode()}
+	 * sub-code must be exposed first-class via {@link AerospikeException#getSubCode()}
 	 * (not merely embedded in the message string), and the "subcode=N" suffix must
 	 * still appear in the message for parity with the C client.
 	 */
 	private void assertSubcode(AerospikeException ae, int expectedResultCode, int expectedSubcode) {
 		assertEquals("Unexpected result code", expectedResultCode, ae.getResultCode());
-		assertEquals("Unexpected subcode", expectedSubcode, ae.getSubcode());
+		assertEquals("Unexpected subcode", expectedSubcode, ae.getSubCode());
 
 		String msg = ae.getBaseMessage();
 		assertNotNull("Expected server error message", msg);
@@ -849,14 +849,14 @@ public class TestErrorDetailVerbosity extends TestSync {
 
 	/**
 	 * Assert that the server surfaced a contextual message but NO subcode
-	 * (AS_SUB_NONE): {@link AerospikeException#getSubcode()} is {@link SubCode#NONE}
+	 * (AS_SUB_NONE): {@link AerospikeException#getSubCode()} is {@link SubCode#NONE}
 	 * and the "(subcode=...)" suffix must never appear. Any expectedSubstrings are
 	 * required in the message; pass none to skip the message-text check (mirrors a
 	 * NULL expected_msg_substr in the C example).
 	 */
 	private void assertSubcodeAbsent(AerospikeException ae, int expectedResultCode, String... expectedSubstrings) {
 		assertEquals("Unexpected result code", expectedResultCode, ae.getResultCode());
-		assertEquals("Expected no subcode", SubCode.NONE, ae.getSubcode());
+		assertEquals("Expected no subcode", SubCode.NONE, ae.getSubCode());
 
 		String msg = ae.getBaseMessage();
 		assertNotNull("Expected server error message", msg);

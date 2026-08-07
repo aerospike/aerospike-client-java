@@ -189,7 +189,7 @@ public class TestErrorDetailPaths extends TestSync {
 		}
 		catch (AerospikeException ae) {
 			assertEquals(ResultCode.FILTERED_OUT, ae.getResultCode());
-			assertEquals(SubCode.NONE, ae.getSubcode());
+			assertEquals(SubCode.NONE, ae.getSubCode());
 			assertNull("Expected no expression trace", ae.getExpressionTrace());
 			// No staged server detail: the message falls back to the default result string.
 			assertEquals(ResultCode.getResultString(ResultCode.FILTERED_OUT), ae.getBaseMessage());
@@ -272,7 +272,7 @@ public class TestErrorDetailPaths extends TestSync {
 	/** Pin the extended-error surface of an expression build failure at verbosity 3. */
 	private void assertBuildTrace(AerospikeException ae) {
 		assertEquals("Unexpected result code", ResultCode.PARAMETER_ERROR, ae.getResultCode());
-		assertEquals("Unexpected subcode", SubCode.NONE, ae.getSubcode());
+		assertEquals("Unexpected subcode", SubCode.NONE, ae.getSubCode());
 
 		ExpressionTrace t = ae.getExpressionTrace();
 		assertNotNull("Expected a build trace at verbosity 3", t);
@@ -282,7 +282,7 @@ public class TestErrorDetailPaths extends TestSync {
 
 	private void assertSubcode(AerospikeException ae, int expectedResultCode, int expectedSubcode) {
 		assertEquals("Unexpected result code", expectedResultCode, ae.getResultCode());
-		assertEquals("Unexpected subcode", expectedSubcode, ae.getSubcode());
+		assertEquals("Unexpected subcode", expectedSubcode, ae.getSubCode());
 
 		String msg = ae.getBaseMessage();
 		assertNotNull("Expected server error message", msg);
@@ -292,7 +292,7 @@ public class TestErrorDetailPaths extends TestSync {
 
 	private void assertSubcodeAbsent(AerospikeException ae, int expectedResultCode, String... expectedSubstrings) {
 		assertEquals("Unexpected result code", expectedResultCode, ae.getResultCode());
-		assertEquals("Expected no subcode", SubCode.NONE, ae.getSubcode());
+		assertEquals("Expected no subcode", SubCode.NONE, ae.getSubCode());
 
 		String msg = ae.getBaseMessage();
 		assertNotNull("Expected server error message", msg);

@@ -22,7 +22,7 @@ package com.aerospike.client;
  * When extended error detail is requested (see
  * {@link com.aerospike.client.policy.Policy#errorDetailVerbosity}), the server may
  * attach a numeric subcode to a failure response. The subcode is surfaced on
- * {@link AerospikeException#getSubcode()}.
+ * {@link AerospikeException#getSubCode()}.
  * <p>
  * <b>Match on the {@code (resultCode, subcode)} pair.</b> Subcode integer values are
  * scoped to their parent {@link ResultCode} and are <b>not</b> globally unique — the
@@ -32,7 +32,7 @@ package com.aerospike.client;
  * <pre>{@code
  * catch (AerospikeException ae) {
  *     if (ae.getResultCode() == ResultCode.OP_NOT_APPLICABLE &&
- *         ae.getSubcode() == SubCode.OPNOT_CDT_BOUNDED_LIST_OVERFLOW) {
+ *         ae.getSubCode() == SubCode.OPNOT_CDT_BOUNDED_LIST_OVERFLOW) {
  *         // roll to a fresh partition / apply backpressure
  *     }
  * }

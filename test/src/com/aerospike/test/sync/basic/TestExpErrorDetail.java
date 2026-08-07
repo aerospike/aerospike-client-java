@@ -226,7 +226,7 @@ public class TestExpErrorDetail extends TestSync {
 	 */
 	private static void assertNoDetails(AerospikeException ae, int expectedRc) {
 		assertEquals("Unexpected result code", expectedRc, ae.getResultCode());
-		assertEquals("Expected no subcode", SubCode.NONE, ae.getSubcode());
+		assertEquals("Expected no subcode", SubCode.NONE, ae.getSubCode());
 		assertEquals("Expected the default result-code message",
 			ResultCode.getResultString(expectedRc), ae.getBaseMessage());
 		assertNull("Expected no expression trace", ae.getExpressionTrace());
@@ -242,7 +242,7 @@ public class TestExpErrorDetail extends TestSync {
 	@Test
 	public void testFilterFaultDivByZeroTrace() {
 		AerospikeException ae = expectFilteredGet(3, divZeroFilterExp(), ResultCode.FILTERED_OUT);
-		assertEquals(SubCode.NONE, ae.getSubcode());
+		assertEquals(SubCode.NONE, ae.getSubCode());
 		assertMessageContains(ae, "integer division by zero");
 
 		ExpressionTrace t = assertEvalTrace(ae, "div", 2, new String[] {"gt", "div"});
@@ -255,7 +255,7 @@ public class TestExpErrorDetail extends TestSync {
 			Exp.eq(Exp.mod(Exp.intBin(BIN_INT), Exp.val(0)), Exp.val(1)));
 
 		AerospikeException ae = expectFilteredGet(3, exp, ResultCode.FILTERED_OUT);
-		assertEquals(SubCode.NONE, ae.getSubcode());
+		assertEquals(SubCode.NONE, ae.getSubCode());
 		assertMessageContains(ae, "integer modulo by zero");
 
 		ExpressionTrace t = assertEvalTrace(ae, "mod", 2, new String[] {"eq", "mod"});
@@ -269,7 +269,7 @@ public class TestExpErrorDetail extends TestSync {
 			Exp.gt(Exp.div(Exp.val(Long.MIN_VALUE), Exp.val(-1)), Exp.val(1)));
 
 		AerospikeException ae = expectFilteredGet(3, exp, ResultCode.FILTERED_OUT);
-		assertEquals(SubCode.NONE, ae.getSubcode());
+		assertEquals(SubCode.NONE, ae.getSubCode());
 		assertMessageContains(ae, "integer division overflow");
 
 		assertEvalTrace(ae, "div", 2, new String[] {"gt", "div"});
@@ -281,7 +281,7 @@ public class TestExpErrorDetail extends TestSync {
 		Expression exp = Exp.build(Exp.eq(Exp.mapBin(BIN_MAP1), Exp.mapBin(BIN_MAP2)));
 
 		AerospikeException ae = expectFilteredGet(3, exp, ResultCode.FILTERED_OUT);
-		assertEquals(SubCode.NONE, ae.getSubcode());
+		assertEquals(SubCode.NONE, ae.getSubCode());
 		assertMessageContains(ae, "cannot compare an unordered map");
 
 		assertEvalTrace(ae, "eq", 1, new String[] {"eq"});
@@ -294,7 +294,7 @@ public class TestExpErrorDetail extends TestSync {
 		Expression exp = Exp.build(Exp.eq(cdtOobExp(), Exp.val(1)));
 
 		AerospikeException ae = expectFilteredGet(3, exp, ResultCode.FILTERED_OUT);
-		assertEquals(SubCode.OPNOT_CDT_INDEX_OUT_OF_BOUNDS, ae.getSubcode());
+		assertEquals(SubCode.OPNOT_CDT_INDEX_OUT_OF_BOUNDS, ae.getSubCode());
 		assertMessageContains(ae, "out of bounds");
 
 		assertEvalTrace(ae, "call", 2, new String[] {"eq", "call"});
@@ -326,7 +326,7 @@ public class TestExpErrorDetail extends TestSync {
 		Expression exp = Exp.build(Exp.eq(cdtOobExp(), Exp.val(1)));
 
 		AerospikeException ae = expectFilteredGet(1, exp, ResultCode.FILTERED_OUT);
-		assertEquals(SubCode.OPNOT_CDT_INDEX_OUT_OF_BOUNDS, ae.getSubcode());
+		assertEquals(SubCode.OPNOT_CDT_INDEX_OUT_OF_BOUNDS, ae.getSubCode());
 		assertNull("Tier 1 must surface no trace", ae.getExpressionTrace());
 
 		String msg = ae.getBaseMessage();
@@ -500,7 +500,7 @@ public class TestExpErrorDetail extends TestSync {
 		AerospikeException ae = expectOperateError(stdKey, 3, ResultCode.PARAMETER_ERROR,
 			ExpOperation.read("result", buildErrorExp(), ExpReadFlags.DEFAULT));
 
-		assertEquals(SubCode.NONE, ae.getSubcode());
+		assertEquals(SubCode.NONE, ae.getSubCode());
 		assertMessageContains(ae, "invalid expression in operation request");
 		assertBuildTrace(ae);
 	}
@@ -537,7 +537,7 @@ public class TestExpErrorDetail extends TestSync {
 			ExpOperation.read("result", Exp.build(Exp.div(Exp.intBin(BIN_INT), Exp.val(0))),
 				ExpReadFlags.DEFAULT));
 
-		assertEquals(SubCode.NONE, ae.getSubcode());
+		assertEquals(SubCode.NONE, ae.getSubCode());
 		assertMessageContains(ae, "integer division by zero");
 		assertEvalTrace(ae, "div", 1, new String[] {"div"});
 	}
@@ -547,7 +547,7 @@ public class TestExpErrorDetail extends TestSync {
 		AerospikeException ae = expectOperateError(stdKey, 3, ResultCode.OP_NOT_APPLICABLE,
 			ExpOperation.read("result", Exp.build(cdtOobExp()), ExpReadFlags.DEFAULT));
 
-		assertEquals(SubCode.OPNOT_CDT_INDEX_OUT_OF_BOUNDS, ae.getSubcode());
+		assertEquals(SubCode.OPNOT_CDT_INDEX_OUT_OF_BOUNDS, ae.getSubCode());
 		assertMessageContains(ae, "out of bounds");
 		assertEvalTrace(ae, "call", 1, new String[] {"call"});
 	}
@@ -557,7 +557,7 @@ public class TestExpErrorDetail extends TestSync {
 		AerospikeException ae = expectOperateError(stdKey, 3, ResultCode.OP_NOT_APPLICABLE,
 			ExpOperation.read("result", Exp.build(Exp.intBin(BIN_MISSING)), ExpReadFlags.DEFAULT));
 
-		assertEquals(SubCode.NONE, ae.getSubcode());
+		assertEquals(SubCode.NONE, ae.getSubCode());
 		assertMessageContains(ae, "expression references an absent bin or key");
 		assertEvalTrace(ae, "bin", 1, new String[] {"bin"});
 	}
@@ -569,7 +569,7 @@ public class TestExpErrorDetail extends TestSync {
 		AerospikeException ae = expectOperateError(stdKey, 3, ResultCode.OP_NOT_APPLICABLE,
 			ExpOperation.read("result", Exp.build(Exp.intBin(BIN_FLOAT)), ExpReadFlags.DEFAULT));
 
-		assertEquals(SubCode.NONE, ae.getSubcode());
+		assertEquals(SubCode.NONE, ae.getSubCode());
 		assertMessageContains(ae, "expression references an absent bin or key");
 		assertEvalTrace(ae, "bin", 1, new String[] {"bin"});
 	}
@@ -580,7 +580,7 @@ public class TestExpErrorDetail extends TestSync {
 		AerospikeException ae = expectOperateError(stdKey, 3, ResultCode.OP_NOT_APPLICABLE,
 			ExpOperation.read("result", Exp.build(Exp.unknown()), ExpReadFlags.DEFAULT));
 
-		assertEquals(SubCode.NONE, ae.getSubcode());
+		assertEquals(SubCode.NONE, ae.getSubCode());
 		assertMessageContains(ae, "expression references an absent bin or key");
 		assertEvalTrace(ae, "unknown", 1, new String[] {"unknown"});
 	}
@@ -624,7 +624,7 @@ public class TestExpErrorDetail extends TestSync {
 			ExpOperation.write("wb", Exp.build(Exp.div(Exp.intBin(BIN_INT), Exp.val(0))),
 				ExpWriteFlags.DEFAULT));
 
-		assertEquals(SubCode.NONE, ae.getSubcode());
+		assertEquals(SubCode.NONE, ae.getSubCode());
 		assertMessageContains(ae, "integer division by zero");
 		assertEvalTrace(ae, "div", 1, new String[] {"div"});
 	}
@@ -634,7 +634,7 @@ public class TestExpErrorDetail extends TestSync {
 		AerospikeException ae = expectOperateError(stdKey, 3, ResultCode.OP_NOT_APPLICABLE,
 			ExpOperation.write("wb", Exp.build(cdtOobExp()), ExpWriteFlags.DEFAULT));
 
-		assertEquals(SubCode.OPNOT_CDT_INDEX_OUT_OF_BOUNDS, ae.getSubcode());
+		assertEquals(SubCode.OPNOT_CDT_INDEX_OUT_OF_BOUNDS, ae.getSubCode());
 		assertMessageContains(ae, "out of bounds");
 		assertEvalTrace(ae, "call", 1, new String[] {"call"});
 	}
