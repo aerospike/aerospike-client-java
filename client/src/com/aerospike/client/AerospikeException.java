@@ -32,7 +32,7 @@ public class AerospikeException extends RuntimeException {
 	protected transient Policy policy;
 	protected List<AerospikeException> subExceptions;
 	protected int resultCode = ResultCode.CLIENT_ERROR;
-	protected int subcode = SubCode.NONE;
+	protected int subCode = SubCode.NONE;
 	protected ExpressionTrace expTrace;
 	protected int iteration = -1;
 	protected boolean inDoubt;
@@ -45,7 +45,7 @@ public class AerospikeException extends RuntimeException {
 	public AerospikeException(int resultCode, String message, int subcode) {
 		super(message);
 		this.resultCode = resultCode;
-		this.subcode = subcode;
+		this.subCode = subcode;
 	}
 
 	public AerospikeException(int resultCode, Throwable e) {
@@ -203,14 +203,14 @@ public class AerospikeException extends RuntimeException {
 	 * {@code (resultCode, subcode)} pair. See {@link SubCode}.
 	 */
 	public final int getSubcode() {
-		return subcode;
+		return subCode;
 	}
 
 	/**
 	 * Set the server-supplied error subcode.
 	 */
 	public final void setSubcode(int subcode) {
-		this.subcode = subcode;
+		this.subCode = subcode;
 	}
 
 	/**
@@ -410,7 +410,7 @@ public class AerospikeException extends RuntimeException {
 	}
 
 	/**
-	 * Exception thrown when the selected node is not active, or when the namespace 
+	 * Exception thrown when the selected node is not active, or when the namespace
 	 * is removed after the client has connected.
 	 */
 	public static final class InvalidNode extends AerospikeException {

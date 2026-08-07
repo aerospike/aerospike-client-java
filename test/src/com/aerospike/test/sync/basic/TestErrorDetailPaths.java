@@ -27,7 +27,6 @@ import com.aerospike.client.Bin;
 import com.aerospike.client.ExpressionTrace;
 import com.aerospike.client.Key;
 import com.aerospike.client.Language;
-import com.aerospike.client.Operation;
 import com.aerospike.client.ResultCode;
 import com.aerospike.client.SubCode;
 import com.aerospike.client.Txn;

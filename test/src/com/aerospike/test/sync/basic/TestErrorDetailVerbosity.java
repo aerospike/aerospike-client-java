@@ -65,11 +65,11 @@ import org.junit.Test;
  * Validates the extended error-detail feature (CLIENT-4221) against a server
  * that supports error detail verbosity.
  *
- * <p>Subcode expectations track the per-status enum numbering finalized on the
+ * <p>Sub-code expectations track the per-status enum numbering finalized on the
  * C client (commits 8b6f8db4 / 2d2495a1) and confirmed against the live server:
- * the old flat status-echo subcodes (1100, 1134, 1138, 1701, ...) are retired.
+ * the old flat status-echo sub-codes (1100, 1134, 1138, 1701, ...) are retired.
  * Where the status is already maximally specific the server emits AS_SUB_NONE
- * and omits the subcode map key entirely, so no "(subcode=...)" suffix appears.
+ * and omits the sub-code map key entirely, so no "(subcode=...)" suffix appears.
  */
 public class TestErrorDetailVerbosity extends TestSync {
 
@@ -80,7 +80,7 @@ public class TestErrorDetailVerbosity extends TestSync {
 
 	@BeforeClass
 	public static void setup() {
-		// Extended error-detail (subcode/message) plus the verbosity-3 expression
+		// Extended error-detail (sub-code/message) plus the verbosity-3 expression
 		// build trace (SERVER-1137). The SERVER-1137 feature branch is cut from the
 		// 8.1.1 line and reports its base version as 8.1.1.0-start-*, so gate at
 		// 8.1.1 rather than the 8.1.3 release that first shipped the base tier.
@@ -125,7 +125,7 @@ public class TestErrorDetailVerbosity extends TestSync {
 		}
 		catch (AerospikeException ae) {
 			assertEquals(ResultCode.BIN_TYPE_ERROR, ae.getResultCode());
-			// With verbosity 0 the server sends no detail: no subcode, and the message
+			// With verbosity 0 the server sends no detail: no sub-code, and the message
 			// falls back to the default ResultCode string.
 			assertEquals(SubCode.NONE, ae.getSubcode());
 			String msg = ae.getBaseMessage();
@@ -137,9 +137,9 @@ public class TestErrorDetailVerbosity extends TestSync {
 
 	@Test
 	public void testVerbositySubcodeOnly() {
-		// Verbosity 1: server sends the subcode but not the message. A subcode
+		// Verbosity 1: server sends the sub-code but not the message. A sub-code
 		// that resolves to a value (BIN_NOT_FOUND from an HLL count op on a
-		// missing bin -> subcode 1) surfaces as the bare "error subcode=N" form.
+		// missing bin -> sub-code 1) surfaces as the bare "error subcode=N" form.
 		WritePolicy wp = new WritePolicy();
 		wp.errorDetailVerbosity = 1;
 
@@ -162,7 +162,7 @@ public class TestErrorDetailVerbosity extends TestSync {
 
 	@Test
 	public void testVerbositySubcodeAndMessage() {
-		// Verbosity 2: server sends both message and subcode, formatted as
+		// Verbosity 2: server sends both message and sub-code, formatted as
 		// "<message> (subcode=<n>)".
 		WritePolicy wp = new WritePolicy();
 		wp.errorDetailVerbosity = 2;
@@ -186,8 +186,8 @@ public class TestErrorDetailVerbosity extends TestSync {
 	}
 
 	// ---------------------------------------------------------------------
-	// Subcode-absent cases (AS_SUB_NONE): the status is already maximally
-	// specific, so the server omits the subcode map key and the client must
+	// Sub-code absent cases (AS_SUB_NONE): the status is already maximally
+	// specific, so the server omits the sub-code map key and the client must
 	// never format a "(subcode=...)" suffix. The message carries the context.
 	// ---------------------------------------------------------------------
 
@@ -258,7 +258,7 @@ public class TestErrorDetailVerbosity extends TestSync {
 	}
 
 	// ---------------------------------------------------------------------
-	// Subcode-present cases: per-status enum subcode numbering.
+	// Sub-code-present cases: per-status enum sub-code numbering.
 	// ---------------------------------------------------------------------
 
 	@Test
@@ -390,7 +390,7 @@ public class TestErrorDetailVerbosity extends TestSync {
 
 	@Test
 	public void testReadFilteredOut() {
-		// FILTERED_OUT carries no subcode (AS_SUB_NONE) and a contextual message;
+		// FILTERED_OUT carries no sub-code (AS_SUB_NONE) and a contextual message;
 		// the server's as_sub_filtered_t enum was removed, so there is no version gate.
 		Policy p = new Policy();
 		p.errorDetailVerbosity = 2;
@@ -408,7 +408,7 @@ public class TestErrorDetailVerbosity extends TestSync {
 	}
 
 	// ---------------------------------------------------------------------
-	// Additional particle modify type mismatches (subcode absent).
+	// Additional particle modify type mismatches (sub-code absent).
 	// ---------------------------------------------------------------------
 
 	@Test
@@ -643,7 +643,7 @@ public class TestErrorDetailVerbosity extends TestSync {
 	}
 
 	// ---------------------------------------------------------------------
-	// Write / delete / read policy (subcode absent unless noted).
+	// Write / delete / read policy (sub-code absent unless noted).
 	// ---------------------------------------------------------------------
 
 	@Test
@@ -701,7 +701,7 @@ public class TestErrorDetailVerbosity extends TestSync {
 
 	@Test
 	public void testOperateFilteredOut() {
-		// FILTERED_OUT carries no subcode (AS_SUB_NONE) and a contextual message;
+		// FILTERED_OUT carries no sub-code (AS_SUB_NONE) and a contextual message;
 		// the server's as_sub_filtered_t enum was removed, so there is no version gate.
 		WritePolicy wp = new WritePolicy();
 		wp.errorDetailVerbosity = 2;
@@ -832,8 +832,8 @@ public class TestErrorDetailVerbosity extends TestSync {
 	}
 
 	/**
-	 * Assert the server-supplied {@code (resultCode, subcode)} pair. The numeric
-	 * subcode must be exposed first-class via {@link AerospikeException#getSubcode()}
+	 * Assert the server-supplied {@code (resultCode, sub-code)} pair. The numeric
+	 * sub-code must be exposed first-class via {@link AerospikeException#getSubcode()}
 	 * (not merely embedded in the message string), and the "subcode=N" suffix must
 	 * still appear in the message for parity with the C client.
 	 */

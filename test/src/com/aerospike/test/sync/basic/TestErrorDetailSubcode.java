@@ -71,7 +71,7 @@ public class TestErrorDetailSubcode extends TestSync {
 			args.serverVersion.isGreaterOrEqual(8, 1, 3, 0));
 	}
 
-	/** WritePolicy at verbosity 2 (subcode + message), the level these assertions expect. */
+	/** WritePolicy at verbosity 2 (sub-code + message), the level these assertions expect. */
 	private static WritePolicy verbosityWP() {
 		WritePolicy wp = new WritePolicy();
 		wp.errorDetailVerbosity = 2;
@@ -241,8 +241,8 @@ public class TestErrorDetailSubcode extends TestSync {
 	}
 
 	/**
-	 * Assert the server-supplied {@code (resultCode, subcode)} pair. The numeric
-	 * subcode must be exposed first-class via {@link AerospikeException#getSubcode()}
+	 * Assert the server-supplied {@code (resultCode, sub-code)} pair. The numeric
+	 * sub-code must be exposed first-class via {@link AerospikeException#getSubcode()}
 	 * (not merely embedded in the message string), and the "subcode=N" suffix must
 	 * still appear in the message for parity with the C client.
 	 */

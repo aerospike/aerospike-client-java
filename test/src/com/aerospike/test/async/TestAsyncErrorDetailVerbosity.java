@@ -58,7 +58,7 @@ public class TestAsyncErrorDetailVerbosity extends TestAsync {
 
 	@BeforeClass
 	public static void setup() {
-		// Extended error-detail (subcode/message) plus the verbosity-3 expression
+		// Extended error-detail (sub-code/message) plus the verbosity-3 expression
 		// build trace (SERVER-1137). The SERVER-1137 feature branch is cut from the
 		// 8.1.1 line and reports its base version as 8.1.1.0-start-*, so gate at
 		// 8.1.1 rather than the 8.1.3 release that first shipped the base tier.
@@ -75,7 +75,7 @@ public class TestAsyncErrorDetailVerbosity extends TestAsync {
 		client.put(wp, listKey, new Bin(binName, seed));
 	}
 
-	// AsyncOperateWrite — a write op that fails surfaces subcode + message.
+	// AsyncOperateWrite — a write op that fails surfaces sub-code + message.
 	// A bounded ordered-list insert past the end yields OP_NOT_APPLICABLE with
 	// AS_SUB_OPNOT_CDT_BOUNDED_LIST_OVERFLOW = 3.
 	@Test
@@ -103,7 +103,7 @@ public class TestAsyncErrorDetailVerbosity extends TestAsync {
 	}
 
 	// AsyncDelete — generation mismatch surfaces the detail message. The status
-	// is maximally specific, so the server omits the subcode (AS_SUB_NONE).
+	// is maximally specific, so the server omits the sub-code (AS_SUB_NONE).
 	@Test
 	public void asyncDeleteSurfacesDetail() {
 		WritePolicy wp = new WritePolicy();
@@ -370,7 +370,7 @@ public class TestAsyncErrorDetailVerbosity extends TestAsync {
 	}
 
 	/**
-	 * Assert that the server surfaced a contextual message but NO subcode
+	 * Assert that the server surfaced a contextual message but NO sub-code
 	 * (AS_SUB_NONE): {@link AerospikeException#getSubcode()} is {@link SubCode#NONE}
 	 * and the "(subcode=...)" suffix must never appear.
 	 */

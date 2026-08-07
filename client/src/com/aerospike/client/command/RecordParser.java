@@ -56,23 +56,23 @@ public final class RecordParser {
 
 	/**
 	 * Build a failure exception that carries the server's extended-error detail —
-	 * the human-readable message and the numeric subcode — when present.
+	 * the human-readable message and the numeric sub-code — when present.
 	 */
-	public static AerospikeException toException(int resultCode, String serverMessage, int subcode) {
-		return toException(resultCode, serverMessage, subcode, null);
+	public static AerospikeException toException(int resultCode, String serverMessage, int subCode) {
+		return toException(resultCode, serverMessage, subCode, null);
 	}
 
 	/**
 	 * Build a failure exception that carries the server's extended-error detail —
-	 * the human-readable message, the numeric subcode, and (on expression
+	 * the human-readable message, the numeric sub-code, and (on expression
 	 * build-failure paths at verbosity 3) the structured expression trace — when
 	 * present.
 	 */
-	public static AerospikeException toException(int resultCode, String serverMessage, int subcode, ExpressionTrace expTrace) {
+	public static AerospikeException toException(int resultCode, String serverMessage, int subCode, ExpressionTrace expTrace) {
 		AerospikeException ae = (serverMessage != null) ?
 			new AerospikeException(resultCode, serverMessage) :
 			new AerospikeException(resultCode);
-		ae.setSubcode(subcode);
+		ae.setSubcode(subCode);
 		ae.setExpressionTrace(expTrace);
 		return ae;
 	}
@@ -280,7 +280,7 @@ public final class RecordParser {
 
 	/**
 	 * Parse error detail msgpack map from server response.
-	 * Map keys: 1 = subcode (uint), 2 = message (string).
+	 * Map keys: 1 = sub-code (uint), 2 = message (string).
 	 * Returns formatted error message string. Also populates
 	 * {@link #serverSubcode} and {@link #expTrace} as side effects.
 	 * For internal use only.
@@ -316,7 +316,7 @@ public final class RecordParser {
 		}
 
 		String message = null;
-		long subcode = -1;
+		long subCode = -1;
 
 		for (int i = 0; i < count && offset < end; i++) {
 			// Read key (positive fixint or uint8).
@@ -335,7 +335,7 @@ public final class RecordParser {
 
 			switch (key) {
 			case 1: // AS_ERROR_DETAIL_KEY_SUBCODE
-				subcode = unpackUint(offset, end);
+				subCode = unpackUint(offset, end);
 				offset = skipMsgpackValue(offset, end);
 				break;
 
@@ -361,18 +361,18 @@ public final class RecordParser {
 			}
 		}
 
-		// Retain the numeric subcode as a first-class value. The server only
-		// serializes subcodes >= 1 (AS_SUB_NONE = 0 is never sent), so a parsed
-		// subcode always overrides the SubCode.NONE default.
-		if (subcode >= 0) {
-			serverSubcode = (int)subcode;
+		// Retain the numeric sub-code as a first-class value. The server only
+		// serializes sub-codes >= 1 (AS_SUB_NONE = 0 is never sent), so a parsed
+		// sub-code always overrides the SubCode.NONE default.
+		if (subCode >= 0) {
+			serverSubcode = (int)subCode;
 		}
 
-		if (message != null && subcode >= 0) {
-			return message + " (subcode=" + subcode + ")";
+		if (message != null && subCode >= 0) {
+			return message + " (subcode=" + subCode + ")";
 		}
-		else if (subcode >= 0) {
-			return "error subcode=" + subcode;
+		else if (subCode >= 0) {
+			return "error subcode=" + subCode;
 		}
 		else if (message != null) {
 			return message;
