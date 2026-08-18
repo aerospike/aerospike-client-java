@@ -22,6 +22,7 @@ import com.aerospike.client.Record;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.command.Command;
 import com.aerospike.client.command.MultiCommand;
+import com.aerospike.client.command.RecordParser;
 import com.aerospike.client.metrics.LatencyType;
 import com.aerospike.client.policy.Policy;
 import com.aerospike.client.query.PartitionTracker.NodePartitions;
@@ -89,7 +90,7 @@ public final class QueryListenerCommand extends MultiCommand {
 		}
 
 		if (resultCode != 0) {
-			throw new AerospikeException(resultCode);
+			throw RecordParser.toException(resultCode, serverMessage, serverSubcode, expTrace);
 		}
 
 		Record record = parseRecord();

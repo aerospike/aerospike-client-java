@@ -71,27 +71,39 @@ public final class ExpressionTrace implements Serializable {
 	public static final int KEY_PATH = 5;
 	/** Nested trace key: human-only rendered snippet of the failing element (str). */
 	public static final int KEY_SNIPPET = 6;
-	/** Nested trace key: eval-phase outcome (uint; reserved, SERVER-1138). */
+	/** Nested trace key: eval-phase outcome (uint; {@code OUTCOME_*}). */
 	public static final int KEY_OUTCOME = 7;
 	/** Nested trace key: source language (uint; {@link #LANG_MSGPACK} / {@link #LANG_AEL}). */
 	public static final int KEY_LANG = 8;
-	/** Nested trace key: char offset into AEL source text (uint; reserved). */
+	/** Nested trace key: char offset into AEL source text (uint). */
 	public static final int KEY_AEL_OFFSET = 9;
-	/** Nested trace key: byte width of the offending AEL source region (uint; reserved). */
+	/** Nested trace key: byte width of the offending AEL source region (uint). */
 	public static final int KEY_AEL_SPAN = 10;
 	/** Nested trace key: 1-based line in AEL source (uint; reserved). */
 	public static final int KEY_AEL_LINE = 11;
 	/** Nested trace key: 1-based column in AEL source (uint; reserved). */
 	public static final int KEY_AEL_COL = 12;
+	/** Nested trace key: decisive comparison's operand values (array of 2 str). */
+	public static final int KEY_OPERANDS = 13;
 
 	/** Phase value: expression build failed. */
 	public static final int PHASE_BUILD = 1;
-	/** Phase value: expression evaluation failed (reserved, SERVER-1138). */
+	/** Phase value: expression evaluation failed. */
 	public static final int PHASE_EVAL = 2;
+
+	/** Outcome value: evaluation faulted. */
+	public static final int OUTCOME_FAULT = 1;
+	/**
+	 * Outcome value: the expression evaluated cleanly to FALSE — the record was not
+	 * matched, and nothing went wrong.
+	 */
+	public static final int OUTCOME_FALSE = 2;
+	/** Outcome value: a referenced bin or key was absent. */
+	public static final int OUTCOME_ABSENT = 3;
 
 	/** Source language: msgpack (the implied default when {@code lang} is absent). */
 	public static final int LANG_MSGPACK = 1;
-	/** Source language: AEL DSL (reserved for a future server branch). */
+	/** Source language: AEL DSL. */
 	public static final int LANG_AEL = 2;
 
 	/**
@@ -114,9 +126,12 @@ public final class ExpressionTrace implements Serializable {
 	private final int lang;
 	private final int aelOffset;
 	private final int aelSpan;
+	private final int outcome;
+	private final String[] operands;
 
 	/**
-	 * Construct a trace. Use {@code -1} / {@code null} for any absent field.
+	 * Construct a trace without the eval-phase explainer fields. Equivalent to the
+	 * full constructor with {@code outcome = -1} and {@code operands = null}.
 	 *
 	 * @param phase      {@link #PHASE_BUILD} / {@link #PHASE_EVAL}, or {@code -1} if absent
 	 * @param byteOffset byte offset into the msgpack expression payload, or {@code -1}
@@ -130,6 +145,26 @@ public final class ExpressionTrace implements Serializable {
 	 */
 	public ExpressionTrace(int phase, int byteOffset, String op, int depth, String[] path,
 		String snippet, int lang, int aelOffset, int aelSpan) {
+		this(phase, byteOffset, op, depth, path, snippet, lang, aelOffset, aelSpan, -1, null);
+	}
+
+	/**
+	 * Construct a trace. Use {@code -1} / {@code null} for any absent field.
+	 *
+	 * @param phase      {@link #PHASE_BUILD} / {@link #PHASE_EVAL}, or {@code -1} if absent
+	 * @param byteOffset byte offset into the msgpack expression payload, or {@code -1}
+	 * @param op         failing op name, or {@code null}
+	 * @param depth      true nesting depth of the fault, or {@code -1}
+	 * @param path       op-name chain root&rarr;fault, or {@code null}
+	 * @param snippet    rendered snippet of the failing element, or {@code null}
+	 * @param lang       {@link #LANG_MSGPACK} / {@link #LANG_AEL}, or {@code -1} (&rArr; msgpack)
+	 * @param aelOffset  char offset into AEL source text, or {@code -1}
+	 * @param aelSpan    byte width of the offending AEL source region, or {@code -1}
+	 * @param outcome    {@code OUTCOME_*}, or {@code -1} when absent
+	 * @param operands   decisive comparison's operand values, or {@code null}
+	 */
+	public ExpressionTrace(int phase, int byteOffset, String op, int depth, String[] path,
+		String snippet, int lang, int aelOffset, int aelSpan, int outcome, String[] operands) {
 		this.phase = phase;
 		this.byteOffset = byteOffset;
 		this.op = op;
@@ -139,6 +174,8 @@ public final class ExpressionTrace implements Serializable {
 		this.lang = lang;
 		this.aelOffset = aelOffset;
 		this.aelSpan = aelSpan;
+		this.outcome = outcome;
+		this.operands = operands;
 	}
 
 	/**
@@ -211,10 +248,32 @@ public final class ExpressionTrace implements Serializable {
 
 	/**
 	 * Byte width of the offending AEL source region, or {@code -1} when absent.
-	 * Reserved for the AEL DSL branch.
+	 * Populated only when {@link #getLang()} is {@link #LANG_AEL}.
 	 */
 	public int getAelSpan() {
 		return aelSpan;
+	}
+
+	/**
+	 * Why the record was not matched, on an eval-phase trace: {@link #OUTCOME_FAULT},
+	 * {@link #OUTCOME_FALSE} or {@link #OUTCOME_ABSENT}; {@code -1} when absent. The
+	 * build phase never emits it.
+	 */
+	public int getOutcome() {
+		return outcome;
+	}
+
+	/**
+	 * The decisive comparison's operand values as {@code [lhs, rhs]} — e.g.
+	 * {@code ["15", "18"]} — or {@code null} when absent. Emitted only for an
+	 * {@link #OUTCOME_FALSE} trace whose decisive op is a comparison, and dropped
+	 * first by the server's byte budget, so a FALSE outcome does not guarantee them.
+	 * Server-rendered display strings capped at 48 bytes: numbers always fit,
+	 * non-scalars render as a placeholder ({@code "<blob>"}, {@code "<collection>"}),
+	 * and only a long string bin is silently clipped.
+	 */
+	public String[] getOperands() {
+		return operands;
 	}
 
 	@Override
@@ -231,6 +290,13 @@ public final class ExpressionTrace implements Serializable {
 		}
 		if (snippet != null) {
 			sb.append(", snippet=").append(snippet);
+		}
+		// 0 is not a wire value, so this also skips a default-constructed trace.
+		if (outcome > 0) {
+			sb.append(", outcome=").append(outcome);
+		}
+		if (operands != null) {
+			sb.append(", operands=").append(Arrays.toString(operands));
 		}
 		sb.append(", lang=").append(getLang());
 		if (aelOffset >= 0) {

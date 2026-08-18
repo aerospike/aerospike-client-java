@@ -93,7 +93,7 @@ public final class ScanPartitionCommand extends MultiCommand {
 		}
 
 		if (resultCode != 0) {
-			throw new AerospikeException(resultCode);
+			throw RecordParser.toException(resultCode, serverMessage, serverSubcode, expTrace);
 		}
 
 		Record record = parseRecord();

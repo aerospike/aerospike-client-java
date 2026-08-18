@@ -26,6 +26,7 @@ import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.Node;
 import com.aerospike.client.command.Buffer;
 import com.aerospike.client.command.MultiCommand;
+import com.aerospike.client.command.RecordParser;
 import com.aerospike.client.lua.LuaInstance;
 import com.aerospike.client.metrics.LatencyType;
 import com.aerospike.client.policy.QueryPolicy;
@@ -76,7 +77,7 @@ public final class QueryAggregateCommand extends MultiCommand {
 				// Non-fatal error.
 				return false;
 			}
-			throw new AerospikeException(resultCode);
+			throw RecordParser.toException(resultCode, serverMessage, serverSubcode, expTrace);
 		}
 
 		if (opCount != 1) {

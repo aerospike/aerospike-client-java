@@ -20,6 +20,7 @@ import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
 import com.aerospike.client.cluster.Node;
+import com.aerospike.client.command.RecordParser;
 import com.aerospike.client.listener.RecordSequenceListener;
 import com.aerospike.client.metrics.LatencyType;
 import com.aerospike.client.policy.QueryPolicy;
@@ -61,7 +62,7 @@ public final class AsyncQuery extends AsyncMultiCommand {
 		Key key = parseKey(fieldCount, null);
 
 		if (resultCode != 0) {
-			throw new AerospikeException(resultCode);
+			throw RecordParser.toException(resultCode, serverMessage, serverSubcode, expTrace);
 		}
 
 		Record record = parseRecord();
