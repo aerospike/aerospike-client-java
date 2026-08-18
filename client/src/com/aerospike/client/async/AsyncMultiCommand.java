@@ -22,6 +22,7 @@ import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.Node;
 import com.aerospike.client.command.Buffer;
 import com.aerospike.client.command.Command;
+import com.aerospike.client.command.RecordParser;
 import com.aerospike.client.policy.Policy;
 
 public abstract class AsyncMultiCommand extends AsyncCommand {
@@ -74,8 +75,19 @@ public abstract class AsyncMultiCommand extends AsyncCommand {
 			// If this is the end marker of the response, do not proceed further.
 			if ((info3 & Command.INFO3_LAST) != 0) {
 				if (resultCode != 0) {
-					// The server returned a fatal error.
-					throw new AerospikeException(resultCode);
+					// The server returned a fatal error. A query/scan start-failure
+					// reply carries its error detail (field 45) in this same message,
+					// so walk the field section before throwing rather than discarding
+					// it. A malformed field section must not mask the result code.
+					try {
+						int fc = Buffer.bytesToShort(dataBuffer, dataOffset + 13);
+						dataOffset += 17;
+						skipKey(fc);
+					}
+					catch (Throwable t) {
+						resetServerErrorDetail();
+					}
+					throw RecordParser.toException(resultCode, serverMessage, serverSubcode, expTrace);
 				}
 				return true;
 			}
