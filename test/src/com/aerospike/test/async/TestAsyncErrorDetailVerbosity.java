@@ -248,7 +248,7 @@ public class TestAsyncErrorDetailVerbosity extends TestAsync {
 	// ---------------------------------------------------------------------
 	// Verbosity 3: expression build-failure trace (SERVER-1137), async paths.
 	// A type-mismatched comparison fails to build on the server: as a filter_exp
-	// read it yields "invalid metadata expression in request"; as an exp_write op,
+	// read it yields "invalid filter expression in request"; as an exp_write op,
 	// "invalid expression in operation request". Both: PARAMETER_ERROR + NONE +
 	// a build-phase trace. Assert presence/shape, not exact byte_offset/snippet.
 	// ---------------------------------------------------------------------
@@ -278,7 +278,7 @@ public class TestAsyncErrorDetailVerbosity extends TestAsync {
 		}, p, intKey);
 
 		waitTillComplete();
-		assertBuildTrace(caught.get(), "invalid metadata expression in request");
+		assertBuildTrace(caught.get(), "invalid filter expression in request");
 	}
 
 	@Test
@@ -332,7 +332,7 @@ public class TestAsyncErrorDetailVerbosity extends TestAsync {
 		String msg = ae.getBaseMessage();
 		org.junit.Assert.assertNotNull(msg);
 		org.junit.Assert.assertTrue("Expected filter-build message in: " + msg,
-			msg.contains("invalid metadata expression in request"));
+			msg.contains("invalid filter expression in request"));
 		org.junit.Assert.assertNull("Verbosity 2 must surface NO expression trace", ae.getExpressionTrace());
 	}
 

@@ -461,10 +461,9 @@ public class TestErrorDetailParser extends TestBase {
 
 	@Test
 	public void parsesTraceSkippingUnknownTraceKeys() {
-		// Reserved / future keys (outcome=7, ael_line=11, ael_col=12) and an unknown
-		// key 99 must be skipped without disturbing the recognized fields.
+		// Reserved / future keys (ael_line=11, ael_col=12) and an unknown key 99 must
+		// be skipped without disturbing the recognized fields.
 		byte[] trace = fixmap(
-			pair(intKey(ExpressionTrace.KEY_OUTCOME), fixint(5)),       // 7 reserved
 			pair(intKey(ExpressionTrace.KEY_PHASE), fixint(ExpressionTrace.PHASE_BUILD)),
 			pair(intKey(ExpressionTrace.KEY_AEL_LINE), fixint(9)),      // 11 reserved
 			pair(intKey(ExpressionTrace.KEY_BYTE_OFFSET), fixint(4)),
@@ -482,6 +481,110 @@ public class TestErrorDetailParser extends TestBase {
 		// Unknown keys did not corrupt absent fields.
 		assertNull(t.getOp());
 		assertEquals(-1, t.getDepth());
+	}
+
+	@Test
+	public void parsesTraceMaxLengthPath() {
+		// AS_EXP_TRACE_MAX_FRAMES (16) caps frames, not array elements: the "..."
+		// sentinel is spliced in addition, so 17 is the true maximum. Past fixarray's
+		// 15-element limit, so this also exercises the array16 header.
+		byte[][] elems = new byte[17][];
+		for (int i = 0; i < 15; i++) {
+			elems[i] = fixstr("and");
+		}
+		elems[15] = fixstr(ExpressionTrace.PATH_TRUNCATION_SENTINEL);
+		elems[16] = fixstr("eq");
+
+		byte[] trace = fixmap(
+			pair(intKey(ExpressionTrace.KEY_PHASE), fixint(ExpressionTrace.PHASE_BUILD)),
+			pair(intKey(ExpressionTrace.KEY_DEPTH), fixint(40)),
+			pair(intKey(ExpressionTrace.KEY_PATH), array16(elems))
+		);
+		byte[] detail = fixmap(pair(intKey(3), trace));
+		RecordParser rp = parserFor(detail);
+		rp.parseFields(null, null, false);
+
+		ExpressionTrace t = rp.expTrace;
+		assertNotNull(t);
+		String[] path = t.getPath();
+		assertNotNull(path);
+		assertEquals("path carries 16 frames plus the sentinel", 17, path.length);
+		assertEquals(ExpressionTrace.PATH_TRUNCATION_SENTINEL, path[15]);
+		assertEquals("eq", path[16]);
+		assertEquals("depth reports the true count, not the frame count", 40, t.getDepth());
+	}
+
+	@Test
+	public void parsesTraceOutcomeAndOperands() {
+		byte[] trace = fixmap(
+			pair(intKey(ExpressionTrace.KEY_PHASE), fixint(ExpressionTrace.PHASE_EVAL)),
+			pair(intKey(ExpressionTrace.KEY_OP), fixstr("cmp_gt")),
+			pair(intKey(ExpressionTrace.KEY_OUTCOME), fixint(ExpressionTrace.OUTCOME_FALSE)),
+			pair(intKey(ExpressionTrace.KEY_OPERANDS), fixarray(fixstr("15"), fixstr("18")))
+		);
+		byte[] detail = fixmap(pair(intKey(3), trace));
+		RecordParser rp = parserFor(detail);
+		rp.parseFields(null, null, false);
+
+		ExpressionTrace t = rp.expTrace;
+		assertNotNull(t);
+		assertEquals(ExpressionTrace.PHASE_EVAL, t.getPhase());
+		assertEquals(ExpressionTrace.OUTCOME_FALSE, t.getOutcome());
+		assertArrayEquals(new String[] {"15", "18"}, t.getOperands());
+	}
+
+	@Test
+	public void parsesTraceOutcomeFaultAndAbsentWithoutOperands() {
+		int[] outcomes = {ExpressionTrace.OUTCOME_FAULT, ExpressionTrace.OUTCOME_ABSENT};
+
+		for (int outcome : outcomes) {
+			byte[] trace = fixmap(
+				pair(intKey(ExpressionTrace.KEY_PHASE), fixint(ExpressionTrace.PHASE_EVAL)),
+				pair(intKey(ExpressionTrace.KEY_OUTCOME), fixint(outcome))
+			);
+			byte[] detail = fixmap(pair(intKey(3), trace));
+			RecordParser rp = parserFor(detail);
+			rp.parseFields(null, null, false);
+
+			ExpressionTrace t = rp.expTrace;
+			assertNotNull(t);
+			assertEquals(outcome, t.getOutcome());
+			assertNull("operands ride only a FALSE comparison", t.getOperands());
+		}
+	}
+
+	@Test
+	public void parsesTraceFalseOutcomeWithOperandsDropped() {
+		// Operands are the first tier the byte budget drops, so a FALSE outcome does
+		// not guarantee them.
+		byte[] trace = fixmap(
+			pair(intKey(ExpressionTrace.KEY_PHASE), fixint(ExpressionTrace.PHASE_EVAL)),
+			pair(intKey(ExpressionTrace.KEY_OUTCOME), fixint(ExpressionTrace.OUTCOME_FALSE))
+		);
+		byte[] detail = fixmap(pair(intKey(3), trace));
+		RecordParser rp = parserFor(detail);
+		rp.parseFields(null, null, false);
+
+		ExpressionTrace t = rp.expTrace;
+		assertNotNull(t);
+		assertEquals(ExpressionTrace.OUTCOME_FALSE, t.getOutcome());
+		assertNull(t.getOperands());
+	}
+
+	@Test
+	public void parsesBuildTraceWithoutOutcomeOrOperands() {
+		byte[] trace = fixmap(
+			pair(intKey(ExpressionTrace.KEY_PHASE), fixint(ExpressionTrace.PHASE_BUILD)),
+			pair(intKey(ExpressionTrace.KEY_BYTE_OFFSET), fixint(3))
+		);
+		byte[] detail = fixmap(pair(intKey(3), trace));
+		RecordParser rp = parserFor(detail);
+		rp.parseFields(null, null, false);
+
+		ExpressionTrace t = rp.expTrace;
+		assertNotNull(t);
+		assertEquals(-1, t.getOutcome());
+		assertNull(t.getOperands());
 	}
 
 	@Test
@@ -627,6 +730,18 @@ public class TestErrorDetailParser extends TestBase {
 		assertTrue("fixarray supports up to 15 entries", elems.length <= 15);
 		ByteArrayOutputStream out = new ByteArrayOutputStream();
 		out.write(0x90 | elems.length);
+		for (byte[] e : elems) {
+			writeBytes(out, e);
+		}
+		return out.toByteArray();
+	}
+
+	/** Variable-arity array16 — for arrays past fixarray's 15-element limit. */
+	private static byte[] array16(byte[]... elems) {
+		ByteArrayOutputStream out = new ByteArrayOutputStream();
+		out.write(0xDC);
+		out.write((elems.length >> 8) & 0xFF);
+		out.write(elems.length & 0xFF);
 		for (byte[] e : elems) {
 			writeBytes(out, e);
 		}
