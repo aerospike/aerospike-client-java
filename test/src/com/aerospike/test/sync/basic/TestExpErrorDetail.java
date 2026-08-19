@@ -25,6 +25,7 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -33,6 +34,7 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.aerospike.client.AerospikeException;
+import com.aerospike.client.BatchRead;
 import com.aerospike.client.Bin;
 import com.aerospike.client.ExpressionTrace;
 import com.aerospike.client.Key;
@@ -48,7 +50,12 @@ import com.aerospike.client.exp.ExpReadFlags;
 import com.aerospike.client.exp.ExpWriteFlags;
 import com.aerospike.client.exp.Expression;
 import com.aerospike.client.exp.ListExp;
+import com.aerospike.client.query.RecordSet;
+import com.aerospike.client.query.Statement;
+import com.aerospike.client.policy.BatchPolicy;
+import com.aerospike.client.policy.BatchReadPolicy;
 import com.aerospike.client.policy.Policy;
+import com.aerospike.client.policy.QueryPolicy;
 import com.aerospike.client.policy.WritePolicy;
 import com.aerospike.test.sync.TestSync;
 
@@ -77,7 +84,7 @@ import com.aerospike.test.sync.TestSync;
  * <p>The Java client sends classic msgpack expressions (no AEL source), so
  * traces follow the msgpack contract: build traces always carry byte_offset,
  * eval traces never do, and lang / ael_offset / ael_span are never present.
- * Eval-trace keys outcome (7) and operands (13) are not yet decoded by the
+ * Eval-trace keys outcome (7) and operands (13) are decoded and asserted in the
  * Java client, so those Python assertions are not ported.
  */
 public class TestExpErrorDetail extends TestSync {
@@ -395,7 +402,7 @@ public class TestExpErrorDetail extends TestSync {
 		for (String verb : PARITY_VERBS) {
 			AerospikeException ae = expectVerbError(verb,
 				filterPolicy(3, buildErrorExp()), ResultCode.PARAMETER_ERROR);
-			assertMessageContains(ae, "invalid metadata expression in request");
+			assertMessageContains(ae, "invalid filter expression in request");
 			assertBuildTrace(ae);
 		}
 	}
@@ -413,7 +420,7 @@ public class TestExpErrorDetail extends TestSync {
 	@Test
 	public void testParityFilterFalse() {
 		// Clean FALSE explain. The trace's outcome (2) and operand-pair keys
-		// are not yet decoded by the Java client; assert phase and deciding op.
+		// get dedicated coverage below; here assert phase and deciding op per verb.
 		Expression exp = Exp.build(Exp.eq(Exp.intBin(BIN_INT), Exp.val(11)));
 
 		for (String verb : PARITY_VERBS) {
@@ -720,5 +727,130 @@ public class TestExpErrorDetail extends TestSync {
 				ExpWriteFlags.EVAL_NO_FAIL));
 
 		assertNotNull(record);
+	}
+
+	// ---------------------------------------------------------------------
+	// 5. Filter-decision explainer (SERVER-1139): outcome (key 7) and the
+	//    decisive operand pair (key 13), end to end.
+	//
+	//    The parity tests above assert phase and deciding op across verbs;
+	//    these assert the explainer keys themselves.
+	// ---------------------------------------------------------------------
+
+	@Test
+	public void testExplainerCleanFalseWithOperands() {
+		// BIN_INT is 10; compare against 11 so the expression is well-formed and
+		// simply does not match.
+		Expression exp = Exp.build(Exp.eq(Exp.intBin(BIN_INT), Exp.val(11)));
+		AerospikeException ae = expectFilteredGet(3, exp, ResultCode.FILTERED_OUT);
+
+		ExpressionTrace t = ae.getExpressionTrace();
+		assertNotNull("Expected an explain trace at verbosity 3", t);
+		assertEquals(ExpressionTrace.PHASE_EVAL, t.getPhase());
+		assertEquals("Expected a clean-FALSE outcome", ExpressionTrace.OUTCOME_FALSE, t.getOutcome());
+
+		// Operands are the first tier the budget drops, and the explainer is
+		// permission-gated, so presence is not guaranteed; assert shape only when
+		// the server sent them.
+		String[] operands = t.getOperands();
+		if (operands != null) {
+			assertEquals("Operands are a [lhs, rhs] pair", 2, operands.length);
+			assertEquals("lhs is the bin value", "10", operands[0]);
+			assertEquals("rhs is the literal", "11", operands[1]);
+		}
+	}
+
+	@Test
+	public void testExplainerAbsentOutcomeHasNoOperands() {
+		Expression exp = Exp.build(Exp.eq(Exp.intBin(BIN_MISSING), Exp.val(2)));
+		AerospikeException ae = expectFilteredGet(3, exp, ResultCode.FILTERED_OUT);
+
+		ExpressionTrace t = ae.getExpressionTrace();
+		assertNotNull("Expected an explain trace at verbosity 3", t);
+		assertEquals(ExpressionTrace.PHASE_EVAL, t.getPhase());
+		assertEquals("Expected an absent outcome", ExpressionTrace.OUTCOME_ABSENT, t.getOutcome());
+		assertNull("Absent outcomes carry no operand pair", t.getOperands());
+	}
+
+	// ---------------------------------------------------------------------
+	// 6. Multi-record paths: the query start-failure reply and a batch row.
+	//    Both stage the trace from their own server site with a distinct
+	//    message, and both reach the client through a different field walk
+	//    than the single-record path.
+	// ---------------------------------------------------------------------
+
+	@Test
+	public void testQueryFilterBuildFailureTrace() {
+		QueryPolicy qp = new QueryPolicy();
+		qp.errorDetailVerbosity = 3;
+		qp.filterExp = buildErrorExp();
+
+		Statement stmt = new Statement();
+		stmt.setNamespace(args.namespace);
+		stmt.setSetName(args.set);
+
+		AerospikeException caught = null;
+
+		try {
+			RecordSet rs = client.query(qp, stmt);
+			try {
+				while (rs.next()) {
+					// Drain: the failure may surface from query() or from the stream.
+				}
+			}
+			finally {
+				rs.close();
+			}
+		}
+		catch (AerospikeException ae) {
+			caught = ae;
+		}
+
+		assertNotNull("Expected a query start-failure", caught);
+		assertEquals("Unexpected result code", ResultCode.PARAMETER_ERROR, caught.getResultCode());
+		assertMessageContains(caught, "invalid filter expression in query");
+
+		ExpressionTrace t = assertBuildTrace(caught);
+		// A query filters many records per request, so the server hard-disables the
+		// explainer here — build traces only, never outcome/operands.
+		assertEquals("A query trace must not carry an outcome", -1, t.getOutcome());
+		assertNull("A query trace must not carry operands", t.getOperands());
+	}
+
+	@Test
+	public void testBatchRowFilterBuildFailureTrace() {
+		BatchPolicy bp = new BatchPolicy();
+		bp.errorDetailVerbosity = 3;
+		bp.respondAllKeys = true;
+
+		// The filter goes on the per-record policy, not the batch policy. A
+		// batch-wide filter that fails to build aborts the whole batch before any
+		// row is returned individually, and the server writes a row's field 45 only
+		// where that row's reply is sent on its own.
+		BatchReadPolicy badPolicy = new BatchReadPolicy();
+		badPolicy.filterExp = buildErrorExp();
+
+		List<BatchRead> recs = Arrays.asList(
+			new BatchRead(badPolicy, stdKey, true),
+			new BatchRead(scratchKey, true));
+
+		// respondAllKeys returns every row, so the call itself does not throw; the
+		// failure is reported on the row.
+		client.get(bp, recs);
+
+		BatchRead bad = recs.get(0);
+		assertEquals("Unexpected row result code", ResultCode.PARAMETER_ERROR, bad.resultCode);
+		assertNotNull("Expected a server message on the failing row", bad.serverMessage);
+		assertTrue("Expected the batch-specific build message, got: " + bad.serverMessage,
+			bad.serverMessage.contains("invalid filter expression in batch request"));
+
+		ExpressionTrace t = bad.expTrace;
+		assertNotNull("Expected a build trace on the failing row", t);
+		assertEquals(ExpressionTrace.PHASE_BUILD, t.getPhase());
+		assertTrue("Build traces carry byte_offset", t.getByteOffset() >= 0);
+
+		// The sibling row is unaffected and carries no detail of its own.
+		assertNull("Detail must reset per row, not leak from the previous one",
+			recs.get(1).expTrace);
 	}
 }

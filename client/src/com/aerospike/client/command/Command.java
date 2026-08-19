@@ -1615,7 +1615,24 @@ public class Command {
 	 * from the parent BatchPolicy.
 	 */
 	private static int batchErrorVerbosityBits(BatchPolicy policy) {
-		return (policy.errorDetailVerbosity << Command.INFO4_ERROR_VERBOSITY_SHIFT) & Command.INFO4_ERROR_VERBOSITY_MASK;
+		return errorVerbosityBits(policy.errorDetailVerbosity);
+	}
+
+	/**
+	 * Fold an error-detail verbosity into the info4 bits (5-6) the server reads to
+	 * decide whether to attach an error detail (field 45).
+	 * <p>
+	 * Clamps before shifting: the mask alone lets a negative value through as maximum
+	 * verbosity ((-1 &lt;&lt; 5) &amp; 0x60 == 0x60 == 3).
+	 */
+	private static int errorVerbosityBits(int verbosity) {
+		if (verbosity < 0) {
+			verbosity = 0;
+		}
+		else if (verbosity > 3) {
+			verbosity = 3;
+		}
+		return (verbosity << Command.INFO4_ERROR_VERBOSITY_SHIFT) & Command.INFO4_ERROR_VERBOSITY_MASK;
 	}
 
 	/**
@@ -2442,7 +2459,7 @@ public class Command {
 			txnAttr |= Command.INFO4_TXN_ON_LOCKING_ONLY;
 		}
 
-		txnAttr |= (policy.errorDetailVerbosity << Command.INFO4_ERROR_VERBOSITY_SHIFT) & Command.INFO4_ERROR_VERBOSITY_MASK;
+		txnAttr |= errorVerbosityBits(policy.errorDetailVerbosity);
 
 		if (policy.xdr) {
 			readAttr |= Command.INFO1_XDR;
@@ -2522,7 +2539,7 @@ public class Command {
 			txnAttr |= Command.INFO4_TXN_ON_LOCKING_ONLY;
 		}
 
-		txnAttr |= (policy.errorDetailVerbosity << Command.INFO4_ERROR_VERBOSITY_SHIFT) & Command.INFO4_ERROR_VERBOSITY_MASK;
+		txnAttr |= errorVerbosityBits(policy.errorDetailVerbosity);
 
 		if (policy.xdr) {
 			readAttr |= Command.INFO1_XDR;
@@ -2604,7 +2621,7 @@ public class Command {
 		dataBuffer[9] = (byte)readAttr;
 		dataBuffer[10] = (byte)writeAttr;
 		dataBuffer[11] = (byte)infoAttr;
-		dataBuffer[12] = (byte)((policy.errorDetailVerbosity << Command.INFO4_ERROR_VERBOSITY_SHIFT) & Command.INFO4_ERROR_VERBOSITY_MASK);
+		dataBuffer[12] = (byte)(errorVerbosityBits(policy.errorDetailVerbosity));
 
 		for (int i = 13; i < 18; i++) {
 			dataBuffer[i] = 0;
@@ -2645,7 +2662,7 @@ public class Command {
 		dataBuffer[9] = (byte)readAttr;
 		dataBuffer[10] = (byte)0;
 		dataBuffer[11] = (byte)infoAttr;
-		dataBuffer[12] = (byte)((policy.errorDetailVerbosity << Command.INFO4_ERROR_VERBOSITY_SHIFT) & Command.INFO4_ERROR_VERBOSITY_MASK);
+		dataBuffer[12] = (byte)(errorVerbosityBits(policy.errorDetailVerbosity));
 
 		for (int i = 13; i < 18; i++) {
 			dataBuffer[i] = 0;
@@ -2677,7 +2694,7 @@ public class Command {
 		// messages through this path, so the error-detail verbosity must be folded into info4
 		// bits 5-6 here from the parent policy — mirroring writeHeaderRead/Write. The batch-wide
 		// attr.errorDetailBits is only wired into the multi-record row writers.
-		dataBuffer[12] = (byte)(attr.txnAttr | ((policy.errorDetailVerbosity << Command.INFO4_ERROR_VERBOSITY_SHIFT) & Command.INFO4_ERROR_VERBOSITY_MASK));
+		dataBuffer[12] = (byte)(attr.txnAttr | (errorVerbosityBits(policy.errorDetailVerbosity)));
 		dataBuffer[13] = 0; // clear the result code
 		Buffer.intToBytes(attr.generation, dataBuffer, 14);
 		Buffer.intToBytes(attr.expiration, dataBuffer, 18);
@@ -2997,6 +3014,10 @@ public class Command {
 		String setName = null;
 		Value userKey = null;
 
+		// Reset first so a row without a field-45 detail does not inherit the
+		// previous row's.
+		resetServerErrorDetail();
+
 		for (int i = 0; i < fieldCount; i++) {
 			int fieldlen = Buffer.bytesToInt(dataBuffer, dataOffset);
 			dataOffset += 4;
@@ -3026,6 +3047,14 @@ public class Command {
 
 			case FieldType.BVAL_ARRAY:
 				bval.val = Buffer.littleBytesToLong(dataBuffer, dataOffset);
+				break;
+
+			case FieldType.ERROR_MESSAGE:
+				// A query/scan start-failure row carries its detail here. Capture it
+				// so the caller's throw can surface it instead of discarding it.
+				if (size > 0) {
+					captureErrorDetail(dataOffset, size);
+				}
 				break;
 			}
 			dataOffset += size;
