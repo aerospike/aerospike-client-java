@@ -376,10 +376,11 @@ public final class StringOperation {
 	/**
 	 * Create string {@code isNumeric} operation that filters by {@code numericType}
 	 * (see {@link StringNumericType}). For example, restrict to integer-only or
-	 * float-only validation.
+	 * float-only validation. Note {@code FLOAT} requires a {@code '.'} followed by
+	 * a digit, so {@code "5"} is {@code false} under {@code FLOAT}.
 	 *
 	 * <pre>{@code
-	 * // "12345" with INT filter -> true
+	 * // "12345" with INT filter -> true; with FLOAT filter -> false
 	 * Record r = client.operate(null, key,
 	 *     StringOperation.isNumeric("text", StringNumericType.INT));
 	 * }</pre>
