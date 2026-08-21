@@ -235,6 +235,19 @@ public class TestStringExp extends TestSync {
 	}
 
 	@Test
+	public void isNumericFloatRequiresFractionalDigit() {
+		put("3.14");
+		assertTrue(eval(StringExp.isNumeric(StringNumericType.FLOAT, Exp.stringBin(BIN))).getBoolean(VAR));
+		put("5");
+		// FLOAT needs a '.' followed by a digit, so a pure-digit string fails
+		// it while ANY still passes via the integer branch.
+		assertFalse(eval(StringExp.isNumeric(StringNumericType.FLOAT, Exp.stringBin(BIN))).getBoolean(VAR));
+		assertTrue(eval(StringExp.isNumeric(StringNumericType.ANY, Exp.stringBin(BIN))).getBoolean(VAR));
+		put("1e5");
+		assertFalse(eval(StringExp.isNumeric(StringNumericType.FLOAT, Exp.stringBin(BIN))).getBoolean(VAR));
+	}
+
+	@Test
 	public void isUpperAndIsLowerDistinguishCase() {
 		put("HELLO");
 		assertTrue(eval(StringExp.isUpper(Exp.stringBin(BIN))).getBoolean(VAR));

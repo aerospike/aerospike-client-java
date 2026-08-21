@@ -54,6 +54,11 @@ public final class Operation {
 	 * @deprecated Use {@link com.aerospike.client.operation.StringOperation#append(com.aerospike.client.operation.StringPolicy, String, String, com.aerospike.client.cdt.CTX...)}
 	 * instead. This legacy operation performs a raw byte concatenation that is not Unicode/DBCS-aware;
 	 * the string-package equivalent provides consistent Unicode handling and policy/CTX support.
+	 * <p>
+	 * This operation also accepts BLOB bins, which the string operations cannot target. For a blob
+	 * bin, use {@link com.aerospike.client.operation.BitOperation#insert} at a byte offset equal to
+	 * the blob's current size. Note there is no "at the end" sentinel: an offset past the end
+	 * zero-pads the gap, so appending requires knowing the current blob size.
 	 */
 	@Deprecated(since = "10.4.0", forRemoval = true)
 	public static Operation append(Bin bin) {
@@ -66,6 +71,9 @@ public final class Operation {
 	 * @deprecated Use {@link com.aerospike.client.operation.StringOperation#prepend(com.aerospike.client.operation.StringPolicy, String, String, com.aerospike.client.cdt.CTX...)}
 	 * instead. This legacy operation performs a raw byte concatenation that is not Unicode/DBCS-aware;
 	 * the string-package equivalent provides consistent Unicode handling and policy/CTX support.
+	 * <p>
+	 * This operation also accepts BLOB bins, which the string operations cannot target. For a blob
+	 * bin, use {@link com.aerospike.client.operation.BitOperation#insert} at byte offset {@code 0}.
 	 */
 	@Deprecated(since = "10.4.0", forRemoval = true)
 	public static Operation prepend(Bin bin) {

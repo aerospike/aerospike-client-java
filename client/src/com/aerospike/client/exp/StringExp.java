@@ -347,9 +347,13 @@ public final class StringExp {
 	}
 
 	/**
-	 * Create expression that tests whether {@code src} parses as a number of the
-	 * requested {@link com.aerospike.client.operation.StringNumericType}. Returns a
-	 * boolean flag: {@code true} on match, {@code false} otherwise.
+	 * Create expression that tests whether {@code src} matches the requested
+	 * {@link com.aerospike.client.operation.StringNumericType}. Returns a boolean
+	 * flag: {@code true} on match, {@code false} otherwise.
+	 *
+	 * <p>This is a spelling check, not "parses as a number of that type":
+	 * {@code FLOAT} requires a {@code '.'} followed by a digit, so {@code "5"} is
+	 * {@code false} under {@code FLOAT} even though it parses as a double.</p>
 	 *
 	 * <pre>{@code
 	 * // restrict to integer-only validation
