@@ -80,12 +80,6 @@ SubMilliPost shows *when and why* — record and bin layout, how operations comp
 
 Anything contradicting the Javadoc on a signature is stale. Report it rather than following it.
 
-### Known traps
-
-* **Do not hand-roll batch fan-out.** Batch commands already switch to the single-record path when a node's sub-batch has size 1. Use `BatchRead`/`operate` batch APIs, not a loop.
-* **Do not loop single-record calls where a batch counterpart exists.** `get`, `delete`, `operate`, and `exists` all have batch forms.
-* **`modifyByPath` can remove matching elements.** It is not read-only.
-
 ### Verifying generated code
 
 `./build_all` from the repo root, then `cd test && ./run_tests` against a local server.
@@ -96,14 +90,7 @@ A passing run proves the client builds and the suite agrees with the installed s
 [aerospike/agent-skills](https://github.com/aerospike/agent-skills) carries core-database and data-modeling guidance — key design, record sizing, collection choice, indexing.
 Complementary to this repo, which is authoritative for the Java API surface.
 
-## Package contents
-
-This package contains full source code for these projects:
-
-* `client` — Java native client library
-* `examples` — Java client examples
-* `benchmarks` — Java client benchmarks
-* `test` — Java client unit tests
+## Building and testing
 
 ### Prerequisites
 
