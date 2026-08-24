@@ -129,6 +129,12 @@ public class StringExpression extends Example {
 			StringExp.isNumeric(StringNumericType.INT, Exp.stringBin(BIN)));
 		console.info("isNumeric(\"3.14\", INT) = " + r.getBoolean(VAR));
 
+		// FLOAT needs a '.' followed by a digit, so a pure-digit string fails it
+		put(client, params, key, "12345");
+		r = evalExp(client, params, key,
+			StringExp.isNumeric(StringNumericType.FLOAT, Exp.stringBin(BIN)));
+		console.info("isNumeric(\"12345\", FLOAT) = " + r.getBoolean(VAR));
+
 		// isUpper
 		put(client, params, key, "HELLO");
 		r = evalExp(client, params, key, StringExp.isUpper(Exp.stringBin(BIN)));

@@ -118,6 +118,12 @@ public class OperateString extends Example {
 			StringOperation.isNumeric(BIN, StringNumericType.INT));
 		console.info("isNumeric(\"3.14\", INT) = " + r.getBoolean(BIN));
 
+		// FLOAT needs a '.' followed by a digit, so a pure-digit string fails it
+		put(client, params, key, "12345");
+		r = client.operate(params.writePolicy, key,
+			StringOperation.isNumeric(BIN, StringNumericType.FLOAT));
+		console.info("isNumeric(\"12345\", FLOAT) = " + r.getBoolean(BIN));
+
 		// isUpper
 		put(client, params, key, "HELLO");
 		r = client.operate(params.writePolicy, key, StringOperation.isUpper(BIN));
