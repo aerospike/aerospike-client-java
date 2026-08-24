@@ -31,7 +31,9 @@ public final class StringNumericType {
 	public static final int INT = 1;
 
 	/**
-	 * Match only floating-point numbers.
+	 * Match only floating-point numbers. Stricter than "parses as a float": the
+	 * string must contain a {@code '.'} followed by a digit, so {@code "5"} is
+	 * false under {@code FLOAT} but true under {@link #ANY}.
 	 */
 	public static final int FLOAT = 2;
 }

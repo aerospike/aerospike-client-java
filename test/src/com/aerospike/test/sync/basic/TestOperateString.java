@@ -40,6 +40,7 @@ import com.aerospike.client.Record;
 import com.aerospike.client.ResultCode;
 import com.aerospike.client.Value;
 import com.aerospike.client.cdt.CTX;
+import com.aerospike.client.operation.StringNumericType;
 import com.aerospike.client.operation.StringOperation;
 import com.aerospike.client.operation.StringPolicy;
 import com.aerospike.client.operation.StringRegexFlags;
@@ -314,6 +315,22 @@ public class TestOperateString extends TestSync {
 		assertTrue(operate(StringOperation.isNumeric(BIN)).getBoolean(BIN));
 		put("Hello123World");
 		assertFalse(operate(StringOperation.isNumeric(BIN)).getBoolean(BIN));
+	}
+
+	@Test
+	public void isNumericFloatRequiresFractionalDigit() {
+		// FLOAT is is_valid_double && has_decimal_fraction, so a pure-digit
+		// string is false under FLOAT but true under ANY via the int branch.
+		put("3.14");
+		assertTrue(operate(StringOperation.isNumeric(BIN, StringNumericType.FLOAT)).getBoolean(BIN));
+		put("5");
+		assertFalse(operate(StringOperation.isNumeric(BIN, StringNumericType.FLOAT)).getBoolean(BIN));
+		assertTrue(operate(StringOperation.isNumeric(BIN, StringNumericType.ANY)).getBoolean(BIN));
+		put("5.");
+		assertFalse(operate(StringOperation.isNumeric(BIN, StringNumericType.FLOAT)).getBoolean(BIN));
+		put("1e5");
+		assertFalse(operate(StringOperation.isNumeric(BIN, StringNumericType.FLOAT)).getBoolean(BIN));
+		assertFalse(operate(StringOperation.isNumeric(BIN, StringNumericType.ANY)).getBoolean(BIN));
 	}
 
 	@Test
