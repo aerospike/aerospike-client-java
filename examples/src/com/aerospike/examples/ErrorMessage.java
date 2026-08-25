@@ -162,7 +162,8 @@ public class ErrorMessage extends Example {
 				"Expected result code " + expectedResultCode + " but got " + ae.getResultCode() + ": " + ae.getBaseMessage());
 		}
 
-		String msg = ae.getBaseMessage();
+		// getMessage() renders the subcode; getBaseMessage() is the server text verbatim.
+		String msg = ae.getMessage();
 
 		for (String expected : expectedSubstrings) {
 			if (!msg.contains(expected)) {
