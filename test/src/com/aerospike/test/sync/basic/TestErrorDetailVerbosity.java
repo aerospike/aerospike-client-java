@@ -139,7 +139,7 @@ public class TestErrorDetailVerbosity extends TestSync {
 	public void testVerbositySubcodeOnly() {
 		// Verbosity 1: server sends the sub-code but not the message. A sub-code
 		// that resolves to a value (BIN_NOT_FOUND from an HLL count op on a
-		// missing bin -> sub-code 1) surfaces as the bare "error subcode=N" form.
+		// missing bin -> sub-code 1) is rendered by getMessage() with no server text.
 		WritePolicy wp = new WritePolicy();
 		wp.errorDetailVerbosity = 1;
 
@@ -152,8 +152,8 @@ public class TestErrorDetailVerbosity extends TestSync {
 		catch (AerospikeException ae) {
 			assertEquals(ResultCode.BIN_NOT_FOUND, ae.getResultCode());
 			assertEquals(SubCode.BIN_NOT_FOUND_HLL_CANNOT_CREATE_WITH_OP, ae.getSubCode());
-			String msg = ae.getBaseMessage();
-			assertNotNull(msg);
+			assertNotNull(ae.getBaseMessage());
+			String msg = ae.getMessage();
 			assertTrue("Expected subcode in: " + msg, msg.contains("subcode=1"));
 			return;
 		}
@@ -179,7 +179,8 @@ public class TestErrorDetailVerbosity extends TestSync {
 			String msg = ae.getBaseMessage();
 			assertNotNull(msg);
 			assertTrue("Expected message text in: " + msg, msg.contains("count op"));
-			assertTrue("Expected subcode in: " + msg, msg.contains("(subcode=1)"));
+			assertTrue("Expected subcode in: " + ae.getMessage(),
+				ae.getMessage().contains("(subcode=1)"));
 			return;
 		}
 		assertTrue("Expected AerospikeException", false);
@@ -834,15 +835,19 @@ public class TestErrorDetailVerbosity extends TestSync {
 	/**
 	 * Assert the server-supplied {@code (resultCode, sub-code)} pair. The numeric
 	 * sub-code must be exposed first-class via {@link AerospikeException#getSubCode()}
-	 * (not merely embedded in the message string), and the "subcode=N" suffix must
+	 * (not merely embedded in the message string). getMessage() renders the subcode;
+	 * the parsed server message stays verbatim. The old "subcode=N" suffix must
 	 * still appear in the message for parity with the C client.
 	 */
 	private void assertSubcode(AerospikeException ae, int expectedResultCode, int expectedSubcode) {
 		assertEquals("Unexpected result code", expectedResultCode, ae.getResultCode());
 		assertEquals("Unexpected subcode", expectedSubcode, ae.getSubCode());
 
-		String msg = ae.getBaseMessage();
-		assertNotNull("Expected server error message", msg);
+		assertNotNull("Expected server error message", ae.getBaseMessage());
+
+		// The subcode is rendered by getMessage(), alongside the result code; the
+		// parsed server message is kept verbatim (see AerospikeException.getMessage()).
+		String msg = ae.getMessage();
 		assertTrue("Expected 'subcode=" + expectedSubcode + "' in: " + msg,
 			msg.contains("subcode=" + expectedSubcode));
 	}
@@ -864,6 +869,7 @@ public class TestErrorDetailVerbosity extends TestSync {
 		for (String expected : expectedSubstrings) {
 			assertTrue("Expected '" + expected + "' in: " + msg, msg.contains(expected));
 		}
-		assertFalse("Expected NO subcode suffix in: " + msg, msg.contains("subcode="));
+		assertFalse("Expected NO subcode suffix in: " + ae.getMessage(),
+			ae.getMessage().contains("subcode="));
 	}
 }

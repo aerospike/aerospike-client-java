@@ -116,6 +116,12 @@ public class AerospikeException extends RuntimeException {
 		sb.append(": ");
 		sb.append(getBaseMessage());
 
+		if (subCode != SubCode.NONE) {
+			sb.append(" (subcode=");
+			sb.append(subCode);
+			sb.append(')');
+		}
+
 		if (subExceptions != null) {
 			sb.append(System.lineSeparator());
 			sb.append("sub-exceptions:");

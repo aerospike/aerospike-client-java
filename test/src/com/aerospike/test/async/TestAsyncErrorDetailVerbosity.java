@@ -363,8 +363,12 @@ public class TestAsyncErrorDetailVerbosity extends TestAsync {
 		org.junit.Assert.assertEquals("Unexpected result code", expectedResultCode, ae.getResultCode());
 		org.junit.Assert.assertEquals("Unexpected subcode", expectedSubcode, ae.getSubCode());
 
-		String msg = ae.getBaseMessage();
-		org.junit.Assert.assertNotNull("Expected server error message, got null. ae=" + ae, msg);
+		org.junit.Assert.assertNotNull("Expected server error message, got null. ae=" + ae,
+			ae.getBaseMessage());
+
+		// The subcode is rendered by getMessage(), alongside the result code; the
+		// parsed server message is kept verbatim (see AerospikeException.getMessage()).
+		String msg = ae.getMessage();
 		org.junit.Assert.assertTrue("Expected 'subcode=" + expectedSubcode + "' in: " + msg,
 			msg.contains("subcode=" + expectedSubcode));
 	}
@@ -382,7 +386,8 @@ public class TestAsyncErrorDetailVerbosity extends TestAsync {
 		String msg = ae.getBaseMessage();
 		org.junit.Assert.assertNotNull("Expected server error message, got null. ae=" + ae, msg);
 		org.junit.Assert.assertTrue("Expected '" + expectedSubstring + "' in: " + msg, msg.contains(expectedSubstring));
-		org.junit.Assert.assertFalse("Expected NO subcode suffix in: " + msg, msg.contains("subcode="));
+		org.junit.Assert.assertFalse("Expected NO subcode suffix in: " + ae.getMessage(),
+			ae.getMessage().contains("subcode="));
 	}
 
 }

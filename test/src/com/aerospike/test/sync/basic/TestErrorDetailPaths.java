@@ -284,8 +284,11 @@ public class TestErrorDetailPaths extends TestSync {
 		assertEquals("Unexpected result code", expectedResultCode, ae.getResultCode());
 		assertEquals("Unexpected subcode", expectedSubcode, ae.getSubCode());
 
-		String msg = ae.getBaseMessage();
-		assertNotNull("Expected server error message", msg);
+		assertNotNull("Expected server error message", ae.getBaseMessage());
+
+		// The subcode is rendered by getMessage(), alongside the result code; the
+		// parsed server message is kept verbatim (see AerospikeException.getMessage()).
+		String msg = ae.getMessage();
 		assertTrue("Expected 'subcode=" + expectedSubcode + "' in: " + msg,
 			msg.contains("subcode=" + expectedSubcode));
 	}
@@ -300,6 +303,7 @@ public class TestErrorDetailPaths extends TestSync {
 		for (String expected : expectedSubstrings) {
 			assertTrue("Expected '" + expected + "' in: " + msg, msg.contains(expected));
 		}
-		assertFalse("Expected NO subcode suffix in: " + msg, msg.contains("subcode="));
+		assertFalse("Expected NO subcode suffix in: " + ae.getMessage(),
+			ae.getMessage().contains("subcode="));
 	}
 }

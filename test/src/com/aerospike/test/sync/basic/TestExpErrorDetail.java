@@ -336,9 +336,8 @@ public class TestExpErrorDetail extends TestSync {
 		assertEquals(SubCode.OPNOT_CDT_INDEX_OUT_OF_BOUNDS, ae.getSubCode());
 		assertNull("Tier 1 must surface no trace", ae.getExpressionTrace());
 
-		String msg = ae.getBaseMessage();
-		assertNotNull(msg);
-		assertTrue("Expected bare subcode form in: " + msg, msg.contains("subcode=1"));
+		String msg = ae.getMessage();
+		assertTrue("Expected rendered subcode in: " + msg, msg.contains("subcode=1"));
 		assertFalse("Tier 1 must surface no message text in: " + msg, msg.contains("out of bounds"));
 	}
 
