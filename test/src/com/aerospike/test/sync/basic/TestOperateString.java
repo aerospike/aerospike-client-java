@@ -186,24 +186,23 @@ public class TestOperateString extends TestSync {
 	}
 
 	@Test
-	public void findAndContainsRequireMatchingNormalizationForm() {
+	public void findAndContainsMatchAcrossNormalizationForms() {
 		// "café" can be stored as NFC (U+00E9, 1 codepoint, 2 UTF-8 bytes) or NFD
 		// (U+0065 U+0301, 2 codepoints, 3 UTF-8 bytes). They render identically but
-		// are distinct byte sequences. The server's find / contains uses ICU binary
-		// string search — NFC and NFD are NOT considered equal. Callers who need
-		// normalization-insensitive search must normalizeNFC the bin (and the needle)
-		// first. This test anchors the contract so a future change to ICU comparison
-		// mode does not silently flip the behavior.
+		// are distinct byte sequences, and the server treats them as equal: find /
+		// contains take the binary memmem path only when both operands are ASCII or
+		// both are NFC, and otherwise route through an ICU UStringSearch whose
+		// collator has full normalization enabled (particle_string.c get_canon_search).
 		final String NFC = "caf\u00E9";       // "café" composed
 		final String NFD = "cafe\u0301";      // "café" decomposed
 
 		put(NFC);
-		// NFC haystack vs NFC needle — match.
+		// Both NFC — binary fast path.
 		assertEquals(0L, operate(StringOperation.find(BIN, NFC)).getLong(BIN));
 		assertTrue(operate(StringOperation.contains(BIN, NFC)).getBoolean(BIN));
-		// NFC haystack vs NFD needle — no match (byte sequences differ).
-		assertEquals(-1L, operate(StringOperation.find(BIN, NFD)).getLong(BIN));
-		assertFalse(operate(StringOperation.contains(BIN, NFD)).getBoolean(BIN));
+		// Forms differ, so the canonical path runs and still matches.
+		assertEquals(0L, operate(StringOperation.find(BIN, NFD)).getLong(BIN));
+		assertTrue(operate(StringOperation.contains(BIN, NFD)).getBoolean(BIN));
 	}
 
 	@Test
@@ -804,11 +803,12 @@ public class TestOperateString extends TestSync {
 	//=================================================================
 	// CTX navigation — string nested in list/map bins
 	//
-	// Exercises the §2.3.1 CTX-wrapper wire envelope: the op-data is
-	// wrapped in a 3-element context-eval array (sub-op 0xFF) when CTX
-	// is non-empty. The server dispatches these through
-	// as_bin_string_modify_ctx_tr / its read-side twin, which is a
-	// separate code path from the top-level-bin variant exercised above.
+	// Exercises the §2.3.1 CTX-wrapper wire envelope: when CTX is non-empty
+	// the op-data becomes [0xFF, ctx_list, [sub_op, args...]] — three outer
+	// elements, with the sub-op and its args in their own nested array so
+	// the inner arity is self-describing (SERVER-1483). The server dispatches
+	// these through as_bin_string_modify_ctx_tr / its read-side twin, which
+	// is a separate code path from the top-level-bin variant exercised above.
 	//=================================================================
 
 	private static void putList(List<Value> values) {
@@ -926,6 +926,44 @@ public class TestOperateString extends TestSync {
 		Map<?, ?> after = client.get(null, KEY).getMap(BIN);
 		assertEquals("hello world", after.get("a"));
 		assertEquals("foo", after.get("b"));
+	}
+
+	@Test
+	public void modifyOpWithFlagsOnStringNestedInList() {
+		// append takes 1-2 args, so its trailing flags slot is optional. Under CTX
+		// the flags sit in the nested inner array, whose own header declares the
+		// arity — in the flat envelope they were indistinguishable from a 2nd arg.
+		List<Value> list = new ArrayList<Value>();
+		list.add(Value.get("alpha"));
+		list.add(Value.get("beta"));
+		list.add(Value.get("gamma"));
+		putList(list);
+
+		StringPolicy noFail = new StringPolicy(StringWriteFlags.NO_FAIL);
+		operate(StringOperation.append(noFail, BIN, "!", CTX.listIndex(1)));
+
+		List<?> after = client.get(null, KEY).getList(BIN);
+		assertEquals(Arrays.asList("alpha", "beta!", "gamma"), after);
+	}
+
+	@Test
+	public void noFailFlagDecidesOutcomeOnUnreachableCtxPath() {
+		// Same op and same arity, differing only in the trailing flags value:
+		// NO_FAIL swallows the unreachable path, DEFAULT surfaces it. That the
+		// outcome tracks the flag is what proves the trailing element is read as
+		// flags rather than as an extra argument.
+		List<Value> list = new ArrayList<Value>();
+		list.add(Value.get("alpha"));
+		list.add(Value.get("beta"));
+		putList(list);
+
+		StringPolicy noFail = new StringPolicy(StringWriteFlags.NO_FAIL);
+		operate(StringOperation.append(noFail, BIN, "!", CTX.listIndex(99)));
+		assertEquals(Arrays.asList("alpha", "beta"), client.get(null, KEY).getList(BIN));
+
+		AerospikeException ae = assertThrows(AerospikeException.class,
+			() -> operate(StringOperation.append(POLICY, BIN, "!", CTX.listIndex(99))));
+		assertEquals(ResultCode.OP_NOT_APPLICABLE, ae.getResultCode());
 	}
 
 	//=================================================================
@@ -1172,5 +1210,19 @@ public class TestOperateString extends TestSync {
 		// "OP_NOT_APPLICABLE / error"; observed behavior on 8.1.3 is PARAMETER).
 		assertParamError(StringOperation.regexReplace(
 			POLICY, BIN, "[unclosed", "NUM", StringRegexFlags.DEFAULT));
+	}
+
+	@Test
+	public void regexReplaceNoFailSuppressesInvalidPattern() {
+		// regexReplace carries both a regex-flags and a policy-flags argument; the
+		// policy slot is the third and last. NO_FAIL there suppresses the compile
+		// failure the test above asserts, leaving the bin untouched.
+		put("hello");
+
+		StringPolicy noFail = new StringPolicy(StringWriteFlags.NO_FAIL);
+		operate(StringOperation.regexReplace(
+			noFail, BIN, "[unclosed", "NUM", StringRegexFlags.DEFAULT));
+
+		assertEquals("hello", stringValue());
 	}
 }
