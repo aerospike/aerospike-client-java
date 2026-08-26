@@ -89,7 +89,8 @@ public class TestErrorDetailParser extends TestBase {
 		);
 		RecordParser rp = parserFor(detail);
 		rp.parseFields(null, null, false);
-		assertEquals("cannot append (subcode=99)", rp.serverMessage);
+		assertEquals("cannot append", rp.serverMessage);
+		assertEquals(99, rp.serverSubcode);
 	}
 
 	@Test
@@ -97,7 +98,8 @@ public class TestErrorDetailParser extends TestBase {
 		byte[] detail = fixmap1(pair(intKey(1), fixint(42)));
 		RecordParser rp = parserFor(detail);
 		rp.parseFields(null, null, false);
-		assertEquals("error subcode=42", rp.serverMessage);
+		assertNull(rp.serverMessage);
+		assertEquals(42, rp.serverSubcode);
 	}
 
 	@Test
@@ -117,7 +119,8 @@ public class TestErrorDetailParser extends TestBase {
 		);
 		RecordParser rp = parserFor(detail);
 		rp.parseFields(null, null, false);
-		assertEquals("swap (subcode=7)", rp.serverMessage);
+		assertEquals("swap", rp.serverMessage);
+		assertEquals(7, rp.serverSubcode);
 	}
 
 	@Test
@@ -131,7 +134,8 @@ public class TestErrorDetailParser extends TestBase {
 		);
 		RecordParser rp = parserFor(detail);
 		rp.parseFields(null, null, false);
-		assertEquals(multibyte + " (subcode=1)", rp.serverMessage);
+		assertEquals(multibyte, rp.serverMessage);
+		assertEquals(1, rp.serverSubcode);
 	}
 
 	// ---------- Parser: msgpack types that the original hand-rolled decoder didn't handle (fix #2) ----------
@@ -154,7 +158,8 @@ public class TestErrorDetailParser extends TestBase {
 		}
 		RecordParser rp = parserFor(payload.toByteArray());
 		rp.parseFields(null, null, false);
-		assertEquals("boom (subcode=7)", rp.serverMessage);
+		assertEquals("boom", rp.serverMessage);
+		assertEquals(7, rp.serverSubcode);
 	}
 
 	@Test
@@ -168,7 +173,8 @@ public class TestErrorDetailParser extends TestBase {
 		writeBytes(payload, pair(intKey(2), fixstr("m32")));
 		RecordParser rp = parserFor(payload.toByteArray());
 		rp.parseFields(null, null, false);
-		assertEquals("m32 (subcode=9)", rp.serverMessage);
+		assertEquals("m32", rp.serverMessage);
+		assertEquals(9, rp.serverSubcode);
 	}
 
 	@Test
@@ -190,7 +196,8 @@ public class TestErrorDetailParser extends TestBase {
 
 		RecordParser rp = parserFor(payload.toByteArray());
 		rp.parseFields(null, null, false);
-		assertEquals(big + " (subcode=5)", rp.serverMessage);
+		assertEquals(big, rp.serverMessage);
+		assertEquals(5, rp.serverSubcode);
 	}
 
 	@Test
@@ -202,7 +209,8 @@ public class TestErrorDetailParser extends TestBase {
 		);
 		RecordParser rp = parserFor(detail);
 		rp.parseFields(null, null, false);
-		assertEquals("fx (subcode=127)", rp.serverMessage);
+		assertEquals("fx", rp.serverMessage);
+		assertEquals(127, rp.serverSubcode);
 	}
 
 	@Test
@@ -216,7 +224,8 @@ public class TestErrorDetailParser extends TestBase {
 		writeBytes(payload, pair(intKey(2), fixstr("u8")));
 		RecordParser rp = parserFor(payload.toByteArray());
 		rp.parseFields(null, null, false);
-		assertEquals("u8 (subcode=200)", rp.serverMessage);
+		assertEquals("u8", rp.serverMessage);
+		assertEquals(200, rp.serverSubcode);
 	}
 
 	@Test
@@ -232,7 +241,8 @@ public class TestErrorDetailParser extends TestBase {
 
 		RecordParser rp = parserFor(payload.toByteArray());
 		rp.parseFields(null, null, false);
-		assertEquals("hi (subcode=1100)", rp.serverMessage);
+		assertEquals("hi", rp.serverMessage);
+		assertEquals(1100, rp.serverSubcode);
 	}
 
 	@Test
@@ -250,7 +260,8 @@ public class TestErrorDetailParser extends TestBase {
 
 		RecordParser rp = parserFor(payload.toByteArray());
 		rp.parseFields(null, null, false);
-		assertEquals("x (subcode=70000)", rp.serverMessage);
+		assertEquals("x", rp.serverMessage);
+		assertEquals(70000, rp.serverSubcode);
 	}
 
 	@Test
@@ -265,7 +276,10 @@ public class TestErrorDetailParser extends TestBase {
 		writeBytes(payload, pair(intKey(2), fixstr("u64")));
 		RecordParser rp = parserFor(payload.toByteArray());
 		rp.parseFields(null, null, false);
-		assertEquals("u64 (subcode=" + value + ")", rp.serverMessage);
+		assertEquals("u64", rp.serverMessage);
+		// getSubCode() is an int; real subcodes are small dense per-status values, so
+		// a uint64 on the wire is a width test, not a range the accessor supports.
+		assertEquals((int)value, rp.serverSubcode);
 	}
 
 	@Test
@@ -283,7 +297,8 @@ public class TestErrorDetailParser extends TestBase {
 		writeBytes(payload, data);
 		RecordParser rp = parserFor(payload.toByteArray());
 		rp.parseFields(null, null, false);
-		assertEquals(msg + " (subcode=3)", rp.serverMessage);
+		assertEquals(msg, rp.serverMessage);
+		assertEquals(3, rp.serverSubcode);
 	}
 
 	@Test
@@ -300,7 +315,8 @@ public class TestErrorDetailParser extends TestBase {
 		writeBytes(payload, data);
 		RecordParser rp = parserFor(payload.toByteArray());
 		rp.parseFields(null, null, false);
-		assertEquals(msg + " (subcode=4)", rp.serverMessage);
+		assertEquals(msg, rp.serverMessage);
+		assertEquals(4, rp.serverSubcode);
 	}
 
 	// ---------- Parser: defensive/edge cases ----------
@@ -345,7 +361,8 @@ public class TestErrorDetailParser extends TestBase {
 
 		RecordParser rp = parserFor(payload.toByteArray());
 		rp.parseFields(null, null, false);
-		assertEquals("z (subcode=7)", rp.serverMessage);
+		assertEquals("z", rp.serverMessage);
+		assertEquals(7, rp.serverSubcode);
 	}
 
 	@Test
@@ -361,7 +378,8 @@ public class TestErrorDetailParser extends TestBase {
 		);
 		RecordParser rp = new RecordParser(buffer, 0, buffer.length);
 		rp.parseFields(null, null, false);
-		assertEquals("ok (subcode=1)", rp.serverMessage);
+		assertEquals("ok", rp.serverMessage);
+		assertEquals(1, rp.serverSubcode);
 	}
 
 	@Test
@@ -634,7 +652,8 @@ public class TestErrorDetailParser extends TestBase {
 		RecordParser rp = parserFor(detail);
 		rp.parseFields(null, null, false);
 
-		assertEquals("plain (subcode=4)", rp.serverMessage);
+		assertEquals("plain", rp.serverMessage);
+		assertEquals(4, rp.serverSubcode);
 		assertNull("no key 3 => no expression trace", rp.expTrace);
 	}
 

@@ -87,6 +87,8 @@ public class AerospikeException extends RuntimeException {
 
 		sb.append("Error ");
 		sb.append(resultCode);
+		sb.append(',');
+		sb.append(subCode);
 
 		if (iteration >= 0) {
 			sb.append(',');

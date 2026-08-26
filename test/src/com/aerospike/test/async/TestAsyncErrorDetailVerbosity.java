@@ -363,16 +363,21 @@ public class TestAsyncErrorDetailVerbosity extends TestAsync {
 		org.junit.Assert.assertEquals("Unexpected result code", expectedResultCode, ae.getResultCode());
 		org.junit.Assert.assertEquals("Unexpected subcode", expectedSubcode, ae.getSubCode());
 
-		String msg = ae.getBaseMessage();
-		org.junit.Assert.assertNotNull("Expected server error message, got null. ae=" + ae, msg);
-		org.junit.Assert.assertTrue("Expected 'subcode=" + expectedSubcode + "' in: " + msg,
-			msg.contains("subcode=" + expectedSubcode));
+		org.junit.Assert.assertNotNull("Expected server error message, got null. ae=" + ae,
+			ae.getBaseMessage());
+
+		// getMessage() renders "Error <resultCode>,<subCode>"; the parsed server
+		// message is appended verbatim (see AerospikeException.getMessage()).
+		String prefix = "Error " + expectedResultCode + "," + expectedSubcode;
+		String msg = ae.getMessage();
+		org.junit.Assert.assertTrue("Expected message to start with \"" + prefix + "\": " + msg,
+			msg.startsWith(prefix));
 	}
 
 	/**
 	 * Assert that the server surfaced a contextual message but NO sub-code
 	 * (AS_SUB_NONE): {@link AerospikeException#getSubCode()} is {@link SubCode#NONE}
-	 * and the "(subcode=...)" suffix must never appear.
+	 * and getMessage() renders the sub-code slot as 0.
 	 */
 	private static void assertSubcodeAbsent(AerospikeException ae, int expectedResultCode, String expectedSubstring) {
 		org.junit.Assert.assertNotNull("Expected AerospikeException to be captured", ae);
@@ -382,7 +387,10 @@ public class TestAsyncErrorDetailVerbosity extends TestAsync {
 		String msg = ae.getBaseMessage();
 		org.junit.Assert.assertNotNull("Expected server error message, got null. ae=" + ae, msg);
 		org.junit.Assert.assertTrue("Expected '" + expectedSubstring + "' in: " + msg, msg.contains(expectedSubstring));
-		org.junit.Assert.assertFalse("Expected NO subcode suffix in: " + msg, msg.contains("subcode="));
+		String prefix = "Error " + expectedResultCode + "," + SubCode.NONE;
+		String rendered = ae.getMessage();
+		org.junit.Assert.assertTrue("Expected no-subcode prefix \"" + prefix + "\" in: " + rendered,
+			rendered.startsWith(prefix));
 	}
 
 }
