@@ -79,6 +79,7 @@ public class ListOperation {
 	private static final int GET_BY_VALUE_INTERVAL = 25;
 	private static final int GET_BY_RANK_RANGE = 26;
 	private static final int GET_BY_VALUE_REL_RANK_RANGE = 27;
+	private static final int STRING_LIST_JOIN = 28;
 	private static final int REMOVE_BY_INDEX = 32;
 	private static final int REMOVE_BY_RANK = 34;
 	private static final int REMOVE_BY_VALUE = 35;
@@ -539,6 +540,37 @@ public class ListOperation {
 	 */
 	public static Operation size(String binName, CTX... ctx) {
 		byte[] bytes = Pack.pack(ListOperation.SIZE, ctx);
+		return new Operation(Operation.Type.CDT_READ, binName, Value.get(bytes));
+	}
+
+	/**
+	 * Create list join operation.
+	 * Server concatenates the string items of the list bin and returns the result as a
+	 * single string, with no separator between items. Every item must be a string;
+	 * a non-string item returns {@code AEROSPIKE_ERR_PARAMETER}. An empty list returns
+	 * an empty string.
+	 * <p>
+	 * This is the inverse of {@link com.aerospike.client.operation.StringOperation#split}.
+	 * Requires server version 8.1.3 or later.
+	 */
+	public static Operation join(String binName, CTX... ctx) {
+		byte[] bytes = Pack.pack(ListOperation.STRING_LIST_JOIN, ctx);
+		return new Operation(Operation.Type.CDT_READ, binName, Value.get(bytes));
+	}
+
+	/**
+	 * Create list join operation with a separator.
+	 * Server concatenates the string items of the list bin, placing {@code separator}
+	 * between consecutive items, and returns the result as a single string. Every item
+	 * must be a string; a non-string item returns {@code AEROSPIKE_ERR_PARAMETER}. An
+	 * empty list returns an empty string, and a single-item list returns that item
+	 * with no separator applied.
+	 * <p>
+	 * This is the inverse of {@link com.aerospike.client.operation.StringOperation#split}.
+	 * Requires server version 8.1.3 or later.
+	 */
+	public static Operation join(String binName, String separator, CTX... ctx) {
+		byte[] bytes = Pack.pack(ListOperation.STRING_LIST_JOIN, Value.get(separator), ctx);
 		return new Operation(Operation.Type.CDT_READ, binName, Value.get(bytes));
 	}
 
