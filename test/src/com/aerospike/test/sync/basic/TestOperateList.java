@@ -28,10 +28,12 @@ import java.util.Map;
 
 import org.junit.Test;
 
+import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Bin;
 import com.aerospike.client.Key;
 import com.aerospike.client.Operation;
 import com.aerospike.client.Record;
+import com.aerospike.client.ResultCode;
 import com.aerospike.client.Value;
 import com.aerospike.client.cdt.CTX;
 import com.aerospike.client.cdt.ListOperation;
@@ -1251,5 +1253,82 @@ public class TestOperateList extends TestSync {
 
 		val= (Long)list.get(2);
 		assertEquals(3, val);
+	}
+	@Test
+	public void operateListJoin() {
+		org.junit.Assume.assumeTrue("List join requires server version 8.1.3 or later",
+			args.serverVersion.isGreaterOrEqual(8, 1, 3, 0));
+
+		Key key = new Key(args.namespace, args.set, "oplkeyjoin");
+		client.delete(null, key);
+
+		List<Value> items = new ArrayList<Value>();
+		items.add(Value.get("alpha"));
+		items.add(Value.get("beta"));
+		items.add(Value.get("gamma"));
+		client.put(null, key, new Bin(binName, items));
+
+		// Two reads on one bin come back as an ordered list of results.
+		Record record = client.operate(null, key,
+			ListOperation.join(binName),
+			ListOperation.join(binName, ", "));
+
+		List<?> results = record.getList(binName);
+		assertEquals("alphabetagamma", results.get(0));
+		assertEquals("alpha, beta, gamma", results.get(1));
+	}
+
+	@Test
+	public void operateListJoinEmptyList() {
+		org.junit.Assume.assumeTrue("List join requires server version 8.1.3 or later",
+			args.serverVersion.isGreaterOrEqual(8, 1, 3, 0));
+
+		Key key = new Key(args.namespace, args.set, "oplkeyjoinempty");
+		client.delete(null, key);
+		client.put(null, key, new Bin(binName, new ArrayList<Value>()));
+
+		Record record = client.operate(null, key, ListOperation.join(binName, ","));
+		assertEquals("", record.getString(binName));
+	}
+
+	@Test
+	public void operateListJoinNonStringItemFails() {
+		org.junit.Assume.assumeTrue("List join requires server version 8.1.3 or later",
+			args.serverVersion.isGreaterOrEqual(8, 1, 3, 0));
+
+		Key key = new Key(args.namespace, args.set, "oplkeyjoinbad");
+		client.delete(null, key);
+
+		List<Value> items = new ArrayList<Value>();
+		items.add(Value.get("alpha"));
+		items.add(Value.get(7));
+		client.put(null, key, new Bin(binName, items));
+
+		// Every item must be a string; the server rejects the whole op otherwise.
+		AerospikeException ae = org.junit.Assert.assertThrows(AerospikeException.class,
+			() -> client.operate(null, key, ListOperation.join(binName)));
+		assertEquals(ResultCode.PARAMETER_ERROR, ae.getResultCode());
+	}
+
+	@Test
+	public void operateListJoinNested() {
+		org.junit.Assume.assumeTrue("List join requires server version 8.1.3 or later",
+			args.serverVersion.isGreaterOrEqual(8, 1, 3, 0));
+
+		Key key = new Key(args.namespace, args.set, "oplkeyjoinctx");
+		client.delete(null, key);
+
+		List<Value> inner = new ArrayList<Value>();
+		inner.add(Value.get("x"));
+		inner.add(Value.get("y"));
+
+		List<Value> outer = new ArrayList<Value>();
+		outer.add(Value.get("skip"));
+		outer.add(Value.get(inner));
+		client.put(null, key, new Bin(binName, outer));
+
+		Record record = client.operate(null, key,
+			ListOperation.join(binName, "-", CTX.listIndex(1)));
+		assertEquals("x-y", record.getString(binName));
 	}
 }
