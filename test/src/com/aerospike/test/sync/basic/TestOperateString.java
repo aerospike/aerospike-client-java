@@ -186,24 +186,23 @@ public class TestOperateString extends TestSync {
 	}
 
 	@Test
-	public void findAndContainsRequireMatchingNormalizationForm() {
+	public void findAndContainsMatchAcrossNormalizationForms() {
 		// "café" can be stored as NFC (U+00E9, 1 codepoint, 2 UTF-8 bytes) or NFD
 		// (U+0065 U+0301, 2 codepoints, 3 UTF-8 bytes). They render identically but
-		// are distinct byte sequences. The server's find / contains uses ICU binary
-		// string search — NFC and NFD are NOT considered equal. Callers who need
-		// normalization-insensitive search must normalizeNFC the bin (and the needle)
-		// first. This test anchors the contract so a future change to ICU comparison
-		// mode does not silently flip the behavior.
+		// are distinct byte sequences, and the server treats them as equal: find /
+		// contains take the binary memmem path only when both operands are ASCII or
+		// both are NFC, and otherwise route through an ICU UStringSearch whose
+		// collator has full normalization enabled (particle_string.c get_canon_search).
 		final String NFC = "caf\u00E9";       // "café" composed
 		final String NFD = "cafe\u0301";      // "café" decomposed
 
 		put(NFC);
-		// NFC haystack vs NFC needle — match.
+		// Both NFC — binary fast path.
 		assertEquals(0L, operate(StringOperation.find(BIN, NFC)).getLong(BIN));
 		assertTrue(operate(StringOperation.contains(BIN, NFC)).getBoolean(BIN));
-		// NFC haystack vs NFD needle — no match (byte sequences differ).
-		assertEquals(-1L, operate(StringOperation.find(BIN, NFD)).getLong(BIN));
-		assertFalse(operate(StringOperation.contains(BIN, NFD)).getBoolean(BIN));
+		// Forms differ, so the canonical path runs and still matches.
+		assertEquals(0L, operate(StringOperation.find(BIN, NFD)).getLong(BIN));
+		assertTrue(operate(StringOperation.contains(BIN, NFD)).getBoolean(BIN));
 	}
 
 	@Test
@@ -1211,5 +1210,19 @@ public class TestOperateString extends TestSync {
 		// "OP_NOT_APPLICABLE / error"; observed behavior on 8.1.3 is PARAMETER).
 		assertParamError(StringOperation.regexReplace(
 			POLICY, BIN, "[unclosed", "NUM", StringRegexFlags.DEFAULT));
+	}
+
+	@Test
+	public void regexReplaceNoFailSuppressesInvalidPattern() {
+		// regexReplace carries both a regex-flags and a policy-flags argument; the
+		// policy slot is the third and last. NO_FAIL there suppresses the compile
+		// failure the test above asserts, leaving the bin untouched.
+		put("hello");
+
+		StringPolicy noFail = new StringPolicy(StringWriteFlags.NO_FAIL);
+		operate(StringOperation.regexReplace(
+			noFail, BIN, "[unclosed", "NUM", StringRegexFlags.DEFAULT));
+
+		assertEquals("hello", stringValue());
 	}
 }

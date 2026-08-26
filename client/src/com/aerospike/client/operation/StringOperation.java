@@ -973,8 +973,8 @@ public final class StringOperation {
 	 *         "[0-9]+", "NUM", StringRegexFlags.GLOBAL));
 	 * }</pre>
 	 *
-	 * @param policy		(unused; the regex_replace server op does not accept policy
-	 *						flags — see implementation note)
+	 * @param policy		write policy controlling NO_FAIL semantics; on this op NO_FAIL also
+	 *						suppresses a regex-compile failure
 	 * @param binName		name of the string bin
 	 * @param pattern		ICU-syntax regex pattern (must be valid UTF-8)
 	 * @param replacement	replacement text (must be valid UTF-8)
@@ -991,8 +991,9 @@ public final class StringOperation {
 		CTX... ctx
 	) {
 		List<Value> list = pair(pattern, replacement);
-		// Server's regex_replace op table accepts only [list, regexFlags]; no slot for policy flags.
-		byte[] bytes = Pack.pack(REGEX_REPLACE, list, regexFlags, ctx);
+		// All three args go on the wire: regex flags occupy the slot before policy flags and the
+		// two bitmasks collide numerically, so omitting either has the other silently misread.
+		byte[] bytes = Pack.pack(REGEX_REPLACE, list, regexFlags, policy.flags, ctx);
 		return new Operation(Operation.Type.STRING_MODIFY, binName, new Value.BytesValue(bytes, ParticleType.STRING));
 	}
 
