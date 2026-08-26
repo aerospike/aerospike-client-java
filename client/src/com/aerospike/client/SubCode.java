@@ -82,8 +82,8 @@ public final class SubCode {
 	/** String op code or modifier/read class mismatch on the wire path. */
 	public static final int PARAM_STRING_OP_INVALID = 7;
 
-	/** String context-eval path malformed. */
-	public static final int PARAM_STRING_CTX_NOT_APPLICABLE = 8;
+	/** String context-eval envelope malformed. */
+	public static final int PARAM_STRING_CTX_MALFORMED = 8;
 
 	/** String modify/read index or code-point range out of bounds. */
 	public static final int PARAM_STRING_INDEX_OUT_OF_BOUNDS = 9;
@@ -121,8 +121,8 @@ public final class SubCode {
 	/** HLL op needs an existing bin and can't auto-create one. */
 	public static final int BIN_NOT_FOUND_HLL_CANNOT_CREATE_WITH_OP = 1;
 
-	/** String modify on a missing bin (non-NO_FAIL path). */
-	public static final int BIN_NOT_FOUND_STRING_VALUE_NOT_FOUND = 2;
+	// Server subcode 2 in this family was dropped as unreachable: a string modify on a
+	// missing bin returns AS_OK with the bin uncreated, never BIN_NOT_FOUND.
 
 	//-------------------------------------------------------
 	// Pairs with ResultCode.BIN_NAME_TOO_LONG (21)  [AS_ERR_BIN_NAME]
@@ -196,7 +196,12 @@ public final class SubCode {
 	/** Source blob/string is not valid UTF-8 for an OP_NOT_APPLICABLE path. */
 	public static final int OPNOT_STRING_UTF8_INVALID = 11;
 
-	// 12 is reserved server-side for a regex-limit subcode still in review.
+	/**
+	 * Regex match or replace exceeded the engine's resource budget — the pattern is
+	 * too complex for this input, not necessarily malformed. Simplify the pattern
+	 * (avoid nested unbounded quantifiers) or shorten the subject data.
+	 */
+	public static final int OPNOT_STRING_REGEX_LIMIT_EXCEEDED = 12;
 
 	/**
 	 * String is not valid base64 — a length that is not a multiple of 4, a character
