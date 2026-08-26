@@ -337,7 +337,8 @@ public class TestExpErrorDetail extends TestSync {
 		assertNull("Tier 1 must surface no trace", ae.getExpressionTrace());
 
 		String msg = ae.getMessage();
-		assertTrue("Expected rendered subcode in: " + msg, msg.contains("subcode=1"));
+		assertTrue("Expected rendered subcode in: " + msg,
+			msg.startsWith("Error " + ResultCode.FILTERED_OUT + ",1"));
 		assertFalse("Tier 1 must surface no message text in: " + msg, msg.contains("out of bounds"));
 	}
 

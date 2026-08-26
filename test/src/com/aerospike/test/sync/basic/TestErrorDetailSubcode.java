@@ -244,7 +244,8 @@ public class TestErrorDetailSubcode extends TestSync {
 	 * Assert the server-supplied {@code (resultCode, sub-code)} pair. The numeric
 	 * sub-code must be exposed first-class via {@link AerospikeException#getSubCode()}
 	 * (not merely embedded in the message string). getMessage() additionally renders
-	 * the subcode alongside the result code, but that is presentation, not the contract.
+	 * it in the "Error <resultCode>,<subCode>" header, but that is presentation,
+	 * not the contract.
 	 */
 	private void assertSubcode(AerospikeException ae, int expectedResultCode, int expectedSubcode) {
 		assertEquals("Unexpected result code", expectedResultCode, ae.getResultCode());
@@ -252,10 +253,11 @@ public class TestErrorDetailSubcode extends TestSync {
 
 		assertNotNull("Expected server error message", ae.getBaseMessage());
 
-		// The subcode is rendered by getMessage(), alongside the result code; the
-		// parsed server message is kept verbatim (see AerospikeException.getMessage()).
+		// getMessage() renders "Error <resultCode>,<subCode>"; the parsed server
+		// message is appended verbatim (see AerospikeException.getMessage()).
+		String prefix = "Error " + expectedResultCode + "," + expectedSubcode;
 		String msg = ae.getMessage();
-		assertTrue("Expected 'subcode=" + expectedSubcode + "' in: " + msg,
-			msg.contains("subcode=" + expectedSubcode));
+		assertTrue("Expected message to start with \"" + prefix + "\": " + msg,
+			msg.startsWith(prefix));
 	}
 }

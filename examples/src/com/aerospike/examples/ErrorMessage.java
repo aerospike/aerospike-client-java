@@ -76,7 +76,7 @@ public class ErrorMessage extends Example {
 			throw new RuntimeException("Expected error on append to integer bin");
 		}
 		catch (AerospikeException ae) {
-			assertErrorDetails(ae, ResultCode.BIN_TYPE_ERROR, "cannot append", "subcode=1100");
+			assertErrorDetails(ae, ResultCode.BIN_TYPE_ERROR, 1100, "cannot append");
 			console.info("Test 1 passed: append to integer bin - %d: %s", ae.getResultCode(), ae.getBaseMessage());
 		}
 	}
@@ -92,7 +92,7 @@ public class ErrorMessage extends Example {
 			throw new RuntimeException("Expected error on generation-mismatch delete");
 		}
 		catch (AerospikeException ae) {
-			assertErrorDetails(ae, ResultCode.GENERATION_ERROR, "delete generation mismatch", "subcode=1701");
+			assertErrorDetails(ae, ResultCode.GENERATION_ERROR, 1701, "delete generation mismatch");
 			console.info("Test 2 passed: generation mismatch delete - %d: %s", ae.getResultCode(), ae.getBaseMessage());
 		}
 	}
@@ -111,7 +111,7 @@ public class ErrorMessage extends Example {
 			throw new RuntimeException("Expected error on incr of string bin");
 		}
 		catch (AerospikeException ae) {
-			assertErrorDetails(ae, ResultCode.BIN_TYPE_ERROR, "cannot increment", "subcode=1100");
+			assertErrorDetails(ae, ResultCode.BIN_TYPE_ERROR, 1100, "cannot increment");
 			console.info("Test 3 passed: increment string bin - %d: %s", ae.getResultCode(), ae.getBaseMessage());
 		}
 	}
@@ -132,7 +132,7 @@ public class ErrorMessage extends Example {
 			throw new RuntimeException("Expected error on HLL add to integer bin");
 		}
 		catch (AerospikeException ae) {
-			assertErrorDetails(ae, ResultCode.BIN_TYPE_ERROR, "bin is not hll type", "subcode=1138");
+			assertErrorDetails(ae, ResultCode.BIN_TYPE_ERROR, 1138, "bin is not hll type");
 			console.info("Test 4 passed: HLL add on integer bin - %d: %s", ae.getResultCode(), ae.getBaseMessage());
 		}
 	}
@@ -151,19 +151,36 @@ public class ErrorMessage extends Example {
 			throw new RuntimeException("Expected error on HLL refresh_count of nonexistent bin");
 		}
 		catch (AerospikeException ae) {
-			assertErrorDetails(ae, ResultCode.BIN_NOT_FOUND, "subcode=1134");
+			assertErrorDetails(ae, ResultCode.BIN_NOT_FOUND, 1134);
 			console.info("Test 5 passed: HLL refresh_count missing bin - %d: %s", ae.getResultCode(), ae.getBaseMessage());
 		}
 	}
 
-	private void assertErrorDetails(AerospikeException ae, int expectedResultCode, String... expectedSubstrings) {
+	private void assertErrorDetails(
+		AerospikeException ae,
+		int expectedResultCode,
+		int expectedSubCode,
+		String... expectedSubstrings
+	) {
 		if (ae.getResultCode() != expectedResultCode) {
 			throw new RuntimeException(
 				"Expected result code " + expectedResultCode + " but got " + ae.getResultCode() + ": " + ae.getBaseMessage());
 		}
 
-		// getMessage() renders the subcode; getBaseMessage() is the server text verbatim.
+		if (ae.getSubCode() != expectedSubCode) {
+			throw new RuntimeException(
+				"Expected subcode " + expectedSubCode + " but got " + ae.getSubCode() + ": " + ae.getBaseMessage());
+		}
+
+		// getMessage() renders "Error <resultCode>,<subCode>" ahead of the server
+		// text; getBaseMessage() is that text verbatim.
 		String msg = ae.getMessage();
+		String prefix = "Error " + expectedResultCode + "," + expectedSubCode;
+
+		if (!msg.startsWith(prefix)) {
+			throw new RuntimeException(
+				"Expected error message to start with '" + prefix + "': " + msg);
+		}
 
 		for (String expected : expectedSubstrings) {
 			if (!msg.contains(expected)) {

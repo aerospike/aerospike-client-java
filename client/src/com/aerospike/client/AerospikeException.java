@@ -87,6 +87,8 @@ public class AerospikeException extends RuntimeException {
 
 		sb.append("Error ");
 		sb.append(resultCode);
+		sb.append(',');
+		sb.append(subCode);
 
 		if (iteration >= 0) {
 			sb.append(',');
@@ -115,12 +117,6 @@ public class AerospikeException extends RuntimeException {
 
 		sb.append(": ");
 		sb.append(getBaseMessage());
-
-		if (subCode != SubCode.NONE) {
-			sb.append(" (subcode=");
-			sb.append(subCode);
-			sb.append(')');
-		}
 
 		if (subExceptions != null) {
 			sb.append(System.lineSeparator());
