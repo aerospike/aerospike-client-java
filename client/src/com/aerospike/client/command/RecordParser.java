@@ -368,16 +368,9 @@ public final class RecordParser {
 			serverSubcode = (int)subCode;
 		}
 
-		if (message != null && subCode >= 0) {
-			return message + " (subcode=" + subCode + ")";
-		}
-		else if (subCode >= 0) {
-			return "error subcode=" + subCode;
-		}
-		else if (message != null) {
-			return message;
-		}
-		return null;
+		// The message is returned verbatim. The subcode travels on its own field and
+		// is rendered by AerospikeException.getMessage(), alongside the result code.
+		return message;
 	}
 
 	/**

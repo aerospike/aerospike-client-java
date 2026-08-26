@@ -20,31 +20,44 @@ import java.io.Serializable;
 import java.util.Arrays;
 
 /**
- * Structured expression build/eval trace surfaced at error-detail verbosity 3.
+ * Structured expression trace surfaced at error-detail verbosity 3 — covering build
+ * failures, eval faults, and the filter-decision explainer.
  * <p>
  * When extended error detail is requested at verbosity 3 (see
- * {@link com.aerospike.client.policy.Policy#errorDetailVerbosity}) and the server
- * fails to build an expression — a metadata/predicate filter ({@code filter_exp})
- * or an {@code exp_read}/{@code exp_write} operation — it attaches this trace as a
- * nested map under the field-45 error-detail key {@link #AS_ERROR_DETAIL_KEY_EXP_TRACE}.
- * It is surfaced on {@link AerospikeException#getExpressionTrace()}.
+ * {@link com.aerospike.client.policy.Policy#errorDetailVerbosity}) and an expression
+ * fails, the server attaches this trace as a nested map under the field-45
+ * error-detail key {@link #AS_ERROR_DETAIL_KEY_EXP_TRACE}. It is surfaced on
+ * {@link AerospikeException#getExpressionTrace()}.
  * <p>
- * Expression build failures carry {@link ResultCode#PARAMETER_ERROR} and
- * {@link SubCode#NONE} (no subcode); the contextual message is on the exception.
- * The trace is purely additive diagnostic detail — it never changes the result
- * code, subcode, or message-string format.
+ * Three flavours are emitted: a <b>build</b> trace ({@link #PHASE_BUILD}) when a
+ * metadata/predicate filter ({@code filter_exp}) or an {@code exp_read}/{@code exp_write}
+ * operation fails to compile; an <b>eval-fault</b> trace ({@link #PHASE_EVAL}) when a
+ * compiled expression faults during evaluation; and the <b>filter-decision explainer</b>,
+ * which additionally populates {@link #getOutcome()} and {@link #getOperands()} to say
+ * why a record was rejected and which values decided it.
+ * <p>
+ * <b>Do not key trace handling off the result code.</b> Build failures carry
+ * {@link ResultCode#PARAMETER_ERROR} and {@link SubCode#NONE} (no subcode), but
+ * eval-phase traces ride whatever result code the evaluation produced — typically
+ * {@link ResultCode#FILTERED_OUT} or {@link ResultCode#OP_NOT_APPLICABLE}. Code that
+ * inspects the trace only on {@code PARAMETER_ERROR} silently drops every eval-phase
+ * trace. The contextual message is on the exception; the trace is purely additive
+ * diagnostic detail — it never changes the result code, subcode, or message format.
  * <p>
  * <b>Every field is optional.</b> The server caps the whole error-detail payload
- * and drops {@code snippet} first, then {@code path}, when the budget is tight, so
- * those may be absent even within a present trace. Absent integer fields read as
+ * and, when the budget is tight, drops whole tiers in a fixed order — {@code operands}
+ * first, then {@code snippet}, then {@code path} — so those may be absent even within
+ * a present trace. If the structural core will not fit, no trace is sent at all, so a
+ * verbosity-3 expression failure does not guarantee one. Absent integer fields read as
  * {@code -1} (except {@link #getLang()}, which defaults to {@link #LANG_MSGPACK});
  * absent object fields read as {@code null}. Never require any field.
  * <p>
  * <b>Two coordinate spaces — do not conflate them.</b> {@link #getByteOffset()} is a
  * byte offset into the <i>msgpack expression payload</i> the client sent. The
  * {@link #getAelOffset()}/{@link #getAelSpan()} pair are offsets into <i>AEL source
- * text</i> — a different coordinate space, reserved for a future server branch and
- * absent on today's msgpack build traces.
+ * text</i> — a different coordinate space. They are populated for AEL-source
+ * expressions and absent on msgpack traces, where {@link #getLang()} defaults to
+ * {@link #LANG_MSGPACK}.
  * <p>
  * The nested-map key/value constants below mirror the server's {@code proto.h} names
  * so they stay greppable across repositories. They are append-only.

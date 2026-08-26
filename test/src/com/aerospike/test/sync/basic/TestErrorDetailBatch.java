@@ -98,8 +98,6 @@ public class TestErrorDetailBatch extends TestSync {
 		assertEquals("Unexpected result code", ResultCode.OP_NOT_APPLICABLE, errRow.resultCode);
 		assertEquals("Unexpected subcode", SubCode.OPNOT_CDT_INDEX_OUT_OF_BOUNDS, errRow.subCode);
 		assertNotNull("Expected server error message", errRow.serverMessage);
-		assertTrue("Expected 'subcode=" + SubCode.OPNOT_CDT_INDEX_OUT_OF_BOUNDS + "' in: " + errRow.serverMessage,
-			errRow.serverMessage.contains("subcode=" + SubCode.OPNOT_CDT_INDEX_OUT_OF_BOUNDS));
 
 		// Success row carries no error detail.
 		assertEquals(ResultCode.OK, okRow.resultCode);
@@ -159,8 +157,6 @@ public class TestErrorDetailBatch extends TestSync {
 		assertEquals("Single-key read row lost its subcode",
 			SubCode.OPNOT_CDT_INDEX_OUT_OF_BOUNDS, errRow.subCode);
 		assertNotNull("Single-key read row lost its server message", errRow.serverMessage);
-		assertTrue("Expected 'subcode=" + SubCode.OPNOT_CDT_INDEX_OUT_OF_BOUNDS + "' in: " + errRow.serverMessage,
-			errRow.serverMessage.contains("subcode=" + SubCode.OPNOT_CDT_INDEX_OUT_OF_BOUNDS));
 	}
 
 	/**
