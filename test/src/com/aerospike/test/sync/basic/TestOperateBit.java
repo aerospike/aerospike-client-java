@@ -20,6 +20,7 @@ import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 
 import java.util.Arrays;
+import java.util.Base64;
 import java.util.List;
 
 import org.junit.Test;
@@ -34,6 +35,7 @@ import com.aerospike.client.operation.BitOverflowAction;
 import com.aerospike.client.operation.BitPolicy;
 import com.aerospike.client.operation.BitResizeFlags;
 import com.aerospike.client.operation.BitWriteFlags;
+import com.aerospike.client.operation.StringOperation;
 import com.aerospike.test.sync.TestSync;
 
 public class TestOperateBit extends TestSync {
@@ -967,5 +969,48 @@ public class TestOperateBit extends TestSync {
 		assertArrayEquals(new byte[] {0x00}, get2);
 		assertArrayEquals(new byte[] {0x00}, get3);
 		assertArrayEquals(new byte[] {0x00}, get4);
+	}
+	@Test
+	public void operateBitB64Encode() {
+		org.junit.Assume.assumeTrue("bit b64Encode requires server version 8.1.3 or later",
+			args.serverVersion.isGreaterOrEqual(8, 1, 3, 0));
+
+		byte[] initial = new byte[] {(byte)0x01, (byte)0x42, (byte)0x03};
+		client.delete(null, key);
+		client.put(null, key, new Bin(binName, initial));
+
+		// The span is in bytes, not bits, unlike every other bit read op. With
+		// invertSize the size counts back from the end, so 0 means "to the end".
+		Record record = client.operate(null, key,
+			BitOperation.b64Encode(binName),
+			BitOperation.b64Encode(binName, 0, 2),
+			BitOperation.b64Encode(binName, 1, 0, true),
+			BitOperation.b64Encode(binName, -1, 1));
+
+		List<?> results = record.getList(binName);
+		Base64.Encoder enc = Base64.getEncoder();
+		assertEquals(enc.encodeToString(initial), results.get(0));
+		assertEquals(enc.encodeToString(new byte[] {(byte)0x01, (byte)0x42}), results.get(1));
+		assertEquals(enc.encodeToString(new byte[] {(byte)0x42, (byte)0x03}), results.get(2));
+		assertEquals(enc.encodeToString(new byte[] {(byte)0x03}), results.get(3));
+	}
+
+	@Test
+	public void operateBitB64EncodeRoundTripsThroughB64Decode() {
+		org.junit.Assume.assumeTrue("bit b64Encode requires server version 8.1.3 or later",
+			args.serverVersion.isGreaterOrEqual(8, 1, 3, 0));
+
+		byte[] initial = new byte[] {(byte)0xDE, (byte)0xAD, (byte)0xBE, (byte)0xEF};
+		client.delete(null, key);
+		client.put(null, key, new Bin(binName, initial));
+
+		// b64Encode is the inverse of StringOperation.b64Decode: encode the blob here,
+		// write the text to a string bin, then decode it back and compare.
+		Record encoded = client.operate(null, key, BitOperation.b64Encode(binName));
+		String text = encoded.getString(binName);
+
+		client.put(null, key, new Bin("b64txt", text));
+		Record decoded = client.operate(null, key, StringOperation.b64Decode("b64txt"));
+		assertArrayEquals(initial, (byte[])decoded.getValue("b64txt"));
 	}
 }
