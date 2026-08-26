@@ -288,4 +288,27 @@ public class TestListExp extends TestSync {
 		assertRecordFound(keyB, record);
 		assertEquals(2, record.getList(binB).size());
 	}
+	@Test
+	public void listJoinExp() {
+		org.junit.Assume.assumeTrue("List join requires server version 8.1.3 or later",
+			args.serverVersion.isGreaterOrEqual(8, 1, 3, 0));
+
+		Key key = new Key(args.namespace, args.set, "explistjoin");
+		client.delete(null, key);
+
+		List<Value> items = new ArrayList<Value>();
+		items.add(Value.get("a"));
+		items.add(Value.get("b"));
+		items.add(Value.get("c"));
+		client.put(null, key, new Bin("jbin", items));
+
+		Record record = client.operate(null, key,
+			ExpOperation.read("plain",
+				Exp.build(ListExp.join(Exp.listBin("jbin"))), ExpReadFlags.DEFAULT),
+			ExpOperation.read("sep",
+				Exp.build(ListExp.join(Exp.val("-"), Exp.listBin("jbin"))), ExpReadFlags.DEFAULT));
+
+		assertEquals("abc", record.getString("plain"));
+		assertEquals("a-b-c", record.getString("sep"));
+	}
 }
