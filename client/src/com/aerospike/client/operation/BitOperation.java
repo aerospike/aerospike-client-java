@@ -49,8 +49,10 @@ public final class BitOperation {
 	private static final int LSCAN = 52;
 	private static final int RSCAN = 53;
 	private static final int GET_INT = 54;
+	private static final int B64_ENCODE = 55;
 
 	private static final int INT_FLAGS_SIGNED = 1;
+	private static final int READ_SUBFLAG_INVERT_SIZE = 1;
 
 	/**
 	 * Create byte "resize" operation.
@@ -333,6 +335,54 @@ public final class BitOperation {
 	 */
 	public static Operation count(String binName, int bitOffset, int bitSize) {
 		byte[] bytes = Pack.pack(BitOperation.COUNT, bitOffset, bitSize);
+		return new Operation(Operation.Type.BIT_READ, binName, Value.get(bytes));
+	}
+
+	/**
+	 * Create bit "b64Encode" operation.
+	 * Server returns the base64 text of the whole byte[] bin as a string.
+	 * Example:
+	 * <ul>
+	 * <li>bin = [0b00000001, 0b01000010, 0b00000011]</li>
+	 * <li>returns "AUID"</li>
+	 * </ul>
+	 * <p>
+	 * This is the encode direction; {@link com.aerospike.client.operation.StringOperation#b64Decode}
+	 * is the decode direction and takes a string bin back to a blob.
+	 * Requires server version 8.1.3 or later.
+	 */
+	public static Operation b64Encode(String binName) {
+		byte[] bytes = Pack.pack(BitOperation.B64_ENCODE);
+		return new Operation(Operation.Type.BIT_READ, binName, Value.get(bytes));
+	}
+
+	/**
+	 * Create bit "b64Encode" operation on a byte range.
+	 * Server returns the base64 text of {@code byteSize} bytes of the byte[] bin starting
+	 * at {@code byteOffset}, as a string. A negative {@code byteOffset} counts back from
+	 * the end of the blob. Note the span is expressed in <b>bytes</b>, unlike the bit
+	 * offsets and sizes the other bit read operations take.
+	 * <p>
+	 * Requires server version 8.1.3 or later.
+	 */
+	public static Operation b64Encode(String binName, int byteOffset, int byteSize) {
+		byte[] bytes = Pack.pack(BitOperation.B64_ENCODE, byteOffset, byteSize);
+		return new Operation(Operation.Type.BIT_READ, binName, Value.get(bytes));
+	}
+
+	/**
+	 * Create bit "b64Encode" operation on a byte range, with {@code byteSize} measured from
+	 * the end of the blob.
+	 * When {@code invertSize} is true, {@code byteSize} counts back from the blob's end
+	 * rather than forward from {@code byteOffset}, so a {@code byteSize} of 0 means "to the
+	 * end of the blob". When false this behaves exactly as
+	 * {@link #b64Encode(String, int, int)}.
+	 * <p>
+	 * Requires server version 8.1.3 or later.
+	 */
+	public static Operation b64Encode(String binName, int byteOffset, int byteSize, boolean invertSize) {
+		int subflags = invertSize ? BitOperation.READ_SUBFLAG_INVERT_SIZE : 0;
+		byte[] bytes = Pack.pack(BitOperation.B64_ENCODE, byteOffset, byteSize, subflags);
 		return new Operation(Operation.Type.BIT_READ, binName, Value.get(bytes));
 	}
 
