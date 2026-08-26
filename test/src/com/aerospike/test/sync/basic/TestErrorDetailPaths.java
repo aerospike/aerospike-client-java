@@ -286,11 +286,12 @@ public class TestErrorDetailPaths extends TestSync {
 
 		assertNotNull("Expected server error message", ae.getBaseMessage());
 
-		// The subcode is rendered by getMessage(), alongside the result code; the
-		// parsed server message is kept verbatim (see AerospikeException.getMessage()).
+		// getMessage() renders "Error <resultCode>,<subCode>"; the parsed server
+		// message is appended verbatim (see AerospikeException.getMessage()).
+		String prefix = "Error " + expectedResultCode + "," + expectedSubcode;
 		String msg = ae.getMessage();
-		assertTrue("Expected 'subcode=" + expectedSubcode + "' in: " + msg,
-			msg.contains("subcode=" + expectedSubcode));
+		assertTrue("Expected message to start with \"" + prefix + "\": " + msg,
+			msg.startsWith(prefix));
 	}
 
 	private void assertSubcodeAbsent(AerospikeException ae, int expectedResultCode, String... expectedSubstrings) {
@@ -303,7 +304,9 @@ public class TestErrorDetailPaths extends TestSync {
 		for (String expected : expectedSubstrings) {
 			assertTrue("Expected '" + expected + "' in: " + msg, msg.contains(expected));
 		}
-		assertFalse("Expected NO subcode suffix in: " + ae.getMessage(),
-			ae.getMessage().contains("subcode="));
+		String prefix = "Error " + expectedResultCode + "," + SubCode.NONE;
+		String rendered = ae.getMessage();
+		assertTrue("Expected no-subcode prefix \"" + prefix + "\" in: " + rendered,
+			rendered.startsWith(prefix));
 	}
 }

@@ -69,7 +69,8 @@ import org.junit.Test;
  * C client (commits 8b6f8db4 / 2d2495a1) and confirmed against the live server:
  * the old flat status-echo sub-codes (1100, 1134, 1138, 1701, ...) are retired.
  * Where the status is already maximally specific the server emits AS_SUB_NONE
- * and omits the sub-code map key entirely, so no "(subcode=...)" suffix appears.
+ * and omits the sub-code map key entirely, so getMessage() renders the sub-code
+ * slot as 0.
  */
 public class TestErrorDetailVerbosity extends TestSync {
 
@@ -154,7 +155,8 @@ public class TestErrorDetailVerbosity extends TestSync {
 			assertEquals(SubCode.BIN_NOT_FOUND_HLL_CANNOT_CREATE_WITH_OP, ae.getSubCode());
 			assertNotNull(ae.getBaseMessage());
 			String msg = ae.getMessage();
-			assertTrue("Expected subcode in: " + msg, msg.contains("subcode=1"));
+			assertTrue("Expected rendered subcode in: " + msg,
+				msg.startsWith("Error " + ResultCode.BIN_NOT_FOUND + ",1"));
 			return;
 		}
 		assertTrue("Expected AerospikeException", false);
@@ -162,8 +164,8 @@ public class TestErrorDetailVerbosity extends TestSync {
 
 	@Test
 	public void testVerbositySubcodeAndMessage() {
-		// Verbosity 2: server sends both message and sub-code, formatted as
-		// "<message> (subcode=<n>)".
+		// Verbosity 2: server sends both message and sub-code, rendered as
+		// "Error <resultCode>,<subCode>...: <message>".
 		WritePolicy wp = new WritePolicy();
 		wp.errorDetailVerbosity = 2;
 
@@ -179,8 +181,8 @@ public class TestErrorDetailVerbosity extends TestSync {
 			String msg = ae.getBaseMessage();
 			assertNotNull(msg);
 			assertTrue("Expected message text in: " + msg, msg.contains("count op"));
-			assertTrue("Expected subcode in: " + ae.getMessage(),
-				ae.getMessage().contains("(subcode=1)"));
+			assertTrue("Expected rendered subcode in: " + ae.getMessage(),
+				ae.getMessage().startsWith("Error " + ResultCode.BIN_NOT_FOUND + ",1"));
 			return;
 		}
 		assertTrue("Expected AerospikeException", false);
@@ -188,8 +190,8 @@ public class TestErrorDetailVerbosity extends TestSync {
 
 	// ---------------------------------------------------------------------
 	// Sub-code absent cases (AS_SUB_NONE): the status is already maximally
-	// specific, so the server omits the sub-code map key and the client must
-	// never format a "(subcode=...)" suffix. The message carries the context.
+	// specific, so the server omits the sub-code map key and getMessage() renders
+	// the sub-code slot as 0. The message carries the context.
 	// ---------------------------------------------------------------------
 
 	@Test
@@ -835,9 +837,9 @@ public class TestErrorDetailVerbosity extends TestSync {
 	/**
 	 * Assert the server-supplied {@code (resultCode, sub-code)} pair. The numeric
 	 * sub-code must be exposed first-class via {@link AerospikeException#getSubCode()}
-	 * (not merely embedded in the message string). getMessage() renders the subcode;
-	 * the parsed server message stays verbatim. The old "subcode=N" suffix must
-	 * still appear in the message for parity with the C client.
+	 * (not merely embedded in the message string). getMessage() renders it in the
+	 * comma-separated header as "Error <resultCode>,<subCode>", and the parsed
+	 * server message stays verbatim.
 	 */
 	private void assertSubcode(AerospikeException ae, int expectedResultCode, int expectedSubcode) {
 		assertEquals("Unexpected result code", expectedResultCode, ae.getResultCode());
@@ -845,17 +847,18 @@ public class TestErrorDetailVerbosity extends TestSync {
 
 		assertNotNull("Expected server error message", ae.getBaseMessage());
 
-		// The subcode is rendered by getMessage(), alongside the result code; the
-		// parsed server message is kept verbatim (see AerospikeException.getMessage()).
+		// getMessage() renders "Error <resultCode>,<subCode>"; the parsed server
+		// message is appended verbatim (see AerospikeException.getMessage()).
+		String prefix = "Error " + expectedResultCode + "," + expectedSubcode;
 		String msg = ae.getMessage();
-		assertTrue("Expected 'subcode=" + expectedSubcode + "' in: " + msg,
-			msg.contains("subcode=" + expectedSubcode));
+		assertTrue("Expected message to start with \"" + prefix + "\": " + msg,
+			msg.startsWith(prefix));
 	}
 
 	/**
 	 * Assert that the server surfaced a contextual message but NO subcode
 	 * (AS_SUB_NONE): {@link AerospikeException#getSubCode()} is {@link SubCode#NONE}
-	 * and the "(subcode=...)" suffix must never appear. Any expectedSubstrings are
+	 * and getMessage() renders the sub-code slot as 0. Any expectedSubstrings are
 	 * required in the message; pass none to skip the message-text check (mirrors a
 	 * NULL expected_msg_substr in the C example).
 	 */
@@ -869,7 +872,9 @@ public class TestErrorDetailVerbosity extends TestSync {
 		for (String expected : expectedSubstrings) {
 			assertTrue("Expected '" + expected + "' in: " + msg, msg.contains(expected));
 		}
-		assertFalse("Expected NO subcode suffix in: " + ae.getMessage(),
-			ae.getMessage().contains("subcode="));
+		String prefix = "Error " + expectedResultCode + "," + SubCode.NONE;
+		String rendered = ae.getMessage();
+		assertTrue("Expected no-subcode prefix \"" + prefix + "\" in: " + rendered,
+			rendered.startsWith(prefix));
 	}
 }
