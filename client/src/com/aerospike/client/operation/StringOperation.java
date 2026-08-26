@@ -23,6 +23,7 @@ import com.aerospike.client.Operation;
 import com.aerospike.client.Value;
 import com.aerospike.client.cdt.CTX;
 import com.aerospike.client.command.ParticleType;
+import com.aerospike.client.util.Pack;
 import com.aerospike.client.util.Packer;
 
 /**
@@ -1008,9 +1009,10 @@ public final class StringOperation {
 	 * Unlike the other builders in this class, {@code toString} does not accept a
 	 * {@link CTX}. The other string operations are sent as {@code STRING_READ} /
 	 * {@code STRING_MODIFY} wire ops whose msgpack payload carries the sub-op code,
-	 * arguments, and (when CTX is non-empty) a {@code [0xFF, ctx_list, inner_op]}
-	 * wrapper that the server's CTX-aware dispatcher unwraps to descend into a list
-	 * or map. {@code toString} is a separate top-level wire op
+	 * arguments, and (when CTX is non-empty) a
+	 * {@code [0xFF, ctx_list, [inner_op, args...]]} wrapper that the server's
+	 * CTX-aware dispatcher unwraps to descend into a list or map.
+	 * {@code toString} is a separate top-level wire op
 	 * ({@code Operation.Type.TO_STRING}) that carries no payload at all — the bin is
 	 * referenced solely by the operation header — and the server-side handler for it
 	 * is a different code path that operates on the whole bin particle and never
@@ -1055,51 +1057,34 @@ public final class StringOperation {
 	}
 
 	//-----------------------------------------------------------------
-	// Flat-CTX wire packer (string-op specific).
+	// CTX wire packer.
 	//
-	// When CTX is empty: emits [SUBOP, args...] — identical to Pack.pack.
-	// When CTX is non-empty: emits the FLAT envelope
-	//     [0xFF, [ctx_id_1, ctx_value_1, ...], SUBOP, args...]
-	// where SUBOP and its args are flattened into the outer array — there
-	// is no nested array around them. This matches particle_string.c's
-	// string_state_init (line ~735), which reads the sentinel, skips the
-	// ctx flat-list with msgpack_sz_vec, then reads the inner op as a
-	// direct uint64 (no msgpack_get_list_ele_count_vec call). The CDT
-	// module (cdt.c:3671) does call list_ele_count for the inner op and
-	// therefore requires a nested layout — the shared Pack.init helper
-	// emits that nested form, which is why these string-op overloads exist
-	// as a separate path.
+	// When CTX is empty: emits [SUBOP, args...].
+	// When CTX is non-empty: emits the context-eval envelope
+	//     [0xFF, [ctx_id_1, ctx_value_1, ...], [SUBOP, args...]]
+	// which is exactly three outer elements, the sub-op and its args living
+	// in their own nested array. particle_string.c's string_state_init
+	// asserts that outer count of 3 and takes the inner arity from the
+	// nested array's own header, so a trailing element cannot be read as one
+	// of the op's optional arguments (SERVER-1483). This is the shape the CDT
+	// modules already use, so the prologue is the shared Pack.init helper.
 	//-----------------------------------------------------------------
 
-	// Outer array header + (optionally) the [0xFF, ctx_flat_list] prologue.
-	// innerCount = number of msgpack elements the caller will emit AFTER
-	// this prologue (the SUBOP integer plus any args, at the outer level).
-	private static void writeOuterHeader(Packer p, int innerCount, CTX[] ctx) {
-		boolean hasCtx = ctx != null && ctx.length > 0;
-		int outerSize = hasCtx ? (2 + innerCount) : innerCount;
-		p.packArrayBegin(outerSize);
-		if (hasCtx) {
-			p.packInt(0xFF);
-			p.packArrayBegin(ctx.length * 2);
-			for (CTX c : ctx) {
-				p.packInt(c.id);
-				if (c.value != null) {
-					c.value.pack(p);
-				}
-				else {
-					p.packByteArray(c.exp.getBytes(), 0, c.exp.getBytes().length);
-				}
-			}
-		}
+	// The [0xFF, ctx_flat_list] prologue when CTX is non-empty, then the header
+	// of the array holding the sub-op. innerCount = number of msgpack elements
+	// the caller emits after this call (the SUBOP integer plus any args).
+	private static void writeHeader(Packer p, int innerCount, CTX[] ctx) {
+		Pack.init(p, ctx);
+		p.packArrayBegin(innerCount);
 	}
 
 	// [SUBOP]
 	private static byte[] packStringOp(int subop, CTX[] ctx) {
 		Packer p = new Packer();
-		writeOuterHeader(p, 1, ctx);
+		writeHeader(p, 1, ctx);
 		p.packInt(subop);
 		p.createBuffer();
-		writeOuterHeader(p, 1, ctx);
+		writeHeader(p, 1, ctx);
 		p.packInt(subop);
 		return p.getBuffer();
 	}
@@ -1107,11 +1092,11 @@ public final class StringOperation {
 	// [SUBOP, v1]
 	private static byte[] packStringOp(int subop, int v1, CTX[] ctx) {
 		Packer p = new Packer();
-		writeOuterHeader(p, 2, ctx);
+		writeHeader(p, 2, ctx);
 		p.packInt(subop);
 		p.packInt(v1);
 		p.createBuffer();
-		writeOuterHeader(p, 2, ctx);
+		writeHeader(p, 2, ctx);
 		p.packInt(subop);
 		p.packInt(v1);
 		return p.getBuffer();
@@ -1120,12 +1105,12 @@ public final class StringOperation {
 	// [SUBOP, v1, v2]
 	private static byte[] packStringOp(int subop, int v1, int v2, CTX[] ctx) {
 		Packer p = new Packer();
-		writeOuterHeader(p, 3, ctx);
+		writeHeader(p, 3, ctx);
 		p.packInt(subop);
 		p.packInt(v1);
 		p.packInt(v2);
 		p.createBuffer();
-		writeOuterHeader(p, 3, ctx);
+		writeHeader(p, 3, ctx);
 		p.packInt(subop);
 		p.packInt(v1);
 		p.packInt(v2);
@@ -1135,13 +1120,13 @@ public final class StringOperation {
 	// [SUBOP, v1, v2, v3]
 	private static byte[] packStringOp(int subop, int v1, int v2, int v3, CTX[] ctx) {
 		Packer p = new Packer();
-		writeOuterHeader(p, 4, ctx);
+		writeHeader(p, 4, ctx);
 		p.packInt(subop);
 		p.packInt(v1);
 		p.packInt(v2);
 		p.packInt(v3);
 		p.createBuffer();
-		writeOuterHeader(p, 4, ctx);
+		writeHeader(p, 4, ctx);
 		p.packInt(subop);
 		p.packInt(v1);
 		p.packInt(v2);
@@ -1152,11 +1137,11 @@ public final class StringOperation {
 	// [SUBOP, v1]  (Value)
 	private static byte[] packStringOp(int subop, Value v1, CTX[] ctx) {
 		Packer p = new Packer();
-		writeOuterHeader(p, 2, ctx);
+		writeHeader(p, 2, ctx);
 		p.packInt(subop);
 		v1.pack(p);
 		p.createBuffer();
-		writeOuterHeader(p, 2, ctx);
+		writeHeader(p, 2, ctx);
 		p.packInt(subop);
 		v1.pack(p);
 		return p.getBuffer();
@@ -1165,12 +1150,12 @@ public final class StringOperation {
 	// [SUBOP, v1, v2]  (Value, int)
 	private static byte[] packStringOp(int subop, Value v1, int v2, CTX[] ctx) {
 		Packer p = new Packer();
-		writeOuterHeader(p, 3, ctx);
+		writeHeader(p, 3, ctx);
 		p.packInt(subop);
 		v1.pack(p);
 		p.packInt(v2);
 		p.createBuffer();
-		writeOuterHeader(p, 3, ctx);
+		writeHeader(p, 3, ctx);
 		p.packInt(subop);
 		v1.pack(p);
 		p.packInt(v2);
@@ -1180,13 +1165,13 @@ public final class StringOperation {
 	// [SUBOP, v1, v2, v3]  (int, Value, int)
 	private static byte[] packStringOp(int subop, int v1, Value v2, int v3, CTX[] ctx) {
 		Packer p = new Packer();
-		writeOuterHeader(p, 4, ctx);
+		writeHeader(p, 4, ctx);
 		p.packInt(subop);
 		p.packInt(v1);
 		v2.pack(p);
 		p.packInt(v3);
 		p.createBuffer();
-		writeOuterHeader(p, 4, ctx);
+		writeHeader(p, 4, ctx);
 		p.packInt(subop);
 		p.packInt(v1);
 		v2.pack(p);
@@ -1197,12 +1182,12 @@ public final class StringOperation {
 	// [SUBOP, list, v2]  (List<Value>, int)
 	private static byte[] packStringOp(int subop, List<Value> list, int v2, CTX[] ctx) {
 		Packer p = new Packer();
-		writeOuterHeader(p, 3, ctx);
+		writeHeader(p, 3, ctx);
 		p.packInt(subop);
 		p.packValueList(list);
 		p.packInt(v2);
 		p.createBuffer();
-		writeOuterHeader(p, 3, ctx);
+		writeHeader(p, 3, ctx);
 		p.packInt(subop);
 		p.packValueList(list);
 		p.packInt(v2);

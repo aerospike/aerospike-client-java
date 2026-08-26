@@ -82,8 +82,8 @@ public final class SubCode {
 	/** String op code or modifier/read class mismatch on the wire path. */
 	public static final int PARAM_STRING_OP_INVALID = 7;
 
-	/** String context-eval path malformed. */
-	public static final int PARAM_STRING_CTX_NOT_APPLICABLE = 8;
+	/** String context-eval envelope malformed. */
+	public static final int PARAM_STRING_CTX_MALFORMED = 8;
 
 	/** String modify/read index or code-point range out of bounds. */
 	public static final int PARAM_STRING_INDEX_OUT_OF_BOUNDS = 9;

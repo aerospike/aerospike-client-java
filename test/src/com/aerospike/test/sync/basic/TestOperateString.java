@@ -804,11 +804,12 @@ public class TestOperateString extends TestSync {
 	//=================================================================
 	// CTX navigation — string nested in list/map bins
 	//
-	// Exercises the §2.3.1 CTX-wrapper wire envelope: the op-data is
-	// wrapped in a 3-element context-eval array (sub-op 0xFF) when CTX
-	// is non-empty. The server dispatches these through
-	// as_bin_string_modify_ctx_tr / its read-side twin, which is a
-	// separate code path from the top-level-bin variant exercised above.
+	// Exercises the §2.3.1 CTX-wrapper wire envelope: when CTX is non-empty
+	// the op-data becomes [0xFF, ctx_list, [sub_op, args...]] — three outer
+	// elements, with the sub-op and its args in their own nested array so
+	// the inner arity is self-describing (SERVER-1483). The server dispatches
+	// these through as_bin_string_modify_ctx_tr / its read-side twin, which
+	// is a separate code path from the top-level-bin variant exercised above.
 	//=================================================================
 
 	private static void putList(List<Value> values) {
@@ -926,6 +927,44 @@ public class TestOperateString extends TestSync {
 		Map<?, ?> after = client.get(null, KEY).getMap(BIN);
 		assertEquals("hello world", after.get("a"));
 		assertEquals("foo", after.get("b"));
+	}
+
+	@Test
+	public void modifyOpWithFlagsOnStringNestedInList() {
+		// append takes 1-2 args, so its trailing flags slot is optional. Under CTX
+		// the flags sit in the nested inner array, whose own header declares the
+		// arity — in the flat envelope they were indistinguishable from a 2nd arg.
+		List<Value> list = new ArrayList<Value>();
+		list.add(Value.get("alpha"));
+		list.add(Value.get("beta"));
+		list.add(Value.get("gamma"));
+		putList(list);
+
+		StringPolicy noFail = new StringPolicy(StringWriteFlags.NO_FAIL);
+		operate(StringOperation.append(noFail, BIN, "!", CTX.listIndex(1)));
+
+		List<?> after = client.get(null, KEY).getList(BIN);
+		assertEquals(Arrays.asList("alpha", "beta!", "gamma"), after);
+	}
+
+	@Test
+	public void noFailFlagDecidesOutcomeOnUnreachableCtxPath() {
+		// Same op and same arity, differing only in the trailing flags value:
+		// NO_FAIL swallows the unreachable path, DEFAULT surfaces it. That the
+		// outcome tracks the flag is what proves the trailing element is read as
+		// flags rather than as an extra argument.
+		List<Value> list = new ArrayList<Value>();
+		list.add(Value.get("alpha"));
+		list.add(Value.get("beta"));
+		putList(list);
+
+		StringPolicy noFail = new StringPolicy(StringWriteFlags.NO_FAIL);
+		operate(StringOperation.append(noFail, BIN, "!", CTX.listIndex(99)));
+		assertEquals(Arrays.asList("alpha", "beta"), client.get(null, KEY).getList(BIN));
+
+		AerospikeException ae = assertThrows(AerospikeException.class,
+			() -> operate(StringOperation.append(POLICY, BIN, "!", CTX.listIndex(99))));
+		assertEquals(ResultCode.OP_NOT_APPLICABLE, ae.getResultCode());
 	}
 
 	//=================================================================
