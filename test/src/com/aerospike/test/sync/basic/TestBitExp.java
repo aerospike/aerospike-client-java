@@ -481,10 +481,18 @@ public class TestBitExp extends TestSync {
 				Exp.build(BitExp.b64Encode(Exp.blobBin(binA))), ExpReadFlags.DEFAULT),
 			ExpOperation.read("span",
 				Exp.build(BitExp.b64Encode(Exp.val(1), Exp.val(2), Exp.blobBin(binA))),
+				ExpReadFlags.DEFAULT),
+			ExpOperation.read("inverted",
+				Exp.build(BitExp.b64Encode(Exp.val(1), Exp.val(0), true, Exp.blobBin(binA))),
+				ExpReadFlags.DEFAULT),
+			ExpOperation.read("negoff",
+				Exp.build(BitExp.b64Encode(Exp.val(-2), Exp.val(2), Exp.blobBin(binA))),
 				ExpReadFlags.DEFAULT));
 
 		Base64.Encoder enc = Base64.getEncoder();
 		assertEquals(enc.encodeToString(blob), record.getString("whole"));
 		assertEquals(enc.encodeToString(new byte[] {0x42, 0x03}), record.getString("span"));
+		assertEquals(enc.encodeToString(new byte[] {0x42, 0x03, 0x04, 0x05}), record.getString("inverted"));
+		assertEquals(enc.encodeToString(new byte[] {0x04, 0x05}), record.getString("negoff"));
 	}
 }

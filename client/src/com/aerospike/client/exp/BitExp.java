@@ -57,6 +57,7 @@ public final class BitExp {
 	private static final int B64_ENCODE = 55;
 
 	private static final int INT_FLAGS_SIGNED = 1;
+	private static final int READ_SUBFLAG_INVERT_SIZE = 1;
 
 	/**
 	 * Create expression that resizes byte[] to byteSize according to resizeFlags (See {@link BitResizeFlags})
@@ -373,6 +374,27 @@ public final class BitExp {
 	 */
 	public static Exp b64Encode(Exp byteOffset, Exp byteSize, Exp bin) {
 		byte[] bytes = Pack.pack(B64_ENCODE, byteOffset, byteSize);
+		return addRead(bin, bytes, Exp.Type.STRING);
+	}
+
+	/**
+	 * Create expression that returns the base64 text of a byte range of the byte[] bin as a
+	 * string, with {@code byteSize} measured from the end of the blob.
+	 * When {@code invertSize} is true, {@code byteSize} counts back from the blob's end
+	 * rather than forward from {@code byteOffset}, so a {@code byteSize} of 0 means "to the
+	 * end of the blob". When false this behaves exactly as
+	 * {@link #b64Encode(Exp, Exp, Exp)}.
+	 *
+	 * <pre>{@code
+	 * // blob bin "a" from byte 1 to its last byte, base64-encoded
+	 * BitExp.b64Encode(Exp.val(1), Exp.val(0), true, Exp.blobBin("a"))
+	 * }</pre>
+	 *
+	 * Requires server version 8.1.3 or later.
+	 */
+	public static Exp b64Encode(Exp byteOffset, Exp byteSize, boolean invertSize, Exp bin) {
+		int subflags = invertSize ? READ_SUBFLAG_INVERT_SIZE : 0;
+		byte[] bytes = Pack.pack(B64_ENCODE, byteOffset, byteSize, subflags);
 		return addRead(bin, bytes, Exp.Type.STRING);
 	}
 
