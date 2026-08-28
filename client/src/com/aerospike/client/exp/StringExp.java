@@ -252,6 +252,9 @@ public final class StringExp {
 	 * Exp matched = StringExp.startsWith(Exp.val("Hello"), Exp.stringBin("text"));
 	 * }</pre>
 	 *
+	 * <p>Matching is Unicode canonical, not byte-exact: a prefix in a different
+	 * normalization form than the source still matches.
+	 *
 	 * @param prefix	prefix to test for
 	 * @param src		source string expression
 	 * @return			boolean-typed expression: true on match, false otherwise
@@ -268,6 +271,9 @@ public final class StringExp {
 	 * <pre>{@code
 	 * Exp matched = StringExp.endsWith(Exp.val("World"), Exp.stringBin("text"));
 	 * }</pre>
+	 *
+	 * <p>Matching is Unicode canonical, not byte-exact: a suffix in a different
+	 * normalization form than the source still matches.
 	 *
 	 * @param suffix	suffix to test for
 	 * @param src		source string expression
