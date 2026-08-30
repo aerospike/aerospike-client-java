@@ -268,6 +268,9 @@ public final class StringOperation {
 	 * Record r = client.operate(null, key, StringOperation.startsWith("text", "Hello"));
 	 * }</pre>
 	 *
+	 * <p>Matching is Unicode canonical, not byte-exact: a prefix stored in a different
+	 * normalization form than the bin still matches.
+	 *
 	 * @param binName	name of the string bin
 	 * @param prefix	prefix to test for
 	 * @param ctx		optional path into a string nested inside a list or map
@@ -286,6 +289,9 @@ public final class StringOperation {
 	 * // "Hello123World" -> true
 	 * Record r = client.operate(null, key, StringOperation.endsWith("text", "World"));
 	 * }</pre>
+	 *
+	 * <p>Matching is Unicode canonical, not byte-exact: a suffix stored in a different
+	 * normalization form than the bin still matches.
 	 *
 	 * @param binName	name of the string bin
 	 * @param suffix	suffix to test for
