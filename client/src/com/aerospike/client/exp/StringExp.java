@@ -18,6 +18,7 @@ package com.aerospike.client.exp;
 
 import com.aerospike.client.operation.StringPolicy;
 import com.aerospike.client.operation.StringRegexFlags;
+import com.aerospike.client.operation.StringWriteFlags;
 import com.aerospike.client.util.Pack;
 import com.aerospike.client.util.Packer;
 
@@ -530,7 +531,9 @@ public final class StringExp {
 	 *     Exp.val(5), Exp.val(" beautiful"), Exp.stringBin("text"));
 	 * }</pre>
 	 *
-	 * @param policy	write policy controlling NO_FAIL semantics
+	 * @param policy	write policy; only the NO_FAIL {@link StringWriteFlags} is
+	 *					meaningful here. CREATE_ONLY and UPDATE_ONLY are bin-existence
+	 *					predicates and do not carry over to a source expression
 	 * @param index		codepoint index at which to insert (negative counts from end)
 	 * @param value		text to insert
 	 * @param src		source string expression
@@ -553,7 +556,9 @@ public final class StringExp {
 	 *     Exp.val(6), Exp.val("earth"), Exp.stringBin("text"));
 	 * }</pre>
 	 *
-	 * @param policy	write policy controlling NO_FAIL semantics
+	 * @param policy	write policy; only the NO_FAIL {@link StringWriteFlags} is
+	 *					meaningful here. CREATE_ONLY and UPDATE_ONLY are bin-existence
+	 *					predicates and do not carry over to a source expression
 	 * @param index		codepoint index at which to start overwriting
 	 * @param value		text to write
 	 * @param src		source string expression
@@ -576,7 +581,9 @@ public final class StringExp {
 	 *     Exp.stringBin("text"));
 	 * }</pre>
 	 *
-	 * @param policy	write policy controlling NO_FAIL semantics
+	 * @param policy	write policy; only the NO_FAIL {@link StringWriteFlags} is
+	 *					meaningful here. CREATE_ONLY and UPDATE_ONLY are bin-existence
+	 *					predicates and do not carry over to a source expression
 	 * @param values	expression yielding a list of strings to append
 	 * @param src		source string expression
 	 * @return			string-typed expression yielding the modified string
@@ -598,7 +605,9 @@ public final class StringExp {
 	 * Exp out = StringExp.append(StringPolicy.Default, Exp.val("!"), Exp.stringBin("text"));
 	 * }</pre>
 	 *
-	 * @param policy	write policy controlling NO_FAIL semantics
+	 * @param policy	write policy; only the NO_FAIL {@link StringWriteFlags} is
+	 *					meaningful here. CREATE_ONLY and UPDATE_ONLY are bin-existence
+	 *					predicates and do not carry over to a source expression
 	 * @param value		expression yielding the string to append to the end
 	 * @param src		source string expression
 	 * @return			string-typed expression yielding the modified string
@@ -620,7 +629,9 @@ public final class StringExp {
 	 * Exp out = StringExp.prepend(StringPolicy.Default, Exp.val("hello "), Exp.stringBin("text"));
 	 * }</pre>
 	 *
-	 * @param policy	write policy controlling NO_FAIL semantics
+	 * @param policy	write policy; only the NO_FAIL {@link StringWriteFlags} is
+	 *					meaningful here. CREATE_ONLY and UPDATE_ONLY are bin-existence
+	 *					predicates and do not carry over to a source expression
 	 * @param value		expression yielding the string to prepend to the start
 	 * @param src		source string expression
 	 * @return			string-typed expression yielding the modified string
@@ -641,7 +652,9 @@ public final class StringExp {
 	 *     Exp.val(5), Exp.val(15), Exp.stringBin("text"));
 	 * }</pre>
 	 *
-	 * @param policy	write policy controlling NO_FAIL semantics
+	 * @param policy	write policy; only the NO_FAIL {@link StringWriteFlags} is
+	 *					meaningful here. CREATE_ONLY and UPDATE_ONLY are bin-existence
+	 *					predicates and do not carry over to a source expression
 	 * @param start		first codepoint to remove (inclusive)
 	 * @param end		one past the last codepoint to remove (exclusive)
 	 * @param src		source string expression
@@ -663,7 +676,9 @@ public final class StringExp {
 	 *     Exp.val("world"), Exp.val("earth"), Exp.stringBin("text"));
 	 * }</pre>
 	 *
-	 * @param policy		write policy controlling NO_FAIL semantics
+	 * @param policy		write policy; only the NO_FAIL {@link StringWriteFlags} is
+	 *						meaningful here. CREATE_ONLY and UPDATE_ONLY are bin-existence
+	 *						predicates and do not carry over to a source expression
 	 * @param needle		substring to find
 	 * @param replacement	text to substitute (may be empty to delete the match)
 	 * @param src			source string expression
@@ -685,7 +700,9 @@ public final class StringExp {
 	 *     Exp.val("a"), Exp.val("x"), Exp.stringBin("text"));
 	 * }</pre>
 	 *
-	 * @param policy		write policy controlling NO_FAIL semantics
+	 * @param policy		write policy; only the NO_FAIL {@link StringWriteFlags} is
+	 *						meaningful here. CREATE_ONLY and UPDATE_ONLY are bin-existence
+	 *						predicates and do not carry over to a source expression
 	 * @param needle		substring to find
 	 * @param replacement	text to substitute (may be empty to delete each match)
 	 * @param src			source string expression
@@ -704,7 +721,9 @@ public final class StringExp {
 	 * Exp out = StringExp.upper(StringPolicy.Default, Exp.stringBin("text"));
 	 * }</pre>
 	 *
-	 * @param policy	write policy controlling NO_FAIL semantics
+	 * @param policy	write policy; only the NO_FAIL {@link StringWriteFlags} is
+	 *					meaningful here. CREATE_ONLY and UPDATE_ONLY are bin-existence
+	 *					predicates and do not carry over to a source expression
 	 * @param src		source string expression
 	 * @return			string-typed expression yielding the uppercased string
 	 */
@@ -721,7 +740,9 @@ public final class StringExp {
 	 * Exp out = StringExp.lower(StringPolicy.Default, Exp.stringBin("text"));
 	 * }</pre>
 	 *
-	 * @param policy	write policy controlling NO_FAIL semantics
+	 * @param policy	write policy; only the NO_FAIL {@link StringWriteFlags} is
+	 *					meaningful here. CREATE_ONLY and UPDATE_ONLY are bin-existence
+	 *					predicates and do not carry over to a source expression
 	 * @param src		source string expression
 	 * @return			string-typed expression yielding the lowercased string
 	 */
@@ -739,7 +760,9 @@ public final class StringExp {
 	 * Exp out = StringExp.caseFold(StringPolicy.Default, Exp.stringBin("text"));
 	 * }</pre>
 	 *
-	 * @param policy	write policy controlling NO_FAIL semantics
+	 * @param policy	write policy; only the NO_FAIL {@link StringWriteFlags} is
+	 *					meaningful here. CREATE_ONLY and UPDATE_ONLY are bin-existence
+	 *					predicates and do not carry over to a source expression
 	 * @param src		source string expression
 	 * @return			string-typed expression yielding the case-folded string
 	 */
@@ -756,7 +779,9 @@ public final class StringExp {
 	 * Exp out = StringExp.normalizeNFC(StringPolicy.Default, Exp.stringBin("text"));
 	 * }</pre>
 	 *
-	 * @param policy	write policy controlling NO_FAIL semantics
+	 * @param policy	write policy; only the NO_FAIL {@link StringWriteFlags} is
+	 *					meaningful here. CREATE_ONLY and UPDATE_ONLY are bin-existence
+	 *					predicates and do not carry over to a source expression
 	 * @param src		source string expression
 	 * @return			string-typed expression yielding the NFC-normalized string
 	 */
@@ -774,7 +799,9 @@ public final class StringExp {
 	 * Exp out = StringExp.trimStart(StringPolicy.Default, Exp.stringBin("text"));
 	 * }</pre>
 	 *
-	 * @param policy	write policy controlling NO_FAIL semantics
+	 * @param policy	write policy; only the NO_FAIL {@link StringWriteFlags} is
+	 *					meaningful here. CREATE_ONLY and UPDATE_ONLY are bin-existence
+	 *					predicates and do not carry over to a source expression
 	 * @param src		source string expression
 	 * @return			string-typed expression yielding the left-trimmed string
 	 */
@@ -792,7 +819,9 @@ public final class StringExp {
 	 * Exp out = StringExp.trimEnd(StringPolicy.Default, Exp.stringBin("text"));
 	 * }</pre>
 	 *
-	 * @param policy	write policy controlling NO_FAIL semantics
+	 * @param policy	write policy; only the NO_FAIL {@link StringWriteFlags} is
+	 *					meaningful here. CREATE_ONLY and UPDATE_ONLY are bin-existence
+	 *					predicates and do not carry over to a source expression
 	 * @param src		source string expression
 	 * @return			string-typed expression yielding the right-trimmed string
 	 */
@@ -810,7 +839,9 @@ public final class StringExp {
 	 * Exp out = StringExp.trim(StringPolicy.Default, Exp.stringBin("text"));
 	 * }</pre>
 	 *
-	 * @param policy	write policy controlling NO_FAIL semantics
+	 * @param policy	write policy; only the NO_FAIL {@link StringWriteFlags} is
+	 *					meaningful here. CREATE_ONLY and UPDATE_ONLY are bin-existence
+	 *					predicates and do not carry over to a source expression
 	 * @param src		source string expression
 	 * @return			string-typed expression yielding the trimmed string
 	 */
@@ -830,7 +861,9 @@ public final class StringExp {
 	 *     Exp.val(10), Exp.val("*"), Exp.stringBin("text"));
 	 * }</pre>
 	 *
-	 * @param policy		write policy controlling NO_FAIL semantics
+	 * @param policy		write policy; only the NO_FAIL {@link StringWriteFlags} is
+	 *						meaningful here. CREATE_ONLY and UPDATE_ONLY are bin-existence
+	 *						predicates and do not carry over to a source expression
 	 * @param targetLength	codepoint length to pad up to
 	 * @param padString		text used to fill (repeated as needed)
 	 * @param src			source string expression
@@ -852,7 +885,9 @@ public final class StringExp {
 	 *     Exp.val(10), Exp.val("."), Exp.stringBin("text"));
 	 * }</pre>
 	 *
-	 * @param policy		write policy controlling NO_FAIL semantics
+	 * @param policy		write policy; only the NO_FAIL {@link StringWriteFlags} is
+	 *						meaningful here. CREATE_ONLY and UPDATE_ONLY are bin-existence
+	 *						predicates and do not carry over to a source expression
 	 * @param targetLength	codepoint length to pad up to
 	 * @param padString		text used to fill (repeated as needed)
 	 * @param src			source string expression
@@ -873,7 +908,9 @@ public final class StringExp {
 	 *     Exp.val(3), Exp.stringBin("text"));
 	 * }</pre>
 	 *
-	 * @param policy	write policy controlling NO_FAIL semantics
+	 * @param policy	write policy; only the NO_FAIL {@link StringWriteFlags} is
+	 *					meaningful here. CREATE_ONLY and UPDATE_ONLY are bin-existence
+	 *					predicates and do not carry over to a source expression
 	 * @param count		number of repetitions (must be non-negative)
 	 * @param src		source string expression
 	 * @return			string-typed expression yielding the repeated string
