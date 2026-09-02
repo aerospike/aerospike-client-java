@@ -19,6 +19,11 @@ on:
         required: false
         default: false
         description: Spin up aerospike enterprise server and run tests
+      run-examples:
+        type: boolean
+        required: false
+        default: false
+        description: Run examples suite against Aerospike server
 
 jobs:
   build:
@@ -30,7 +35,20 @@ jobs:
     with:
       java-version: ${{ inputs.java-version }}
       run-tests: ${{ inputs.run-tests }}
+      run-examples: false
       server-tag: ${{ inputs.server-tag }}
       crypto-type:  ${{ matrix.crypto }}
+      server-container-repo: ${{ inputs.server-container-repo }}
+    secrets: inherit
+
+  examples:
+    uses: ./.github/workflows/build.yaml
+    name: examples-gnu-${{ inputs.server-tag }}-${{ inputs.java-version }}
+    with:
+      java-version: ${{ inputs.java-version }}
+      run-tests: false
+      run-examples: ${{ inputs.run-examples }}
+      server-tag: ${{ inputs.server-tag }}
+      crypto-type: gnu
       server-container-repo: ${{ inputs.server-container-repo }}
     secrets: inherit

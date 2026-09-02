@@ -18,7 +18,6 @@ package com.aerospike.examples;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Bin;
-import com.aerospike.client.IAerospikeClient;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
 import com.aerospike.client.ResultCode;
@@ -42,41 +41,32 @@ import com.aerospike.client.task.IndexTask;
  */
 public class QueryTopK extends Example {
 
-	public QueryTopK(Console console) {
-		super(console);
-	}
-
 	/**
 	 * Query records and select the top K by bin value using {@code setOrderBy}/{@code setTopK}.
 	 */
 	@Override
-	public void runExample(IAerospikeClient client, Parameters params) throws Exception {
+	public void runExample() throws Exception {
 		String indexName = "topkindex";
 		String keyPrefix = "topkkey";
 		String binName = "topkbin";
 		int size = 20;
 		int k = 5;
 
-		createIndex(client, params, indexName, binName);
-		writeRecords(client, params, keyPrefix, binName, size);
-		runQuery(client, params, indexName, binName, k);
-		client.dropIndex(params.policy, params.namespace, params.set, indexName);
+		createIndex(indexName, binName);
+		writeRecords(keyPrefix, binName, size);
+		runQuery(indexName, binName, k);
+		client().dropIndex(readPolicy(), namespace(), set(), indexName);
 	}
 
-	private void createIndex(
-		IAerospikeClient client,
-		Parameters params,
-		String indexName,
-		String binName
-	) throws Exception {
+	private void createIndex(String indexName, String binName) throws Exception {
 		console.info("Create index: ns=%s set=%s index=%s bin=%s",
-			params.namespace, params.set, indexName, binName);
+			namespace(), set(), indexName, binName);
 
 		Policy policy = new Policy();
 		policy.socketTimeout = 0; // Do not timeout on index create.
 
 		try {
-			IndexTask task = client.createIndex(policy, params.namespace, params.set, indexName, binName, IndexType.NUMERIC);
+			IndexTask task = client().createIndex(policy, namespace(), set(), indexName, binName, IndexType.NUMERIC);
 			task.waitTillComplete();
 		}
 		catch (AerospikeException ae) {
@@ -86,51 +76,38 @@ public class QueryTopK extends Example {
 		}
 	}
 
-	private void writeRecords(
-		IAerospikeClient client,
-		Parameters params,
-		String keyPrefix,
-		String binName,
-		int size
-	) throws Exception {
+	private void writeRecords(String keyPrefix, String binName, int size) throws Exception {
 		console.info("Write " + size + " records.");
 
 		// Values 1..size. The top 5 descending are size, size-1, size-2, size-3, size-4.
 		for (int i = 1; i <= size; i++) {
-			Key key = new Key(params.namespace, params.set, keyPrefix + i);
+			Key key = new Key(namespace(), set(), keyPrefix + i);
 			Bin bin = new Bin(binName, i);
-			client.put(params.writePolicy, key, bin);
+			client().put(writePolicy(), key, bin);
 		}
 	}
 
-	private void runQuery(
-		IAerospikeClient client,
-		Parameters params,
-		String indexName,
-		String binName,
-		int k
-	) throws Exception {
+	private void runQuery(String indexName, String binName, int k) throws Exception {
 		int begin = 1;
 		int end = 1000;
 
 		console.info("Query top %d by bin=%s descending", k, binName);
 
 		Statement stmt = new Statement();
-		stmt.setNamespace(params.namespace);
-		stmt.setSetName(params.set);
+		stmt.setNamespace(namespace());
+		stmt.setSetName(set());
 		stmt.setBinNames(binName);
 		stmt.setFilter(Filter.range(binName, begin, end));
 
 		stmt.setOrderBy(binName, BinDataType.INTEGER, Order.DESC);
 		stmt.setTopK(k);
 
-		// client.query() merges every node's results and streams back only the final,
+		// client().query() merges every node's results and streams back only the final,
 		// globally-ordered top k records.
-		RecordSet rs = client.query(null, stmt);
-		int count = 0;
-		int expected = 20; // largest value written
+		try (RecordSet rs = client().query(null, stmt)) {
+			int count = 0;
+			int expected = 20; // largest value written
 
-		try {
 			while (rs.next()) {
 				Record record = rs.getRecord();
 				int value = record.getInt(binName);
@@ -143,13 +120,10 @@ public class QueryTopK extends Example {
 				expected--;
 				count++;
 			}
-		}
-		finally {
-			rs.close();
-		}
 
-		if (count != k) {
-			console.error("Top-K count mismatch. Expected %d. Received %d.", k, count);
+			if (count != k) {
+				console.error("Top-K count mismatch. Expected %d. Received %d.", k, count);
+			}
 		}
 	}
 }

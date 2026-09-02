@@ -21,6 +21,7 @@ import org.junit.BeforeClass;
 import org.junit.runner.RunWith;
 import org.junit.runners.Suite;
 
+import com.aerospike.client.TxnTest;
 import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.Host;
 import com.aerospike.client.IAerospikeClient;
@@ -34,6 +35,12 @@ import com.aerospike.test.sync.basic.TestCdtOperate;
 import com.aerospike.test.sync.basic.TestBitExp;
 import com.aerospike.test.sync.basic.TestConfigLoadYAML;
 import com.aerospike.test.sync.basic.TestDeleteBin;
+import com.aerospike.test.sync.basic.TestErrorDetailBatch;
+import com.aerospike.test.sync.basic.TestErrorDetailParser;
+import com.aerospike.test.sync.basic.TestErrorDetailPaths;
+import com.aerospike.test.sync.basic.TestErrorDetailSubcode;
+import com.aerospike.test.sync.basic.TestErrorDetailVerbosity;
+import com.aerospike.test.sync.basic.TestExpErrorDetail;
 import com.aerospike.test.sync.basic.TestExpOperation;
 import com.aerospike.test.sync.basic.TestExpire;
 import com.aerospike.test.sync.basic.TestFilterExp;
@@ -47,11 +54,15 @@ import com.aerospike.test.sync.basic.TestOperateBit;
 import com.aerospike.test.sync.basic.TestOperateHll;
 import com.aerospike.test.sync.basic.TestOperateList;
 import com.aerospike.test.sync.basic.TestOperateMap;
+import com.aerospike.test.sync.basic.TestOperateString;
 import com.aerospike.test.sync.basic.TestPutGet;
 import com.aerospike.test.sync.basic.TestQueryRoles;
 import com.aerospike.test.sync.basic.TestReplace;
 import com.aerospike.test.sync.basic.TestScan;
 import com.aerospike.test.sync.basic.TestServerInfo;
+import com.aerospike.test.sync.basic.TestStringExp;
+import com.aerospike.test.sync.basic.TestStringInvalidUtf8;
+import com.aerospike.test.sync.basic.TestStringMasking;
 import com.aerospike.test.sync.basic.TestTouch;
 import com.aerospike.test.sync.basic.TestTxn;
 import com.aerospike.test.sync.basic.TestUDF;
@@ -78,6 +89,7 @@ import com.aerospike.test.sync.query.TestQueryString;
 import com.aerospike.test.sync.query.TestQuerySum;
 import com.aerospike.test.sync.query.TestVectorExp;
 import com.aerospike.test.util.Args;
+import com.aerospike.client.AerospikeClientIndexTypeTest;
 
 @RunWith(Suite.class)
 @Suite.SuiteClasses({
@@ -89,6 +101,12 @@ import com.aerospike.test.util.Args;
 	TestCdtOperate.class,
 	TestConfigLoadYAML.class,
 	TestDeleteBin.class,
+	TestErrorDetailBatch.class,
+	TestErrorDetailParser.class,
+	TestErrorDetailPaths.class,
+	TestErrorDetailSubcode.class,
+	TestErrorDetailVerbosity.class,
+	TestExpErrorDetail.class,
 	TestExpire.class,
 	TestExpOperation.class,
 	TestFilterExp.class,
@@ -102,12 +120,17 @@ import com.aerospike.test.util.Args;
 	TestOperateHll.class,
 	TestOperateList.class,
 	TestOperateMap.class,
+	TestOperateString.class,
 	TestPutGet.class,
 	TestQueryRoles.class,
 	TestReplace.class,
 	TestScan.class,
 	TestServerInfo.class,
+	TestStringExp.class,
+	TestStringInvalidUtf8.class,
+	TestStringMasking.class,
 	TestTouch.class,
+	TxnTest.class,
 	TestTxn.class,
 	TestUDF.class,
 	TestVector.class,
@@ -131,7 +154,8 @@ import com.aerospike.test.util.Args;
 	TestQueryReduce.class,
 	TestQueryString.class,
 	TestQuerySum.class,
-	TestVectorExp.class
+	TestVectorExp.class,
+	AerospikeClientIndexTypeTest.class
 })
 public class SuiteSync {
 	public static IAerospikeClient client = null;

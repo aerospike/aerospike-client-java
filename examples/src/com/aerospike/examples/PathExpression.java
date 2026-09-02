@@ -22,7 +22,6 @@ import java.util.List;
 import java.util.Map;
 
 import com.aerospike.client.Bin;
-import com.aerospike.client.IAerospikeClient;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
 import com.aerospike.client.Value;
@@ -39,33 +38,29 @@ import com.aerospike.client.exp.LoopVarPart;
 
 public class PathExpression extends Example {
 
-	public PathExpression(Console console) {
-		super(console);
-	}
-
 	/**
 	 * Demonstrate path expression enhancements: CTX.mapKeysIn (string and {@link Value} varargs),
 	 * CTX.andFilter, Exp.inList, Exp.mapKeysIn, and Exp.mapValues.
 	 */
 	@Override
-	public void runExample(IAerospikeClient client, Parameters params) throws Exception {
-		runMapKeysSelect(client, params);
-		runMapKeysInValueMixedSelect(client, params);
-		runMapKeysWithAndFilter(client, params);
-		runInListExpression(client, params);
-		runMapKeysExpression(client, params);
-		runMapValuesExpression(client, params);
+	public void runExample() throws Exception {
+		runMapKeysSelect();
+		runMapKeysInValueMixedSelect();
+		runMapKeysWithAndFilter();
+		runInListExpression();
+		runMapKeysExpression();
+		runMapValuesExpression();
 	}
 
 	/**
 	 * Use CTX.mapKeysIn to select a subset of map entries by key list
 	 * via CdtOperation.selectByPath.
 	 */
-	private void runMapKeysSelect(IAerospikeClient client, Parameters params) {
-		Key key = new Key(params.namespace, params.set, "pathexp1");
+	private void runMapKeysSelect() {
+		Key key = new Key(namespace(), set(), "pathexp1");
 		String binName = "mapbin";
 
-		client.delete(params.writePolicy, key);
+		client().delete(writePolicy(), key);
 
 		Map<String, Integer> map = new HashMap<>();
 		map.put("Charlie", 55);
@@ -73,13 +68,13 @@ public class PathExpression extends Example {
 		map.put("John", 76);
 		map.put("Harry", 82);
 
-		client.put(params.writePolicy, key, new Bin(binName, map));
+		client().put(writePolicy(), key, new Bin(binName, map));
 
 		console.info("Map: " + map);
 
 		// Select only "Charlie" and "John" values using CTX.mapKeysIn.
 		CTX ctx = CTX.mapKeysIn("Charlie", "John");
-		Record record = client.operate(params.writePolicy, key,
+		Record record = client().operate(writePolicy(), key,
 			CdtOperation.selectByPath(binName, SelectFlags.VALUE, ctx)
 		);
 
@@ -90,11 +85,11 @@ public class PathExpression extends Example {
 	 * Use {@link CTX#mapKeysIn(Value...)} to select map entries when keys use more than one
 	 * CDT type (here: string, integer, and blob) in a single path context. Requires server 8.1.2+.
 	 */
-	private void runMapKeysInValueMixedSelect(IAerospikeClient client, Parameters params) {
-		Key key = new Key(params.namespace, params.set, "pathexp6");
+	private void runMapKeysInValueMixedSelect() {
+		Key key = new Key(namespace(), set(), "pathexp6");
 		String binName = "mapbin";
 
-		client.delete(params.writePolicy, key);
+		client().delete(writePolicy(), key);
 
 		byte[] regionKey = new byte[] { 'u', 's', '-', 'e', 'a', 's', 't' };
 		Map<Value, Value> map = new HashMap<>();
@@ -102,13 +97,13 @@ public class PathExpression extends Example {
 		map.put(Value.get(1001L), Value.get("express"));
 		map.put(Value.get(regionKey), Value.get("regional-offer"));
 
-		client.operate(params.writePolicy, key,
+		client().operate(writePolicy(), key,
 			MapOperation.putItems(MapPolicy.Default, binName, map));
 
 		console.info("Mixed-key map stored (string sku, long 1001, blob region key).");
 
 		CTX ctx = CTX.mapKeysIn(Value.get("sku"), Value.get(1001L), Value.get(regionKey));
-		Record record = client.operate(params.writePolicy, key,
+		Record record = client().operate(writePolicy(), key,
 			CdtOperation.selectByPath(binName, SelectFlags.VALUE, ctx));
 
 		console.info("selectByPath mapKeysIn(Value...) [sku, 1001, region]: " + record.getList(binName));
@@ -118,11 +113,11 @@ public class PathExpression extends Example {
 	 * Use CTX.mapKeysIn combined with CTX.andFilter to select map entries
 	 * by key list and then further filter by value.
 	 */
-	private void runMapKeysWithAndFilter(IAerospikeClient client, Parameters params) {
-		Key key = new Key(params.namespace, params.set, "pathexp2");
+	private void runMapKeysWithAndFilter() {
+		Key key = new Key(namespace(), set(), "pathexp2");
 		String binName = "mapbin";
 
-		client.delete(params.writePolicy, key);
+		client().delete(writePolicy(), key);
 
 		Map<String, Integer> map = new HashMap<>();
 		map.put("Charlie", 55);
@@ -130,7 +125,7 @@ public class PathExpression extends Example {
 		map.put("John", 76);
 		map.put("Harry", 82);
 
-		client.put(params.writePolicy, key, new Bin(binName, map));
+		client().put(writePolicy(), key, new Bin(binName, map));
 
 		console.info("Map: " + map);
 
@@ -140,7 +135,7 @@ public class PathExpression extends Example {
 			Exp.gt(Exp.intLoopVar(LoopVarPart.VALUE), Exp.val(70))
 		);
 
-		Record record = client.operate(params.writePolicy, key,
+		Record record = client().operate(writePolicy(), key,
 			CdtOperation.selectByPath(binName, SelectFlags.MAP_KEY_VALUE, keyCtx, filter)
 		);
 
@@ -150,12 +145,12 @@ public class PathExpression extends Example {
 	/**
 	 * Use Exp.inList to check if a bin value is contained in a list.
 	 */
-	private void runInListExpression(IAerospikeClient client, Parameters params) {
-		Key key = new Key(params.namespace, params.set, "pathexp3");
+	private void runInListExpression() {
+		Key key = new Key(namespace(), set(), "pathexp3");
 
-		client.delete(params.writePolicy, key);
+		client().delete(writePolicy(), key);
 
-		client.put(params.writePolicy, key,
+		client().put(writePolicy(), key,
 			new Bin("color", "blue"),
 			new Bin("size", 10)
 		);
@@ -170,7 +165,7 @@ public class PathExpression extends Example {
 			)
 		);
 
-		Record record = client.operate(null, key,
+		Record record = client().operate(null, key,
 			ExpOperation.read("inList", exp, ExpReadFlags.DEFAULT)
 		);
 
@@ -184,7 +179,7 @@ public class PathExpression extends Example {
 			)
 		);
 
-		Record recordNot = client.operate(null, key,
+		Record recordNot = client().operate(null, key,
 			ExpOperation.read("notInList", expNot, ExpReadFlags.DEFAULT)
 		);
 
@@ -194,18 +189,18 @@ public class PathExpression extends Example {
 	/**
 	 * Use Exp.mapKeysIn to extract all keys from a map bin.
 	 */
-	private void runMapKeysExpression(IAerospikeClient client, Parameters params) {
-		Key key = new Key(params.namespace, params.set, "pathexp4");
+	private void runMapKeysExpression() {
+		Key key = new Key(namespace(), set(), "pathexp4");
 		String binName = "mapbin";
 
-		client.delete(params.writePolicy, key);
+		client().delete(writePolicy(), key);
 
 		Map<String, Integer> map = new HashMap<>();
 		map.put("Charlie", 55);
 		map.put("Jim", 98);
 		map.put("John", 76);
 
-		client.put(params.writePolicy, key, new Bin(binName, map));
+		client().put(writePolicy(), key, new Bin(binName, map));
 
 		console.info("Map: " + map);
 
@@ -214,7 +209,7 @@ public class PathExpression extends Example {
 			Exp.mapKeysIn(Exp.mapBin(binName))
 		);
 
-		Record record = client.operate(null, key,
+		Record record = client().operate(null, key,
 			ExpOperation.read("keys", exp, ExpReadFlags.DEFAULT)
 		);
 
@@ -225,18 +220,18 @@ public class PathExpression extends Example {
 	/**
 	 * Use Exp.mapValues to extract all values from a map bin.
 	 */
-	private void runMapValuesExpression(IAerospikeClient client, Parameters params) {
-		Key key = new Key(params.namespace, params.set, "pathexp5");
+	private void runMapValuesExpression() {
+		Key key = new Key(namespace(), set(), "pathexp5");
 		String binName = "mapbin";
 
-		client.delete(params.writePolicy, key);
+		client().delete(writePolicy(), key);
 
 		Map<String, Integer> map = new HashMap<>();
 		map.put("Charlie", 55);
 		map.put("Jim", 98);
 		map.put("John", 76);
 
-		client.put(params.writePolicy, key, new Bin(binName, map));
+		client().put(writePolicy(), key, new Bin(binName, map));
 
 		console.info("Map: " + map);
 
@@ -245,7 +240,7 @@ public class PathExpression extends Example {
 			Exp.mapValuesIn(Exp.mapBin(binName))
 		);
 
-		Record record = client.operate(null, key,
+		Record record = client().operate(null, key,
 			ExpOperation.read("values", exp, ExpReadFlags.DEFAULT)
 		);
 

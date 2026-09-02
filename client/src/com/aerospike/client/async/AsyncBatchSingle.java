@@ -127,6 +127,7 @@ public final class AsyncBatchSingle {
 			}
 			else {
 				record.setError(rp.resultCode, false);
+				record.setErrorDetail(rp.serverMessage, rp.serverSubcode, rp.expTrace);
 				executor.setRowError();
 			}
 		}
@@ -477,6 +478,7 @@ public final class AsyncBatchSingle {
 			}
 			else {
 				record.setError(rp.resultCode, Command.batchInDoubt(attr.hasWrite, commandSentCounter));
+				record.setErrorDetail(rp.serverMessage, rp.serverSubcode, rp.expTrace);
 				executor.setRowError();
 			}
 		}
@@ -551,6 +553,7 @@ public final class AsyncBatchSingle {
 			}
 			else {
 				record.setError(rp.resultCode, Command.batchInDoubt(true, commandSentCounter));
+				record.setErrorDetail(rp.serverMessage, rp.serverSubcode, rp.expTrace);
 				executor.setRowError();
 			}
 		}
@@ -637,6 +640,7 @@ public final class AsyncBatchSingle {
 			}
 			else {
 				record.setError(rp.resultCode, Command.batchInDoubt(true, commandSentCounter));
+				record.setErrorDetail(rp.serverMessage, rp.serverSubcode, rp.expTrace);
 				executor.setRowError();
 			}
 		}
@@ -773,6 +777,7 @@ public final class AsyncBatchSingle {
 			}
 			else {
 				record.setError(rp.resultCode, Command.batchInDoubt(true, commandSentCounter));
+				record.setErrorDetail(rp.serverMessage, rp.serverSubcode, rp.expTrace);
 				executor.setRowError();
 			}
 		}
@@ -899,6 +904,7 @@ public final class AsyncBatchSingle {
 			}
 			else {
 				record.setError(rp.resultCode, Command.batchInDoubt(true, commandSentCounter));
+				record.setErrorDetail(rp.serverMessage, rp.serverSubcode, rp.expTrace);
 				executor.setRowError();
 			}
 		}

@@ -54,8 +54,10 @@ public final class BitExp {
 	private static final int LSCAN = 52;
 	private static final int RSCAN = 53;
 	private static final int GET_INT = 54;
+	private static final int B64_ENCODE = 55;
 
 	private static final int INT_FLAGS_SIGNED = 1;
+	private static final int READ_SUBFLAG_INVERT_SIZE = 1;
 
 	/**
 	 * Create expression that resizes byte[] to byteSize according to resizeFlags (See {@link BitResizeFlags})
@@ -340,6 +342,60 @@ public final class BitExp {
 	public static Exp count(Exp bitOffset, Exp bitSize, Exp bin) {
 		byte[] bytes = Pack.pack(COUNT, bitOffset, bitSize);
 		return addRead(bin, bytes, Exp.Type.INT);
+	}
+
+	/**
+	 * Create expression that returns the base64 text of the whole byte[] bin as a string.
+	 *
+	 * <pre>{@code
+	 * // blob bin "a" base64-encoded
+	 * BitExp.b64Encode(Exp.blobBin("a"))
+	 * }</pre>
+	 *
+	 * Requires server version 8.1.3 or later.
+	 */
+	public static Exp b64Encode(Exp bin) {
+		byte[] bytes = Pack.pack(B64_ENCODE);
+		return addRead(bin, bytes, Exp.Type.STRING);
+	}
+
+	/**
+	 * Create expression that returns the base64 text of a byte range of the byte[] bin as a
+	 * string. A negative {@code byteOffset} counts back from the end of the blob. Note the
+	 * span is expressed in <b>bytes</b>, unlike the bit offsets and sizes the other bit
+	 * expressions take.
+	 *
+	 * <pre>{@code
+	 * // first 3 bytes of blob bin "a", base64-encoded
+	 * BitExp.b64Encode(Exp.val(0), Exp.val(3), Exp.blobBin("a"))
+	 * }</pre>
+	 *
+	 * Requires server version 8.1.3 or later.
+	 */
+	public static Exp b64Encode(Exp byteOffset, Exp byteSize, Exp bin) {
+		byte[] bytes = Pack.pack(B64_ENCODE, byteOffset, byteSize);
+		return addRead(bin, bytes, Exp.Type.STRING);
+	}
+
+	/**
+	 * Create expression that returns the base64 text of a byte range of the byte[] bin as a
+	 * string, with {@code byteSize} measured from the end of the blob.
+	 * When {@code invertSize} is true, {@code byteSize} counts back from the blob's end
+	 * rather than forward from {@code byteOffset}, so a {@code byteSize} of 0 means "to the
+	 * end of the blob". When false this behaves exactly as
+	 * {@link #b64Encode(Exp, Exp, Exp)}.
+	 *
+	 * <pre>{@code
+	 * // blob bin "a" from byte 1 to its last byte, base64-encoded
+	 * BitExp.b64Encode(Exp.val(1), Exp.val(0), true, Exp.blobBin("a"))
+	 * }</pre>
+	 *
+	 * Requires server version 8.1.3 or later.
+	 */
+	public static Exp b64Encode(Exp byteOffset, Exp byteSize, boolean invertSize, Exp bin) {
+		int subflags = invertSize ? READ_SUBFLAG_INVERT_SIZE : 0;
+		byte[] bytes = Pack.pack(B64_ENCODE, byteOffset, byteSize, subflags);
+		return addRead(bin, bytes, Exp.Type.STRING);
 	}
 
 	/**

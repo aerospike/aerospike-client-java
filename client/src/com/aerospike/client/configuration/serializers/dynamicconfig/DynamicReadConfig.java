@@ -38,6 +38,7 @@ public class DynamicReadConfig {
     public IntProperty totalTimeout;
     public IntProperty maxRetries;
     public DoubleProperty sleepMultiplier;
+    public IntProperty errorDetailVerbosity;
 
     public DynamicReadConfig() {}
 
@@ -63,6 +64,8 @@ public class DynamicReadConfig {
 
     public void setSleepMultiplier(DoubleProperty sleepMultiplier) { this.sleepMultiplier = sleepMultiplier; }
 
+    public void setErrorDetailVerbosity(IntProperty errorDetailVerbosity) { this.errorDetailVerbosity = errorDetailVerbosity; }
+
     public ReadModeAP getReadModeAP() { return readModeAP; }
 
     public ReadModeSC getReadModeSC() { return readModeSC; }
@@ -85,6 +88,8 @@ public class DynamicReadConfig {
 
     public DoubleProperty getSleepMultiplier() { return sleepMultiplier; }
 
+    public IntProperty getErrorDetailVerbosity() { return errorDetailVerbosity; }
+
     @Override
     public String toString() {
         StringBuffer propsString = new StringBuffer("{");
@@ -99,7 +104,8 @@ public class DynamicReadConfig {
             propsString.append(" timeout_delay=").append(timeoutDelay.value).append(", ");
             propsString.append(" total_timeout=").append(totalTimeout.value).append(", ");
             propsString.append(" max_retries=").append(maxRetries.value).append(", ");
-            propsString.append(" sleep_multiplier=").append(sleepMultiplier.value);
+            propsString.append(" sleep_multiplier=").append(sleepMultiplier.value).append(", ");
+            propsString.append(" error_detail_verbosity=").append(errorDetailVerbosity != null ? errorDetailVerbosity.value : "null");
         } catch (Exception e) {
             Log.error(e.toString());
         }

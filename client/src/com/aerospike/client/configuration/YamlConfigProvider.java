@@ -40,7 +40,7 @@ public class YamlConfigProvider implements ConfigurationProvider {
 	private static final String CONFIG_PATH_SYS_PROP = "AEROSPIKE_CLIENT_CONFIG_SYS_PROP";
 	private static final String YAML_SERIALIZERS_PATH = "com.aerospike.client.configuration.serializers.";
 	private static final String DEFAULT_CONFIG_URL_PREFIX = "file://";
-	private static final List<String> SUPPORTED_SCHEMA_VERSIONS = List.of("1.0.0");
+	private static final List<String> SUPPORTED_SCHEMA_VERSIONS = List.of("1.0.0", "1.1.0");
 
 	public static List<String> getSupportedVersions() {
 		return SUPPORTED_SCHEMA_VERSIONS;

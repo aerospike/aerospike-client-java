@@ -50,14 +50,32 @@ public final class Operation {
 
 	/**
 	 * Create string append database operation.
+	 *
+	 * @deprecated Use {@link com.aerospike.client.operation.StringOperation#append(com.aerospike.client.operation.StringPolicy, String, String, com.aerospike.client.cdt.CTX...)}
+	 * instead. This legacy operation performs a raw byte concatenation that is not Unicode/DBCS-aware;
+	 * the string-package equivalent provides consistent Unicode handling and policy/CTX support.
+	 * <p>
+	 * This operation also accepts BLOB bins, which the string operations cannot target. For a blob
+	 * bin, use {@link com.aerospike.client.operation.BitOperation#insert} at a byte offset equal to
+	 * the blob's current size. Note there is no "at the end" sentinel: an offset past the end
+	 * zero-pads the gap, so appending requires knowing the current blob size.
 	 */
+	@Deprecated(since = "10.4.0", forRemoval = true)
 	public static Operation append(Bin bin) {
 		return new Operation(Type.APPEND, bin.name, bin.value);
 	}
 
 	/**
 	 * Create string prepend database operation.
+	 *
+	 * @deprecated Use {@link com.aerospike.client.operation.StringOperation#prepend(com.aerospike.client.operation.StringPolicy, String, String, com.aerospike.client.cdt.CTX...)}
+	 * instead. This legacy operation performs a raw byte concatenation that is not Unicode/DBCS-aware;
+	 * the string-package equivalent provides consistent Unicode handling and policy/CTX support.
+	 * <p>
+	 * This operation also accepts BLOB bins, which the string operations cannot target. For a blob
+	 * bin, use {@link com.aerospike.client.operation.BitOperation#insert} at byte offset {@code 0}.
 	 */
+	@Deprecated(since = "10.4.0", forRemoval = true)
 	public static Operation prepend(Bin bin) {
 		return new Operation(Type.PREPEND, bin.name, bin.value);
 	}
@@ -111,7 +129,10 @@ public final class Operation {
 		BIT_MODIFY(13, true),
 		DELETE(14, true),
 		HLL_READ(15, false),
-		HLL_MODIFY(16, true);
+		HLL_MODIFY(16, true),
+		STRING_READ(17, false),
+		STRING_MODIFY(18, true),
+		TO_STRING(19, false);
 
 		public final int protocolType;
 		public final boolean isWrite;

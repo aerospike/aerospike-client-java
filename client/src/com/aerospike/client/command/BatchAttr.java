@@ -24,6 +24,7 @@ import com.aerospike.client.policy.BatchReadPolicy;
 import com.aerospike.client.policy.BatchUDFPolicy;
 import com.aerospike.client.policy.BatchWritePolicy;
 import com.aerospike.client.policy.CommitLevel;
+import com.aerospike.client.policy.GenerationPolicy;
 import com.aerospike.client.policy.Policy;
 import com.aerospike.client.policy.ReadModeAP;
 
@@ -38,6 +39,15 @@ public final class BatchAttr {
 	public short generation;
 	public boolean hasWrite;
 	public boolean sendKey;
+
+	/**
+	 * Error-detail verbosity folded into info4 bits 5-6 (see
+	 * {@link Command#INFO4_ERROR_VERBOSITY_SHIFT}/{@link Command#INFO4_ERROR_VERBOSITY_MASK}).
+	 * Batch-wide, taken from the parent BatchPolicy, and OR'd into each row's info4 by
+	 * {@code writeBatchRead}/{@code writeBatchWrite}. The set* methods never touch it,
+	 * so it survives per-row reuse of the attr.
+	 */
+	public int errorDetailBits;
 
 	public BatchAttr() {
 	}
@@ -194,6 +204,22 @@ public final class BatchAttr {
 		}
 	}
 
+    private void applyGenerationPolicy(GenerationPolicy generationPolicy, int gen) {
+        switch (generationPolicy) {
+            default:
+            case NONE:
+                generation = 0;
+                break;
+            case EXPECT_GEN_EQUAL:
+                generation = (short)gen;
+                writeAttr |= Command.INFO2_GENERATION;
+                break;
+            case EXPECT_GEN_GT:
+                generation = (short)gen;
+                writeAttr |= Command.INFO2_GENERATION_GT;
+                break;
+        }
+    }
 	public void setWrite(BatchPolicy bp, BatchWritePolicy wp) {
 		setWrite(wp, bp.sendKey, wp.durableDelete);
 	}
@@ -208,20 +234,7 @@ public final class BatchAttr {
 		hasWrite = true;
 		this.sendKey = (sendKey || wp.sendKey);
 
-		switch (wp.generationPolicy) {
-		default:
-		case NONE:
-			generation = 0;
-			break;
-		case EXPECT_GEN_EQUAL:
-			generation = (short)wp.generation;
-			writeAttr |= Command.INFO2_GENERATION;
-			break;
-		case EXPECT_GEN_GT:
-			generation = (short)wp.generation;
-			writeAttr |= Command.INFO2_GENERATION_GT;
-			break;
-		}
+        applyGenerationPolicy(wp.generationPolicy, wp.generation);
 
 		switch (wp.recordExistsAction) {
 		case UPDATE:
@@ -314,20 +327,7 @@ public final class BatchAttr {
 		hasWrite = true;
 		this.sendKey = (sendKey || dp.sendKey);
 
-		switch (dp.generationPolicy) {
-		default:
-		case NONE:
-			generation = 0;
-			break;
-		case EXPECT_GEN_EQUAL:
-			generation = (short)dp.generation;
-			writeAttr |= Command.INFO2_GENERATION;
-			break;
-		case EXPECT_GEN_GT:
-			generation = (short)dp.generation;
-			writeAttr |= Command.INFO2_GENERATION_GT;
-			break;
-		}
+        applyGenerationPolicy(dp.generationPolicy, dp.generation);
 
 		if (durableDelete) {
 			writeAttr |= Command.INFO2_DURABLE_DELETE;

@@ -16,6 +16,7 @@
  */
 package com.aerospike.client.async;
 
+import com.aerospike.client.ExpressionTrace;
 import com.aerospike.client.Key;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.Node;
@@ -65,9 +66,16 @@ public abstract class AsyncWriteBase extends AsyncCommand {
 		}
 	}
 
+	protected String serverMessage;
+	protected int serverSubcode; // SubCode.NONE (0) when absent
+	protected ExpressionTrace expTrace;
+
 	protected int parseHeader() {
 		RecordParser rp = new RecordParser(dataBuffer, dataOffset, receiveSize);
 		rp.parseFields(policy.txn, key, true);
+		this.serverMessage = rp.serverMessage;
+		this.serverSubcode = rp.serverSubcode;
+		this.expTrace = rp.expTrace;
 		return rp.resultCode;
 	}
 }

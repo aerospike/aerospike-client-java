@@ -51,6 +51,22 @@ public class Parameters {
 		this.tlsPolicy = policy;
 	}
 
+	public String namespace() {
+		return namespace;
+	}
+
+	public String set() {
+		return set;
+	}
+
+	public WritePolicy writePolicy() {
+		return writePolicy;
+	}
+
+	public Policy readPolicy() {
+		return policy;
+	}
+
 	@Override
 	public String toString() {
 		return "Parameters: host=" + host +

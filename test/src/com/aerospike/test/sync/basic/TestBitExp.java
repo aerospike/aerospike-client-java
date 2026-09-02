@@ -19,6 +19,8 @@ package com.aerospike.test.sync.basic;
 
 import static org.junit.Assert.assertEquals;
 
+import java.util.Base64;
+
 import org.junit.Test;
 
 import com.aerospike.client.Bin;
@@ -26,6 +28,8 @@ import com.aerospike.client.Key;
 import com.aerospike.client.Record;
 import com.aerospike.client.exp.BitExp;
 import com.aerospike.client.exp.Exp;
+import com.aerospike.client.exp.ExpOperation;
+import com.aerospike.client.exp.ExpReadFlags;
 import com.aerospike.client.operation.BitOverflowAction;
 import com.aerospike.client.operation.BitPolicy;
 import com.aerospike.client.policy.Policy;
@@ -460,5 +464,35 @@ public class TestBitExp extends TestSync {
 
 		r = client.get(policy, key);
 		assertRecordFound(key, r);
+	}
+	@Test
+	public void b64EncodeRead() {
+		org.junit.Assume.assumeTrue("bit b64Encode requires server version 8.1.3 or later",
+			args.serverVersion.isGreaterOrEqual(8, 1, 3, 0));
+
+		Key key = new Key(args.namespace, args.set, 5002);
+		client.delete(null, key);
+
+		byte[] blob = new byte[] {0x01, 0x42, 0x03, 0x04, 0x05};
+		client.put(null, key, new Bin(binA, blob));
+
+		Record record = client.operate(null, key,
+			ExpOperation.read("whole",
+				Exp.build(BitExp.b64Encode(Exp.blobBin(binA))), ExpReadFlags.DEFAULT),
+			ExpOperation.read("span",
+				Exp.build(BitExp.b64Encode(Exp.val(1), Exp.val(2), Exp.blobBin(binA))),
+				ExpReadFlags.DEFAULT),
+			ExpOperation.read("inverted",
+				Exp.build(BitExp.b64Encode(Exp.val(1), Exp.val(0), true, Exp.blobBin(binA))),
+				ExpReadFlags.DEFAULT),
+			ExpOperation.read("negoff",
+				Exp.build(BitExp.b64Encode(Exp.val(-2), Exp.val(2), Exp.blobBin(binA))),
+				ExpReadFlags.DEFAULT));
+
+		Base64.Encoder enc = Base64.getEncoder();
+		assertEquals(enc.encodeToString(blob), record.getString("whole"));
+		assertEquals(enc.encodeToString(new byte[] {0x42, 0x03}), record.getString("span"));
+		assertEquals(enc.encodeToString(new byte[] {0x42, 0x03, 0x04, 0x05}), record.getString("inverted"));
+		assertEquals(enc.encodeToString(new byte[] {0x04, 0x05}), record.getString("negoff"));
 	}
 }

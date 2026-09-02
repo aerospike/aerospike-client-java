@@ -70,6 +70,7 @@ public final class Batch {
 			BatchRead record = records.get(batchIndex);
 
 			parseFieldsRead(record.key);
+			applyErrorDetail(record);
 
 			if (resultCode == 0) {
 				record.setRecord(parseRecord());
@@ -689,6 +690,9 @@ public final class Batch {
 			else {
 				skipKey(fieldCount);
 			}
+
+			// Surface any per-row error detail (field 45) captured during the field walk.
+			applyErrorDetail(br);
 		}
 
 		@Override

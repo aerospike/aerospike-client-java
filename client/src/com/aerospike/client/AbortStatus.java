@@ -22,6 +22,7 @@ package com.aerospike.client;
 public enum AbortStatus {
 	OK("Abort succeeded"),
 	ALREADY_ABORTED("Already aborted"),
+	COMMIT_FAILED("Abort not allowed because a commit already failed on this transaction with an in-doubt outcome"),
 	ROLL_BACK_ABANDONED("Transaction client roll back abandoned. Server will eventually abort the transaction."),
 	CLOSE_ABANDONED("Transaction has been rolled back, but transaction client close was abandoned. Server will eventually close the transaction.");
 

@@ -32,12 +32,20 @@ public class AerospikeException extends RuntimeException {
 	protected transient Policy policy;
 	protected List<AerospikeException> subExceptions;
 	protected int resultCode = ResultCode.CLIENT_ERROR;
+	protected int subCode = SubCode.NONE;
+	protected ExpressionTrace expTrace;
 	protected int iteration = -1;
 	protected boolean inDoubt;
 
 	public AerospikeException(int resultCode, String message) {
 		super(message);
 		this.resultCode = resultCode;
+	}
+
+	public AerospikeException(int resultCode, String message, int subCode) {
+		super(message);
+		this.resultCode = resultCode;
+		this.subCode = subCode;
 	}
 
 	public AerospikeException(int resultCode, Throwable e) {
@@ -79,6 +87,8 @@ public class AerospikeException extends RuntimeException {
 
 		sb.append("Error ");
 		sb.append(resultCode);
+		sb.append(',');
+		sb.append(subCode);
 
 		if (iteration >= 0) {
 			sb.append(',');
@@ -182,6 +192,49 @@ public class AerospikeException extends RuntimeException {
 	 */
 	public final int getResultCode() {
 		return resultCode;
+	}
+
+	/**
+	 * Get the server-supplied error subcode, or {@link SubCode#NONE} (0) when the
+	 * server did not return one (verbosity disabled, or the failing branch had no
+	 * dispatchable subcode).
+	 * <p>
+	 * A subcode is only meaningful when interpreted together with
+	 * {@link #getResultCode()}: subcode integer values are scoped to their parent
+	 * result code and are NOT globally unique. Dispatch on the
+	 * {@code (resultCode, subcode)} pair. See {@link SubCode}.
+	 */
+	public final int getSubCode() {
+		return subCode;
+	}
+
+	/**
+	 * Set the server-supplied error subcode.
+	 */
+	public final void setSubCode(int subCode) {
+		this.subCode = subCode;
+	}
+
+	/**
+	 * Get the server-supplied expression build trace, or {@code null} when absent.
+	 * <p>
+	 * Populated only at error-detail verbosity 3 (see
+	 * {@link com.aerospike.client.policy.Policy#errorDetailVerbosity}) on an expression
+	 * build failure — a metadata filter ({@code filter_exp}) or an {@code exp_read}/
+	 * {@code exp_write} operation that the server could not build. Such failures carry
+	 * {@link ResultCode#PARAMETER_ERROR} and {@link SubCode#NONE}. {@code null} on every
+	 * other failure (including non-expression failures at verbosity 3). See
+	 * {@link ExpressionTrace}.
+	 */
+	public final ExpressionTrace getExpressionTrace() {
+		return expTrace;
+	}
+
+	/**
+	 * Set the server-supplied expression build trace.
+	 */
+	public final void setExpressionTrace(ExpressionTrace expTrace) {
+		this.expTrace = expTrace;
 	}
 
 	/**
@@ -359,7 +412,7 @@ public class AerospikeException extends RuntimeException {
 	}
 
 	/**
-	 * Exception thrown when the selected node is not active, or when the namespace 
+	 * Exception thrown when the selected node is not active, or when the namespace
 	 * is removed after the client has connected.
 	 */
 	public static final class InvalidNode extends AerospikeException {
