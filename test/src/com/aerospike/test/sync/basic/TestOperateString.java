@@ -45,6 +45,7 @@ import com.aerospike.client.operation.StringOperation;
 import com.aerospike.client.operation.StringPolicy;
 import com.aerospike.client.operation.StringRegexFlags;
 import com.aerospike.client.operation.StringWriteFlags;
+import com.aerospike.client.util.Unpacker;
 import com.aerospike.test.sync.TestSync;
 
 /**
@@ -544,6 +545,37 @@ public class TestOperateString extends TestSync {
 		put("hello world");
 		operate(StringOperation.snip(POLICY, BIN, 5, 11));
 		assertEquals("hello", stringValue());
+	}
+
+	@Test
+	public void snipFromStartTruncatesToEnd() {
+		put("hello world");
+		operate(StringOperation.snip(POLICY, BIN, 5));
+		assertEquals("hello", stringValue());
+	}
+
+	@Test
+	public void snipFromNegativeStartCountsFromEnd() {
+		put("hello world");
+		operate(StringOperation.snip(POLICY, BIN, -5));
+		assertEquals("hello ", stringValue());
+	}
+
+	@Test
+	public void snipFromPacksStartWithoutFlagsElement() {
+		// The server parses snip's arguments positionally (start, end, flags), so a
+		// trailing flags element on the 1-index form is read as `end`.
+		Operation op = StringOperation.snip(POLICY, BIN, 5);
+		byte[] payload = (byte[])op.value.getObject();
+		List<?> args = (List<?>)Unpacker.unpackObjectList(payload, 0, payload.length);
+		assertEquals(2, args.size());
+		assertEquals(53L, args.get(0));
+		assertEquals(5L, args.get(1));
+
+		Operation range = StringOperation.snip(POLICY, BIN, 5, 11);
+		byte[] rangePayload = (byte[])range.value.getObject();
+		List<?> rangeArgs = (List<?>)Unpacker.unpackObjectList(rangePayload, 0, rangePayload.length);
+		assertEquals(Arrays.asList(53L, 5L, 11L, 0L), rangeArgs);
 	}
 
 	@Test
