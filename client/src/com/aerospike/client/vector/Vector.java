@@ -189,20 +189,17 @@ public final class Vector {
 	}
 
 	/**
+	 * Return the complete vector wire value, including the 8-byte header.
+	 */
+	public byte[] getWireBytes() {
+		final byte[] bytes = new byte[getWireSize()];
+		writeTo(bytes, 0);
+		return bytes;
+	}
+
+	/**
 	 * Return the raw element array in little-endian wire byte order, without the
-	 * 8-byte header. This is the layout expected as the query vector of a vector
-	 * distance expression (see {@link com.aerospike.client.exp.VectorExp#distance}),
-	 * where the server reinterprets the bytes using the stored bin's element type.
-	 * <p>
-	 * TODO(vector-exp-envelope): the server team's frozen contract for the vector
-	 * distance expression's query-vector argument has been decided to move to
-	 * sending the complete vector wire value (header + elements, i.e. what
-	 * {@link #writeTo} produces) rather than headerless elements. The server side
-	 * of that change has not shipped yet, so this method (and the elements-only
-	 * wire format {@link VectorExp#distance} currently sends) still matches the
-	 * server behavior available today. Once the server ships the new envelope,
-	 * {@link VectorExp#distance} should be updated to pack the full vector value
-	 * instead of calling this method.
+	 * 8-byte header.
 	 */
 	public byte[] getElementBytes() {
 		final int dataSize = dimensions * elementType.getByteSize();
@@ -252,8 +249,7 @@ public final class Vector {
 		final ElementType elementType = ElementType.fromCode(buffer[pos++]);
 		final int dimensions = Buffer.littleBytesToInt(buffer, pos);
 		pos += 4; // advance past the 4-byte dimensions field read above
-		// TODO: these 2 bytes are currently treated as reserved, but it is ambiguous
-		// whether they are actually reserved or intended to hold vector flags.
+		// TODO: Define handling for the reserved fields.
 		pos += 2;
 
 		if (dimensions < 0) {

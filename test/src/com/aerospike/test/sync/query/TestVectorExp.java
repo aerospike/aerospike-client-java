@@ -19,9 +19,12 @@ package com.aerospike.test.sync.query;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Set;
+
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import com.aerospike.client.Bin;
@@ -44,25 +47,19 @@ import com.aerospike.test.sync.TestSync;
 /**
  * Vector-distance expression tests: filtering records by {@link VectorExp#distance} and a
  * "vector search" style Top-K over a projected distance value.
- * <p>
- * All tests are {@link Ignore}d until a server build that supports the vector distance expression
- * is available. NOTE: the query-vector wire envelope (headerless elements vs full vector value) and
- * the exact metric semantics (e.g. cosine similarity vs cosine distance, which flips sort direction)
- * are NOT finalized upstream. When enabling these tests, revisit every distance threshold and
- * Top-K sort direction below against the shipped server contract.
  */
-@Ignore("Requires server build with vector distance expression support; semantics not finalized")
 public class TestVectorExp extends TestSync {
 	private static final String vecBin = "embedding";
 	private static final String idBin = "id";
 	private static final String keyPrefix = "vecexp";
+	private static final String setName = "vectorExpSet";
 	private static final int size = 20;
 	private static final int dims = 4;
 
 	@BeforeClass
 	public static void prepare() {
 		for (int i = 0; i < size; i++) {
-			Key key = new Key(args.namespace, args.set, keyPrefix + i);
+			Key key = new Key(args.namespace, setName, keyPrefix + i);
 			float[] data = new float[dims];
 
 			for (int d = 0; d < dims; d++) {
@@ -75,7 +72,7 @@ public class TestVectorExp extends TestSync {
 	@AfterClass
 	public static void destroy() {
 		for (int i = 0; i < size; i++) {
-			client.delete(null, new Key(args.namespace, args.set, keyPrefix + i));
+			client.delete(null, new Key(args.namespace, setName, keyPrefix + i));
 		}
 	}
 
@@ -90,44 +87,48 @@ public class TestVectorExp extends TestSync {
 
 	@Test
 	public void filterByEuclideanDistance() {
-		assertFilterReturnsSome(VectorDistanceMetric.EUCLIDEAN);
+		assertFilterIds(VectorDistanceMetric.EUCLIDEAN, false, 0.01, 5);
 	}
 
 	@Test
 	public void filterByDotProductDistance() {
-		assertFilterReturnsSome(VectorDistanceMetric.DOT_PRODUCT);
+		assertFilterIds(VectorDistanceMetric.DOT_PRODUCT, true, 200.0, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19);
 	}
 
 	@Test
 	public void filterByCosineDistance() {
-		assertFilterReturnsSome(VectorDistanceMetric.COSINE);
+		assertFilterIds(VectorDistanceMetric.COSINE, true, 0.999999, 5);
 	}
 
-	private void assertFilterReturnsSome(VectorDistanceMetric metric) {
+	private void assertFilterIds(VectorDistanceMetric metric, boolean greaterThan, double threshold, long... expectedIds) {
 		QueryPolicy policy = new QueryPolicy();
-		// Records whose embedding is within a distance threshold of the query vector.
-		policy.filterExp = Exp.build(
-			Exp.lt(
-				VectorExp.distance(metric, query(5), Exp.vectorBin(vecBin)),
-				Exp.val(1000.0)));
+		Exp distance = VectorExp.distance(metric, query(5), Exp.vectorBin(vecBin));
+		policy.filterExp = Exp.build(greaterThan ?
+			Exp.gt(distance, Exp.val(threshold)) :
+			Exp.lt(distance, Exp.val(threshold)));
 
 		Statement stmt = new Statement();
 		stmt.setNamespace(args.namespace);
-		stmt.setSetName(args.set);
+		stmt.setSetName(setName);
 
 		RecordSet rs = client.query(policy, stmt);
-		int count = 0;
+		Set<Long> actual = new HashSet<>();
 
 		try {
 			while (rs.next()) {
-				count++;
+				actual.add(rs.getRecord().getLong(idBin));
 			}
 		}
 		finally {
 			rs.close();
 		}
 
-		assertTrue("Expected at least one record within distance threshold", count > 0);
+		Set<Long> expected = new HashSet<>();
+
+		for (long id : expectedIds) {
+			expected.add(id);
+		}
+		assertEquals(Arrays.toString(expectedIds), expected, actual);
 	}
 
 	@Test
@@ -137,10 +138,11 @@ public class TestVectorExp extends TestSync {
 
 		Statement stmt = new Statement();
 		stmt.setNamespace(args.namespace);
-		stmt.setSetName(args.set);
+		stmt.setSetName(setName);
 
-		// Project a per-record distance to the query vector, then keep the k nearest (smallest).
+		// Project distance, then keep the k nearest records.
 		stmt.setOperations(new Operation[] {
+			Operation.get(idBin),
 			ExpOperation.read(distBin,
 				Exp.build(VectorExp.distance(VectorDistanceMetric.EUCLIDEAN, query(0), Exp.vectorBin(vecBin))),
 				ExpReadFlags.DEFAULT)
@@ -157,6 +159,7 @@ public class TestVectorExp extends TestSync {
 				Record record = rs.getRecord();
 				double dist = record.getDouble(distBin);
 				assertTrue("Top-K nearest must be in ascending distance order", dist >= previous);
+				assertEquals("Top-K nearest must return records nearest to query(0)", count, record.getLong(idBin));
 				previous = dist;
 				count++;
 			}

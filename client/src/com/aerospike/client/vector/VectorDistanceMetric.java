@@ -19,18 +19,10 @@ package com.aerospike.client.vector;
 /**
  * Distance metric used to compare two vectors in a vector distance expression.
  * See {@link com.aerospike.client.exp.VectorExp#distance}.
- * <p>
- * TODO(vector-exp-metric-semantics): the exact metric semantics are still being
- * finalized upstream. {@link #EUCLIDEAN} and {@link #COSINE} below match current
- * server behavior (raw Euclidean L2 distance, and cosine similarity where larger
- * is closer), but a not-yet-approved contract would redefine these as L2-squared
- * distance and cosine distance (1 - similarity, where smaller is closer) instead,
- * which would flip the sort direction used for "nearest" with {@link #COSINE}.
- * Revisit this enum's semantics once that contract is finalized.
  */
 public enum VectorDistanceMetric {
 	/**
-	 * Euclidean (L2) distance. Smaller values indicate closer vectors.
+	 * Squared Euclidean (L2) distance. Smaller values indicate closer vectors.
 	 */
 	EUCLIDEAN(0),
 
@@ -40,7 +32,7 @@ public enum VectorDistanceMetric {
 	DOT_PRODUCT(1),
 
 	/**
-	 * Cosine similarity. Larger values indicate closer vectors.
+	 * Cosine similarity. Larger values indicate closer (more similar) vectors.
 	 */
 	COSINE(2);
 
@@ -51,7 +43,7 @@ public enum VectorDistanceMetric {
 	}
 
 	/**
-	 * Return the wire protocol code for this metric.
+	 * Return the internal metric identifier.
 	 */
 	public int getCode() {
 		return code;

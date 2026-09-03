@@ -23,7 +23,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
-import org.junit.Ignore;
 import org.junit.Test;
 
 import com.aerospike.client.Bin;
@@ -36,11 +35,7 @@ import com.aerospike.test.sync.TestSync;
 /**
  * Server-round-trip tests for the vector particle type: writing and reading vector bins, and
  * vectors nested in list/map bins.
- * <p>
- * All tests are {@link Ignore}d until a server build that supports the vector particle type is
- * available. They are kept in {@code SuiteSync} so they compile in CI but are skipped at runtime.
  */
-@Ignore("Requires server build with vector particle support")
 public class TestVectorIO extends TestSync {
 	private static final String binName = "vecbin";
 
