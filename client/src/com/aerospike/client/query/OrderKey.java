@@ -16,13 +16,15 @@
  */
 package com.aerospike.client.query;
 
+import java.util.List;
+import java.util.Map;
+
 import com.aerospike.client.Record;
 
 /**
- * Sort key extracted from a projected or physical bin, used internally by
- * {@link TopKReduceSpec} to order records and break ties by digest.
+ * Sort key used internally by {@link TopKReduceSpec}.
  * <p>
- * Not part of the public API.
+ * Missing, mismatched, and collection values are NIL and sort last.
  */
 final class OrderKey implements Comparable<OrderKey> {
 	final Object value;
@@ -39,8 +41,24 @@ final class OrderKey implements Comparable<OrderKey> {
 		this.digest = digest;
 	}
 
+	boolean isNil() {
+		return value == null;
+	}
+
 	@Override
 	public int compareTo(OrderKey other) {
+		boolean nilA = isNil();
+		boolean nilB = other.isNil();
+
+		if (nilA || nilB) {
+			if (nilA && nilB) {
+				// Break NIL ties by digest.
+				return compareDigest(digest, other.digest);
+			}
+			// NIL sorts last in either direction.
+			return nilA ? 1 : -1;
+		}
+
 		int cmp = compareValues(value, other.value, type, flags);
 
 		if (cmp != 0) {
@@ -50,16 +68,25 @@ final class OrderKey implements Comparable<OrderKey> {
 		return compareDigest(digest, other.digest);
 	}
 
+	/**
+	 * Extract the scalar order-by value, or {@code null} for NIL.
+	 */
 	static Object readValue(Record record, String bin, BinDataType type) {
+		Object value = record.getValue(bin);
+
+		if (value == null || value instanceof List || value instanceof Map) {
+			return null;
+		}
+
 		switch (type) {
 			case INTEGER:
-				return record.getLong(bin);
+				return (value instanceof Long) ? value : null;
 			case DOUBLE:
-				return record.getDouble(bin);
+				return (value instanceof Double) ? value : null;
 			case STRING:
-				return record.getString(bin);
+				return (value instanceof String) ? value : null;
 			case BYTES:
-				return record.getBytes(bin);
+				return (value instanceof byte[]) ? value : null;
 			default:
 				throw new IllegalArgumentException("Unsupported BinDataType: " + type);
 		}

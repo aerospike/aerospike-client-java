@@ -39,7 +39,8 @@ public abstract class Exp {
 		BLOB(6),
 		FLOAT(7),
 		GEO(8),
-		HLL(9);
+		HLL(9),
+		VECTOR(10);
 
 		public final int code;
 
@@ -282,7 +283,7 @@ public abstract class Exp {
 	 * }</pre>
 	 */
 	public static Exp vectorBin(String name) {
-		return new Bin(name, Type.BLOB);
+		return new Bin(name, Type.VECTOR);
 	}
 
 	/**
@@ -1451,7 +1452,9 @@ public abstract class Exp {
 	private static final int INT_RSCAN = 41;
 	private static final int MIN = 50;
 	private static final int MAX = 51;
-	private static final int VECTOR_DIST = 52;
+	private static final int VECTOR_EUCLIDEAN_DIST = 52;
+	private static final int VECTOR_DOT_PRODUCT = 53;
+	private static final int VECTOR_COSINE_SIM = 54;
 	private static final int DIGEST_MODULO = 64;
 	private static final int DEVICE_SIZE = 65;
 	private static final int LAST_UPDATE = 66;
@@ -1559,26 +1562,38 @@ public abstract class Exp {
 	}
 
 	/**
-	 * For internal use only. Built by {@link VectorExp#distance}.
+	 * Internal vector distance expression.
 	 */
 	static final class VectorDist extends Exp {
-		private final int metric;
+		private final int opcode;
 		private final byte[] query;
 		private final Exp bin;
 
-		VectorDist(int metric, byte[] query, Exp bin) {
-			this.metric = metric;
+		VectorDist(int opcode, byte[] query, Exp bin) {
+			this.opcode = opcode;
 			this.query = query;
 			this.bin = bin;
 		}
 
 		@Override
 		public void pack(Packer packer) {
-			packer.packArrayBegin(4);
-			packer.packInt(VECTOR_DIST);
-			packer.packInt(metric);
-			packer.packParticleBytes(query);
+			packer.packArrayBegin(3);
+			packer.packInt(opcode);
 			bin.pack(packer);
+			packer.packParticleBytes(query);
+		}
+	}
+
+	static int vectorDistOpcode(com.aerospike.client.vector.VectorDistanceMetric metric) {
+		switch (metric) {
+			case EUCLIDEAN:
+				return VECTOR_EUCLIDEAN_DIST;
+			case DOT_PRODUCT:
+				return VECTOR_DOT_PRODUCT;
+			case COSINE:
+				return VECTOR_COSINE_SIM;
+			default:
+				throw new IllegalArgumentException("Unsupported vector distance metric: " + metric);
 		}
 	}
 

@@ -28,8 +28,6 @@ public final class VectorExp {
 	 * vector as a 64 bit float, using the given distance metric.
 	 * <p>
 	 * The query vector's element type and dimension count must match the stored vector.
-	 * If the bin does not hold a vector, or its dimensions do not match the query, the
-	 * expression evaluates to unknown.
 	 *
 	 * <pre>{@code
 	 * // Records whose "embedding" vector is within cosine distance threshold of a query
@@ -44,7 +42,7 @@ public final class VectorExp {
 	 * @param bin		vector bin read, typically {@link Exp#vectorBin(String)}
 	 */
 	public static Exp distance(VectorDistanceMetric metric, Vector query, Exp bin) {
-		return new Exp.VectorDist(metric.getCode(), query.getElementBytes(), bin);
+		return new Exp.VectorDist(Exp.vectorDistOpcode(metric), query.getWireBytes(), bin);
 	}
 
 	private VectorExp() {

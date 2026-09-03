@@ -18,9 +18,10 @@ package com.aerospike.test.sync.query;
 
 import static org.junit.Assert.assertEquals;
 
+import java.util.Arrays;
+
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import com.aerospike.client.AerospikeException;
@@ -41,11 +42,7 @@ import com.aerospike.test.sync.TestSync;
 /**
  * End-to-end tests for client-side Top-K map-reduce ({@link Reduce#topK}) executed across the
  * cluster.
- * <p>
- * All tests are {@link Ignore}d until a server build that supports the reduce feature is available.
- * They are kept in {@code SuiteSync} so they compile in CI but are skipped at runtime.
  */
-@Ignore("Requires server build with reduce support")
 public class TestQueryReduce extends TestSync {
 	private static final String indexName = "reduceindex";
 	private static final String keyPrefix = "reducekey";
@@ -102,6 +99,64 @@ public class TestQueryReduce extends TestSync {
 		stmt.setTopK(k);
 
 		assertTopK(stmt, k, new long[] {1, 2, 3});
+	}
+
+	/**
+	 * Missing, mismatched, and collection order-by values sort last.
+	 */
+	@Test
+	public void topKNilBinsRankLast() {
+		// Use a dedicated set for isolation.
+		String nilSet = "reduceNilSet";
+		Key[] validKeys = new Key[size];
+		Key noBinKey = new Key(args.namespace, nilSet, keyPrefix + "_nobin");
+		Key wrongTypeKey = new Key(args.namespace, nilSet, keyPrefix + "_wrongtype");
+		Key collectionKey = new Key(args.namespace, nilSet, keyPrefix + "_collection");
+
+		try {
+			for (int i = 1; i <= size; i++) {
+				validKeys[i - 1] = new Key(args.namespace, nilSet, keyPrefix + i);
+				client.put(null, validKeys[i - 1], new Bin(binName, i));
+			}
+			client.put(null, noBinKey, new Bin("otherbin", 1));
+			client.put(null, wrongTypeKey, new Bin(binName, "notanumber"));
+			client.put(null, collectionKey, new Bin(binName, Arrays.asList(1, 2, 3)));
+
+			Statement stmt = new Statement();
+			stmt.setNamespace(args.namespace);
+			stmt.setSetName(nilSet);
+			int k = size + 3;
+			stmt.setOrderBy(binName, BinDataType.INTEGER, Order.DESC);
+			stmt.setTopK(k);
+
+			RecordSet rs = client.query(null, stmt);
+			int count = 0;
+
+			try {
+				while (rs.next()) {
+					count++;
+
+					// NIL keys sort after valid values.
+					if (count <= size) {
+						assertEquals(size - count + 1, rs.getRecord().getLong(binName));
+					}
+				}
+			}
+			finally {
+				rs.close();
+			}
+			assertEquals(size + 3, count);
+		}
+		finally {
+			for (Key key : validKeys) {
+				if (key != null) {
+					client.delete(null, key);
+				}
+			}
+			client.delete(null, noBinKey);
+			client.delete(null, wrongTypeKey);
+			client.delete(null, collectionKey);
+		}
 	}
 
 	private void assertTopK(Statement stmt, int k, long[] expected) {
