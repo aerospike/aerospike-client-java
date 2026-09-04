@@ -305,7 +305,9 @@ public final class StringOperation {
 
 	/**
 	 * Create string {@code toInteger} operation. Parses the string as an int64.
-	 * Returns {@code AEROSPIKE_ERR_PARAMETER} if the bin cannot be parsed as an integer.
+	 * Fails with {@link com.aerospike.client.ResultCode#OP_NOT_APPLICABLE} and subcode
+	 * {@link com.aerospike.client.SubCode#OPNOT_STRING_CONVERSION_FAILED} if the bin
+	 * cannot be parsed as an integer.
 	 *
 	 * <pre>{@code
 	 * // "12345" -> 12345
@@ -324,7 +326,9 @@ public final class StringOperation {
 
 	/**
 	 * Create string {@code toDouble} operation. Parses the string as a 64-bit float.
-	 * Returns {@code AEROSPIKE_ERR_PARAMETER} if the bin cannot be parsed as a double.
+	 * Fails with {@link com.aerospike.client.ResultCode#OP_NOT_APPLICABLE} and subcode
+	 * {@link com.aerospike.client.SubCode#OPNOT_STRING_CONVERSION_FAILED} if the bin
+	 * cannot be parsed as a double.
 	 *
 	 * <pre>{@code
 	 * // "3.14" -> 3.14
@@ -497,7 +501,10 @@ public final class StringOperation {
 
 	/**
 	 * Create string {@code b64Decode} operation. Treats the bin as base64-encoded text
-	 * and returns the decoded bytes as a blob.
+	 * and returns the decoded bytes as a blob. Fails with
+	 * {@link com.aerospike.client.ResultCode#OP_NOT_APPLICABLE} and subcode
+	 * {@link com.aerospike.client.SubCode#OPNOT_STRING_B64_INVALID} if the bin does not
+	 * hold valid base64.
 	 *
 	 * <pre>{@code
 	 * // "aGVsbG8=" -> "hello".getBytes()
@@ -1008,9 +1015,12 @@ public final class StringOperation {
 	//-----------------------------------------------------------------
 
 	/**
-	 * Create {@code toString} operation that converts an integer, float, string, or
-	 * blob bin to its string representation. Returns
-	 * {@code AEROSPIKE_ERR_INCOMPATIBLE_TYPE} for any other bin type.
+	 * Create {@code toString} operation that converts an integer, float, boolean,
+	 * string, or blob bin to its string representation. Returns
+	 * {@code AEROSPIKE_ERR_INCOMPATIBLE_TYPE} for any other bin type. A blob bin whose
+	 * bytes are not valid UTF-8 fails with
+	 * {@link com.aerospike.client.ResultCode#OP_NOT_APPLICABLE} and subcode
+	 * {@link com.aerospike.client.SubCode#OPNOT_STRING_UTF8_INVALID}.
 	 * <p>
 	 * Unlike the other builders in this class, {@code toString} does not accept a
 	 * {@link CTX}. The other string operations are sent as {@code STRING_READ} /
