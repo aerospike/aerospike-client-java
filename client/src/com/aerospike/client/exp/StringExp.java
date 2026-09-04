@@ -285,8 +285,10 @@ public final class StringExp {
 	}
 
 	/**
-	 * Create expression that parses {@code src} as an int64. The expression returns
-	 * an error if the source cannot be parsed as an integer.
+	 * Create expression that parses {@code src} as an int64. Fails with
+	 * {@link com.aerospike.client.ResultCode#OP_NOT_APPLICABLE} and subcode
+	 * {@link com.aerospike.client.SubCode#OPNOT_STRING_CONVERSION_FAILED} if the source
+	 * cannot be parsed as an integer.
 	 *
 	 * <pre>{@code
 	 * // "12345" -> 12345
@@ -302,8 +304,10 @@ public final class StringExp {
 	}
 
 	/**
-	 * Create expression that parses {@code src} as a 64-bit float. The expression
-	 * returns an error if the source cannot be parsed as a double.
+	 * Create expression that parses {@code src} as a 64-bit float. Fails with
+	 * {@link com.aerospike.client.ResultCode#OP_NOT_APPLICABLE} and subcode
+	 * {@link com.aerospike.client.SubCode#OPNOT_STRING_CONVERSION_FAILED} if the source
+	 * cannot be parsed as a double.
 	 *
 	 * <pre>{@code
 	 * // "3.14" -> 3.14
@@ -461,7 +465,10 @@ public final class StringExp {
 
 	/**
 	 * Create expression that base64-decodes {@code src} and returns the decoded
-	 * bytes as a blob.
+	 * bytes as a blob. Fails with
+	 * {@link com.aerospike.client.ResultCode#OP_NOT_APPLICABLE} and subcode
+	 * {@link com.aerospike.client.SubCode#OPNOT_STRING_B64_INVALID} if the source does
+	 * not hold valid base64.
 	 *
 	 * <pre>{@code
 	 * // "aGVsbG8=" -> "hello".getBytes()
@@ -922,15 +929,18 @@ public final class StringExp {
 
 	/**
 	 * Create expression that returns the string representation of {@code src}, where
-	 * {@code src} may be any expression yielding an integer, float, string, or blob
-	 * value. Returns an error for any other source type.
+	 * {@code src} may be any expression yielding an integer, float, boolean, string, or
+	 * blob value. Returns {@code AEROSPIKE_ERR_INCOMPATIBLE_TYPE} for any other source
+	 * type. A blob source whose bytes are not valid UTF-8 fails with
+	 * {@link com.aerospike.client.ResultCode#OP_NOT_APPLICABLE} and subcode
+	 * {@link com.aerospike.client.SubCode#OPNOT_STRING_UTF8_INVALID}.
 	 *
 	 * <pre>{@code
 	 * // integer bin "n" = 42 -> "42"
 	 * Exp s = StringExp.toString(Exp.intBin("n"));
 	 * }</pre>
 	 *
-	 * @param src	source expression (integer, float, string, or blob)
+	 * @param src	source expression (integer, float, boolean, string, or blob)
 	 * @return		string-typed expression yielding the string representation
 	 */
 	public static Exp toString(Exp src) {
