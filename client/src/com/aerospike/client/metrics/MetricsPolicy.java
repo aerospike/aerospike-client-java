@@ -16,6 +16,9 @@
  */
 package com.aerospike.client.metrics;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 
 import com.aerospike.client.Log;
@@ -91,6 +94,27 @@ public final class MetricsPolicy {
 	 */
 	public Map<String,String> labels;
 
+	/**
+	 * Registered metrics exporters. Invoked in registration order by the
+	 * dedicated metrics thread. If non-empty, a metrics thread is started
+	 * alongside the existing MetricsListener path.
+	 */
+	private final List<IMetricsExporter> exporters = new ArrayList<>();
+
+	/**
+	 * Maximum consecutive export failures before an exporter is suspended.
+	 * <p>
+	 * Default: 3
+	 */
+	public int maxConsecutiveFailures = 3;
+
+	/**
+	 * Seconds to wait before retrying a suspended exporter.
+	 * <p>
+	 * Default: 60
+	 */
+	public int suspendRetryInterval = 60;
+
 	private boolean metricsRestartRequired = false;
 
 	/**
@@ -156,6 +180,9 @@ public final class MetricsPolicy {
 		this.latencyShift = other.latencyShift;
 		this.labels = other.labels;
 		this.metricsRestartRequired = other.metricsRestartRequired;
+		this.exporters.addAll(other.exporters);
+		this.maxConsecutiveFailures = other.maxConsecutiveFailures;
+		this.suspendRetryInterval = other.suspendRetryInterval;
 	}
 
 	/**
@@ -196,5 +223,33 @@ public final class MetricsPolicy {
 
 	public void setMetricsRestartRequired(boolean metricsRestartRequired) {
 		this.metricsRestartRequired = metricsRestartRequired;
+	}
+
+	/**
+	 * Register a metrics exporter. Exporters are invoked in registration order.
+	 *
+	 * @param exporter the exporter to add; must not be null
+	 * @throws IllegalArgumentException if exporter is null
+	 */
+	public void addExporter(IMetricsExporter exporter) {
+		if (exporter == null) {
+			throw new IllegalArgumentException("exporter must not be null");
+		}
+		exporters.add(exporter);
+	}
+
+	/**
+	 * Return an unmodifiable view of the registered exporters.
+	 */
+	public List<IMetricsExporter> getExporters() {
+		return Collections.unmodifiableList(exporters);
+	}
+
+	public void setMaxConsecutiveFailures(int maxConsecutiveFailures) {
+		this.maxConsecutiveFailures = maxConsecutiveFailures;
+	}
+
+	public void setSuspendRetryInterval(int suspendRetryInterval) {
+		this.suspendRetryInterval = suspendRetryInterval;
 	}
 }

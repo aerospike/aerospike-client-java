@@ -76,6 +76,7 @@ public class Main extends JPanel {
 		"QueryRegionFilter",
 		"QueryGeoCollection",
 		"QueryExecute",
+		"Metrics",
 		"AsyncPutGet",
 		"AsyncBatch",
 		"AsyncQuery",
