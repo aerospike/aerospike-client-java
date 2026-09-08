@@ -46,11 +46,12 @@ import com.aerospike.client.util.Util;
  * This thread is separate from the tend thread so that a slow exporter
  * never delays cluster tending.
  * <p>
- * Each exporter call is executed on a single-thread dispatch executor and
- * bounded by {@link MetricsPolicy#exportTimeout}. If an exporter does not
- * return within the timeout, the call is cancelled and the timeout counts
- * as a consecutive failure (subject to suspension via
- * {@link MetricsPolicy#maxConsecutiveFailures}).
+ * Each exporter has a dedicated single-thread dispatch executor, and each
+ * call is bounded by {@link MetricsPolicy#exportTimeout}. If an exporter
+ * does not return within the timeout, the call is cancelled and the timeout
+ * counts as a consecutive failure (subject to suspension via
+ * {@link MetricsPolicy#maxConsecutiveFailures}). A stuck exporter therefore
+ * cannot consume another exporter's dispatch thread.
  * <p>
  * Exporter failures are tracked independently. An exporter that exceeds
  * {@link MetricsPolicy#maxConsecutiveFailures} is suspended and retried
@@ -63,7 +64,6 @@ public class MetricsExporterThread extends Thread {
 	private volatile boolean running = true;
 
 	private final Map<IMetricsExporter, ExporterState> exporterStates = new HashMap<>();
-	private final ExecutorService dispatchExecutor;
 
 	public MetricsExporterThread(Cluster cluster, MetricsPolicy policy) {
 		super("aerospike-metrics-exporter");
@@ -71,12 +71,6 @@ public class MetricsExporterThread extends Thread {
 
 		this.cluster = cluster;
 		this.policy = policy;
-
-		this.dispatchExecutor = Executors.newSingleThreadExecutor(r -> {
-			Thread t = new Thread(r, "aerospike-metrics-dispatch");
-			t.setDaemon(true);
-			return t;
-		});
 
 		for (IMetricsExporter exporter : policy.getExporters()) {
 			exporterStates.put(exporter, new ExporterState());
@@ -120,7 +114,9 @@ public class MetricsExporterThread extends Thread {
 	 */
 	public void shutdown() {
 		running = false;
-		dispatchExecutor.shutdownNow();
+		for (ExporterState state : exporterStates.values()) {
+			state.dispatchExecutor.shutdownNow();
+		}
 		interrupt();
 	}
 
@@ -402,10 +398,10 @@ public class MetricsExporterThread extends Thread {
 
 			Future<?> future;
 			try {
-				future = dispatchExecutor.submit(() -> exporter.export(snapshot));
+				future = state.dispatchExecutor.submit(() -> exporter.export(snapshot));
 			}
 			catch (java.util.concurrent.RejectedExecutionException e) {
-				break;
+				continue;
 			}
 
 			try {
@@ -456,6 +452,11 @@ public class MetricsExporterThread extends Thread {
 	// ── Exporter state tracking ────────────────────────────────────
 
 	private static final class ExporterState {
+		final ExecutorService dispatchExecutor = Executors.newSingleThreadExecutor(r -> {
+			Thread t = new Thread(r, "aerospike-metrics-dispatch");
+			t.setDaemon(true);
+			return t;
+		});
 		int consecutiveFailures;
 		boolean suspended;
 		long suspendedAt;

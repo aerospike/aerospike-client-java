@@ -23,6 +23,7 @@ import static org.junit.Assert.assertTrue;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.Test;
@@ -319,24 +320,30 @@ public class TestMetricsExporter extends TestSync {
 
 	@Test
 	public void testTimeoutDoesNotAffectFastExporterInSameCycle() throws Exception {
-		// Slow exporter times out, fast exporter on the same policy still works.
-		SlowExporter slowExporter = new SlowExporter(8000);
+		// A stuck exporter that ignores interruption must not block another exporter.
+		UninterruptibleExporter slowExporter = new UninterruptibleExporter();
 		RecordingExporter fastExporter = new RecordingExporter();
 
 		MetricsPolicy policy = new MetricsPolicy();
 		policy.interval = SHORT_INTERVAL;
-		policy.exportTimeout = 2;
+		policy.exportTimeout = 1;
 		policy.addExporter(slowExporter);
 		policy.addExporter(fastExporter);
 
-		client.enableMetrics(policy);
-		doOperationsForSeconds(10);
-		client.disableMetrics();
+		try {
+			client.enableMetrics(policy);
+			doOperationsForSeconds(8);
+			client.disableMetrics();
 
-		assertTrue("Fast exporter should still receive snapshots",
-			fastExporter.snapshots.size() >= 1);
-		assertEquals("Slow exporter should be timed out with zero snapshots",
-			0, slowExporter.snapshots.size());
+			assertTrue("Fast exporter should still receive snapshots",
+				fastExporter.snapshots.size() >= 1);
+			assertTrue("Stuck exporter should have ignored at least one interrupt",
+				slowExporter.interruptCount.get() >= 1);
+		}
+		finally {
+			slowExporter.release();
+			client.disableMetrics();
+		}
 	}
 
 	// ── Multi-client tests ────────────────────────────────────────
@@ -618,6 +625,37 @@ public class TestMetricsExporter extends TestSync {
 				timeoutCount.incrementAndGet();
 				Thread.currentThread().interrupt();
 			}
+		}
+
+		@Override
+		public void close() {
+		}
+	}
+
+	/**
+	 * Exporter that remains blocked after interruption until explicitly released.
+	 */
+	private static class UninterruptibleExporter implements IMetricsExporter {
+		final CountDownLatch releaseLatch = new CountDownLatch(1);
+		final AtomicInteger interruptCount = new AtomicInteger(0);
+
+		@Override
+		public void export(MetricsSnapshot snapshot) {
+			boolean released = false;
+
+			while (!released) {
+				try {
+					releaseLatch.await();
+					released = true;
+				}
+				catch (InterruptedException e) {
+					interruptCount.incrementAndGet();
+				}
+			}
+		}
+
+		void release() {
+			releaseLatch.countDown();
 		}
 
 		@Override
