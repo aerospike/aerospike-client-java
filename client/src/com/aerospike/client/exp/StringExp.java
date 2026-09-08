@@ -18,6 +18,7 @@ package com.aerospike.client.exp;
 
 import com.aerospike.client.operation.StringPolicy;
 import com.aerospike.client.operation.StringRegexFlags;
+import com.aerospike.client.operation.StringWriteFlags;
 import com.aerospike.client.util.Pack;
 import com.aerospike.client.util.Packer;
 
@@ -285,8 +286,10 @@ public final class StringExp {
 	}
 
 	/**
-	 * Create expression that parses {@code src} as an int64. The expression returns
-	 * an error if the source cannot be parsed as an integer.
+	 * Create expression that parses {@code src} as an int64. Fails with
+	 * {@link com.aerospike.client.ResultCode#OP_NOT_APPLICABLE} and subcode
+	 * {@link com.aerospike.client.SubCode#OPNOT_STRING_CONVERSION_FAILED} if the source
+	 * cannot be parsed as an integer.
 	 *
 	 * <pre>{@code
 	 * // "12345" -> 12345
@@ -302,8 +305,10 @@ public final class StringExp {
 	}
 
 	/**
-	 * Create expression that parses {@code src} as a 64-bit float. The expression
-	 * returns an error if the source cannot be parsed as a double.
+	 * Create expression that parses {@code src} as a 64-bit float. Fails with
+	 * {@link com.aerospike.client.ResultCode#OP_NOT_APPLICABLE} and subcode
+	 * {@link com.aerospike.client.SubCode#OPNOT_STRING_CONVERSION_FAILED} if the source
+	 * cannot be parsed as a double.
 	 *
 	 * <pre>{@code
 	 * // "3.14" -> 3.14
@@ -461,7 +466,10 @@ public final class StringExp {
 
 	/**
 	 * Create expression that base64-decodes {@code src} and returns the decoded
-	 * bytes as a blob.
+	 * bytes as a blob. Fails with
+	 * {@link com.aerospike.client.ResultCode#OP_NOT_APPLICABLE} and subcode
+	 * {@link com.aerospike.client.SubCode#OPNOT_STRING_B64_INVALID} if the source does
+	 * not hold valid base64.
 	 *
 	 * <pre>{@code
 	 * // "aGVsbG8=" -> "hello".getBytes()
@@ -530,7 +538,9 @@ public final class StringExp {
 	 *     Exp.val(5), Exp.val(" beautiful"), Exp.stringBin("text"));
 	 * }</pre>
 	 *
-	 * @param policy	write policy controlling NO_FAIL semantics
+	 * @param policy	write policy; only the NO_FAIL {@link StringWriteFlags} is
+	 *					meaningful here. CREATE_ONLY and UPDATE_ONLY are bin-existence
+	 *					predicates and do not carry over to a source expression
 	 * @param index		codepoint index at which to insert (negative counts from end)
 	 * @param value		text to insert
 	 * @param src		source string expression
@@ -553,7 +563,9 @@ public final class StringExp {
 	 *     Exp.val(6), Exp.val("earth"), Exp.stringBin("text"));
 	 * }</pre>
 	 *
-	 * @param policy	write policy controlling NO_FAIL semantics
+	 * @param policy	write policy; only the NO_FAIL {@link StringWriteFlags} is
+	 *					meaningful here. CREATE_ONLY and UPDATE_ONLY are bin-existence
+	 *					predicates and do not carry over to a source expression
 	 * @param index		codepoint index at which to start overwriting
 	 * @param value		text to write
 	 * @param src		source string expression
@@ -576,7 +588,9 @@ public final class StringExp {
 	 *     Exp.stringBin("text"));
 	 * }</pre>
 	 *
-	 * @param policy	write policy controlling NO_FAIL semantics
+	 * @param policy	write policy; only the NO_FAIL {@link StringWriteFlags} is
+	 *					meaningful here. CREATE_ONLY and UPDATE_ONLY are bin-existence
+	 *					predicates and do not carry over to a source expression
 	 * @param values	expression yielding a list of strings to append
 	 * @param src		source string expression
 	 * @return			string-typed expression yielding the modified string
@@ -598,7 +612,9 @@ public final class StringExp {
 	 * Exp out = StringExp.append(StringPolicy.Default, Exp.val("!"), Exp.stringBin("text"));
 	 * }</pre>
 	 *
-	 * @param policy	write policy controlling NO_FAIL semantics
+	 * @param policy	write policy; only the NO_FAIL {@link StringWriteFlags} is
+	 *					meaningful here. CREATE_ONLY and UPDATE_ONLY are bin-existence
+	 *					predicates and do not carry over to a source expression
 	 * @param value		expression yielding the string to append to the end
 	 * @param src		source string expression
 	 * @return			string-typed expression yielding the modified string
@@ -620,7 +636,9 @@ public final class StringExp {
 	 * Exp out = StringExp.prepend(StringPolicy.Default, Exp.val("hello "), Exp.stringBin("text"));
 	 * }</pre>
 	 *
-	 * @param policy	write policy controlling NO_FAIL semantics
+	 * @param policy	write policy; only the NO_FAIL {@link StringWriteFlags} is
+	 *					meaningful here. CREATE_ONLY and UPDATE_ONLY are bin-existence
+	 *					predicates and do not carry over to a source expression
 	 * @param value		expression yielding the string to prepend to the start
 	 * @param src		source string expression
 	 * @return			string-typed expression yielding the modified string
@@ -641,7 +659,9 @@ public final class StringExp {
 	 *     Exp.val(5), Exp.val(15), Exp.stringBin("text"));
 	 * }</pre>
 	 *
-	 * @param policy	write policy controlling NO_FAIL semantics
+	 * @param policy	write policy; only the NO_FAIL {@link StringWriteFlags} is
+	 *					meaningful here. CREATE_ONLY and UPDATE_ONLY are bin-existence
+	 *					predicates and do not carry over to a source expression
 	 * @param start		first codepoint to remove (inclusive)
 	 * @param end		one past the last codepoint to remove (exclusive)
 	 * @param src		source string expression
@@ -649,6 +669,32 @@ public final class StringExp {
 	 */
 	public static Exp snip(StringPolicy policy, Exp start, Exp end, Exp src) {
 		byte[] bytes = Pack.pack(SNIP, start, end, policy.flags);
+		return addModify(src, bytes);
+	}
+
+	/**
+	 * Create expression that removes the codepoints of {@code src} from {@code start}
+	 * through the end and returns the truncated string. Negative {@code start} counts
+	 * from the end of the string. Does not modify the underlying bin.
+	 *
+	 * <pre>{@code
+	 * // "hello world" snip from 5 -> "hello"
+	 * Exp out = StringExp.snip(StringPolicy.Default, Exp.val(5), Exp.stringBin("text"));
+	 * }</pre>
+	 *
+	 * The server's snip argument list is positional — {@code start}, {@code end},
+	 * {@code flags} — so this form cannot carry the {@code policy} flags without also
+	 * supplying an explicit {@code end}: they are accepted for signature parity with the
+	 * other modify expressions and are <strong>not</strong> transmitted. Use
+	 * {@link #snip(StringPolicy, Exp, Exp, Exp)} when the write flags must be honored.
+	 *
+	 * @param policy	write policy; its flags are not transmitted on this form
+	 * @param start		first codepoint to remove (negative counts from end)
+	 * @param src		source string expression
+	 * @return			string-typed expression yielding the modified string
+	 */
+	public static Exp snip(StringPolicy policy, Exp start, Exp src) {
+		byte[] bytes = Pack.pack(SNIP, start);
 		return addModify(src, bytes);
 	}
 
@@ -663,7 +709,9 @@ public final class StringExp {
 	 *     Exp.val("world"), Exp.val("earth"), Exp.stringBin("text"));
 	 * }</pre>
 	 *
-	 * @param policy		write policy controlling NO_FAIL semantics
+	 * @param policy		write policy; only the NO_FAIL {@link StringWriteFlags} is
+	 *						meaningful here. CREATE_ONLY and UPDATE_ONLY are bin-existence
+	 *						predicates and do not carry over to a source expression
 	 * @param needle		substring to find
 	 * @param replacement	text to substitute (may be empty to delete the match)
 	 * @param src			source string expression
@@ -685,7 +733,9 @@ public final class StringExp {
 	 *     Exp.val("a"), Exp.val("x"), Exp.stringBin("text"));
 	 * }</pre>
 	 *
-	 * @param policy		write policy controlling NO_FAIL semantics
+	 * @param policy		write policy; only the NO_FAIL {@link StringWriteFlags} is
+	 *						meaningful here. CREATE_ONLY and UPDATE_ONLY are bin-existence
+	 *						predicates and do not carry over to a source expression
 	 * @param needle		substring to find
 	 * @param replacement	text to substitute (may be empty to delete each match)
 	 * @param src			source string expression
@@ -704,7 +754,9 @@ public final class StringExp {
 	 * Exp out = StringExp.upper(StringPolicy.Default, Exp.stringBin("text"));
 	 * }</pre>
 	 *
-	 * @param policy	write policy controlling NO_FAIL semantics
+	 * @param policy	write policy; only the NO_FAIL {@link StringWriteFlags} is
+	 *					meaningful here. CREATE_ONLY and UPDATE_ONLY are bin-existence
+	 *					predicates and do not carry over to a source expression
 	 * @param src		source string expression
 	 * @return			string-typed expression yielding the uppercased string
 	 */
@@ -721,7 +773,9 @@ public final class StringExp {
 	 * Exp out = StringExp.lower(StringPolicy.Default, Exp.stringBin("text"));
 	 * }</pre>
 	 *
-	 * @param policy	write policy controlling NO_FAIL semantics
+	 * @param policy	write policy; only the NO_FAIL {@link StringWriteFlags} is
+	 *					meaningful here. CREATE_ONLY and UPDATE_ONLY are bin-existence
+	 *					predicates and do not carry over to a source expression
 	 * @param src		source string expression
 	 * @return			string-typed expression yielding the lowercased string
 	 */
@@ -739,7 +793,9 @@ public final class StringExp {
 	 * Exp out = StringExp.caseFold(StringPolicy.Default, Exp.stringBin("text"));
 	 * }</pre>
 	 *
-	 * @param policy	write policy controlling NO_FAIL semantics
+	 * @param policy	write policy; only the NO_FAIL {@link StringWriteFlags} is
+	 *					meaningful here. CREATE_ONLY and UPDATE_ONLY are bin-existence
+	 *					predicates and do not carry over to a source expression
 	 * @param src		source string expression
 	 * @return			string-typed expression yielding the case-folded string
 	 */
@@ -756,7 +812,9 @@ public final class StringExp {
 	 * Exp out = StringExp.normalizeNFC(StringPolicy.Default, Exp.stringBin("text"));
 	 * }</pre>
 	 *
-	 * @param policy	write policy controlling NO_FAIL semantics
+	 * @param policy	write policy; only the NO_FAIL {@link StringWriteFlags} is
+	 *					meaningful here. CREATE_ONLY and UPDATE_ONLY are bin-existence
+	 *					predicates and do not carry over to a source expression
 	 * @param src		source string expression
 	 * @return			string-typed expression yielding the NFC-normalized string
 	 */
@@ -774,7 +832,9 @@ public final class StringExp {
 	 * Exp out = StringExp.trimStart(StringPolicy.Default, Exp.stringBin("text"));
 	 * }</pre>
 	 *
-	 * @param policy	write policy controlling NO_FAIL semantics
+	 * @param policy	write policy; only the NO_FAIL {@link StringWriteFlags} is
+	 *					meaningful here. CREATE_ONLY and UPDATE_ONLY are bin-existence
+	 *					predicates and do not carry over to a source expression
 	 * @param src		source string expression
 	 * @return			string-typed expression yielding the left-trimmed string
 	 */
@@ -792,7 +852,9 @@ public final class StringExp {
 	 * Exp out = StringExp.trimEnd(StringPolicy.Default, Exp.stringBin("text"));
 	 * }</pre>
 	 *
-	 * @param policy	write policy controlling NO_FAIL semantics
+	 * @param policy	write policy; only the NO_FAIL {@link StringWriteFlags} is
+	 *					meaningful here. CREATE_ONLY and UPDATE_ONLY are bin-existence
+	 *					predicates and do not carry over to a source expression
 	 * @param src		source string expression
 	 * @return			string-typed expression yielding the right-trimmed string
 	 */
@@ -810,7 +872,9 @@ public final class StringExp {
 	 * Exp out = StringExp.trim(StringPolicy.Default, Exp.stringBin("text"));
 	 * }</pre>
 	 *
-	 * @param policy	write policy controlling NO_FAIL semantics
+	 * @param policy	write policy; only the NO_FAIL {@link StringWriteFlags} is
+	 *					meaningful here. CREATE_ONLY and UPDATE_ONLY are bin-existence
+	 *					predicates and do not carry over to a source expression
 	 * @param src		source string expression
 	 * @return			string-typed expression yielding the trimmed string
 	 */
@@ -830,7 +894,9 @@ public final class StringExp {
 	 *     Exp.val(10), Exp.val("*"), Exp.stringBin("text"));
 	 * }</pre>
 	 *
-	 * @param policy		write policy controlling NO_FAIL semantics
+	 * @param policy		write policy; only the NO_FAIL {@link StringWriteFlags} is
+	 *						meaningful here. CREATE_ONLY and UPDATE_ONLY are bin-existence
+	 *						predicates and do not carry over to a source expression
 	 * @param targetLength	codepoint length to pad up to
 	 * @param padString		text used to fill (repeated as needed)
 	 * @param src			source string expression
@@ -852,7 +918,9 @@ public final class StringExp {
 	 *     Exp.val(10), Exp.val("."), Exp.stringBin("text"));
 	 * }</pre>
 	 *
-	 * @param policy		write policy controlling NO_FAIL semantics
+	 * @param policy		write policy; only the NO_FAIL {@link StringWriteFlags} is
+	 *						meaningful here. CREATE_ONLY and UPDATE_ONLY are bin-existence
+	 *						predicates and do not carry over to a source expression
 	 * @param targetLength	codepoint length to pad up to
 	 * @param padString		text used to fill (repeated as needed)
 	 * @param src			source string expression
@@ -873,7 +941,9 @@ public final class StringExp {
 	 *     Exp.val(3), Exp.stringBin("text"));
 	 * }</pre>
 	 *
-	 * @param policy	write policy controlling NO_FAIL semantics
+	 * @param policy	write policy; only the NO_FAIL {@link StringWriteFlags} is
+	 *					meaningful here. CREATE_ONLY and UPDATE_ONLY are bin-existence
+	 *					predicates and do not carry over to a source expression
 	 * @param count		number of repetitions (must be non-negative)
 	 * @param src		source string expression
 	 * @return			string-typed expression yielding the repeated string
@@ -922,15 +992,18 @@ public final class StringExp {
 
 	/**
 	 * Create expression that returns the string representation of {@code src}, where
-	 * {@code src} may be any expression yielding an integer, float, string, or blob
-	 * value. Returns an error for any other source type.
+	 * {@code src} may be any expression yielding an integer, float, boolean, string, or
+	 * blob value. Returns {@code AEROSPIKE_ERR_INCOMPATIBLE_TYPE} for any other source
+	 * type. A blob source whose bytes are not valid UTF-8 fails with
+	 * {@link com.aerospike.client.ResultCode#OP_NOT_APPLICABLE} and subcode
+	 * {@link com.aerospike.client.SubCode#OPNOT_STRING_UTF8_INVALID}.
 	 *
 	 * <pre>{@code
 	 * // integer bin "n" = 42 -> "42"
 	 * Exp s = StringExp.toString(Exp.intBin("n"));
 	 * }</pre>
 	 *
-	 * @param src	source expression (integer, float, string, or blob)
+	 * @param src	source expression (integer, float, boolean, string, or blob)
 	 * @return		string-typed expression yielding the string representation
 	 */
 	public static Exp toString(Exp src) {

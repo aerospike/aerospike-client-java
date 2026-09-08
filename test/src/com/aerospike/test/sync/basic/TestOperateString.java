@@ -45,6 +45,7 @@ import com.aerospike.client.operation.StringOperation;
 import com.aerospike.client.operation.StringPolicy;
 import com.aerospike.client.operation.StringRegexFlags;
 import com.aerospike.client.operation.StringWriteFlags;
+import com.aerospike.client.util.Unpacker;
 import com.aerospike.test.sync.TestSync;
 
 /**
@@ -544,6 +545,37 @@ public class TestOperateString extends TestSync {
 		put("hello world");
 		operate(StringOperation.snip(POLICY, BIN, 5, 11));
 		assertEquals("hello", stringValue());
+	}
+
+	@Test
+	public void snipFromStartTruncatesToEnd() {
+		put("hello world");
+		operate(StringOperation.snip(POLICY, BIN, 5));
+		assertEquals("hello", stringValue());
+	}
+
+	@Test
+	public void snipFromNegativeStartCountsFromEnd() {
+		put("hello world");
+		operate(StringOperation.snip(POLICY, BIN, -5));
+		assertEquals("hello ", stringValue());
+	}
+
+	@Test
+	public void snipFromPacksStartWithoutFlagsElement() {
+		// The server parses snip's arguments positionally (start, end, flags), so a
+		// trailing flags element on the 1-index form is read as `end`.
+		Operation op = StringOperation.snip(POLICY, BIN, 5);
+		byte[] payload = (byte[])op.value.getObject();
+		List<?> args = (List<?>)Unpacker.unpackObjectList(payload, 0, payload.length);
+		assertEquals(2, args.size());
+		assertEquals(53L, args.get(0));
+		assertEquals(5L, args.get(1));
+
+		Operation range = StringOperation.snip(POLICY, BIN, 5, 11);
+		byte[] rangePayload = (byte[])range.value.getObject();
+		List<?> rangeArgs = (List<?>)Unpacker.unpackObjectList(rangePayload, 0, rangePayload.length);
+		assertEquals(Arrays.asList(53L, 5L, 11L, 0L), rangeArgs);
 	}
 
 	@Test
@@ -1195,6 +1227,134 @@ public class TestOperateString extends TestSync {
 		operate(StringOperation.repeat(POLICY, BIN, 3));
 
 		assertEquals("", client.get(null, KEY).getString(BIN));
+	}
+
+	//=================================================================
+	// CREATE_ONLY / UPDATE_ONLY write flags
+	//
+	// Bin-existence predicates carried in the trailing policy-flags slot
+	// (particle_string.c string_modify). CREATE_ONLY is accepted only by
+	// the eight additive create-ops; every other modify op rejects it via
+	// its per-op flag mask. Combining CREATE_ONLY with UPDATE_ONLY, and
+	// CREATE_ONLY under a CTX path, are both rejected during argument
+	// parsing (string_parse_flags) — upstream of every NO_FAIL test, so
+	// NO_FAIL cannot suppress them.
+	//=================================================================
+
+	private static final StringPolicy CREATE_ONLY =
+		new StringPolicy(StringWriteFlags.CREATE_ONLY);
+	private static final StringPolicy UPDATE_ONLY =
+		new StringPolicy(StringWriteFlags.UPDATE_ONLY);
+
+	@Test
+	public void createOnlyOnMissingBinCreatesIt() {
+		client.delete(null, KEY);
+		client.put(null, KEY, new Bin("other", "untouched"));
+
+		operate(StringOperation.append(CREATE_ONLY, BIN, "hello"));
+
+		assertEquals("hello", stringValue());
+	}
+
+	@Test
+	public void createOnlyOnLiveBinRaisesBinExists() {
+		put("hello");
+
+		AerospikeException ae = assertThrows(AerospikeException.class,
+			() -> operate(StringOperation.append(CREATE_ONLY, BIN, "!")));
+		assertEquals(ResultCode.BIN_EXISTS_ERROR, ae.getResultCode());
+		assertEquals("hello", stringValue());
+	}
+
+	@Test
+	public void createOnlyWithNoFailOnLiveBinIsSilentNoOp() {
+		// The one CREATE_ONLY rejection NO_FAIL does suppress: it is tested
+		// inside string_modify, not during argument parsing. The bin keeps its
+		// prior value rather than being nulled.
+		put("hello");
+
+		StringPolicy policy = new StringPolicy(
+			StringWriteFlags.CREATE_ONLY | StringWriteFlags.NO_FAIL);
+		operate(StringOperation.append(policy, BIN, "!"));
+
+		assertEquals("hello", stringValue());
+	}
+
+	@Test
+	public void updateOnlyOnMissingBinDoesNotCreateIt() {
+		// append creates a missing bin from empty by default; UPDATE_ONLY
+		// disables that path, leaving the op a silent no-op.
+		client.delete(null, KEY);
+		client.put(null, KEY, new Bin("other", "untouched"));
+
+		operate(StringOperation.append(UPDATE_ONLY, BIN, "hello"));
+
+		Record r = client.get(null, KEY);
+		assertEquals(null, r.getValue(BIN));
+		assertEquals("untouched", r.getString("other"));
+	}
+
+	@Test
+	public void updateOnlyOnLiveBinApplies() {
+		put("hello");
+
+		operate(StringOperation.append(UPDATE_ONLY, BIN, " world"));
+
+		assertEquals("hello world", stringValue());
+	}
+
+	@Test
+	public void updateOnlyAppliesToNonCreateModifyOp() {
+		// UPDATE_ONLY is valid on every string modify op, not just the
+		// create-capable ones.
+		put("hello");
+
+		operate(StringOperation.upper(UPDATE_ONLY, BIN));
+
+		assertEquals("HELLO", stringValue());
+	}
+
+	@Test
+	public void createOnlyOnNonCreateModifyOpRaisesParameterError() {
+		// upper carries the update-only flag mask, so CREATE_ONLY is not a
+		// legal flag for it at all — distinguishing it from the eight
+		// additive create-ops exercised above.
+		put("hello");
+
+		assertParamError(StringOperation.upper(CREATE_ONLY, BIN));
+		assertEquals("hello", stringValue());
+	}
+
+	@Test
+	public void createOnlyWithUpdateOnlyRaisesParameterError() {
+		put("hello");
+
+		StringPolicy both = new StringPolicy(
+			StringWriteFlags.CREATE_ONLY | StringWriteFlags.UPDATE_ONLY);
+		assertParamError(StringOperation.append(both, BIN, "!"));
+
+		StringPolicy bothNoFail = new StringPolicy(
+			StringWriteFlags.CREATE_ONLY | StringWriteFlags.UPDATE_ONLY
+				| StringWriteFlags.NO_FAIL);
+		assertParamError(StringOperation.append(bothNoFail, BIN, "!"));
+
+		assertEquals("hello", stringValue());
+	}
+
+	@Test
+	public void createOnlyWithCtxRaisesParameterError() {
+		List<Value> list = new ArrayList<Value>();
+		list.add(Value.get("alpha"));
+		list.add(Value.get("beta"));
+		putList(list);
+
+		assertParamError(StringOperation.append(CREATE_ONLY, BIN, "!", CTX.listIndex(1)));
+
+		StringPolicy createNoFail = new StringPolicy(
+			StringWriteFlags.CREATE_ONLY | StringWriteFlags.NO_FAIL);
+		assertParamError(StringOperation.append(createNoFail, BIN, "!", CTX.listIndex(1)));
+
+		assertEquals(Arrays.asList("alpha", "beta"), client.get(null, KEY).getList(BIN));
 	}
 
 	//=================================================================

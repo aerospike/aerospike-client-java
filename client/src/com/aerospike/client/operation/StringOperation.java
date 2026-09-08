@@ -305,7 +305,9 @@ public final class StringOperation {
 
 	/**
 	 * Create string {@code toInteger} operation. Parses the string as an int64.
-	 * Returns {@code AEROSPIKE_ERR_PARAMETER} if the bin cannot be parsed as an integer.
+	 * Fails with {@link com.aerospike.client.ResultCode#OP_NOT_APPLICABLE} and subcode
+	 * {@link com.aerospike.client.SubCode#OPNOT_STRING_CONVERSION_FAILED} if the bin
+	 * cannot be parsed as an integer.
 	 *
 	 * <pre>{@code
 	 * // "12345" -> 12345
@@ -324,7 +326,9 @@ public final class StringOperation {
 
 	/**
 	 * Create string {@code toDouble} operation. Parses the string as a 64-bit float.
-	 * Returns {@code AEROSPIKE_ERR_PARAMETER} if the bin cannot be parsed as a double.
+	 * Fails with {@link com.aerospike.client.ResultCode#OP_NOT_APPLICABLE} and subcode
+	 * {@link com.aerospike.client.SubCode#OPNOT_STRING_CONVERSION_FAILED} if the bin
+	 * cannot be parsed as a double.
 	 *
 	 * <pre>{@code
 	 * // "3.14" -> 3.14
@@ -497,7 +501,10 @@ public final class StringOperation {
 
 	/**
 	 * Create string {@code b64Decode} operation. Treats the bin as base64-encoded text
-	 * and returns the decoded bytes as a blob.
+	 * and returns the decoded bytes as a blob. Fails with
+	 * {@link com.aerospike.client.ResultCode#OP_NOT_APPLICABLE} and subcode
+	 * {@link com.aerospike.client.SubCode#OPNOT_STRING_B64_INVALID} if the bin does not
+	 * hold valid base64.
 	 *
 	 * <pre>{@code
 	 * // "aGVsbG8=" -> "hello".getBytes()
@@ -570,7 +577,8 @@ public final class StringOperation {
 	 *     StringOperation.insert(StringPolicy.Default, "text", 5, " beautiful"));
 	 * }</pre>
 	 *
-	 * @param policy	write policy controlling NO_FAIL semantics
+	 * @param policy	write policy; the DEFAULT, CREATE_ONLY, UPDATE_ONLY and NO_FAIL
+	 *					{@link StringWriteFlags} all apply to this op
 	 * @param binName	name of the string bin
 	 * @param index		codepoint index at which to insert (negative counts from end)
 	 * @param value		text to insert
@@ -593,7 +601,8 @@ public final class StringOperation {
 	 *     StringOperation.overwrite(StringPolicy.Default, "text", 6, "earth"));
 	 * }</pre>
 	 *
-	 * @param policy	write policy controlling NO_FAIL semantics
+	 * @param policy	write policy; the DEFAULT, CREATE_ONLY, UPDATE_ONLY and NO_FAIL
+	 *					{@link StringWriteFlags} all apply to this op
 	 * @param binName	name of the string bin
 	 * @param index		codepoint index at which to start overwriting
 	 * @param value		text to write
@@ -614,7 +623,8 @@ public final class StringOperation {
 	 *     StringOperation.concat(StringPolicy.Default, "text", "!"));
 	 * }</pre>
 	 *
-	 * @param policy	write policy controlling NO_FAIL semantics
+	 * @param policy	write policy; the DEFAULT, CREATE_ONLY, UPDATE_ONLY and NO_FAIL
+	 *					{@link StringWriteFlags} all apply to this op
 	 * @param binName	name of the string bin
 	 * @param value		text to append
 	 * @param ctx		optional path into a string nested inside a list or map
@@ -637,7 +647,8 @@ public final class StringOperation {
 	 *     Arrays.asList(" ", "big", " world")));
 	 * }</pre>
 	 *
-	 * @param policy	write policy controlling NO_FAIL semantics
+	 * @param policy	write policy; the DEFAULT, CREATE_ONLY, UPDATE_ONLY and NO_FAIL
+	 *					{@link StringWriteFlags} all apply to this op
 	 * @param binName	name of the string bin
 	 * @param values	ordered list of strings to append
 	 * @param ctx		optional path into a string nested inside a list or map
@@ -662,7 +673,8 @@ public final class StringOperation {
 	 *     StringOperation.append(StringPolicy.Default, "text", "!"));
 	 * }</pre>
 	 *
-	 * @param policy	write policy controlling NO_FAIL semantics
+	 * @param policy	write policy; the DEFAULT, CREATE_ONLY, UPDATE_ONLY and NO_FAIL
+	 *					{@link StringWriteFlags} all apply to this op
 	 * @param binName	name of the string bin
 	 * @param value		text to append to the end of the string
 	 * @param ctx		optional path into a string nested inside a list or map
@@ -686,7 +698,8 @@ public final class StringOperation {
 	 *     StringOperation.prepend(StringPolicy.Default, "text", "hello "));
 	 * }</pre>
 	 *
-	 * @param policy	write policy controlling NO_FAIL semantics
+	 * @param policy	write policy; the DEFAULT, CREATE_ONLY, UPDATE_ONLY and NO_FAIL
+	 *					{@link StringWriteFlags} all apply to this op
 	 * @param binName	name of the string bin
 	 * @param value		text to prepend to the start of the string
 	 * @param ctx		optional path into a string nested inside a list or map
@@ -707,7 +720,9 @@ public final class StringOperation {
 	 *     StringOperation.snip(StringPolicy.Default, "text", 5, 15));
 	 * }</pre>
 	 *
-	 * @param policy	write policy controlling NO_FAIL semantics
+	 * @param policy	write policy; the DEFAULT, UPDATE_ONLY and NO_FAIL
+	 *					{@link StringWriteFlags} apply to this op. CREATE_ONLY is rejected
+	 *					by the server on this op
 	 * @param binName	name of the string bin
 	 * @param start		first codepoint to remove (inclusive)
 	 * @param end		one past the last codepoint to remove (exclusive)
@@ -716,6 +731,35 @@ public final class StringOperation {
 	 */
 	public static Operation snip(StringPolicy policy, String binName, int start, int end, CTX... ctx) {
 		byte[] bytes = Pack.pack(SNIP, start, end, policy.flags, ctx);
+		return new Operation(Operation.Type.STRING_MODIFY, binName, new Value.BytesValue(bytes, ParticleType.STRING));
+	}
+
+	/**
+	 * Create string {@code snip} operation that removes the codepoints from {@code start}
+	 * through the end of the bin, truncating the string. Negative {@code start} counts
+	 * from the end of the string.
+	 *
+	 * <pre>{@code
+	 * // "hello world" snip from 5 -> "hello"
+	 * client.operate(null, key,
+	 *     StringOperation.snip(StringPolicy.Default, "text", 5));
+	 * }</pre>
+	 *
+	 * The server's snip argument list is positional — {@code start}, {@code end},
+	 * {@code flags} — so this form cannot carry the {@code policy} flags without also
+	 * supplying an explicit {@code end}: they are accepted for signature parity with the
+	 * other modify operations and are <strong>not</strong> transmitted. Use
+	 * {@link #snip(StringPolicy, String, int, int, CTX...)} when the write flags must be
+	 * honored.
+	 *
+	 * @param policy	write policy; its flags are not transmitted on this form
+	 * @param binName	name of the string bin
+	 * @param start		first codepoint to remove (negative counts from end)
+	 * @param ctx		optional path into a string nested inside a list or map
+	 * @return			modify operation
+	 */
+	public static Operation snip(StringPolicy policy, String binName, int start, CTX... ctx) {
+		byte[] bytes = Pack.pack(SNIP, start, ctx);
 		return new Operation(Operation.Type.STRING_MODIFY, binName, new Value.BytesValue(bytes, ParticleType.STRING));
 	}
 
@@ -729,7 +773,9 @@ public final class StringOperation {
 	 *     StringOperation.replace(StringPolicy.Default, "text", "world", "earth"));
 	 * }</pre>
 	 *
-	 * @param policy		write policy controlling NO_FAIL semantics
+	 * @param policy		write policy; the DEFAULT, UPDATE_ONLY and NO_FAIL
+	 *						{@link StringWriteFlags} apply to this op. CREATE_ONLY is rejected
+	 *						by the server on this op
 	 * @param binName		name of the string bin
 	 * @param needle		substring to find
 	 * @param replacement	text to substitute (may be empty to delete the match)
@@ -752,7 +798,9 @@ public final class StringOperation {
 	 *     StringOperation.replaceAll(StringPolicy.Default, "text", "a", "x"));
 	 * }</pre>
 	 *
-	 * @param policy		write policy controlling NO_FAIL semantics
+	 * @param policy		write policy; the DEFAULT, UPDATE_ONLY and NO_FAIL
+	 *						{@link StringWriteFlags} apply to this op. CREATE_ONLY is rejected
+	 *						by the server on this op
 	 * @param binName		name of the string bin
 	 * @param needle		substring to find
 	 * @param replacement	text to substitute (may be empty to delete each match)
@@ -773,7 +821,9 @@ public final class StringOperation {
 	 * client.operate(null, key, StringOperation.upper(StringPolicy.Default, "text"));
 	 * }</pre>
 	 *
-	 * @param policy	write policy controlling NO_FAIL semantics
+	 * @param policy	write policy; the DEFAULT, UPDATE_ONLY and NO_FAIL
+	 *					{@link StringWriteFlags} apply to this op. CREATE_ONLY is rejected
+	 *					by the server on this op
 	 * @param binName	name of the string bin
 	 * @param ctx		optional path into a string nested inside a list or map
 	 * @return			modify operation
@@ -791,7 +841,9 @@ public final class StringOperation {
 	 * client.operate(null, key, StringOperation.lower(StringPolicy.Default, "text"));
 	 * }</pre>
 	 *
-	 * @param policy	write policy controlling NO_FAIL semantics
+	 * @param policy	write policy; the DEFAULT, UPDATE_ONLY and NO_FAIL
+	 *					{@link StringWriteFlags} apply to this op. CREATE_ONLY is rejected
+	 *					by the server on this op
 	 * @param binName	name of the string bin
 	 * @param ctx		optional path into a string nested inside a list or map
 	 * @return			modify operation
@@ -810,7 +862,9 @@ public final class StringOperation {
 	 * client.operate(null, key, StringOperation.caseFold(StringPolicy.Default, "text"));
 	 * }</pre>
 	 *
-	 * @param policy	write policy controlling NO_FAIL semantics
+	 * @param policy	write policy; the DEFAULT, UPDATE_ONLY and NO_FAIL
+	 *					{@link StringWriteFlags} apply to this op. CREATE_ONLY is rejected
+	 *					by the server on this op
 	 * @param binName	name of the string bin
 	 * @param ctx		optional path into a string nested inside a list or map
 	 * @return			modify operation
@@ -829,7 +883,9 @@ public final class StringOperation {
 	 *     StringOperation.normalizeNFC(StringPolicy.Default, "text"));
 	 * }</pre>
 	 *
-	 * @param policy	write policy controlling NO_FAIL semantics
+	 * @param policy	write policy; the DEFAULT, UPDATE_ONLY and NO_FAIL
+	 *					{@link StringWriteFlags} apply to this op. CREATE_ONLY is rejected
+	 *					by the server on this op
 	 * @param binName	name of the string bin
 	 * @param ctx		optional path into a string nested inside a list or map
 	 * @return			modify operation
@@ -849,7 +905,9 @@ public final class StringOperation {
 	 *     StringOperation.trimStart(StringPolicy.Default, "text"));
 	 * }</pre>
 	 *
-	 * @param policy	write policy controlling NO_FAIL semantics
+	 * @param policy	write policy; the DEFAULT, UPDATE_ONLY and NO_FAIL
+	 *					{@link StringWriteFlags} apply to this op. CREATE_ONLY is rejected
+	 *					by the server on this op
 	 * @param binName	name of the string bin
 	 * @param ctx		optional path into a string nested inside a list or map
 	 * @return			modify operation
@@ -869,7 +927,9 @@ public final class StringOperation {
 	 *     StringOperation.trimEnd(StringPolicy.Default, "text"));
 	 * }</pre>
 	 *
-	 * @param policy	write policy controlling NO_FAIL semantics
+	 * @param policy	write policy; the DEFAULT, UPDATE_ONLY and NO_FAIL
+	 *					{@link StringWriteFlags} apply to this op. CREATE_ONLY is rejected
+	 *					by the server on this op
 	 * @param binName	name of the string bin
 	 * @param ctx		optional path into a string nested inside a list or map
 	 * @return			modify operation
@@ -889,7 +949,9 @@ public final class StringOperation {
 	 *     StringOperation.trim(StringPolicy.Default, "text"));
 	 * }</pre>
 	 *
-	 * @param policy	write policy controlling NO_FAIL semantics
+	 * @param policy	write policy; the DEFAULT, UPDATE_ONLY and NO_FAIL
+	 *					{@link StringWriteFlags} apply to this op. CREATE_ONLY is rejected
+	 *					by the server on this op
 	 * @param binName	name of the string bin
 	 * @param ctx		optional path into a string nested inside a list or map
 	 * @return			modify operation
@@ -910,7 +972,8 @@ public final class StringOperation {
 	 *     StringOperation.padStart(StringPolicy.Default, "text", 10, "*"));
 	 * }</pre>
 	 *
-	 * @param policy		write policy controlling NO_FAIL semantics
+	 * @param policy		write policy; the DEFAULT, CREATE_ONLY, UPDATE_ONLY and NO_FAIL
+	 *						{@link StringWriteFlags} all apply to this op
 	 * @param binName		name of the string bin
 	 * @param targetLength	codepoint length to pad up to
 	 * @param padString		text used to fill (repeated as needed)
@@ -933,7 +996,8 @@ public final class StringOperation {
 	 *     StringOperation.padEnd(StringPolicy.Default, "text", 10, "."));
 	 * }</pre>
 	 *
-	 * @param policy		write policy controlling NO_FAIL semantics
+	 * @param policy		write policy; the DEFAULT, CREATE_ONLY, UPDATE_ONLY and NO_FAIL
+	 *						{@link StringWriteFlags} all apply to this op
 	 * @param binName		name of the string bin
 	 * @param targetLength	codepoint length to pad up to
 	 * @param padString		text used to fill (repeated as needed)
@@ -955,7 +1019,8 @@ public final class StringOperation {
 	 *     StringOperation.repeat(StringPolicy.Default, "text", 3));
 	 * }</pre>
 	 *
-	 * @param policy	write policy controlling NO_FAIL semantics
+	 * @param policy	write policy; the DEFAULT, CREATE_ONLY, UPDATE_ONLY and NO_FAIL
+	 *					{@link StringWriteFlags} all apply to this op
 	 * @param binName	name of the string bin
 	 * @param count		number of repetitions (must be non-negative)
 	 * @param ctx		optional path into a string nested inside a list or map
@@ -979,8 +1044,10 @@ public final class StringOperation {
 	 *         "[0-9]+", "NUM", StringRegexFlags.GLOBAL));
 	 * }</pre>
 	 *
-	 * @param policy		write policy controlling NO_FAIL semantics; on this op NO_FAIL also
-	 *						suppresses a regex-compile failure
+	 * @param policy		write policy; the DEFAULT, UPDATE_ONLY and NO_FAIL
+	 *						{@link StringWriteFlags} apply to this op. CREATE_ONLY is rejected
+	 *						by the server on this op. NO_FAIL here also suppresses a
+	 *						regex-compile failure
 	 * @param binName		name of the string bin
 	 * @param pattern		ICU-syntax regex pattern (must be valid UTF-8)
 	 * @param replacement	replacement text (must be valid UTF-8)
@@ -1008,9 +1075,12 @@ public final class StringOperation {
 	//-----------------------------------------------------------------
 
 	/**
-	 * Create {@code toString} operation that converts an integer, float, string, or
-	 * blob bin to its string representation. Returns
-	 * {@code AEROSPIKE_ERR_INCOMPATIBLE_TYPE} for any other bin type.
+	 * Create {@code toString} operation that converts an integer, float, boolean,
+	 * string, or blob bin to its string representation. Returns
+	 * {@code AEROSPIKE_ERR_INCOMPATIBLE_TYPE} for any other bin type. A blob bin whose
+	 * bytes are not valid UTF-8 fails with
+	 * {@link com.aerospike.client.ResultCode#OP_NOT_APPLICABLE} and subcode
+	 * {@link com.aerospike.client.SubCode#OPNOT_STRING_UTF8_INVALID}.
 	 * <p>
 	 * Unlike the other builders in this class, {@code toString} does not accept a
 	 * {@link CTX}. The other string operations are sent as {@code STRING_READ} /
