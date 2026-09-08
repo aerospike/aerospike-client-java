@@ -31,9 +31,8 @@ import com.aerospike.client.configuration.serializers.dynamicconfig.DynamicMetri
 import com.aerospike.client.metrics.IMetricsExporter;
 import com.aerospike.client.metrics.MetricsPolicy;
 import com.aerospike.client.metrics.MetricsSnapshot;
-import com.aerospike.test.sync.TestSync;
 
-public class TestMetricsPolicy extends TestSync {
+public class TestMetricsPolicy {
 
 	@Test
 	public void testDefaultValues() {

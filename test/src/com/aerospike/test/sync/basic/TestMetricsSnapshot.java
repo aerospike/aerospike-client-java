@@ -39,9 +39,8 @@ import com.aerospike.client.metrics.LatencyType;
 import com.aerospike.client.metrics.MetricsSnapshot.LatencyUnit;
 import com.aerospike.client.metrics.MetricsSnapshot.NamespaceSnapshot;
 import com.aerospike.client.metrics.MetricsSnapshot.NodeSnapshot;
-import com.aerospike.test.sync.TestSync;
 
-public class TestMetricsSnapshot extends TestSync {
+public class TestMetricsSnapshot {
 
 	@Test(expected = UnsupportedOperationException.class)
 	public void testSnapshotImmutability() {
