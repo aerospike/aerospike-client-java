@@ -570,7 +570,8 @@ public final class StringOperation {
 	 *     StringOperation.insert(StringPolicy.Default, "text", 5, " beautiful"));
 	 * }</pre>
 	 *
-	 * @param policy	write policy controlling NO_FAIL semantics
+	 * @param policy	write policy; the DEFAULT, CREATE_ONLY, UPDATE_ONLY and NO_FAIL
+	 *					{@link StringWriteFlags} all apply to this op
 	 * @param binName	name of the string bin
 	 * @param index		codepoint index at which to insert (negative counts from end)
 	 * @param value		text to insert
@@ -593,7 +594,8 @@ public final class StringOperation {
 	 *     StringOperation.overwrite(StringPolicy.Default, "text", 6, "earth"));
 	 * }</pre>
 	 *
-	 * @param policy	write policy controlling NO_FAIL semantics
+	 * @param policy	write policy; the DEFAULT, CREATE_ONLY, UPDATE_ONLY and NO_FAIL
+	 *					{@link StringWriteFlags} all apply to this op
 	 * @param binName	name of the string bin
 	 * @param index		codepoint index at which to start overwriting
 	 * @param value		text to write
@@ -614,7 +616,8 @@ public final class StringOperation {
 	 *     StringOperation.concat(StringPolicy.Default, "text", "!"));
 	 * }</pre>
 	 *
-	 * @param policy	write policy controlling NO_FAIL semantics
+	 * @param policy	write policy; the DEFAULT, CREATE_ONLY, UPDATE_ONLY and NO_FAIL
+	 *					{@link StringWriteFlags} all apply to this op
 	 * @param binName	name of the string bin
 	 * @param value		text to append
 	 * @param ctx		optional path into a string nested inside a list or map
@@ -637,7 +640,8 @@ public final class StringOperation {
 	 *     Arrays.asList(" ", "big", " world")));
 	 * }</pre>
 	 *
-	 * @param policy	write policy controlling NO_FAIL semantics
+	 * @param policy	write policy; the DEFAULT, CREATE_ONLY, UPDATE_ONLY and NO_FAIL
+	 *					{@link StringWriteFlags} all apply to this op
 	 * @param binName	name of the string bin
 	 * @param values	ordered list of strings to append
 	 * @param ctx		optional path into a string nested inside a list or map
@@ -662,7 +666,8 @@ public final class StringOperation {
 	 *     StringOperation.append(StringPolicy.Default, "text", "!"));
 	 * }</pre>
 	 *
-	 * @param policy	write policy controlling NO_FAIL semantics
+	 * @param policy	write policy; the DEFAULT, CREATE_ONLY, UPDATE_ONLY and NO_FAIL
+	 *					{@link StringWriteFlags} all apply to this op
 	 * @param binName	name of the string bin
 	 * @param value		text to append to the end of the string
 	 * @param ctx		optional path into a string nested inside a list or map
@@ -686,7 +691,8 @@ public final class StringOperation {
 	 *     StringOperation.prepend(StringPolicy.Default, "text", "hello "));
 	 * }</pre>
 	 *
-	 * @param policy	write policy controlling NO_FAIL semantics
+	 * @param policy	write policy; the DEFAULT, CREATE_ONLY, UPDATE_ONLY and NO_FAIL
+	 *					{@link StringWriteFlags} all apply to this op
 	 * @param binName	name of the string bin
 	 * @param value		text to prepend to the start of the string
 	 * @param ctx		optional path into a string nested inside a list or map
@@ -707,7 +713,9 @@ public final class StringOperation {
 	 *     StringOperation.snip(StringPolicy.Default, "text", 5, 15));
 	 * }</pre>
 	 *
-	 * @param policy	write policy controlling NO_FAIL semantics
+	 * @param policy	write policy; the DEFAULT, UPDATE_ONLY and NO_FAIL
+	 *					{@link StringWriteFlags} apply to this op. CREATE_ONLY is rejected
+	 *					by the server on this op
 	 * @param binName	name of the string bin
 	 * @param start		first codepoint to remove (inclusive)
 	 * @param end		one past the last codepoint to remove (exclusive)
@@ -758,7 +766,9 @@ public final class StringOperation {
 	 *     StringOperation.replace(StringPolicy.Default, "text", "world", "earth"));
 	 * }</pre>
 	 *
-	 * @param policy		write policy controlling NO_FAIL semantics
+	 * @param policy		write policy; the DEFAULT, UPDATE_ONLY and NO_FAIL
+	 *						{@link StringWriteFlags} apply to this op. CREATE_ONLY is rejected
+	 *						by the server on this op
 	 * @param binName		name of the string bin
 	 * @param needle		substring to find
 	 * @param replacement	text to substitute (may be empty to delete the match)
@@ -781,7 +791,9 @@ public final class StringOperation {
 	 *     StringOperation.replaceAll(StringPolicy.Default, "text", "a", "x"));
 	 * }</pre>
 	 *
-	 * @param policy		write policy controlling NO_FAIL semantics
+	 * @param policy		write policy; the DEFAULT, UPDATE_ONLY and NO_FAIL
+	 *						{@link StringWriteFlags} apply to this op. CREATE_ONLY is rejected
+	 *						by the server on this op
 	 * @param binName		name of the string bin
 	 * @param needle		substring to find
 	 * @param replacement	text to substitute (may be empty to delete each match)
@@ -802,7 +814,9 @@ public final class StringOperation {
 	 * client.operate(null, key, StringOperation.upper(StringPolicy.Default, "text"));
 	 * }</pre>
 	 *
-	 * @param policy	write policy controlling NO_FAIL semantics
+	 * @param policy	write policy; the DEFAULT, UPDATE_ONLY and NO_FAIL
+	 *					{@link StringWriteFlags} apply to this op. CREATE_ONLY is rejected
+	 *					by the server on this op
 	 * @param binName	name of the string bin
 	 * @param ctx		optional path into a string nested inside a list or map
 	 * @return			modify operation
@@ -820,7 +834,9 @@ public final class StringOperation {
 	 * client.operate(null, key, StringOperation.lower(StringPolicy.Default, "text"));
 	 * }</pre>
 	 *
-	 * @param policy	write policy controlling NO_FAIL semantics
+	 * @param policy	write policy; the DEFAULT, UPDATE_ONLY and NO_FAIL
+	 *					{@link StringWriteFlags} apply to this op. CREATE_ONLY is rejected
+	 *					by the server on this op
 	 * @param binName	name of the string bin
 	 * @param ctx		optional path into a string nested inside a list or map
 	 * @return			modify operation
@@ -839,7 +855,9 @@ public final class StringOperation {
 	 * client.operate(null, key, StringOperation.caseFold(StringPolicy.Default, "text"));
 	 * }</pre>
 	 *
-	 * @param policy	write policy controlling NO_FAIL semantics
+	 * @param policy	write policy; the DEFAULT, UPDATE_ONLY and NO_FAIL
+	 *					{@link StringWriteFlags} apply to this op. CREATE_ONLY is rejected
+	 *					by the server on this op
 	 * @param binName	name of the string bin
 	 * @param ctx		optional path into a string nested inside a list or map
 	 * @return			modify operation
@@ -858,7 +876,9 @@ public final class StringOperation {
 	 *     StringOperation.normalizeNFC(StringPolicy.Default, "text"));
 	 * }</pre>
 	 *
-	 * @param policy	write policy controlling NO_FAIL semantics
+	 * @param policy	write policy; the DEFAULT, UPDATE_ONLY and NO_FAIL
+	 *					{@link StringWriteFlags} apply to this op. CREATE_ONLY is rejected
+	 *					by the server on this op
 	 * @param binName	name of the string bin
 	 * @param ctx		optional path into a string nested inside a list or map
 	 * @return			modify operation
@@ -878,7 +898,9 @@ public final class StringOperation {
 	 *     StringOperation.trimStart(StringPolicy.Default, "text"));
 	 * }</pre>
 	 *
-	 * @param policy	write policy controlling NO_FAIL semantics
+	 * @param policy	write policy; the DEFAULT, UPDATE_ONLY and NO_FAIL
+	 *					{@link StringWriteFlags} apply to this op. CREATE_ONLY is rejected
+	 *					by the server on this op
 	 * @param binName	name of the string bin
 	 * @param ctx		optional path into a string nested inside a list or map
 	 * @return			modify operation
@@ -898,7 +920,9 @@ public final class StringOperation {
 	 *     StringOperation.trimEnd(StringPolicy.Default, "text"));
 	 * }</pre>
 	 *
-	 * @param policy	write policy controlling NO_FAIL semantics
+	 * @param policy	write policy; the DEFAULT, UPDATE_ONLY and NO_FAIL
+	 *					{@link StringWriteFlags} apply to this op. CREATE_ONLY is rejected
+	 *					by the server on this op
 	 * @param binName	name of the string bin
 	 * @param ctx		optional path into a string nested inside a list or map
 	 * @return			modify operation
@@ -918,7 +942,9 @@ public final class StringOperation {
 	 *     StringOperation.trim(StringPolicy.Default, "text"));
 	 * }</pre>
 	 *
-	 * @param policy	write policy controlling NO_FAIL semantics
+	 * @param policy	write policy; the DEFAULT, UPDATE_ONLY and NO_FAIL
+	 *					{@link StringWriteFlags} apply to this op. CREATE_ONLY is rejected
+	 *					by the server on this op
 	 * @param binName	name of the string bin
 	 * @param ctx		optional path into a string nested inside a list or map
 	 * @return			modify operation
@@ -939,7 +965,8 @@ public final class StringOperation {
 	 *     StringOperation.padStart(StringPolicy.Default, "text", 10, "*"));
 	 * }</pre>
 	 *
-	 * @param policy		write policy controlling NO_FAIL semantics
+	 * @param policy		write policy; the DEFAULT, CREATE_ONLY, UPDATE_ONLY and NO_FAIL
+	 *						{@link StringWriteFlags} all apply to this op
 	 * @param binName		name of the string bin
 	 * @param targetLength	codepoint length to pad up to
 	 * @param padString		text used to fill (repeated as needed)
@@ -962,7 +989,8 @@ public final class StringOperation {
 	 *     StringOperation.padEnd(StringPolicy.Default, "text", 10, "."));
 	 * }</pre>
 	 *
-	 * @param policy		write policy controlling NO_FAIL semantics
+	 * @param policy		write policy; the DEFAULT, CREATE_ONLY, UPDATE_ONLY and NO_FAIL
+	 *						{@link StringWriteFlags} all apply to this op
 	 * @param binName		name of the string bin
 	 * @param targetLength	codepoint length to pad up to
 	 * @param padString		text used to fill (repeated as needed)
@@ -984,7 +1012,8 @@ public final class StringOperation {
 	 *     StringOperation.repeat(StringPolicy.Default, "text", 3));
 	 * }</pre>
 	 *
-	 * @param policy	write policy controlling NO_FAIL semantics
+	 * @param policy	write policy; the DEFAULT, CREATE_ONLY, UPDATE_ONLY and NO_FAIL
+	 *					{@link StringWriteFlags} all apply to this op
 	 * @param binName	name of the string bin
 	 * @param count		number of repetitions (must be non-negative)
 	 * @param ctx		optional path into a string nested inside a list or map
@@ -1008,8 +1037,10 @@ public final class StringOperation {
 	 *         "[0-9]+", "NUM", StringRegexFlags.GLOBAL));
 	 * }</pre>
 	 *
-	 * @param policy		write policy controlling NO_FAIL semantics; on this op NO_FAIL also
-	 *						suppresses a regex-compile failure
+	 * @param policy		write policy; the DEFAULT, UPDATE_ONLY and NO_FAIL
+	 *						{@link StringWriteFlags} apply to this op. CREATE_ONLY is rejected
+	 *						by the server on this op. NO_FAIL here also suppresses a
+	 *						regex-compile failure
 	 * @param binName		name of the string bin
 	 * @param pattern		ICU-syntax regex pattern (must be valid UTF-8)
 	 * @param replacement	replacement text (must be valid UTF-8)
