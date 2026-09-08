@@ -48,6 +48,7 @@ import com.aerospike.client.operation.StringNumericType;
 import com.aerospike.client.operation.StringPolicy;
 import com.aerospike.client.operation.StringRegexFlags;
 import com.aerospike.client.policy.Policy;
+import com.aerospike.client.util.Unpacker;
 import com.aerospike.test.sync.TestSync;
 
 /**
@@ -368,13 +369,42 @@ public class TestStringExp extends TestSync {
 
 	@Test
 	public void snipRemovesRange() {
-		// Note: only the two-arg form is exercised. The server's snip op table
-		// (particle_string.c:443) requires (start, end[, flags]); the 1-arg client
-		// form [SNIP, start, flags] is silently misparsed — the trailing flags slot
-		// is read as `end`, producing a no-op when flags==DEFAULT==0.
 		put("hello beautiful world");
 		Record r = eval(StringExp.snip(POLICY, Exp.val(5), Exp.val(15), Exp.stringBin(BIN)));
 		assertEquals("hello world", r.getString(VAR));
+	}
+
+	@Test
+	public void snipFromStartTruncatesToEnd() {
+		put("hello world");
+		Record r = eval(StringExp.snip(POLICY, Exp.val(5), Exp.stringBin(BIN)));
+		assertEquals("hello", r.getString(VAR));
+	}
+
+	@Test
+	public void snipFromNegativeStartCountsFromEnd() {
+		put("hello world");
+		Record r = eval(StringExp.snip(POLICY, Exp.val(-5), Exp.stringBin(BIN)));
+		assertEquals("hello ", r.getString(VAR));
+	}
+
+	@Test
+	public void snipFromPacksStartWithoutFlagsElement() {
+		// The server parses snip's arguments positionally (start, end, flags), so a
+		// trailing flags element on the 1-index form is read as `end`. Exp.Module packs
+		// the module payload verbatim as element 3 of the CALL array, so unpacking the
+		// built expression recovers the argument list exactly as it goes on the wire.
+		assertEquals(Arrays.asList(53L, 5L), snipCallArgs(
+			StringExp.snip(POLICY, Exp.val(5), Exp.stringBin(BIN))));
+
+		assertEquals(Arrays.asList(53L, 5L, 15L, 0L), snipCallArgs(
+			StringExp.snip(POLICY, Exp.val(5), Exp.val(15), Exp.stringBin(BIN))));
+	}
+
+	private static List<?> snipCallArgs(Exp e) {
+		byte[] blob = Exp.build(e).getBytes();
+		List<?> call = (List<?>)Unpacker.unpackObjectList(blob, 0, blob.length);
+		return (List<?>)call.get(3);
 	}
 
 	@Test
