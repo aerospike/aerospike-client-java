@@ -55,8 +55,11 @@ import com.aerospike.client.policy.ReadModeAP;
 import com.aerospike.client.policy.ScanPolicy;
 import com.aerospike.client.policy.WritePolicy;
 import com.aerospike.client.query.BVal;
+import com.aerospike.client.query.BinDataType;
 import com.aerospike.client.query.Filter;
 import com.aerospike.client.query.IndexCollectionType;
+import com.aerospike.client.query.Order;
+import com.aerospike.client.query.OrderByFlags;
 import com.aerospike.client.query.PartitionStatus;
 import com.aerospike.client.query.PartitionTracker.NodePartitions;
 import com.aerospike.client.query.Statement;
@@ -1971,7 +1974,6 @@ public class Command {
 	// Query
 	//--------------------------------------------------
 
-	@SuppressWarnings("deprecation")
 	public final void setQuery(
 		Cluster cluster,
 		Policy policy,
@@ -1981,7 +1983,22 @@ public class Command {
 		NodePartitions nodePartitions,
 		Node node
 	) {
+		setQuery(cluster, policy, statement, taskId, background, nodePartitions, node, false);
+	}
+
+	@SuppressWarnings("deprecation")
+	public final void setQuery(
+		Cluster cluster,
+		Policy policy,
+		Statement statement,
+		long taskId,
+		boolean background,
+		NodePartitions nodePartitions,
+		Node node,
+		boolean sendTopK
+	) {
 		byte[] functionArgBuffer = null;
+		TopKFields topKFields = getTopKFields(statement, sendTopK);
 		int fieldCount = 0;
 		int filterSize = 0;
 		int binNameSize = 0;
@@ -2092,6 +2109,12 @@ public class Command {
 		if (policy.filterExp != null) {
 			dataOffset += policy.filterExp.size();
 			fieldCount++;
+		}
+
+		if (topKFields != null) {
+			dataOffset += FIELD_HEADER_SIZE + topKFields.orderBy.length;
+			dataOffset += FIELD_HEADER_SIZE + topKFields.limit.length;
+			fieldCount += 2;
 		}
 
 		long maxRecords = 0;
@@ -2217,6 +2240,11 @@ public class Command {
 		// Write taskId field
 		writeField(taskId, FieldType.QUERY_ID);
 
+		if (topKFields != null) {
+			writeField(topKFields.orderBy, FieldType.ORDER_BY);
+			writeField(topKFields.limit, FieldType.TOP_K);
+		}
+
 		if (filter != null) {
 			IndexCollectionType type = filter.getCollectionType();
 
@@ -2316,6 +2344,59 @@ public class Command {
 		}
 
 		end();
+	}
+
+	static byte[] getTopKOrderByField(Statement statement) {
+		byte[] bin = Buffer.stringToUtf8(statement.getTopKBin());
+		byte[] field = new byte[4 + bin.length];
+		field[0] = (byte)getOrderByType(statement.getTopKType());
+		field[1] = (byte)getOrderByDirection(statement.getTopKOrder());
+		field[2] = (byte)(statement.getTopKFlags() == OrderByFlags.CASE_INSENSITIVE ? 1 : 0);
+		field[3] = (byte)bin.length;
+		System.arraycopy(bin, 0, field, 4, bin.length);
+		return field;
+	}
+
+	static TopKFields getTopKFields(Statement statement, boolean sendTopK) {
+		if (! sendTopK || ! statement.hasTopK()) {
+			return null;
+		}
+		return new TopKFields(getTopKOrderByField(statement), getTopKField(statement.getTopKLimit()));
+	}
+
+	static byte[] getTopKField(int limit) {
+		byte[] field = new byte[4];
+		Buffer.intToBytes(limit, field, 0);
+		return field;
+	}
+
+	private static int getOrderByType(BinDataType type) {
+		switch (type) {
+			case INTEGER:
+				return 1;
+			case DOUBLE:
+				return 2;
+			case STRING:
+				return 3;
+			case BYTES:
+				return 4;
+			default:
+				throw new IllegalArgumentException("Unsupported Top-K order-by type: " + type);
+		}
+	}
+
+	private static int getOrderByDirection(Order order) {
+		return order == Order.ASC ? 0 : 1;
+	}
+
+	static final class TopKFields {
+		final byte[] orderBy;
+		final byte[] limit;
+
+		TopKFields(byte[] orderBy, byte[] limit) {
+			this.orderBy = orderBy;
+			this.limit = limit;
+		}
 	}
 
 	//--------------------------------------------------

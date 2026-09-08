@@ -84,6 +84,7 @@ public final class QueryPartitionExecutor implements IQueryExecutor, Runnable {
 
 		while (true) {
 			List<NodePartitions> list = tracker.assignPartitionsToNodes(cluster, statement.namespace);
+			boolean sendTopK = supportsTopKPushdown(list);
 
 			// Initialize maximum number of nodes to query in parallel.
 			maxConcurrentThreads = (policy.maxConcurrentNodes == 0 || policy.maxConcurrentNodes >= list.size()) ? list.size() : policy.maxConcurrentNodes;
@@ -103,7 +104,8 @@ public final class QueryPartitionExecutor implements IQueryExecutor, Runnable {
 					es = Executors.newThreadPerTaskExecutor(cluster.threadFactory);
 
 					for (NodePartitions nodePartitions : list) {
-						MultiCommand command = new QueryPartitionCommand(cluster, policy, statement, taskId, recordSet, reducer, tracker, nodePartitions);
+						MultiCommand command = new QueryPartitionCommand(
+							cluster, policy, statement, taskId, recordSet, reducer, tracker, nodePartitions, sendTopK);
 						threads.add(new QueryThread(command));
 					}
 
@@ -119,7 +121,8 @@ public final class QueryPartitionExecutor implements IQueryExecutor, Runnable {
 			}
 			else {
 				for (NodePartitions nodePartitions : list) {
-					MultiCommand command = new QueryPartitionCommand(cluster, policy, statement, taskId, recordSet, reducer, tracker, nodePartitions);
+					MultiCommand command = new QueryPartitionCommand(
+						cluster, policy, statement, taskId, recordSet, reducer, tracker, nodePartitions, sendTopK);
 					command.execute();
 				}
 			}
@@ -132,8 +135,6 @@ public final class QueryPartitionExecutor implements IQueryExecutor, Runnable {
 			done.set(false);
 
 			if (tracker.isComplete(cluster, policy)) {
-				// All partitions received. Emit the merged Top-K reduce result now that
-				// every node/partition has fed the combiner.
 				if (reducer instanceof TopKReduceSpec) {
 					TopKReduceSpec topK = (TopKReduceSpec)reducer;
 					Record[] records = topK.getResult();
@@ -161,6 +162,19 @@ public final class QueryPartitionExecutor implements IQueryExecutor, Runnable {
 			// taskId must be reset on next pass to avoid server duplicate query detection.
 			taskId = task.nextId();
 		}
+	}
+
+	private boolean supportsTopKPushdown(List<NodePartitions> list) {
+		if (! statement.hasTopK() || ! statement.isTopKPushdownEnabled()) {
+			return false;
+		}
+
+		for (NodePartitions nodePartitions : list) {
+			if (! nodePartitions.node.hasQueryOrderBy()) {
+				return false;
+			}
+		}
+		return true;
 	}
 
 	private final void threadCompleted() {

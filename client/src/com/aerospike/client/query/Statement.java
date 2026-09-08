@@ -19,6 +19,7 @@ package com.aerospike.client.query;
 import com.aerospike.client.Operation;
 import com.aerospike.client.Record;
 import com.aerospike.client.Value;
+import com.aerospike.client.command.Buffer;
 import com.aerospike.client.util.RandomShift;
 
 /**
@@ -44,6 +45,8 @@ public final class Statement {
 	private Order orderByOrder;
 	private OrderByFlags orderByFlags;
 	private boolean orderBySet;
+	private TopKSpec topK;
+	private boolean topKPushdownEnabled = true;
 	long taskId;
 	long maxRecords;
 	int recordsPerSecond;
@@ -270,7 +273,7 @@ public final class Statement {
 	}
 
 	/**
-	 * Set reduce spec(s) for this query, used for client-side global Top-K reduce. Accepts:
+	 * Set reduce spec(s) for this query. Accepts:
 	 * <ul>
 	 *   <li>zero args — clear any reduce (stream all matching records; default behavior)</li>
 	 *   <li>one Top-K spec — e.g.
@@ -289,6 +292,7 @@ public final class Statement {
 		this.reduceSpecs = reduceSpecs;
 		this.resolvedReduce = null;
 		this.reduceResolved = false;
+		this.topK = null;
 	}
 
 	/**
@@ -334,11 +338,12 @@ public final class Statement {
 	}
 
 	/**
-	 * Ordered LIMIT k reduce; must be preceded by a {@link #setOrderBy} call on this statement.
+	 * Ordered LIMIT k query; must be preceded by a {@link #setOrderBy} call on this statement.
 	 * <p>
 	 * Sugar for {@code setReduce(Reduce.topK(binName, type, order, flags, k))} using the bin,
 	 * type, order, and flags from the preceding {@link #setOrderBy} call. Like
 	 * {@code setReduce}, replaces any previously set reduce.
+	 * Supported nodes return bounded candidates; mixed clusters fall back to client-side reduction.
 	 *
 	 * @param k	maximum number of records to return, in {@code [1, 1000]}
 	 * @throws IllegalStateException if {@link #setOrderBy} was not called first
@@ -348,6 +353,111 @@ public final class Statement {
 			throw new IllegalStateException("setTopK() requires setOrderBy() to be called first");
 		}
 		setReduce(Reduce.topK(orderByBin, orderByType, orderByOrder, orderByFlags, k));
+		topK = new TopKSpec(orderByBin, orderByType, orderByOrder, orderByFlags, k);
+	}
+
+	/**
+	 * Return whether this statement has a Top-K specification.
+	 */
+	public boolean hasTopK() {
+		return topK != null;
+	}
+
+	/**
+	 * Return the Top-K order-by bin name, or {@code null} when Top-K is not set.
+	 */
+	public String getTopKBin() {
+		return topK == null ? null : topK.bin;
+	}
+
+	/**
+	 * Return the Top-K order-by type, or {@code null} when Top-K is not set.
+	 */
+	public BinDataType getTopKType() {
+		return topK == null ? null : topK.type;
+	}
+
+	/**
+	 * Return the Top-K order direction, or {@code null} when Top-K is not set.
+	 */
+	public Order getTopKOrder() {
+		return topK == null ? null : topK.order;
+	}
+
+	/**
+	 * Return the Top-K order-by flags, or {@code null} when Top-K is not set.
+	 */
+	public OrderByFlags getTopKFlags() {
+		return topK == null ? null : topK.flags;
+	}
+
+	/**
+	 * Return the Top-K limit, or zero when Top-K is not set.
+	 */
+	public int getTopKLimit() {
+		return topK == null ? 0 : topK.limit;
+	}
+
+	/** Enable or disable Top-K pushdown for tests. */
+	void setTopKPushdownEnabled(boolean enabled) {
+		this.topKPushdownEnabled = enabled;
+	}
+
+	boolean isTopKPushdownEnabled() {
+		return topKPushdownEnabled;
+	}
+
+	/**
+	 * Validate the Top-K specification.
+	 */
+	public void validateTopK() {
+		if (topK == null) {
+			return;
+		}
+
+		if (topK.bin == null || topK.type == null || topK.order == null || topK.flags == null) {
+			throw new IllegalArgumentException("Top-K order-by specification is incomplete");
+		}
+
+		int length = Buffer.estimateSizeUtf8(topK.bin);
+
+		if (length == 0 || length > 15 || topK.bin.indexOf('\0') >= 0) {
+			throw new IllegalArgumentException("Top-K order-by bin name must be 1-15 UTF-8 bytes without NUL");
+		}
+
+		if (topK.flags != OrderByFlags.NONE && topK.type != BinDataType.STRING) {
+			throw new IllegalArgumentException("Top-K order-by flags are only valid for STRING");
+		}
+
+		if (topK.limit < 1 || topK.limit > 1000) {
+			throw new IllegalArgumentException("Top-K limit must be in [1, 1000]");
+		}
+
+		if (maxRecords != 0) {
+			throw new IllegalArgumentException("Top-K is incompatible with maxRecords");
+		}
+
+		if (functionName != null) {
+			throw new IllegalArgumentException("Top-K is only valid for foreground queries");
+		}
+
+		if (operations != null) {
+			for (Operation operation : operations) {
+				if (topK.bin.equals(operation.binName)) {
+					return;
+				}
+			}
+			throw new IllegalArgumentException("Top-K order-by bin must be included in the operations projection");
+		}
+
+		if (binNames != null) {
+			for (String binName : binNames) {
+				if (topK.bin.equals(binName)) {
+					return;
+				}
+			}
+			throw new IllegalArgumentException("Top-K order-by bin must be included in the bin projection");
+		}
 	}
 
 	/**
@@ -439,5 +549,21 @@ public final class Statement {
 	 */
 	public boolean isScan() {
 		return filter == null;
+	}
+
+	private static final class TopKSpec {
+		private final String bin;
+		private final BinDataType type;
+		private final Order order;
+		private final OrderByFlags flags;
+		private final int limit;
+
+		private TopKSpec(String bin, BinDataType type, Order order, OrderByFlags flags, int limit) {
+			this.bin = bin;
+			this.type = type;
+			this.order = order;
+			this.flags = flags;
+			this.limit = limit;
+		}
 	}
 }

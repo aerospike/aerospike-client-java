@@ -31,13 +31,10 @@ import com.aerospike.client.query.Statement;
 import com.aerospike.client.task.IndexTask;
 
 /**
- * Demonstrate client-side Top-K reduce using {@link Statement#setOrderBy} + {@link Statement#setTopK}.
+ * Demonstrate Top-K queries using {@link Statement#setOrderBy} + {@link Statement#setTopK}.
  * <p>
- * Note: the server does not yet send a per-node bounded Top-K result set for this reduce
- * (see docs/REDUCE-SPEC-DESIGN.md); every matching record is still sent to the client, which
- * merges them locally. Once {@link Statement#setTopK} is set, {@link IAerospikeClient#query}
- * applies the reduce internally and streams only the final merged Top-K records through the
- * returned {@link RecordSet} — no manual combiner handling is needed.
+ * Supporting server nodes return bounded candidates; the client merges them into global Top-K
+ * results and falls back to client-side reduction for mixed clusters.
  */
 public class QueryTopK extends Example {
 
@@ -102,8 +99,6 @@ public class QueryTopK extends Example {
 		stmt.setOrderBy(binName, BinDataType.INTEGER, Order.DESC);
 		stmt.setTopK(k);
 
-		// client().query() merges every node's results and streams back only the final,
-		// globally-ordered top k records.
 		try (RecordSet rs = client().query(null, stmt)) {
 			int count = 0;
 			int expected = 20; // largest value written
