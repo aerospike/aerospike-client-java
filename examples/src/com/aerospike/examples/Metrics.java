@@ -25,9 +25,9 @@ import com.aerospike.client.metrics.MetricsPolicy;
 import com.aerospike.client.metrics.MetricsSnapshot;
 
 /**
- * Demonstrate IMetricsExporter integration. Registers a simple console-printing
- * exporter, enables metrics, performs some operations, and shows the snapshot
- * data that the exporter receives.
+ * Demonstrate IMetricsExporter integration. Registers a sample exporter that
+ * prints snapshot summaries, enables metrics, performs some operations, and
+ * shows the snapshot data that the exporter receives.
  */
 public class Metrics extends Example {
 
@@ -37,17 +37,53 @@ public class Metrics extends Example {
 
 	@Override
 	public void runExample(IAerospikeClient client, Parameters params) throws Exception {
-		ConsoleMetricsExporter exporter = new ConsoleMetricsExporter();
+		// Phase 1: All metrics (enableExtendedMetrics = true, the default).
+		console.info("=== Phase 1: Extended metrics ENABLED (default) ===");
+		SampleMetricsExporter exporter = new SampleMetricsExporter("extended-on");
 
 		MetricsPolicy metricsPolicy = new MetricsPolicy();
 		metricsPolicy.interval = 5;
+		// metricsPolicy.exportTimeout = 10; // max seconds per exporter call (default 10)
 		metricsPolicy.addExporter(exporter);
 
-		console.info("Enabling metrics with interval=5s and console exporter");
 		client.enableMetrics(metricsPolicy);
+		runOperations(client, params, 12_000);
 
-		console.info("Performing read/write operations for ~12 seconds...");
-		long endTime = System.currentTimeMillis() + 12_000;
+		console.info("Phase 1 complete: %d snapshots received", exporter.snapshotCount);
+		client.disableMetrics();
+
+		// Phase 2: Standard metrics only (enableExtendedMetrics = false).
+		// CPU, memory, command count, and namespace snapshots will be zero/empty.
+		console.info("");
+		console.info("=== Phase 2: Extended metrics DISABLED ===");
+		SampleMetricsExporter standardExporter = new SampleMetricsExporter("extended-off");
+
+		MetricsPolicy standardPolicy = new MetricsPolicy();
+		standardPolicy.interval = 5;
+		standardPolicy.enableExtendedMetrics = false;
+		standardPolicy.addExporter(standardExporter);
+
+		client.enableMetrics(standardPolicy);
+		runOperations(client, params, 12_000);
+
+		console.info("Phase 2 complete: %d snapshots received", standardExporter.snapshotCount);
+		client.disableMetrics();
+
+		// Summary comparison.
+		console.info("");
+		console.info("=== Comparison ===");
+		console.info("Extended ON  — snapshots: %d, last CPU: %.2f%%, last namespaces: %d",
+			exporter.snapshotCount, exporter.lastCpuPercent, exporter.lastNamespaceCount);
+		console.info("Extended OFF — snapshots: %d, last CPU: %.2f%%, last namespaces: %d",
+			standardExporter.snapshotCount, standardExporter.lastCpuPercent,
+			standardExporter.lastNamespaceCount);
+	}
+
+	/**
+	 * Perform put/get operations for the specified duration in milliseconds.
+	 */
+	private void runOperations(IAerospikeClient client, Parameters params, long durationMs) throws Exception {
+		long endTime = System.currentTimeMillis() + durationMs;
 		int operationCount = 0;
 
 		while (System.currentTimeMillis() < endTime) {
@@ -63,27 +99,35 @@ public class Metrics extends Example {
 			operationCount++;
 			Thread.sleep(100);
 		}
-
 		console.info("Performed %d put/get operations", operationCount);
-		console.info("Exporter received %d snapshots", exporter.snapshotCount);
-		console.info("Disabling metrics");
-		client.disableMetrics();
 	}
 
 	/**
-	 * Simple IMetricsExporter that prints snapshot summaries to the console.
+	 * Sample IMetricsExporter that prints snapshot summaries to the console.
+	 * Tracks the last CPU percentage and namespace count for comparison.
 	 */
-	private class ConsoleMetricsExporter implements IMetricsExporter {
+	private class SampleMetricsExporter implements IMetricsExporter {
+		final String label;
 		int snapshotCount = 0;
+		double lastCpuPercent = 0.0;
+		int lastNamespaceCount = 0;
+
+		SampleMetricsExporter(String label) {
+			this.label = label;
+		}
 
 		@Override
 		public void export(MetricsSnapshot snapshot) {
 			snapshotCount++;
-			console.info("--- Metrics Snapshot #%d ---", snapshotCount);
+			lastCpuPercent = snapshot.cpuPercent;
+
+			console.info("[%s] --- Metrics Snapshot #%d ---", label, snapshotCount);
 			console.info("  Timestamp:      %s", snapshot.timestamp);
 			console.info("  Cluster:        %s", snapshot.clusterName);
 			console.info("  Nodes:          %d", snapshot.totalNodes);
 			console.info("  Open conns:     %d", snapshot.openConnections);
+			console.info("  CPU:            %.2f%%", snapshot.cpuPercent);
+			console.info("  Memory (bytes): %d", snapshot.memoryBytes);
 			console.info("  Retry count:    %d", snapshot.retryCount);
 			console.info("  Command count:  %d", snapshot.commandCount);
 
@@ -98,6 +142,8 @@ public class Metrics extends Example {
 					nodeSnapshot.asyncConnections.opened, nodeSnapshot.asyncConnections.closed);
 				console.info("    Open conns:  %d", nodeSnapshot.openConnections);
 
+				lastNamespaceCount = nodeSnapshot.namespaces.size();
+
 				for (MetricsSnapshot.NamespaceSnapshot namespaceSnapshot : nodeSnapshot.namespaces) {
 					console.info("    Namespace %s: errors=%d timeouts=%d keyBusy=%d bytesIn=%d bytesOut=%d",
 						namespaceSnapshot.namespace, namespaceSnapshot.errors,
@@ -109,7 +155,7 @@ public class Metrics extends Example {
 
 		@Override
 		public void close() {
-			console.info("Console exporter closed");
+			console.info("[%s] Sample exporter closed", label);
 		}
 	}
 }

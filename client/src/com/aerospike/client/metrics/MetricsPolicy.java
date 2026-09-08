@@ -90,6 +90,18 @@ public final class MetricsPolicy {
 	public int latencyShift = 1;
 
 	/**
+	 * Enable collection of extended metrics such as CPU usage, memory usage, command count,
+	 * per-namespace error/timeout/byte counters, and latency histograms. Extended metrics
+	 * provide detailed diagnostics but may add overhead on the command hot path.
+	 * <p>
+	 * When {@code false}, only standard low-overhead metrics (connection pool gauges, retry
+	 * counts, cluster health counters) are collected and exported.
+	 * <p>
+	 * Default: true (all metrics collected when metrics are enabled)
+	 */
+	public boolean enableExtendedMetrics = true;
+
+	/**
 	 * Labels that can be sent to the metrics output
 	 */
 	public Map<String,String> labels;
@@ -114,6 +126,21 @@ public final class MetricsPolicy {
 	 * Default: 60
 	 */
 	public int suspendRetryInterval = 60;
+
+	/**
+	 * Maximum seconds to wait for a single {@link IMetricsExporter#export(MetricsSnapshot)}
+	 * call to complete. If the exporter does not return within this time, the call is
+	 * cancelled, the snapshot is dropped, and the timeout is counted as a consecutive
+	 * failure (subject to {@link #maxConsecutiveFailures} suspension logic).
+	 * <p>
+	 * This protects the metrics thread from being blocked indefinitely by a slow or
+	 * unresponsive exporter (e.g., a custom exporter performing a synchronous network call).
+	 * Well-behaved exporters (like the OpenTelemetry exporter) store the snapshot reference
+	 * and return immediately, so this timeout is a safety net for custom implementations.
+	 * <p>
+	 * Default: 10
+	 */
+	public int exportTimeout = 10;
 
 	private boolean metricsRestartRequired = false;
 
@@ -166,6 +193,17 @@ public final class MetricsPolicy {
 			Log.error("An invalid # of latency columns was provided. Setting latency columns to default (7).");
 			latencyColumns = 7;
 		}
+		if (dynMC.enableExtendedMetrics != null) {
+			if (dynMC.enableExtendedMetrics.value != this.enableExtendedMetrics) {
+				this.enableExtendedMetrics = dynMC.enableExtendedMetrics.value;
+				if (metricsEnabled) {
+					metricsRestartRequired = true;
+				}
+				if (logUpdate) {
+					Log.info("Set MetricsPolicy.enableExtendedMetrics = " + this.enableExtendedMetrics);
+				}
+			}
+		}
 	}
 
 	/**
@@ -178,11 +216,13 @@ public final class MetricsPolicy {
 		this.interval = other.interval;
 		this.latencyColumns = other.latencyColumns;
 		this.latencyShift = other.latencyShift;
+		this.enableExtendedMetrics = other.enableExtendedMetrics;
 		this.labels = other.labels;
 		this.metricsRestartRequired = other.metricsRestartRequired;
 		this.exporters.addAll(other.exporters);
 		this.maxConsecutiveFailures = other.maxConsecutiveFailures;
 		this.suspendRetryInterval = other.suspendRetryInterval;
+		this.exportTimeout = other.exportTimeout;
 	}
 
 	/**
@@ -214,6 +254,10 @@ public final class MetricsPolicy {
 	}
 
 	public void setLatencyShift(int latencyShift) { this.latencyShift = latencyShift; }
+
+	public void setEnableExtendedMetrics(boolean enableExtendedMetrics) {
+		this.enableExtendedMetrics = enableExtendedMetrics;
+	}
 
 	public void setLabels(Map<String, String> labels) { this.labels = labels; }
 
@@ -251,5 +295,9 @@ public final class MetricsPolicy {
 
 	public void setSuspendRetryInterval(int suspendRetryInterval) {
 		this.suspendRetryInterval = suspendRetryInterval;
+	}
+
+	public void setExportTimeout(int exportTimeout) {
+		this.exportTimeout = exportTimeout;
 	}
 }

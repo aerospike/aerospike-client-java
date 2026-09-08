@@ -23,6 +23,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 import com.aerospike.client.Host;
 import com.aerospike.client.Log;
@@ -40,6 +46,12 @@ import com.aerospike.client.util.Util;
  * This thread is separate from the tend thread so that a slow exporter
  * never delays cluster tending.
  * <p>
+ * Each exporter call is executed on a single-thread dispatch executor and
+ * bounded by {@link MetricsPolicy#exportTimeout}. If an exporter does not
+ * return within the timeout, the call is cancelled and the timeout counts
+ * as a consecutive failure (subject to suspension via
+ * {@link MetricsPolicy#maxConsecutiveFailures}).
+ * <p>
  * Exporter failures are tracked independently. An exporter that exceeds
  * {@link MetricsPolicy#maxConsecutiveFailures} is suspended and retried
  * after {@link MetricsPolicy#suspendRetryInterval} seconds.
@@ -51,6 +63,7 @@ public class MetricsExporterThread extends Thread {
 	private volatile boolean running = true;
 
 	private final Map<IMetricsExporter, ExporterState> exporterStates = new HashMap<>();
+	private final ExecutorService dispatchExecutor;
 
 	public MetricsExporterThread(Cluster cluster, MetricsPolicy policy) {
 		super("aerospike-metrics-exporter");
@@ -58,6 +71,12 @@ public class MetricsExporterThread extends Thread {
 
 		this.cluster = cluster;
 		this.policy = policy;
+
+		this.dispatchExecutor = Executors.newSingleThreadExecutor(r -> {
+			Thread t = new Thread(r, "aerospike-metrics-dispatch");
+			t.setDaemon(true);
+			return t;
+		});
 
 		for (IMetricsExporter exporter : policy.getExporters()) {
 			exporterStates.put(exporter, new ExporterState());
@@ -96,10 +115,12 @@ public class MetricsExporterThread extends Thread {
 	}
 
 	/**
-	 * Signal the metrics exporter thread to stop and interrupt any sleep.
+	 * Signal the metrics exporter thread to stop, cancel any pending dispatch,
+	 * and interrupt any sleep.
 	 */
 	public void shutdown() {
 		running = false;
+		dispatchExecutor.shutdownNow();
 		interrupt();
 	}
 
@@ -108,7 +129,7 @@ public class MetricsExporterThread extends Thread {
 	private MetricsSnapshot buildSnapshot() {
 		Node[] clusterNodes = cluster.getNodes();
 		int totalNodeCount = clusterNodes.length;
-		boolean extendedMetricsEnabled = cluster.metricsEnabled;
+		boolean extendedMetricsEnabled = policy.enableExtendedMetrics;
 
 		long totalOpenConnections = 0;
 		List<MetricsSnapshot.NodeSnapshot> nodeSnapshots = new ArrayList<>();
@@ -361,6 +382,10 @@ public class MetricsExporterThread extends Thread {
 
 	private void dispatch(MetricsSnapshot snapshot) {
 		for (IMetricsExporter exporter : policy.getExporters()) {
+			if (!running) {
+				break;
+			}
+
 			ExporterState state = exporterStates.get(exporter);
 			if (state == null) {
 				state = new ExporterState();
@@ -375,19 +400,28 @@ public class MetricsExporterThread extends Thread {
 				Log.info("Retrying suspended exporter: " + exporter.getClass().getSimpleName());
 			}
 
+			Future<?> future;
 			try {
-				exporter.export(snapshot);
+				future = dispatchExecutor.submit(() -> exporter.export(snapshot));
+			}
+			catch (java.util.concurrent.RejectedExecutionException e) {
+				break;
+			}
+
+			try {
+				future.get(policy.exportTimeout, TimeUnit.SECONDS);
 
 				if (state.suspended) {
 					Log.info("Exporter " + exporter.getClass().getSimpleName() + " resumed after successful retry");
 				}
 				state.reset();
 			}
-			catch (Exception e) {
+			catch (TimeoutException e) {
+				future.cancel(true);
 				state.consecutiveFailures++;
 				Log.warn("Exporter " + exporter.getClass().getSimpleName()
-					+ " failed (consecutive=" + state.consecutiveFailures
-					+ "): " + Util.getErrorMessage(e));
+					+ " timed out after " + policy.exportTimeout + "s, snapshot dropped"
+					+ " (consecutive=" + state.consecutiveFailures + ")");
 
 				if (state.consecutiveFailures >= policy.maxConsecutiveFailures) {
 					state.suspended = true;
@@ -395,6 +429,26 @@ public class MetricsExporterThread extends Thread {
 					Log.error("Exporter " + exporter.getClass().getSimpleName()
 						+ " suspended after " + state.consecutiveFailures + " consecutive failures");
 				}
+			}
+			catch (ExecutionException e) {
+				state.consecutiveFailures++;
+				Log.warn("Exporter " + exporter.getClass().getSimpleName()
+					+ " failed (consecutive=" + state.consecutiveFailures
+					+ "): " + Util.getErrorMessage(e.getCause()));
+
+				if (state.consecutiveFailures >= policy.maxConsecutiveFailures) {
+					state.suspended = true;
+					state.suspendedAt = System.currentTimeMillis();
+					Log.error("Exporter " + exporter.getClass().getSimpleName()
+						+ " suspended after " + state.consecutiveFailures + " consecutive failures");
+				}
+			}
+			catch (InterruptedException e) {
+				if (!running) {
+					break;
+				}
+				Thread.currentThread().interrupt();
+				break;
 			}
 		}
 	}

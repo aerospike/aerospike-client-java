@@ -146,40 +146,167 @@ public final class MetricsSnapshot {
 		public final String nodeAddress;
 		public final int nodePort;
 
-		// Standard connection pool metrics.
+		/** Standard connection pool metrics for synchronous connections. */
 		public final ConnectionSnapshot syncConnections;
+
+		/** Standard connection pool metrics for asynchronous connections. */
 		public final ConnectionSnapshot asyncConnections;
 
-		// Standard connection lifecycle counters and gauges.
+		/**
+		 * Reserved: total connection attempts to this node since node creation.
+		 * Not tracked by the Java client. Defined in the Rust reference model.
+		 * Currently always 0.
+		 */
 		public final long connectionAttempts;
+
+		/**
+		 * Reserved: successful connection attempts to this node.
+		 * Not tracked by the Java client. Defined in the Rust reference model.
+		 * Currently always 0.
+		 */
 		public final long connectionsSuccessful;
+
+		/**
+		 * Reserved: failed connection attempts to this node.
+		 * Not tracked by the Java client. Defined in the Rust reference model.
+		 * Currently always 0.
+		 */
 		public final long connectionsFailed;
+
+		/**
+		 * Reserved: connection timeout errors for this node.
+		 * Not tracked by the Java client. Defined in the Rust reference model.
+		 * Currently always 0.
+		 */
 		public final long connectionTimeoutErrors;
+
+		/**
+		 * Reserved: non-timeout connection errors for this node.
+		 * Not tracked by the Java client. Defined in the Rust reference model.
+		 * Currently always 0.
+		 */
 		public final long connectionOtherErrors;
+
+		/**
+		 * Reserved: circuit breaker hit count for this node.
+		 * Not tracked by the Java client. Defined in the Rust reference model.
+		 * Currently always 0.
+		 */
 		public final long circuitBreakerHits;
+
+		/**
+		 * Reserved: count of times a connection was requested but the pool was empty.
+		 * Not tracked by the Java client. Defined in the Rust reference model.
+		 * Currently always 0.
+		 */
 		public final long connectionPoolEmptyCount;
+
+		/**
+		 * Reserved: count of times a connection was returned but the pool was full.
+		 * Not tracked by the Java client. Defined in the Rust reference model.
+		 * Currently always 0.
+		 */
 		public final long connectionPoolOverflowCount;
+
+		/**
+		 * Reserved: count of idle connections dropped from the pool.
+		 * Not tracked by the Java client. Defined in the Rust reference model.
+		 * Currently always 0.
+		 */
 		public final long idleConnectionsDropped;
+
+		/**
+		 * Current number of open connections to this node.
+		 * Calculated as syncConnections.inUse + syncConnections.inPool
+		 * + asyncConnections.inUse + asyncConnections.inPool.
+		 */
 		public final long openConnections;
+
+		/**
+		 * Reserved: node-level aggregate of closed connections.
+		 * Per-pool closed counts are available via {@link #syncConnections} and
+		 * {@link #asyncConnections} ({@code ConnectionSnapshot.closed}).
+		 * This field is reserved for a separate node-level aggregate not currently
+		 * tracked by the Java client. Currently always 0.
+		 */
 		public final long closedConnections;
+
+		/**
+		 * Reserved: count of connections recovered after transient errors.
+		 * Not tracked by the Java client. Defined in the Rust reference model.
+		 * Currently always 0.
+		 */
 		public final long recoveredConnections;
 
-		// Standard cluster-maintenance counters.
+		/**
+		 * Reserved: total tend cycles executed for this node.
+		 * Tend counters are not tracked per-node in the Java client.
+		 * Currently always 0.
+		 */
 		public final long tendsTotal;
+
+		/**
+		 * Reserved: successful tend cycles for this node.
+		 * Tend counters are not tracked per-node in the Java client.
+		 * Currently always 0.
+		 */
 		public final long tendsSuccessful;
+
+		/**
+		 * Reserved: failed tend cycles for this node.
+		 * Tend counters are not tracked per-node in the Java client.
+		 * Currently always 0.
+		 */
 		public final long tendsFailed;
+
+		/**
+		 * Reserved: number of partition map updates received for this node.
+		 * Not tracked per-node in the Java client. Defined in the Rust reference model.
+		 * Currently always 0.
+		 */
 		public final long partitionMapUpdates;
+
+		/**
+		 * Reserved: number of times nodes were added to the cluster during tending.
+		 * Not tracked per-node in the Java client. Defined in the Rust reference model.
+		 * Currently always 0.
+		 */
 		public final long nodesAdded;
+
+		/**
+		 * Reserved: number of times nodes were removed from the cluster during tending.
+		 * Not tracked per-node in the Java client. Defined in the Rust reference model.
+		 * Currently always 0.
+		 */
 		public final long nodesRemoved;
 
-		// Standard transaction counters.
+		/**
+		 * Reserved: per-node transaction retry count.
+		 * Not tracked separately from the cluster-level {@link MetricsSnapshot#retryCount}.
+		 * Currently always 0.
+		 */
 		public final long transactionRetryCount;
+
+		/**
+		 * Reserved: per-node transaction error count.
+		 * Not tracked separately from per-namespace error counters.
+		 * Currently always 0.
+		 */
 		public final long transactionErrorCount;
 
-		// Extended: per-command-type latency histograms (sampled).
+		/**
+		 * Reserved: detailed per-command-type latency histograms (GET, PUT, DELETE, etc.).
+		 * Requires client-side instrumentation of command hot paths to populate.
+		 * Currently always an empty map. The fine-grained {@link CommandType} categories
+		 * will replace the legacy broad categories (CONN, READ, WRITE, BATCH, QUERY)
+		 * available in {@link NamespaceSnapshot#compatibilityLatencies}.
+		 */
 		public final Map<CommandType, HistogramSnapshot> commandLatencies;
 
-		// Extended: per-namespace metrics.
+		/**
+		 * Extended: per-namespace metrics for this node. Only populated when
+		 * {@link MetricsPolicy#enableExtendedMetrics} is {@code true}.
+		 */
 		public final List<NamespaceSnapshot> namespaces;
 
 		public NodeSnapshot(
@@ -316,7 +443,14 @@ public final class MetricsSnapshot {
 	}
 
 	/**
-	 * Detailed sampled measurements for one command type within a namespace.
+	 * Reserved: detailed sampled measurements for one command type within a namespace.
+	 * <p>
+	 * Requires per-command phase-level timing instrumentation (connection acquisition,
+	 * request write, response parse) in the client command pipeline. These measurements
+	 * are defined in the Rust reference model and are not yet implemented in the Java client.
+	 * <p>
+	 * Fields in this class will be populated when the client team adds the necessary
+	 * instrumentation to command hot paths (SyncCommand, NioCommand, NettyCommand, etc.).
 	 */
 	public static final class CommandSnapshot {
 		public final CommandType commandType;
