@@ -25,6 +25,7 @@ import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.Host;
 import com.aerospike.client.IAerospikeClient;
 import com.aerospike.client.Log;
+import com.aerospike.client.metrics.TestMetricsExporterDispatcher;
 import com.aerospike.client.policy.ClientPolicy;
 import com.aerospike.test.sync.basic.TestAdd;
 import com.aerospike.test.sync.basic.TestAppend;
@@ -95,6 +96,7 @@ import com.aerospike.test.util.Args;
 	TestListExp.class,
 	TestListMap.class,
 	TestMapExp.class,
+	TestMetricsExporterDispatcher.class,
 	TestMetricsExporter.class,
 	TestMetricsPolicy.class,
 	TestMetricsSnapshot.class,

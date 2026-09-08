@@ -63,6 +63,7 @@ public final class MetricsPolicy {
 	 * Number of cluster tend iterations between metrics notification events. One tend iteration
 	 * is defined as {@link ClientPolicy#tendInterval} (default 1 second) plus the time to tend all
 	 * nodes.
+	 * Must be greater than zero when exporters are configured.
 	 * <p>
 	 * Default: 30
 	 */
@@ -115,6 +116,7 @@ public final class MetricsPolicy {
 
 	/**
 	 * Maximum consecutive export failures before an exporter is suspended.
+	 * Must be greater than zero.
 	 * <p>
 	 * Default: 3
 	 */
@@ -122,6 +124,8 @@ public final class MetricsPolicy {
 
 	/**
 	 * Seconds to wait before retrying a suspended exporter.
+	 * Zero retries the exporter on the next snapshot interval.
+	 * Must not be negative.
 	 * <p>
 	 * Default: 60
 	 */
@@ -137,6 +141,7 @@ public final class MetricsPolicy {
 	 * unresponsive exporter (e.g., a custom exporter performing a synchronous network call).
 	 * Well-behaved exporters (like the OpenTelemetry exporter) store the snapshot reference
 	 * and return immediately, so this timeout is a safety net for custom implementations.
+	 * Must be greater than zero.
 	 * <p>
 	 * Default: 10
 	 */
@@ -287,6 +292,30 @@ public final class MetricsPolicy {
 	 */
 	public List<IMetricsExporter> getExporters() {
 		return Collections.unmodifiableList(exporters);
+	}
+
+	/**
+	 * Validate settings used by the metrics exporter runtime.
+	 *
+	 * @throws IllegalArgumentException if an exporter setting is outside its
+	 * supported range
+	 */
+	public void validateExporterSettings() {
+		if (interval <= 0) {
+			throw new IllegalArgumentException("MetricsPolicy.interval must be greater than zero");
+		}
+		if (maxConsecutiveFailures <= 0) {
+			throw new IllegalArgumentException(
+				"MetricsPolicy.maxConsecutiveFailures must be greater than zero");
+		}
+		if (suspendRetryInterval < 0) {
+			throw new IllegalArgumentException(
+				"MetricsPolicy.suspendRetryInterval must not be negative");
+		}
+		if (exportTimeout <= 0) {
+			throw new IllegalArgumentException(
+				"MetricsPolicy.exportTimeout must be greater than zero");
+		}
 	}
 
 	public void setMaxConsecutiveFailures(int maxConsecutiveFailures) {

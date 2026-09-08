@@ -1234,6 +1234,11 @@ public class Cluster implements Runnable, Closeable {
 
 	private void enableMetricsInternal(MetricsPolicy policy) {
 		MetricsPolicy mergedMP = mergeMetricsPolicyWithConfig(policy);
+
+		if (!mergedMP.getExporters().isEmpty()) {
+			mergedMP.validateExporterSettings();
+		}
+
 		MetricsListener listener = mergedMP.listener;
 
 		if (listener == null) {

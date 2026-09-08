@@ -18,6 +18,8 @@ package com.aerospike.test.sync.basic;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -167,6 +169,51 @@ public class TestMetricsSnapshot {
 		cmdSnapshot.resultCodeCounts.put(1, 50L);
 	}
 
+	@Test
+	public void testSnapshotDefensivelyCopiesSourceCollections() {
+		Map<String, String> labels = new HashMap<>();
+		labels.put("env", "test");
+		List<EventLoopSnapshot> eventLoops = new ArrayList<>();
+		eventLoops.add(new EventLoopSnapshot(1, 2));
+		List<NodeSnapshot> nodes = new ArrayList<>();
+		nodes.add(buildMinimalNodeSnapshot());
+
+		MetricsSnapshot snapshot = new MetricsSnapshot(
+			Instant.now(), true, "cluster", "java", "1.0", "app",
+			labels,
+			0, 0, 0, 0, 1, 1, 0, 0,
+			0.0, 0, 0,
+			eventLoops,
+			nodes, null,
+			HistogramType.LOGARITHMIC, LatencyUnit.MILLISECONDS, 2, 7
+		);
+
+		labels.put("injected", "value");
+		eventLoops.clear();
+		nodes.clear();
+
+		assertFalse(snapshot.labels.containsKey("injected"));
+		assertEquals(1, snapshot.eventLoops.size());
+		assertEquals(1, snapshot.nodes.size());
+	}
+
+	@Test
+	public void testNodeSnapshotDefensivelyCopiesSourceCollections() {
+		Map<CommandType, HistogramSnapshot> latencies = new HashMap<>();
+		List<NamespaceSnapshot> namespaces = new ArrayList<>();
+		NodeSnapshot snapshot = buildNodeSnapshot(latencies, namespaces);
+
+		latencies.put(CommandType.GET,
+			new HistogramSnapshot(new long[]{1}, 1, 1, 1.0, 1));
+		namespaces.add(new NamespaceSnapshot(
+			"test", 0, 0, 0, 0, 0,
+			Collections.emptyMap(), Collections.emptyMap()
+		));
+
+		assertTrue(snapshot.commandLatencies.isEmpty());
+		assertTrue(snapshot.namespaces.isEmpty());
+	}
+
 	/**
 	 * Build a minimal MetricsSnapshot with one node and no namespaces.
 	 */
@@ -197,10 +244,17 @@ public class TestMetricsSnapshot {
 	 * Build a minimal NodeSnapshot with empty namespaces and command latencies.
 	 */
 	private NodeSnapshot buildMinimalNodeSnapshot() {
-		ConnectionSnapshot syncConns = new ConnectionSnapshot(1, 5, 10, 2);
-		ConnectionSnapshot asyncConns = new ConnectionSnapshot(0, 0, 0, 0);
 		Map<CommandType, HistogramSnapshot> emptyLatencies = new HashMap<>();
 		List<NamespaceSnapshot> emptyNamespaces = new ArrayList<>();
+		return buildNodeSnapshot(emptyLatencies, emptyNamespaces);
+	}
+
+	private NodeSnapshot buildNodeSnapshot(
+		Map<CommandType, HistogramSnapshot> commandLatencies,
+		List<NamespaceSnapshot> namespaces
+	) {
+		ConnectionSnapshot syncConns = new ConnectionSnapshot(1, 5, 10, 2);
+		ConnectionSnapshot asyncConns = new ConnectionSnapshot(0, 0, 0, 0);
 
 		return new NodeSnapshot(
 			"node1", "127.0.0.1", 3000,
@@ -208,7 +262,7 @@ public class TestMetricsSnapshot {
 			0, 0, 0, 0, 0, 0, 0, 0, 0,
 			6, 0, 0,
 			0, 0, 0, 0, 0, 0, 0, 0,
-			emptyLatencies, emptyNamespaces
+			commandLatencies, namespaces
 		);
 	}
 }

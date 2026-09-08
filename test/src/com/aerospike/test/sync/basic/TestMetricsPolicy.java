@@ -216,6 +216,45 @@ public class TestMetricsPolicy {
 		assertTrue(result.contains("enable_extended_metrics=null"));
 	}
 
+	@Test
+	public void testExporterSettingsAcceptBoundaryValues() {
+		MetricsPolicy policy = new MetricsPolicy();
+		policy.interval = 1;
+		policy.maxConsecutiveFailures = 1;
+		policy.suspendRetryInterval = 0;
+		policy.exportTimeout = 1;
+
+		policy.validateExporterSettings();
+	}
+
+	@Test(expected = IllegalArgumentException.class)
+	public void testExporterSettingsRejectNonPositiveInterval() {
+		MetricsPolicy policy = new MetricsPolicy();
+		policy.interval = 0;
+		policy.validateExporterSettings();
+	}
+
+	@Test(expected = IllegalArgumentException.class)
+	public void testExporterSettingsRejectNonPositiveFailureLimit() {
+		MetricsPolicy policy = new MetricsPolicy();
+		policy.maxConsecutiveFailures = 0;
+		policy.validateExporterSettings();
+	}
+
+	@Test(expected = IllegalArgumentException.class)
+	public void testExporterSettingsRejectNegativeRetryInterval() {
+		MetricsPolicy policy = new MetricsPolicy();
+		policy.suspendRetryInterval = -1;
+		policy.validateExporterSettings();
+	}
+
+	@Test(expected = IllegalArgumentException.class)
+	public void testExporterSettingsRejectNonPositiveTimeout() {
+		MetricsPolicy policy = new MetricsPolicy();
+		policy.exportTimeout = 0;
+		policy.validateExporterSettings();
+	}
+
 	/**
 	 * Minimal no-op IMetricsExporter for testing.
 	 */

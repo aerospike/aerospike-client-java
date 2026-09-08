@@ -16,6 +16,8 @@
  */
 package com.aerospike.examples;
 
+import java.util.concurrent.atomic.AtomicInteger;
+
 import com.aerospike.client.Bin;
 import com.aerospike.client.IAerospikeClient;
 import com.aerospike.client.Key;
@@ -37,46 +39,50 @@ public class Metrics extends Example {
 
 	@Override
 	public void runExample(IAerospikeClient client, Parameters params) throws Exception {
-		// Phase 1: All metrics (enableExtendedMetrics = true, the default).
-		console.info("=== Phase 1: Extended metrics ENABLED (default) ===");
-		SampleMetricsExporter exporter = new SampleMetricsExporter("extended-on");
+		SampleMetricsExporter extendedExporter =
+			runMetricsPhase(client, params, "extended-on", true);
+		SampleMetricsExporter standardExporter =
+			runMetricsPhase(client, params, "extended-off", false);
 
-		MetricsPolicy metricsPolicy = new MetricsPolicy();
-		metricsPolicy.interval = 5;
-		// metricsPolicy.exportTimeout = 10; // max seconds per exporter call (default 10)
-		metricsPolicy.addExporter(exporter);
-
-		client.enableMetrics(metricsPolicy);
-		runOperations(client, params, 12_000);
-
-		console.info("Phase 1 complete: %d snapshots received", exporter.snapshotCount);
-		client.disableMetrics();
-
-		// Phase 2: Standard metrics only (enableExtendedMetrics = false).
-		// CPU, memory, command count, and namespace snapshots will be zero/empty.
-		console.info("");
-		console.info("=== Phase 2: Extended metrics DISABLED ===");
-		SampleMetricsExporter standardExporter = new SampleMetricsExporter("extended-off");
-
-		MetricsPolicy standardPolicy = new MetricsPolicy();
-		standardPolicy.interval = 5;
-		standardPolicy.enableExtendedMetrics = false;
-		standardPolicy.addExporter(standardExporter);
-
-		client.enableMetrics(standardPolicy);
-		runOperations(client, params, 12_000);
-
-		console.info("Phase 2 complete: %d snapshots received", standardExporter.snapshotCount);
-		client.disableMetrics();
-
-		// Summary comparison.
 		console.info("");
 		console.info("=== Comparison ===");
 		console.info("Extended ON  — snapshots: %d, last CPU: %.2f%%, last namespaces: %d",
-			exporter.snapshotCount, exporter.lastCpuPercent, exporter.lastNamespaceCount);
+			extendedExporter.snapshotCount.get(), extendedExporter.lastCpuPercent,
+			extendedExporter.lastNamespaceCount);
 		console.info("Extended OFF — snapshots: %d, last CPU: %.2f%%, last namespaces: %d",
-			standardExporter.snapshotCount, standardExporter.lastCpuPercent,
+			standardExporter.snapshotCount.get(), standardExporter.lastCpuPercent,
 			standardExporter.lastNamespaceCount);
+	}
+
+	private SampleMetricsExporter runMetricsPhase(
+		IAerospikeClient client,
+		Parameters params,
+		String label,
+		boolean enableExtendedMetrics
+	) throws Exception {
+		console.info("");
+		console.info("=== Extended metrics %s ===",
+			enableExtendedMetrics ? "ENABLED" : "DISABLED");
+
+		SampleMetricsExporter exporter = new SampleMetricsExporter(label);
+		MetricsPolicy policy = new MetricsPolicy();
+		policy.interval = 5;
+		policy.enableExtendedMetrics = enableExtendedMetrics;
+		policy.addExporter(exporter);
+
+		// The legacy file listener remains enabled for backwards compatibility.
+		// Set policy.reportDir to choose where those log files are written.
+		try {
+			client.enableMetrics(policy);
+			runOperations(client, params, 12_000);
+			console.info("Phase complete: %d snapshots received",
+				exporter.snapshotCount.get());
+			return exporter;
+		}
+		finally {
+			client.disableMetrics();
+			exporter.close();
+		}
 	}
 
 	/**
@@ -108,9 +114,9 @@ public class Metrics extends Example {
 	 */
 	private class SampleMetricsExporter implements IMetricsExporter {
 		final String label;
-		int snapshotCount = 0;
-		double lastCpuPercent = 0.0;
-		int lastNamespaceCount = 0;
+		final AtomicInteger snapshotCount = new AtomicInteger();
+		volatile double lastCpuPercent;
+		volatile int lastNamespaceCount;
 
 		SampleMetricsExporter(String label) {
 			this.label = label;
@@ -118,11 +124,13 @@ public class Metrics extends Example {
 
 		@Override
 		public void export(MetricsSnapshot snapshot) {
-			snapshotCount++;
+			int currentSnapshot = snapshotCount.incrementAndGet();
 			lastCpuPercent = snapshot.cpuPercent;
+			int namespaceCount = 0;
 
-			console.info("[%s] --- Metrics Snapshot #%d ---", label, snapshotCount);
+			console.info("[%s] --- Metrics Snapshot #%d ---", label, currentSnapshot);
 			console.info("  Timestamp:      %s", snapshot.timestamp);
+			console.info("  Extended:       %s", snapshot.extendedMetricsEnabled);
 			console.info("  Cluster:        %s", snapshot.clusterName);
 			console.info("  Nodes:          %d", snapshot.totalNodes);
 			console.info("  Open conns:     %d", snapshot.openConnections);
@@ -142,7 +150,7 @@ public class Metrics extends Example {
 					nodeSnapshot.asyncConnections.opened, nodeSnapshot.asyncConnections.closed);
 				console.info("    Open conns:  %d", nodeSnapshot.openConnections);
 
-				lastNamespaceCount = nodeSnapshot.namespaces.size();
+				namespaceCount += nodeSnapshot.namespaces.size();
 
 				for (MetricsSnapshot.NamespaceSnapshot namespaceSnapshot : nodeSnapshot.namespaces) {
 					console.info("    Namespace %s: errors=%d timeouts=%d keyBusy=%d bytesIn=%d bytesOut=%d",
@@ -151,6 +159,7 @@ public class Metrics extends Example {
 						namespaceSnapshot.bytesIn, namespaceSnapshot.bytesOut);
 				}
 			}
+			lastNamespaceCount = namespaceCount;
 		}
 
 		@Override

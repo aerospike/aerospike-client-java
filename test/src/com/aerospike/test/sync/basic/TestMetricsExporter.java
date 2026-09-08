@@ -16,15 +16,17 @@
  */
 package com.aerospike.test.sync.basic;
 
+import static org.junit.Assume.assumeTrue;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.attribute.FileTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.Test;
 
@@ -52,7 +54,7 @@ public class TestMetricsExporter extends TestSync {
 	public void testExporterReceivesSnapshots() throws Exception {
 		RecordingExporter exporter = new RecordingExporter();
 
-		MetricsPolicy policy = new MetricsPolicy();
+		MetricsPolicy policy = newMetricsPolicy();
 		policy.interval = SHORT_INTERVAL;
 		policy.addExporter(exporter);
 
@@ -69,7 +71,7 @@ public class TestMetricsExporter extends TestSync {
 		RecordingExporter first = new RecordingExporter();
 		RecordingExporter second = new RecordingExporter();
 
-		MetricsPolicy policy = new MetricsPolicy();
+		MetricsPolicy policy = newMetricsPolicy();
 		policy.interval = SHORT_INTERVAL;
 		policy.addExporter(first);
 		policy.addExporter(second);
@@ -88,7 +90,7 @@ public class TestMetricsExporter extends TestSync {
 	public void testSnapshotHasValidClusterData() throws Exception {
 		RecordingExporter exporter = new RecordingExporter();
 
-		MetricsPolicy policy = new MetricsPolicy();
+		MetricsPolicy policy = newMetricsPolicy();
 		policy.interval = SHORT_INTERVAL;
 		policy.addExporter(exporter);
 
@@ -107,13 +109,29 @@ public class TestMetricsExporter extends TestSync {
 		MetricsSnapshot.NodeSnapshot nodeSnapshot = snapshot.nodes.get(0);
 		assertFalse("Node name should not be empty", nodeSnapshot.nodeName.isEmpty());
 		assertTrue("Node should have open connections", nodeSnapshot.openConnections > 0);
+
+		long openConnections = 0;
+		long syncInUse = 0;
+		long syncInPool = 0;
+
+		for (MetricsSnapshot.NodeSnapshot node : snapshot.nodes) {
+			openConnections += node.openConnections;
+			syncInUse += node.syncConnections.inUse;
+			syncInPool += node.syncConnections.inPool;
+		}
+
+		assertTrue("Aggregated snapshot should be present",
+			snapshot.clusterAggregated != null);
+		assertEquals(openConnections, snapshot.clusterAggregated.openConnections);
+		assertEquals(syncInUse, snapshot.clusterAggregated.syncConnections.inUse);
+		assertEquals(syncInPool, snapshot.clusterAggregated.syncConnections.inPool);
 	}
 
 	@Test
 	public void testExtendedMetricsEnabled() throws Exception {
 		RecordingExporter exporter = new RecordingExporter();
 
-		MetricsPolicy policy = new MetricsPolicy();
+		MetricsPolicy policy = newMetricsPolicy();
 		policy.interval = SHORT_INTERVAL;
 		policy.enableExtendedMetrics = true;
 		policy.addExporter(exporter);
@@ -132,7 +150,7 @@ public class TestMetricsExporter extends TestSync {
 	public void testExtendedMetricsDisabled() throws Exception {
 		RecordingExporter exporter = new RecordingExporter();
 
-		MetricsPolicy policy = new MetricsPolicy();
+		MetricsPolicy policy = newMetricsPolicy();
 		policy.interval = SHORT_INTERVAL;
 		policy.enableExtendedMetrics = false;
 		policy.addExporter(exporter);
@@ -156,50 +174,63 @@ public class TestMetricsExporter extends TestSync {
 	}
 
 	@Test
-	public void testExporterFailureSuspend() throws Exception {
-		FailingExporter failingExporter = new FailingExporter(5);
-		RecordingExporter healthyExporter = new RecordingExporter();
+	public void testDynamicConfigReloadsExtendedMetricsSetting() throws Exception {
+		final String configProperty = "AEROSPIKE_CLIENT_CONFIG_SYS_PROP";
+		assumeTrue("External client config takes precedence over the test config",
+			System.getenv("AEROSPIKE_CLIENT_CONFIG_URL") == null);
 
-		MetricsPolicy policy = new MetricsPolicy();
-		policy.interval = SHORT_INTERVAL;
-		policy.maxConsecutiveFailures = 3;
-		policy.addExporter(failingExporter);
-		policy.addExporter(healthyExporter);
+		String originalConfig = System.getProperty(configProperty);
+		Path configFile = Files.createTempFile("aerospike-metrics-", ".yaml");
+		IAerospikeClient configuredClient = null;
 
-		client.enableMetrics(policy);
-		doOperationsForSeconds(12);
-		client.disableMetrics();
+		try {
+			writeMetricsConfig(configFile, true);
+			System.setProperty(configProperty, configFile.toUri().toString());
 
-		assertTrue("Healthy exporter should still receive snapshots",
-			healthyExporter.snapshots.size() >= 1);
-		assertTrue("Failing exporter should have been called",
-			failingExporter.callCount.get() >= 3);
-	}
+			ClientPolicy cp = new ClientPolicy();
+			cp.user = args.user;
+			cp.password = args.password;
+			cp.authMode = args.authMode;
+			cp.tlsPolicy = args.tlsPolicy;
+			configuredClient = new AerospikeClient(
+				cp, Host.parseHosts(args.host, args.port));
 
-	@Test
-	public void testExporterSuccessResetsFailureCount() throws Exception {
-		FailingExporter exporter = new FailingExporter(2);
+			RecordingExporter exporter = new RecordingExporter();
+			MetricsPolicy policy = newMetricsPolicy();
+			policy.interval = 1;
+			policy.addExporter(exporter);
+			configuredClient.enableMetrics(policy);
 
-		MetricsPolicy policy = new MetricsPolicy();
-		policy.interval = SHORT_INTERVAL;
-		policy.maxConsecutiveFailures = 5;
-		policy.addExporter(exporter);
+			assertTrue("Expected an extended metrics snapshot",
+				waitForExtendedSetting(exporter, true, 8000));
 
-		client.enableMetrics(policy);
-		doOperationsForSeconds(12);
-		client.disableMetrics();
+			writeMetricsConfig(configFile, false);
+			Files.setLastModifiedTime(configFile,
+				FileTime.fromMillis(System.currentTimeMillis() + 2000));
 
-		assertTrue("Exporter should have been called multiple times after recovery",
-			exporter.callCount.get() >= 3);
-		assertTrue("Exporter should have had successful exports",
-			exporter.successCount.get() >= 1);
+			assertTrue("Expected dynamic config to restart metrics in standard mode",
+				waitForExtendedSetting(exporter, false, 8000));
+		}
+		finally {
+			if (configuredClient != null) {
+				configuredClient.close();
+			}
+			Files.deleteIfExists(configFile);
+
+			if (originalConfig == null) {
+				System.clearProperty(configProperty);
+			}
+			else {
+				System.setProperty(configProperty, originalConfig);
+			}
+		}
 	}
 
 	@Test
 	public void testDisableMetricsStopsExporter() throws Exception {
 		RecordingExporter exporter = new RecordingExporter();
 
-		MetricsPolicy policy = new MetricsPolicy();
+		MetricsPolicy policy = newMetricsPolicy();
 		policy.interval = SHORT_INTERVAL;
 		policy.addExporter(exporter);
 
@@ -220,7 +251,7 @@ public class TestMetricsExporter extends TestSync {
 		RecordingExporter firstExporter = new RecordingExporter();
 		RecordingExporter secondExporter = new RecordingExporter();
 
-		MetricsPolicy firstPolicy = new MetricsPolicy();
+		MetricsPolicy firstPolicy = newMetricsPolicy();
 		firstPolicy.interval = SHORT_INTERVAL;
 		firstPolicy.addExporter(firstExporter);
 
@@ -231,7 +262,7 @@ public class TestMetricsExporter extends TestSync {
 		int firstCount = firstExporter.snapshots.size();
 		assertTrue("First exporter should have snapshots", firstCount >= 1);
 
-		MetricsPolicy secondPolicy = new MetricsPolicy();
+		MetricsPolicy secondPolicy = newMetricsPolicy();
 		secondPolicy.interval = SHORT_INTERVAL;
 		secondPolicy.addExporter(secondExporter);
 
@@ -246,104 +277,12 @@ public class TestMetricsExporter extends TestSync {
 
 	@Test
 	public void testNoExportersNoThread() throws Exception {
-		MetricsPolicy policy = new MetricsPolicy();
+		MetricsPolicy policy = newMetricsPolicy();
 		policy.interval = SHORT_INTERVAL;
 
 		client.enableMetrics(policy);
 		doOperationsForSeconds(4);
 		client.disableMetrics();
-	}
-
-	// ── Slow exporter / timeout tests ─────────────────────────────
-
-	@Test
-	public void testSlowExporterWithinTimeoutSucceeds() throws Exception {
-		// Exporter takes 1s, timeout is 10s (default) — should succeed normally.
-		SlowExporter slowExporter = new SlowExporter(1000);
-
-		MetricsPolicy policy = new MetricsPolicy();
-		policy.interval = SHORT_INTERVAL;
-		policy.addExporter(slowExporter);
-
-		client.enableMetrics(policy);
-		doOperationsForSeconds(8);
-		client.disableMetrics();
-
-		assertTrue("Slow-but-within-timeout exporter should receive snapshots",
-			slowExporter.snapshots.size() >= 1);
-		assertEquals("No timeouts expected", 0, slowExporter.timeoutCount.get());
-	}
-
-	@Test
-	public void testExporterTimeoutDropsSnapshot() throws Exception {
-		// Exporter takes 8s, timeout set to 2s — should be cancelled each cycle.
-		SlowExporter slowExporter = new SlowExporter(8000);
-
-		MetricsPolicy policy = new MetricsPolicy();
-		policy.interval = SHORT_INTERVAL;
-		policy.exportTimeout = 2;
-		policy.addExporter(slowExporter);
-
-		client.enableMetrics(policy);
-		doOperationsForSeconds(10);
-		client.disableMetrics();
-
-		// Exporter is cancelled before it can add to snapshots list.
-		assertEquals("Timed-out exporter should receive zero snapshots",
-			0, slowExporter.snapshots.size());
-		assertTrue("Should have been interrupted at least once",
-			slowExporter.timeoutCount.get() >= 1);
-	}
-
-	@Test
-	public void testExporterTimeoutCausesSuspension() throws Exception {
-		// Exporter takes 5s, timeout 1s, maxConsecutiveFailures 2 — suspended quickly.
-		SlowExporter slowExporter = new SlowExporter(5000);
-
-		MetricsPolicy policy = new MetricsPolicy();
-		policy.interval = SHORT_INTERVAL;
-		policy.exportTimeout = 1;
-		policy.maxConsecutiveFailures = 2;
-		policy.addExporter(slowExporter);
-
-		client.enableMetrics(policy);
-		doOperationsForSeconds(12);
-		client.disableMetrics();
-
-		// After 2 consecutive timeouts, the exporter is suspended.
-		// It should have been called very few times.
-		assertEquals("Suspended exporter should receive zero snapshots",
-			0, slowExporter.snapshots.size());
-		assertTrue("Should have been interrupted (timed out) at least twice",
-			slowExporter.timeoutCount.get() >= 2);
-	}
-
-	@Test
-	public void testTimeoutDoesNotAffectFastExporterInSameCycle() throws Exception {
-		// A stuck exporter that ignores interruption must not block another exporter.
-		UninterruptibleExporter slowExporter = new UninterruptibleExporter();
-		RecordingExporter fastExporter = new RecordingExporter();
-
-		MetricsPolicy policy = new MetricsPolicy();
-		policy.interval = SHORT_INTERVAL;
-		policy.exportTimeout = 1;
-		policy.addExporter(slowExporter);
-		policy.addExporter(fastExporter);
-
-		try {
-			client.enableMetrics(policy);
-			doOperationsForSeconds(8);
-			client.disableMetrics();
-
-			assertTrue("Fast exporter should still receive snapshots",
-				fastExporter.snapshots.size() >= 1);
-			assertTrue("Stuck exporter should have ignored at least one interrupt",
-				slowExporter.interruptCount.get() >= 1);
-		}
-		finally {
-			slowExporter.release();
-			client.disableMetrics();
-		}
 	}
 
 	// ── Multi-client tests ────────────────────────────────────────
@@ -363,11 +302,11 @@ public class TestMetricsExporter extends TestSync {
 		IAerospikeClient clientB = new AerospikeClient(cp, hosts);
 
 		try {
-			MetricsPolicy policyA = new MetricsPolicy();
+			MetricsPolicy policyA = newMetricsPolicy();
 			policyA.interval = SHORT_INTERVAL;
 			policyA.addExporter(exporterA);
 
-			MetricsPolicy policyB = new MetricsPolicy();
+			MetricsPolicy policyB = newMetricsPolicy();
 			policyB.interval = SHORT_INTERVAL;
 			policyB.addExporter(exporterB);
 
@@ -408,7 +347,7 @@ public class TestMetricsExporter extends TestSync {
 		IAerospikeClient clientNoMetrics = new AerospikeClient(cp, hosts);
 
 		try {
-			MetricsPolicy policy = new MetricsPolicy();
+			MetricsPolicy policy = newMetricsPolicy();
 			policy.interval = SHORT_INTERVAL;
 			policy.addExporter(exporter);
 
@@ -442,11 +381,11 @@ public class TestMetricsExporter extends TestSync {
 		IAerospikeClient clientB = new AerospikeClient(cp, hosts);
 
 		try {
-			MetricsPolicy policyA = new MetricsPolicy();
+			MetricsPolicy policyA = newMetricsPolicy();
 			policyA.interval = SHORT_INTERVAL;
 			policyA.addExporter(sharedExporter);
 
-			MetricsPolicy policyB = new MetricsPolicy();
+			MetricsPolicy policyB = newMetricsPolicy();
 			policyB.interval = SHORT_INTERVAL;
 			policyB.addExporter(sharedExporter);
 
@@ -483,7 +422,7 @@ public class TestMetricsExporter extends TestSync {
 		Host[] hosts = Host.parseHosts(args.host, args.port);
 		IAerospikeClient tempClient = new AerospikeClient(cp, hosts);
 
-		MetricsPolicy policy = new MetricsPolicy();
+		MetricsPolicy policy = newMetricsPolicy();
 		policy.interval = SHORT_INTERVAL;
 		policy.addExporter(exporter);
 
@@ -519,12 +458,12 @@ public class TestMetricsExporter extends TestSync {
 		IAerospikeClient clientStandard = new AerospikeClient(cp, hosts);
 
 		try {
-			MetricsPolicy extendedPolicy = new MetricsPolicy();
+			MetricsPolicy extendedPolicy = newMetricsPolicy();
 			extendedPolicy.interval = SHORT_INTERVAL;
 			extendedPolicy.enableExtendedMetrics = true;
 			extendedPolicy.addExporter(exporterExtended);
 
-			MetricsPolicy standardPolicy = new MetricsPolicy();
+			MetricsPolicy standardPolicy = newMetricsPolicy();
 			standardPolicy.interval = SHORT_INTERVAL;
 			standardPolicy.enableExtendedMetrics = false;
 			standardPolicy.addExporter(exporterStandard);
@@ -565,6 +504,45 @@ public class TestMetricsExporter extends TestSync {
 
 	// ── Helpers ────────────────────────────────────────────────────
 
+	private MetricsPolicy newMetricsPolicy() {
+		MetricsPolicy policy = new MetricsPolicy();
+		policy.interval = SHORT_INTERVAL;
+		policy.reportDir = "target/metrics-tests";
+		return policy;
+	}
+
+	private void writeMetricsConfig(Path path, boolean enableExtendedMetrics) throws Exception {
+		String yaml = "version: 1.0.0\n"
+			+ "static:\n"
+			+ "  client:\n"
+			+ "    config_interval: 1000\n"
+			+ "dynamic:\n"
+			+ "  metrics:\n"
+			+ "    enable: true\n"
+			+ "    enable_extended_metrics: " + enableExtendedMetrics + "\n";
+		Files.writeString(path, yaml);
+	}
+
+	private boolean waitForExtendedSetting(
+		RecordingExporter exporter,
+		boolean expected,
+		long timeoutMillis
+	) {
+		long deadline = System.currentTimeMillis() + timeoutMillis;
+
+		while (System.currentTimeMillis() < deadline) {
+			synchronized (exporter.snapshots) {
+				for (MetricsSnapshot snapshot : exporter.snapshots) {
+					if (snapshot.extendedMetricsEnabled == expected) {
+						return true;
+					}
+				}
+			}
+			Util.sleep(100);
+		}
+		return false;
+	}
+
 	private void doOperationsForSeconds(int seconds) throws Exception {
 		doOperationsWithClient(client, seconds);
 	}
@@ -601,91 +579,4 @@ public class TestMetricsExporter extends TestSync {
 		}
 	}
 
-	/**
-	 * Exporter that simulates a slow external system by sleeping during export.
-	 * Uses Thread.sleep() (not Util.sleep()) so the dispatch executor's
-	 * future.cancel(true) can interrupt it when the exportTimeout fires.
-	 */
-	private static class SlowExporter implements IMetricsExporter {
-		final int delayMillis;
-		final List<MetricsSnapshot> snapshots = Collections.synchronizedList(new ArrayList<>());
-		final AtomicInteger timeoutCount = new AtomicInteger(0);
-
-		SlowExporter(int delayMillis) {
-			this.delayMillis = delayMillis;
-		}
-
-		@Override
-		public void export(MetricsSnapshot snapshot) {
-			try {
-				Thread.sleep(delayMillis);
-				snapshots.add(snapshot);
-			}
-			catch (InterruptedException e) {
-				timeoutCount.incrementAndGet();
-				Thread.currentThread().interrupt();
-			}
-		}
-
-		@Override
-		public void close() {
-		}
-	}
-
-	/**
-	 * Exporter that remains blocked after interruption until explicitly released.
-	 */
-	private static class UninterruptibleExporter implements IMetricsExporter {
-		final CountDownLatch releaseLatch = new CountDownLatch(1);
-		final AtomicInteger interruptCount = new AtomicInteger(0);
-
-		@Override
-		public void export(MetricsSnapshot snapshot) {
-			boolean released = false;
-
-			while (!released) {
-				try {
-					releaseLatch.await();
-					released = true;
-				}
-				catch (InterruptedException e) {
-					interruptCount.incrementAndGet();
-				}
-			}
-		}
-
-		void release() {
-			releaseLatch.countDown();
-		}
-
-		@Override
-		public void close() {
-		}
-	}
-
-	/**
-	 * Exporter that throws for the first N calls, then succeeds.
-	 */
-	private static class FailingExporter implements IMetricsExporter {
-		final int failForFirstN;
-		final AtomicInteger callCount = new AtomicInteger(0);
-		final AtomicInteger successCount = new AtomicInteger(0);
-
-		FailingExporter(int failForFirstN) {
-			this.failForFirstN = failForFirstN;
-		}
-
-		@Override
-		public void export(MetricsSnapshot snapshot) {
-			int current = callCount.incrementAndGet();
-			if (current <= failForFirstN) {
-				throw new RuntimeException("Simulated exporter failure #" + current);
-			}
-			successCount.incrementAndGet();
-		}
-
-		@Override
-		public void close() {
-		}
-	}
 }
