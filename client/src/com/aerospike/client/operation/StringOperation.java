@@ -720,6 +720,35 @@ public final class StringOperation {
 	}
 
 	/**
+	 * Create string {@code snip} operation that removes the codepoints from {@code start}
+	 * through the end of the bin, truncating the string. Negative {@code start} counts
+	 * from the end of the string.
+	 *
+	 * <pre>{@code
+	 * // "hello world" snip from 5 -> "hello"
+	 * client.operate(null, key,
+	 *     StringOperation.snip(StringPolicy.Default, "text", 5));
+	 * }</pre>
+	 *
+	 * The server's snip argument list is positional — {@code start}, {@code end},
+	 * {@code flags} — so this form cannot carry the {@code policy} flags without also
+	 * supplying an explicit {@code end}: they are accepted for signature parity with the
+	 * other modify operations and are <strong>not</strong> transmitted. Use
+	 * {@link #snip(StringPolicy, String, int, int, CTX...)} when the write flags must be
+	 * honored.
+	 *
+	 * @param policy	write policy; its flags are not transmitted on this form
+	 * @param binName	name of the string bin
+	 * @param start		first codepoint to remove (negative counts from end)
+	 * @param ctx		optional path into a string nested inside a list or map
+	 * @return			modify operation
+	 */
+	public static Operation snip(StringPolicy policy, String binName, int start, CTX... ctx) {
+		byte[] bytes = Pack.pack(SNIP, start, ctx);
+		return new Operation(Operation.Type.STRING_MODIFY, binName, new Value.BytesValue(bytes, ParticleType.STRING));
+	}
+
+	/**
 	 * Create string {@code replace} operation that replaces the first occurrence of
 	 * {@code needle} with {@code replacement}.
 	 *

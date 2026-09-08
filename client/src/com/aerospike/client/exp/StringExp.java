@@ -653,6 +653,32 @@ public final class StringExp {
 	}
 
 	/**
+	 * Create expression that removes the codepoints of {@code src} from {@code start}
+	 * through the end and returns the truncated string. Negative {@code start} counts
+	 * from the end of the string. Does not modify the underlying bin.
+	 *
+	 * <pre>{@code
+	 * // "hello world" snip from 5 -> "hello"
+	 * Exp out = StringExp.snip(StringPolicy.Default, Exp.val(5), Exp.stringBin("text"));
+	 * }</pre>
+	 *
+	 * The server's snip argument list is positional — {@code start}, {@code end},
+	 * {@code flags} — so this form cannot carry the {@code policy} flags without also
+	 * supplying an explicit {@code end}: they are accepted for signature parity with the
+	 * other modify expressions and are <strong>not</strong> transmitted. Use
+	 * {@link #snip(StringPolicy, Exp, Exp, Exp)} when the write flags must be honored.
+	 *
+	 * @param policy	write policy; its flags are not transmitted on this form
+	 * @param start		first codepoint to remove (negative counts from end)
+	 * @param src		source string expression
+	 * @return			string-typed expression yielding the modified string
+	 */
+	public static Exp snip(StringPolicy policy, Exp start, Exp src) {
+		byte[] bytes = Pack.pack(SNIP, start);
+		return addModify(src, bytes);
+	}
+
+	/**
 	 * Create expression that replaces the first occurrence of {@code needle} in
 	 * {@code src} with {@code replacement} and returns the resulting string. Does not
 	 * modify the underlying bin.
