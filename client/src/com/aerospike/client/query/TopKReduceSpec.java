@@ -42,7 +42,6 @@ final class TopKReduceSpec implements ReduceSpec<Record, Record> {
 	private final Order order;
 	private final OrderByFlags flags;
 	private final int limit;
-	private int inputCount;
 
 	/** digest (hex) -> (key, record), for dedup and result reconstruction. */
 	private final Map<String, Entry> byDigest = new HashMap<>();
@@ -95,7 +94,6 @@ final class TopKReduceSpec implements ReduceSpec<Record, Record> {
 
 	@Override
 	public synchronized void acceptPartial(Record record, Key key) {
-		inputCount++;
 		byte[] digest = key.digest;
 		String digestKey = digestKey(digest);
 		OrderKey candidate = new OrderKey(record, bin, type, order, flags, digest);
@@ -158,10 +156,6 @@ final class TopKReduceSpec implements ReduceSpec<Record, Record> {
 			out[i] = byDigest.get(digestKey(list.get(i).digest)).key;
 		}
 		return out;
-	}
-
-	synchronized int getInputCount() {
-		return inputCount;
 	}
 
 	/** Evict the candidate with the worst sort key first (heap head = worst). */

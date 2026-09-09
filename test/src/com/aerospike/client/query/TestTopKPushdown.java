@@ -9,7 +9,6 @@ package com.aerospike.client.query;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -22,7 +21,6 @@ import org.junit.Test;
 import com.aerospike.client.Bin;
 import com.aerospike.client.Key;
 import com.aerospike.client.Operation;
-import com.aerospike.client.Record;
 import com.aerospike.client.cluster.Node;
 import com.aerospike.client.exp.Exp;
 import com.aerospike.client.exp.ExpOperation;
@@ -30,7 +28,11 @@ import com.aerospike.client.exp.ExpReadFlags;
 import com.aerospike.test.sync.TestSync;
 
 /**
- * Verifies client-only and pushed-down Top-K behavior against a live cluster.
+ * Verifies Top-K results against a live cluster in both modes: client-only reduction over the
+ * full query stream ({@link Statement#setReduce}) and server pushdown plus client merge
+ * ({@link Statement#setOrderBy} + {@link Statement#setTopK}). Both must produce the same global
+ * Top-K. The wire encoding of the pushdown request is covered separately by
+ * {@code TestTopKRequestEncoding}.
  */
 public class TestTopKPushdown extends TestSync {
 	private static final String SET = "topKPushdown";
@@ -61,30 +63,20 @@ public class TestTopKPushdown extends TestSync {
 		}
 	}
 
-	private static int nodeCount() {
-		return client.getCluster().getNodes().length;
+	@Test
+	public void clientOnlyReturnsGlobalTopK() {
+		requireCapableCluster();
+
+		assertArrayEquals(new long[] {100, 99, 98}, values(clientOnly(Order.DESC, 3), BIN));
+		assertArrayEquals(new long[] {1, 2, 3}, values(clientOnly(Order.ASC, 3), BIN));
 	}
 
 	@Test
-	public void clientOnlyReducesFullStream() {
+	public void pushdownReturnsGlobalTopK() {
 		requireCapableCluster();
 
-		Result result = run(Order.DESC, 3, false);
-
-		assertArrayEquals(new long[] {100, 99, 98}, result.values);
-		assertEquals("Client-only mode must receive every matching record", COUNT, result.inbound);
-	}
-
-	@Test
-	public void serverBoundsCandidates() {
-		requireCapableCluster();
-
-		int k = 3;
-		Result result = run(Order.DESC, k, true);
-
-		assertArrayEquals(new long[] {100, 99, 98}, result.values);
-		assertTrue("Server must bound each node to at most k", result.inbound <= (long)k * nodeCount());
-		assertTrue("Server-side bounding must reduce inbound below full data set", result.inbound < COUNT);
+		assertArrayEquals(new long[] {100, 99, 98}, values(pushdown(Order.DESC, 3), BIN));
+		assertArrayEquals(new long[] {1, 2, 3}, values(pushdown(Order.ASC, 3), BIN));
 	}
 
 	@Test
@@ -93,15 +85,11 @@ public class TestTopKPushdown extends TestSync {
 
 		for (Order order : new Order[] {Order.ASC, Order.DESC}) {
 			for (int k : new int[] {1, 5, 25}) {
-				Result clientOnly = run(order, k, false);
-				Result pushdown = run(order, k, true);
+				long[] clientOnly = values(clientOnly(order, k), BIN);
+				long[] pushdown = values(pushdown(order, k), BIN);
 
-				assertArrayEquals(
-					"Mismatch for order=" + order + " k=" + k, clientOnly.values, pushdown.values);
-				assertEquals(k, pushdown.values.length);
-
-				assertEquals(COUNT, clientOnly.inbound);
-				assertTrue(pushdown.inbound <= (long)k * nodeCount());
+				assertEquals(k, pushdown.length);
+				assertArrayEquals("Mismatch for order=" + order + " k=" + k, clientOnly, pushdown);
 			}
 		}
 	}
@@ -111,33 +99,51 @@ public class TestTopKPushdown extends TestSync {
 		requireCapableCluster();
 
 		int k = 5;
-		Result clientOnly = runDerived(Order.ASC, k, false);
-		Result pushdown = runDerived(Order.ASC, k, true);
-
 		long[] expected = new long[k];
+
 		for (int i = 0; i < k; i++) {
 			expected[i] = (i + 1) * 10L;
 		}
 
-		assertArrayEquals(expected, clientOnly.values);
-		assertArrayEquals(clientOnly.values, pushdown.values);
-		assertEquals(COUNT, clientOnly.inbound);
-		assertTrue(pushdown.inbound <= (long)k * nodeCount());
+		assertArrayEquals(expected, values(clientOnlyDerived(Order.ASC, k), DERIVED));
+		assertArrayEquals(expected, values(pushdownDerived(Order.ASC, k), DERIVED));
 	}
 
-	private Result run(Order order, int k, boolean pushdown) {
+	private Statement clientOnly(Order order, int k) {
+		Statement statement = base(BIN);
+		statement.setReduce(Reduce.topK(BIN, BinDataType.INTEGER, order, OrderByFlags.NONE, k));
+		return statement;
+	}
+
+	private Statement pushdown(Order order, int k) {
+		Statement statement = base(BIN);
+		statement.setOrderBy(BIN, BinDataType.INTEGER, order);
+		statement.setTopK(k);
+		return statement;
+	}
+
+	private Statement clientOnlyDerived(Order order, int k) {
+		Statement statement = derived();
+		statement.setReduce(Reduce.topK(DERIVED, BinDataType.INTEGER, order, OrderByFlags.NONE, k));
+		return statement;
+	}
+
+	private Statement pushdownDerived(Order order, int k) {
+		Statement statement = derived();
+		statement.setOrderBy(DERIVED, BinDataType.INTEGER, order);
+		statement.setTopK(k);
+		return statement;
+	}
+
+	private Statement base(String bin) {
 		Statement statement = new Statement();
 		statement.setNamespace(args.namespace);
 		statement.setSetName(SET);
-		statement.setBinNames(BIN);
-		statement.setOrderBy(BIN, BinDataType.INTEGER, order);
-		statement.setTopK(k);
-		statement.setTopKPushdownEnabled(pushdown);
-
-		return execute(statement, BIN);
+		statement.setBinNames(bin);
+		return statement;
 	}
 
-	private Result runDerived(Order order, int k, boolean pushdown) {
+	private Statement derived() {
 		Statement statement = new Statement();
 		statement.setNamespace(args.namespace);
 		statement.setSetName(SET);
@@ -146,14 +152,10 @@ public class TestTopKPushdown extends TestSync {
 				Exp.build(Exp.mul(Exp.intBin(BIN), Exp.val(10))),
 				ExpReadFlags.DEFAULT)
 		});
-		statement.setOrderBy(DERIVED, BinDataType.INTEGER, order);
-		statement.setTopK(k);
-		statement.setTopKPushdownEnabled(pushdown);
-
-		return execute(statement, DERIVED);
+		return statement;
 	}
 
-	private Result execute(Statement statement, String valueBin) {
+	private long[] values(Statement statement, String valueBin) {
 		List<Long> values = new ArrayList<>();
 		RecordSet recordSet = client.query(null, statement);
 
@@ -166,23 +168,11 @@ public class TestTopKPushdown extends TestSync {
 			recordSet.close();
 		}
 
-		ReduceSpec<Record, Record> spec = statement.resolveReduce();
-		TopKReduceSpec reducer = (TopKReduceSpec)spec;
 		long[] ordered = new long[values.size()];
 
 		for (int i = 0; i < ordered.length; i++) {
 			ordered[i] = values.get(i);
 		}
-		return new Result(ordered, reducer.getInputCount());
-	}
-
-	private static final class Result {
-		final long[] values;
-		final int inbound;
-
-		Result(long[] values, int inbound) {
-			this.values = values;
-			this.inbound = inbound;
-		}
+		return ordered;
 	}
 }

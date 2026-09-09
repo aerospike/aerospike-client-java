@@ -253,16 +253,16 @@ public class TestVectorEdgeCases {
 	}
 
 	@Test
-	public void fromIgnoresReservedBytes() {
+	public void fromPreservesReservedBytes() {
 		Vector v = Vector.ofInt32(new int[] {1, 2, 3});
 		byte[] buffer = new byte[v.getWireSize()];
 		v.writeTo(buffer, 0);
 
-		// Set the two reserved bytes to non-zero; parsing must still succeed (currently ignored).
 		buffer[6] = (byte)0xaa;
 		buffer[7] = (byte)0xbb;
 
 		Vector parsed = Vector.from(buffer, 0, buffer.length);
+		assertArrayEquals(buffer, parsed.getWireBytes());
 		assertEquals(v, parsed);
 	}
 
@@ -277,6 +277,7 @@ public class TestVectorEdgeCases {
 		Vector parsed = Vector.from(buffer, 0, buffer.length);
 		assertEquals(2, parsed.version);
 		assertNotEquals(v, parsed); // equals() compares version
+		assertArrayEquals(buffer, parsed.getWireBytes());
 	}
 
 	//-------------------------------------------------------

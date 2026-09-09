@@ -40,10 +40,15 @@ public final class Vector {
 	 */
 	public static final byte VERSION = 1;
 
+	private static final int VERSION_SIZE = 1;
+	private static final int ELEMENT_TYPE_SIZE = 1;
+	private static final int DIMENSIONS_SIZE = 4;
+	private static final int RESERVED_SIZE = 2;
+
 	/**
 	 * Size in bytes of the fixed header (version + element_type + dimensions + reserved).
 	 */
-	public static final int HEADER_SIZE = 8;
+	public static final int HEADER_SIZE = VERSION_SIZE + ELEMENT_TYPE_SIZE + DIMENSIONS_SIZE + RESERVED_SIZE;
 
 	/**
 	 * Vector element type.
@@ -121,6 +126,9 @@ public final class Vector {
 
 	private final Object data;
 
+	// Reserved header bytes preserved verbatim across read/write.
+	private byte[] reserved = new byte[RESERVED_SIZE];
+
 	private Integer wireSize;
 	private Integer hash;
 
@@ -156,9 +164,9 @@ public final class Vector {
 		buffer[pos++] = version;
 		buffer[pos++] = elementType.getCode();
 		Buffer.intToLittleBytes(dimensions, buffer, pos);
-		pos += 4;
-		buffer[pos++] = 0; // reserved
-		buffer[pos++] = 0; // reserved
+		pos += DIMENSIONS_SIZE;
+		System.arraycopy(reserved, 0, buffer, pos, RESERVED_SIZE);
+		pos += RESERVED_SIZE;
 
 		final int dataSize = dimensions * elementType.getByteSize();
 		final ByteBuffer view = ByteBuffer.wrap(buffer, pos, dataSize).order(ByteOrder.LITTLE_ENDIAN);
@@ -248,9 +256,9 @@ public final class Vector {
 		final byte version = buffer[pos++];
 		final ElementType elementType = ElementType.fromCode(buffer[pos++]);
 		final int dimensions = Buffer.littleBytesToInt(buffer, pos);
-		pos += 4; // advance past the 4-byte dimensions field read above
-		// TODO: Define handling for the reserved fields.
-		pos += 2;
+		pos += DIMENSIONS_SIZE;
+		final byte[] reserved = Arrays.copyOfRange(buffer, pos, pos + RESERVED_SIZE);
+		pos += RESERVED_SIZE;
 
 		if (dimensions < 0) {
 			throw new IllegalArgumentException("Invalid vector dimensions: " + dimensions);
@@ -303,7 +311,9 @@ public final class Vector {
 				throw new IllegalStateException("Unsupported vector element type: " + elementType);
 		}
 
-		return new Vector(version, elementType, dimensions, data);
+		final Vector vector = new Vector(version, elementType, dimensions, data);
+		vector.reserved = reserved;
+		return vector;
 	}
 
 	/**
