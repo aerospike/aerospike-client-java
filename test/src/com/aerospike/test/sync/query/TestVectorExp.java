@@ -17,6 +17,7 @@
 package com.aerospike.test.sync.query;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import java.util.Arrays;
@@ -31,6 +32,7 @@ import com.aerospike.client.Bin;
 import com.aerospike.client.Key;
 import com.aerospike.client.Operation;
 import com.aerospike.client.Record;
+import com.aerospike.client.Value;
 import com.aerospike.client.exp.Exp;
 import com.aerospike.client.exp.ExpOperation;
 import com.aerospike.client.exp.ExpReadFlags;
@@ -100,6 +102,21 @@ public class TestVectorExp extends TestSync {
 		assertFilterIds(VectorDistanceMetric.COSINE, true, 0.999999, 5);
 	}
 
+	@Test
+	public void distanceWrongParticleTypeIsUnknown() {
+		assertUnknownDistance("wrongtype", "not-a-vector");
+	}
+
+	@Test
+	public void distanceMismatchedDimensionsIsUnknown() {
+		assertUnknownDistance("dimensions", Vector.ofFloat32(new float[] {0, 0, 0}));
+	}
+
+	@Test
+	public void distanceMismatchedElementTypeIsUnknown() {
+		assertUnknownDistance("elementtype", Vector.ofInt32(new int[] {0, 0, 0, 0}));
+	}
+
 	private void assertFilterIds(VectorDistanceMetric metric, boolean greaterThan, double threshold, long... expectedIds) {
 		QueryPolicy policy = new QueryPolicy();
 		Exp distance = VectorExp.distance(metric, query(5), Exp.vectorBin(vecBin));
@@ -129,6 +146,24 @@ public class TestVectorExp extends TestSync {
 			expected.add(id);
 		}
 		assertEquals(Arrays.toString(expectedIds), expected, actual);
+	}
+
+	private void assertUnknownDistance(String suffix, Object vector) {
+		Key key = new Key(args.namespace, setName, keyPrefix + '_' + suffix);
+
+		try {
+			client.put(null, key, new Bin(vecBin, Value.get(vector)));
+
+			Record record = client.operate(null, key,
+				ExpOperation.read("distance",
+					Exp.build(VectorExp.distance(VectorDistanceMetric.EUCLIDEAN, query(0), Exp.vectorBin(vecBin))),
+					ExpReadFlags.EVAL_NO_FAIL));
+
+			assertNull(record.getValue("distance"));
+		}
+		finally {
+			client.delete(null, key);
+		}
 	}
 
 	@Test

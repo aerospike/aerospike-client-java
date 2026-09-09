@@ -165,7 +165,7 @@ public final class QueryPartitionExecutor implements IQueryExecutor, Runnable {
 	}
 
 	private boolean supportsTopKPushdown(List<NodePartitions> list) {
-		if (! statement.hasTopK() || ! statement.isTopKPushdownEnabled()) {
+		if (! statement.hasTopK()) {
 			return false;
 		}
 

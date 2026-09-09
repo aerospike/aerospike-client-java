@@ -46,7 +46,6 @@ public final class Statement {
 	private OrderByFlags orderByFlags;
 	private boolean orderBySet;
 	private TopKSpec topK;
-	private boolean topKPushdownEnabled = true;
 	long taskId;
 	long maxRecords;
 	int recordsPerSecond;
@@ -396,15 +395,6 @@ public final class Statement {
 	 */
 	public int getTopKLimit() {
 		return topK == null ? 0 : topK.limit;
-	}
-
-	/** Enable or disable Top-K pushdown for tests. */
-	void setTopKPushdownEnabled(boolean enabled) {
-		this.topKPushdownEnabled = enabled;
-	}
-
-	boolean isTopKPushdownEnabled() {
-		return topKPushdownEnabled;
 	}
 
 	/**

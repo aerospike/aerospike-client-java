@@ -2346,7 +2346,7 @@ public class Command {
 		end();
 	}
 
-	static byte[] getTopKOrderByField(Statement statement) {
+	private static byte[] getTopKOrderByField(Statement statement) {
 		byte[] bin = Buffer.stringToUtf8(statement.getTopKBin());
 		byte[] field = new byte[4 + bin.length];
 		field[0] = (byte)getOrderByType(statement.getTopKType());
@@ -2357,14 +2357,14 @@ public class Command {
 		return field;
 	}
 
-	static TopKFields getTopKFields(Statement statement, boolean sendTopK) {
+	private static TopKFields getTopKFields(Statement statement, boolean sendTopK) {
 		if (! sendTopK || ! statement.hasTopK()) {
 			return null;
 		}
 		return new TopKFields(getTopKOrderByField(statement), getTopKField(statement.getTopKLimit()));
 	}
 
-	static byte[] getTopKField(int limit) {
+	private static byte[] getTopKField(int limit) {
 		byte[] field = new byte[4];
 		Buffer.intToBytes(limit, field, 0);
 		return field;
@@ -2389,7 +2389,7 @@ public class Command {
 		return order == Order.ASC ? 0 : 1;
 	}
 
-	static final class TopKFields {
+	private static final class TopKFields {
 		final byte[] orderBy;
 		final byte[] limit;
 
