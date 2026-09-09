@@ -1,0 +1,48 @@
+validations:
+  build:
+    description: "Client library and all modules compile."
+    command: "mvn -q -o -pl client -am install -DskipTests"
+    critical: true
+    timeout: 900
+
+  build_all_modules:
+    description: "Whole reactor compiles, including test, examples and benchmarks."
+    command: "mvn -q -o compile"
+    critical: false
+    timeout: 900
+
+  test_error_detail_suite:
+    description: "Extended error-detail integration suite passes. Requires a live Aerospike server at 127.0.0.1:3000. Confirm the 'Tests run:' line — skipTests defaults to true, so a run that executes nothing still exits 0."
+    command: "cd test && mvn -o test -DskipTests=false -DrunSuite='**/SuiteErrorDetail.class'"
+    critical: true
+    timeout: 1800
+
+  test_sync_suite:
+    description: "Synchronous integration suite passes against a live server at 127.0.0.1:3000."
+    command: "cd test && mvn -o test -DskipTests=false -DrunSuite='**/SuiteSync.class'"
+    critical: false
+    timeout: 2700
+
+  tests_actually_ran:
+    description: "Every suite invoked reports a non-zero 'Tests run: N' with 0 failures and 0 errors. A BUILD SUCCESS with no tests executed is a failed validation, not a pass — skipTests defaults to true in test/pom.xml."
+    critical: true
+
+  api_stability:
+    description: "No breaking change to the public API under client/src/com/aerospike/client — no removed or re-signatured public constructors, methods or fields. This is a released, binary-compatibility-sensitive client library."
+    critical: true
+
+  no_coverage_removed:
+    description: "No test was deleted, disabled, @Ignore'd, or weakened to make a run pass. A test whose inducer is obsolete must be re-pointed at an equivalent inducer that still exercises the same behaviour, not skipped."
+    critical: true
+
+  javadoc_on_public_api:
+    description: "New or changed public methods and fields carry Javadoc in the style of their neighbours."
+    critical: false
+
+  test_coverage_for_new_code:
+    description: "New or changed behaviour is covered by a JUnit test in the appropriate suite, following the existing class and naming conventions."
+    critical: false
+
+  minimal_diff:
+    description: "No unrelated files touched, no reformatting, no ticket numbers referenced in source, and comment density matches the surrounding file."
+    critical: false
