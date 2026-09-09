@@ -54,7 +54,7 @@ public class BatchRecord {
 	 * Formatted server-side error detail (human-readable message and/or sub-code) for this
 	 * record, populated when the batch opted into {@link Policy#errorDetailVerbosity} &gt; 0
 	 * and the server attached an extended error detail. {@code null} otherwise.
-	 * Requires server version 8.1.3+.
+	 * Requires server version 8.2.0+.
 	 */
 	public String serverMessage;
 
