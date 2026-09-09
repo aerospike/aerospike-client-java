@@ -57,7 +57,7 @@ import com.aerospike.test.sync.TestSync;
  * {@link Expression} that wraps a {@code StringExp.*} call, evaluates it via
  * {@link ExpOperation#read} into a virtual bin, and asserts the result.
  *
- * <p>String expressions require server version 8.1.3+; the tests are skipped
+ * <p>String expressions require server version 8.2.0+; the tests are skipped
  * on older clusters via {@link Assume}.
  *
  * <p>Unlike {@link com.aerospike.client.operation.StringOperation}, the
@@ -75,8 +75,8 @@ public class TestStringExp extends TestSync {
 	@BeforeClass
 	public static void serverVersionCheck() {
 		Assume.assumeTrue(
-			"Skipping: string expressions require server version 8.1.3 or later",
-			args.serverVersion.isGreaterOrEqual(8, 1, 3, 0));
+			"Skipping: string expressions require server version 8.2.0 or later",
+			args.serverVersion.isGreaterOrEqual(8, 2, 0, 0));
 	}
 
 	//-----------------------------------------------------------------

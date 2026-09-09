@@ -76,6 +76,12 @@ root splits `-D…` from ordinary flags and builds this invocation for you.
 suites gate version-dependent tests with
 `org.junit.Assume.assumeTrue(args.serverVersion.isGreaterOrEqual(...))`.
 
+Tests also gate on environment capabilities the same way — `args.scMode` for
+transactions, plus enterprise-only and security-enabled features. Against a
+plain single-node dev server a non-zero `Skipped` count is therefore expected
+and is not a failure; compare it against a baseline run rather than expecting
+zero.
+
 **Verify results, not exit codes.** `-DskipTests` defaulting to true means an
 untouched `mvn test` exits 0 with zero tests executed. Always confirm the
 `Tests run: N` line, and that N is what you expected.

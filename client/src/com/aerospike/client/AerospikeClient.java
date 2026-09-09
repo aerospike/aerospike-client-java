@@ -5282,7 +5282,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		Version currentServerVersion = node.getServerVersion();
 		String createIndexCommand = currentServerVersion.isGreaterOrEqual(Version.SERVER_VERSION_8_1) ? "sindex-create:namespace=": "sindex-create:ns=";
 
-		// Server versions 8.1.3+ use the "integer" index type instead of "numeric".
+		// Server versions 8.2.0+ use the "integer" index type instead of "numeric".
 		indexType = resolveIndexType(indexType, currentServerVersion);
 
 		sb.append(createIndexCommand);
@@ -5347,7 +5347,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 
 	/**
 	 * Map the requested index type to the type the target server understands.
-	 * Server versions 8.1.3+ use "integer" instead of "numeric", so a NUMERIC
+	 * Server versions 8.2.0+ use "integer" instead of "numeric", so a NUMERIC
 	 * request is upgraded to INTEGER on those servers and an INTEGER request is
 	 * downgraded to NUMERIC on older servers. All other index types are returned
 	 * unchanged. Package-private for unit testing.

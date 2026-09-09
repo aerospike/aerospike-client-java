@@ -51,7 +51,7 @@ import org.junit.Test;
  *
  * <p>The trigger op is incidental here; the assertion is purely the extended-error
  * surface (subcode / message / expression trace) flowing through each path. Requires an
- * 8.1.3+ server; the transaction cases additionally require a Strong-Consistency
+ * 8.2.0+ server; the transaction cases additionally require a Strong-Consistency
  * namespace (gated per-test on {@code args.scMode}).
  */
 public class TestErrorDetailPaths extends TestSync {
@@ -62,8 +62,8 @@ public class TestErrorDetailPaths extends TestSync {
 
 	@BeforeClass
 	public static void setup() {
-		org.junit.Assume.assumeTrue("Extended error-detail requires server version 8.1.3 or later",
-			args.serverVersion.isGreaterOrEqual(8, 1, 3, 0));
+		org.junit.Assume.assumeTrue("Extended error-detail requires server version 8.2.0 or later",
+			args.serverVersion.isGreaterOrEqual(8, 2, 0, 0));
 
 		RegisterTask task = client.register(null, TestErrorDetailPaths.class.getClassLoader(),
 			"udf/record_example.lua", "record_example.lua", Language.LUA);

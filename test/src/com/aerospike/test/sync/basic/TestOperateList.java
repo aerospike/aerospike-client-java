@@ -1256,8 +1256,8 @@ public class TestOperateList extends TestSync {
 	}
 	@Test
 	public void operateListJoin() {
-		org.junit.Assume.assumeTrue("List join requires server version 8.1.3 or later",
-			args.serverVersion.isGreaterOrEqual(8, 1, 3, 0));
+		org.junit.Assume.assumeTrue("List join requires server version 8.2.0 or later",
+			args.serverVersion.isGreaterOrEqual(8, 2, 0, 0));
 
 		Key key = new Key(args.namespace, args.set, "oplkeyjoin");
 		client.delete(null, key);
@@ -1280,8 +1280,8 @@ public class TestOperateList extends TestSync {
 
 	@Test
 	public void operateListJoinEmptyList() {
-		org.junit.Assume.assumeTrue("List join requires server version 8.1.3 or later",
-			args.serverVersion.isGreaterOrEqual(8, 1, 3, 0));
+		org.junit.Assume.assumeTrue("List join requires server version 8.2.0 or later",
+			args.serverVersion.isGreaterOrEqual(8, 2, 0, 0));
 
 		Key key = new Key(args.namespace, args.set, "oplkeyjoinempty");
 		client.delete(null, key);
@@ -1293,8 +1293,8 @@ public class TestOperateList extends TestSync {
 
 	@Test
 	public void operateListJoinNonStringItemFails() {
-		org.junit.Assume.assumeTrue("List join requires server version 8.1.3 or later",
-			args.serverVersion.isGreaterOrEqual(8, 1, 3, 0));
+		org.junit.Assume.assumeTrue("List join requires server version 8.2.0 or later",
+			args.serverVersion.isGreaterOrEqual(8, 2, 0, 0));
 
 		Key key = new Key(args.namespace, args.set, "oplkeyjoinbad");
 		client.delete(null, key);
@@ -1312,8 +1312,8 @@ public class TestOperateList extends TestSync {
 
 	@Test
 	public void operateListJoinNested() {
-		org.junit.Assume.assumeTrue("List join requires server version 8.1.3 or later",
-			args.serverVersion.isGreaterOrEqual(8, 1, 3, 0));
+		org.junit.Assume.assumeTrue("List join requires server version 8.2.0 or later",
+			args.serverVersion.isGreaterOrEqual(8, 2, 0, 0));
 
 		Key key = new Key(args.namespace, args.set, "oplkeyjoinctx");
 		client.delete(null, key);

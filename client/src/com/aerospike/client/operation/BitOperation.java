@@ -349,7 +349,7 @@ public final class BitOperation {
 	 * <p>
 	 * This is the encode direction; {@link com.aerospike.client.operation.StringOperation#b64Decode}
 	 * is the decode direction and takes a string bin back to a blob.
-	 * Requires server version 8.1.3 or later.
+	 * Requires server version 8.2.0 or later.
 	 */
 	public static Operation b64Encode(String binName) {
 		byte[] bytes = Pack.pack(BitOperation.B64_ENCODE);
@@ -363,7 +363,7 @@ public final class BitOperation {
 	 * the end of the blob. Note the span is expressed in <b>bytes</b>, unlike the bit
 	 * offsets and sizes the other bit read operations take.
 	 * <p>
-	 * Requires server version 8.1.3 or later.
+	 * Requires server version 8.2.0 or later.
 	 */
 	public static Operation b64Encode(String binName, int byteOffset, int byteSize) {
 		byte[] bytes = Pack.pack(BitOperation.B64_ENCODE, byteOffset, byteSize);
@@ -378,7 +378,7 @@ public final class BitOperation {
 	 * end of the blob". When false this behaves exactly as
 	 * {@link #b64Encode(String, int, int)}.
 	 * <p>
-	 * Requires server version 8.1.3 or later.
+	 * Requires server version 8.2.0 or later.
 	 */
 	public static Operation b64Encode(String binName, int byteOffset, int byteSize, boolean invertSize) {
 		int subflags = invertSize ? BitOperation.READ_SUBFLAG_INVERT_SIZE : 0;

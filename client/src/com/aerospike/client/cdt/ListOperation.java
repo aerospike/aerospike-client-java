@@ -551,7 +551,7 @@ public class ListOperation {
 	 * an empty string.
 	 * <p>
 	 * This is the inverse of {@link com.aerospike.client.operation.StringOperation#split}.
-	 * Requires server version 8.1.3 or later.
+	 * Requires server version 8.2.0 or later.
 	 */
 	public static Operation join(String binName, CTX... ctx) {
 		byte[] bytes = Pack.pack(ListOperation.STRING_LIST_JOIN, ctx);
@@ -567,7 +567,7 @@ public class ListOperation {
 	 * with no separator applied.
 	 * <p>
 	 * This is the inverse of {@link com.aerospike.client.operation.StringOperation#split}.
-	 * Requires server version 8.1.3 or later.
+	 * Requires server version 8.2.0 or later.
 	 */
 	public static Operation join(String binName, String separator, CTX... ctx) {
 		byte[] bytes = Pack.pack(ListOperation.STRING_LIST_JOIN, Value.get(separator), ctx);

@@ -34,7 +34,7 @@ public class OperateString extends Example {
 
 	/**
 	 * Demonstrate every {@link StringOperation} method.
-	 * Requires server version 8.1.3 or later.
+	 * Requires server version 8.2.0 or later.
 	 */
 	@Override
 	public void runExample() throws Exception {
