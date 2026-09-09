@@ -368,6 +368,10 @@ public final class NodeValidator {
 		if (serverVersion.isGreaterOrEqual(Version.SERVER_VERSION_8_1_2)) {
 			features |= Node.HAS_QUERY_OPS_PROJECTION_EXT;
 		}
+
+		if (serverVersion.isGreaterOrEqual(Version.SERVER_VERSION_8_1_3)) {
+			features |= Node.HAS_QUERY_ORDER_BY;
+		}
 	}
 
 	private void validateClusterName(Cluster cluster, HashMap<String,String> map) {

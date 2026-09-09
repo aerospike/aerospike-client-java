@@ -17,6 +17,7 @@
 package com.aerospike.test.sync.query;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 import java.util.Arrays;
 
@@ -40,8 +41,7 @@ import com.aerospike.client.task.IndexTask;
 import com.aerospike.test.sync.TestSync;
 
 /**
- * End-to-end tests for client-side Top-K map-reduce ({@link Reduce#topK}) executed across the
- * cluster.
+ * End-to-end tests for Top-K queries ({@link Reduce#topK}).
  */
 public class TestQueryReduce extends TestSync {
 	private static final String indexName = "reduceindex";
@@ -159,6 +159,31 @@ public class TestQueryReduce extends TestSync {
 		}
 	}
 
+	@Test
+	public void topKDoubleNaN() {
+		String nanSet = "reduceNaNSet";
+		Key one = new Key(args.namespace, nanSet, keyPrefix + "_one");
+		Key two = new Key(args.namespace, nanSet, keyPrefix + "_two");
+		Key nan = new Key(args.namespace, nanSet, keyPrefix + "_nan");
+
+		try {
+			client.put(null, one, new Bin(binName, 1.0));
+			client.put(null, two, new Bin(binName, 2.0));
+			client.put(null, nan, new Bin(binName, Double.NaN));
+
+			Statement ascending = topKDoubleStatement(nanSet, Order.ASC);
+			assertDoubleTopK(ascending, false);
+
+			Statement descending = topKDoubleStatement(nanSet, Order.DESC);
+			assertDoubleTopK(descending, true);
+		}
+		finally {
+			client.delete(null, one);
+			client.delete(null, two);
+			client.delete(null, nan);
+		}
+	}
+
 	private void assertTopK(Statement stmt, int k, long[] expected) {
 		RecordSet rs = client.query(null, stmt);
 		int count = 0;
@@ -175,5 +200,24 @@ public class TestQueryReduce extends TestSync {
 		}
 
 		assertEquals(k, count);
+	}
+
+	private Statement topKDoubleStatement(String setName, Order order) {
+		Statement stmt = new Statement();
+		stmt.setNamespace(args.namespace);
+		stmt.setSetName(setName);
+		stmt.setOrderBy(binName, BinDataType.DOUBLE, order);
+		stmt.setTopK(2);
+		return stmt;
+	}
+
+	private void assertDoubleTopK(Statement stmt, boolean firstNaN) {
+		try (RecordSet rs = client.query(null, stmt)) {
+			assertTrue(rs.next());
+			assertEquals(firstNaN, Double.isNaN(rs.getRecord().getDouble(binName)));
+			assertTrue(rs.next());
+			assertEquals(2.0, rs.getRecord().getDouble(binName), 0.0);
+			assertTrue(! rs.next());
+		}
 	}
 }

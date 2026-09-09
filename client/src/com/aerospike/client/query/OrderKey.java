@@ -16,6 +16,7 @@
  */
 package com.aerospike.client.query;
 
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 
@@ -94,8 +95,11 @@ final class OrderKey implements Comparable<OrderKey> {
 
 	@SuppressWarnings("unchecked")
 	private static int compareValues(Object a, Object b, BinDataType type, OrderByFlags flags) {
-		if (type == BinDataType.STRING && flags == OrderByFlags.CASE_INSENSITIVE) {
-			return ((String)a).compareToIgnoreCase((String)b);
+		if (type == BinDataType.STRING) {
+			return compareBytes(
+				((String)a).getBytes(StandardCharsets.UTF_8),
+				((String)b).getBytes(StandardCharsets.UTF_8),
+				flags == OrderByFlags.CASE_INSENSITIVE);
 		}
 
 		if (type == BinDataType.BYTES) {
@@ -105,10 +109,27 @@ final class OrderKey implements Comparable<OrderKey> {
 	}
 
 	private static int compareBytes(byte[] a, byte[] b) {
+		return compareBytes(a, b, false);
+	}
+
+	private static int compareBytes(byte[] a, byte[] b, boolean foldAscii) {
 		int len = Math.min(a.length, b.length);
 
 		for (int i = 0; i < len; i++) {
-			int cmp = (a[i] & 0xff) - (b[i] & 0xff);
+			int ai = a[i] & 0xff;
+			int bi = b[i] & 0xff;
+
+			if (foldAscii) {
+				if (ai >= 'A' && ai <= 'Z') {
+					ai += 'a' - 'A';
+				}
+
+				if (bi >= 'A' && bi <= 'Z') {
+					bi += 'a' - 'A';
+				}
+			}
+
+			int cmp = ai - bi;
 
 			if (cmp != 0) {
 				return cmp;

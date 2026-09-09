@@ -255,4 +255,33 @@ public class TestStatementReduce {
 		stmt.resolveReduce().acceptPartial(record(BIN, 1L), key("k1"));
 		assertEquals(1, stmt.resolveReduce().getResult().length);
 	}
+
+	@Test
+	public void topKRejectsInvalidWireSpecification() {
+		Statement flags = new Statement();
+		flags.setOrderBy(BIN, BinDataType.INTEGER, Order.ASC, OrderByFlags.CASE_INSENSITIVE);
+		flags.setTopK(1);
+		assertInvalidTopK(flags);
+
+		Statement projection = new Statement();
+		projection.setBinNames("other");
+		projection.setOrderBy(BIN, BinDataType.INTEGER, Order.ASC);
+		projection.setTopK(1);
+		assertInvalidTopK(projection);
+
+		Statement name = new Statement();
+		name.setOrderBy("sixteen-byte-bin", BinDataType.INTEGER, Order.ASC);
+		name.setTopK(1);
+		assertInvalidTopK(name);
+	}
+
+	private static void assertInvalidTopK(Statement statement) {
+		try {
+			statement.validateTopK();
+			fail("Expected IllegalArgumentException");
+		}
+		catch (IllegalArgumentException expected) {
+			// Expected.
+		}
+	}
 }

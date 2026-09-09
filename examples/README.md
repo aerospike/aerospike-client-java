@@ -33,6 +33,7 @@ QueryRegion         | Perform region/radius queries using a Geo index.          
 QueryRegionFilter   | Perform region query using a Geo index with an aggregation filter.                   | [View](src/com/aerospike/examples/QueryRegionFilter.java)
 QueryGeoCollection  | Perform region queries using a Geo index on a collection.                            | [View](src/com/aerospike/examples/QueryGeoCollection.java)
 QueryExecute        | Run a UDF on records matching the query filter.                                      | [View](src/com/aerospike/examples/QueryExecute.java)
+QueryTopK           | Return the highest or lowest ranked records from a query.                            | [View](src/com/aerospike/examples/QueryTopK.java)
 AsyncPutGet         | Write and read a record in asynchronous mode.                                        | [View](src/com/aerospike/examples/AsyncPutGet.java)
 AsyncBatch          | Perform multiple read commands in a single batch in asynchronous mode.               | [View](src/com/aerospike/examples/AsyncBatch.java)
 AsyncQuery          | Query records in asynchronous mode.                                                  | [View](src/com/aerospike/examples/AsyncQuery.java)
