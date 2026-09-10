@@ -966,9 +966,10 @@ public final class StringExp {
 	 *     Exp.stringBin("text"));
 	 * }</pre>
 	 *
-	 * @param policy		kept for API symmetry with the other modify ops; unused — the
-	 *						regex_replace server op does not accept policy flags
-	 *						(see implementation note)
+	 * @param policy		write policy; the DEFAULT, UPDATE_ONLY and NO_FAIL
+	 *						{@link StringWriteFlags} apply to this op. CREATE_ONLY is rejected
+	 *						by the server on this op. NO_FAIL here also suppresses a
+	 *						regex-compile failure
 	 * @param pattern		ICU-syntax regex pattern (must be valid UTF-8)
 	 * @param replacement	replacement text (must be valid UTF-8)
 	 * @param regexFlags	bitwise-OR of {@link StringRegexFlags} constants
@@ -982,7 +983,7 @@ public final class StringExp {
 		int regexFlags,
 		Exp src
 	) {
-		byte[] bytes = packRegexReplace(pattern, replacement, regexFlags);
+		byte[] bytes = packRegexReplace(pattern, replacement, regexFlags, policy.flags);
 		return addModify(src, bytes);
 	}
 
@@ -1053,15 +1054,15 @@ public final class StringExp {
 		return packer.getBuffer();
 	}
 
-	// [REGEX_REPLACE, [QUOTED, [pattern, repl]], regexFlags] — same QUOTED wrapping as
-	// packReplace; without it the expression compiler tries to interpret the
-	// (pattern, replacement) pair as a function call. Note: the server's regex_replace
-	// op table is declared with max_args=2 (particle_string.c:476), so there is no
-	// trailing policy-flags slot — only the regexFlags integer.
-	private static byte[] packRegexReplace(Exp pattern, Exp replacement, int regexFlags) {
+	// [REGEX_REPLACE, [QUOTED, [pattern, repl]], regexFlags, policyFlags] — same QUOTED
+	// wrapping as packReplace; without it the expression compiler tries to interpret the
+	// (pattern, replacement) pair as a function call. Both trailing integers go on the
+	// wire: the server parses regex flags into the slot before the policy flags and the
+	// two bitmasks collide numerically, so omitting either has the other silently misread.
+	private static byte[] packRegexReplace(Exp pattern, Exp replacement, int regexFlags, int policyFlags) {
 		Packer packer = new Packer();
 		for (int i = 0; i < 2; i++) {
-			packer.packArrayBegin(3);
+			packer.packArrayBegin(4);
 			packer.packInt(REGEX_REPLACE);
 			packer.packArrayBegin(2);
 			packer.packInt(QUOTED);
@@ -1069,6 +1070,7 @@ public final class StringExp {
 			pattern.pack(packer);
 			replacement.pack(packer);
 			packer.packInt(regexFlags);
+			packer.packInt(policyFlags);
 			if (i == 0) packer.createBuffer();
 		}
 		return packer.getBuffer();

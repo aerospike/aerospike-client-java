@@ -86,6 +86,22 @@ zero.
 untouched `mvn test` exits 0 with zero tests executed. Always confirm the
 `Tests run: N` line, and that N is what you expected.
 
+### Asserting errors raised inside an expression
+
+The server's expression runtime collapses every CDT / bits / HLL / string
+sub-op failure into one generic fault, so `getResultCode()` on the expression
+path is always `OP_NOT_APPLICABLE` — never the `PARAMETER_ERROR` /
+`BIN_EXISTS_ERROR` the equivalent operate op returns. To assert *why* an
+expression faulted, set `policy.errorDetailVerbosity = 2` and read
+`AerospikeException.getSubCode()` and `getBaseMessage()`. At the default
+verbosity no detail is staged at all and the message is just the result-code
+string.
+
+A suite can carry a pre-existing failure against whatever server build is
+running locally — an assertion on a fault the server no longer raises still
+fails even on an untouched tree. Run the suites you are about to gate on
+*before* editing anything and keep that baseline; report only the delta.
+
 ## Architecture
 
 Public API under `client/src/com/aerospike/client/`:
