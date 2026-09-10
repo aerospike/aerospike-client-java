@@ -62,7 +62,7 @@ import com.aerospike.test.sync.TestSync;
  * <p>The test bootstraps two extra users (one privileged reader, one
  * unprivileged user) and connects an additional client per role. The whole
  * class is skipped when security is disabled, no admin credentials are
- * supplied, or the cluster is older than 8.1.3 (where masking + string ops
+ * supplied, or the cluster is older than 8.2.0 (where masking + string ops
  * are jointly supported).
  */
 public class TestStringMasking extends TestSync {
@@ -85,8 +85,8 @@ public class TestStringMasking extends TestSync {
 
 	@BeforeClass
 	public static void setupUsersAndRule() {
-		Assume.assumeTrue("Skipping: server version < 8.1.3 (string ops + masking)",
-			args.serverVersion.isGreaterOrEqual(8, 1, 3, 0));
+		Assume.assumeTrue("Skipping: server version < 8.2.0 (string ops + masking)",
+			args.serverVersion.isGreaterOrEqual(8, 2, 0, 0));
 		Assume.assumeTrue("Skipping: admin credentials not provided",
 			args.user != null && !args.user.isEmpty()
 				&& args.password != null && !args.password.isEmpty());

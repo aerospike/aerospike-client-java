@@ -972,8 +972,8 @@ public class TestOperateBit extends TestSync {
 	}
 	@Test
 	public void operateBitB64Encode() {
-		org.junit.Assume.assumeTrue("bit b64Encode requires server version 8.1.3 or later",
-			args.serverVersion.isGreaterOrEqual(8, 1, 3, 0));
+		org.junit.Assume.assumeTrue("bit b64Encode requires server version 8.2.0 or later",
+			args.serverVersion.isGreaterOrEqual(8, 2, 0, 0));
 
 		byte[] initial = new byte[] {(byte)0x01, (byte)0x42, (byte)0x03};
 		client.delete(null, key);
@@ -997,8 +997,8 @@ public class TestOperateBit extends TestSync {
 
 	@Test
 	public void operateBitB64EncodeRoundTripsThroughB64Decode() {
-		org.junit.Assume.assumeTrue("bit b64Encode requires server version 8.1.3 or later",
-			args.serverVersion.isGreaterOrEqual(8, 1, 3, 0));
+		org.junit.Assume.assumeTrue("bit b64Encode requires server version 8.2.0 or later",
+			args.serverVersion.isGreaterOrEqual(8, 2, 0, 0));
 
 		byte[] initial = new byte[] {(byte)0xDE, (byte)0xAD, (byte)0xBE, (byte)0xEF};
 		client.delete(null, key);

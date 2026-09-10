@@ -41,7 +41,7 @@ public class StringExpression extends Example {
 	 * the expression with {@code ExpOperation.read} and prints the result.
 	 * Modify-style expressions (upper, replace, …) return the modified string
 	 * value; the bin is <strong>not</strong> mutated.
-	 * Requires server version 8.1.3 or later.
+	 * Requires server version 8.2.0 or later.
 	 */
 	@Override
 	public void runExample() throws Exception {

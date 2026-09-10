@@ -352,7 +352,7 @@ public final class BitExp {
 	 * BitExp.b64Encode(Exp.blobBin("a"))
 	 * }</pre>
 	 *
-	 * Requires server version 8.1.3 or later.
+	 * Requires server version 8.2.0 or later.
 	 */
 	public static Exp b64Encode(Exp bin) {
 		byte[] bytes = Pack.pack(B64_ENCODE);
@@ -370,7 +370,7 @@ public final class BitExp {
 	 * BitExp.b64Encode(Exp.val(0), Exp.val(3), Exp.blobBin("a"))
 	 * }</pre>
 	 *
-	 * Requires server version 8.1.3 or later.
+	 * Requires server version 8.2.0 or later.
 	 */
 	public static Exp b64Encode(Exp byteOffset, Exp byteSize, Exp bin) {
 		byte[] bytes = Pack.pack(B64_ENCODE, byteOffset, byteSize);
@@ -390,7 +390,7 @@ public final class BitExp {
 	 * BitExp.b64Encode(Exp.val(1), Exp.val(0), true, Exp.blobBin("a"))
 	 * }</pre>
 	 *
-	 * Requires server version 8.1.3 or later.
+	 * Requires server version 8.2.0 or later.
 	 */
 	public static Exp b64Encode(Exp byteOffset, Exp byteSize, boolean invertSize, Exp bin) {
 		int subflags = invertSize ? READ_SUBFLAG_INVERT_SIZE : 0;

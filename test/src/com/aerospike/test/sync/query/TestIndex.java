@@ -129,8 +129,8 @@ public class TestIndex extends TestSync {
 
 	@Test
 	public void integerIndexCreateQueryDrop() {
-		Assume.assumeTrue("INTEGER index type requires server version 8.1.3 or later",
-			args.serverVersion.isGreaterOrEqual(8, 1, 3, 0));
+		Assume.assumeTrue("INTEGER index type requires server version 8.2.0 or later",
+			args.serverVersion.isGreaterOrEqual(8, 2, 0, 0));
 
 		IndexTask task;
 
@@ -193,14 +193,14 @@ public class TestIndex extends TestSync {
 
 	@Test
 	public void numericIndexUpgradesToIntegerQueryDrop() {
-		// On server versions 8.1.3+ the client transparently upgrades a NUMERIC
+		// On server versions 8.2.0+ the client transparently upgrades a NUMERIC
 		// request to the "integer" index type. The server collapses "numeric" and
 		// "integer" to the same internal type, so the create spelling cannot be
 		// read back; this test instead verifies the upgraded index is created and
 		// remains queryable end-to-end. The wire-level mapping itself is asserted
 		// by AerospikeClientIndexTypeTest.
-		Assume.assumeTrue("NUMERIC to INTEGER upgrade requires server version 8.1.3 or later",
-			args.serverVersion.isGreaterOrEqual(8, 1, 3, 0));
+		Assume.assumeTrue("NUMERIC to INTEGER upgrade requires server version 8.2.0 or later",
+			args.serverVersion.isGreaterOrEqual(8, 2, 0, 0));
 
 		IndexTask task;
 

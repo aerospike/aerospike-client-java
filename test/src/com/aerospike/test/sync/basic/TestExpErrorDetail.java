@@ -44,12 +44,14 @@ import com.aerospike.client.ResultCode;
 import com.aerospike.client.SubCode;
 import com.aerospike.client.Value;
 import com.aerospike.client.cdt.ListReturnType;
+import com.aerospike.client.cdt.MapReturnType;
 import com.aerospike.client.exp.Exp;
 import com.aerospike.client.exp.ExpOperation;
 import com.aerospike.client.exp.ExpReadFlags;
 import com.aerospike.client.exp.ExpWriteFlags;
 import com.aerospike.client.exp.Expression;
 import com.aerospike.client.exp.ListExp;
+import com.aerospike.client.exp.MapExp;
 import com.aerospike.client.query.RecordSet;
 import com.aerospike.client.query.Statement;
 import com.aerospike.client.policy.BatchPolicy;
@@ -69,7 +71,7 @@ import com.aerospike.test.sync.TestSync;
  * <ol>
  * <li>Eval-phase (PHASE_EVAL) expression traces for filter runtime faults:
  *     div/mod by zero, INT64_MIN overflow, CDT out-of-bounds (with sub-code),
- *     unordered-map compare.</li>
+ *     preserve-order map compare.</li>
  * <li>Verbosity tier-1 suppression semantics: an AS_SUB_NONE error at
  *     verbosity 1 stages no error details at all, while a real sub-code CDT
  *     fault ships sub-code only (no message, no trace).</li>
@@ -93,8 +95,8 @@ public class TestExpErrorDetail extends TestSync {
 	private static final String BIN_FLOAT = "y";     // 2.5
 	private static final String BIN_STR = "name";    // "ael"
 	private static final String BIN_LIST = "xs";     // [1, 2, 3]
-	private static final String BIN_MAP1 = "um1";    // unordered map
-	private static final String BIN_MAP2 = "um2";    // unordered map
+	private static final String BIN_MAP1 = "um1";    // {a=1, b=2}
+	private static final String BIN_MAP2 = "um2";    // {c=3, d=4}
 	private static final String BIN_MISSING = "missing";
 
 	private static Key stdKey;
@@ -102,8 +104,8 @@ public class TestExpErrorDetail extends TestSync {
 
 	@BeforeClass
 	public static void setup() {
-		org.junit.Assume.assumeTrue("Extended error-detail requires server version 8.1.3 or later",
-			args.serverVersion.isGreaterOrEqual(8, 1, 3, 0));
+		org.junit.Assume.assumeTrue("Extended error-detail requires server version 8.2.0 or later",
+			args.serverVersion.isGreaterOrEqual(8, 2, 0, 0));
 
 		stdKey = new Key(args.namespace, args.set, "eed-std-key");
 		scratchKey = new Key(args.namespace, args.set, "eed-scratch-key");
@@ -115,8 +117,10 @@ public class TestExpErrorDetail extends TestSync {
 
 		Map<String,Integer> um1 = new HashMap<>();
 		um1.put("a", 1);
+		um1.put("b", 2);
 		Map<String,Integer> um2 = new HashMap<>();
-		um2.put("b", 2);
+		um2.put("c", 3);
+		um2.put("d", 4);
 
 		client.put(new WritePolicy(), stdKey,
 			new Bin(BIN_INT, 10),
@@ -284,12 +288,17 @@ public class TestExpErrorDetail extends TestSync {
 
 	@Test
 	public void testFilterFaultUnorderedMapCompareTrace() {
-		// Both bins are unordered maps; an ordered equality compare faults.
-		Expression exp = Exp.build(Exp.eq(Exp.mapBin(BIN_MAP1), Exp.mapBin(BIN_MAP2)));
+		org.junit.Assume.assumeTrue("Preserve-order map compare refusal requires server version 8.2.0 or later",
+			args.serverVersion.isGreaterOrEqual(8, 2, 0, 0));
+
+		// A KEY_VALUE map read yields a preserve-order map; comparing two of them faults.
+		Expression exp = Exp.build(Exp.eq(
+			MapExp.getByKeyRange(MapReturnType.KEY_VALUE, null, null, Exp.mapBin(BIN_MAP1)),
+			MapExp.getByKeyRange(MapReturnType.KEY_VALUE, null, null, Exp.mapBin(BIN_MAP2))));
 
 		AerospikeException ae = expectFilteredGet(3, exp, ResultCode.FILTERED_OUT);
 		assertEquals(SubCode.NONE, ae.getSubCode());
-		assertMessageContains(ae, "cannot compare an unordered map");
+		assertMessageContains(ae, "cannot compare a map with preserved element order");
 
 		assertEvalTrace(ae, "eq", 1, new String[] {"eq"});
 	}
