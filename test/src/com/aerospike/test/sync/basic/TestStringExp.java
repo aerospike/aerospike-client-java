@@ -19,6 +19,7 @@ package com.aerospike.test.sync.basic;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 import java.util.ArrayList;
@@ -31,9 +32,12 @@ import org.junit.Assume;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Bin;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
+import com.aerospike.client.ResultCode;
+import com.aerospike.client.SubCode;
 import com.aerospike.client.Value;
 import com.aerospike.client.cdt.ListReturnType;
 import com.aerospike.client.cdt.MapReturnType;
@@ -47,7 +51,9 @@ import com.aerospike.client.exp.StringExp;
 import com.aerospike.client.operation.StringNumericType;
 import com.aerospike.client.operation.StringPolicy;
 import com.aerospike.client.operation.StringRegexFlags;
+import com.aerospike.client.operation.StringWriteFlags;
 import com.aerospike.client.policy.Policy;
+import com.aerospike.client.policy.WritePolicy;
 import com.aerospike.client.util.Unpacker;
 import com.aerospike.test.sync.TestSync;
 
@@ -95,6 +101,19 @@ public class TestStringExp extends TestSync {
 
 	private static Record eval(Exp e) {
 		return client.operate(null, KEY,
+			ExpOperation.read(VAR, Exp.build(e), ExpReadFlags.DEFAULT));
+	}
+
+	/**
+	 * Evaluate at error-detail verbosity 2. The expression runtime collapses every
+	 * sub-op failure into one generic fault (exp_rt.c eval_call -> EXP_ERR_CALL_ARG),
+	 * so OP_NOT_APPLICABLE is all the result code ever says on this path; the sub-code
+	 * and staged message are what identify the actual rejection.
+	 */
+	private static Record evalDetailed(Exp e) {
+		WritePolicy wp = new WritePolicy();
+		wp.errorDetailVerbosity = 2;
+		return client.operate(wp, KEY,
 			ExpOperation.read(VAR, Exp.build(e), ExpReadFlags.DEFAULT));
 	}
 
@@ -494,6 +513,166 @@ public class TestStringExp extends TestSync {
 			POLICY, Exp.val("[0-9]+"), Exp.val("NUM"),
 			StringRegexFlags.GLOBAL, Exp.stringBin(BIN)));
 		assertEquals("abcNUMdefNUM", r2.getString(VAR));
+	}
+
+	//=================================================================
+	// Write flags on the expression path
+	//
+	// as_bin_string_modify_exp funnels into the same string_modify() as the
+	// operate path, so the StringWriteFlags behave the same — the "bin" they
+	// test is the value the source expression produced. CREATE_ONLY is accepted
+	// only by the additive create-ops; CREATE_ONLY with UPDATE_ONLY, and any
+	// flag outside an op's mask, are rejected during argument parsing, upstream
+	// of every NO_FAIL test.
+	//=================================================================
+
+	private static final StringPolicy CREATE_ONLY =
+		new StringPolicy(StringWriteFlags.CREATE_ONLY);
+	private static final StringPolicy UPDATE_ONLY =
+		new StringPolicy(StringWriteFlags.UPDATE_ONLY);
+	private static final StringPolicy NO_FAIL =
+		new StringPolicy(StringWriteFlags.NO_FAIL);
+
+	private static AerospikeException assertEvalFails(Exp e, int subCode, String message) {
+		AerospikeException ae = assertThrows(AerospikeException.class, () -> evalDetailed(e));
+		assertEquals(ResultCode.OP_NOT_APPLICABLE, ae.getResultCode());
+		assertEquals(subCode, ae.getSubCode());
+		assertEquals(message, ae.getBaseMessage());
+		return ae;
+	}
+
+	private static void assertStringParamError(Exp e, String message) {
+		assertEvalFails(e, SubCode.PARAM_STRING_OP_PARAMS_INVALID, message);
+	}
+
+	@Test
+	public void updateOnlyAppliesToLiveSource() {
+		put("hello");
+		Record r = eval(StringExp.append(UPDATE_ONLY, Exp.val(" world"), Exp.stringBin(BIN)));
+		assertEquals("hello world", r.getString(VAR));
+	}
+
+	@Test
+	public void updateOnlyAppliesToNonCreateModifyOp() {
+		// UPDATE_ONLY is valid on every string modify op, not just the
+		// create-capable ones.
+		put("hello");
+		Record r = eval(StringExp.upper(UPDATE_ONLY, Exp.stringBin(BIN)));
+		assertEquals("HELLO", r.getString(VAR));
+	}
+
+	@Test
+	public void createOnlyOnLiveSourceIsRejected() {
+		// The source expression yielded a live value, so CREATE_ONLY has nothing
+		// to create. Reported with no sub-code: the server raises this one inside
+		// string_modify, past the argument parser that stages the param sub-code.
+		put("hello");
+		assertEvalFails(
+			StringExp.append(CREATE_ONLY, Exp.val("!"), Exp.stringBin(BIN)),
+			SubCode.NONE, "string_append: value exists but CREATE_ONLY flag is set");
+	}
+
+	@Test
+	public void createOnlyWithNoFailOnLiveSourceYieldsUnmodifiedSource() {
+		// The one CREATE_ONLY rejection NO_FAIL does suppress — it is tested
+		// inside string_modify, not during argument parsing.
+		put("hello");
+		StringPolicy policy = new StringPolicy(
+			StringWriteFlags.CREATE_ONLY | StringWriteFlags.NO_FAIL);
+		Record r = eval(StringExp.append(policy, Exp.val("!"), Exp.stringBin(BIN)));
+		assertEquals("hello", r.getString(VAR));
+	}
+
+	@Test
+	public void createOnlyOnNonCreateModifyOpRaisesParamError() {
+		// upper carries the update-only flag mask, so CREATE_ONLY is not a legal
+		// flag for it at all — distinguishing it from the additive create-ops.
+		put("hello");
+		assertStringParamError(
+			StringExp.upper(CREATE_ONLY, Exp.stringBin(BIN)),
+			"string_upper: flags 0x1 not valid for this op");
+	}
+
+	@Test
+	public void createOnlyWithUpdateOnlyRaisesParamError() {
+		put("hello");
+		String message = "string_append: CREATE_ONLY and UPDATE_ONLY flags are mutually exclusive";
+
+		StringPolicy both = new StringPolicy(
+			StringWriteFlags.CREATE_ONLY | StringWriteFlags.UPDATE_ONLY);
+		assertStringParamError(StringExp.append(both, Exp.val("!"), Exp.stringBin(BIN)), message);
+
+		// NO_FAIL cannot suppress an argument-parse rejection.
+		StringPolicy bothNoFail = new StringPolicy(
+			StringWriteFlags.CREATE_ONLY | StringWriteFlags.UPDATE_ONLY
+				| StringWriteFlags.NO_FAIL);
+		assertStringParamError(StringExp.append(bothNoFail, Exp.val("!"), Exp.stringBin(BIN)), message);
+	}
+
+	@Test
+	public void noFailSuppressesPrepareFailure() {
+		put("hello");
+		// An empty pad string is rejected by padStart's prepare stage.
+		assertStringParamError(
+			StringExp.padStart(POLICY, Exp.val(10), Exp.val(""), Exp.stringBin(BIN)),
+			"string_pad_start: target length 10 must be non-negative and pad string must not be empty");
+
+		Record r = eval(StringExp.padStart(
+			NO_FAIL, Exp.val(10), Exp.val(""), Exp.stringBin(BIN)));
+		assertEquals("hello", r.getString(VAR));
+	}
+
+	@Test
+	public void regexReplaceWithInvalidPatternIsRejected() {
+		put("hello");
+		assertEvalFails(
+			StringExp.regexReplace(POLICY, Exp.val("("), Exp.val("X"),
+				StringRegexFlags.DEFAULT, Exp.stringBin(BIN)),
+			SubCode.PARAM_STRING_REGEX_INVALID,
+			"string_regex_replace: regex pattern is invalid or could not be compiled");
+	}
+
+	@Test
+	public void regexReplaceNoFailSuppressesInvalidPattern() {
+		// Proves the policy flags reach the wire: the identical call under
+		// StringPolicy.Default faults in the test above.
+		put("hello");
+		Record r = eval(StringExp.regexReplace(
+			NO_FAIL, Exp.val("("), Exp.val("X"),
+			StringRegexFlags.DEFAULT, Exp.stringBin(BIN)));
+		assertEquals("hello", r.getString(VAR));
+	}
+
+	@Test
+	public void regexReplacePacksRegexFlagsAheadOfPolicyFlags() {
+		// DOTALL and NO_FAIL are both 1 << 2, and MULTILINE and UPDATE_ONLY are
+		// both 1 << 1, so the two arguments are only told apart by behaviour.
+		// DOTALL must land in the regex slot for "." to span the newline; sent in
+		// the other order the server compiles the pattern MULTILINE and it does
+		// not match.
+		put("a\nb");
+		Record r = eval(StringExp.regexReplace(
+			UPDATE_ONLY, Exp.val("a.b"), Exp.val("X"),
+			StringRegexFlags.DOTALL, Exp.stringBin(BIN)));
+		assertEquals("X", r.getString(VAR));
+	}
+
+	@Test
+	public void regexReplacePacksFourElementsWithPolicyLast() {
+		// Exp.Module packs the module payload verbatim as element 3 of the CALL
+		// array, so unpacking the built expression recovers the argument list
+		// exactly as it goes on the wire.
+		byte[] blob = Exp.build(StringExp.regexReplace(
+			NO_FAIL, Exp.val("[0-9]+"), Exp.val("NUM"),
+			StringRegexFlags.GLOBAL, Exp.stringBin(BIN))).getBytes();
+		List<?> call = (List<?>)Unpacker.unpackObjectList(blob, 0, blob.length);
+		List<?> args = (List<?>)call.get(3);
+
+		assertEquals(4, args.size());
+		assertEquals(66L, args.get(0));
+		assertEquals(Arrays.asList("[0-9]+", "NUM"), ((List<?>)args.get(1)).get(1));
+		assertEquals((long)StringRegexFlags.GLOBAL, args.get(2));
+		assertEquals((long)StringWriteFlags.NO_FAIL, args.get(3));
 	}
 
 	//=================================================================
