@@ -290,8 +290,8 @@ public class TestListExp extends TestSync {
 	}
 	@Test
 	public void listJoinExp() {
-		org.junit.Assume.assumeTrue("List join requires server version 8.1.3 or later",
-			args.serverVersion.isGreaterOrEqual(8, 1, 3, 0));
+		org.junit.Assume.assumeTrue("List join requires server version 8.2.0 or later",
+			args.serverVersion.isGreaterOrEqual(8, 2, 0, 0));
 
 		Key key = new Key(args.namespace, args.set, "explistjoin");
 		client.delete(null, key);

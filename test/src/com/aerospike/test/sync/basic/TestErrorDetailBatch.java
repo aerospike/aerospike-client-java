@@ -49,7 +49,7 @@ import com.aerospike.test.sync.TestSync;
  * <p>The detail is batch-wide opt-in: the parent {@link BatchPolicy#errorDetailVerbosity}
  * is folded into each row's info4 verbosity bits, and the server attaches a per-row
  * error detail (field 45) that the client decodes onto {@link BatchRecord#serverMessage},
- * {@link BatchRecord#subCode}, and {@link BatchRecord#expTrace}. Requires an 8.1.3+ server.
+ * {@link BatchRecord#subCode}, and {@link BatchRecord#expTrace}. Requires an 8.2.0+ server.
  */
 public class TestErrorDetailBatch extends TestSync {
 
@@ -58,8 +58,8 @@ public class TestErrorDetailBatch extends TestSync {
 
 	@BeforeClass
 	public static void setup() {
-		org.junit.Assume.assumeTrue("Extended error-detail requires server version 8.1.3 or later",
-			args.serverVersion.isGreaterOrEqual(8, 1, 3, 0));
+		org.junit.Assume.assumeTrue("Extended error-detail requires server version 8.2.0 or later",
+			args.serverVersion.isGreaterOrEqual(8, 2, 0, 0));
 
 		listKey = new Key(args.namespace, args.set, "edb-list-key");
 
