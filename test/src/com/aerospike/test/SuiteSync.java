@@ -26,6 +26,7 @@ import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.Host;
 import com.aerospike.client.IAerospikeClient;
 import com.aerospike.client.Log;
+import com.aerospike.client.metrics.TestMetricsExporterDispatcher;
 import com.aerospike.client.policy.ClientPolicy;
 import com.aerospike.test.sync.basic.TestAdd;
 import com.aerospike.test.sync.basic.TestAppend;
@@ -49,6 +50,9 @@ import com.aerospike.test.sync.basic.TestHLLExp;
 import com.aerospike.test.sync.basic.TestListExp;
 import com.aerospike.test.sync.basic.TestListMap;
 import com.aerospike.test.sync.basic.TestMapExp;
+import com.aerospike.test.sync.basic.TestMetricsExporter;
+import com.aerospike.test.sync.basic.TestMetricsPolicy;
+import com.aerospike.test.sync.basic.TestMetricsSnapshot;
 import com.aerospike.test.sync.basic.TestOperate;
 import com.aerospike.test.sync.basic.TestOperateBit;
 import com.aerospike.test.sync.basic.TestOperateHll;
@@ -110,6 +114,10 @@ import com.aerospike.client.AerospikeClientIndexTypeTest;
 	TestListExp.class,
 	TestListMap.class,
 	TestMapExp.class,
+	TestMetricsExporterDispatcher.class,
+	TestMetricsExporter.class,
+	TestMetricsPolicy.class,
+	TestMetricsSnapshot.class,
 	TestOperate.class,
 	TestOperateBit.class,
 	TestOperateHll.class,

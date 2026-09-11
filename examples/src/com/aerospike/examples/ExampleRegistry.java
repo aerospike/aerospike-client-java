@@ -106,6 +106,7 @@ public final class ExampleRegistry {
 		registerSync(examples, "QueryRegionFilter", QueryRegionFilter.class, QueryExampleFixtures.queryRegionFilterExample());
 		registerSync(examples, "QueryGeoCollection", QueryGeoCollection.class, QueryExampleFixtures.queryGeoCollectionExample());
 		registerSync(examples, "QueryExecute", QueryExecute.class, QueryExampleFixtures.queryExecuteExample());
+		registerSync(examples, "Metrics", Metrics.class);
 		registerSync(examples, "BatchOperate", BatchOperate.class, AdvancedExampleFixtures.batchOperateExample());
 		registerSync(
 			examples,
