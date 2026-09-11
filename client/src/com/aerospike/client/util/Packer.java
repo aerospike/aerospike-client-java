@@ -95,9 +95,24 @@ public final class Packer {
 	private byte[] buffer;
 	private int offset;
 	private boolean sortMaps;
+	private boolean hasVector;
 
 	public Packer() {
 		// Default to null buffer in estimate buffer size mode.
+	}
+
+	/**
+	 * Was a vector packed? For internal use only.
+	 */
+	public boolean hasVector() {
+		return hasVector;
+	}
+
+	/**
+	 * Record a packed vector. For internal use only.
+	 */
+	public void markVector() {
+		hasVector = true;
 	}
 
 	/**
@@ -675,6 +690,7 @@ public final class Packer {
 	}
 
 	public void packVector(Vector val) {
+		hasVector = true;
 		byte[] buffer = new byte[val.getWireSize()];
 		val.writeTo(buffer, 0);
 		packParticleBytes(buffer, ParticleType.VECTOR);

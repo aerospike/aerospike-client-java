@@ -1577,6 +1577,7 @@ public abstract class Exp {
 
 		@Override
 		public void pack(Packer packer) {
+			packer.markVector();
 			packer.packArrayBegin(3);
 			packer.packInt(opcode);
 			bin.pack(packer);

@@ -30,6 +30,7 @@ public final class Expression implements Serializable {
 	private static final long serialVersionUID = 1L;
 
 	private final byte[] bytes;
+	private final transient boolean hasVector;
 
 	/**
 	 * Expression constructor used by {@link Exp#build(Exp)}
@@ -40,6 +41,7 @@ public final class Expression implements Serializable {
 		packer.createBuffer();
 		exp.pack(packer);
 		bytes = packer.getBuffer();
+		hasVector = packer.hasVector();
 	}
 
 	/**
@@ -47,6 +49,7 @@ public final class Expression implements Serializable {
 	 */
 	Expression(byte[] bytes) {
 		this.bytes = bytes;
+		this.hasVector = false;
 	}
 
 	/**
@@ -78,6 +81,13 @@ public final class Expression implements Serializable {
 	}
 
 	/**
+	 * Does this expression contain a vector? For internal use only.
+	 */
+	public boolean hasVector() {
+		return hasVector;
+	}
+
+	/**
 	 * Return byte instructions in base64 encoding.
 	 */
 	public String getBase64() {
@@ -97,6 +107,7 @@ public final class Expression implements Serializable {
 	 * For internal use only.
 	 */
 	public void write(Command cmd) {
+		cmd.checkVectorSupport(hasVector);
 		cmd.writeExpHeader(bytes.length);
 		System.arraycopy(bytes, 0, cmd.dataBuffer, cmd.dataOffset, bytes.length);
 		cmd.dataOffset += bytes.length;

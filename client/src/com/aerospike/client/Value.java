@@ -99,6 +99,18 @@ public abstract class Value {
 	}
 
 	/**
+	 * Get byte array with vector flag. For internal use only.
+	 */
+	public static Value get(byte[] value, boolean hasVector) {
+		if (value == null) {
+			return NullValue.INSTANCE;
+		}
+		BytesValue bv = new BytesValue(value);
+		bv.hasVector = hasVector;
+		return bv;
+	}
+
+	/**
 	 * Get byte segment or null value instance.
 	 */
 	public static Value get(byte[] value, int offset, int length) {
@@ -384,6 +396,43 @@ public abstract class Value {
 	}
 
 	/**
+	 * Does this value contain a vector? For internal use only.
+	 */
+	public boolean hasVector() {
+		return false;
+	}
+
+	static boolean objectHasVector(Object obj) {
+		if (obj instanceof Vector) {
+			return true;
+		}
+
+		if (obj instanceof Value) {
+			return ((Value)obj).hasVector();
+		}
+
+		if (obj instanceof List<?>) {
+			for (Object item : (List<?>)obj) {
+				if (objectHasVector(item)) {
+					return true;
+				}
+			}
+			return false;
+		}
+
+		if (obj instanceof Map<?,?>) {
+			for (Map.Entry<?,?> entry : ((Map<?,?>)obj).entrySet()) {
+				if (objectHasVector(entry.getKey()) || objectHasVector(entry.getValue())) {
+					return true;
+				}
+			}
+			return false;
+		}
+
+		return false;
+	}
+
+	/**
 	 * Get wire protocol value type.
 	 */
 	public abstract int getType();
@@ -478,6 +527,7 @@ public abstract class Value {
 	public static final class BytesValue extends Value {
 		private final byte[] bytes;
 		private final int type;
+		private boolean hasVector;
 
 		public BytesValue(byte[] bytes) {
 			this.bytes = bytes;
@@ -513,6 +563,11 @@ public abstract class Value {
 		@Override
 		public int getType() {
 			return type;
+		}
+
+		@Override
+		public boolean hasVector() {
+			return hasVector;
 		}
 
 		@Override
@@ -1473,6 +1528,11 @@ public abstract class Value {
 		}
 
 		@Override
+		public boolean hasVector() {
+			return true;
+		}
+
+		@Override
 		public Object getObject() {
 			return vector;
 		}
@@ -1510,6 +1570,8 @@ public abstract class Value {
 	public static final class ValueArray extends Value {
 		private final Value[] array;
 		private byte[] bytes;
+		private boolean hasVector;
+		private boolean hasVectorComputed;
 
 		public ValueArray(Value[] array) {
 			this.array = array;
@@ -1517,7 +1579,18 @@ public abstract class Value {
 
 		@Override
 		public int estimateSize() throws AerospikeException {
-			bytes = Packer.pack(array);
+			Packer packer = new Packer();
+			try {
+				packer.packValueArray(array);
+				packer.createBuffer();
+				packer.packValueArray(array);
+			}
+			catch (Throwable e) {
+				throw new AerospikeException.Serialize(e);
+			}
+			bytes = packer.getBuffer();
+			hasVector = packer.hasVector();
+			hasVectorComputed = true;
 			return bytes.length;
 		}
 
@@ -1529,7 +1602,26 @@ public abstract class Value {
 
 		@Override
 		public void pack(Packer packer) {
+			boolean vectorPresent = packer.hasVector();
 			packer.packValueArray(array);
+
+			if (! vectorPresent) {
+				hasVector = packer.hasVector();
+				hasVectorComputed = true;
+			}
+		}
+
+		@Override
+		public boolean hasVector() {
+			if (! hasVectorComputed && ! hasVector) {
+				for (Value v : array) {
+					if (v != null && v.hasVector()) {
+						hasVector = true;
+						break;
+					}
+				}
+			}
+			return hasVector;
 		}
 
 		@Override
@@ -1576,6 +1668,8 @@ public abstract class Value {
 	public static final class ListValue extends Value {
 		private final List<?> list;
 		private byte[] bytes;
+		private boolean hasVector;
+		private boolean hasVectorComputed;
 
 		public ListValue(List<?> list) {
 			this.list = list;
@@ -1583,7 +1677,18 @@ public abstract class Value {
 
 		@Override
 		public int estimateSize() throws AerospikeException {
-			bytes = Packer.pack(list);
+			Packer packer = new Packer();
+			try {
+				packer.packList(list);
+				packer.createBuffer();
+				packer.packList(list);
+			}
+			catch (Throwable e) {
+				throw new AerospikeException.Serialize(e);
+			}
+			bytes = packer.getBuffer();
+			hasVector = packer.hasVector();
+			hasVectorComputed = true;
 			return bytes.length;
 		}
 
@@ -1595,7 +1700,21 @@ public abstract class Value {
 
 		@Override
 		public void pack(Packer packer) {
+			boolean vectorPresent = packer.hasVector();
 			packer.packList(list);
+
+			if (! vectorPresent) {
+				hasVector = packer.hasVector();
+				hasVectorComputed = true;
+			}
+		}
+
+		@Override
+		public boolean hasVector() {
+			if (! hasVectorComputed && ! hasVector) {
+				hasVector = objectHasVector(list);
+			}
+			return hasVector;
 		}
 
 		@Override
@@ -1643,6 +1762,8 @@ public abstract class Value {
 		private final Map<?,?> map;
 		private final MapOrder order;
 		private byte[] bytes;
+		private boolean hasVector;
+		private boolean hasVectorComputed;
 
 		public MapValue(Map<?,?> map)  {
 			this.map = map;
@@ -1660,7 +1781,18 @@ public abstract class Value {
 
 		@Override
 		public int estimateSize() throws AerospikeException {
-			bytes = Packer.pack(map, order);
+			Packer packer = new Packer();
+			try {
+				packer.packMap(map, order);
+				packer.createBuffer();
+				packer.packMap(map, order);
+			}
+			catch (Throwable e) {
+				throw new AerospikeException.Serialize(e);
+			}
+			bytes = packer.getBuffer();
+			hasVector = packer.hasVector();
+			hasVectorComputed = true;
 			return bytes.length;
 		}
 
@@ -1672,7 +1804,21 @@ public abstract class Value {
 
 		@Override
 		public void pack(Packer packer) {
+			boolean vectorPresent = packer.hasVector();
 			packer.packMap(map, order);
+
+			if (! vectorPresent) {
+				hasVector = packer.hasVector();
+				hasVectorComputed = true;
+			}
+		}
+
+		@Override
+		public boolean hasVector() {
+			if (! hasVectorComputed && ! hasVector) {
+				hasVector = objectHasVector(map);
+			}
+			return hasVector;
 		}
 
 		@Override
@@ -1724,6 +1870,8 @@ public abstract class Value {
 		private final List<? extends Entry<?,?>> list;
 		private byte[] bytes;
 		private final MapOrder order;
+		private boolean hasVector;
+		private boolean hasVectorComputed;
 
 		public SortedMapValue(List<? extends Entry<?,?>> list, MapOrder order)  {
 			this.list = list;
@@ -1732,7 +1880,18 @@ public abstract class Value {
 
 		@Override
 		public int estimateSize() throws AerospikeException {
-			bytes = Packer.pack(list, order);
+			Packer packer = new Packer();
+			try {
+				packer.packMap(list, order);
+				packer.createBuffer();
+				packer.packMap(list, order);
+			}
+			catch (Throwable e) {
+				throw new AerospikeException.Serialize(e);
+			}
+			bytes = packer.getBuffer();
+			hasVector = packer.hasVector();
+			hasVectorComputed = true;
 			return bytes.length;
 		}
 
@@ -1744,7 +1903,26 @@ public abstract class Value {
 
 		@Override
 		public void pack(Packer packer) {
+			boolean vectorPresent = packer.hasVector();
 			packer.packMap(list, order);
+
+			if (! vectorPresent) {
+				hasVector = packer.hasVector();
+				hasVectorComputed = true;
+			}
+		}
+
+		@Override
+		public boolean hasVector() {
+			if (! hasVectorComputed && ! hasVector) {
+				for (Entry<?,?> entry : list) {
+					if (objectHasVector(entry.getKey()) || objectHasVector(entry.getValue())) {
+						hasVector = true;
+						break;
+					}
+				}
+			}
+			return hasVector;
 		}
 
 		@Override

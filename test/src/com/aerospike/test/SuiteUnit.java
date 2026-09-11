@@ -22,6 +22,7 @@ import org.junit.runners.Suite;
 import com.aerospike.client.query.TestOrderKey;
 import com.aerospike.client.query.TestStatementReduce;
 import com.aerospike.test.sync.basic.TestVector;
+import com.aerospike.test.sync.basic.TestVectorClusterSupport;
 import com.aerospike.test.sync.basic.TestVectorEdgeCases;
 import com.aerospike.test.sync.query.TestReduceSpec;
 
@@ -35,6 +36,7 @@ import com.aerospike.test.sync.query.TestReduceSpec;
 	TestStatementReduce.class,
 	TestReduceSpec.class,
 	TestVector.class,
+	TestVectorClusterSupport.class,
 	TestVectorEdgeCases.class
 })
 public class SuiteUnit {

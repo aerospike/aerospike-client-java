@@ -211,6 +211,9 @@ public class Cluster implements Runnable, Closeable {
 	// Does cluster support query by partition.
 	public boolean hasPartitionQuery;
 
+	// Does cluster support vectors.
+	public volatile boolean hasVector;
+
 	private boolean asyncComplete;
 
 	public boolean metricsEnabled;
@@ -927,6 +930,7 @@ public class Cluster implements Runnable, Closeable {
 			addNode(peer);
 		}
 		hasPartitionQuery = Cluster.supportsPartitionQuery(nodeArray);
+		hasVector = Cluster.supportsVector(nodeArray);
 
 		// Replace nodes with copy.
 		nodes = nodeArray;
@@ -952,6 +956,7 @@ public class Cluster implements Runnable, Closeable {
 			addNode(node);
 		}
 		hasPartitionQuery = Cluster.supportsPartitionQuery(nodeArray);
+		hasVector = Cluster.supportsVector(nodeArray);
 
 		// Replace nodes with copy.
 		nodes = nodeArray;
@@ -1027,6 +1032,7 @@ public class Cluster implements Runnable, Closeable {
 			nodeArray = nodeArray2;
 		}
 		hasPartitionQuery = Cluster.supportsPartitionQuery(nodeArray);
+		hasVector = Cluster.supportsVector(nodeArray);
 
 		// Replace nodes with copy.
 		nodes = nodeArray;
@@ -1511,6 +1517,19 @@ public class Cluster implements Runnable, Closeable {
 
 		for (Node node : nodes) {
 			if (! node.hasPartitionQuery()) {
+				return false;
+			}
+		}
+		return true;
+	}
+
+	private static boolean supportsVector(Node[] nodes) {
+		if (nodes.length == 0) {
+			return false;
+		}
+
+		for (Node node : nodes) {
+			if (! node.hasVector()) {
 				return false;
 			}
 		}
