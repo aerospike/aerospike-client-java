@@ -109,8 +109,10 @@ public final class MetricsPolicy {
 
 	/**
 	 * Registered metrics exporters. Invoked in registration order by the
-	 * dedicated metrics thread. If non-empty, a metrics thread is started
-	 * alongside the existing MetricsListener path.
+	 * dedicated metrics thread. Registrations are captured when metrics are
+	 * enabled and remain fixed until metrics are disabled and enabled again.
+	 * If non-empty, a metrics thread is started alongside the existing
+	 * MetricsListener path.
 	 */
 	private final List<IMetricsExporter> exporters = new ArrayList<>();
 
@@ -276,6 +278,8 @@ public final class MetricsPolicy {
 
 	/**
 	 * Register a metrics exporter. Exporters are invoked in registration order.
+	 * If metrics are already enabled, the exporter is used the next time metrics
+	 * are disabled and enabled.
 	 *
 	 * @param exporter the exporter to add; must not be null
 	 * @throws IllegalArgumentException if exporter is null

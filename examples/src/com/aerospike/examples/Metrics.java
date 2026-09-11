@@ -80,8 +80,12 @@ public class Metrics extends Example {
 			return exporter;
 		}
 		finally {
-			client.disableMetrics();
-			exporter.close();
+			try {
+				client.disableMetrics();
+			}
+			finally {
+				exporter.close();
+			}
 		}
 	}
 

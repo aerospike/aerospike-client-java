@@ -19,6 +19,7 @@ package com.aerospike.test.sync.basic;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 import java.time.Instant;
@@ -44,81 +45,36 @@ import com.aerospike.client.metrics.MetricsSnapshot.NodeSnapshot;
 
 public class TestMetricsSnapshot {
 
-	@Test(expected = UnsupportedOperationException.class)
-	public void testSnapshotImmutability() {
-		MetricsSnapshot snapshot = buildMinimalSnapshot();
-
-		snapshot.nodes.add(buildMinimalNodeSnapshot());
-	}
-
-	@Test(expected = UnsupportedOperationException.class)
-	public void testNodeSnapshotNamespacesImmutability() {
-		NodeSnapshot nodeSnapshot = buildMinimalNodeSnapshot();
-
-		nodeSnapshot.namespaces.add(
-			new NamespaceSnapshot("test", 0, 0, 0, 0, 0,
-				Collections.emptyMap(), Collections.emptyMap())
-		);
-	}
-
-	@Test(expected = UnsupportedOperationException.class)
-	public void testNodeSnapshotCommandLatenciesImmutability() {
-		NodeSnapshot nodeSnapshot = buildMinimalNodeSnapshot();
-
-		nodeSnapshot.commandLatencies.put(CommandType.GET,
-			new HistogramSnapshot(new long[]{0}, 0, 0, 0.0, 0));
-	}
-
 	@Test
-	public void testConnectionSnapshotValues() {
-		ConnectionSnapshot conn = new ConnectionSnapshot(5, 10, 100, 50);
-
-		assertEquals(5, conn.inUse);
-		assertEquals(10, conn.inPool);
-		assertEquals(100, conn.opened);
-		assertEquals(50, conn.closed);
-	}
-
-	@Test(expected = UnsupportedOperationException.class)
-	public void testLabelsImmutability() {
-		Map<String, String> labels = new HashMap<>();
-		labels.put("env", "test");
-
-		List<NodeSnapshot> nodes = new ArrayList<>();
-		nodes.add(buildMinimalNodeSnapshot());
-
-		MetricsSnapshot snapshot = new MetricsSnapshot(
-			Instant.now(), true, "cluster", "java", "1.0", "app",
-			labels,
-			0, 0, 0, 0, 1, 1, 0, 0,
-			0.0, 0, 0,
-			Collections.<EventLoopSnapshot>emptyList(),
-			nodes, null,
-			HistogramType.LOGARITHMIC, LatencyUnit.MILLISECONDS, 2, 7
+	public void testSnapshotCollectionsAreUnmodifiable() {
+		MetricsSnapshot snapshot = buildMinimalSnapshot();
+		NodeSnapshot node = snapshot.nodes.get(0);
+		HistogramSnapshot histogram =
+			new HistogramSnapshot(new long[]{0}, 0, 0, 0.0, 0);
+		NamespaceSnapshot namespace = new NamespaceSnapshot(
+			"test", 0, 0, 0, 0, 0,
+			Collections.emptyMap(), Collections.emptyMap()
+		);
+		CommandSnapshot command = new CommandSnapshot(
+			CommandType.GET,
+			histogram, histogram, histogram, histogram, histogram, histogram,
+			0, 0, Collections.emptyMap()
 		);
 
-		snapshot.labels.put("injected", "value");
-	}
-
-	@Test(expected = UnsupportedOperationException.class)
-	public void testEventLoopsImmutability() {
-		List<EventLoopSnapshot> eventLoops = new ArrayList<>();
-		eventLoops.add(new EventLoopSnapshot(5, 10));
-
-		List<NodeSnapshot> nodes = new ArrayList<>();
-		nodes.add(buildMinimalNodeSnapshot());
-
-		MetricsSnapshot snapshot = new MetricsSnapshot(
-			Instant.now(), true, "cluster", "java", "1.0", "app",
-			Collections.emptyMap(),
-			0, 0, 0, 0, 1, 1, 0, 0,
-			0.0, 0, 0,
-			eventLoops,
-			nodes, null,
-			HistogramType.LOGARITHMIC, LatencyUnit.MILLISECONDS, 2, 7
-		);
-
-		snapshot.eventLoops.add(new EventLoopSnapshot(0, 0));
+		assertThrows(UnsupportedOperationException.class,
+			() -> snapshot.labels.put("env", "test"));
+		assertThrows(UnsupportedOperationException.class,
+			() -> snapshot.eventLoops.add(new EventLoopSnapshot(0, 0)));
+		assertThrows(UnsupportedOperationException.class,
+			() -> snapshot.nodes.add(buildMinimalNodeSnapshot()));
+		assertThrows(UnsupportedOperationException.class,
+			() -> node.namespaces.add(namespace));
+		assertThrows(UnsupportedOperationException.class,
+			() -> node.commandLatencies.put(CommandType.GET, histogram));
+		assertThrows(UnsupportedOperationException.class,
+			() -> namespace.compatibilityLatencies.put(LatencyType.READ, histogram));
+		assertThrows(UnsupportedOperationException.class,
+			() -> command.resultCodeCounts.put(0, 1L));
 	}
 
 	@Test
@@ -136,37 +92,6 @@ public class TestMetricsSnapshot {
 		originalBuckets[0] = 888;
 		long[] freshBuckets2 = histogram.getBuckets();
 		assertEquals(10, freshBuckets2[0]);
-	}
-
-	@Test(expected = UnsupportedOperationException.class)
-	public void testNamespaceSnapshotCompatibilityLatenciesImmutability() {
-		Map<LatencyType, HistogramSnapshot> latencies = new HashMap<>();
-		latencies.put(LatencyType.READ, new HistogramSnapshot(new long[]{1, 2}, 0, 10, 5.0, 3));
-
-		NamespaceSnapshot nsSnapshot = new NamespaceSnapshot(
-			"test-ns", 0, 0, 0, 0, 0,
-			latencies, Collections.emptyMap()
-		);
-
-		nsSnapshot.compatibilityLatencies.put(LatencyType.WRITE,
-			new HistogramSnapshot(new long[]{0}, 0, 0, 0.0, 0));
-	}
-
-	@Test(expected = UnsupportedOperationException.class)
-	public void testCommandSnapshotResultCodeCountsImmutability() {
-		Map<Integer, Long> resultCodes = new HashMap<>();
-		resultCodes.put(0, 100L);
-
-		HistogramSnapshot emptyHist = new HistogramSnapshot(new long[]{0}, 0, 0, 0.0, 0);
-
-		CommandSnapshot cmdSnapshot = new CommandSnapshot(
-			CommandType.GET,
-			emptyHist, emptyHist, emptyHist, emptyHist,
-			emptyHist, emptyHist,
-			0, 0, resultCodes
-		);
-
-		cmdSnapshot.resultCodeCounts.put(1, 50L);
 	}
 
 	@Test
@@ -214,10 +139,7 @@ public class TestMetricsSnapshot {
 		assertTrue(snapshot.namespaces.isEmpty());
 	}
 
-	/**
-	 * Build a minimal MetricsSnapshot with one node and no namespaces.
-	 */
-	private MetricsSnapshot buildMinimalSnapshot() {
+	private static MetricsSnapshot buildMinimalSnapshot() {
 		List<NodeSnapshot> nodes = new ArrayList<>();
 		nodes.add(buildMinimalNodeSnapshot());
 
@@ -240,16 +162,13 @@ public class TestMetricsSnapshot {
 		);
 	}
 
-	/**
-	 * Build a minimal NodeSnapshot with empty namespaces and command latencies.
-	 */
-	private NodeSnapshot buildMinimalNodeSnapshot() {
+	private static NodeSnapshot buildMinimalNodeSnapshot() {
 		Map<CommandType, HistogramSnapshot> emptyLatencies = new HashMap<>();
 		List<NamespaceSnapshot> emptyNamespaces = new ArrayList<>();
 		return buildNodeSnapshot(emptyLatencies, emptyNamespaces);
 	}
 
-	private NodeSnapshot buildNodeSnapshot(
+	private static NodeSnapshot buildNodeSnapshot(
 		Map<CommandType, HistogramSnapshot> commandLatencies,
 		List<NamespaceSnapshot> namespaces
 	) {

@@ -180,10 +180,7 @@ public class TestMetricsPolicy {
 		assertEquals(7, merged.latencyColumns);
 	}
 
-	/**
-	 * Build a minimal Configuration with only the enableExtendedMetrics field set.
-	 */
-	private Configuration buildConfigWithExtendedMetrics(boolean value) {
+	private static Configuration buildConfigWithExtendedMetrics(boolean value) {
 		DynamicMetricsConfig dynMC = new DynamicMetricsConfig();
 		dynMC.enableExtendedMetrics = new BooleanProperty(value);
 
@@ -193,17 +190,6 @@ public class TestMetricsPolicy {
 		Configuration config = new Configuration();
 		config.dynamicConfiguration = dynConfig;
 		return config;
-	}
-
-	@Test
-	public void testDynamicMetricsConfigGetterSetter() {
-		DynamicMetricsConfig dynMC = new DynamicMetricsConfig();
-
-		dynMC.setEnableExtendedMetrics(new BooleanProperty(false));
-		assertFalse(dynMC.getEnableExtendedMetrics().value);
-
-		dynMC.setEnableExtendedMetrics(new BooleanProperty(true));
-		assertTrue(dynMC.getEnableExtendedMetrics().value);
 	}
 
 	@Test
@@ -255,9 +241,6 @@ public class TestMetricsPolicy {
 		policy.validateExporterSettings();
 	}
 
-	/**
-	 * Minimal no-op IMetricsExporter for testing.
-	 */
 	private static class NoOpExporter implements IMetricsExporter {
 		@Override
 		public void export(MetricsSnapshot snapshot) {

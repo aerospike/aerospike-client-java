@@ -25,71 +25,75 @@ import com.aerospike.client.util.Util;
  * thread and command hot path.
  */
 public class MetricsExporterThread extends Thread {
-	private final MetricsPolicy policy;
-	private final MetricsSnapshotBuilder snapshotBuilder;
-	private final MetricsExporterDispatcher dispatcher;
-	private volatile boolean running = true;
+    private final MetricsPolicy policy;
+    private final MetricsSnapshotBuilder snapshotBuilder;
+    private final MetricsExporterDispatcher dispatcher;
+    private volatile boolean running = true;
 
-	public MetricsExporterThread(Cluster cluster, MetricsPolicy policy) {
-		super("aerospike-metrics-exporter");
-		setDaemon(true);
+    public MetricsExporterThread(Cluster cluster, MetricsPolicy policy) {
+        super("aerospike-metrics-exporter");
+        setDaemon(true);
 
-		policy.validateExporterSettings();
-		this.policy = policy;
-		this.snapshotBuilder = new MetricsSnapshotBuilder(cluster, policy);
-		this.dispatcher = new MetricsExporterDispatcher(policy);
-	}
+        policy.validateExporterSettings();
+        this.policy = policy;
+        this.snapshotBuilder = new MetricsSnapshotBuilder(cluster, policy);
+        this.dispatcher = new MetricsExporterDispatcher(policy);
+    }
 
-	@Override
-	public void run() {
-		Log.info("Metrics exporter thread started, interval=" + policy.interval
-			+ "s, exporters=" + policy.getExporters().size());
+    @Override
+    public void run() {
+        Log.info("Metrics exporter thread started, interval=" + policy.interval
+                + "s, exporters=" + policy.getExporters().size());
 
-		while (sleepUntilNextSnapshot()) {
-			MetricsSnapshot snapshot;
+        try {
+            while (sleepUntilNextSnapshot()) {
+                MetricsSnapshot snapshot;
 
-			try {
-				snapshot = snapshotBuilder.build();
-			}
-			catch (Exception e) {
-				Log.warn("Failed to capture metrics snapshot: " + Util.getErrorMessage(e));
-				continue;
-			}
+                try {
+                    snapshot = snapshotBuilder.build();
+                } catch (Exception e) {
+                    Log.warn("Failed to capture metrics snapshot: " + Util.getErrorMessage(e));
+                    continue;
+                }
 
-			dispatcher.dispatch(snapshot);
-		}
+                dispatcher.dispatch(snapshot);
+            }
+        } finally {
+            running = false;
+            dispatcher.shutdown();
+            Log.info("Metrics exporter thread stopped");
+        }
+    }
 
-		Log.info("Metrics exporter thread stopped");
-	}
+    /**
+     * Signal the metrics exporter thread and all exporter dispatchers to stop.
+     * This method is safe to call more than once.
+     */
+    public void shutdown() {
+        running = false;
 
-	/**
-	 * Signal the metrics exporter thread and all exporter dispatchers to stop.
-	 * This method is safe to call more than once.
-	 */
-	public void shutdown() {
-		if (!running) {
-			return;
-		}
+        try {
+            dispatcher.shutdown();
+        } finally {
+            interrupt();
+        }
+    }
 
-		running = false;
-		dispatcher.shutdown();
-		interrupt();
-	}
+    private boolean sleepUntilNextSnapshot() {
+        if (!running) {
+            return false;
+        }
 
-	private boolean sleepUntilNextSnapshot() {
-		if (!running) {
-			return false;
-		}
-
-		try {
-			Thread.sleep(policy.interval * 1000L);
-			return running;
-		}
-		catch (InterruptedException e) {
-			if (running) {
-				Thread.currentThread().interrupt();
-			}
-			return false;
-		}
-	}
+        try {
+            Thread.sleep(policy.interval * 1000L);
+            return running;
+        } catch (InterruptedException e) {
+            if (running) {
+                // Thread.sleep() clears the interrupt status when it throws.
+                // Restore an unexpected interrupt before terminating the thread.
+                Thread.currentThread().interrupt();
+            }
+            return false;
+        }
+    }
 }

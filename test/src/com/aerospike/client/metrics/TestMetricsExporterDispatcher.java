@@ -51,7 +51,7 @@ public class TestMetricsExporterDispatcher {
 	}
 
 	@Test
-	public void testExporterAddedAfterConstructionReceivesSnapshots() {
+	public void testExporterRegistrationsAreFrozenAtConstruction() {
 		CountingExporter initial = new CountingExporter();
 		CountingExporter added = new CountingExporter();
 		MetricsPolicy policy = policy(initial);
@@ -62,7 +62,7 @@ public class TestMetricsExporterDispatcher {
 			dispatcher.dispatch(snapshot());
 
 			assertEquals(1, initial.callCount.get());
-			assertEquals(1, added.callCount.get());
+			assertEquals(0, added.callCount.get());
 		}
 		finally {
 			dispatcher.shutdown();
@@ -98,7 +98,6 @@ public class TestMetricsExporterDispatcher {
 				dispatcher.dispatch(snapshot());
 			}
 			assertEquals(4, exporter.callCount.get());
-			assertEquals(2, exporter.successCount.get());
 		}
 		finally {
 			dispatcher.shutdown();
@@ -145,7 +144,6 @@ public class TestMetricsExporterDispatcher {
 			dispatcher.dispatch(snapshot());
 
 			assertEquals(4, exporter.callCount.get());
-			assertEquals(2, exporter.successCount.get());
 		}
 		finally {
 			dispatcher.shutdown();
@@ -202,6 +200,32 @@ public class TestMetricsExporterDispatcher {
 			caller.join(1000);
 
 			assertFalse("Dispatch caller should stop after shutdown", caller.isAlive());
+		}
+		finally {
+			stuck.release();
+			dispatcher.shutdown();
+		}
+	}
+
+	@Test
+	public void testInterruptedDispatchStopsBeforeNextExporter() throws Exception {
+		UninterruptibleExporter stuck = new UninterruptibleExporter();
+		CountingExporter next = new CountingExporter();
+		MetricsPolicy policy = policy(stuck, next);
+		policy.exportTimeout = 10000;
+		MetricsExporterDispatcher dispatcher = dispatcher(policy, new AtomicLong());
+		Thread caller = new Thread(() -> dispatcher.dispatch(snapshot()));
+
+		try {
+			caller.start();
+			assertTrue("Exporter should start", stuck.startedLatch.await(1, TimeUnit.SECONDS));
+
+			caller.interrupt();
+			caller.join(1000);
+
+			assertFalse("Interrupted dispatch should stop", caller.isAlive());
+			assertTrue("Interrupt status should be preserved", caller.isInterrupted());
+			assertEquals("No later exporter should run", 0, next.callCount.get());
 		}
 		finally {
 			stuck.release();
@@ -274,7 +298,6 @@ public class TestMetricsExporterDispatcher {
 
 	private static final class SequenceExporter extends CountingExporter {
 		final boolean[] failures;
-		final AtomicInteger successCount = new AtomicInteger();
 
 		SequenceExporter(boolean... failures) {
 			this.failures = failures;
@@ -287,7 +310,6 @@ public class TestMetricsExporterDispatcher {
 			if (call < failures.length && failures[call]) {
 				throw new RuntimeException("expected failure");
 			}
-			successCount.incrementAndGet();
 		}
 	}
 

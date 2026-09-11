@@ -16,9 +16,10 @@
  */
 package com.aerospike.client.metrics;
 
-import java.util.IdentityHashMap;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.Locale;
-import java.util.Map;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -39,9 +40,8 @@ import com.aerospike.client.util.Util;
 final class MetricsExporterDispatcher {
 	private final MetricsPolicy policy;
 	private final LongSupplier clock;
-	private final Supplier<ExecutorService> executorFactory;
 	private final TimeUnit timeoutUnit;
-	private final Map<IMetricsExporter, ExporterState> states;
+	private final List<ExporterRegistration> registrations;
 	private volatile boolean running = true;
 
 	MetricsExporterDispatcher(MetricsPolicy policy) {
@@ -61,41 +61,38 @@ final class MetricsExporterDispatcher {
 	) {
 		this.policy = policy;
 		this.clock = clock;
-		this.executorFactory = executorFactory;
 		this.timeoutUnit = timeoutUnit;
-		this.states = new IdentityHashMap<>();
+		List<ExporterRegistration> registrations = new ArrayList<>();
 
 		for (IMetricsExporter exporter : policy.getExporters()) {
-			states.put(exporter, new ExporterState(executorFactory.get()));
+			registrations.add(new ExporterRegistration(exporter, executorFactory.get()));
 		}
+		this.registrations = Collections.unmodifiableList(registrations);
 	}
 
 	void dispatch(MetricsSnapshot snapshot) {
-		for (IMetricsExporter exporter : policy.getExporters()) {
+		for (ExporterRegistration registration : registrations) {
 			if (!running) {
 				return;
 			}
 
-			ExporterState state = states.get(exporter);
-
-			if (state == null) {
-				state = addState(exporter);
-			}
-
-			if (state == null || !isReady(exporter, state)) {
+			if (!isReady(registration)) {
 				continue;
 			}
 
 			Future<?> future;
 
 			try {
-				future = state.submit(() -> exporter.export(snapshot));
+				future = registration.submit(
+					() -> registration.exporter.export(snapshot));
 			}
 			catch (RejectedExecutionException ignored) {
 				continue;
 			}
 
-			await(exporter, state, future);
+			if (!awaitExport(registration, future)) {
+				return;
+			}
 		}
 	}
 
@@ -106,96 +103,94 @@ final class MetricsExporterDispatcher {
 
 		running = false;
 
-		synchronized (states) {
-			for (ExporterState state : states.values()) {
-				state.shutdown();
-			}
+		for (ExporterRegistration registration : registrations) {
+			registration.shutdown();
 		}
 	}
 
-	private ExporterState addState(IMetricsExporter exporter) {
-		synchronized (states) {
-			if (!running) {
-				return null;
-			}
-
-			ExporterState state = states.get(exporter);
-
-			if (state == null) {
-				state = new ExporterState(executorFactory.get());
-				states.put(exporter, state);
-			}
-			return state;
-		}
-	}
-
-	private boolean isReady(IMetricsExporter exporter, ExporterState state) {
-		if (!state.suspended) {
+	private boolean isReady(ExporterRegistration registration) {
+		if (!registration.suspended) {
 			return true;
 		}
 
-		long elapsed = clock.getAsLong() - state.suspendedAt;
+		long elapsed = clock.getAsLong() - registration.suspendedAt;
 
 		if (elapsed < TimeUnit.SECONDS.toMillis(policy.suspendRetryInterval)) {
 			return false;
 		}
 
-		Log.info("Retrying suspended exporter: " + exporterName(exporter));
+		Log.info("Retrying suspended exporter: "
+			+ exporterName(registration.exporter));
 		return true;
 	}
 
-	private void await(
-		IMetricsExporter exporter,
-		ExporterState state,
+	/**
+	 * Wait for one exporter invocation to finish.
+	 *
+	 * @return {@code true} when dispatch may continue to the remaining
+	 * exporters, including after an exporter-specific failure; {@code false}
+	 * when cancellation or interruption requires dispatch to stop
+	 */
+	private boolean awaitExport(
+		ExporterRegistration registration,
 		Future<?> future
 	) {
 		try {
 			future.get(policy.exportTimeout, timeoutUnit);
 
-			if (state.suspended) {
-				Log.info("Exporter " + exporterName(exporter)
+			if (registration.suspended) {
+				Log.info("Exporter " + exporterName(registration.exporter)
 					+ " resumed after successful retry");
 			}
-			state.reset();
+			registration.reset();
+			return true;
 		}
 		catch (TimeoutException e) {
 			future.cancel(true);
-			recordFailure(exporter, state, " timed out after "
+			recordFailure(registration, " timed out after "
 				+ policy.exportTimeout + timeoutSuffix() + ", snapshot dropped");
+			return true;
 		}
 		catch (ExecutionException e) {
-			recordFailure(exporter, state,
+			// The task has already completed exceptionally, so cancellation
+			// would have no effect.
+			recordFailure(registration,
 				" failed: " + Util.getErrorMessage(e.getCause()));
+			return true;
 		}
 		catch (CancellationException ignored) {
 			// Cancellation is expected during shutdown.
+			return false;
 		}
 		catch (InterruptedException e) {
 			future.cancel(true);
 
 			if (running) {
+				// Future.get() clears the interrupt status when it throws.
+				// Restore an unexpected interrupt on the metrics thread.
 				Thread.currentThread().interrupt();
 			}
+			return false;
 		}
 		finally {
-			state.clear(future);
+			registration.clear(future);
 		}
 	}
 
 	private void recordFailure(
-		IMetricsExporter exporter,
-		ExporterState state,
+		ExporterRegistration registration,
 		String message
 	) {
-		state.consecutiveFailures++;
-		Log.warn("Exporter " + exporterName(exporter) + message
-			+ " (consecutive=" + state.consecutiveFailures + ")");
+		registration.consecutiveFailures++;
+		Log.warn("Exporter " + exporterName(registration.exporter) + message
+			+ " (consecutive=" + registration.consecutiveFailures + ")");
 
-		if (state.consecutiveFailures >= policy.maxConsecutiveFailures) {
-			state.suspended = true;
-			state.suspendedAt = clock.getAsLong();
-			Log.error("Exporter " + exporterName(exporter) + " suspended after "
-				+ state.consecutiveFailures + " consecutive failures");
+		if (registration.consecutiveFailures >= policy.maxConsecutiveFailures) {
+			registration.suspended = true;
+			registration.suspendedAt = clock.getAsLong();
+			Log.error("Exporter " + exporterName(registration.exporter)
+				+ " suspended after " + registration.consecutiveFailures
+				+ " consecutive failures");
 		}
 	}
 
@@ -218,14 +213,19 @@ final class MetricsExporterDispatcher {
 		});
 	}
 
-	private static final class ExporterState {
+	private static final class ExporterRegistration {
+		final IMetricsExporter exporter;
 		final ExecutorService executor;
 		int consecutiveFailures;
 		boolean suspended;
 		long suspendedAt;
-		volatile Future<?> inFlight;
+		Future<?> inFlight;
 
-		ExporterState(ExecutorService executor) {
+		ExporterRegistration(
+			IMetricsExporter exporter,
+			ExecutorService executor
+		) {
+			this.exporter = exporter;
 			this.executor = executor;
 		}
 
