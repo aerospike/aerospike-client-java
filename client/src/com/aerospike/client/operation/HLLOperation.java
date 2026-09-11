@@ -111,8 +111,8 @@ public final class HLLOperation {
 	 * 							Also, indexBitCount + minHashBitCount must be &lt;= 64.
 	 */
 	public static Operation add(HLLPolicy policy, String binName, List<Value> list, int indexBitCount, int minHashBitCount) {
-		byte[] bytes = Pack.pack(HLLOperation.ADD, list, indexBitCount, minHashBitCount, policy.flags);
-		return new Operation(Operation.Type.HLL_MODIFY, binName, Value.get(bytes));
+		return new Operation(Operation.Type.HLL_MODIFY, binName,
+			Pack.packValue(ADD, null, list, indexBitCount, minHashBitCount, policy.flags));
 	}
 
 	/**

@@ -138,7 +138,8 @@ public class CdtOperation {
             packedBytes = packCdtModify(CDT.Type.SELECT, flags, modifyExp, ctx);
         }
 
-        return new Operation(Operation.Type.CDT_MODIFY, binName, Value.get(packedBytes, ParticleType.BLOB));
+        return new Operation(Operation.Type.CDT_MODIFY, binName,
+            Value.get(packedBytes, modifyExp.hasVector()));
     }
 
 	/**

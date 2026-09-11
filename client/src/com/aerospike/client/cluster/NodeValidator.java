@@ -371,6 +371,7 @@ public final class NodeValidator {
 
 		if (serverVersion.isGreaterOrEqual(Version.SERVER_VERSION_8_1_3)) {
 			features |= Node.HAS_QUERY_ORDER_BY;
+			features |= Node.HAS_VECTOR;
 		}
 	}
 

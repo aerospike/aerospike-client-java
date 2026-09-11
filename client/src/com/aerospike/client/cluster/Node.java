@@ -63,6 +63,7 @@ public class Node implements Closeable {
 	public static final int HAS_PARTITION_QUERY = (1 << 3);
 	public static final int HAS_QUERY_OPS_PROJECTION_EXT = (1 << 4);
 	public static final int HAS_QUERY_ORDER_BY = (1 << 5);
+	public static final int HAS_VECTOR = (1 << 6);
 
 	private static final String[] INFO_PERIODIC = new String[] {"node", "peers-generation", "partition-generation"};
 	private static final String[] INFO_PERIODIC_REB = new String[] {"node", "peers-generation", "partition-generation", "rebalance-generation"};
@@ -1354,6 +1355,13 @@ public class Node implements Closeable {
 
 	public final boolean hasQueryOrderBy() {
 		return (features & HAS_QUERY_ORDER_BY) != 0;
+	}
+
+	/**
+	 * Does server support vectors?
+	 */
+	public final boolean hasVector() {
+		return (features & HAS_VECTOR) != 0;
 	}
 
 	/**

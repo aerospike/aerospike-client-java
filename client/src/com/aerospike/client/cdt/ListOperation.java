@@ -186,7 +186,7 @@ public class ListOperation {
 	 */
 	public static Operation append(String binName, Value value, CTX... ctx) {
 		byte[] bytes = Pack.pack(ListOperation.APPEND, value, ctx);
-		return new Operation(Operation.Type.CDT_MODIFY, binName, Value.get(bytes));
+		return new Operation(Operation.Type.CDT_MODIFY, binName, Value.get(bytes, value.hasVector()));
 	}
 
 	/**
@@ -196,7 +196,7 @@ public class ListOperation {
 	 */
 	public static Operation append(ListPolicy policy, String binName, Value value, CTX... ctx) {
 		byte[] bytes = Pack.pack(ListOperation.APPEND, value, policy.attributes, policy.flags, ctx);
-		return new Operation(Operation.Type.CDT_MODIFY, binName, Value.get(bytes));
+		return new Operation(Operation.Type.CDT_MODIFY, binName, Value.get(bytes, value.hasVector()));
 	}
 
 	/**
@@ -205,8 +205,8 @@ public class ListOperation {
 	 * Server returns list size.
 	 */
 	public static Operation appendItems(String binName, List<Value> list, CTX... ctx) {
-		byte[] bytes = Pack.pack(ListOperation.APPEND_ITEMS, list, ctx);
-		return new Operation(Operation.Type.CDT_MODIFY, binName, Value.get(bytes));
+		return new Operation(Operation.Type.CDT_MODIFY, binName,
+			Pack.packValue(ListOperation.APPEND_ITEMS, ctx, list));
 	}
 
 	/**
@@ -215,8 +215,8 @@ public class ListOperation {
 	 * Server returns list size.
 	 */
 	public static Operation appendItems(ListPolicy policy, String binName, List<Value> list, CTX... ctx) {
-		byte[] bytes = Pack.pack(ListOperation.APPEND_ITEMS, list, policy.attributes, policy.flags, ctx);
-		return new Operation(Operation.Type.CDT_MODIFY, binName, Value.get(bytes));
+		return new Operation(Operation.Type.CDT_MODIFY, binName,
+			Pack.packValue(ListOperation.APPEND_ITEMS, ctx, list, policy.attributes, policy.flags));
 	}
 
 	/**
@@ -226,7 +226,7 @@ public class ListOperation {
 	 */
 	public static Operation insert(String binName, int index, Value value, CTX... ctx) {
 		byte[] bytes = Pack.pack(ListOperation.INSERT, index, value, ctx);
-		return new Operation(Operation.Type.CDT_MODIFY, binName, Value.get(bytes));
+		return new Operation(Operation.Type.CDT_MODIFY, binName, Value.get(bytes, value.hasVector()));
 	}
 
 	/**
@@ -236,7 +236,7 @@ public class ListOperation {
 	 */
 	public static Operation insert(ListPolicy policy, String binName, int index, Value value, CTX... ctx) {
 		byte[] bytes = Pack.pack(ListOperation.INSERT, index, value, policy.flags, ctx);
-		return new Operation(Operation.Type.CDT_MODIFY, binName, Value.get(bytes));
+		return new Operation(Operation.Type.CDT_MODIFY, binName, Value.get(bytes, value.hasVector()));
 	}
 
 	/**
@@ -245,8 +245,8 @@ public class ListOperation {
 	 * Server returns list size.
 	 */
 	public static Operation insertItems(String binName, int index, List<Value> list, CTX... ctx) {
-		byte[] bytes = Pack.pack(ListOperation.INSERT_ITEMS, index, list, ctx);
-		return new Operation(Operation.Type.CDT_MODIFY, binName, Value.get(bytes));
+		return new Operation(Operation.Type.CDT_MODIFY, binName,
+			Pack.packValue(ListOperation.INSERT_ITEMS, ctx, index, list));
 	}
 
 	/**
@@ -255,8 +255,8 @@ public class ListOperation {
 	 * Server returns list size.
 	 */
 	public static Operation insertItems(ListPolicy policy, String binName, int index, List<Value> list, CTX... ctx) {
-		byte[] bytes = Pack.pack(ListOperation.INSERT_ITEMS, index, list, policy.flags, ctx);
-		return new Operation(Operation.Type.CDT_MODIFY, binName, Value.get(bytes));
+		return new Operation(Operation.Type.CDT_MODIFY, binName,
+			Pack.packValue(ListOperation.INSERT_ITEMS, ctx, index, list, policy.flags));
 	}
 
 	/**
@@ -287,7 +287,7 @@ public class ListOperation {
 	 */
 	public static Operation increment(String binName, int index, Value value, CTX... ctx) {
 		byte[] bytes = Pack.pack(ListOperation.INCREMENT, index, value, ctx);
-		return new Operation(Operation.Type.CDT_MODIFY, binName, Value.get(bytes));
+		return new Operation(Operation.Type.CDT_MODIFY, binName, Value.get(bytes, value.hasVector()));
 	}
 
 	/**
@@ -298,7 +298,7 @@ public class ListOperation {
 	 */
 	public static Operation increment(ListPolicy policy, String binName, int index, Value value, CTX... ctx) {
 		byte[] bytes = Pack.pack(ListOperation.INCREMENT, index, value, policy.attributes, policy.flags, ctx);
-		return new Operation(Operation.Type.CDT_MODIFY, binName, Value.get(bytes));
+		return new Operation(Operation.Type.CDT_MODIFY, binName, Value.get(bytes, value.hasVector()));
 	}
 
 	/**
@@ -366,7 +366,7 @@ public class ListOperation {
 	 */
 	public static Operation set(String binName, int index, Value value, CTX... ctx) {
 		byte[] bytes = Pack.pack(ListOperation.SET, index, value, ctx);
-		return new Operation(Operation.Type.CDT_MODIFY, binName, Value.get(bytes));
+		return new Operation(Operation.Type.CDT_MODIFY, binName, Value.get(bytes, value.hasVector()));
 	}
 
 	/**
@@ -376,7 +376,7 @@ public class ListOperation {
 	 */
 	public static Operation set(ListPolicy policy, String binName, int index, Value value, CTX... ctx) {
 		byte[] bytes = Pack.pack(ListOperation.SET, index, value, policy.flags, ctx);
-		return new Operation(Operation.Type.CDT_MODIFY, binName, Value.get(bytes));
+		return new Operation(Operation.Type.CDT_MODIFY, binName, Value.get(bytes, value.hasVector()));
 	}
 
 	/**

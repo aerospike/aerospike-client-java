@@ -154,6 +154,9 @@ public class Command {
 	public int totalTimeout;
 	public Long version;
 
+	// True if the cluster supports vectors.
+	public boolean vectorSupported = true;
+
 	public Command(int socketTimeout, int totalTimeout, int maxRetries) {
 		this.maxRetries = maxRetries;
 		this.totalTimeout = totalTimeout;
@@ -2460,11 +2463,13 @@ public class Command {
 	private final void estimateOperationSize(Bin bin) {
 		dataOffset += Buffer.estimateSizeUtf8(bin.name) + OPERATION_HEADER_SIZE;
 		dataOffset += bin.value.estimateSize();
+		checkVectorSupport(bin.value.hasVector());
 	}
 
 	private final void estimateOperationSize(Operation operation) {
 		dataOffset += Buffer.estimateSizeUtf8(operation.binName) + OPERATION_HEADER_SIZE;
 		dataOffset += operation.value.estimateSize();
+		checkVectorSupport(operation.value.hasVector());
 	}
 
 	private void estimateReadOperationSize(Operation operation) {
@@ -2473,6 +2478,17 @@ public class Command {
 		}
 		dataOffset += Buffer.estimateSizeUtf8(operation.binName) + OPERATION_HEADER_SIZE;
 		dataOffset += operation.value.estimateSize();
+		checkVectorSupport(operation.value.hasVector());
+	}
+
+	/**
+	 * Verify vector support. For internal use only.
+	 */
+	public final void checkVectorSupport(boolean vectorPresent) {
+		if (vectorPresent && ! vectorSupported) {
+			throw new AerospikeException(ResultCode.PARAMETER_ERROR,
+				"Vector is not supported by all nodes in the cluster");
+		}
 	}
 
 	private final void estimateOperationSize(String binName) {
@@ -2848,6 +2864,7 @@ public class Command {
 	}
 
 	private final void writeOperation(Bin bin, Operation.Type operation) {
+		checkVectorSupport(bin.value.hasVector());
 		int nameLength = Buffer.stringToUtf8(bin.name, dataBuffer, dataOffset + OPERATION_HEADER_SIZE);
 		int valueLength = bin.value.write(dataBuffer, dataOffset + OPERATION_HEADER_SIZE + nameLength);
 
@@ -2861,6 +2878,7 @@ public class Command {
 	}
 
 	private final void writeOperation(Operation operation) {
+		checkVectorSupport(operation.value.hasVector());
 		int nameLength = Buffer.stringToUtf8(operation.binName, dataBuffer, dataOffset + OPERATION_HEADER_SIZE);
 		int valueLength = operation.value.write(dataBuffer, dataOffset + OPERATION_HEADER_SIZE + nameLength);
 
