@@ -25,6 +25,7 @@ import com.aerospike.client.Log;
 
 public class DynamicMetricsConfig {
     public BooleanProperty enable;
+    public BooleanProperty enableExtendedMetrics;
     public IntProperty latencyShift;
     public IntProperty latencyColumns;
     public Map<String, String> labels;
@@ -32,6 +33,12 @@ public class DynamicMetricsConfig {
     public DynamicMetricsConfig() {}
 
     public void setEnable(BooleanProperty enable) { this.enable = enable; }
+
+    public void setEnableExtendedMetrics(BooleanProperty enableExtendedMetrics) {
+        this.enableExtendedMetrics = enableExtendedMetrics;
+    }
+
+    public BooleanProperty getEnableExtendedMetrics() { return enableExtendedMetrics; }
 
     public void setLatencyShift(IntProperty latencyShift) { this.latencyShift = latencyShift; }
 
@@ -53,6 +60,7 @@ public class DynamicMetricsConfig {
         StringBuffer propsString = new StringBuffer("{");
         try {
             propsString.append(" enable=").append(enable.value).append(", ");
+            propsString.append(" enable_extended_metrics=").append(enableExtendedMetrics != null ? enableExtendedMetrics.value : "null").append(", ");
             propsString.append(" latency_shift=").append(latencyShift.value).append(", ");
             propsString.append(" latency_columns=").append(latencyColumns.value).append(", ");
             propsString.append(" labels=").append(getLabels().toString()).append(", ");
