@@ -1296,9 +1296,9 @@ public class Cluster implements Runnable, Closeable {
 	}
 
 	private void stopExporterThread() {
-		MetricsExporterThread thread = metricsExporterThread;
-		if (thread != null) {
-			thread.shutdown();
+		MetricsExporterThread metricsThread = metricsExporterThread;
+		if (metricsThread != null) {
+			metricsThread.shutdown();
 			metricsExporterThread = null;
 		}
 	}

@@ -38,219 +38,213 @@ import com.aerospike.client.util.Util;
  * Delivers snapshots to exporters with independent timeout and failure state.
  */
 final class MetricsExporterDispatcher {
-	private final MetricsPolicy policy;
-	private final LongSupplier clock;
-	private final TimeUnit timeoutUnit;
-	private final List<ExporterRegistration> registrations;
-	private volatile boolean running = true;
+    private final MetricsPolicy policy;
+    private final LongSupplier clock;
+    private final TimeUnit timeoutUnit;
+    private final List<ExporterRegistration> registrations;
+    private volatile boolean running = true;
 
-	MetricsExporterDispatcher(MetricsPolicy policy) {
-		this(
-			policy,
-			System::currentTimeMillis,
-			MetricsExporterDispatcher::newExecutor,
-			TimeUnit.SECONDS
-		);
-	}
+    MetricsExporterDispatcher(MetricsPolicy policy) {
+        this(
+                policy,
+                System::currentTimeMillis,
+                MetricsExporterDispatcher::newExecutor,
+                TimeUnit.SECONDS
+        );
+    }
 
-	MetricsExporterDispatcher(
-		MetricsPolicy policy,
-		LongSupplier clock,
-		Supplier<ExecutorService> executorFactory,
-		TimeUnit timeoutUnit
-	) {
-		this.policy = policy;
-		this.clock = clock;
-		this.timeoutUnit = timeoutUnit;
-		List<ExporterRegistration> registrations = new ArrayList<>();
+    MetricsExporterDispatcher(
+            MetricsPolicy policy,
+            LongSupplier clock,
+            Supplier<ExecutorService> executorFactory,
+            TimeUnit timeoutUnit
+    ) {
+        this.policy = policy;
+        this.clock = clock;
+        this.timeoutUnit = timeoutUnit;
+        List<ExporterRegistration> registrations = new ArrayList<>();
 
-		for (IMetricsExporter exporter : policy.getExporters()) {
-			registrations.add(new ExporterRegistration(exporter, executorFactory.get()));
-		}
-		this.registrations = Collections.unmodifiableList(registrations);
-	}
+        for (IMetricsExporter exporter : policy.getExporters()) {
+            registrations.add(new ExporterRegistration(exporter, executorFactory.get()));
+        }
+        this.registrations = Collections.unmodifiableList(registrations);
+    }
 
-	void dispatch(MetricsSnapshot snapshot) {
-		for (ExporterRegistration registration : registrations) {
-			if (!running) {
-				return;
-			}
+    void dispatch(MetricsSnapshot snapshot) {
+        for (ExporterRegistration registration : registrations) {
+            if (!running) {
+                return;
+            }
 
-			if (!isReady(registration)) {
-				continue;
-			}
+            if (!isReady(registration)) {
+                continue;
+            }
 
-			Future<?> future;
+            Future<?> future;
 
-			try {
-				future = registration.submit(
-					() -> registration.exporter.export(snapshot));
-			}
-			catch (RejectedExecutionException ignored) {
-				continue;
-			}
+            try {
+                future = registration.submit(
+                        () -> registration.exporter.export(snapshot));
+            } catch (RejectedExecutionException ignored) {
+                continue;
+            }
 
-			if (!awaitExport(registration, future)) {
-				return;
-			}
-		}
-	}
+            if (!awaitExport(registration, future)) {
+                return;
+            }
+        }
+    }
 
-	void shutdown() {
-		if (!running) {
-			return;
-		}
+    void shutdown() {
+        if (!running) {
+            return;
+        }
 
-		running = false;
+        running = false;
 
-		for (ExporterRegistration registration : registrations) {
-			registration.shutdown();
-		}
-	}
+        for (ExporterRegistration registration : registrations) {
+            registration.shutdown();
+        }
+    }
 
-	private boolean isReady(ExporterRegistration registration) {
-		if (!registration.suspended) {
-			return true;
-		}
+    private boolean isReady(ExporterRegistration registration) {
+        if (!registration.suspended) {
+            return true;
+        }
 
-		long elapsed = clock.getAsLong() - registration.suspendedAt;
+        long elapsed = clock.getAsLong() - registration.suspendedAt;
 
-		if (elapsed < TimeUnit.SECONDS.toMillis(policy.suspendRetryInterval)) {
-			return false;
-		}
+        if (elapsed < TimeUnit.SECONDS.toMillis(policy.suspendRetryInterval)) {
+            return false;
+        }
 
-		Log.info("Retrying suspended exporter: "
-			+ exporterName(registration.exporter));
-		return true;
-	}
+        Log.info("Retrying suspended exporter: "
+                + exporterName(registration.exporter));
+        return true;
+    }
 
-	/**
-	 * Wait for one exporter invocation to finish.
-	 *
-	 * @return {@code true} when dispatch may continue to the remaining
-	 * exporters, including after an exporter-specific failure; {@code false}
-	 * when cancellation or interruption requires dispatch to stop
-	 */
-	private boolean awaitExport(
-		ExporterRegistration registration,
-		Future<?> future
-	) {
-		try {
-			future.get(policy.exportTimeout, timeoutUnit);
+    /**
+     * Wait for one exporter invocation to finish.
+     *
+     * @return {@code true} when dispatch may continue to the remaining
+     * exporters, including after an exporter-specific failure; {@code false}
+     * when cancellation or interruption requires dispatch to stop
+     */
+    private boolean awaitExport(
+            ExporterRegistration registration,
+            Future<?> future
+    ) {
+        try {
+            future.get(policy.exportTimeout, timeoutUnit);
 
-			if (registration.suspended) {
-				Log.info("Exporter " + exporterName(registration.exporter)
-					+ " resumed after successful retry");
-			}
-			registration.reset();
-			return true;
-		}
-		catch (TimeoutException e) {
-			future.cancel(true);
-			recordFailure(registration, " timed out after "
-				+ policy.exportTimeout + timeoutSuffix() + ", snapshot dropped");
-			return true;
-		}
-		catch (ExecutionException e) {
-			// The task has already completed exceptionally, so cancellation
-			// would have no effect.
-			recordFailure(registration,
-				" failed: " + Util.getErrorMessage(e.getCause()));
-			return true;
-		}
-		catch (CancellationException ignored) {
-			// Cancellation is expected during shutdown.
-			return false;
-		}
-		catch (InterruptedException e) {
-			future.cancel(true);
+            if (registration.suspended) {
+                Log.info("Exporter " + exporterName(registration.exporter)
+                        + " resumed after successful retry");
+            }
+            registration.reset();
+            return true;
+        } catch (TimeoutException e) {
+            future.cancel(true);
+            recordFailure(registration, " timed out after "
+                    + policy.exportTimeout + timeoutSuffix() + ", snapshot dropped");
+            return true;
+        } catch (ExecutionException e) {
+            // The task has already completed exceptionally, so cancellation
+            // would have no effect.
+            recordFailure(registration,
+                    " failed: " + Util.getErrorMessage(e.getCause()));
+            return true;
+        } catch (CancellationException ignored) {
+            // Cancellation is expected during shutdown.
+            return false;
+        } catch (InterruptedException e) {
+            future.cancel(true);
 
-			if (running) {
-				// Future.get() clears the interrupt status when it throws.
-				// Restore an unexpected interrupt on the metrics thread.
-				Thread.currentThread().interrupt();
-			}
-			return false;
-		}
-		finally {
-			registration.clear(future);
-		}
-	}
+            if (running) {
+                // Future.get() clears the interrupt status when it throws.
+                // Restore an unexpected interrupt on the metrics thread.
+                Thread.currentThread().interrupt();
+            }
+            return false;
+        } finally {
+            registration.clear(future);
+        }
+    }
 
-	private void recordFailure(
-		ExporterRegistration registration,
-		String message
-	) {
-		registration.consecutiveFailures++;
-		Log.warn("Exporter " + exporterName(registration.exporter) + message
-			+ " (consecutive=" + registration.consecutiveFailures + ")");
+    private void recordFailure(
+            ExporterRegistration registration,
+            String message
+    ) {
+        registration.consecutiveFailures++;
+        Log.warn("Exporter " + exporterName(registration.exporter) + message
+                + " (consecutive=" + registration.consecutiveFailures + ")");
 
-		if (registration.consecutiveFailures >= policy.maxConsecutiveFailures) {
-			registration.suspended = true;
-			registration.suspendedAt = clock.getAsLong();
-			Log.error("Exporter " + exporterName(registration.exporter)
-				+ " suspended after " + registration.consecutiveFailures
-				+ " consecutive failures");
-		}
-	}
+        if (registration.consecutiveFailures >= policy.maxConsecutiveFailures) {
+            registration.suspended = true;
+            registration.suspendedAt = clock.getAsLong();
+            Log.error("Exporter " + exporterName(registration.exporter)
+                    + " suspended after " + registration.consecutiveFailures
+                    + " consecutive failures");
+        }
+    }
 
-	private static String exporterName(IMetricsExporter exporter) {
-		String name = exporter.getClass().getSimpleName();
-		return name.isEmpty() ? exporter.getClass().getName() : name;
-	}
+    private static String exporterName(IMetricsExporter exporter) {
+        String name = exporter.getClass().getSimpleName();
+        return name.isEmpty() ? exporter.getClass().getName() : name;
+    }
 
-	private String timeoutSuffix() {
-		return timeoutUnit == TimeUnit.SECONDS
-			? "s"
-			: " " + timeoutUnit.name().toLowerCase(Locale.ROOT);
-	}
+    private String timeoutSuffix() {
+        return timeoutUnit == TimeUnit.SECONDS
+                ? "s"
+                : " " + timeoutUnit.name().toLowerCase(Locale.ROOT);
+    }
 
-	private static ExecutorService newExecutor() {
-		return Executors.newSingleThreadExecutor(runnable -> {
-			Thread thread = new Thread(runnable, "aerospike-metrics-dispatch");
-			thread.setDaemon(true);
-			return thread;
-		});
-	}
+    private static ExecutorService newExecutor() {
+        return Executors.newSingleThreadExecutor(runnable -> {
+            Thread thread = new Thread(runnable, "aerospike-metrics-dispatch");
+            thread.setDaemon(true);
+            return thread;
+        });
+    }
 
-	private static final class ExporterRegistration {
-		final IMetricsExporter exporter;
-		final ExecutorService executor;
-		int consecutiveFailures;
-		boolean suspended;
-		long suspendedAt;
-		Future<?> inFlight;
+    private static final class ExporterRegistration {
+        final IMetricsExporter exporter;
+        final ExecutorService executor;
+        int consecutiveFailures;
+        boolean suspended;
+        long suspendedAt;
+        Future<?> inFlight;
 
-		ExporterRegistration(
-			IMetricsExporter exporter,
-			ExecutorService executor
-		) {
-			this.exporter = exporter;
-			this.executor = executor;
-		}
+        ExporterRegistration(
+                IMetricsExporter exporter,
+                ExecutorService executor
+        ) {
+            this.exporter = exporter;
+            this.executor = executor;
+        }
 
-		synchronized Future<?> submit(Runnable task) {
-			inFlight = executor.submit(task);
-			return inFlight;
-		}
+        synchronized Future<?> submit(Runnable task) {
+            inFlight = executor.submit(task);
+            return inFlight;
+        }
 
-		synchronized void shutdown() {
-			if (inFlight != null) {
-				inFlight.cancel(true);
-			}
-			executor.shutdownNow();
-		}
+        synchronized void shutdown() {
+            if (inFlight != null) {
+                inFlight.cancel(true);
+            }
+            executor.shutdownNow();
+        }
 
-		synchronized void clear(Future<?> future) {
-			if (inFlight == future) {
-				inFlight = null;
-			}
-		}
+        synchronized void clear(Future<?> future) {
+            if (inFlight == future) {
+                inFlight = null;
+            }
+        }
 
-		void reset() {
-			consecutiveFailures = 0;
-			suspended = false;
-			suspendedAt = 0;
-		}
-	}
+        void reset() {
+            consecutiveFailures = 0;
+            suspended = false;
+            suspendedAt = 0;
+        }
+    }
 }

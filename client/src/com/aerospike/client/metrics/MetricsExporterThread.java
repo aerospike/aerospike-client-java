@@ -42,8 +42,8 @@ public class MetricsExporterThread extends Thread {
 
     @Override
     public void run() {
-        Log.info("Metrics exporter thread started, interval=" + policy.interval
-                + "s, exporters=" + policy.getExporters().size());
+        Log.info("Metrics exporter thread started, interval=" + policy.interval +
+                "s, exporters=" + policy.getExporters().size());
 
         try {
             while (sleepUntilNextSnapshot()) {
@@ -52,7 +52,8 @@ public class MetricsExporterThread extends Thread {
                 try {
                     snapshot = snapshotBuilder.build();
                 } catch (Exception e) {
-                    Log.warn("Failed to capture metrics snapshot: " + Util.getErrorMessage(e));
+                    Log.warn("Failed to capture metrics snapshot: " +
+                            Util.getErrorMessage(e));
                     continue;
                 }
 
