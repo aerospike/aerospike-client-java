@@ -16,6 +16,8 @@
  */
 package com.aerospike.benchmarks;
 
+import java.util.concurrent.TimeUnit;
+
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Bin;
 import com.aerospike.client.IAerospikeClient;
@@ -35,6 +37,7 @@ public final class InsertTaskAsync extends InsertTask {
 	private long keyCount;
 	private long begin;
 	private final boolean useLatency;
+	private final Runnable throttleTask;
 
 	public InsertTaskAsync(
 		IAerospikeClient client,
@@ -51,6 +54,11 @@ public final class InsertTaskAsync extends InsertTask {
 		this.keyStart = keyStart;
 		this.keyMax = keyMax;
 		this.useLatency = counters.write.latency != null;
+		this.throttleTask = () -> {
+			if (this.keyCount < this.keyMax) {
+				put();
+			}
+		};
 
 		if (useLatency) {
 			listener = new LatencyWriteHandler();
@@ -61,6 +69,24 @@ public final class InsertTaskAsync extends InsertTask {
 	}
 
 	public void runCommand() {
+		// Throttle throughput
+		if (args.throughput > 0) {
+			int transactions = counters.write.count.get();
+
+			if (transactions > args.throughput) {
+				long millis = counters.periodBegin.get() + 1000L - System.currentTimeMillis();
+
+				if (millis > 0) {
+					// Defer on the event loop. Sleeping here would stall its other commands.
+					eventLoop.schedule(throttleTask, millis, TimeUnit.MILLISECONDS);
+					return;
+				}
+			}
+		}
+		put();
+	}
+
+	private void put() {
 		long currentKey = keyStart + keyCount;
 		Key key = new Key(args.namespace, args.setName, currentKey);
 		Bin[] bins = args.getBins(random, true, currentKey);

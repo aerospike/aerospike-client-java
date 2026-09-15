@@ -16,6 +16,8 @@
  */
 package com.aerospike.benchmarks;
 
+import java.util.concurrent.TimeUnit;
+
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Bin;
 import com.aerospike.client.IAerospikeClient;
@@ -37,6 +39,7 @@ public final class RWTaskAsync extends RWTask {
 	private final WriteListener writeListener;
 	private final RecordListener recordListener;
 	private final RecordArrayListener recordArrayListener;
+	private final Runnable throttleTask;
 	private long begin;
 	private final boolean useLatency;
 
@@ -53,6 +56,11 @@ public final class RWTaskAsync extends RWTask {
 		this.eventLoop = eventLoop;
 		this.random = new RandomShift();
 		this.useLatency = counters.write.latency != null;
+		this.throttleTask = () -> {
+			if (valid) {
+				runCommand(this.random);
+			}
+		};
 
 		if (useLatency) {
 			writeListener = new LatencyWriteHandler();
@@ -68,9 +76,31 @@ public final class RWTaskAsync extends RWTask {
 
 	@Override
 	protected void runNextCommand() {
-		if (valid) {
-			runCommand(random);
+		if (! valid) {
+			return;
 		}
+
+		// Throttle throughput
+		if (args.throughput > 0) {
+			int transactions;
+			if (counters.transaction.latency != null) {
+				// Measure the transactions as per one "business" transaction
+				transactions = counters.transaction.count.get();
+			}
+			else {
+				transactions = counters.write.count.get() + counters.read.count.get();
+			}
+			if (transactions > args.throughput) {
+				long millis = counters.periodBegin.get() + 1000L - System.currentTimeMillis();
+
+				if (millis > 0) {
+					// Defer on the event loop. Sleeping here would stall its other commands.
+					eventLoop.schedule(throttleTask, millis, TimeUnit.MILLISECONDS);
+					return;
+				}
+			}
+		}
+		runCommand(random);
 	}
 
 	@Override
