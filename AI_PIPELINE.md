@@ -35,6 +35,13 @@ mvn -q -o -pl client -am install -DskipTests
 Build the client before running the test module — `test` resolves
 `com.aerospike:aerospike-client-jdk8` from the local repository, not from the reactor.
 
+`-o` only works for dependencies already in `~/.m2`. After changing a dependency
+version, run one **online** build (`mvn -pl client -am install -DskipTests` plus
+`mvn test-compile`) to fetch the new artifacts; the offline commands are
+meaningless until then, and an `-o` failure at that point is a missing download,
+not a code defect. `mvn dependency:go-offline` is not a substitute — it fails on
+netty's `${os.detected.name}-${os.detected.arch}` classifier, which only
+os-maven-plugin resolves, at every netty version.
 ### Benchmarks
 
 The `benchmarks` module packages a runnable fat jar; `run_benchmarks` is a thin
@@ -84,6 +91,15 @@ mvn -o test -DskipTests=false
 
 Available suites (`test/src/com/aerospike/test/`): `SuiteAll`, `SuiteSync`,
 `SuiteAsync`, `SuiteErrorDetail`, `SuiteEmpty`.
+
+`SuiteAsync` defaults to `EventLoopType.DIRECT_NIO`, the built-in NIO event loop,
+which touches no netty code. Netty is exercised only when the suite is given
+`-netty` (NETTY_NIO), `-nettyEpoll`, or `-elt <type>`, and those reach the suite
+through `-Dargs` alone. A netty change must be gated on a run carrying one of
+those flags; a default async run proves nothing about netty. The native
+transports cannot be loaded on Apple silicon — epoll and io_uring ship as
+`linux-x86_64` and kqueue as `osx-x86_64` — so `NETTY_NIO` is the only netty
+path testable on a macOS host.
 
 Server connection and auth flags are passed as one space-separated string in the
 `args` system property, parsed by `test/src/com/aerospike/test/util/Args.java`:
