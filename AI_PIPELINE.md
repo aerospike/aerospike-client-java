@@ -42,6 +42,29 @@ meaningless until then, and an `-o` failure at that point is a missing download,
 not a code defect. `mvn dependency:go-offline` is not a substitute — it fails on
 netty's `${os.detected.name}-${os.detected.arch}` classifier, which only
 os-maven-plugin resolves, at every netty version.
+### Benchmarks
+
+The `benchmarks` module packages a runnable fat jar; `run_benchmarks` is a thin
+wrapper around it, so the package step must be rerun after editing benchmark
+sources.
+
+```bash
+mvn -o package -DskipTests -pl benchmarks -am
+cd benchmarks
+./run_benchmarks -h 127.0.0.1 -p 3000 -n test -k 10000 -o I:128 -w RU,50 -z 8
+```
+
+`-w I` linear insert, `-w RU,<readPct>` read/update, `-a`/`-async` async mode
+(`-C` sets max in-flight commands, default 100), `-g <tps>` target throughput,
+`-t <n>` transaction limit, `-l <columns>,<shift>` latency histograms. A run
+prints one stats line per second and exits only when the key count or
+transaction limit is reached, so time-box exploratory runs with `timeout`.
+
+Throughput throttling (`-g`) defers work to the end of the current one-second
+reporting period once the period's transaction count exceeds the target, in both
+sync and async mode. The steady-state rate therefore overshoots the target by
+roughly the concurrency level — thread count in sync mode, max in-flight
+commands in async mode.
 
 ## Test
 

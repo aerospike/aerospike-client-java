@@ -11,6 +11,12 @@ validations:
     critical: false
     timeout: 900
 
+  build_benchmarks:
+    description: "Benchmarks module packages into its runnable fat jar (benchmarks/target/aerospike-benchmarks-*-jar-with-dependencies.jar), which run_benchmarks executes."
+    command: "mvn -o package -DskipTests -pl benchmarks -am"
+    critical: false
+    timeout: 900
+
   test_error_detail_suite:
     description: "Extended error-detail integration suite passes. Requires a live Aerospike server at 127.0.0.1:3000. Confirm the 'Tests run:' line — skipTests defaults to true, so a run that executes nothing still exits 0."
     command: "cd test && mvn -o test -DskipTests=false -DrunSuite='**/SuiteErrorDetail.class'"
