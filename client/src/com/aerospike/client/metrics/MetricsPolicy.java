@@ -16,6 +16,9 @@
  */
 package com.aerospike.client.metrics;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 
 import com.aerospike.client.Log;
@@ -60,6 +63,7 @@ public final class MetricsPolicy {
 	 * Number of cluster tend iterations between metrics notification events. One tend iteration
 	 * is defined as {@link ClientPolicy#tendInterval} (default 1 second) plus the time to tend all
 	 * nodes.
+	 * Must be greater than zero when exporters are configured.
 	 * <p>
 	 * Default: 30
 	 */
@@ -87,9 +91,63 @@ public final class MetricsPolicy {
 	public int latencyShift = 1;
 
 	/**
+	 * Enable collection of extended metrics such as CPU usage, memory usage, command count,
+	 * per-namespace error/timeout/byte counters, and latency histograms. Extended metrics
+	 * provide detailed diagnostics but may add overhead on the command hot path.
+	 * <p>
+	 * When {@code false}, only standard low-overhead metrics (connection pool gauges, retry
+	 * counts, cluster health counters) are collected and exported.
+	 * <p>
+	 * Default: true (all metrics collected when metrics are enabled)
+	 */
+	public boolean enableExtendedMetrics = true;
+
+	/**
 	 * Labels that can be sent to the metrics output
 	 */
 	public Map<String,String> labels;
+
+	/**
+	 * Registered metrics exporters. Invoked in registration order by the
+	 * dedicated metrics thread. Registrations are captured when metrics are
+	 * enabled and remain fixed until metrics are disabled and enabled again.
+	 * If non-empty, a metrics thread is started alongside the existing
+	 * MetricsListener path.
+	 */
+	private final List<IMetricsExporter> exporters = new ArrayList<>();
+
+	/**
+	 * Maximum consecutive export failures before an exporter is suspended.
+	 * Must be greater than zero.
+	 * <p>
+	 * Default: 3
+	 */
+	public int maxConsecutiveFailures = 3;
+
+	/**
+	 * Seconds to wait before retrying a suspended exporter.
+	 * Zero retries the exporter on the next snapshot interval.
+	 * Must not be negative.
+	 * <p>
+	 * Default: 60
+	 */
+	public int suspendRetryInterval = 60;
+
+	/**
+	 * Maximum seconds to wait for a single {@link IMetricsExporter#export(MetricsSnapshot)}
+	 * call to complete. If the exporter does not return within this time, the call is
+	 * cancelled, the snapshot is dropped, and the timeout is counted as a consecutive
+	 * failure (subject to {@link #maxConsecutiveFailures} suspension logic).
+	 * <p>
+	 * This protects the metrics thread from being blocked indefinitely by a slow or
+	 * unresponsive exporter (e.g., a custom exporter performing a synchronous network call).
+	 * Well-behaved exporters (like the OpenTelemetry exporter) store the snapshot reference
+	 * and return immediately, so this timeout is a safety net for custom implementations.
+	 * Must be greater than zero.
+	 * <p>
+	 * Default: 10
+	 */
+	public int exportTimeout = 10;
 
 	private boolean metricsRestartRequired = false;
 
@@ -142,6 +200,17 @@ public final class MetricsPolicy {
 			Log.error("An invalid # of latency columns was provided. Setting latency columns to default (7).");
 			latencyColumns = 7;
 		}
+		if (dynMC.enableExtendedMetrics != null) {
+			if (dynMC.enableExtendedMetrics.value != this.enableExtendedMetrics) {
+				this.enableExtendedMetrics = dynMC.enableExtendedMetrics.value;
+				if (metricsEnabled) {
+					metricsRestartRequired = true;
+				}
+				if (logUpdate) {
+					Log.info("Set MetricsPolicy.enableExtendedMetrics = " + this.enableExtendedMetrics);
+				}
+			}
+		}
 	}
 
 	/**
@@ -154,8 +223,13 @@ public final class MetricsPolicy {
 		this.interval = other.interval;
 		this.latencyColumns = other.latencyColumns;
 		this.latencyShift = other.latencyShift;
+		this.enableExtendedMetrics = other.enableExtendedMetrics;
 		this.labels = other.labels;
 		this.metricsRestartRequired = other.metricsRestartRequired;
+		this.exporters.addAll(other.exporters);
+		this.maxConsecutiveFailures = other.maxConsecutiveFailures;
+		this.suspendRetryInterval = other.suspendRetryInterval;
+		this.exportTimeout = other.exportTimeout;
 	}
 
 	/**
@@ -188,6 +262,10 @@ public final class MetricsPolicy {
 
 	public void setLatencyShift(int latencyShift) { this.latencyShift = latencyShift; }
 
+	public void setEnableExtendedMetrics(boolean enableExtendedMetrics) {
+		this.enableExtendedMetrics = enableExtendedMetrics;
+	}
+
 	public void setLabels(Map<String, String> labels) { this.labels = labels; }
 
 	public boolean isMetricsRestartRequired() {
@@ -196,5 +274,63 @@ public final class MetricsPolicy {
 
 	public void setMetricsRestartRequired(boolean metricsRestartRequired) {
 		this.metricsRestartRequired = metricsRestartRequired;
+	}
+
+	/**
+	 * Register a metrics exporter. Exporters are invoked in registration order.
+	 * If metrics are already enabled, the exporter is used the next time metrics
+	 * are disabled and enabled.
+	 *
+	 * @param exporter the exporter to add; must not be null
+	 * @throws IllegalArgumentException if exporter is null
+	 */
+	public void addExporter(IMetricsExporter exporter) {
+		if (exporter == null) {
+			throw new IllegalArgumentException("exporter must not be null");
+		}
+		exporters.add(exporter);
+	}
+
+	/**
+	 * Return an unmodifiable view of the registered exporters.
+	 */
+	public List<IMetricsExporter> getExporters() {
+		return Collections.unmodifiableList(exporters);
+	}
+
+	/**
+	 * Validate settings used by the metrics exporter runtime.
+	 *
+	 * @throws IllegalArgumentException if an exporter setting is outside its
+	 * supported range
+	 */
+	public void validateExporterSettings() {
+		if (interval <= 0) {
+			throw new IllegalArgumentException("MetricsPolicy.interval must be greater than zero");
+		}
+		if (maxConsecutiveFailures <= 0) {
+			throw new IllegalArgumentException(
+				"MetricsPolicy.maxConsecutiveFailures must be greater than zero");
+		}
+		if (suspendRetryInterval < 0) {
+			throw new IllegalArgumentException(
+				"MetricsPolicy.suspendRetryInterval must not be negative");
+		}
+		if (exportTimeout <= 0) {
+			throw new IllegalArgumentException(
+				"MetricsPolicy.exportTimeout must be greater than zero");
+		}
+	}
+
+	public void setMaxConsecutiveFailures(int maxConsecutiveFailures) {
+		this.maxConsecutiveFailures = maxConsecutiveFailures;
+	}
+
+	public void setSuspendRetryInterval(int suspendRetryInterval) {
+		this.suspendRetryInterval = suspendRetryInterval;
+	}
+
+	public void setExportTimeout(int exportTimeout) {
+		this.exportTimeout = exportTimeout;
 	}
 }
