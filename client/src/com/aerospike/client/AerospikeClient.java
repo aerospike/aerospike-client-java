@@ -847,15 +847,18 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * Abort and rollback the given transaction.
 	 * <p>
 	 * Abort is not allowed after an in-doubt mark-roll-forward failure; the server may still
-	 * roll the transaction forward. Retry {@link #commit(Txn)} instead.
+	 * roll the transaction forward. Retry {@link #commit(Txn)} instead. That case is identified
+	 * by {@link Txn#getState()} returning {@link Txn.State#COMMIT_FAILED}.
 	 * <p>
 	 * Requires server version 8.0+
 	 *
 	 * @param txn	transaction
 	 * @return		status of the abort
-	 * @throws AerospikeException	if transaction is already committed or commit failed in-doubt
+	 * @throws AerospikeException.Abort	if commit failed in-doubt
+	 * @throws AerospikeException	if transaction is already committed
 	 */
-	public final AbortStatus abort(Txn txn) {
+	public final AbortStatus abort(Txn txn)
+		throws AerospikeException.Abort {
 		TxnRoll tr = new TxnRoll(cluster, txn);
 
 		switch (txn.getState()) {
@@ -865,7 +868,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 				return tr.abort(mergedTxnRollPolicyDefault);
 
 			case COMMIT_FAILED:
-				throw new AerospikeException(ResultCode.TXN_FAILED,
+				throw new AerospikeException.Abort(AbortStatus.COMMIT_FAILED,
 					"Transaction commit failed. Abort is not allowed.");
 
 			case COMMITTED:
@@ -881,6 +884,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * <p>
 	 * Abort is not allowed after an in-doubt mark-roll-forward failure; the server may still
 	 * roll the transaction forward. Retry {@link #commit(EventLoop, CommitListener, Txn)} instead.
+	 * That case is identified by {@link Txn#getState()} returning {@link Txn.State#COMMIT_FAILED}.
 	 * <p>
 	 * This method registers the command with an event loop and returns.
 	 * The event loop thread will process the command and send the results to the listener.
@@ -891,8 +895,9 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * 						loop will be chosen by round-robin.
 	 * @param listener		where to send results
 	 * @param txn			transaction
+	 * @throws AerospikeException.Abort	if commit failed in-doubt
 	 * @throws AerospikeException	if event loop registration fails, or transaction is already
-	 * 								committed or commit failed in-doubt
+	 * 								committed
 	 */
 	public final void abort(EventLoop eventLoop, AbortListener listener, Txn txn)
 		throws AerospikeException {
@@ -910,7 +915,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 				break;
 
 			case COMMIT_FAILED:
-				throw new AerospikeException(ResultCode.TXN_FAILED,
+				throw new AerospikeException.Abort(AbortStatus.COMMIT_FAILED,
 					"Transaction commit failed. Abort is not allowed.");
 
 			case COMMITTED:
