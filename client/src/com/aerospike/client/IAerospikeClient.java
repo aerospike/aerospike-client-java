@@ -335,15 +335,26 @@ public interface IAerospikeClient extends Closeable {
 	/**
 	 * Abort and rollback the given transaction.
 	 * <p>
+	 * Abort is not allowed after an in-doubt mark-roll-forward failure; the server may still
+	 * roll the transaction forward. Retry {@link #commit(Txn)} instead. That case is identified
+	 * by {@link Txn#getState()} returning {@link Txn.State#COMMIT_FAILED}.
+	 * <p>
 	 * Requires server version 8.0+
 	 *
 	 * @param txn	transaction
 	 * @return		status of the abort
+	 * @throws AerospikeException.Abort	if commit failed in-doubt
+	 * @throws AerospikeException	if transaction is already committed
 	 */
-	AbortStatus abort(Txn txn);
+	AbortStatus abort(Txn txn)
+		throws AerospikeException.Abort;
 
 	/**
 	 * Asynchronously abort and rollback the given transaction.
+	 * <p>
+	 * Abort is not allowed after an in-doubt mark-roll-forward failure; the server may still
+	 * roll the transaction forward. Retry {@link #commit(EventLoop, CommitListener, Txn)} instead.
+	 * That case is identified by {@link Txn#getState()} returning {@link Txn.State#COMMIT_FAILED}.
 	 * <p>
 	 * This method registers the command with an event loop and returns.
 	 * The event loop thread will process the command and send the results to the listener.
@@ -354,7 +365,9 @@ public interface IAerospikeClient extends Closeable {
 	 * 						loop will be chosen by round-robin.
 	 * @param listener		where to send results
 	 * @param txn			transaction
-	 * @throws AerospikeException	if event loop registration fails
+	 * @throws AerospikeException.Abort	if commit failed in-doubt
+	 * @throws AerospikeException	if event loop registration fails, or transaction is already
+	 * 								committed
 	 */
 	void abort(EventLoop eventLoop, AbortListener listener, Txn txn)
 		throws AerospikeException;
