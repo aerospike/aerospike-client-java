@@ -596,6 +596,23 @@ public class AerospikeException extends RuntimeException {
 		}
 	}
 
+	/**
+	 * Exception thrown when a transaction abort is not allowed.
+	 */
+	public static final class Abort extends AerospikeException {
+		private static final long serialVersionUID = 1L;
+
+		/**
+		 * Status of the attempted abort.
+		 */
+		public final AbortStatus status;
+
+		public Abort(AbortStatus status, String message) {
+			super(ResultCode.TXN_FAILED, message);
+			this.status = status;
+		}
+	}
+
 	private static void recordsToString(StringBuilder sb, String title, BatchRecord[] records) {
 		if (records == null) {
 			return;
