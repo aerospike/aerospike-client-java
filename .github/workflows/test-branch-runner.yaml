@@ -16,7 +16,12 @@ jobs:
       input-matrix: ${{ steps.create-server-matrix.outputs.input-matrix }}
       java-version: ${{ steps.get-java-version.outputs.java-version }}
     steps:
-      - uses: actions/checkout@v4 # brings versions.json into the workspace
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@df199fb7be9f65074067a9eb93f12bb4c5547cf2 # v2.13.3
+        with:
+          egress-policy: audit
+
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
         with:
           ref: ${{ github.ref }}
       - id: create-server-matrix

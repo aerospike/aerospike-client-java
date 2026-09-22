@@ -35,8 +35,13 @@ jobs:
     name: '${{ inputs.crypto-type }} build ${{inputs.source-branch}} using java-version ${{ inputs.java-version }} on ${{ inputs.server-container-repo}}:${{ inputs.server-tag }}'
     runs-on: ${{ vars.BUILD_CONTAINER_DISTRO_VERSION }}
     steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@df199fb7be9f65074067a9eb93f12bb4c5547cf2 # v2.13.3
+        with:
+          egress-policy: audit
+
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
         with:
           fetch-depth: 0
           ref: ${{ inputs.source-branch }}
@@ -44,7 +49,7 @@ jobs:
       # Java plugin will setup gpg but we are not using maven to deploy do JFrog.
       # - jf mvn clean install on publish does not publish POM we would like to publish
       - name: Setup Java
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@c5195efecf7bdfc987ee8bae7a71cb8b11521c00 # v4.7.1
         with:
           distribution: "semeru"
           java-version: ${{ inputs.java-version }}

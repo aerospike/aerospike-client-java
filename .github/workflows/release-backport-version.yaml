@@ -18,8 +18,13 @@ jobs:
       java-version: ${{ steps.get-java-version.outputs.java-version }}
       release-version: ${{ steps.get-release-version.outputs.release-version }}
     steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@df199fb7be9f65074067a9eb93f12bb4c5547cf2 # v2.13.3
+        with:
+          egress-policy: audit
+
       - name: Checkout client
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
         with:
           repository: citrusleaf/release 
           token: ${{ secrets.CLIENT_BOT_PAT }}
@@ -28,7 +33,7 @@ jobs:
           ref: legacy-ci-backport
 
       - name: Checkout client
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
         with:
           path: client-java
           fetch-depth: 0
@@ -41,7 +46,7 @@ jobs:
           echo java-version="$(grep '<java.version>' pom.xml | sed -e 's/<[^>]*>//g' | awk '{$1=$1};1' | sed 's/^1\.8$/8/')"  >> $GITHUB_OUTPUT
 
       - name: Setup Java
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@c5195efecf7bdfc987ee8bae7a71cb8b11521c00 # v4.7.1
         with:
           distribution: ${{ vars.JAVA_PROVIDER }} # See 'Supported distributions' for available options
           java-version: ${{ steps.get-java-version.outputs.java-version }}
