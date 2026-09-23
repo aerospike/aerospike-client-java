@@ -21,6 +21,7 @@ import org.junit.BeforeClass;
 import org.junit.runner.RunWith;
 import org.junit.runners.Suite;
 
+import com.aerospike.client.BatchExecutorTimeoutTest;
 import com.aerospike.client.TxnTest;
 import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.Host;
@@ -125,6 +126,7 @@ import com.aerospike.client.AerospikeClientIndexTypeTest;
 	TestStringInvalidUtf8.class,
 	TestStringMasking.class,
 	TestTouch.class,
+	BatchExecutorTimeoutTest.class,
 	TxnTest.class,
 	TestTxn.class,
 	TestUDF.class,
