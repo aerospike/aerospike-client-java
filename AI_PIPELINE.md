@@ -12,7 +12,7 @@ Maven multi-module, Java 21 (`<java.version>21</java.version>`), version
 
 | Module | Contents |
 | --- | --- |
-| `client` | The client library — the shipped artifact. Public API lives here. |
+| `client` | The client library — the shipped artifact. Public API lives here. Unit tests in `client/src/test/java/` run during `mvn install`. |
 | `test` | JUnit 4 integration suites. Requires a live Aerospike server. |
 | `examples` | Standalone example programs. |
 | `benchmarks` | Load-generation / benchmarking tool. |
@@ -68,14 +68,32 @@ commands in async mode.
 
 ## Test
 
-JUnit 4 + Maven Surefire. **A live Aerospike server is required**; the suites
-default to `127.0.0.1:3000`.
+There are two JUnit 4 + Maven Surefire surfaces. Do not confuse them.
+
+### Client-module unit tests (no server)
+
+`client/src/test/java/`. Surefire is **not** skipped: `mvn test` and
+`mvn install` from the repo root run these during the `client` module. A
+BUILD SUCCESS that reports `Tests run: 0` is a failed wiring — the client
+module sets `failIfNoTests`. Do **not** pass `-DskipTests` when the goal is
+to exercise this surface.
+
+```bash
+mvn -o -pl client test
+```
+
+The `test/` module's `skipTests=true` default does **not** apply here.
+
+### Integration tests (live server)
+
+`test/src/`. **A live Aerospike server is required**; the suites default to
+`127.0.0.1:3000`.
 
 Two properties control what runs, both defined in `test/pom.xml`:
 
 * `skipTests` — defaults to **`true`**. Tests do not run unless you pass
-  `-DskipTests=false`. A plain `mvn test` reports `BUILD SUCCESS` having run
-  nothing; that is not a passing test run.
+  `-DskipTests=false`. A plain `mvn test` **in `test/`** reports
+  `BUILD SUCCESS` having run nothing; that is not a passing test run.
 * `runSuite` — surefire `<include>` selector, defaults to `**/SuiteAll.class`.
 
 ```bash
@@ -122,9 +140,9 @@ plain single-node dev server a non-zero `Skipped` count is therefore expected
 and is not a failure; compare it against a baseline run rather than expecting
 zero.
 
-**Verify results, not exit codes.** `-DskipTests` defaulting to true means an
-untouched `mvn test` exits 0 with zero tests executed. Always confirm the
-`Tests run: N` line, and that N is what you expected.
+**Verify results, not exit codes.** In `test/`, `-DskipTests` defaulting to
+true means an untouched `mvn test` exits 0 with zero tests executed. Always
+confirm the `Tests run: N` line, and that N is what you expected.
 
 ### Asserting errors raised inside an expression
 
@@ -158,8 +176,9 @@ Public API under `client/src/com/aerospike/client/`:
 | `async` | Async/NIO/Netty event loops and listeners |
 | `query`, `task`, `admin`, `metrics`, `configuration`, `lua`, `listener`, `util` | Queries, long-running tasks, security admin, metrics, dynamic config, UDF support, callbacks, helpers |
 
-Tests under `test/src/com/aerospike/test/`: `sync/basic`, `sync/query`,
-`async`, with shared helpers in `util`.
+Unit tests under `client/src/test/java/`. Integration tests under
+`test/src/com/aerospike/test/`: `sync/basic`, `sync/query`, `async`, with
+shared helpers in `util`.
 
 ## Conventions
 
