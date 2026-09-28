@@ -50,8 +50,11 @@ runs:
       run: |
         set -euo pipefail
         maven_repo_container="/root/.m2"
+        # GitHub cache keys allow [A-Za-z0-9._-]; Docker refs use : / @.
+        cache_image_key=$(printf '%s' "${CLIENT_IMAGE}" | tr ':/@' '---')
         {
           echo "client-image=${CLIENT_IMAGE}"
+          echo "cache-image-key=${cache_image_key}"
           echo "client-workdir=${GITHUB_WORKSPACE}"
           echo "client-volumes=${GITHUB_WORKSPACE}:${GITHUB_WORKSPACE};${HOME}/.m2:${maven_repo_container}"
           echo "maven-repo-container=${maven_repo_container}"
@@ -67,10 +70,10 @@ runs:
       uses: actions/cache/restore@v4
       with:
         path: ~/.m2/repository
-        key: ${{ runner.os }}-m2-l2-${{ inputs.crypto-type }}-${{ hashFiles('**/pom.xml') }}
+        key: m2-l2-${{ steps.export.outputs.cache-image-key }}-${{ inputs.crypto-type }}-${{ hashFiles('**/pom.xml') }}
         restore-keys: |
-          ${{ runner.os }}-m2-l2-${{ inputs.crypto-type }}-
-          ${{ runner.os }}-m2-l2-
+          m2-l2-${{ steps.export.outputs.cache-image-key }}-${{ inputs.crypto-type }}-
+          m2-l2-${{ steps.export.outputs.cache-image-key }}-
 
     - name: Warm Maven cache in the client image
       if: ${{ inputs.skip-warm != 'true' || inputs.client-command != '' }}
