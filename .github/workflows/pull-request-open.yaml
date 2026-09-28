@@ -68,9 +68,11 @@ jobs:
       - name: Setup L2 Java client runner
         id: runner
         uses: ./.github/actions/setup-l2-client-runner
+        # Do not pass -o: skipTests install does not download Surefire's JUnit
+        # provider; the first test run still needs the network for that jar.
         with:
           client-command: >
-            mvn -B -o -pl test -DskipTests=false
+            mvn -B -pl test -DskipTests=false
             -DrunSuite='**/TestErrorDetailParser.class' test
 
       - name: Show L2 client runner outputs
