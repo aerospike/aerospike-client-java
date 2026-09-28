@@ -49,7 +49,7 @@ jobs:
           echo ${{ steps.get-java-version.outputs.java-version }}
           echo ${{ steps.create-server-matrix.outputs.input-matrix }}
 
-  # CLIENT-5539: prove the L2 client runs in maven:3-eclipse-temurin-21 with a
+  # CLIENT-5539: prove the L2 client runs in maven:3-ibm-semeru-21-noble with a
   # warmed ~/.m2, and that surefire XML lands on the host bind-mount so the
   # existing EnricoMi publisher can consume it. Isolation itself is E4/E6.
   l2-client-runner:

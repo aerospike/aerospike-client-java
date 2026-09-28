@@ -1,14 +1,14 @@
 name: Setup L2 Java client runner
 description: >
-  Restore and warm ~/.m2, then export maven:3-eclipse-temurin-21 bind-mount
-  inputs for setup-discovery-topology. No custom image: the public Maven JDK 21
-  image already has everything the L2 client container needs.
+  Restore and warm ~/.m2, then export maven:3-ibm-semeru-21-noble bind-mount
+  inputs for setup-discovery-topology. No custom image: Maven + IBM Semeru
+  JDK 21 on Ubuntu Noble, matching JAVA_PROVIDER=semeru and ubuntu-24.04 runners.
 
 inputs:
   client-image:
-    description: Client container image (Maven + JDK 21)
+    description: Client container image (Maven + IBM Semeru JDK 21)
     required: false
-    default: maven:3-eclipse-temurin-21
+    default: maven:3-ibm-semeru-21-noble
   client-command:
     description: >
       Optional /bin/sh command to run in the client container after the cache
