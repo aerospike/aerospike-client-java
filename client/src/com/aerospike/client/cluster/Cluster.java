@@ -53,6 +53,7 @@ import com.aerospike.client.configuration.serializers.Configuration;
 import com.aerospike.client.configuration.serializers.StaticConfiguration;
 import com.aerospike.client.configuration.serializers.staticconfig.StaticClientConfig;
 import com.aerospike.client.listener.ClusterStatsListener;
+import com.aerospike.client.metrics.MetricsExporterThread;
 import com.aerospike.client.metrics.MetricsListener;
 import com.aerospike.client.metrics.MetricsPolicy;
 import com.aerospike.client.metrics.MetricsWriter;
@@ -216,6 +217,7 @@ public class Cluster implements Runnable, Closeable {
 	public boolean metricsEnabled;
 	MetricsPolicy metricsPolicy;
 	private volatile MetricsListener metricsListener;
+	private volatile MetricsExporterThread metricsExporterThread;
 	private final Object metricsLock = new Object();
 	private final AtomicLong retryCount = new AtomicLong();
 	private final AtomicLong commandCount = new AtomicLong();
@@ -1232,6 +1234,11 @@ public class Cluster implements Runnable, Closeable {
 
 	private void enableMetricsInternal(MetricsPolicy policy) {
 		MetricsPolicy mergedMP = mergeMetricsPolicyWithConfig(policy);
+
+		if (!mergedMP.getExporters().isEmpty()) {
+			mergedMP.validateExporterSettings();
+		}
+
 		MetricsListener listener = mergedMP.listener;
 
 		if (listener == null) {
@@ -1243,6 +1250,7 @@ public class Cluster implements Runnable, Closeable {
 
 		if (metricsEnabled) {
 			this.metricsListener.onDisable(this);
+			stopExporterThread();
 		}
 
 		Node[] nodeArray = nodes;
@@ -1252,6 +1260,7 @@ public class Cluster implements Runnable, Closeable {
 		}
 
 		this.metricsListener.onEnable(this, this.metricsPolicy);
+		startExporterThread(mergedMP);
 		metricsEnabled = true;
 		Log.info("Metrics have been enabled.");
 	}
@@ -1273,8 +1282,24 @@ public class Cluster implements Runnable, Closeable {
 	private void disableMetricsInternal() {
 		if (metricsEnabled) {
 			metricsEnabled = false;
+			stopExporterThread();
 			metricsListener.onDisable(this);
 			Log.info("Metrics have been disabled.");
+		}
+	}
+
+	private void startExporterThread(MetricsPolicy policy) {
+		if (!policy.getExporters().isEmpty()) {
+			metricsExporterThread = new MetricsExporterThread(this, policy);
+			metricsExporterThread.start();
+		}
+	}
+
+	private void stopExporterThread() {
+		MetricsExporterThread metricsThread = metricsExporterThread;
+		if (metricsThread != null) {
+			metricsThread.shutdown();
+			metricsExporterThread = null;
 		}
 	}
 
