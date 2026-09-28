@@ -67,7 +67,7 @@ runs:
     # restore runs now; save is a later step after Maven has written ~/.m2.
     - name: Restore Maven repository
       id: maven-cache
-      uses: actions/cache/restore@v4
+      uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
       with:
         path: ~/.m2/repository
         key: m2-l2-${{ steps.export.outputs.cache-image-key }}-${{ inputs.crypto-type }}-${{ hashFiles('**/pom.xml') }}
@@ -143,7 +143,7 @@ runs:
     # Skip save on exact hit: that key is immutable and save would no-op/error.
     - name: Save Maven repository
       if: ${{ always() && steps.maven-cache.outputs.cache-hit != 'true' }}
-      uses: actions/cache/save@v4
+      uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
       with:
         path: ~/.m2/repository
         key: ${{ steps.maven-cache.outputs.cache-primary-key }}
