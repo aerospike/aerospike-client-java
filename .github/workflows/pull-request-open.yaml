@@ -49,6 +49,57 @@ jobs:
           echo ${{ steps.get-java-version.outputs.java-version }}
           echo ${{ steps.create-server-matrix.outputs.input-matrix }}
 
+  # CLIENT-5539: prove the L2 client runs in maven:3-eclipse-temurin-21 with a
+  # warmed ~/.m2, and that surefire XML lands on the host bind-mount so the
+  # existing EnricoMi publisher can consume it. Isolation itself is E4/E6.
+  l2-client-runner:
+    name: L2 Java client runner
+    runs-on: ${{ vars.BUILD_CONTAINER_DISTRO_VERSION }}
+    permissions:
+      contents: read
+      actions: write
+      checks: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+
+      - name: Setup L2 Java client runner
+        id: runner
+        uses: ./.github/actions/setup-l2-client-runner
+        with:
+          client-command: >
+            mvn -B -o -pl test -DskipTests=false
+            -DrunSuite='**/TestErrorDetailParser.class' test
+
+      - name: Show L2 client runner outputs
+        run: |
+          echo "client-image=${{ steps.runner.outputs.client-image }}"
+          echo "client-volumes=${{ steps.runner.outputs.client-volumes }}"
+          echo "client-workdir=${{ steps.runner.outputs.client-workdir }}"
+
+      - name: Confirm surefire reports landed on the host
+        if: ${{ always() }}
+        run: |
+          set -euo pipefail
+          ls -la test/target/surefire-reports/
+          shopt -s nullglob
+          reports=(test/target/surefire-reports/TEST-*.xml)
+          if ((${#reports[@]} == 0)); then
+            echo "Expected surefire XML under test/target/surefire-reports/" >&2
+            exit 1
+          fi
+          printf 'Found surefire reports:\n'
+          printf '  %s\n' "${reports[@]}"
+
+      - name: Publish Test Results
+        if: ${{ always() && hashFiles('test/target/surefire-reports/TEST-*.xml') != '' }}
+        uses: EnricoMi/publish-unit-test-result-action@v2
+        with:
+          files: test/target/surefire-reports/*.xml
+          check_name: "L2 client runner (surefire bind-mount)"
+
   build:
     uses: ./.github/workflows/build-pr.yaml
     needs: make-matrix

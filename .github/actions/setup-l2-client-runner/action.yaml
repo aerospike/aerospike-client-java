@@ -1,0 +1,146 @@
+name: Setup L2 Java client runner
+description: >
+  Restore and warm ~/.m2, then export maven:3-eclipse-temurin-21 bind-mount
+  inputs for setup-discovery-topology. No custom image: the public Maven JDK 21
+  image already has everything the L2 client container needs.
+
+inputs:
+  client-image:
+    description: Client container image (Maven + JDK 21)
+    required: false
+    default: maven:3-eclipse-temurin-21
+  client-command:
+    description: >
+      Optional /bin/sh command to run in the client container after the cache
+      is warmed. Used by the runner smoke job; L2 topology runs pass the
+      command to setup-discovery-topology instead.
+    required: false
+    default: ""
+  crypto-type:
+    description: Crypto type to stage (gnu or bouncycastle)
+    required: false
+    default: gnu
+  skip-warm:
+    description: Skip mvn install inside the client image (restore/save still run)
+    required: false
+    default: "false"
+
+outputs:
+  client-image:
+    description: Image to pass to setup-discovery-topology
+    value: ${{ steps.export.outputs.client-image }}
+  client-volumes:
+    description: Semicolon-delimited host:container mounts (workspace + ~/.m2)
+    value: ${{ steps.export.outputs.client-volumes }}
+  client-workdir:
+    description: Working directory inside the client container
+    value: ${{ steps.export.outputs.client-workdir }}
+  maven-repo-container:
+    description: Maven home path inside the client image
+    value: ${{ steps.export.outputs.maven-repo-container }}
+
+runs:
+  using: composite
+  steps:
+    - name: Export L2 client runner outputs
+      id: export
+      shell: bash
+      env:
+        CLIENT_IMAGE: ${{ inputs.client-image }}
+      run: |
+        set -euo pipefail
+        maven_repo_container="/root/.m2"
+        {
+          echo "client-image=${CLIENT_IMAGE}"
+          echo "client-workdir=${GITHUB_WORKSPACE}"
+          echo "client-volumes=${GITHUB_WORKSPACE}:${GITHUB_WORKSPACE};${HOME}/.m2:${maven_repo_container}"
+          echo "maven-repo-container=${maven_repo_container}"
+        } >> "$GITHUB_OUTPUT"
+
+    - name: Stage crypto
+      shell: bash
+      run: ./set_crypto ${{ inputs.crypto-type }}
+
+    # restore runs now; save is a later step after Maven has written ~/.m2.
+    - name: Restore Maven repository
+      id: maven-cache
+      uses: actions/cache/restore@v4
+      with:
+        path: ~/.m2/repository
+        key: ${{ runner.os }}-m2-l2-${{ inputs.crypto-type }}-${{ hashFiles('**/pom.xml') }}
+        restore-keys: |
+          ${{ runner.os }}-m2-l2-${{ inputs.crypto-type }}-
+          ${{ runner.os }}-m2-l2-
+
+    - name: Warm Maven cache in the client image
+      if: ${{ inputs.skip-warm != 'true' || inputs.client-command != '' }}
+      shell: bash
+      env:
+        CLIENT_COMMAND: ${{ inputs.client-command }}
+        CLIENT_IMAGE: ${{ inputs.client-image }}
+        CLIENT_WORKDIR: ${{ steps.export.outputs.client-workdir }}
+        CLIENT_VOLUMES: ${{ steps.export.outputs.client-volumes }}
+        SKIP_WARM: ${{ inputs.skip-warm }}
+      run: |
+        set -euo pipefail
+
+        mkdir -p "${HOME}/.m2/repository"
+
+        echo "Pulling client image: ${CLIENT_IMAGE}"
+        docker pull "${CLIENT_IMAGE}"
+
+        parts=()
+        if [[ "${SKIP_WARM}" != "true" ]]; then
+          parts+=("mvn -B -DskipTests install")
+        fi
+        if [[ -n "${CLIENT_COMMAND}" ]]; then
+          parts+=("${CLIENT_COMMAND}")
+        fi
+        if ((${#parts[@]} == 0)); then
+          echo "Nothing to run in the client container"
+          exit 0
+        fi
+
+        script=$(printf '%s && ' "${parts[@]}")
+        script="${script% && }"
+
+        run_args=(
+          --rm
+          --entrypoint sh
+          --workdir "${CLIENT_WORKDIR}"
+        )
+
+        # CLIENT_VOLUMES is the same semicolon-delimited list E4 consumes.
+        remainder="${CLIENT_VOLUMES}"
+        while [[ -n "${remainder}" ]]; do
+          mount="${remainder%%;*}"
+          if [[ "${remainder}" == *";"* ]]; then
+            remainder="${remainder#*;}"
+          else
+            remainder=""
+          fi
+          [[ -z "${mount}" ]] && continue
+          run_args+=(-v "${mount}")
+        done
+
+        echo "Running in ${CLIENT_IMAGE}: ${script}"
+        docker run "${run_args[@]}" "${CLIENT_IMAGE}" -c "${script}"
+
+    - name: Fix bind-mount ownership
+      if: ${{ always() }}
+      shell: bash
+      run: |
+        sudo chown -R "$(id -u):$(id -g)" "${GITHUB_WORKSPACE}"
+        if [[ -d "${HOME}/.m2" ]]; then
+          sudo chown -R "$(id -u):$(id -g)" "${HOME}/.m2"
+        fi
+
+    # Save only on an exact-key miss. A restore-keys hit still counts as a miss
+    # for cache-hit, so newly downloaded artifacts get a new primary-key entry.
+    # Skip save on exact hit: that key is immutable and save would no-op/error.
+    - name: Save Maven repository
+      if: ${{ always() && steps.maven-cache.outputs.cache-hit != 'true' }}
+      uses: actions/cache/save@v4
+      with:
+        path: ~/.m2/repository
+        key: ${{ steps.maven-cache.outputs.cache-primary-key }}
