@@ -76,7 +76,7 @@ jobs:
           publish-ports: "false"
           startup-timeout: "60"
           enable-tls: ${{ inputs.enable-tls }}
-          config-file: .github/discovery/l2-aerospike-${{ inputs.subset }}.conf
+          config-file: ${{ inputs.subset == 'ee' && '.github/discovery/l2-aerospike-ee.conf' || '' }}
           features-content: ${{ inputs.subset == 'ee' && secrets.FEATURES_CONF || '' }}
           oidc-provider: ${{ secrets.JFROG_OIDC_PROVIDER }}
           oidc-audience: ${{ secrets.JFROG_OIDC_AUDIENCE }}
