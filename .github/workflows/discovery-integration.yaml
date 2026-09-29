@@ -1,0 +1,66 @@
+name: Discovery integration
+
+# CLIENT-5540. Own workflow so it runs parallel to the pull-request build
+# matrix. Serialising this into build-and-test would add the L2 runtime to
+# every matrix cell.
+#
+# CE (community, 3 nodes, no feature key) runs on every pull request.
+# EE (enterprise, 3 nodes, N-6, N-14) runs on same-repo pull requests, on
+# push to the target branches (merge), and on workflow_dispatch. Fork pull
+# requests do not receive FEATURES_CONF.
+#
+# setup-aerospike-server and setup-discovery-topology are pinned in
+# discovery-l2.yaml to shared-workflows 51a74ee (draft PR #334), which is
+# CLIENT-5538 plus feature-key-file injection into custom configs.
+# v5.0.0 does not have publish-ports, which this topology requires.
+
+permissions:
+  id-token: write
+  contents: read
+  checks: write
+  pull-requests: write
+  actions: write
+
+on:
+  pull_request:
+    branches:
+      - stage
+      - stage-jdk8
+      - dev/*
+    types:
+      - opened
+      - reopened
+      - synchronize
+  push:
+    branches:
+      - stage
+      - stage-jdk8
+  workflow_dispatch:
+
+jobs:
+  l2-ce:
+    name: L2 discovery (ce)
+    uses: ./.github/workflows/discovery-l2.yaml
+    with:
+      subset: ce
+      server-edition: community
+      server-container-repo: database-docker-virtual/aerospike-server
+      server-tag: latest
+      enable-tls: "false"
+    secrets: inherit
+
+  l2-ee:
+    name: L2 discovery (ee)
+    if: >-
+      github.event_name == 'push'
+      || github.event_name == 'workflow_dispatch'
+      || github.event.pull_request.head.repo.full_name == github.repository
+    uses: ./.github/workflows/discovery-l2.yaml
+    with:
+      subset: ee
+      server-edition: enterprise
+      server-container-repo: database-docker-dev-local/aerospike-server-enterprise
+      server-tag: 8.1.1.0_1
+      enable-tls: "true"
+      tls-listen-port-base: "43331"
+    secrets: inherit

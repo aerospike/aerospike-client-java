@@ -1,0 +1,125 @@
+name: Discovery L2 run
+
+on:
+  workflow_call:
+    inputs:
+      subset:
+        description: ce or ee
+        type: string
+        required: true
+      server-edition:
+        description: community or enterprise
+        type: string
+        required: true
+      server-container-repo:
+        description: Aerospike image repository path
+        type: string
+        required: true
+      server-tag:
+        description: Aerospike image tag
+        type: string
+        required: true
+      enable-tls:
+        description: Enable server TLS and TLS proxy listeners
+        type: string
+        required: true
+      tls-listen-port-base:
+        description: First TLS proxy listen port. Empty skips TLS proxies.
+        type: string
+        required: false
+        default: ""
+
+permissions:
+  id-token: write
+  contents: read
+  checks: write
+  pull-requests: write
+  actions: write
+
+jobs:
+  l2:
+    name: cluster
+    runs-on: ${{ vars.BUILD_CONTAINER_DISTRO_VERSION }}
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          ref: ${{ github.ref }}
+
+      - name: Require JFrog OIDC
+        env:
+          OIDC_PROVIDER: ${{ secrets.JFROG_OIDC_PROVIDER }}
+          OIDC_AUDIENCE: ${{ secrets.JFROG_OIDC_AUDIENCE }}
+        run: |
+          set -euo pipefail
+          if [[ -z "${OIDC_PROVIDER}" || -z "${OIDC_AUDIENCE}" ]]; then
+            echo "::error::JFROG_OIDC_PROVIDER and JFROG_OIDC_AUDIENCE are required to pull the Aerospike image."
+            exit 1
+          fi
+
+      - name: Setup L2 Java client runner
+        id: runner
+        uses: ./.github/actions/setup-l2-client-runner
+        with:
+          crypto-type: gnu
+
+      - name: Setup Aerospike cluster
+        id: aerospike
+        uses: aerospike/shared-workflows/.github/actions/setup-aerospike-server@51a74eeb1a9b50b0297186a00894c12a16ed2ece # feature-key injection, PR #334
+        with:
+          server-edition: ${{ inputs.server-edition }}
+          server-container-repo: ${{ inputs.server-container-repo }}
+          server-tag: ${{ inputs.server-tag }}
+          num-nodes: "3"
+          container-name-prefix: discovery-as
+          network-name: discovery-aerospike-net
+          publish-ports: "false"
+          startup-timeout: "60"
+          enable-tls: ${{ inputs.enable-tls }}
+          config-file: .github/discovery/l2-aerospike-${{ inputs.subset }}.conf
+          features-content: ${{ inputs.subset == 'ee' && secrets.FEATURES_CONF || '' }}
+          oidc-provider: ${{ secrets.JFROG_OIDC_PROVIDER }}
+          oidc-audience: ${{ secrets.JFROG_OIDC_AUDIENCE }}
+
+      - name: Export client container inputs
+        id: client
+        env:
+          SUBSET: ${{ inputs.subset }}
+          TLS_CERT_DIR: ${{ steps.aerospike.outputs.tls-cert-dir }}
+        run: |
+          set -euo pipefail
+          volumes="${{ steps.runner.outputs.client-volumes }}"
+          env_vars="DISCOVERY_SUBSET=${SUBSET}"
+          if [[ "${SUBSET}" == "ee" ]]; then
+            volumes="${volumes};${TLS_CERT_DIR}:/aerospike-tls:ro"
+            env_vars="${env_vars};AEROSPIKE_CA_CERT=/aerospike-tls/ca.crt"
+          fi
+          {
+            echo "volumes=${volumes}"
+            echo "env-vars=${env_vars}"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Setup discovery topology and run the suite
+        id: topology
+        uses: aerospike/shared-workflows/.github/actions/setup-discovery-topology@51a74eeb1a9b50b0297186a00894c12a16ed2ece # feature-key injection, PR #334
+        with:
+          container-names: ${{ steps.aerospike.outputs.container-names }}
+          aerospike-network-name: ${{ steps.aerospike.outputs.network-name }}
+          client-image: ${{ steps.runner.outputs.client-image }}
+          client-volumes: ${{ steps.client.outputs.volumes }}
+          client-workdir: ${{ steps.runner.outputs.client-workdir }}
+          client-env-vars: ${{ steps.client.outputs.env-vars }}
+          tls-listen-port-base: ${{ inputs.tls-listen-port-base }}
+          client-command: bash .github/discovery/run-l2-suite.sh
+
+      - name: Fix bind-mount ownership
+        if: ${{ always() }}
+        run: |
+          sudo chown -R "$(id -u):$(id -g)" "${GITHUB_WORKSPACE}"
+
+      - name: Publish Test Results
+        if: ${{ always() && hashFiles('test/target/surefire-reports/TEST-*.xml') != '' }}
+        uses: EnricoMi/publish-unit-test-result-action@d0a4676d0e0b938bc201470d88276b7c74c712b3 # v2.24.0
+        with:
+          files: test/target/surefire-reports/*.xml
+          check_name: "L2 discovery (${{ inputs.subset }})"
