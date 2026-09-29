@@ -71,9 +71,7 @@ jobs:
         # Do not pass -o: skipTests install does not download Surefire's JUnit
         # provider; the first test run still needs the network for that jar.
         with:
-          client-command: >
-            mvn -B -pl test -DskipTests=false
-            -DrunSuite='**/TestErrorDetailParser.class' test
+          run-suite: '**/TestErrorDetailParser.class'
 
       - name: Show L2 client runner outputs
         run: |
@@ -85,11 +83,20 @@ jobs:
         if: ${{ always() }}
         run: |
           set -euo pipefail
-          ls -la test/target/surefire-reports/
+          reports_dir=test/target/surefire-reports
+          # The smoke test must create this directory on the bind-mount. Check
+          # it explicitly so a missing tree fails with a clear message instead
+          # of `ls: No such file or directory` (this step runs even if Maven
+          # failed).
+          if [[ ! -d "${reports_dir}" ]]; then
+            echo "Expected ${reports_dir}/ after the client container run" >&2
+            exit 1
+          fi
+          ls -la "${reports_dir}/"
           shopt -s nullglob
-          reports=(test/target/surefire-reports/TEST-*.xml)
+          reports=("${reports_dir}"/TEST-*.xml)
           if ((${#reports[@]} == 0)); then
-            echo "Expected surefire XML under test/target/surefire-reports/" >&2
+            echo "Expected surefire XML under ${reports_dir}/" >&2
             exit 1
           fi
           printf 'Found surefire reports:\n'
