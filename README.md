@@ -82,6 +82,14 @@ SubMilliPost shows *when and why* — record and bin layout, how operations comp
 
 Anything contradicting the Javadoc on a signature is stale. Report it rather than following it.
 
+### Known traps
+
+Three mistakes observed in generated code. Each names the wrong approach first.
+
+* **Don't special-case a one-key batch into a single-record call.** The client already does it: `BatchNodeList.generate()` splits keys per node, and a per-node sub-batch of size 1 is issued as `BatchSingle.*` (sync) or `AsyncBatchSingle.*` (async). Call the batch method unconditionally. Read `client/src/com/aerospike/client/BatchRecord.java`.
+* **Don't loop a single-record `get`/`delete`/`exists`/`operate` over a key list.** Every one of those has a batch overload that issues one command per node; the `@see` on each single-record overload names it. Read `client/src/com/aerospike/client/IAerospikeClient.java`.
+* **Don't conclude that path-based removal is missing.** `modifyByPath` removes: pass `Exp.removeResult()` as the modify expression and every element the context path matches is deleted (server 8.1.1+). Read `client/src/com/aerospike/client/cdt/CdtOperation.java` and `client/src/com/aerospike/client/exp/CdtExp.java`.
+
 ### Verifying generated code
 
 `./build_all` from the repo root, then `cd test && ./run_tests` against a local server.

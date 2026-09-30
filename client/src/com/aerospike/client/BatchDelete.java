@@ -26,6 +26,8 @@ import com.aerospike.client.policy.Policy;
 
 /**
  * Batch delete operation.
+ * <p>
+ * A per-node sub-batch of size 1 already takes the single-record path; see {@link BatchRecord}.
  */
 public final class BatchDelete extends BatchRecord {
 	/**

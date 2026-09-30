@@ -1152,11 +1152,14 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	/**
 	 * Delete record for specified key.
 	 * The policy specifies the command timeout.
+	 * <p>
+	 * For multiple keys, call the batch overload once rather than looping over this method.
 	 *
 	 * @param policy				delete configuration parameters, pass in null for defaults
 	 * @param key					unique record identifier
 	 * @return						whether record existed on server before deletion
 	 * @throws AerospikeException	if delete fails
+	 * @see #delete(BatchPolicy, BatchDeletePolicy, Key[])
 	 */
 	public final boolean delete(WritePolicy policy, Key key)
 		throws AerospikeException {
@@ -1184,6 +1187,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * @param policy				write configuration parameters, pass in null for defaults
 	 * @param key					unique record identifier
 	 * @throws AerospikeException	if event loop registration fails
+	 * @see #delete(EventLoop, BatchRecordArrayListener, BatchPolicy, BatchDeletePolicy, Key[])
 	 */
 	public final void delete(EventLoop eventLoop, DeleteListener listener, WritePolicy policy, Key key)
 		throws AerospikeException {
@@ -1202,6 +1206,11 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * {@link BatchRecord#resultCode} will be {@link ResultCode#KEY_NOT_FOUND_ERROR}.
 	 * <p>
 	 * Requires server version 6.0+
+	 * <p>
+	 * Do not special-case a single key into the single-record command; the client already does
+	 * that. {@code BatchNodeList.generate()} splits the keys per node, and a per-node sub-batch of
+	 * size 1 is issued as {@code BatchSingle.*} on the sync path and {@code AsyncBatchSingle.*} on
+	 * the async path rather than as a batch command.
 	 *
 	 * @param batchPolicy	batch configuration parameters, pass in null for defaults
 	 * @param deletePolicy	delete configuration parameters, pass in null for defaults
@@ -1271,6 +1280,9 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * {@link ResultCode#KEY_NOT_FOUND_ERROR}.
 	 * <p>
 	 * Requires server version 6.0+
+	 * <p>
+	 * A per-node sub-batch of size 1 already takes the single-record path; see
+	 * {@link #delete(BatchPolicy, BatchDeletePolicy, Key[])}.
 	 *
 	 * @param eventLoop		event loop that will process the command. If NULL, the event
 	 * 						loop will be chosen by round-robin.
@@ -1344,6 +1356,9 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * {@link ResultCode#KEY_NOT_FOUND_ERROR}.
 	 * <p>
 	 * Requires server version 6.0+
+	 * <p>
+	 * A per-node sub-batch of size 1 already takes the single-record path; see
+	 * {@link #delete(BatchPolicy, BatchDeletePolicy, Key[])}.
 	 *
 	 * @param eventLoop		event loop that will process the command. If NULL, the event
 	 * 						loop will be chosen by round-robin.
@@ -1566,11 +1581,14 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	/**
 	 * Determine if a record key exists.
 	 * The policy can be used to specify timeouts.
+	 * <p>
+	 * For multiple keys, call the batch overload once rather than looping over this method.
 	 *
 	 * @param policy				generic configuration parameters, pass in null for defaults
 	 * @param key					unique record identifier
 	 * @return						whether record exists or not
 	 * @throws AerospikeException	if command fails
+	 * @see #exists(BatchPolicy, Key[])
 	 */
 	public final boolean exists(Policy policy, Key key)
 		throws AerospikeException {
@@ -1598,6 +1616,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * @param policy				generic configuration parameters, pass in null for defaults
 	 * @param key					unique record identifier
 	 * @throws AerospikeException	if event loop registration fails
+	 * @see #exists(EventLoop, ExistsArrayListener, BatchPolicy, Key[])
 	 */
 	public final void exists(EventLoop eventLoop, ExistsListener listener, Policy policy, Key key)
 		throws AerospikeException {
@@ -1618,6 +1637,11 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	/**
 	 * Check if multiple record keys exist in one batch call.
 	 * The returned boolean array is in positional order with the original key array order.
+	 * <p>
+	 * Do not special-case a single key into the single-record command; the client already does
+	 * that. {@code BatchNodeList.generate()} splits the keys per node, and a per-node sub-batch of
+	 * size 1 is issued as {@code BatchSingle.*} on the sync path and {@code AsyncBatchSingle.*} on
+	 * the async path rather than as a batch command.
 	 *
 	 * @param policy	batch configuration parameters, pass in null for defaults
 	 * @param keys		array of unique record identifiers
@@ -1674,6 +1698,9 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * The event loop thread will process the command and send the results to the listener.
 	 * <p>
 	 * The returned boolean array is in positional order with the original key array order.
+	 * <p>
+	 * A per-node sub-batch of size 1 already takes the single-record path; see
+	 * {@link #exists(BatchPolicy, Key[])}.
 	 *
 	 * @param eventLoop		event loop that will process the command. If NULL, the event
 	 * 						loop will be chosen by round-robin.
@@ -1731,6 +1758,9 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * The event loop thread will process the command and send the results to the listener.
 	 * <p>
 	 * Each key's result is returned in separate onExists() calls.
+	 * <p>
+	 * A per-node sub-batch of size 1 already takes the single-record path; see
+	 * {@link #exists(BatchPolicy, Key[])}.
 	 *
 	 * @param eventLoop		event loop that will process the command. If NULL, the event
 	 * 						loop will be chosen by round-robin.
@@ -1788,11 +1818,14 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	/**
 	 * Read entire record for specified key.
 	 * The policy can be used to specify timeouts.
+	 * <p>
+	 * For multiple keys, call the batch overload once rather than looping over this method.
 	 *
 	 * @param policy				generic configuration parameters, pass in null for defaults
 	 * @param key					unique record identifier
 	 * @return						if found, return record instance.  If not found, return null.
 	 * @throws AerospikeException	if read fails
+	 * @see #get(BatchPolicy, Key[])
 	 */
 	public final Record get(Policy policy, Key key)
 		throws AerospikeException {
@@ -1820,6 +1853,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * @param policy				generic configuration parameters, pass in null for defaults
 	 * @param key					unique record identifier
 	 * @throws AerospikeException	if event loop registration fails
+	 * @see #get(EventLoop, RecordArrayListener, BatchPolicy, Key[])
 	 */
 	public final void get(EventLoop eventLoop, RecordListener listener, Policy policy, Key key)
 		throws AerospikeException {
@@ -1846,6 +1880,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * @param binNames				bins to retrieve
 	 * @return						if found, return record instance.  If not found, return null.
 	 * @throws AerospikeException	if read fails
+	 * @see #get(BatchPolicy, Key[], String...)
 	 */
 	public final Record get(Policy policy, Key key, String... binNames)
 		throws AerospikeException {
@@ -1874,6 +1909,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * @param key					unique record identifier
 	 * @param binNames				bins to retrieve
 	 * @throws AerospikeException	if event loop registration fails
+	 * @see #get(EventLoop, RecordArrayListener, BatchPolicy, Key[], String...)
 	 */
 	public final void get(EventLoop eventLoop, RecordListener listener, Policy policy, Key key, String... binNames)
 		throws AerospikeException {
@@ -1952,6 +1988,11 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * This method allows different namespaces/bins to be requested for each key in the batch.
 	 * The returned records are located in the same list.
 	 * If the BatchRead key field is not found, the corresponding record field will be null.
+	 * <p>
+	 * Do not special-case a single key into the single-record command; the client already does
+	 * that. {@code BatchNodeList.generate()} splits the keys per node, and a per-node sub-batch of
+	 * size 1 is issued as {@code BatchSingle.*} on the sync path and {@code AsyncBatchSingle.*} on
+	 * the async path rather than as a batch command.
 	 *
 	 * @param policy	batch configuration parameters, pass in null for defaults
 	 * @param records	list of unique record identifiers and the bins to retrieve.
@@ -2002,6 +2043,9 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * This method allows different namespaces/bins to be requested for each key in the batch.
 	 * The returned records are located in the same list.
 	 * If the BatchRead key field is not found, the corresponding record field will be null.
+	 * <p>
+	 * A per-node sub-batch of size 1 already takes the single-record path; see
+	 * {@link #get(BatchPolicy, List)}.
 	 *
 	 * @param eventLoop		event loop that will process the command. If NULL, the event
 	 * 						loop will be chosen by round-robin.
@@ -2058,6 +2102,9 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * This method allows different namespaces/bins to be requested for each key in the batch.
 	 * Each record result is returned in separate onRecord() calls.
 	 * If the BatchRead key field is not found, the corresponding record field will be null.
+	 * <p>
+	 * A per-node sub-batch of size 1 already takes the single-record path; see
+	 * {@link #get(BatchPolicy, List)}.
 	 *
 	 * @param eventLoop		event loop that will process the command. If NULL, the event
 	 * 						loop will be chosen by round-robin.
@@ -2112,6 +2159,9 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * Read multiple records for specified keys in one batch call.
 	 * The returned records are in positional order with the original key array order.
 	 * If a key is not found, the positional record will be null.
+	 * <p>
+	 * A per-node sub-batch of size 1 already takes the single-record path; see
+	 * {@link #get(BatchPolicy, List)}.
 	 *
 	 * @param policy	batch configuration parameters, pass in null for defaults
 	 * @param keys		array of unique record identifiers
@@ -2170,6 +2220,9 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * <p>
 	 * The returned records are in positional order with the original key array order.
 	 * If a key is not found, the positional record will be null.
+	 * <p>
+	 * A per-node sub-batch of size 1 already takes the single-record path; see
+	 * {@link #get(BatchPolicy, List)}.
 	 *
 	 * @param eventLoop		event loop that will process the command. If NULL, the event
 	 * 						loop will be chosen by round-robin.
@@ -2228,6 +2281,9 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * <p>
 	 * Each record result is returned in separate onRecord() calls.
 	 * If a key is not found, the record will be null.
+	 * <p>
+	 * A per-node sub-batch of size 1 already takes the single-record path; see
+	 * {@link #get(BatchPolicy, List)}.
 	 *
 	 * @param eventLoop		event loop that will process the command. If NULL, the event
 	 * 						loop will be chosen by round-robin.
@@ -2282,6 +2338,9 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * Read multiple record headers and bins for specified keys in one batch call.
 	 * The returned records are in positional order with the original key array order.
 	 * If a key is not found, the positional record will be null.
+	 * <p>
+	 * A per-node sub-batch of size 1 already takes the single-record path; see
+	 * {@link #get(BatchPolicy, List)}.
 	 *
 	 * @param policy	batch configuration parameters, pass in null for defaults
 	 * @param keys		array of unique record identifiers
@@ -2343,6 +2402,9 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * <p>
 	 * The returned records are in positional order with the original key array order.
 	 * If a key is not found, the positional record will be null.
+	 * <p>
+	 * A per-node sub-batch of size 1 already takes the single-record path; see
+	 * {@link #get(BatchPolicy, List)}.
 	 *
 	 * @param eventLoop		event loop that will process the command. If NULL, the event
 	 * 						loop will be chosen by round-robin.
@@ -2405,6 +2467,9 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * <p>
 	 * Each record result is returned in separate onRecord() calls.
 	 * If a key is not found, the record will be null.
+	 * <p>
+	 * A per-node sub-batch of size 1 already takes the single-record path; see
+	 * {@link #get(BatchPolicy, List)}.
 	 *
 	 * @param eventLoop		event loop that will process the command. If NULL, the event
 	 * 						loop will be chosen by round-robin.
@@ -2462,6 +2527,9 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * Read multiple records for specified keys using read operations in one batch call.
 	 * The returned records are in positional order with the original key array order.
 	 * If a key is not found, the positional record will be null.
+	 * <p>
+	 * A per-node sub-batch of size 1 already takes the single-record path; see
+	 * {@link #get(BatchPolicy, List)}.
 	 *
 	 * @param policy	batch configuration parameters, pass in null for defaults
 	 * @param keys		array of unique record identifiers
@@ -2520,6 +2588,9 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * <p>
 	 * The returned records are in positional order with the original key array order.
 	 * If a key is not found, the positional record will be null.
+	 * <p>
+	 * A per-node sub-batch of size 1 already takes the single-record path; see
+	 * {@link #get(BatchPolicy, List)}.
 	 *
 	 * @param eventLoop		event loop that will process the command. If NULL, the event
 	 * 						loop will be chosen by round-robin.
@@ -2579,6 +2650,9 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * <p>
 	 * Each record result is returned in separate onRecord() calls.
 	 * If a key is not found, the record will be null.
+	 * <p>
+	 * A per-node sub-batch of size 1 already takes the single-record path; see
+	 * {@link #get(BatchPolicy, List)}.
 	 *
 	 * @param eventLoop		event loop that will process the command. If NULL, the event
 	 * 						loop will be chosen by round-robin.
@@ -2815,12 +2889,15 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * <p>
 	 * Operation results are stored with their associated bin name in the returned record.
 	 * The bin's result type will be a list when multiple operations occur on the same bin.
+	 * <p>
+	 * For multiple keys, call the batch overload once rather than looping over this method.
 	 *
 	 * @param policy				write configuration parameters, pass in null for defaults
 	 * @param key					unique record identifier
 	 * @param operations			database operations to perform
 	 * @return						record results
 	 * @throws AerospikeException	if command fails
+	 * @see #operate(BatchPolicy, BatchWritePolicy, Key[], Operation...)
 	 */
 	public final Record operate(WritePolicy policy, Key key, Operation... operations)
 		throws AerospikeException {
@@ -2870,6 +2947,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * @param key					unique record identifier
 	 * @param operations			database operations to perform
 	 * @throws AerospikeException	if event loop registration fails
+	 * @see #operate(EventLoop, BatchRecordArrayListener, BatchPolicy, BatchWritePolicy, Key[], Operation...)
 	 */
 	public final void operate(EventLoop eventLoop, RecordListener listener, WritePolicy policy, Key key, Operation... operations)
 		throws AerospikeException {
@@ -2908,6 +2986,11 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * {@link BatchUDF}.
 	 * <p>
 	 * Requires server version 6.0+
+	 * <p>
+	 * Do not special-case a single key into the single-record command; the client already does
+	 * that. {@code BatchNodeList.generate()} splits the keys per node, and a per-node sub-batch of
+	 * size 1 is issued as {@code BatchSingle.*} on the sync path and {@code AsyncBatchSingle.*} on
+	 * the async path rather than as a batch command.
 	 *
 	 * @param policy	batch configuration parameters, pass in null for defaults
 	 * @param records	list of unique record identifiers and read/write operations
@@ -3022,6 +3105,9 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * {@link BatchUDF}.
 	 * <p>
 	 * Requires server version 6.0+
+	 * <p>
+	 * A per-node sub-batch of size 1 already takes the single-record path; see
+	 * {@link #operate(BatchPolicy, List)}.
 	 *
 	 * @param eventLoop		event loop that will process the command. If NULL, the event
 	 * 						loop will be chosen by round-robin.
@@ -3141,6 +3227,9 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * {@link BatchUDF}.
 	 * <p>
 	 * Requires server version 6.0+
+	 * <p>
+	 * A per-node sub-batch of size 1 already takes the single-record path; see
+	 * {@link #operate(BatchPolicy, List)}.
 	 *
 	 * @param eventLoop		event loop that will process the command. If NULL, the event
 	 * 						loop will be chosen by round-robin.
@@ -3257,6 +3346,9 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * {@link BatchRecord#resultCode} will be {@link ResultCode#KEY_NOT_FOUND_ERROR}.
 	 * <p>
 	 * Requires server version 6.0+
+	 * <p>
+	 * A per-node sub-batch of size 1 already takes the single-record path; see
+	 * {@link #operate(BatchPolicy, List)}.
 	 *
 	 * @param batchPolicy	batch configuration parameters, pass in null for defaults
 	 * @param writePolicy	write configuration parameters, pass in null for defaults
@@ -3343,6 +3435,9 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * {@link ResultCode#KEY_NOT_FOUND_ERROR}.
 	 * <p>
 	 * Requires server version 6.0+
+	 * <p>
+	 * A per-node sub-batch of size 1 already takes the single-record path; see
+	 * {@link #operate(BatchPolicy, List)}.
 	 *
 	 * @param eventLoop		event loop that will process the command. If NULL, the event
 	 * 						loop will be chosen by round-robin.
@@ -3429,6 +3524,9 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * {@link ResultCode#KEY_NOT_FOUND_ERROR}.
 	 * <p>
 	 * Requires server version 6.0+
+	 * <p>
+	 * A per-node sub-batch of size 1 already takes the single-record path; see
+	 * {@link #operate(BatchPolicy, List)}.
 	 *
 	 * @param eventLoop		event loop that will process the command. If NULL, the event
 	 * 						loop will be chosen by round-robin.
