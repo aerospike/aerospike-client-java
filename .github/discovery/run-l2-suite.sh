@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Run inside the L2 client container. DISCOVERY_* and TOXIPROXY_* are injected
-# by setup-discovery-topology. DISCOVERY_SUBSET is ce or ee.
+# Run inside the L2 client container. The discovery workflow injects
+# DISCOVERY_* and TOXIPROXY_*. DISCOVERY_SUBSET is ce or ee.
 #
 # SuiteDiscovery (CLIENT-5550) must honor -Ddiscovery.subset:
 #   ce - community topology tests, excluding N-6 and N-14
