@@ -27,6 +27,8 @@ import com.aerospike.client.policy.Policy;
 
 /**
  * Batch key and read/write operations with write policy.
+ * <p>
+ * A per-node sub-batch of size 1 already takes the single-record path; see {@link BatchRecord}.
  */
 public final class BatchWrite extends BatchRecord {
 	/**

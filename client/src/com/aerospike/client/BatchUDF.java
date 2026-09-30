@@ -28,6 +28,8 @@ import com.aerospike.client.util.Packer;
 
 /**
  * Batch user defined functions.
+ * <p>
+ * A per-node sub-batch of size 1 already takes the single-record path; see {@link BatchRecord}.
  */
 public final class BatchUDF extends BatchRecord {
 	/**
