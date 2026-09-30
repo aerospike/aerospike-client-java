@@ -65,7 +65,7 @@ jobs:
 
       - name: Setup Aerospike cluster
         id: aerospike
-        uses: aerospike/shared-workflows/.github/actions/setup-aerospike-server@51a74eeb1a9b50b0297186a00894c12a16ed2ece # feature-key injection, PR #334
+        uses: aerospike/shared-workflows/.github/actions/setup-aerospike-server@057d32f475984ec9e0ce83b9d470d9465f04da25 # TLS multi-node config, PR #335
         with:
           server-edition: ${{ inputs.server-edition }}
           server-container-repo: ${{ inputs.server-container-repo }}
@@ -76,7 +76,6 @@ jobs:
           publish-ports: "false"
           startup-timeout: "60"
           enable-tls: ${{ inputs.enable-tls }}
-          config-file: ${{ inputs.subset == 'ee' && '.github/discovery/l2-aerospike-ee.conf' || '' }}
           features-content: ${{ inputs.subset == 'ee' && secrets.FEATURES_CONF || '' }}
           oidc-provider: ${{ secrets.JFROG_OIDC_PROVIDER }}
           oidc-audience: ${{ secrets.JFROG_OIDC_AUDIENCE }}
@@ -101,7 +100,7 @@ jobs:
 
       - name: Setup discovery topology and run the suite
         id: topology
-        uses: aerospike/shared-workflows/.github/actions/setup-discovery-topology@51a74eeb1a9b50b0297186a00894c12a16ed2ece # feature-key injection, PR #334
+        uses: aerospike/shared-workflows/.github/actions/setup-discovery-topology@057d32f475984ec9e0ce83b9d470d9465f04da25 # TLS multi-node config, PR #335
         with:
           container-names: ${{ steps.aerospike.outputs.container-names }}
           aerospike-network-name: ${{ steps.aerospike.outputs.network-name }}

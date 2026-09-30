@@ -10,8 +10,9 @@ name: Discovery integration
 # requests do not receive FEATURES_CONF.
 #
 # setup-aerospike-server and setup-discovery-topology are pinned in
-# discovery-l2.yaml to shared-workflows 51a74ee (draft PR #334), which is
-# CLIENT-5538 plus feature-key-file injection into custom configs.
+# discovery-l2.yaml to shared-workflows 057d32f (draft PR #335). That commit
+# is CLIENT-5538 plus feature-key injection and a generated TLS multi-node
+# config, so this workflow does not supply aerospike.conf.
 # v5.0.0 does not have publish-ports, which this topology requires.
 
 permissions:
