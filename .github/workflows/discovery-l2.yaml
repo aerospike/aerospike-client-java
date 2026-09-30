@@ -88,11 +88,6 @@ jobs:
         with:
           crypto-type: gnu
 
-      - name: Fix bind-mount ownership
-        if: ${{ always() }}
-        run: |
-          sudo chown -R "$(id -u):$(id -g)" "${GITHUB_WORKSPACE}"
-
       - name: Publish Test Results
         if: ${{ always() && hashFiles('test/target/surefire-reports/TEST-*.xml') != '' }}
         uses: EnricoMi/publish-unit-test-result-action@d0a4676d0e0b938bc201470d88276b7c74c712b3 # v2.24.0
