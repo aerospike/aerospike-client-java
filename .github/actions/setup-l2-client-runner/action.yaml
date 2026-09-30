@@ -1,0 +1,156 @@
+name: Setup L2 Java client runner
+description: >
+  Restore and warm ~/.m2, then export maven:3-ibm-semeru-21-noble bind-mount
+  inputs for setup-discovery-topology. No custom image: Maven + IBM Semeru
+  JDK 21 on Ubuntu Noble, matching JAVA_PROVIDER=semeru and ubuntu-24.04 runners.
+
+inputs:
+  client-image:
+    description: Client container image (Maven + IBM Semeru JDK 21), pinned by digest
+    required: false
+    # maven:3-ibm-semeru-21-noble (index digest, Hub 2026-09-26)
+    default: maven:3-ibm-semeru-21-noble@sha256:0ad9f1918f4a30f89713a03e39659ef3135a2a08b257a90168a6033335a48bcb
+  run-suite:
+    description: >
+      Optional Surefire class glob (for example **/TestErrorDetailParser.class).
+      When set, a second docker run invokes the image entrypoint with a fixed
+      mvn argv after the cache warm.
+    required: false
+    default: ""
+  crypto-type:
+    description: Crypto type to stage (gnu or bouncycastle)
+    required: false
+    default: gnu
+  skip-warm:
+    description: Skip mvn install inside the client image (restore/save still run)
+    required: false
+    default: "false"
+
+outputs:
+  client-image:
+    description: Image to pass to setup-discovery-topology
+    value: ${{ steps.export.outputs.client-image }}
+  client-volumes:
+    description: Semicolon-delimited host:container mounts (workspace + ~/.m2)
+    value: ${{ steps.export.outputs.client-volumes }}
+  client-workdir:
+    description: Working directory inside the client container
+    value: ${{ steps.export.outputs.client-workdir }}
+  maven-repo-container:
+    description: Maven home path inside the client image
+    value: ${{ steps.export.outputs.maven-repo-container }}
+
+runs:
+  using: composite
+  steps:
+    - name: Export L2 client runner outputs
+      id: export
+      shell: bash
+      env:
+        CLIENT_IMAGE: ${{ inputs.client-image }}
+      run: |
+        set -euo pipefail
+        maven_repo_container="/root/.m2"
+        # GitHub cache keys allow [A-Za-z0-9._-]; Docker refs use : / @.
+        cache_image_key=$(printf '%s' "${CLIENT_IMAGE}" | tr ':/@' '---')
+        {
+          echo "client-image=${CLIENT_IMAGE}"
+          echo "cache-image-key=${cache_image_key}"
+          echo "client-workdir=${GITHUB_WORKSPACE}"
+          echo "client-volumes=${GITHUB_WORKSPACE}:${GITHUB_WORKSPACE};${HOME}/.m2:${maven_repo_container}"
+          echo "maven-repo-container=${maven_repo_container}"
+        } >> "$GITHUB_OUTPUT"
+
+    - name: Stage crypto
+      shell: bash
+      run: ./set_crypto ${{ inputs.crypto-type }}
+
+    # restore runs now; save is a later step after Maven has written ~/.m2.
+    - name: Restore Maven repository
+      id: maven-cache
+      uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+      with:
+        path: ~/.m2/repository
+        key: m2-l2-${{ steps.export.outputs.cache-image-key }}-${{ inputs.crypto-type }}-${{ hashFiles('**/pom.xml') }}
+        restore-keys: |
+          m2-l2-${{ steps.export.outputs.cache-image-key }}-${{ inputs.crypto-type }}-
+          m2-l2-${{ steps.export.outputs.cache-image-key }}-
+
+    - name: Warm Maven cache in the client image
+      if: ${{ inputs.skip-warm != 'true' || inputs.run-suite != '' }}
+      shell: bash
+      env:
+        CLIENT_IMAGE: ${{ inputs.client-image }}
+        CLIENT_WORKDIR: ${{ steps.export.outputs.client-workdir }}
+        CLIENT_VOLUMES: ${{ steps.export.outputs.client-volumes }}
+        RUN_SUITE: ${{ inputs.run-suite }}
+        SKIP_WARM: ${{ inputs.skip-warm }}
+      run: |
+        set -euo pipefail
+
+        mkdir -p "${HOME}/.m2/repository"
+
+        echo "Pulling client image: ${CLIENT_IMAGE}"
+        docker pull "${CLIENT_IMAGE}"
+
+        run_args=(
+          --rm
+          --workdir "${CLIENT_WORKDIR}"
+        )
+
+        # CLIENT_VOLUMES is the same semicolon-delimited list E4 consumes.
+        remainder="${CLIENT_VOLUMES}"
+        while [[ -n "${remainder}" ]]; do
+          mount="${remainder%%;*}"
+          if [[ "${remainder}" == *";"* ]]; then
+            remainder="${remainder#*;}"
+          else
+            remainder=""
+          fi
+          [[ -z "${mount}" ]] && continue
+          run_args+=(-v "${mount}")
+        done
+
+        # Use the image entrypoint (mvn-entrypoint.sh ends in exec "$@").
+        # One docker run per mvn invocation — no --entrypoint sh, no shell -c.
+        run_in_client() {
+          echo "Running in ${CLIENT_IMAGE}: $*"
+          docker run "${run_args[@]}" "${CLIENT_IMAGE}" "$@"
+        }
+
+        ran=false
+        if [[ "${SKIP_WARM}" != "true" ]]; then
+          run_in_client mvn -B -DskipTests install
+          ran=true
+        fi
+        if [[ -n "${RUN_SUITE}" ]]; then
+          if [[ ! "${RUN_SUITE}" =~ ^[A-Za-z0-9_.*?/-]+$ ]]; then
+            echo "run-suite must be a Surefire class glob (got: ${RUN_SUITE})" >&2
+            exit 1
+          fi
+          run_in_client mvn -B -pl test -DskipTests=false "-DrunSuite=${RUN_SUITE}" test
+          ran=true
+        fi
+        if [[ "${ran}" != "true" ]]; then
+          echo "Nothing to run in the client container"
+        fi
+
+    - name: Fix bind-mount ownership
+      if: ${{ always() }}
+      shell: bash
+      run: |
+        sudo chown -R "$(id -u):$(id -g)" "${GITHUB_WORKSPACE}"
+        if [[ -d "${HOME}/.m2" ]]; then
+          sudo chown -R "$(id -u):$(id -g)" "${HOME}/.m2"
+        fi
+
+    # Save only on an exact-key miss after a successful warm. A restore-keys hit
+    # still counts as a miss for cache-hit, so newly downloaded artifacts get a
+    # new primary-key entry. Skip save on exact hit: that key is immutable.
+    # Do not save after a failed warm — that would cache a partial ~/.m2.
+    - name: Save Maven repository
+      if: ${{ success() && steps.maven-cache.outputs.cache-hit != 'true' }}
+      uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+      with:
+        path: ~/.m2/repository
+        key: ${{ steps.maven-cache.outputs.cache-primary-key }}

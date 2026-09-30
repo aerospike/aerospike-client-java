@@ -29,7 +29,7 @@ jobs:
       input-matrix: ${{ steps.create-server-matrix.outputs.input-matrix }}
       java-version: ${{ steps.get-java-version.outputs.java-version }}
     steps:
-      - uses: actions/checkout@v4       # brings versions.json into the workspace
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0 — brings versions.json into the workspace
         with:
           ref: ${{ github.ref }}
 
@@ -48,6 +48,66 @@ jobs:
         run: |
           echo ${{ steps.get-java-version.outputs.java-version }}
           echo ${{ steps.create-server-matrix.outputs.input-matrix }}
+
+  # CLIENT-5539: prove the L2 client runs in maven:3-ibm-semeru-21-noble with a
+  # warmed ~/.m2, and that surefire XML lands on the host bind-mount so the
+  # existing EnricoMi publisher can consume it. Isolation itself is E4/E6.
+  l2-client-runner:
+    name: L2 Java client runner
+    runs-on: ${{ vars.BUILD_CONTAINER_DISTRO_VERSION }}
+    permissions:
+      contents: read
+      actions: write
+      checks: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          ref: ${{ github.ref }}
+
+      - name: Setup L2 Java client runner
+        id: runner
+        uses: ./.github/actions/setup-l2-client-runner
+        # Do not pass -o: skipTests install does not download Surefire's JUnit
+        # provider; the first test run still needs the network for that jar.
+        with:
+          run-suite: '**/TestErrorDetailParser.class'
+
+      - name: Show L2 client runner outputs
+        run: |
+          echo "client-image=${{ steps.runner.outputs.client-image }}"
+          echo "client-volumes=${{ steps.runner.outputs.client-volumes }}"
+          echo "client-workdir=${{ steps.runner.outputs.client-workdir }}"
+
+      - name: Confirm surefire reports landed on the host
+        if: ${{ always() }}
+        run: |
+          set -euo pipefail
+          reports_dir=test/target/surefire-reports
+          # The smoke test must create this directory on the bind-mount. Check
+          # it explicitly so a missing tree fails with a clear message instead
+          # of `ls: No such file or directory` (this step runs even if Maven
+          # failed).
+          if [[ ! -d "${reports_dir}" ]]; then
+            echo "Expected ${reports_dir}/ after the client container run" >&2
+            exit 1
+          fi
+          ls -la "${reports_dir}/"
+          shopt -s nullglob
+          reports=("${reports_dir}"/TEST-*.xml)
+          if ((${#reports[@]} == 0)); then
+            echo "Expected surefire XML under ${reports_dir}/" >&2
+            exit 1
+          fi
+          printf 'Found surefire reports:\n'
+          printf '  %s\n' "${reports[@]}"
+
+      - name: Publish Test Results
+        if: ${{ always() && hashFiles('test/target/surefire-reports/TEST-*.xml') != '' }}
+        uses: EnricoMi/publish-unit-test-result-action@d0a4676d0e0b938bc201470d88276b7c74c712b3 # v2.24.0
+        with:
+          files: test/target/surefire-reports/*.xml
+          check_name: "L2 client runner (surefire bind-mount)"
 
   build:
     uses: ./.github/workflows/build-pr.yaml
