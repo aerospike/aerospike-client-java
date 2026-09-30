@@ -57,12 +57,6 @@ jobs:
             exit 1
           fi
 
-      - name: Setup L2 Java client runner
-        id: runner
-        uses: ./.github/actions/setup-l2-client-runner
-        with:
-          crypto-type: gnu
-
       - name: Setup Aerospike cluster
         id: aerospike
         uses: aerospike/shared-workflows/.github/actions/setup-aerospike-server@97ce72ad2c72b10fb3690c35ef871131fce7dff6 # TLS multi-node config, PR #335
@@ -87,6 +81,12 @@ jobs:
           container-names: ${{ steps.aerospike.outputs.container-names }}
           aerospike-network-name: ${{ steps.aerospike.outputs.network-name }}
           tls-listen-port-base: ${{ inputs.tls-listen-port-base }}
+
+      - name: Setup L2 Java client runner
+        id: runner
+        uses: ./.github/actions/setup-l2-client-runner
+        with:
+          crypto-type: gnu
 
       - name: Fix bind-mount ownership
         if: ${{ always() }}
