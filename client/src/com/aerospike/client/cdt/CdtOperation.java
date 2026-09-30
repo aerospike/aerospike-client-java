@@ -90,8 +90,8 @@ public class CdtOperation {
 	 * a modification expression at each matching location. The operation writes the
 	 * modified CDT structure back to the bin.
 	 * <p>
-	 * Valid {@code flags} are defined in {@link ModifyFlags} and can be combined with bitwise OR
-	 * (e.g. {@code ModifyFlags.APPLY | ModifyFlags.NO_FAIL}).
+	 * Valid {@code flags} are {@link ModifyFlags#DEFAULT} and {@link ModifyFlags#NO_FAIL}, which
+	 * can be combined with bitwise OR.
 	 * <p>
 	 * The {@code modifyExp} is a compiled expression built with
 	 * {@link com.aerospike.client.exp.Exp#build(com.aerospike.client.exp.Exp)}.
@@ -118,6 +118,21 @@ public class CdtOperation {
 	 * Operation applyOp = CdtOperation.modifyByPath("myBin", ModifyFlags.DEFAULT, modifyExp,
 	 *     bookKey, allChildren, priceKey);
 	 * Record result = client.operate(null, key, applyOp);
+	 * }</pre>
+	 *
+	 * Removal goes through this same operation: pass an expression built from
+	 * {@link com.aerospike.client.exp.Exp#removeResult()} as {@code modifyExp} and every element
+	 * the context path matches is deleted rather than rewritten. There is no separate
+	 * remove-by-path operation. Requires server version 8.1.1+.
+	 *
+	 * <pre>{@code
+	 * // Remove every number greater than 10 from the "numbers" list.
+	 * Expression removeExp = Exp.build(Exp.removeResult());
+	 *
+	 * Operation removeOp = CdtOperation.modifyByPath("myBin", ModifyFlags.DEFAULT, removeExp,
+	 *     CTX.mapKey(Value.get("numbers")),
+	 *     CTX.allChildrenWithFilter(Exp.gt(Exp.intLoopVar(LoopVarPart.VALUE), Exp.val(10))));
+	 * client.operate(null, key, removeOp);
 	 * }</pre>
 	 *
 	 * @param binName		bin name
