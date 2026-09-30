@@ -5,6 +5,12 @@ validations:
     critical: true
     timeout: 900
 
+  test_client_unit:
+    description: "Client-module unit tests run (no server). Confirm a non-zero 'Tests run:' line — a BUILD SUCCESS that executed nothing is a failed validation."
+    command: "mvn -o -pl client test"
+    critical: true
+    timeout: 900
+
   build_all_modules:
     description: "Whole reactor compiles, including test, examples and benchmarks."
     command: "mvn -q -o compile"
@@ -30,7 +36,7 @@ validations:
     timeout: 2700
 
   tests_actually_ran:
-    description: "Every suite invoked reports a non-zero 'Tests run: N' with 0 failures and 0 errors. A BUILD SUCCESS with no tests executed is a failed validation, not a pass — skipTests defaults to true in test/pom.xml."
+    description: "Every suite invoked reports a non-zero 'Tests run: N' with 0 failures and 0 errors. A BUILD SUCCESS with no tests executed is a failed validation, not a pass — skipTests defaults to true in test/pom.xml. Client-module unit tests must also report a non-zero Tests run (they are not skipped)."
     critical: true
 
   api_stability:

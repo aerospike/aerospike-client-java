@@ -21,6 +21,7 @@ The `stage-jdk8` branch builds the Java 8 artifact.
 | Transactions | `test/.../sync/basic/` | behavior |
 | Async, event loops | `client/src/com/aerospike/client/async/`, `test/.../async/` | behavior |
 | Errors and result codes | `client/src/com/aerospike/client/{AerospikeException,ResultCode}.java` | codes |
+| Unit tests (no server) | `client/src/test/java/` | client-module JUnit; runs during `mvn install` |
 | Idiomatic use at feature scale | SubMilliPost — see below | when and why |
 
 ### Repository map
@@ -33,7 +34,7 @@ aerospike-client-java/
 ├── CLIENT-DEV.md          contributor-facing: branch porting between stage and stage-jdk8
 ├── client/                client library source — the API surface
 │   ├── README.md          build notes + SubMilliPost capability map
-│   └── src/com/aerospike/client/
+│   ├── src/com/aerospike/client/
 │       ├── policy/        read, write, batch, query, txn policies
 │       ├── cdt/           list and map operations
 │       ├── exp/           filter and operation expressions
@@ -45,6 +46,7 @@ aerospike-client-java/
 │       ├── configuration/ dynamic client configuration
 │       ├── cluster/, command/, listener/, task/, lua/, util/  internals
 │       └── AerospikeClient.java, AerospikeException.java, ResultCode.java, ...
+│   └── src/test/java/     unit tests (no server; surefire unskipped)
 ├── examples/              ~34 runnable single-purpose programs
 │   ├── README.md          example → description table
 │   └── src/com/aerospike/examples/
