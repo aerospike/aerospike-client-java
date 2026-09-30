@@ -39,7 +39,7 @@ for port in "${port_list[@]}"; do
   timeout 10 bash -c "echo >/dev/tcp/${host}/${port}"
 done
 
-suite="test/src/com/aerospike/test/discovery/SuiteDiscovery.java"
+suite="test/src/com/aerospike/test/SuiteDiscovery.java"
 reports="test/target/surefire-reports"
 
 if [[ ! -f "$suite" ]]; then
@@ -49,10 +49,10 @@ if [[ ! -f "$suite" ]]; then
   else
     skip_message="SuiteDiscovery is not in this revision (CLIENT-5550). CE discovery subset did not run."
   fi
-  cat > "${reports}/TEST-com.aerospike.test.discovery.SuiteDiscovery.xml" <<EOF
+  cat > "${reports}/TEST-com.aerospike.test.SuiteDiscovery.xml" <<EOF
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="com.aerospike.test.discovery.SuiteDiscovery" tests="1" skipped="1" failures="0" errors="0" time="0">
-  <testcase classname="com.aerospike.test.discovery.SuiteDiscovery" name="subset-${subset}">
+<testsuite name="com.aerospike.test.SuiteDiscovery" tests="1" skipped="1" failures="0" errors="0" time="0">
+  <testcase classname="com.aerospike.test.SuiteDiscovery" name="subset-${subset}">
     <skipped message="${skip_message}"/>
   </testcase>
 </testsuite>
