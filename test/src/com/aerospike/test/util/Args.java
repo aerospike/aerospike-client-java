@@ -45,6 +45,16 @@ import com.aerospike.client.util.Version;
 public class Args {
 	public static Args Instance = new Args();
 
+	public enum OnMiss {
+		passThrough,
+		strict
+	}
+
+	public enum ExecutionMode {
+		thread,
+		tend
+	}
+
 	public String host;
 	public int port;
 	public AuthMode authMode = AuthMode.INTERNAL;
@@ -61,6 +71,14 @@ public class Args {
 	public boolean hasTtl;
 	public boolean scMode;
 	public Version serverVersion;
+	public String discoveryProvider;
+	public String translationProvider;
+	public String endpointHostname;
+	public int endpointPortBase;
+	public OnMiss onMiss = OnMiss.passThrough;
+	public ExecutionMode executionMode = ExecutionMode.thread;
+	public boolean useServicesAlternate;
+	private String discoveryFlag;
 
 	public Args() {
 		host = "127.0.0.1";
@@ -132,6 +150,22 @@ public class Args {
 					"Set read and write totalTimeout in milliseconds\n" +
 					"for single record and batch commands."
 					);
+
+			options.addOption(null, "discovery-provider", true, "Seed candidate provider name");
+			options.addOption(null, "translation-provider", true, "Address translator name");
+			options.addOption(null, "endpoint-hostname", true, "Single reachable endpoint hostname");
+			options.addOption(null, "endpoint-port-base", true, "Base for the computed per-node port");
+			options.addOption(null, "on-miss", true,
+					"Behavior when a seed candidate has no mapping\n" +
+					"Values: " + Arrays.toString(OnMiss.values()) + "\n" +
+					"Default: passThrough"
+					);
+			options.addOption(null, "execution-mode", true,
+					"Discovery execution mode\n" +
+					"Values: " + Arrays.toString(ExecutionMode.values()) + "\n" +
+					"Default: thread"
+					);
+			options.addOption(null, "use-services-alternate", false, "Use alternate service addresses");
 
 			options.addOption("d", "debug", false, "Run in debug mode.");
 			options.addOption("u", "usage", false, "Print usage.");
@@ -216,6 +250,40 @@ public class Args {
 				totalTimeout = Integer.parseInt(cl.getOptionValue("totalTimeout"));;
 			}
 
+			if (cl.hasOption("discovery-provider")) {
+				discoveryProvider = cl.getOptionValue("discovery-provider");
+				discoveryFlag = "--discovery-provider";
+			}
+
+			if (cl.hasOption("translation-provider")) {
+				translationProvider = cl.getOptionValue("translation-provider");
+				discoveryFlag = "--translation-provider";
+			}
+
+			if (cl.hasOption("endpoint-hostname")) {
+				endpointHostname = cl.getOptionValue("endpoint-hostname");
+				discoveryFlag = "--endpoint-hostname";
+			}
+
+			if (cl.hasOption("endpoint-port-base")) {
+				endpointPortBase = Integer.parseInt(cl.getOptionValue("endpoint-port-base"));
+				discoveryFlag = "--endpoint-port-base";
+			}
+
+			if (cl.hasOption("on-miss")) {
+				onMiss = OnMiss.valueOf(cl.getOptionValue("on-miss"));
+				discoveryFlag = "--on-miss";
+			}
+
+			if (cl.hasOption("execution-mode")) {
+				executionMode = ExecutionMode.valueOf(cl.getOptionValue("execution-mode"));
+				discoveryFlag = "--execution-mode";
+			}
+
+			if (cl.hasOption("use-services-alternate")) {
+				useServicesAlternate = true;
+			}
+
 			if (cl.hasOption("d")) {
 				Log.setLevel(Level.DEBUG);
 			}
@@ -238,6 +306,15 @@ public class Args {
 		p.batchPolicyDefault.totalTimeout = totalTimeout;
 		p.batchParentPolicyWriteDefault.socketTimeout = socketTimeout;
 		p.batchParentPolicyWriteDefault.totalTimeout = totalTimeout;
+		p.useServicesAlternate = useServicesAlternate;
+		applyDiscovery(p);
+	}
+
+	private void applyDiscovery(ClientPolicy p) {
+		if (discoveryFlag != null) {
+			throw new AerospikeException(discoveryFlag +
+				" was parsed, but this client build carries no discovery framework to apply it to.");
+		}
 	}
 
 	private static void logUsage(Options options) {
