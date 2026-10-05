@@ -1,0 +1,88 @@
+name: Discovery k8s
+
+# CLIENT-5542. L3 is merge and nightly only. Kind plus AKO takes 3-5 minutes,
+# which does not fit the ~8 minute per-PR budget. The job also needs the
+# Enterprise feature key (FEATURES_CONF). Fork pull requests do not receive
+# repository secrets, so this workflow has no pull_request trigger.
+#
+# setup-kind-ako is the CLIENT-5541 feature branch (shared-workflows PR #336)
+# until that action is released. The JVM runs on the runner. The action
+# publishes the client ports to 127.0.0.1 and writes the endpoint hostname
+# into the runner hosts file. client-ports stays at the action default,
+# 30000-32767, so an advertised NodePort is reachable on the same number.
+#
+# A schedule runs from the default branch. That run checks out stage, which
+# is the line these tests develop on. A push checks out the pushed commit.
+
+permissions:
+  contents: read
+  checks: write
+  pull-requests: write
+
+on:
+  push:
+    branches:
+      - stage
+      - stage-jdk8
+  schedule:
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+
+jobs:
+  l3:
+    name: L3 discovery (k8s)
+    runs-on: ${{ vars.BUILD_CONTAINER_DISTRO_VERSION }}
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          ref: ${{ github.event_name == 'schedule' && 'stage' || github.sha }}
+
+      - name: Get java version
+        id: java
+        run: |
+          echo java-version="$(grep '<java.version>' pom.xml | sed -e 's/<[^>]*>//g' | awk '{$1=$1};1' | sed 's/^1\.8$/8/')" >> "$GITHUB_OUTPUT"
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: ${{ vars.JAVA_PROVIDER }}
+          java-version: ${{ steps.java.outputs.java-version }}
+
+      - name: Require the Enterprise feature key
+        env:
+          FEATURES_CONF: ${{ secrets.FEATURES_CONF }}
+        run: |
+          set -euo pipefail
+          if [[ -z "${FEATURES_CONF}" ]]; then
+            echo "::error::FEATURES_CONF is required to start the Enterprise cluster. L3 does not run on fork pull requests."
+            exit 1
+          fi
+
+      - name: Setup kind and AKO
+        id: kind-ako
+        uses: aerospike/shared-workflows/.github/actions/setup-kind-ako@jnguyen/CLIENT-5541-add-setup-kind-ako-shared-action # CLIENT-5541, PR #336
+        with:
+          features-content: ${{ secrets.FEATURES_CONF }}
+
+      - name: Run K suite
+        env:
+          DISCOVERY_ENDPOINT_HOSTNAME: ${{ steps.kind-ako.outputs.endpoint-hostname }}
+          DISCOVERY_ENDPOINT_ADDRESS: ${{ steps.kind-ako.outputs.endpoint-address }}
+          DISCOVERY_INGRESS_ENDPOINTS: ${{ steps.kind-ako.outputs.ingress-endpoints }}
+          DISCOVERY_INGRESS_PORTS: ${{ steps.kind-ako.outputs.ingress-ports }}
+          DISCOVERY_SERVICE_ENDPOINTS: ${{ steps.kind-ako.outputs.service-endpoints }}
+          DISCOVERY_SERVICE_NODE_PORTS: ${{ steps.kind-ako.outputs.service-node-ports }}
+          DISCOVERY_NODE_PORT_RANGE: ${{ steps.kind-ako.outputs.node-port-range }}
+          DISCOVERY_KUBECONFIG: ${{ steps.kind-ako.outputs.kubeconfig }}
+          DISCOVERY_CLUSTER_NAME: ${{ steps.kind-ako.outputs.cluster-name }}
+          DISCOVERY_CLUSTER_NAMESPACE: ${{ steps.kind-ako.outputs.cluster-namespace }}
+          AEROSPIKE_ADMIN_PASSWORD: ${{ steps.kind-ako.outputs.admin-password }}
+        run: bash .github/discovery/run-l3-suite.sh
+
+      - name: Publish Test Results
+        if: ${{ always() && hashFiles('test/target/surefire-reports/TEST-*.xml') != '' }}
+        uses: EnricoMi/publish-unit-test-result-action@d0a4676d0e0b938bc201470d88276b7c74c712b3 # v2.24.0
+        with:
+          files: test/target/surefire-reports/*.xml
+          check_name: "L3 discovery (k8s)"
