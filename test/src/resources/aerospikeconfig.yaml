@@ -138,6 +138,7 @@ dynamic:
     respond_all_keys: false
   metrics:
     enable: false
+    enable_extended_metrics: true
     latency_shift: 2
     latency_columns: 7
     labels:
