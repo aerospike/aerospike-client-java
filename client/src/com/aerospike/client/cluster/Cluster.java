@@ -208,6 +208,9 @@ public class Cluster implements Runnable, Closeable {
 	private Thread tendThread;
 	protected volatile boolean tendValid;
 
+	// Periodic seed candidate refresh scheduler.
+	final SeedRefresher seedRefresher;
+
 	// Should use "services-alternate" instead of "services" in info request?
 	protected boolean useServicesAlternate;
 
@@ -249,16 +252,7 @@ public class Cluster implements Runnable, Closeable {
 
 		// Default TLS names when TLS enabled.
 		if (tlsPolicy != null) {
-			boolean useClusterName = clusterName != null && clusterName.length() > 0;
-
-			for (int i = 0; i < hosts.length; i++) {
-				Host host = hosts[i];
-
-				if (host.tlsName == null) {
-					String tlsName = useClusterName ? clusterName : host.name;
-					hosts[i] = new Host(host.name, tlsName, host.port);
-				}
-			}
+			defaultTlsNames(hosts);
 		}
 		else {
 			if (authMode == AuthMode.EXTERNAL || authMode == AuthMode.PKI) {
@@ -267,6 +261,7 @@ public class Cluster implements Runnable, Closeable {
 		}
 
 		this.seeds = hosts;
+		this.seedRefresher = new SeedRefresher(seedCandidateProvider, policy, this::setSeeds);
 
 		if (policy.authMode == AuthMode.PKI) {
 			if (policy.password != null) {
@@ -415,6 +410,8 @@ public class Cluster implements Runnable, Closeable {
 				" must be greater or equal to the tend interval " + clientPolicy.tendInterval);
 		}
 
+		seedRefresher.validate(clientPolicy.tendInterval);
+
 		tendInterval = clientPolicy.tendInterval;
 		connectTimeout = clientPolicy.timeout;
 		loginTimeout = clientPolicy.loginTimeout;
@@ -494,6 +491,30 @@ public class Cluster implements Runnable, Closeable {
 		return host;
 	}
 
+	private void defaultTlsNames(Host[] hosts) {
+		boolean useClusterName = clusterName != null && clusterName.length() > 0;
+
+		for (int i = 0; i < hosts.length; i++) {
+			Host host = hosts[i];
+
+			if (host.tlsName == null) {
+				String tlsName = useClusterName ? clusterName : host.name;
+				hosts[i] = new Host(host.name, tlsName, host.port);
+			}
+		}
+	}
+
+	final void setSeeds(Host[] hosts) {
+		if (tlsPolicy != null) {
+			defaultTlsNames(hosts);
+		}
+		seeds = hosts;
+	}
+
+	final Host[] getSeeds() {
+		return seeds;
+	}
+
 	public void forceSingleNode() {
 		// Initialize tendThread, but do not start it.
 		tendValid = true;
@@ -563,6 +584,8 @@ public class Cluster implements Runnable, Closeable {
 				enableMetricsInternal(metricsPolicy);
 			}
 		}
+
+		seedRefresher.start(seeds);
 
 		// Run cluster tend thread.
 		tendValid = true;
@@ -769,6 +792,10 @@ public class Cluster implements Runnable, Closeable {
 					Log.warn("Dynamic configuration failed: " + t);
 				}
 			}
+		}
+
+		if (! isInit) {
+			seedRefresher.tend(tendCount, tendInterval);
 		}
 
 		processRecoverQueue();

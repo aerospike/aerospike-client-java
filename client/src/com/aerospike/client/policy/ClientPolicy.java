@@ -371,6 +371,35 @@ public class ClientPolicy {
 	public AddressTranslator addressTranslator;
 
 	/**
+	 * Interval in milliseconds between periodic {@link #seedCandidateProvider} refreshes. The
+	 * client starts no thread for discovery: when the provider's
+	 * {@link SeedCandidateProvider#needsPeriodicRefresh()} returns true, the provider is called on
+	 * the cluster tend thread every discoveryRefreshInterval / {@link #tendInterval} tend
+	 * iterations. Such a provider must return true from
+	 * {@link SeedCandidateProvider#supportsDeadline()}, and this value must be greater or equal to
+	 * {@link #tendInterval}; otherwise client construction fails. No periodic refresh is scheduled
+	 * when the provider does not need it.
+	 * <p>
+	 * Default: 30000
+	 */
+	public int discoveryRefreshInterval = 30000;
+
+	/**
+	 * Deadline in milliseconds for one periodic {@link #seedCandidateProvider} refresh on the
+	 * tend thread. The deadline is measured, not enforced: an overrunning call is never
+	 * interrupted and blocks tend for its full duration. On overrun, a warning is logged, the call's result is discarded and the last good seed list is kept.
+	 * After three consecutive overruns, the provider is no longer called from tend for the life
+	 * of the client instance and the seed list reverts to the one established at client
+	 * initialization. A new client instance starts with no overruns.
+	 * <p>
+	 * When the provider needs periodic refresh, this value must be greater than zero and less or
+	 * equal to {@link #tendInterval} / 2; otherwise client construction fails.
+	 * <p>
+	 * Default: 100
+	 */
+	public int discoveryTendRefreshDeadline = 100;
+
+	/**
 	 * This field is ignored and deprecated. The client now supports virtual threads and thread pools
 	 * are no longer used. This field only exists to maintain api compatibility when switching between
 	 * aerospike-client-jdk21 and aerospike-client-jdk8 packages.
@@ -513,6 +542,8 @@ public class ClientPolicy {
 		this.ipMap = other.ipMap;
 		this.seedCandidateProvider = other.seedCandidateProvider;
 		this.addressTranslator = other.addressTranslator;
+		this.discoveryRefreshInterval = other.discoveryRefreshInterval;
+		this.discoveryTendRefreshDeadline = other.discoveryTendRefreshDeadline;
 		this.threadPool = other.threadPool;
 		this.sharedThreadPool = (other.threadPool != null);
 		this.useServicesAlternate = other.useServicesAlternate;
@@ -822,6 +853,14 @@ public class ClientPolicy {
 
 	public void setAddressTranslator(AddressTranslator addressTranslator) {
 		this.addressTranslator = addressTranslator;
+	}
+
+	public void setDiscoveryRefreshInterval(int discoveryRefreshInterval) {
+		this.discoveryRefreshInterval = discoveryRefreshInterval;
+	}
+
+	public void setDiscoveryTendRefreshDeadline(int discoveryTendRefreshDeadline) {
+		this.discoveryTendRefreshDeadline = discoveryTendRefreshDeadline;
 	}
 
 	public void setThreadPool(ExecutorService threadPool) {
