@@ -29,6 +29,7 @@ import com.aerospike.client.Info;
 public final class PeerParser {
 	private final Cluster cluster;
 	private final Info parser;
+	private String nodeName;
 	private String tlsName;
 	private final int portDefault;
 	public final int generation;
@@ -76,7 +77,7 @@ public final class PeerParser {
 	private Peer parsePeer() {
 		Peer peer = new Peer();
 		parser.expect('[');
-		peer.nodeName = parser.parseString(',');
+		peer.nodeName = nodeName = parser.parseString(',');
 		parser.offset++;
 		peer.tlsName = tlsName = parser.parseString(',');
 		parser.offset++;
@@ -118,25 +119,17 @@ public final class PeerParser {
 			host = parser.parseString(':', ',', ']');
 		}
 
-		if (cluster.ipMap != null) {
-			String alternativeHost = cluster.ipMap.get(host);
-
-			if (alternativeHost != null) {
-				host = alternativeHost;
-			}
-		}
-
 		if (parser.offset < parser.length) {
 			byte b = parser.buffer[parser.offset];
 
 			if (b == ':') {
 				parser.offset++;
 				int port = parser.parseInt();
-				return new Host(host, tlsName, port);
+				return cluster.translateAddress(nodeName, tlsName, host, port);
 			}
 
 			if (b == ',' || b == ']') {
-				return new Host(host, tlsName, portDefault);
+				return cluster.translateAddress(nodeName, tlsName, host, portDefault);
 			}
 		}
 

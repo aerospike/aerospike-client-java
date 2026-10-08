@@ -210,7 +210,7 @@ public final class NodeValidator {
 
 				if (cluster.tlsPolicy != null && cluster.tlsPolicy.forLoginOnly) {
 					// Switch to using non-TLS socket.
-					SwitchClear sc = new SwitchClear(cluster, conn, sessionToken);
+					SwitchClear sc = new SwitchClear(cluster, conn, tlsName, sessionToken);
 					conn.close();
 					address = sc.clearAddress;
 					socketAddress = sc.clearSocketAddress;
@@ -393,15 +393,7 @@ public final class NodeValidator {
 
 		// Search real hosts for seed.
 		for (Host host : hosts) {
-			h = host;
-
-			if (cluster.ipMap != null) {
-				String alt = cluster.ipMap.get(h.name);
-
-				if (alt != null) {
-					h = new Host(alt, h.port);
-				}
-			}
+			h = cluster.translateAddress(this.name, tlsName, host.name, host.port);
 
 			if (h.equals(this.primaryHost)) {
 				// Found seed which is not a load balancer.
@@ -413,15 +405,7 @@ public final class NodeValidator {
 		// Find first valid real host.
 		for (Host host : hosts) {
 			try {
-				h = host;
-
-				if (cluster.ipMap != null) {
-					String alt = cluster.ipMap.get(h.name);
-
-					if (alt != null) {
-						h = new Host(alt, h.port);
-					}
-				}
+				h = cluster.translateAddress(this.name, tlsName, host.name, host.port);
 
 				InetAddress[] addresses = InetAddress.getAllByName(h.name);
 
@@ -474,25 +458,19 @@ public final class NodeValidator {
 		private Connection clearConn;
 
 		// Switch from TLS connection to non-TLS connection.
-		private SwitchClear(Cluster cluster, Connection conn, byte[] sessionToken) throws Exception {
+		private SwitchClear(Cluster cluster, Connection conn, String tlsName, byte[] sessionToken) throws Exception {
 			// Obtain non-TLS addresses.
 			String command = cluster.useServicesAlternate ? "service-clear-alt" : "service-clear-std";
-			String result = Info.request(conn, command);
+			HashMap<String,String> map = Info.request(conn, command, "node");
+			String result = map.get(command);
+			String nodeName = map.get("node");
 			List<Host> hosts = Host.parseServiceHosts(result);
 			Host clearHost;
 
 			// Find first valid non-TLS host.
 			for (Host host : hosts) {
 				try {
-					clearHost = host;
-
-					if (cluster.ipMap != null) {
-						String alternativeHost = cluster.ipMap.get(clearHost.name);
-
-						if (alternativeHost != null) {
-							clearHost = new Host(alternativeHost, clearHost.port);
-						}
-					}
+					clearHost = cluster.translateAddress(nodeName, tlsName, host.name, host.port);
 
 					InetAddress[] addresses = InetAddress.getAllByName(clearHost.name);
 
