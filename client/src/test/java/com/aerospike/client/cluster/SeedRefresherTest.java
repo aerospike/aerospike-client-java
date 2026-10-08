@@ -19,14 +19,11 @@ package com.aerospike.client.cluster;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -36,7 +33,6 @@ import org.junit.Test;
 
 import com.aerospike.client.Host;
 import com.aerospike.client.Log;
-import com.aerospike.client.discovery.DiscoveryExecutionMode;
 import com.aerospike.client.policy.ClientPolicy;
 
 public class SeedRefresherTest {
@@ -47,7 +43,6 @@ public class SeedRefresherTest {
 	private final List<String> warnings = new ArrayList<>();
 	private final List<String> errors = new ArrayList<>();
 	private final AtomicReference<Host[]> snapshot = new AtomicReference<>();
-	private SeedRefresher refresher;
 
 	@Before
 	public void setUp() {
@@ -67,28 +62,23 @@ public class SeedRefresherTest {
 
 	@After
 	public void tearDown() {
-		if (refresher != null) {
-			refresher.close();
-		}
 		Log.setCallback(null);
 		Log.setLevel(Log.Level.INFO);
 	}
 
-	private SeedRefresher create(TestSeedProvider provider, DiscoveryExecutionMode mode, int refreshInterval) {
+	private SeedRefresher create(TestSeedProvider provider, int refreshInterval) {
 		ClientPolicy policy = new ClientPolicy();
-		policy.discoveryExecutionMode = mode;
 		policy.discoveryRefreshInterval = refreshInterval;
 		policy.discoveryTendRefreshDeadline = 20;
-		policy.discoveryRefreshTimeout = 50;
-		refresher = new SeedRefresher(provider, policy, snapshot::set);
+		SeedRefresher refresher = new SeedRefresher(provider, policy, snapshot::set);
 		refresher.start(INIT);
 		return refresher;
 	}
 
 	@Test
-	public void tendModeCallsProviderOncePerThirtyTends() {
+	public void callsProviderOncePerThirtyTends() {
 		TestSeedProvider provider = new TestSeedProvider(true, true, A);
-		SeedRefresher r = create(provider, DiscoveryExecutionMode.TEND, 30000);
+		SeedRefresher r = create(provider, 30000);
 
 		for (int tendCount = 1; tendCount <= 89; tendCount++) {
 			r.tend(tendCount, 1000);
@@ -97,13 +87,12 @@ public class SeedRefresherTest {
 		r.tend(90, 1000);
 		assertEquals(3, provider.calls.get());
 		assertArrayEquals(new Host[] {A}, snapshot.get());
-		assertNull(r.getThread());
 	}
 
 	@Test
-	public void tendModeProviderThrowableKeepsSnapshot() {
+	public void providerThrowableKeepsSnapshot() {
 		TestSeedProvider provider = new TestSeedProvider(true, true, A);
-		SeedRefresher r = create(provider, DiscoveryExecutionMode.TEND, 1000);
+		SeedRefresher r = create(provider, 1000);
 
 		r.tend(1, 1000);
 		assertArrayEquals(new Host[] {A}, snapshot.get());
@@ -131,9 +120,9 @@ public class SeedRefresherTest {
 	}
 
 	@Test
-	public void tendModeOverrunBlocksTendAndKeepsLastGood() {
+	public void overrunBlocksTendAndKeepsLastGood() {
 		TestSeedProvider provider = new TestSeedProvider(true, true, A);
-		SeedRefresher r = create(provider, DiscoveryExecutionMode.TEND, 1000);
+		SeedRefresher r = create(provider, 1000);
 
 		r.tend(1, 1000);
 		Host[] lastGood = snapshot.get();
@@ -162,9 +151,9 @@ public class SeedRefresherTest {
 	}
 
 	@Test
-	public void tendModeThreeConsecutiveOverrunsTrip() {
+	public void threeConsecutiveOverrunsTrip() {
 		TestSeedProvider provider = new TestSeedProvider(true, true, A);
-		SeedRefresher r = create(provider, DiscoveryExecutionMode.TEND, 1000);
+		SeedRefresher r = create(provider, 1000);
 
 		r.tend(1, 1000);
 		assertArrayEquals(new Host[] {A}, snapshot.get());
@@ -189,7 +178,7 @@ public class SeedRefresherTest {
 		assertEquals(calls, provider.calls.get());
 		assertSame(INIT, snapshot.get());
 
-		SeedRefresher fresh = new SeedRefresher(provider, policy(DiscoveryExecutionMode.TEND), snapshot::set);
+		SeedRefresher fresh = new SeedRefresher(provider, new ClientPolicy(), snapshot::set);
 		fresh.start(INIT);
 		assertFalse(fresh.isTripped());
 		assertEquals(0, fresh.getOverrunCount());
@@ -199,114 +188,14 @@ public class SeedRefresherTest {
 	}
 
 	@Test
-	public void threadModeNeverBlocksTend() throws Exception {
-		TestSeedProvider provider = new TestSeedProvider(true, true, A);
-		CountDownLatch block = new CountDownLatch(1);
-		provider.block = block;
-		SeedRefresher r = create(provider, DiscoveryExecutionMode.THREAD, 1);
-
-		awaitCalls(provider, 1);
-
-		long begin = System.nanoTime();
-
-		for (int tendCount = 1; tendCount <= 1000; tendCount++) {
-			r.tend(tendCount, 1);
-			assertSame(INIT, snapshot.get());
-		}
-		long elapsed = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - begin);
-
-		assertTrue("tend took " + elapsed + "ms", elapsed < 50);
-		assertEquals(1, provider.calls.get());
-
-		provider.block = null;
-		block.countDown();
-		awaitSnapshot(new Host[] {A});
-	}
-
-	@Test
-	public void threadModeTimeoutDiscardsResult() throws Exception {
-		TestSeedProvider provider = new TestSeedProvider(true, true, A);
-		provider.sleepMillis = 100;
-		SeedRefresher r = create(provider, DiscoveryExecutionMode.THREAD, 1);
-
-		awaitCalls(provider, 3);
-		assertSame(INIT, snapshot.get());
-		assertTrue(warnings.size() >= 2);
-
-		provider.sleepMillis = 0;
-		awaitSnapshot(new Host[] {A});
-		assertEquals(0, r.getOverrunCount());
-		assertFalse(r.isTripped());
-	}
-
-	@Test
-	public void threadModeThrowableKeepsLastGood() throws Exception {
-		TestSeedProvider provider = new TestSeedProvider(true, true, A);
-		create(provider, DiscoveryExecutionMode.THREAD, 1);
-
-		awaitSnapshot(new Host[] {A});
-		Host[] lastGood = snapshot.get();
-
-		provider.error = new Error("provider failed");
-		provider.result = call -> List.of(B);
-		int calls = provider.calls.get();
-		awaitCalls(provider, calls + 3);
-		assertSame(lastGood, snapshot.get());
-	}
-
-	@Test
-	public void threadModeStoppedByClose() throws Exception {
-		TestSeedProvider provider = new TestSeedProvider(true, true, A);
-		SeedRefresher r = create(provider, DiscoveryExecutionMode.THREAD, 60000);
-
-		Thread thread = r.getThread();
-		assertTrue(thread.isAlive());
-		assertTrue(thread.isDaemon());
-
-		r.close();
-		thread.join(5000);
-		assertFalse(thread.isAlive());
-		assertEquals(0, provider.calls.get());
-	}
-
-	@Test
 	public void noPeriodicRefreshDoesNoWork() {
-		for (DiscoveryExecutionMode mode : DiscoveryExecutionMode.values()) {
-			TestSeedProvider provider = new TestSeedProvider(false, true, A);
-			SeedRefresher r = create(provider, mode, 1000);
+		TestSeedProvider provider = new TestSeedProvider(false, true, A);
+		SeedRefresher r = create(provider, 1000);
 
-			assertNull(r.getThread());
-
-			for (int tendCount = 1; tendCount <= 100; tendCount++) {
-				r.tend(tendCount, 1000);
-			}
-			assertEquals(0, provider.calls.get());
-			assertSame(INIT, snapshot.get());
-			r.close();
+		for (int tendCount = 1; tendCount <= 100; tendCount++) {
+			r.tend(tendCount, 1000);
 		}
-	}
-
-	private static ClientPolicy policy(DiscoveryExecutionMode mode) {
-		ClientPolicy policy = new ClientPolicy();
-		policy.discoveryExecutionMode = mode;
-		return policy;
-	}
-
-	private static void awaitCalls(TestSeedProvider provider, int calls) throws InterruptedException {
-		long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(10);
-
-		while (provider.calls.get() < calls) {
-			assertTrue("provider calls " + provider.calls.get() + " < " + calls, System.nanoTime() < deadline);
-			Thread.sleep(1);
-		}
-	}
-
-	private void awaitSnapshot(Host[] expected) throws InterruptedException {
-		long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(10);
-
-		while (! Arrays.equals(expected, snapshot.get())) {
-			assertTrue("snapshot not published", System.nanoTime() < deadline);
-			Thread.sleep(1);
-		}
+		assertEquals(0, provider.calls.get());
+		assertSame(INIT, snapshot.get());
 	}
 }

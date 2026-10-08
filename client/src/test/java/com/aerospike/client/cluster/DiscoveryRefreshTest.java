@@ -19,7 +19,6 @@ package com.aerospike.client.cluster;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertThrows;
@@ -30,7 +29,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
@@ -41,23 +39,21 @@ import org.junit.Test;
 import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Host;
-import com.aerospike.client.discovery.DiscoveryExecutionMode;
 import com.aerospike.client.discovery.SeedCandidateProvider;
 import com.aerospike.client.discovery.StaticSeedCandidateProvider;
 import com.aerospike.client.policy.ClientPolicy;
 import com.aerospike.client.policy.TlsPolicy;
 
-public class DiscoveryExecutionModeTest {
+public class DiscoveryRefreshTest {
 	private static final Host DEAD_SEED = new Host("127.0.0.1", 1);
 	private static final Host REFRESHED = new Host("127.0.0.1", 2);
 
-	private static ClientPolicy policy(SeedCandidateProvider provider, DiscoveryExecutionMode mode) {
+	private static ClientPolicy policy(SeedCandidateProvider provider) {
 		ClientPolicy policy = new ClientPolicy();
 		policy.failIfNotConnected = false;
 		policy.timeout = 100;
 		policy.tendInterval = 250;
 		policy.seedCandidateProvider = provider;
-		policy.discoveryExecutionMode = mode;
 		return policy;
 	}
 
@@ -65,10 +61,8 @@ public class DiscoveryExecutionModeTest {
 	public void policyDefaults() {
 		ClientPolicy policy = new ClientPolicy();
 		assertNull(policy.seedCandidateProvider);
-		assertEquals(DiscoveryExecutionMode.THREAD, policy.discoveryExecutionMode);
 		assertEquals(30000, policy.discoveryRefreshInterval);
 		assertEquals(100, policy.discoveryTendRefreshDeadline);
-		assertEquals(10000, policy.discoveryRefreshTimeout);
 	}
 
 	@Test
@@ -76,35 +70,29 @@ public class DiscoveryExecutionModeTest {
 		SeedCandidateProvider provider = new StaticSeedCandidateProvider(DEAD_SEED);
 		ClientPolicy policy = new ClientPolicy();
 		policy.setSeedCandidateProvider(provider);
-		policy.setDiscoveryExecutionMode(DiscoveryExecutionMode.TEND);
 		policy.setDiscoveryRefreshInterval(5000);
 		policy.setDiscoveryTendRefreshDeadline(50);
-		policy.setDiscoveryRefreshTimeout(2000);
 
 		ClientPolicy copy = new ClientPolicy(policy);
 		assertSame(provider, copy.seedCandidateProvider);
-		assertEquals(DiscoveryExecutionMode.TEND, copy.discoveryExecutionMode);
 		assertEquals(5000, copy.discoveryRefreshInterval);
 		assertEquals(50, copy.discoveryTendRefreshDeadline);
-		assertEquals(2000, copy.discoveryRefreshTimeout);
 	}
 
 	@Test
 	public void rejectRefreshIntervalBelowTendInterval() {
-		for (DiscoveryExecutionMode mode : DiscoveryExecutionMode.values()) {
-			ClientPolicy policy = policy(new TestSeedProvider(true, true, DEAD_SEED), mode);
-			policy.tendInterval = 1000;
-			policy.discoveryRefreshInterval = 999;
+		ClientPolicy policy = policy(new TestSeedProvider(true, true, DEAD_SEED));
+		policy.tendInterval = 1000;
+		policy.discoveryRefreshInterval = 999;
 
-			AerospikeException ae = assertThrows(AerospikeException.class,
-				() -> new AerospikeClient(policy, DEAD_SEED));
-			assertTrue(ae.getMessage(), ae.getMessage().contains("Discovery refresh interval 999"));
-		}
+		AerospikeException ae = assertThrows(AerospikeException.class,
+			() -> new AerospikeClient(policy, DEAD_SEED));
+		assertTrue(ae.getMessage(), ae.getMessage().contains("Discovery refresh interval 999"));
 	}
 
 	@Test
 	public void allowRefreshIntervalBelowTendIntervalWithoutPeriodicRefresh() {
-		ClientPolicy policy = policy(null, DiscoveryExecutionMode.THREAD);
+		ClientPolicy policy = policy(null);
 		policy.tendInterval = 1000;
 		policy.discoveryRefreshInterval = 999;
 
@@ -114,7 +102,7 @@ public class DiscoveryExecutionModeTest {
 	@Test
 	public void rejectInvalidTendRefreshDeadline() {
 		for (int deadline : new int[] {0, -1, 501}) {
-			ClientPolicy policy = policy(new TestSeedProvider(true, true, DEAD_SEED), DiscoveryExecutionMode.TEND);
+			ClientPolicy policy = policy(new TestSeedProvider(true, true, DEAD_SEED));
 			policy.tendInterval = 1000;
 			policy.discoveryTendRefreshDeadline = deadline;
 
@@ -123,121 +111,61 @@ public class DiscoveryExecutionModeTest {
 			assertTrue(ae.getMessage(), ae.getMessage().contains("Invalid discovery tend refresh deadline: " + deadline));
 		}
 
-		ClientPolicy policy = policy(null, DiscoveryExecutionMode.TEND);
+		ClientPolicy policy = policy(new TestSeedProvider(true, true, DEAD_SEED));
 		policy.tendInterval = 1000;
-		policy.discoveryTendRefreshDeadline = 501;
-		assertThrows(AerospikeException.class, () -> new AerospikeClient(policy, DEAD_SEED));
-
 		policy.discoveryTendRefreshDeadline = 500;
+		new AerospikeClient(policy, DEAD_SEED).close();
+
+		policy.seedCandidateProvider = null;
+		policy.discoveryTendRefreshDeadline = 501;
 		new AerospikeClient(policy, DEAD_SEED).close();
 	}
 
 	@Test
-	public void rejectTendModeWithoutDeadlineSupport() {
-		ClientPolicy policy = policy(new TestSeedProvider(false, false, DEAD_SEED), DiscoveryExecutionMode.TEND);
+	public void rejectPeriodicProviderWithoutDeadlineSupport() {
+		ClientPolicy policy = policy(new TestSeedProvider(true, false, DEAD_SEED));
 
 		AerospikeException ae = assertThrows(AerospikeException.class,
 			() -> new AerospikeClient(policy, DEAD_SEED));
-		assertTrue(ae.getMessage(), ae.getMessage().contains("supports a deadline"));
+		assertTrue(ae.getMessage(), ae.getMessage().contains("must support a deadline"));
 
-		policy.discoveryExecutionMode = DiscoveryExecutionMode.THREAD;
+		policy.seedCandidateProvider = new TestSeedProvider(false, false, DEAD_SEED);
 		new AerospikeClient(policy, DEAD_SEED).close();
 	}
 
 	@Test
 	public void noPeriodicRefreshStartsNoThread() throws Exception {
-		for (DiscoveryExecutionMode mode : DiscoveryExecutionMode.values()) {
-			for (TestSeedProvider provider : new TestSeedProvider[] {null, new TestSeedProvider(false, true, DEAD_SEED)}) {
-				ClientPolicy policy = policy(provider, mode);
-				policy.discoveryRefreshInterval = 250;
+		for (TestSeedProvider provider : new TestSeedProvider[] {null, new TestSeedProvider(false, true, DEAD_SEED)}) {
+			ClientPolicy policy = policy(provider);
+			policy.discoveryRefreshInterval = 250;
 
-				Set<Thread> before = Thread.getAllStackTraces().keySet();
-				AerospikeClient client = new AerospikeClient(policy, DEAD_SEED);
+			Set<Thread> before = Thread.getAllStackTraces().keySet();
+			AerospikeClient client = new AerospikeClient(policy, DEAD_SEED);
 
-				try {
-					assertEquals(List.of("tend"), newThreadNames(before));
-					Cluster cluster = client.getCluster();
-					int tends = cluster.getInvalidNodeCount();
-					await(() -> cluster.getInvalidNodeCount() >= tends + 3);
+			try {
+				assertEquals(List.of("tend"), newThreadNames(before));
+				Cluster cluster = client.getCluster();
+				int tends = cluster.getInvalidNodeCount();
+				await(() -> cluster.getInvalidNodeCount() >= tends + 3);
 
-					assertEquals(List.of("tend"), newThreadNames(before));
-					assertNull(cluster.seedRefresher.getThread());
-					assertArrayEquals(new Host[] {DEAD_SEED}, cluster.getSeeds());
+				assertEquals(List.of("tend"), newThreadNames(before));
+				assertArrayEquals(new Host[] {DEAD_SEED}, cluster.getSeeds());
 
-					if (provider != null) {
-						assertEquals(1, provider.calls.get());
-					}
+				if (provider != null) {
+					assertEquals(1, provider.calls.get());
 				}
-				finally {
-					client.close();
-				}
+			}
+			finally {
+				client.close();
 			}
 		}
 	}
 
 	@Test
-	public void threadModeStartsThreadStoppedByClose() throws Exception {
-		TestSeedProvider provider = new TestSeedProvider(true, true, DEAD_SEED);
-		provider.result = call -> (call == 1)? List.of(DEAD_SEED) : List.of(REFRESHED);
-		ClientPolicy policy = policy(provider, DiscoveryExecutionMode.THREAD);
-		policy.discoveryRefreshInterval = 250;
-
-		Set<Thread> before = Thread.getAllStackTraces().keySet();
-		AerospikeClient client = new AerospikeClient(policy, DEAD_SEED);
-		Cluster cluster = client.getCluster();
-		Thread thread = cluster.seedRefresher.getThread();
-
-		try {
-			assertNotNull(thread);
-			assertTrue(thread.isDaemon());
-			assertEquals(List.of("discovery", "tend"), newThreadNames(before));
-			await(() -> cluster.getSeeds()[0].equals(REFRESHED));
-		}
-		finally {
-			client.close();
-		}
-		thread.join(5000);
-		assertFalse(thread.isAlive());
-	}
-
-	@Test
-	public void threadModeBlockedProviderNeverBlocksTend() throws Exception {
-		TestSeedProvider provider = new TestSeedProvider(true, true, DEAD_SEED);
-		ClientPolicy policy = policy(provider, DiscoveryExecutionMode.THREAD);
-		policy.discoveryRefreshInterval = 250;
-
-		CountDownLatch block = new CountDownLatch(1);
-		AerospikeClient client = new AerospikeClient(policy, DEAD_SEED);
-		Cluster cluster = client.getCluster();
-		Thread thread = cluster.seedRefresher.getThread();
-
-		try {
-			provider.block = block;
-			await(() -> provider.calls.get() >= 2);
-
-			int tends = cluster.getInvalidNodeCount();
-			await(() -> cluster.getInvalidNodeCount() >= tends + 5);
-			assertEquals(2, provider.calls.get());
-			assertArrayEquals(new Host[] {DEAD_SEED}, cluster.getSeeds());
-
-			long begin = System.nanoTime();
-			client.close();
-			assertTrue(TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - begin) < 1000);
-		}
-		finally {
-			client.close();
-			block.countDown();
-		}
-		thread.join(5000);
-		assertFalse(thread.isAlive());
-		assertArrayEquals(new Host[] {DEAD_SEED}, cluster.getSeeds());
-	}
-
-	@Test
-	public void tendModeRefreshesSeedsOnTend() throws Exception {
+	public void periodicRefreshRunsOnTendWithNoNewThread() throws Exception {
 		TestSeedProvider provider = new TestSeedProvider(true, true);
 		provider.result = call -> (call == 1)? List.of(DEAD_SEED) : List.of(REFRESHED);
-		ClientPolicy policy = policy(provider, DiscoveryExecutionMode.TEND);
+		ClientPolicy policy = policy(provider);
 		policy.discoveryRefreshInterval = 500;
 
 		Set<Thread> before = Thread.getAllStackTraces().keySet();
@@ -246,7 +174,6 @@ public class DiscoveryExecutionModeTest {
 		try {
 			Cluster cluster = client.getCluster();
 			assertEquals(List.of("tend"), newThreadNames(before));
-			assertNull(cluster.seedRefresher.getThread());
 			await(() -> cluster.getSeeds()[0].equals(REFRESHED));
 		}
 		finally {
@@ -255,10 +182,10 @@ public class DiscoveryExecutionModeTest {
 	}
 
 	@Test
-	public void tendModeTripScopedToClientInstance() throws Exception {
+	public void tripScopedToClientInstance() throws Exception {
 		TestSeedProvider provider = new TestSeedProvider(true, true);
 		provider.result = call -> (call == 1)? List.of(DEAD_SEED) : List.of(REFRESHED);
-		ClientPolicy policy = policy(provider, DiscoveryExecutionMode.TEND);
+		ClientPolicy policy = policy(provider);
 		policy.discoveryRefreshInterval = 250;
 		policy.discoveryTendRefreshDeadline = 50;
 
@@ -303,7 +230,7 @@ public class DiscoveryExecutionModeTest {
 	public void refreshedSeedsGetDefaultTlsName() throws Exception {
 		TestSeedProvider provider = new TestSeedProvider(true, true);
 		provider.result = call -> (call == 1)? List.of(DEAD_SEED) : List.of(REFRESHED);
-		ClientPolicy policy = policy(provider, DiscoveryExecutionMode.TEND);
+		ClientPolicy policy = policy(provider);
 		policy.discoveryRefreshInterval = 250;
 		policy.tlsPolicy = new TlsPolicy();
 
@@ -321,7 +248,7 @@ public class DiscoveryExecutionModeTest {
 
 	@Test
 	public void concurrentRefreshNeverExposesPartialList() throws Exception {
-		AerospikeClient client = new AerospikeClient(policy(null, DiscoveryExecutionMode.THREAD), DEAD_SEED);
+		AerospikeClient client = new AerospikeClient(policy(null), DEAD_SEED);
 		Cluster cluster = client.getCluster();
 
 		TestSeedProvider provider = new TestSeedProvider(true, true);
@@ -335,8 +262,8 @@ public class DiscoveryExecutionModeTest {
 		};
 
 		ClientPolicy refreshPolicy = new ClientPolicy();
-		refreshPolicy.discoveryRefreshInterval = 0;
-		refreshPolicy.discoveryRefreshTimeout = 60000;
+		refreshPolicy.discoveryRefreshInterval = 1000;
+		refreshPolicy.discoveryTendRefreshDeadline = 60000;
 		SeedRefresher refresher = new SeedRefresher(provider, refreshPolicy, cluster::setSeeds);
 
 		AtomicBoolean running = new AtomicBoolean(true);
@@ -370,13 +297,20 @@ public class DiscoveryExecutionModeTest {
 			readers[r].start();
 		}
 
+		refresher.start(cluster.getSeeds());
+		Thread writer = new Thread(() -> {
+			for (int tendCount = 1; running.get() && provider.calls.get() < 20000; tendCount++) {
+				refresher.tend(tendCount, 1000);
+			}
+		});
+		writer.start();
+
 		try {
-			refresher.start(cluster.getSeeds());
 			await(() -> provider.calls.get() >= 20000);
 		}
 		finally {
-			refresher.close();
 			running.set(false);
+			writer.join(5000);
 
 			for (Thread reader : readers) {
 				reader.join(5000);

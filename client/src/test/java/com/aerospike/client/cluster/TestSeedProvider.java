@@ -17,7 +17,6 @@
 package com.aerospike.client.cluster;
 
 import java.util.List;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.IntFunction;
 
@@ -31,7 +30,6 @@ final class TestSeedProvider implements SeedCandidateProvider {
 	volatile IntFunction<List<Host>> result;
 	volatile long sleepMillis;
 	volatile Throwable error;
-	volatile CountDownLatch block;
 
 	TestSeedProvider(boolean periodic, boolean deadline, Host... hosts) {
 		this.periodic = periodic;
@@ -44,19 +42,13 @@ final class TestSeedProvider implements SeedCandidateProvider {
 	public List<Host> refreshSeedCandidates() {
 		int call = calls.incrementAndGet();
 
-		try {
-			CountDownLatch latch = block;
-
-			if (latch != null) {
-				latch.await();
-			}
-
-			if (sleepMillis > 0) {
+		if (sleepMillis > 0) {
+			try {
 				Thread.sleep(sleepMillis);
 			}
-		}
-		catch (InterruptedException ie) {
-			throw new RuntimeException(ie);
+			catch (InterruptedException ie) {
+				throw new RuntimeException(ie);
+			}
 		}
 
 		Throwable t = error;
