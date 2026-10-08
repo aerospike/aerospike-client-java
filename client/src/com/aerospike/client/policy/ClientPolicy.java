@@ -30,6 +30,8 @@ import com.aerospike.client.configuration.serializers.DynamicConfiguration;
 import com.aerospike.client.configuration.serializers.StaticConfiguration;
 import com.aerospike.client.configuration.serializers.dynamicconfig.DynamicClientConfig;
 import com.aerospike.client.configuration.serializers.staticconfig.StaticClientConfig;
+import com.aerospike.client.discovery.AddressTranslator;
+import com.aerospike.client.discovery.SeedCandidateProvider;
 import com.aerospike.client.util.Util;
 
 /**
@@ -351,6 +353,24 @@ public class ClientPolicy {
 	public Map<String,String> ipMap;
 
 	/**
+	 * Source of the seed hosts used to discover the cluster. When set, the seed hosts passed to
+	 * the client constructor are ignored.
+	 * <p>
+	 * Default: null (use {@link com.aerospike.client.discovery.StaticSeedCandidateProvider} with
+	 * the seed hosts passed to the client constructor)
+	 */
+	public SeedCandidateProvider seedCandidateProvider;
+
+	/**
+	 * Translator applied to every server advertised address before the client connects to it.
+	 * When set, {@link #ipMap} is ignored.
+	 * <p>
+	 * Default: null (use {@link com.aerospike.client.discovery.StaticMapAddressTranslator} with
+	 * {@link #ipMap})
+	 */
+	public AddressTranslator addressTranslator;
+
+	/**
 	 * This field is ignored and deprecated. The client now supports virtual threads and thread pools
 	 * are no longer used. This field only exists to maintain api compatibility when switching between
 	 * aerospike-client-jdk21 and aerospike-client-jdk8 packages.
@@ -491,6 +511,8 @@ public class ClientPolicy {
 		this.tlsPolicy = (other.tlsPolicy != null)? new TlsPolicy(other.tlsPolicy) : null;
 		this.keepAlive = (other.keepAlive != null)? new TCPKeepAlive(other.keepAlive) : null;
 		this.ipMap = other.ipMap;
+		this.seedCandidateProvider = other.seedCandidateProvider;
+		this.addressTranslator = other.addressTranslator;
 		this.threadPool = other.threadPool;
 		this.sharedThreadPool = (other.threadPool != null);
 		this.useServicesAlternate = other.useServicesAlternate;
@@ -792,6 +814,14 @@ public class ClientPolicy {
 
 	public void setIpMap(Map<String, String> ipMap) {
 		this.ipMap = ipMap;
+	}
+
+	public void setSeedCandidateProvider(SeedCandidateProvider seedCandidateProvider) {
+		this.seedCandidateProvider = seedCandidateProvider;
+	}
+
+	public void setAddressTranslator(AddressTranslator addressTranslator) {
+		this.addressTranslator = addressTranslator;
 	}
 
 	public void setThreadPool(ExecutorService threadPool) {

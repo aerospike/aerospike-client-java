@@ -24,6 +24,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
@@ -52,6 +53,11 @@ import com.aerospike.client.configuration.YamlConfigProvider;
 import com.aerospike.client.configuration.serializers.Configuration;
 import com.aerospike.client.configuration.serializers.StaticConfiguration;
 import com.aerospike.client.configuration.serializers.staticconfig.StaticClientConfig;
+import com.aerospike.client.discovery.AddressTranslator;
+import com.aerospike.client.discovery.Endpoint;
+import com.aerospike.client.discovery.SeedCandidateProvider;
+import com.aerospike.client.discovery.StaticMapAddressTranslator;
+import com.aerospike.client.discovery.StaticSeedCandidateProvider;
 import com.aerospike.client.listener.ClusterStatsListener;
 import com.aerospike.client.metrics.MetricsListener;
 import com.aerospike.client.metrics.MetricsPolicy;
@@ -92,6 +98,12 @@ public class Cluster implements Runnable, Closeable {
 
 	// IP translations.
 	protected final Map<String,String> ipMap;
+
+	// Source of seed hosts.
+	protected final SeedCandidateProvider seedCandidateProvider;
+
+	// Advertised address translation.
+	protected final AddressTranslator addressTranslator;
 
 	// TLS connection policy.
 	public final TlsPolicy tlsPolicy;
@@ -228,6 +240,12 @@ public class Cluster implements Runnable, Closeable {
 		this.validateClusterName = policy.validateClusterName;
 		this.tlsPolicy = policy.tlsPolicy;
 		this.authMode = policy.authMode;
+		this.seedCandidateProvider = (policy.seedCandidateProvider != null)?
+			policy.seedCandidateProvider : new StaticSeedCandidateProvider(hosts);
+		this.addressTranslator = (policy.addressTranslator != null)?
+			policy.addressTranslator : new StaticMapAddressTranslator(policy.ipMap);
+
+		hosts = seedCandidateProvider.refreshSeedCandidates().toArray(new Host[0]);
 
 		// Default TLS names when TLS enabled.
 		if (tlsPolicy != null) {
@@ -455,6 +473,25 @@ public class Cluster implements Runnable, Closeable {
 				}
 			}
 		}
+	}
+
+	/**
+	 * Translate a server advertised address. The advertised TLS name is always kept.
+	 */
+	final Host translateAddress(String nodeName, String tlsName, String host, int port) {
+		Endpoint.SourceList sourceList = useServicesAlternate?
+			Endpoint.SourceList.ALTERNATE : Endpoint.SourceList.STANDARD;
+
+		return translate(addressTranslator, new Endpoint(nodeName, tlsName, host, port, sourceList));
+	}
+
+	static Host translate(AddressTranslator translator, Endpoint advertised) {
+		Host host = translator.translate(advertised);
+
+		if (! Objects.equals(host.tlsName, advertised.tlsName)) {
+			host = new Host(host.name, advertised.tlsName, host.port);
+		}
+		return host;
 	}
 
 	public void forceSingleNode() {
