@@ -22,55 +22,49 @@ import java.util.function.Consumer;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Host;
 import com.aerospike.client.Log;
-import com.aerospike.client.discovery.DiscoveryExecutionMode;
 import com.aerospike.client.discovery.SeedCandidateProvider;
 import com.aerospike.client.policy.ClientPolicy;
 import com.aerospike.client.util.Util;
 
 /**
- * Schedule periodic seed candidate refreshes in thread or tend mode.
+ * Schedule periodic seed candidate refreshes on the cluster tend thread.
  */
-final class SeedRefresher implements Runnable {
+final class SeedRefresher {
 	static final int MAX_OVERRUNS = 3;
 
 	private final SeedCandidateProvider provider;
 	private final Consumer<Host[]> publisher;
-	private final DiscoveryExecutionMode mode;
 	private final boolean periodic;
 	private final int refreshInterval;
 	private final int tendRefreshDeadline;
-	private final int refreshTimeout;
-	private final Object lock = new Object();
 	private Host[] initSeeds;
-	private Thread thread;
-	private volatile boolean valid;
 	private volatile int overrunCount;
 	private volatile boolean tripped;
 
 	SeedRefresher(SeedCandidateProvider provider, ClientPolicy policy, Consumer<Host[]> publisher) {
 		this.provider = provider;
 		this.publisher = publisher;
-		this.mode = (policy.discoveryExecutionMode != null)?
-			policy.discoveryExecutionMode : DiscoveryExecutionMode.THREAD;
 		this.periodic = provider.needsPeriodicRefresh();
 		this.refreshInterval = policy.discoveryRefreshInterval;
 		this.tendRefreshDeadline = policy.discoveryTendRefreshDeadline;
-		this.refreshTimeout = policy.discoveryRefreshTimeout;
 
-		if (mode == DiscoveryExecutionMode.TEND && ! provider.supportsDeadline()) {
-			throw new AerospikeException("Discovery execution mode " + mode +
-				" requires a seed candidate provider that supports a deadline");
+		if (periodic && ! provider.supportsDeadline()) {
+			throw new AerospikeException(
+				"A seed candidate provider that needs periodic refresh must support a deadline");
 		}
 	}
 
 	void validate(int tendInterval) {
-		if (periodic && refreshInterval < tendInterval) {
+		if (! periodic) {
+			return;
+		}
+
+		if (refreshInterval < tendInterval) {
 			throw new AerospikeException("Discovery refresh interval " + refreshInterval +
 				" must be greater or equal to the tend interval " + tendInterval);
 		}
 
-		if (mode == DiscoveryExecutionMode.TEND &&
-			(tendRefreshDeadline <= 0 || tendRefreshDeadline > tendInterval / 2)) {
+		if (tendRefreshDeadline <= 0 || tendRefreshDeadline > tendInterval / 2) {
 			throw new AerospikeException("Invalid discovery tend refresh deadline: " + tendRefreshDeadline +
 				". Must be > 0 and <= tend interval / 2 (" + (tendInterval / 2) + ")");
 		}
@@ -78,19 +72,10 @@ final class SeedRefresher implements Runnable {
 
 	void start(Host[] initSeeds) {
 		this.initSeeds = initSeeds;
-
-		if (periodic && mode == DiscoveryExecutionMode.THREAD) {
-			valid = true;
-			thread = new Thread(this);
-			thread.setName("discovery");
-			thread.setDaemon(true);
-			thread.start();
-		}
 	}
 
 	void tend(int tendCount, int tendInterval) {
-		if (! periodic || mode != DiscoveryExecutionMode.TEND || tripped ||
-			tendCount % (refreshInterval / tendInterval) != 0) {
+		if (! periodic || tripped || tendCount % (refreshInterval / tendInterval) != 0) {
 			return;
 		}
 
@@ -125,52 +110,6 @@ final class SeedRefresher implements Runnable {
 		}
 	}
 
-	public void run() {
-		while (valid) {
-			if (! waitInterval()) {
-				break;
-			}
-
-			long begin = System.nanoTime();
-			Host[] hosts = refresh();
-			long elapsed = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - begin);
-
-			if (elapsed > refreshTimeout) {
-				if (Log.warnEnabled()) {
-					Log.warn("Seed candidate refresh took " + elapsed + "ms, exceeding timeout " +
-						refreshTimeout + "ms. Result discarded");
-				}
-				continue;
-			}
-
-			if (hosts != null && valid) {
-				publish(hosts);
-			}
-		}
-	}
-
-	private boolean waitInterval() {
-		long deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(refreshInterval);
-
-		synchronized (lock) {
-			while (valid) {
-				long remaining = TimeUnit.NANOSECONDS.toMillis(deadline - System.nanoTime());
-
-				if (remaining <= 0) {
-					return true;
-				}
-
-				try {
-					lock.wait(remaining);
-				}
-				catch (InterruptedException ie) {
-					return false;
-				}
-			}
-		}
-		return false;
-	}
-
 	private Host[] refresh() {
 		try {
 			return provider.refreshSeedCandidates().toArray(new Host[0]);
@@ -192,18 +131,6 @@ final class SeedRefresher implements Runnable {
 				Log.warn("Seed candidate publish failed: " + Util.getErrorMessage(e));
 			}
 		}
-	}
-
-	void close() {
-		valid = false;
-
-		synchronized (lock) {
-			lock.notifyAll();
-		}
-	}
-
-	Thread getThread() {
-		return thread;
 	}
 
 	int getOverrunCount() {

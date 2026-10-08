@@ -31,7 +31,6 @@ import com.aerospike.client.configuration.serializers.StaticConfiguration;
 import com.aerospike.client.configuration.serializers.dynamicconfig.DynamicClientConfig;
 import com.aerospike.client.configuration.serializers.staticconfig.StaticClientConfig;
 import com.aerospike.client.discovery.AddressTranslator;
-import com.aerospike.client.discovery.DiscoveryExecutionMode;
 import com.aerospike.client.discovery.SeedCandidateProvider;
 import com.aerospike.client.util.Util;
 
@@ -372,52 +371,33 @@ public class ClientPolicy {
 	public AddressTranslator addressTranslator;
 
 	/**
-	 * Where periodic {@link #seedCandidateProvider} refreshes run. No periodic refresh is
-	 * scheduled when the provider's {@link SeedCandidateProvider#needsPeriodicRefresh()} returns
-	 * false. {@link DiscoveryExecutionMode#TEND} requires a provider whose
-	 * {@link SeedCandidateProvider#supportsDeadline()} returns true; otherwise client
-	 * construction fails.
-	 * <p>
-	 * Default: {@link DiscoveryExecutionMode#THREAD}
-	 */
-	public DiscoveryExecutionMode discoveryExecutionMode = DiscoveryExecutionMode.THREAD;
-
-	/**
-	 * Interval in milliseconds between periodic {@link #seedCandidateProvider} refreshes.
-	 * In {@link DiscoveryExecutionMode#TEND} mode, the provider is called every
-	 * discoveryRefreshInterval / {@link #tendInterval} tend iterations. When the provider needs
-	 * periodic refresh, this value must be greater or equal to {@link #tendInterval}; otherwise
-	 * client construction fails.
+	 * Interval in milliseconds between periodic {@link #seedCandidateProvider} refreshes. The
+	 * client starts no thread for discovery: when the provider's
+	 * {@link SeedCandidateProvider#needsPeriodicRefresh()} returns true, the provider is called on
+	 * the cluster tend thread every discoveryRefreshInterval / {@link #tendInterval} tend
+	 * iterations. Such a provider must return true from
+	 * {@link SeedCandidateProvider#supportsDeadline()}, and this value must be greater or equal to
+	 * {@link #tendInterval}; otherwise client construction fails. No periodic refresh is scheduled
+	 * when the provider does not need it.
 	 * <p>
 	 * Default: 30000
 	 */
 	public int discoveryRefreshInterval = 30000;
 
 	/**
-	 * Deadline in milliseconds for one {@link #seedCandidateProvider} refresh in
-	 * {@link DiscoveryExecutionMode#TEND} mode. The deadline is measured, not enforced: an
-	 * overrunning call is never interrupted and blocks tend for its full duration. On overrun,
-	 * a warning is logged, the call's result is discarded and the last good seed list is kept.
+	 * Deadline in milliseconds for one periodic {@link #seedCandidateProvider} refresh on the
+	 * tend thread. The deadline is measured, not enforced: an overrunning call is never
+	 * interrupted and blocks tend for its full duration. On overrun, a warning is logged, the call's result is discarded and the last good seed list is kept.
 	 * After three consecutive overruns, the provider is no longer called from tend for the life
 	 * of the client instance and the seed list reverts to the one established at client
 	 * initialization. A new client instance starts with no overruns.
 	 * <p>
-	 * In {@link DiscoveryExecutionMode#TEND} mode, this value must be greater than zero and less or
+	 * When the provider needs periodic refresh, this value must be greater than zero and less or
 	 * equal to {@link #tendInterval} / 2; otherwise client construction fails.
 	 * <p>
 	 * Default: 100
 	 */
 	public int discoveryTendRefreshDeadline = 100;
-
-	/**
-	 * Timeout in milliseconds for one {@link #seedCandidateProvider} refresh in
-	 * {@link DiscoveryExecutionMode#THREAD} mode. The timeout is measured, not enforced: an
-	 * overrunning call is never interrupted. On overrun, a warning is logged, the call's result
-	 * is discarded and the last good seed list is kept.
-	 * <p>
-	 * Default: 10000
-	 */
-	public int discoveryRefreshTimeout = 10000;
 
 	/**
 	 * This field is ignored and deprecated. The client now supports virtual threads and thread pools
@@ -562,10 +542,8 @@ public class ClientPolicy {
 		this.ipMap = other.ipMap;
 		this.seedCandidateProvider = other.seedCandidateProvider;
 		this.addressTranslator = other.addressTranslator;
-		this.discoveryExecutionMode = other.discoveryExecutionMode;
 		this.discoveryRefreshInterval = other.discoveryRefreshInterval;
 		this.discoveryTendRefreshDeadline = other.discoveryTendRefreshDeadline;
-		this.discoveryRefreshTimeout = other.discoveryRefreshTimeout;
 		this.threadPool = other.threadPool;
 		this.sharedThreadPool = (other.threadPool != null);
 		this.useServicesAlternate = other.useServicesAlternate;
@@ -877,20 +855,12 @@ public class ClientPolicy {
 		this.addressTranslator = addressTranslator;
 	}
 
-	public void setDiscoveryExecutionMode(DiscoveryExecutionMode discoveryExecutionMode) {
-		this.discoveryExecutionMode = discoveryExecutionMode;
-	}
-
 	public void setDiscoveryRefreshInterval(int discoveryRefreshInterval) {
 		this.discoveryRefreshInterval = discoveryRefreshInterval;
 	}
 
 	public void setDiscoveryTendRefreshDeadline(int discoveryTendRefreshDeadline) {
 		this.discoveryTendRefreshDeadline = discoveryTendRefreshDeadline;
-	}
-
-	public void setDiscoveryRefreshTimeout(int discoveryRefreshTimeout) {
-		this.discoveryRefreshTimeout = discoveryRefreshTimeout;
 	}
 
 	public void setThreadPool(ExecutorService threadPool) {

@@ -1702,7 +1702,6 @@ public class Cluster implements Runnable, Closeable {
 		// Stop cluster tend thread.
 		tendValid = false;
 		tendThread.interrupt();
-		seedRefresher.close();
 
 		synchronized(metricsLock) {
 			try {
