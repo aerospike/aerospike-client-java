@@ -66,5 +66,9 @@ It requires docker, openssl, an Enterprise image and a feature-key file:
     AEROSPIKE_FEATURES_FILE=/path/to/features.conf \
     tls/run_tls_matching.sh [case ...]
 
+Case `n6_proxy` (testing-strategy N-6) starts a two node cluster instead and runs `TestTlsProxy`:
+each node is reached through a TCP pass-through listener, and the second node and its tls-name
+are learned from peers-*. It uses `TLS_MATCHING_PORT` and the port after it.
+
 With no case names every case runs. Case names and the optional environment variables are listed
 at the top of the script. Per case output is written to `target/tls-matching/<case>/mvn.log`.
