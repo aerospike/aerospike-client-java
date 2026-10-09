@@ -1,0 +1,157 @@
+name: Discovery L2 run
+
+on:
+  workflow_call:
+    inputs:
+      subset:
+        description: ce or ee
+        type: string
+        required: true
+      server-edition:
+        description: community or enterprise
+        type: string
+        required: true
+      server-container-repo:
+        description: Aerospike image repository path
+        type: string
+        required: true
+      server-tag:
+        description: Aerospike image tag
+        type: string
+        required: true
+      enable-tls:
+        description: Enable server TLS and TLS proxy listeners
+        type: string
+        required: true
+      tls-listen-port-base:
+        description: First TLS proxy listen port. Empty skips TLS proxies.
+        type: string
+        required: false
+        default: ""
+
+permissions:
+  id-token: write
+  contents: read
+  checks: write
+  pull-requests: write
+  actions: write
+
+jobs:
+  l2:
+    name: cluster
+    runs-on: ${{ vars.BUILD_CONTAINER_DISTRO_VERSION }}
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          ref: ${{ github.ref }}
+
+      - name: Require JFrog OIDC
+        env:
+          OIDC_PROVIDER: ${{ secrets.JFROG_OIDC_PROVIDER }}
+          OIDC_AUDIENCE: ${{ secrets.JFROG_OIDC_AUDIENCE }}
+        run: |
+          set -euo pipefail
+          if [[ -z "${OIDC_PROVIDER}" || -z "${OIDC_AUDIENCE}" ]]; then
+            echo "::error::JFROG_OIDC_PROVIDER and JFROG_OIDC_AUDIENCE are required to pull the Aerospike image."
+            exit 1
+          fi
+
+      - name: Setup Aerospike cluster
+        id: aerospike
+        uses: aerospike/shared-workflows/.github/actions/setup-aerospike-server@97ce72ad2c72b10fb3690c35ef871131fce7dff6 # TLS multi-node config, PR #335
+        with:
+          server-edition: ${{ inputs.server-edition }}
+          server-container-repo: ${{ inputs.server-container-repo }}
+          server-tag: ${{ inputs.server-tag }}
+          num-nodes: "3"
+          container-name-prefix: discovery-as
+          network-name: discovery-aerospike-net
+          publish-ports: "false"
+          startup-timeout: "60"
+          enable-tls: ${{ inputs.enable-tls }}
+          features-content: ${{ inputs.subset == 'ee' && secrets.FEATURES_CONF || '' }}
+          oidc-provider: ${{ secrets.JFROG_OIDC_PROVIDER }}
+          oidc-audience: ${{ secrets.JFROG_OIDC_AUDIENCE }}
+
+      - name: Setup discovery topology
+        id: topology
+        uses: aerospike/shared-workflows/.github/actions/setup-discovery-topology@97ce72ad2c72b10fb3690c35ef871131fce7dff6 # TLS multi-node config, PR #335
+        with:
+          container-names: ${{ steps.aerospike.outputs.container-names }}
+          aerospike-network-name: ${{ steps.aerospike.outputs.network-name }}
+          tls-listen-port-base: ${{ inputs.tls-listen-port-base }}
+
+      - name: Setup L2 Java client runner
+        id: runner
+        uses: ./.github/actions/setup-l2-client-runner
+        with:
+          crypto-type: gnu
+
+      - name: Run L2 discovery suite
+        env:
+          CLIENT_IMAGE: ${{ steps.runner.outputs.client-image }}
+          CLIENT_VOLUMES: ${{ steps.runner.outputs.client-volumes }}
+          CLIENT_WORKDIR: ${{ steps.runner.outputs.client-workdir }}
+          CLIENT_NETWORK: ${{ steps.topology.outputs.client-network-name }}
+          DISCOVERY_SUBSET: ${{ inputs.subset }}
+          DISCOVERY_ENDPOINT_HOSTNAME: ${{ steps.topology.outputs.endpoint-hostname }}
+          DISCOVERY_ENDPOINT_PORT_BASE: ${{ steps.topology.outputs.endpoint-port-base }}
+          DISCOVERY_ENDPOINT_PORTS: ${{ steps.topology.outputs.endpoint-ports }}
+          DISCOVERY_TLS_ENDPOINT_PORTS: ${{ steps.topology.outputs.tls-endpoint-ports }}
+          DISCOVERY_PROXY_MAP: ${{ steps.topology.outputs.proxy-name-port-map }}
+          TOXIPROXY_URL: ${{ steps.topology.outputs.toxiproxy-url }}
+          TOXIPROXY_HOST: ${{ steps.topology.outputs.toxiproxy-container-name }}
+          AEROSPIKE_CONTAINER_NAMES: ${{ steps.aerospike.outputs.container-names }}
+          TLS_CERT_DIR: ${{ steps.aerospike.outputs.tls-cert-dir }}
+        run: |
+          set -euo pipefail
+          run_args=(
+            --rm
+            --network "${CLIENT_NETWORK}"
+            --workdir "${CLIENT_WORKDIR}"
+          )
+          remainder="${CLIENT_VOLUMES}"
+          while [[ -n "${remainder}" ]]; do
+            mount="${remainder%%;*}"
+            if [[ "${remainder}" == *";"* ]]; then
+              remainder="${remainder#*;}"
+            else
+              remainder=""
+            fi
+            [[ -z "${mount}" ]] && continue
+            run_args+=(-v "${mount}")
+          done
+          if [[ "${DISCOVERY_SUBSET}" == "ee" ]]; then
+            run_args+=(-v "${TLS_CERT_DIR}:/aerospike-tls:ro")
+            run_args+=(-e "AEROSPIKE_CA_CERT=/aerospike-tls/ca.crt")
+          fi
+          # Image entrypoint is mvn-entrypoint.sh, which execs the arguments.
+          docker run "${run_args[@]}" \
+            -e DISCOVERY_SUBSET \
+            -e DISCOVERY_ENDPOINT_HOSTNAME \
+            -e DISCOVERY_ENDPOINT_PORT_BASE \
+            -e DISCOVERY_ENDPOINT_PORTS \
+            -e DISCOVERY_TLS_ENDPOINT_PORTS \
+            -e DISCOVERY_PROXY_MAP \
+            -e TOXIPROXY_URL \
+            -e TOXIPROXY_HOST \
+            -e TOXIPROXY_CONTROL_PORT=8474 \
+            -e AEROSPIKE_CONTAINER_NAMES \
+            "${CLIENT_IMAGE}" \
+            bash .github/discovery/run-l2-suite.sh
+
+      - name: Fix bind-mount ownership
+        if: ${{ always() }}
+        run: |
+          sudo chown -R "$(id -u):$(id -g)" "${GITHUB_WORKSPACE}"
+          if [[ -d "${HOME}/.m2" ]]; then
+            sudo chown -R "$(id -u):$(id -g)" "${HOME}/.m2"
+          fi
+
+      - name: Publish Test Results
+        if: ${{ always() && hashFiles('test/target/surefire-reports/TEST-*.xml') != '' }}
+        uses: EnricoMi/publish-unit-test-result-action@d0a4676d0e0b938bc201470d88276b7c74c712b3 # v2.24.0
+        with:
+          files: test/target/surefire-reports/*.xml
+          check_name: "L2 discovery (${{ inputs.subset }})"
