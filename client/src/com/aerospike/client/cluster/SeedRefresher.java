@@ -16,6 +16,7 @@
  */
 package com.aerospike.client.cluster;
 
+import java.util.LinkedHashSet;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
@@ -23,6 +24,7 @@ import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Host;
 import com.aerospike.client.Log;
 import com.aerospike.client.discovery.SeedCandidateProvider;
+import com.aerospike.client.discovery.SeedMergePolicy;
 import com.aerospike.client.policy.ClientPolicy;
 import com.aerospike.client.util.Util;
 
@@ -34,6 +36,8 @@ final class SeedRefresher {
 
 	private final SeedCandidateProvider provider;
 	private final Consumer<Host[]> publisher;
+	private final Host[] staticSeeds;
+	private final SeedMergePolicy mergePolicy;
 	private final boolean periodic;
 	private final int refreshInterval;
 	private final int tendRefreshDeadline;
@@ -42,8 +46,15 @@ final class SeedRefresher {
 	private volatile boolean tripped;
 
 	SeedRefresher(SeedCandidateProvider provider, ClientPolicy policy, Consumer<Host[]> publisher) {
+		this(provider, policy, new Host[0], publisher);
+	}
+
+	SeedRefresher(SeedCandidateProvider provider, ClientPolicy policy, Host[] staticSeeds, Consumer<Host[]> publisher) {
 		this.provider = provider;
 		this.publisher = publisher;
+		this.staticSeeds = staticSeeds.clone();
+		this.mergePolicy = (policy.discoveryMergePolicy != null)?
+			policy.discoveryMergePolicy : SeedMergePolicy.MERGE;
 		this.periodic = provider.needsPeriodicRefresh();
 		this.refreshInterval = policy.discoveryRefreshInterval;
 		this.tendRefreshDeadline = policy.discoveryTendRefreshDeadline;
@@ -72,6 +83,33 @@ final class SeedRefresher {
 
 	void start(Host[] initSeeds) {
 		this.initSeeds = initSeeds;
+	}
+
+	Host[] merge(Host[] discovered, boolean init) {
+		switch (mergePolicy) {
+		case REPLACE:
+			if (! init) {
+				return distinct(discovered);
+			}
+			return distinct(staticSeeds, discovered);
+
+		case DISCOVERY_ONLY:
+			return distinct((discovered.length > 0)? discovered : staticSeeds);
+
+		default:
+			return distinct(staticSeeds, discovered);
+		}
+	}
+
+	private static Host[] distinct(Host[]... lists) {
+		LinkedHashSet<Host> set = new LinkedHashSet<>();
+
+		for (Host[] list : lists) {
+			for (Host host : list) {
+				set.add(host);
+			}
+		}
+		return set.toArray(new Host[set.size()]);
 	}
 
 	void tend(int tendCount, int tendInterval) {
@@ -106,7 +144,11 @@ final class SeedRefresher {
 		overrunCount = 0;
 
 		if (hosts != null) {
-			publish(hosts);
+			Host[] seeds = merge(hosts, false);
+
+			if (seeds.length > 0) {
+				publish(seeds);
+			}
 		}
 	}
 

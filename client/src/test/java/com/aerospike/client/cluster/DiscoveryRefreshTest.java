@@ -25,6 +25,7 @@ import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -174,7 +175,7 @@ public class DiscoveryRefreshTest {
 		try {
 			Cluster cluster = client.getCluster();
 			assertEquals(List.of("tend"), newThreadNames(before));
-			await(() -> cluster.getSeeds()[0].equals(REFRESHED));
+			await(() -> Arrays.equals(new Host[] {DEAD_SEED, REFRESHED}, cluster.getSeeds()));
 		}
 		finally {
 			client.close();
@@ -193,7 +194,7 @@ public class DiscoveryRefreshTest {
 		Cluster cluster = client.getCluster();
 
 		try {
-			await(() -> cluster.getSeeds()[0].equals(REFRESHED));
+			await(() -> Arrays.equals(new Host[] {DEAD_SEED, REFRESHED}, cluster.getSeeds()));
 			provider.sleepMillis = 100;
 			await(() -> cluster.seedRefresher.isTripped());
 			assertEquals(SeedRefresher.MAX_OVERRUNS, cluster.seedRefresher.getOverrunCount());
@@ -218,7 +219,7 @@ public class DiscoveryRefreshTest {
 			Cluster freshCluster = client.getCluster();
 			assertFalse(freshCluster.seedRefresher.isTripped());
 			assertEquals(0, freshCluster.seedRefresher.getOverrunCount());
-			await(() -> freshCluster.getSeeds()[0].equals(REFRESHED));
+			await(() -> Arrays.equals(new Host[] {DEAD_SEED, REFRESHED}, freshCluster.getSeeds()));
 			assertFalse(freshCluster.seedRefresher.isTripped());
 		}
 		finally {
@@ -238,8 +239,9 @@ public class DiscoveryRefreshTest {
 
 		try {
 			Cluster cluster = client.getCluster();
-			await(() -> cluster.getSeeds()[0].port == REFRESHED.port);
-			assertEquals(REFRESHED.name, cluster.getSeeds()[0].tlsName);
+			await(() -> cluster.getSeeds().length == 2);
+			assertEquals(REFRESHED, cluster.getSeeds()[1]);
+			assertEquals(REFRESHED.name, cluster.getSeeds()[1].tlsName);
 		}
 		finally {
 			client.close();
@@ -256,7 +258,7 @@ public class DiscoveryRefreshTest {
 			List<Host> list = new ArrayList<>();
 
 			for (int i = 0; i <= call % 7; i++) {
-				list.add(new Host("10.0.0." + (call % 200), call));
+				list.add(new Host("10.0.0." + i, call));
 			}
 			return list;
 		};
@@ -287,8 +289,10 @@ public class DiscoveryRefreshTest {
 						failure.compareAndSet(null, "length " + seeds.length + " for refresh " + call);
 					}
 
-					for (Host host : seeds) {
-						if (host == null || host.port != call || ! host.name.equals("10.0.0." + (call % 200))) {
+					for (int i = 0; i < seeds.length; i++) {
+						Host host = seeds[i];
+
+						if (host == null || host.port != call || ! host.name.equals("10.0.0." + i)) {
 							failure.compareAndSet(null, "mixed host " + host + " in refresh " + call);
 						}
 					}
