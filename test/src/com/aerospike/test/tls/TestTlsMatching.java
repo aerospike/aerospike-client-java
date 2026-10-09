@@ -77,6 +77,8 @@ import io.netty.channel.nio.NioEventLoopGroup;
 public class TestTlsMatching {
 	private static final String TLS_NAME_PREFIX = "Invalid TLS name: ";
 	private static final String SERIAL_PREFIX = "Invalid certificate serial number: ";
+	private static final int TIMEOUT_MS = 5000;
+	private static final int ASYNC_WAIT_SECONDS = 10;
 	private static final List<String> warnings = new CopyOnWriteArrayList<>();
 
 	private static String caseName;
@@ -170,7 +172,7 @@ public class TestTlsMatching {
 		tp.revokeCertificates = (revoke != null) ? new BigInteger[] {revoke} : null;
 
 		try {
-			Connection conn = new Connection(tp, tlsName, new InetSocketAddress(hostName, port), 5000);
+			Connection conn = new Connection(tp, tlsName, new InetSocketAddress(hostName, port), TIMEOUT_MS);
 			conn.close();
 		}
 		catch (AerospikeException ae) {
@@ -237,7 +239,7 @@ public class TestTlsMatching {
 			}, null, key, new Bin("v", caseName));
 
 			try {
-				put.get(10, TimeUnit.SECONDS);
+				put.get(ASYNC_WAIT_SECONDS, TimeUnit.SECONDS);
 			}
 			catch (java.util.concurrent.ExecutionException ee) {
 				outcome.error = (AerospikeException)ee.getCause();
@@ -255,7 +257,7 @@ public class TestTlsMatching {
 				}
 			}, null, key);
 
-			Record rec = get.get(10, TimeUnit.SECONDS);
+			Record rec = get.get(ASYNC_WAIT_SECONDS, TimeUnit.SECONDS);
 			outcome.accepted = rec != null && caseName.equals(rec.getString("v"));
 			return outcome;
 		}
@@ -273,7 +275,7 @@ public class TestTlsMatching {
 	private static ClientPolicy clientPolicy(TlsPolicy tp) {
 		ClientPolicy cp = new ClientPolicy();
 		cp.tlsPolicy = tp;
-		cp.timeout = 5000;
+		cp.timeout = TIMEOUT_MS;
 		cp.failIfNotConnected = true;
 		return cp;
 	}

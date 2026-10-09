@@ -54,6 +54,16 @@ public final class Connection implements Closeable {
 	private static final Set<String> legacyWarned = ConcurrentHashMap.newKeySet();
 	private static final Pattern DOTTED_QUAD = Pattern.compile("[0-9]+(\\.[0-9]+){3}");
 
+	// GeneralName tags returned by X509Certificate.getSubjectAlternativeNames() (RFC 5280).
+	private static final int SAN_DNS_NAME = 2;
+	private static final int SAN_IP_ADDRESS = 7;
+
+	private static final int IPV4_LENGTH = 4;
+	private static final int IPV6_LENGTH = 16;
+	private static final int IPV4_MAX_OCTET = 255;
+	private static final int IPV4_MAX_DIGITS = 3;
+	private static final int IPV6_MAX_DIGITS = 4;
+
 	private final Socket socket;
 	private final InputStream in;
 	private final OutputStream out;
@@ -233,11 +243,11 @@ public final class Connection implements Closeable {
 				int type = (Integer)list.get(0);
 
 				if (ipId) {
-					if (ip != null && type == 7 && Arrays.equals(ip, parseIpLiteral((String)list.get(1)))) {
+					if (ip != null && type == SAN_IP_ADDRESS && Arrays.equals(ip, parseIpLiteral((String)list.get(1)))) {
 						return;
 					}
 				}
-				else if (type == 2 && matchDnsName((String)list.get(1), tlsName)) {
+				else if (type == SAN_DNS_NAME && matchDnsName((String)list.get(1), tlsName)) {
 					return;
 				}
 			}
@@ -284,7 +294,7 @@ public final class Connection implements Closeable {
 			for (List<?> list : allNames) {
 				int type = (Integer)list.get(0);
 
-				if (type == 2 && list.get(1).equals(tlsName)) {
+				if (type == SAN_DNS_NAME && list.get(1).equals(tlsName)) {
 					return true;
 				}
 			}
@@ -345,20 +355,20 @@ public final class Connection implements Closeable {
 	private static byte[] parseIPv4(String s) {
 		String[] parts = s.split("\\.", -1);
 
-		if (parts.length != 4) {
+		if (parts.length != IPV4_LENGTH) {
 			return null;
 		}
 
-		byte[] addr = new byte[4];
+		byte[] addr = new byte[IPV4_LENGTH];
 
-		for (int i = 0; i < 4; i++) {
+		for (int i = 0; i < IPV4_LENGTH; i++) {
 			if (parts[i].length() > 1 && parts[i].charAt(0) == '0') {
 				return null;
 			}
 
-			int v = parseDigits(parts[i], 3, 10);
+			int v = parseDigits(parts[i], IPV4_MAX_DIGITS, 10);
 
-			if (v < 0 || v > 255) {
+			if (v < 0 || v > IPV4_MAX_OCTET) {
 				return null;
 			}
 			addr[i] = (byte)v;
@@ -395,13 +405,14 @@ public final class Connection implements Closeable {
 
 		int len = head.length + tail.length;
 
-		if ((dc >= 0) ? len > 14 : len != 16) {
+		// "::" must stand for at least one 16-bit group.
+		if ((dc >= 0) ? len > IPV6_LENGTH - 2 : len != IPV6_LENGTH) {
 			return null;
 		}
 
-		byte[] addr = new byte[16];
+		byte[] addr = new byte[IPV6_LENGTH];
 		System.arraycopy(head, 0, addr, 0, head.length);
-		System.arraycopy(tail, 0, addr, 16 - tail.length, tail.length);
+		System.arraycopy(tail, 0, addr, IPV6_LENGTH - tail.length, tail.length);
 		return addr;
 	}
 
@@ -423,12 +434,12 @@ public final class Connection implements Closeable {
 				if (v4 == null) {
 					return null;
 				}
-				System.arraycopy(v4, 0, out, n, 4);
-				n += 4;
+				System.arraycopy(v4, 0, out, n, IPV4_LENGTH);
+				n += IPV4_LENGTH;
 				break;
 			}
 
-			int v = parseDigits(g, 4, 16);
+			int v = parseDigits(g, IPV6_MAX_DIGITS, 16);
 
 			if (v < 0) {
 				return null;
