@@ -248,7 +248,9 @@ public class Cluster implements Runnable, Closeable {
 		this.addressTranslator = (policy.addressTranslator != null)?
 			policy.addressTranslator : new StaticMapAddressTranslator(policy.ipMap);
 
-		hosts = seedCandidateProvider.refreshSeedCandidates().toArray(new Host[0]);
+		Host[] discovered = seedCandidateProvider.refreshSeedCandidates().toArray(new Host[0]);
+		this.seedRefresher = new SeedRefresher(seedCandidateProvider, policy, hosts, this::setSeeds);
+		hosts = seedRefresher.merge(discovered, true);
 
 		// Default TLS names when TLS enabled.
 		if (tlsPolicy != null) {
@@ -261,7 +263,7 @@ public class Cluster implements Runnable, Closeable {
 		}
 
 		this.seeds = hosts;
-		this.seedRefresher = new SeedRefresher(seedCandidateProvider, policy, this::setSeeds);
+		seedRefresher.start(hosts);
 
 		if (policy.authMode == AuthMode.PKI) {
 			if (policy.password != null) {
@@ -584,8 +586,6 @@ public class Cluster implements Runnable, Closeable {
 				enableMetricsInternal(metricsPolicy);
 			}
 		}
-
-		seedRefresher.start(seeds);
 
 		// Run cluster tend thread.
 		tendValid = true;
