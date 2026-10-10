@@ -19,6 +19,7 @@ package com.aerospike.client.command;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.AerospikeException;
@@ -740,7 +741,9 @@ public final class Batch {
 			splitRetry = true;
 
 			// Run batch retries in parallel using virtual threads.
-			try (ExecutorService es = Executors.newThreadPerTaskExecutor(cluster.threadFactory);) {
+			ExecutorService es = Executors.newThreadPerTaskExecutor(cluster.threadFactory);
+
+			try {
 				for (BatchNode batchNode : batchNodes) {
 					BatchCommand command = createCommand(batchNode);
 					command.sequenceAP = sequenceAP;
@@ -753,6 +756,17 @@ public final class Batch {
 
 					cluster.addRetry();
 					es.execute(command);
+				}
+			}
+			finally {
+				// Bound the wait by what is left of this command's deadline. The default
+				// ExecutorService.close() would wait without a limit instead.
+				long remainingMillis = (totalTimeout > 0)
+					? Math.max(1L, TimeUnit.NANOSECONDS.toMillis(deadline - System.nanoTime()))
+					: 0L;
+
+				if (! BatchExecutor.await(es, remainingMillis)) {
+					status.setException(new AerospikeException.Timeout(policy, true));
 				}
 			}
 			return true;
