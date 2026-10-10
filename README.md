@@ -53,7 +53,8 @@ aerospike-client-java/
 ├── test/                  JUnit suite — ~78 test classes
 │   ├── README.md          ./run_tests and its options
 │   ├── run_tests
-│   └── src/com/aerospike/test/{sync/basic,sync/query,async,util}
+│   ├── tls/               run_tls_matching.sh: certificate matching cases (local, docker)
+│   └── src/com/aerospike/test/{sync/basic,sync/query,async,tls,util}
 ├── benchmarks/            load generator, not an API reference
 └── .claude/skills/        contributor-facing: port-to-jdk21, port-to-jdk8
 ```
