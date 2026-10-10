@@ -62,6 +62,7 @@ import com.aerospike.test.sync.basic.TestServerInfo;
 import com.aerospike.test.sync.basic.TestStringExp;
 import com.aerospike.test.sync.basic.TestStringInvalidUtf8;
 import com.aerospike.test.sync.basic.TestStringMasking;
+import com.aerospike.test.sync.basic.TestTlsName;
 import com.aerospike.test.sync.basic.TestTouch;
 import com.aerospike.test.sync.basic.TestTxn;
 import com.aerospike.test.sync.basic.TestUDF;
@@ -122,6 +123,7 @@ import com.aerospike.client.AerospikeClientIndexTypeTest;
 	TestStringExp.class,
 	TestStringInvalidUtf8.class,
 	TestStringMasking.class,
+	TestTlsName.class,
 	TestTouch.class,
 	TxnTest.class,
 	TestTxn.class,
