@@ -57,9 +57,7 @@ public final class NettyTlsContext implements CipherSuiteFilter {
 		}
 
 		try {
-			// Netty 4.2 enables HTTPS endpoint identification by default. The server certificate
-			// is validated against tlsName in Connection.validateServerCertificate() instead.
-			SslContextBuilder builder = SslContextBuilder.forClient().endpointIdentificationAlgorithm(null);
+			SslContextBuilder builder = SslContextBuilder.forClient();
 
 			if (policy.protocols != null) {
 				builder.protocols(policy.protocols);
