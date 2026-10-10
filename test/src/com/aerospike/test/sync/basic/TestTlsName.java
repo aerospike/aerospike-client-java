@@ -52,7 +52,7 @@ import io.netty.channel.nio.NioIoHandler;
 
 /**
  * Server certificate name validation on the sync and netty paths, against the configured TLS
- * cluster. Certificate shape cases are covered by test/tls/run_tls_matching.sh.
+ * cluster.
  */
 public class TestTlsName extends TestSync {
 	private static final String WRONG_NAME = "wrong-tls-name.invalid";
