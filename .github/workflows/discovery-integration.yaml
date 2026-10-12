@@ -65,7 +65,7 @@ jobs:
       subset: ee
       server-edition: enterprise
       server-container-repo: database-docker-dev-local/aerospike-server-enterprise
-      server-tag: 8.1.1.0_1
+      server-tag: 8.2.0.0
       enable-tls: "true"
       tls-listen-port-base: "43331"
     secrets: inherit
@@ -79,5 +79,5 @@ jobs:
     uses: ./.github/workflows/tls-matching.yaml
     with:
       server-container-repo: database-docker-dev-local/aerospike-server-enterprise
-      server-tag: 8.1.1.0_1
+      server-tag: 8.2.0.0
     secrets: inherit
