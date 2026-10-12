@@ -9,6 +9,7 @@ apidocs
 *.tgz
 *.zip
 *.out
+metrics-*.log
 *.jar
 *.iml
 .idea/
