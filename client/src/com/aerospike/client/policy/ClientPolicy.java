@@ -30,6 +30,9 @@ import com.aerospike.client.configuration.serializers.DynamicConfiguration;
 import com.aerospike.client.configuration.serializers.StaticConfiguration;
 import com.aerospike.client.configuration.serializers.dynamicconfig.DynamicClientConfig;
 import com.aerospike.client.configuration.serializers.staticconfig.StaticClientConfig;
+import com.aerospike.client.discovery.AddressTranslator;
+import com.aerospike.client.discovery.SeedCandidateProvider;
+import com.aerospike.client.discovery.SeedMergePolicy;
 import com.aerospike.client.util.Util;
 
 /**
@@ -351,6 +354,77 @@ public class ClientPolicy {
 	public Map<String,String> ipMap;
 
 	/**
+	 * Source of the seed hosts used to discover the cluster. When set, its hosts are combined with
+	 * the seed hosts passed to the client constructor according to {@link #discoveryMergePolicy}.
+	 * <p>
+	 * Default: null (use {@link com.aerospike.client.discovery.StaticSeedCandidateProvider} with
+	 * the seed hosts passed to the client constructor)
+	 */
+	public SeedCandidateProvider seedCandidateProvider;
+
+	/**
+	 * Translator applied to every server advertised address before the client connects to it.
+	 * When set, {@link #ipMap} is ignored.
+	 * <p>
+	 * Default: null (use {@link com.aerospike.client.discovery.StaticMapAddressTranslator} with
+	 * {@link #ipMap})
+	 */
+	public AddressTranslator addressTranslator;
+
+	/**
+	 * Interval in milliseconds between periodic {@link #seedCandidateProvider} refreshes. The
+	 * client starts no thread for discovery: when the provider's
+	 * {@link SeedCandidateProvider#needsPeriodicRefresh()} returns true, the provider is called on
+	 * the cluster tend thread every discoveryRefreshInterval / {@link #tendInterval} tend
+	 * iterations. Such a provider must return true from
+	 * {@link SeedCandidateProvider#supportsDeadline()}, and this value must be greater or equal to
+	 * {@link #tendInterval}; otherwise client construction fails. No periodic refresh is scheduled
+	 * when the provider does not need it.
+	 * <p>
+	 * Default: 30000
+	 */
+	public int discoveryRefreshInterval = 30000;
+
+	/**
+	 * Deadline in milliseconds for one periodic {@link #seedCandidateProvider} refresh on the
+	 * tend thread. The deadline is measured, not enforced: an overrunning call is never
+	 * interrupted and blocks tend for its full duration. On overrun, a warning is logged, the call's result is discarded and the last good seed list is kept.
+	 * After three consecutive overruns, the provider is no longer called from tend for the life
+	 * of the client instance and the seed list reverts to the one established at client
+	 * initialization. A new client instance starts with no overruns.
+	 * <p>
+	 * When the provider needs periodic refresh, this value must be greater than zero and less or
+	 * equal to {@link #tendInterval} / 2; otherwise client construction fails.
+	 * <p>
+	 * Default: 100
+	 */
+	public int discoveryTendRefreshDeadline = 100;
+
+	/**
+	 * How the seed hosts passed to the client constructor (static seeds) and the hosts returned by
+	 * {@link #seedCandidateProvider} (discovered seeds) are combined into the seed list. The seed
+	 * list is used at cluster initialization and whenever the client re-seeds because no nodes
+	 * are active; it is rebuilt only when the provider is called.
+	 * <ul>
+	 * <li>{@link SeedMergePolicy#MERGE}: static seeds first, then discovered seeds. An empty
+	 * discovery result leaves the static seeds. Use for migration, resilience and a known-good
+	 * endpoint while discovery catches up.</li>
+	 * <li>{@link SeedMergePolicy#REPLACE}: as MERGE at initialization; afterwards each successful
+	 * refresh's discovered seeds replace the list and static seeds are no longer tried. An empty
+	 * refresh result keeps the previous list. Use for greenfield cloud-native deployments where
+	 * static seeds are legacy.</li>
+	 * <li>{@link SeedMergePolicy#DISCOVERY_ONLY}: discovered seeds only; static seeds are used only
+	 * when discovery returns an empty result. Use when the static seeds are an emergency fallback
+	 * only.</li>
+	 * </ul>
+	 * Duplicate hosts (same name and port) are removed, keeping the first occurrence. When no
+	 * provider is configured, every value yields the seed hosts passed to the client constructor.
+	 * <p>
+	 * Default: {@link SeedMergePolicy#MERGE}
+	 */
+	public SeedMergePolicy discoveryMergePolicy = SeedMergePolicy.MERGE;
+
+	/**
 	 * This field is ignored and deprecated. The client now supports virtual threads and thread pools
 	 * are no longer used. This field only exists to maintain api compatibility when switching between
 	 * aerospike-client-jdk21 and aerospike-client-jdk8 packages.
@@ -491,6 +565,11 @@ public class ClientPolicy {
 		this.tlsPolicy = (other.tlsPolicy != null)? new TlsPolicy(other.tlsPolicy) : null;
 		this.keepAlive = (other.keepAlive != null)? new TCPKeepAlive(other.keepAlive) : null;
 		this.ipMap = other.ipMap;
+		this.seedCandidateProvider = other.seedCandidateProvider;
+		this.addressTranslator = other.addressTranslator;
+		this.discoveryRefreshInterval = other.discoveryRefreshInterval;
+		this.discoveryTendRefreshDeadline = other.discoveryTendRefreshDeadline;
+		this.discoveryMergePolicy = other.discoveryMergePolicy;
 		this.threadPool = other.threadPool;
 		this.sharedThreadPool = (other.threadPool != null);
 		this.useServicesAlternate = other.useServicesAlternate;
@@ -792,6 +871,26 @@ public class ClientPolicy {
 
 	public void setIpMap(Map<String, String> ipMap) {
 		this.ipMap = ipMap;
+	}
+
+	public void setSeedCandidateProvider(SeedCandidateProvider seedCandidateProvider) {
+		this.seedCandidateProvider = seedCandidateProvider;
+	}
+
+	public void setAddressTranslator(AddressTranslator addressTranslator) {
+		this.addressTranslator = addressTranslator;
+	}
+
+	public void setDiscoveryRefreshInterval(int discoveryRefreshInterval) {
+		this.discoveryRefreshInterval = discoveryRefreshInterval;
+	}
+
+	public void setDiscoveryTendRefreshDeadline(int discoveryTendRefreshDeadline) {
+		this.discoveryTendRefreshDeadline = discoveryTendRefreshDeadline;
+	}
+
+	public void setDiscoveryMergePolicy(SeedMergePolicy discoveryMergePolicy) {
+		this.discoveryMergePolicy = discoveryMergePolicy;
 	}
 
 	public void setThreadPool(ExecutorService threadPool) {

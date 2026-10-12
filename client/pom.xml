@@ -319,6 +319,7 @@
           <sourceFileIncludes>
             <include>com/aerospike/client/*</include>
             <include>com/aerospike/client/cdt/*</include>
+            <include>com/aerospike/client/discovery/*</include>
             <include>com/aerospike/client/listener/*</include>
             <include>com/aerospike/client/command/ParticleType.java</include>
             <include>com/aerospike/client/exp/*</include>
