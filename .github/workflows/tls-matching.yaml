@@ -26,27 +26,14 @@ jobs:
         with:
           ref: ${{ github.ref }}
 
-      - name: Detect TLS matching driver
-        id: driver
-        run: |
-          set -euo pipefail
-          if [[ -f test/tls/run_tls_matching.sh ]]; then
-            echo "present=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "present=false" >> "$GITHUB_OUTPUT"
-            echo "::notice::test/tls/run_tls_matching.sh is not in this revision (CLIENT-5638). TLS certificate matching did not run."
-          fi
-
       - name: Get Java version
         id: java
-        if: steps.driver.outputs.present == 'true'
         run: |
           set -euo pipefail
           version="$(grep '<java.version>' pom.xml | sed -e 's/<[^>]*>//g' | awk '{$1=$1};1' | sed 's/^1\.8$/8/')"
           echo "java-version=${version}" >> "$GITHUB_OUTPUT"
 
       - name: Setup Java
-        if: steps.driver.outputs.present == 'true'
         uses: actions/setup-java@v4
         with:
           distribution: ${{ vars.JAVA_PROVIDER }}
@@ -54,7 +41,6 @@ jobs:
           cache: maven
 
       - name: Require JFrog OIDC
-        if: steps.driver.outputs.present == 'true'
         env:
           OIDC_PROVIDER: ${{ secrets.JFROG_OIDC_PROVIDER }}
           OIDC_AUDIENCE: ${{ secrets.JFROG_OIDC_AUDIENCE }}
@@ -67,7 +53,6 @@ jobs:
 
       - name: Set up JFrog CLI
         id: jf
-        if: steps.driver.outputs.present == 'true'
         uses: step-security/setup-jfrog-cli@a6b41f8338bea0983ddff6bd4ede7d2dcd81e1fa # v4.8.1
         env:
           JF_URL: https://aerospike.jfrog.io
@@ -76,7 +61,6 @@ jobs:
           oidc-audience: ${{ secrets.JFROG_OIDC_AUDIENCE }}
 
       - name: Docker login
-        if: steps.driver.outputs.present == 'true'
         uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0
         with:
           registry: aerospike.jfrog.io
@@ -84,7 +68,6 @@ jobs:
           password: ${{ steps.jf.outputs.oidc-token }}
 
       - name: Run TLS certificate matching
-        if: steps.driver.outputs.present == 'true'
         env:
           AEROSPIKE_IMAGE: aerospike.jfrog.io/${{ inputs.server-container-repo }}:${{ inputs.server-tag }}
           AEROSPIKE_FEATURES_CONTENT: ${{ secrets.FEATURES_CONF }}
