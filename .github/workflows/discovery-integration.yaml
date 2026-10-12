@@ -9,6 +9,10 @@ name: Discovery integration
 # push to the target branches (merge), and on workflow_dispatch. Fork pull
 # requests do not receive FEATURES_CONF.
 #
+# TLS certificate matching (CLIENT-5638) is a separate EE-only job. Its
+# driver starts one Enterprise container per certificate, so it uses the
+# same FEATURES_CONF gate and does not run on fork pull requests.
+#
 # setup-aerospike-server and setup-discovery-topology are pinned in
 # discovery-l2.yaml to shared-workflows 97ce72a (draft PR #335). That commit
 # is CLIENT-5538 plus a generated TLS multi-node config, so this workflow
@@ -64,4 +68,16 @@ jobs:
       server-tag: 8.1.1.0_1
       enable-tls: "true"
       tls-listen-port-base: "43331"
+    secrets: inherit
+
+  tls-matching:
+    name: TLS certificate matching
+    if: >-
+      github.event_name == 'push'
+      || github.event_name == 'workflow_dispatch'
+      || github.event.pull_request.head.repo.full_name == github.repository
+    uses: ./.github/workflows/tls-matching.yaml
+    with:
+      server-container-repo: database-docker-dev-local/aerospike-server-enterprise
+      server-tag: 8.1.1.0_1
     secrets: inherit
