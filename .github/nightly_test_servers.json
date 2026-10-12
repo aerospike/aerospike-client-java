@@ -29,13 +29,13 @@
     "type": "database-docker-dev-local/aerospike-server-enterprise",
     "tls": true
   },
-  "8.2.1.0": {
-    "version": "8.2.1.0",
+  "8.2.0.0": {
+    "version": "8.2.0.0",
     "type": "database-docker-dev-local/aerospike-server-enterprise",
     "tls": false
   },
-  "8.2.1.0-tls": {
-    "version": "8.2.1.0",
+  "8.2.0.0-tls": {
+    "version": "8.2.0.0",
     "type": "database-docker-dev-local/aerospike-server-enterprise",
     "tls": true
   }
