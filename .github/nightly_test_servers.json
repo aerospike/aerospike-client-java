@@ -28,5 +28,15 @@
     "version": "8.1.1.0_1",
     "type": "database-docker-dev-local/aerospike-server-enterprise",
     "tls": true
+  },
+  "8.2.1.0": {
+    "version": "8.2.1.0",
+    "type": "database-docker-dev-local/aerospike-server-enterprise",
+    "tls": false
+  },
+  "8.2.1.0-tls": {
+    "version": "8.2.1.0",
+    "type": "database-docker-dev-local/aerospike-server-enterprise",
+    "tls": true
   }
 }
