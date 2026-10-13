@@ -19,8 +19,6 @@ package com.aerospike.client.conformance;
 import static org.junit.Assert.assertEquals;
 
 import java.io.InputStream;
-import java.net.InetAddress;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -30,7 +28,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -39,10 +36,6 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-
-import javax.naming.ldap.LdapName;
-import javax.naming.ldap.Rdn;
-import javax.security.auth.x500.X500Principal;
 
 import org.junit.AfterClass;
 import org.junit.Test;
@@ -66,7 +59,8 @@ import com.aerospike.client.policy.TlsPolicy;
 
 /**
  * Run the shared L1 conformance fixtures against the client and compare each row's result with
- * the result Java declares for it.
+ * the result Java declares for it. Fixture format is validated by the conformance repository's CI,
+ * so rows are read without checking their shape.
  */
 @RunWith(Parameterized.class)
 public class ConformanceTest {
@@ -76,30 +70,10 @@ public class ConformanceTest {
 	private static final String BLOCKED = "blocked";
 	private static final Set<String> RESULTS = Set.of(PASS, FAIL, UNSUPPORTED, BLOCKED);
 
-	private static final List<String> REQUIRED_FILES = List.of(
-		"VERSION",
-		"README.md",
-		"schema/fixture.schema.json",
-		"schema/report.schema.json",
-		"discovery/translate/static-map.yaml",
-		"discovery/translate/legacy-ip-map.yaml",
-		"discovery/translate/port-map.yaml",
-		"discovery/translate/endpoint-port-map.yaml",
-		"discovery/translate/on-miss.yaml",
-		"discovery/merge/merge-policy.yaml",
-		"tls/name-matching.yaml",
-		"tls/generate-certs.sh"
-	);
-
-	private static final Set<String> FILE_KEYS = Set.of("kind", "description", "shapes", "rows");
-	private static final Set<String> ROW_KEYS = Set.of("case", "because", "state", "blockedBy",
-		"config", "input", "expect");
 	private static final String FIXTURE_SET_VERSION = "0.1.0";
 	private static final String DECLARED = "/conformance/java-declared.yaml";
 	private static final Path REPORT = Paths.get("target", "conformance-report.json");
 	private static final String TLS_REJECT_PREFIX = "Invalid TLS name: ";
-	private static final int MAX_PORT = 65535;
-	private static final Pattern SHAPE_NAME = Pattern.compile("^[a-z0-9][a-z0-9-]*$");
 
 	private static final List<Map<String,Object>> reportRows = Collections.synchronizedList(new ArrayList<>());
 	private static Path dir;
@@ -118,10 +92,8 @@ public class ConformanceTest {
 			throw new IllegalStateException("Conformance directory not found: " + dir);
 		}
 
-		for (String name : REQUIRED_FILES) {
-			if (! Files.isRegularFile(dir.resolve(name))) {
-				throw new IllegalStateException("Conformance file not found: " + dir.resolve(name));
-			}
+		if (! Files.isRegularFile(dir.resolve("VERSION"))) {
+			throw new IllegalStateException("Not a conformance fixture set, VERSION not found: " + dir);
 		}
 
 		fixtureSetVersion = Files.readString(dir.resolve("VERSION")).trim();
@@ -235,8 +207,11 @@ public class ConformanceTest {
 		case "merge":
 			return merge();
 
-		default:
+		case "tls":
 			return tls();
+
+		default:
+			throw new IllegalStateException(row + ": unknown kind " + row.kind);
 		}
 	}
 
@@ -377,433 +352,41 @@ public class ConformanceTest {
 	}
 
 	//-------------------------------------------------------
-	// Fixture validation
+	// Fixtures
 	//-------------------------------------------------------
 
 	private static List<Row> loadFile(Path path, String file) throws Exception {
-		Object doc;
+		Map<String,Object> top;
 
 		try (InputStream in = Files.newInputStream(path)) {
-			doc = new Yaml(new SafeConstructor(new LoaderOptions())).load(in);
+			top = map(new Yaml(new SafeConstructor(new LoaderOptions())).load(in));
 		}
 
-		Map<String,Object> top = requireMap(doc, file);
-		checkKeys(top, file, FILE_KEYS, Set.of("kind", "rows"));
-
-		String kind = requireString(top.get("kind"), file + ": kind");
-
-		if (! Set.of("translate", "merge", "tls").contains(kind)) {
-			throw malformed(file + ": unknown kind " + kind);
-		}
-
-		Map<String,X509Certificate> shapes = null;
-
-		if (kind.equals("tls")) {
-			shapes = validateShapes(path, file, top.get("shapes"));
-		}
-		else if (top.containsKey("shapes")) {
-			throw malformed(file + ": shapes is only allowed in a tls file");
-		}
-
-		List<Object> list = requireList(top.get("rows"), file + ": rows");
-
-		if (list.isEmpty()) {
-			throw malformed(file + ": no rows");
-		}
-
+		String kind = (String)top.get("kind");
+		Map<String,X509Certificate> certificates = new LinkedHashMap<>();
 		List<Row> rows = new ArrayList<>();
-		Set<String> names = new HashSet<>();
 
-		for (int i = 0; i < list.size(); i++) {
-			Map<String,Object> data = requireMap(list.get(i), file + ": row " + i);
-			String name = requireString(data.get("case"), file + ": row " + i + " case");
-			String where = file + ":" + name;
+		for (Object item : list(top.get("rows"))) {
+			Map<String,Object> data = map(item);
+			X509Certificate certificate = null;
 
-			if (! names.add(name)) {
-				throw malformed(where + ": duplicate case");
+			if (kind.equals("tls")) {
+				String shape = (String)map(data.get("input")).get("shape");
+				certificate = certificates.computeIfAbsent(shape,
+					s -> certificate(path.resolveSibling("certs").resolve(s + ".pem")));
 			}
-			rows.add(validateRow(file, kind, where, data, shapes));
+			rows.add(new Row(file, kind, (String)data.get("case"), (String)data.get("blockedBy"), data, certificate));
 		}
 		return rows;
 	}
 
-	private static Row validateRow(String file, String kind, String where, Map<String,Object> data,
-		Map<String,X509Certificate> shapes) throws Exception {
-		checkKeys(data, where, ROW_KEYS, Set.of("case", "because", "input"));
-		requireString(data.get("because"), where + ": because");
-
-		String blockedBy = null;
-
-		if (data.containsKey("state")) {
-			if (! BLOCKED.equals(data.get("state"))) {
-				throw malformed(where + ": state must be blocked");
-			}
-			blockedBy = requireString(data.get("blockedBy"), where + ": blockedBy");
-
-			if (data.containsKey("expect")) {
-				throw malformed(where + ": blocked row has expect");
-			}
+	private static X509Certificate certificate(Path pem) {
+		try (InputStream in = Files.newInputStream(pem)) {
+			return (X509Certificate)CertificateFactory.getInstance("X.509").generateCertificate(in);
 		}
-		else if (data.containsKey("blockedBy")) {
-			throw malformed(where + ": blockedBy without state: blocked");
+		catch (Exception e) {
+			throw new IllegalStateException("Cannot read certificate " + pem, e);
 		}
-		else if (! data.containsKey("expect")) {
-			throw malformed(where + ": missing expect");
-		}
-
-		X509Certificate certificate = null;
-
-		switch (kind) {
-		case "translate":
-			validateTranslate(where, data);
-			break;
-
-		case "merge":
-			validateMerge(where, data);
-			break;
-
-		default:
-			certificate = validateTls(where, data, shapes);
-			break;
-		}
-		return new Row(file, kind, (String)data.get("case"), blockedBy, data, certificate);
-	}
-
-	private static void validateTranslate(String where, Map<String,Object> data) {
-		Map<String,Object> config = requireMap(data.get("config"), where + ": config");
-		checkKeys(config, where + ": config", Set.of("legacyHostMap", "translation"), Set.of());
-
-		if (config.containsKey("legacyHostMap")) {
-			requireStringMap(config.get("legacyHostMap"), where + ": legacyHostMap");
-		}
-
-		if (config.containsKey("translation")) {
-			if (config.containsKey("legacyHostMap")) {
-				throw malformed(where + ": legacyHostMap and translation are exclusive");
-			}
-
-			String at = where + ": translation";
-			Map<String,Object> translation = requireMap(config.get("translation"), at);
-			checkKeys(translation, at, Set.of("provider", "onMiss", "staticMap", "portMap", "endpoint"), Set.of("provider"));
-			String provider = requireOneOf(translation.get("provider"), at + ".provider",
-				"static-map", "port-map", "endpoint-port-map");
-
-			if (translation.containsKey("onMiss")) {
-				requireOneOf(translation.get("onMiss"), at + ".onMiss", "passThrough", "strict");
-			}
-
-			switch (provider) {
-			case "static-map":
-				checkKeys(translation, at, Set.of("provider", "onMiss", "staticMap"), Set.of("staticMap"));
-				requireStringMap(translation.get("staticMap"), at + ".staticMap");
-				break;
-
-			case "port-map":
-				checkKeys(translation, at, Set.of("provider", "onMiss", "portMap"), Set.of("portMap"));
-
-				for (Object e : requireList(translation.get("portMap"), at + ".portMap")) {
-					Map<String,Object> entry = requireMap(e, at + ".portMap");
-					checkKeys(entry, at + ".portMap", Set.of("match", "target"), Set.of("match", "target"));
-					Map<String,Object> match = requireMap(entry.get("match"), at + ".portMap.match");
-
-					if (match.containsKey("nodeName")) {
-						checkKeys(match, at + ".portMap.match", Set.of("nodeName"), Set.of("nodeName"));
-						requireString(match.get("nodeName"), at + ".portMap.match.nodeName");
-					}
-					else {
-						requireHost(match, at + ".portMap.match");
-					}
-					requireHost(entry.get("target"), at + ".portMap.target");
-				}
-				break;
-
-			default:
-				checkKeys(translation, at, Set.of("provider", "onMiss", "endpoint"), Set.of("endpoint"));
-				Map<String,Object> endpoint = requireMap(translation.get("endpoint"), at + ".endpoint");
-				checkKeys(endpoint, at + ".endpoint", Set.of("hostname", "portBase"), Set.of("hostname", "portBase"));
-				requireString(endpoint.get("hostname"), at + ".endpoint.hostname");
-				requirePort(endpoint.get("portBase"), at + ".endpoint.portBase");
-				break;
-			}
-		}
-
-		Map<String,Object> input = requireMap(data.get("input"), where + ": input");
-		Set<String> inputKeys = Set.of("nodeName", "tlsName", "host", "port", "sourceList");
-		checkKeys(input, where + ": input", inputKeys, inputKeys);
-		requireString(input.get("nodeName"), where + ": input.nodeName");
-		requireTlsName(input.get("tlsName"), where + ": input.tlsName");
-		requireString(input.get("host"), where + ": input.host");
-		requirePort(input.get("port"), where + ": input.port");
-		requireOneOf(input.get("sourceList"), where + ": input.sourceList", "standard", "alternate");
-
-		if (! data.containsKey("expect")) {
-			return;
-		}
-
-		Map<String,Object> expect = requireMap(data.get("expect"), where + ": expect");
-
-		if (expect.containsKey("error")) {
-			checkKeys(expect, where + ": expect", Set.of("error"), Set.of("error"));
-			validateMiss(expect.get("error"), where + ": expect.error");
-		}
-		else {
-			checkKeys(expect, where + ": expect", Set.of("host", "port", "tlsName", "diagnostic"),
-				Set.of("host", "port", "tlsName"));
-			requireString(expect.get("host"), where + ": expect.host");
-			requirePort(expect.get("port"), where + ": expect.port");
-			requireTlsName(expect.get("tlsName"), where + ": expect.tlsName");
-
-			if (expect.containsKey("diagnostic")) {
-				validateMiss(expect.get("diagnostic"), where + ": expect.diagnostic");
-			}
-		}
-	}
-
-	private static void validateMiss(Object value, String where) {
-		Map<String,Object> miss = requireMap(value, where);
-		checkKeys(miss, where, Set.of("category", "messageContains"), Set.of("category", "messageContains"));
-		requireOneOf(miss.get("category"), where + ".category", "translation-miss");
-		Map<String,Object> facts = requireMap(miss.get("messageContains"), where + ".messageContains");
-		Set<String> keys = Set.of("nodeName", "host", "port", "translator");
-		checkKeys(facts, where + ".messageContains", keys, keys);
-		requireString(facts.get("nodeName"), where + ".messageContains.nodeName");
-		requireString(facts.get("host"), where + ".messageContains.host");
-		requirePort(facts.get("port"), where + ".messageContains.port");
-		requireOneOf(facts.get("translator"), where + ".messageContains.translator",
-			"static-map", "port-map", "endpoint-port-map");
-	}
-
-	private static void validateMerge(String where, Map<String,Object> data) {
-		Map<String,Object> config = requireMap(data.get("config"), where + ": config");
-		checkKeys(config, where + ": config", Set.of("seeds", "discovery"), Set.of("seeds"));
-		requireSeeds(config.get("seeds"), where + ": config.seeds");
-
-		if (config.containsKey("discovery")) {
-			Map<String,Object> discovery = requireMap(config.get("discovery"), where + ": config.discovery");
-			checkKeys(discovery, where + ": config.discovery", Set.of("mergePolicy"), Set.of());
-
-			if (discovery.containsKey("mergePolicy")) {
-				requireOneOf(discovery.get("mergePolicy"), where + ": config.discovery.mergePolicy",
-					"merge", "replace", "discovery-only");
-			}
-		}
-
-		Map<String,Object> input = requireMap(data.get("input"), where + ": input");
-		checkKeys(input, where + ": input", Set.of("discoveryResults"), Set.of("discoveryResults"));
-		List<Object> results = requireList(input.get("discoveryResults"), where + ": input.discoveryResults");
-
-		if (results.isEmpty()) {
-			throw malformed(where + ": input.discoveryResults is empty");
-		}
-
-		for (Object result : results) {
-			requireSeeds(result, where + ": input.discoveryResults");
-		}
-
-		if (! data.containsKey("expect")) {
-			return;
-		}
-
-		Map<String,Object> expect = requireMap(data.get("expect"), where + ": expect");
-		checkKeys(expect, where + ": expect", Set.of("snapshots"), Set.of("snapshots"));
-		List<Object> snapshots = requireList(expect.get("snapshots"), where + ": expect.snapshots");
-
-		if (snapshots.size() != results.size()) {
-			throw malformed(where + ": " + snapshots.size() + " snapshots for " + results.size() + " discovery results");
-		}
-
-		for (Object snapshot : snapshots) {
-			requireSeeds(snapshot, where + ": expect.snapshots");
-		}
-	}
-
-	private static X509Certificate validateTls(String where, Map<String,Object> data,
-		Map<String,X509Certificate> shapes) {
-		Map<String,Object> input = requireMap(data.get("input"), where + ": input");
-		checkKeys(input, where + ": input", Set.of("tlsName", "shape"), Set.of("tlsName", "shape"));
-		requireString(input.get("tlsName"), where + ": input.tlsName");
-
-		String shape = requireString(input.get("shape"), where + ": input.shape");
-		X509Certificate cert = shapes.get(shape);
-
-		if (cert == null) {
-			throw malformed(where + ": unknown shape " + shape);
-		}
-
-		if (data.containsKey("config")) {
-			throw malformed(where + ": unknown key config");
-		}
-
-		if (data.containsKey("expect")) {
-			Map<String,Object> expect = requireMap(data.get("expect"), where + ": expect");
-			checkKeys(expect, where + ": expect", Set.of("outcome"), Set.of("outcome"));
-			requireOneOf(expect.get("outcome"), where + ": expect.outcome", "accept", "reject");
-		}
-		return cert;
-	}
-
-	private static Map<String,X509Certificate> validateShapes(Path path, String file, Object value) throws Exception {
-		Map<String,Object> map = requireMap(value, file + ": shapes");
-
-		if (map.isEmpty()) {
-			throw malformed(file + ": no shapes");
-		}
-
-		Map<String,X509Certificate> shapes = new LinkedHashMap<>();
-
-		for (Map.Entry<String,Object> entry : map.entrySet()) {
-			String name = entry.getKey();
-			String where = file + ": shape " + name;
-
-			if (! SHAPE_NAME.matcher(name).matches()) {
-				throw malformed(where + ": invalid name");
-			}
-			shapes.put(name, validateShape(path.getParent().resolve("certs").resolve(name + ".pem"), where,
-				requireMap(entry.getValue(), where)));
-		}
-		return shapes;
-	}
-
-	private static X509Certificate validateShape(Path certFile, String where, Map<String,Object> desc)
-		throws Exception {
-		Set<String> keys = Set.of("subjectCN", "san");
-		checkKeys(desc, where, keys, keys);
-
-		String cn = requireString(desc.get("subjectCN"), where + ": subjectCN");
-		List<String> san = new ArrayList<>();
-
-		for (Object name : requireList(desc.get("san"), where + ": san")) {
-			san.add(requireString(name, where + ": san"));
-		}
-
-		if (! Files.isRegularFile(certFile)) {
-			throw malformed(where + ": certificate not found: " + certFile);
-		}
-
-		X509Certificate cert;
-
-		try (InputStream in = Files.newInputStream(certFile)) {
-			cert = (X509Certificate)CertificateFactory.getInstance("X.509").generateCertificate(in);
-		}
-
-		List<String> actualCn = new ArrayList<>();
-		LdapName subject = new LdapName(cert.getSubjectX500Principal().getName(X500Principal.RFC2253));
-
-		for (Rdn rdn : subject.getRdns()) {
-			if (rdn.getType().equalsIgnoreCase("CN")) {
-				actualCn.add(rdn.getValue().toString());
-			}
-		}
-
-		if (! actualCn.equals(List.of(cn))) {
-			throw malformed(where + ": certificate CN " + actualCn + " does not match subjectCN " + cn);
-		}
-
-		List<String> actualSan = new ArrayList<>();
-
-		if (cert.getSubjectAlternativeNames() != null) {
-			for (List<?> name : cert.getSubjectAlternativeNames()) {
-				int type = (Integer)name.get(0);
-				String value = (String)name.get(1);
-				actualSan.add(type == 7? "IP:" + canonicalIp(value) : (type == 2? "DNS:" : type + ":") + value);
-			}
-		}
-
-		List<String> expectedSan = new ArrayList<>();
-
-		for (String name : san) {
-			expectedSan.add(name.startsWith("IP:")? "IP:" + canonicalIp(name.substring(3)) : name);
-		}
-
-		if (! actualSan.equals(expectedSan)) {
-			throw malformed(where + ": certificate SAN " + actualSan + " does not match san " + san);
-		}
-		return cert;
-	}
-
-	private static String canonicalIp(String literal) throws Exception {
-		return InetAddress.getByAddress(InetAddress.getByName(literal).getAddress()).getHostAddress();
-	}
-
-	private static void requireSeeds(Object value, String where) {
-		for (Object seed : requireList(value, where)) {
-			requireHost(seed, where);
-		}
-	}
-
-	private static void requireHost(Object value, String where) {
-		Map<String,Object> host = requireMap(value, where);
-		checkKeys(host, where, Set.of("host", "port"), Set.of("host", "port"));
-		requireString(host.get("host"), where + ".host");
-		requirePort(host.get("port"), where + ".port");
-	}
-
-	private static void checkKeys(Map<String,Object> map, String where, Set<String> allowed, Set<String> required) {
-		for (String key : map.keySet()) {
-			if (! allowed.contains(key)) {
-				throw malformed(where + ": unknown key " + key);
-			}
-		}
-
-		for (String key : required) {
-			if (! map.containsKey(key)) {
-				throw malformed(where + ": missing " + key);
-			}
-		}
-	}
-
-	private static String requireString(Object value, String where) {
-		if (! (value instanceof String) || ((String)value).isEmpty()) {
-			throw malformed(where + ": expected a non-empty string, got " + value);
-		}
-		return (String)value;
-	}
-
-	private static void requireTlsName(Object value, String where) {
-		if (value != null) {
-			requireString(value, where);
-		}
-	}
-
-	private static void requirePort(Object value, String where) {
-		if (! (value instanceof Integer) || (Integer)value < 0 || (Integer)value > MAX_PORT) {
-			throw malformed(where + ": expected a port, got " + value);
-		}
-	}
-
-	private static String requireOneOf(Object value, String where, String... allowed) {
-		if (! Arrays.asList(allowed).contains(value)) {
-			throw malformed(where + ": expected one of " + Arrays.toString(allowed) + ", got " + value);
-		}
-		return (String)value;
-	}
-
-	private static void requireStringMap(Object value, String where) {
-		for (Map.Entry<String,Object> entry : requireMap(value, where).entrySet()) {
-			requireString(entry.getValue(), where + "." + entry.getKey());
-		}
-	}
-
-	@SuppressWarnings("unchecked")
-	private static Map<String,Object> requireMap(Object value, String where) {
-		if (! (value instanceof Map)) {
-			throw malformed(where + ": expected a map, got " + value);
-		}
-
-		for (Object key : ((Map<?,?>)value).keySet()) {
-			if (! (key instanceof String)) {
-				throw malformed(where + ": non-string key " + key);
-			}
-		}
-		return (Map<String,Object>)value;
-	}
-
-	@SuppressWarnings("unchecked")
-	private static List<Object> requireList(Object value, String where) {
-		if (! (value instanceof List)) {
-			throw malformed(where + ": expected a list, got " + value);
-		}
-		return (List<Object>)value;
 	}
 
 	@SuppressWarnings("unchecked")
@@ -819,10 +402,6 @@ public class ConformanceTest {
 	@SuppressWarnings("unchecked")
 	private static Map<String,String> stringMap(Object value) {
 		return (Map<String,String>)value;
-	}
-
-	private static IllegalStateException malformed(String message) {
-		return new IllegalStateException("Malformed conformance fixture: " + message);
 	}
 
 	//-------------------------------------------------------
@@ -879,13 +458,12 @@ public class ConformanceTest {
 		}
 	}
 
+	@SuppressWarnings("unchecked")
 	private static Map<String,Object> requireDeclaration(Object value, String where) {
-		try {
-			return requireMap(value, where);
-		}
-		catch (IllegalStateException ise) {
+		if (! (value instanceof Map)) {
 			throw new IllegalStateException(DECLARED + ": " + where + " must be a map");
 		}
+		return (Map<String,Object>)value;
 	}
 
 	//-------------------------------------------------------
