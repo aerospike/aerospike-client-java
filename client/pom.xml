@@ -258,6 +258,11 @@
         <artifactId>maven-surefire-plugin</artifactId>
         <configuration>
           <failIfNoTests>true</failIfNoTests>
+          <!-- Needs an extracted aerospike-client-conformance release zip (or checkout): -Dtest=ConformanceTest -Dconformance.dir=<path> -->
+          <excludes>
+            <exclude>**/*$*</exclude>
+            <exclude>**/conformance/ConformanceTest.java</exclude>
+          </excludes>
         </configuration>
       </plugin>
 
