@@ -1,0 +1,35 @@
+# Expected Java result per conformance row. A row not listed here is declared pass (blocked when the
+# fixture row is blocked). The conformance test fails when any row's actual result differs.
+discovery/translate/port-map.yaml:
+  host-port-key-hit: { result: unsupported, reason: "CLIENT-5641 not implemented" }
+  host-port-key-null-tls-name: { result: unsupported, reason: "CLIENT-5641 not implemented" }
+  host-port-key-other-port-misses: { result: unsupported, reason: "CLIENT-5641 not implemented" }
+  node-name-key-hit: { result: unsupported, reason: "CLIENT-5641 not implemented" }
+  node-name-key-any-advertised-address: { result: unsupported, reason: "CLIENT-5641 not implemented" }
+  node-name-key-misses-other-node: { result: unsupported, reason: "CLIENT-5641 not implemented" }
+  ipv6-host-port-key-hit: { result: unsupported, reason: "CLIENT-5641 not implemented" }
+  standard-map-alternate-endpoint-first-node: { result: unsupported, reason: "CLIENT-5641 not implemented" }
+  standard-map-alternate-endpoint-second-node: { result: unsupported, reason: "CLIENT-5641 not implemented" }
+  standard-map-alternate-endpoint-strict: { result: unsupported, reason: "CLIENT-5641 not implemented" }
+
+discovery/translate/on-miss.yaml:
+  static-map-explicit-pass-through: { result: unsupported, reason: "CLIENT-5640 not implemented" }
+  static-map-strict-hit-translates: { result: unsupported, reason: "CLIENT-5640 not implemented" }
+  static-map-strict-miss-fails: { result: unsupported, reason: "CLIENT-5640 not implemented" }
+  static-map-strict-empty-map-fails: { result: unsupported, reason: "CLIENT-5640 not implemented" }
+  port-map-default-pass-through: { result: unsupported, reason: "CLIENT-5641 not implemented" }
+  port-map-strict-miss-fails: { result: unsupported, reason: "CLIENT-5641 not implemented" }
+
+tls/name-matching.yaml:
+  cn-only-no-san:
+    result: fail
+    reason: "legacy CN fallback kept until the next major (decided 2026-10-06)"
+  cn-equal-dns-name-differs:
+    result: fail
+    reason: "legacy CN fallback kept until the next major (decided 2026-10-06)"
+  ip-id-only-as-dns-name:
+    result: fail
+    reason: "legacy CN fallback kept until the next major (decided 2026-10-06)"
+  ci-server-certificate-shape:
+    result: fail
+    reason: "legacy CN fallback kept until the next major (decided 2026-10-06)"

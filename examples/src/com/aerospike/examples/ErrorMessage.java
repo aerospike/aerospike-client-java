@@ -22,6 +22,7 @@ import com.aerospike.client.IAerospikeClient;
 import com.aerospike.client.Key;
 import com.aerospike.client.Operation;
 import com.aerospike.client.ResultCode;
+import com.aerospike.client.SubCode;
 import com.aerospike.client.operation.HLLOperation;
 import com.aerospike.client.operation.HLLPolicy;
 import com.aerospike.client.policy.GenerationPolicy;
@@ -76,7 +77,7 @@ public class ErrorMessage extends Example {
 			throw new RuntimeException("Expected error on append to integer bin");
 		}
 		catch (AerospikeException ae) {
-			assertErrorDetails(ae, ResultCode.BIN_TYPE_ERROR, 1100, "cannot append");
+			assertErrorDetails(ae, ResultCode.BIN_TYPE_ERROR, SubCode.NONE, "cannot append");
 			console.info("Test 1 passed: append to integer bin - %d: %s", ae.getResultCode(), ae.getBaseMessage());
 		}
 	}
@@ -92,7 +93,7 @@ public class ErrorMessage extends Example {
 			throw new RuntimeException("Expected error on generation-mismatch delete");
 		}
 		catch (AerospikeException ae) {
-			assertErrorDetails(ae, ResultCode.GENERATION_ERROR, 1701, "delete generation mismatch");
+			assertErrorDetails(ae, ResultCode.GENERATION_ERROR, SubCode.NONE, "delete generation mismatch");
 			console.info("Test 2 passed: generation mismatch delete - %d: %s", ae.getResultCode(), ae.getBaseMessage());
 		}
 	}
@@ -111,7 +112,7 @@ public class ErrorMessage extends Example {
 			throw new RuntimeException("Expected error on incr of string bin");
 		}
 		catch (AerospikeException ae) {
-			assertErrorDetails(ae, ResultCode.BIN_TYPE_ERROR, 1100, "cannot increment");
+			assertErrorDetails(ae, ResultCode.BIN_TYPE_ERROR, SubCode.NONE, "cannot increment");
 			console.info("Test 3 passed: increment string bin - %d: %s", ae.getResultCode(), ae.getBaseMessage());
 		}
 	}
@@ -132,7 +133,7 @@ public class ErrorMessage extends Example {
 			throw new RuntimeException("Expected error on HLL add to integer bin");
 		}
 		catch (AerospikeException ae) {
-			assertErrorDetails(ae, ResultCode.BIN_TYPE_ERROR, 1138, "bin is not hll type");
+			assertErrorDetails(ae, ResultCode.BIN_TYPE_ERROR, SubCode.NONE, "bin is not hll type");
 			console.info("Test 4 passed: HLL add on integer bin - %d: %s", ae.getResultCode(), ae.getBaseMessage());
 		}
 	}
@@ -151,7 +152,7 @@ public class ErrorMessage extends Example {
 			throw new RuntimeException("Expected error on HLL refresh_count of nonexistent bin");
 		}
 		catch (AerospikeException ae) {
-			assertErrorDetails(ae, ResultCode.BIN_NOT_FOUND, 1134);
+			assertErrorDetails(ae, ResultCode.BIN_NOT_FOUND, SubCode.BIN_NOT_FOUND_HLL_CANNOT_CREATE_WITH_OP);
 			console.info("Test 5 passed: HLL refresh_count missing bin - %d: %s", ae.getResultCode(), ae.getBaseMessage());
 		}
 	}
