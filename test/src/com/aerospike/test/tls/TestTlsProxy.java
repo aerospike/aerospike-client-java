@@ -34,6 +34,7 @@ import java.security.cert.X509Certificate;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -127,7 +128,7 @@ public class TestTlsProxy {
 		cp.addressTranslator = advertised -> {
 			Forwarder f = forwarders.get(advertised.nodeName);
 			int port = (f != null) ? f.port() : advertised.port;
-			return new Host(f != null ? Forwarder.ADDRESS : advertised.host, Forwarder.ADDRESS, port);
+			return Optional.of(new Host(f != null ? Forwarder.ADDRESS : advertised.host, Forwarder.ADDRESS, port));
 		};
 
 		Host seed = new Host(Forwarder.ADDRESS, tlsName, forwarders.get(seedNode).port());

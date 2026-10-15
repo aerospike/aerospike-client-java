@@ -54,6 +54,7 @@ import com.aerospike.client.cluster.Connection;
 import com.aerospike.client.discovery.Endpoint;
 import com.aerospike.client.discovery.SeedMergePolicy;
 import com.aerospike.client.discovery.StaticMapAddressTranslator;
+import com.aerospike.client.discovery.TranslationMissMode;
 import com.aerospike.client.policy.ClientPolicy;
 import com.aerospike.client.policy.TlsPolicy;
 
@@ -233,13 +234,9 @@ public class ConformanceTest {
 			}
 
 			if (translation.containsKey("onMiss")) {
-				return new Outcome(UNSUPPORTED, "translation.onMiss is not implemented");
+				policy.translationOnMiss = onMiss((String)translation.get("onMiss"));
 			}
 			policy.addressTranslator = new StaticMapAddressTranslator(stringMap(translation.get("staticMap")));
-		}
-
-		if (expect.containsKey("error")) {
-			return new Outcome(UNSUPPORTED, "translation-miss error is not implemented");
 		}
 
 		if (expect.containsKey("diagnostic")) {
@@ -250,13 +247,31 @@ public class ConformanceTest {
 			Endpoint.SourceList.ALTERNATE : Endpoint.SourceList.STANDARD;
 		Endpoint advertised = new Endpoint((String)input.get("nodeName"), (String)input.get("tlsName"),
 			(String)input.get("host"), (Integer)input.get("port"), sourceList);
+		Map<String,Object> error = map(expect.get("error"));
 		Host actual;
 
 		try {
 			actual = ConformanceAdapter.translate(policy, advertised);
 		}
+		catch (AerospikeException.TranslationMiss tm) {
+			if (error == null || ! error.get("category").equals("translation-miss")) {
+				return new Outcome(FAIL, "threw " + tm);
+			}
+
+			for (Object value : map(error.get("messageContains")).values()) {
+				if (! tm.getMessage().contains(String.valueOf(value))) {
+					return new Outcome(FAIL, "message does not contain " + value + ": " + tm.getMessage());
+				}
+			}
+			return new Outcome(PASS, null);
+		}
 		catch (Exception e) {
 			return new Outcome(FAIL, "threw " + e);
+		}
+
+		if (error != null) {
+			return new Outcome(FAIL, "expected " + error.get("category") + " error, got " +
+				endpoint(actual.name, actual.port, actual.tlsName));
 		}
 
 		String expected = endpoint((String)expect.get("host"), (Integer)expect.get("port"), (String)expect.get("tlsName"));
@@ -317,6 +332,19 @@ public class ConformanceTest {
 			return new Outcome(FAIL, "expected " + expected + ", got " + got);
 		}
 		return new Outcome(PASS, null);
+	}
+
+	private static TranslationMissMode onMiss(String value) {
+		switch (value) {
+		case "passThrough":
+			return TranslationMissMode.PASS_THROUGH;
+
+		case "strict":
+			return TranslationMissMode.STRICT;
+
+		default:
+			throw new IllegalStateException("unknown onMiss " + value);
+		}
 	}
 
 	private static SeedMergePolicy mergePolicy(String value) {

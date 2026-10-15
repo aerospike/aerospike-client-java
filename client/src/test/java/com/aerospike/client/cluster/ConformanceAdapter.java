@@ -26,6 +26,7 @@ import com.aerospike.client.discovery.AddressTranslator;
 import com.aerospike.client.discovery.Endpoint;
 import com.aerospike.client.discovery.SeedCandidateProvider;
 import com.aerospike.client.discovery.StaticMapAddressTranslator;
+import com.aerospike.client.discovery.TranslationMissMode;
 import com.aerospike.client.policy.ClientPolicy;
 
 /**
@@ -35,13 +36,17 @@ public final class ConformanceAdapter {
 	private static final int TEND_INTERVAL = 1000;
 
 	/**
-	 * Translate an advertised endpoint with the translator the cluster selects from the policy.
+	 * Translate an advertised endpoint with the translator and miss mode the cluster selects from
+	 * the policy.
 	 */
 	public static Host translate(ClientPolicy policy, Endpoint advertised) {
 		AddressTranslator translator = (policy.addressTranslator != null)?
 			policy.addressTranslator : new StaticMapAddressTranslator(policy.ipMap);
 
-		return Cluster.translate(translator, advertised);
+		TranslationMissMode onMiss = (policy.translationOnMiss != null)?
+			policy.translationOnMiss : TranslationMissMode.PASS_THROUGH;
+
+		return Cluster.translate(translator, onMiss, advertised);
 	}
 
 	/**

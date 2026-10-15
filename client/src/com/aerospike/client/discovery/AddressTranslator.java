@@ -16,6 +16,8 @@
  */
 package com.aerospike.client.discovery;
 
+import java.util.Optional;
+
 import com.aerospike.client.Host;
 
 /**
@@ -27,8 +29,11 @@ import com.aerospike.client.Host;
  */
 public interface AddressTranslator {
 	/**
-	 * Return the host the client should connect to for the advertised endpoint. Return a host
-	 * with the advertised name and port to leave the address unchanged.
+	 * Return the host the client should connect to for the advertised endpoint, or
+	 * {@link Optional#empty()} when the translator has no mapping for it (a miss). A present
+	 * value is a hit, even when it equals the advertised host and port. The client applies
+	 * {@link com.aerospike.client.policy.ClientPolicy#translationOnMiss} to a miss. Never return
+	 * null.
 	 * <p>
 	 * This method is called on the cluster tend thread and must be in-memory only. It must not
 	 * perform I/O of any kind, including DNS resolution.
@@ -36,5 +41,5 @@ public interface AddressTranslator {
 	 * The TLS name is never rewritten. The client always uses the advertised endpoint's TLS name,
 	 * regardless of the TLS name on the returned host.
 	 */
-	Host translate(Endpoint advertised);
+	Optional<Host> translate(Endpoint advertised);
 }
