@@ -56,6 +56,7 @@ import com.aerospike.client.configuration.serializers.StaticConfiguration;
 import com.aerospike.client.configuration.serializers.staticconfig.StaticClientConfig;
 import com.aerospike.client.discovery.AddressTranslator;
 import com.aerospike.client.discovery.Endpoint;
+import com.aerospike.client.discovery.PassThroughAddressTranslator;
 import com.aerospike.client.discovery.PortMapAddressTranslator;
 import com.aerospike.client.discovery.SeedCandidateProvider;
 import com.aerospike.client.discovery.StaticMapAddressTranslator;
@@ -525,6 +526,9 @@ public class Cluster implements Runnable, Closeable {
 	}
 
 	private static String translatorName(AddressTranslator translator) {
+		if (translator instanceof PassThroughAddressTranslator) {
+			return "pass-through";
+		}
 		if (translator instanceof PortMapAddressTranslator) {
 			return "port-map";
 		}

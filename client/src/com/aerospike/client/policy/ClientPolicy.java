@@ -371,6 +371,9 @@ public class ClientPolicy {
 	 * advertised host to host, port kept.</li>
 	 * <li>{@code port-map}: {@link com.aerospike.client.discovery.PortMapAddressTranslator},
 	 * advertised {@code host:port} or node name to {@code host:port}.</li>
+	 * <li>{@code pass-through}: {@link com.aerospike.client.discovery.PassThroughAddressTranslator},
+	 * every advertised address unchanged, for servers that advertise a client-reachable address and
+	 * port per node.</li>
 	 * </ul>
 	 * <p>
 	 * Default: null (use {@link com.aerospike.client.discovery.StaticMapAddressTranslator} with

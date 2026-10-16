@@ -52,6 +52,7 @@ import com.aerospike.client.Host;
 import com.aerospike.client.cluster.ConformanceAdapter;
 import com.aerospike.client.cluster.Connection;
 import com.aerospike.client.discovery.Endpoint;
+import com.aerospike.client.discovery.PassThroughAddressTranslator;
 import com.aerospike.client.discovery.PortMapAddressTranslator;
 import com.aerospike.client.discovery.SeedMergePolicy;
 import com.aerospike.client.discovery.StaticMapAddressTranslator;
@@ -238,6 +239,10 @@ public class ConformanceTest {
 			switch (provider) {
 			case "static-map":
 				policy.addressTranslator = new StaticMapAddressTranslator(stringMap(translation.get("static_map")));
+				break;
+
+			case "pass-through":
+				policy.addressTranslator = PassThroughAddressTranslator.INSTANCE;
 				break;
 
 			case "port-map":
