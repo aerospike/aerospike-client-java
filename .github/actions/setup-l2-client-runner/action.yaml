@@ -1,8 +1,9 @@
 name: Setup L2 Java client runner
 description: >
-  Restore and warm ~/.m2, then export maven:3-ibm-semeru-21-noble bind-mount
-  inputs for setup-discovery-topology. No custom image: Maven + IBM Semeru
-  JDK 21 on Ubuntu Noble, matching JAVA_PROVIDER=semeru and ubuntu-24.04 runners.
+  Restore and warm ~/.m2, then export the maven:3-ibm-semeru-21-noble image
+  and bind-mount outputs. The caller starts the client with docker run.
+  No custom image: Maven + IBM Semeru JDK 21 on Ubuntu Noble, matching
+  JAVA_PROVIDER=semeru and ubuntu-24.04 runners.
 
 inputs:
   client-image:
@@ -28,7 +29,7 @@ inputs:
 
 outputs:
   client-image:
-    description: Image to pass to setup-discovery-topology
+    description: Client container image for the caller to docker run
     value: ${{ steps.export.outputs.client-image }}
   client-volumes:
     description: Semicolon-delimited host:container mounts (workspace + ~/.m2)
