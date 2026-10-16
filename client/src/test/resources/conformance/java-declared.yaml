@@ -9,22 +9,6 @@ discovery/translate/pass-through.yaml:
   ipv6-literal-unchanged: { result: unsupported, reason: "CLIENT-5648 not implemented" }
   strict-never-misses: { result: unsupported, reason: "CLIENT-5648 not implemented" }
 
-discovery/translate/port-map.yaml:
-  host-port-key-hit: { result: unsupported, reason: "CLIENT-5641 not implemented" }
-  host-port-key-null-tls-name: { result: unsupported, reason: "CLIENT-5641 not implemented" }
-  host-port-key-other-port-misses: { result: unsupported, reason: "CLIENT-5641 not implemented" }
-  node-name-key-hit: { result: unsupported, reason: "CLIENT-5641 not implemented" }
-  node-name-key-any-advertised-address: { result: unsupported, reason: "CLIENT-5641 not implemented" }
-  node-name-key-misses-other-node: { result: unsupported, reason: "CLIENT-5641 not implemented" }
-  ipv6-host-port-key-hit: { result: unsupported, reason: "CLIENT-5641 not implemented" }
-  standard-map-alternate-endpoint-first-node: { result: unsupported, reason: "CLIENT-5641 not implemented" }
-  standard-map-alternate-endpoint-second-node: { result: unsupported, reason: "CLIENT-5641 not implemented" }
-  standard-map-alternate-endpoint-strict: { result: unsupported, reason: "CLIENT-5641 not implemented" }
-
-discovery/translate/on-miss.yaml:
-  port-map-default-pass-through: { result: unsupported, reason: "CLIENT-5641 not implemented" }
-  port-map-strict-miss-fails: { result: unsupported, reason: "CLIENT-5641 not implemented" }
-
 tls/name-matching.yaml:
   cn-only-no-san:
     result: fail
