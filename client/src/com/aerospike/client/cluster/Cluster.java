@@ -519,6 +519,10 @@ public class Cluster implements Runnable, Closeable {
 		return host;
 	}
 
+	final String translatorName() {
+		return translatorName(addressTranslator);
+	}
+
 	private static String translatorName(AddressTranslator translator) {
 		return (translator instanceof StaticMapAddressTranslator)? "static-map" : translator.getClass().getName();
 	}
