@@ -234,19 +234,19 @@ public final class NodeValidator {
 
 			String addressCommand = null;
 
-			if (detectLoadBalancer) {
-				if (address.isLoopbackAddress()) {
-					// Disable load balancer detection for localhost.
-					detectLoadBalancer = false;
-				}
-				else {
-					// Seed may be load balancer with changing address. Determine real address.
-					addressCommand = (cluster.tlsPolicy != null)?
-						cluster.useServicesAlternate ? "service-tls-alt" : "service-tls-std" :
-						cluster.useServicesAlternate ? "service-clear-alt" : "service-clear-std";
+			if (detectLoadBalancer && address.isLoopbackAddress()) {
+				// Disable load balancer detection for localhost.
+				detectLoadBalancer = false;
+			}
 
-					commands.add(addressCommand);
-				}
+			if (detectLoadBalancer || cluster.useServicesAlternate) {
+				// Seed may be load balancer with changing address. Determine real address.
+				// The alternate address list must also contain the node itself.
+				addressCommand = (cluster.tlsPolicy != null)?
+					cluster.useServicesAlternate ? "service-tls-alt" : "service-tls-std" :
+					cluster.useServicesAlternate ? "service-clear-alt" : "service-clear-std";
+
+				commands.add(addressCommand);
 			}
 
 			// Issue commands.
@@ -271,7 +271,11 @@ public final class NodeValidator {
 				validateClusterName(cluster, map);
 			}
 
-			if (addressCommand != null) {
+			if (cluster.useServicesAlternate) {
+				validateAlternateAddress(map, addressCommand);
+			}
+
+			if (detectLoadBalancer) {
 				setAddress(cluster, map, addressCommand, tlsName);
 			}
 		}
@@ -376,6 +380,14 @@ public final class NodeValidator {
 		if (id == null || ! cluster.clusterName.equals(id)) {
 			throw new AerospikeException.InvalidNode("Node " + this.name + ' ' + this.primaryHost + ' ' +
 					" expected cluster name '" + cluster.clusterName + "' received '" + id + "'");
+		}
+	}
+
+	private void validateAlternateAddress(HashMap<String,String> map, String addressCommand) {
+		String result = map.get(addressCommand);
+
+		if (result == null || result.length() == 0) {
+			throw new AerospikeException.AlternateAddressMissing(this.name, this.primaryHost);
 		}
 	}
 

@@ -466,6 +466,20 @@ public class AerospikeException extends RuntimeException {
 	}
 
 	/**
+	 * Exception thrown when {@link com.aerospike.client.policy.ClientPolicy#useServicesAlternate}
+	 * is true and a node has no alternate-access-address. No node is created for it. Not retryable.
+	 */
+	public static final class AlternateAddressMissing extends AerospikeException {
+		private static final long serialVersionUID = 1L;
+
+		public AlternateAddressMissing(String nodeName, Host host) {
+			super(ResultCode.CLIENT_ERROR, "Node " + nodeName + (host != null ? " " + host : "") +
+				" has no alternate-access-address and useServicesAlternate is true. Configure " +
+				"alternate-access-address on the server or set useServicesAlternate to false");
+		}
+	}
+
+	/**
 	 * Exception thrown when namespace is invalid.
 	 */
 	public static final class InvalidNamespace extends AerospikeException {

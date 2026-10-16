@@ -872,6 +872,11 @@ public class Cluster implements Runnable, Closeable {
 					}
 					exceptions[i] = e;
 				}
+				else if (e instanceof AerospikeException.AlternateAddressMissing) {
+					if (Log.errorEnabled()) {
+						Log.error("Seed " + seed + " failed: " + e.getMessage());
+					}
+				}
 				else {
 					if (Log.warnEnabled()) {
 						Log.warn("Seed " + seed + " failed: " + Util.getErrorMessage(e));
@@ -890,6 +895,14 @@ public class Cluster implements Runnable, Closeable {
 		}
 
 		if (failIfNotConnected) {
+			if (exceptions != null) {
+				for (Throwable ex : exceptions) {
+					if (ex instanceof AerospikeException.AlternateAddressMissing) {
+						throw (AerospikeException.AlternateAddressMissing)ex;
+					}
+				}
+			}
+
 			StringBuilder sb = new StringBuilder(500);
 			sb.append("Failed to connect to ["+ seedArray.length +"] host(s): ");
 			sb.append(System.lineSeparator());
