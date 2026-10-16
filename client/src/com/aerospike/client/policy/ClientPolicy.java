@@ -367,6 +367,15 @@ public class ClientPolicy {
 	 * Translator applied to every server advertised address before the client connects to it.
 	 * When set, {@link #ipMap} is ignored.
 	 * <p>
+	 * Built-in translators:
+	 * <ul>
+	 * <li>static-map: {@link com.aerospike.client.discovery.StaticMapAddressTranslator} replaces the
+	 * advertised host name with the value mapped to it</li>
+	 * <li>pass-through: {@link com.aerospike.client.discovery.PassThroughAddressTranslator} returns
+	 * every advertised address unchanged, for servers that advertise a client-reachable address and
+	 * port per node</li>
+	 * </ul>
+	 * <p>
 	 * Default: null (use {@link com.aerospike.client.discovery.StaticMapAddressTranslator} with
 	 * {@link #ipMap})
 	 */
