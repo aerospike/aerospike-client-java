@@ -393,7 +393,12 @@ public final class NodeValidator {
 
 		// Search real hosts for seed.
 		for (Host host : hosts) {
-			h = cluster.translateAddress(this.name, tlsName, host.name, host.port);
+			try {
+				h = cluster.translateAddress(this.name, tlsName, host.name, host.port);
+			}
+			catch (AerospikeException.TranslationMiss tm) {
+				continue;
+			}
 
 			if (h.equals(this.primaryHost)) {
 				// Found seed which is not a load balancer.

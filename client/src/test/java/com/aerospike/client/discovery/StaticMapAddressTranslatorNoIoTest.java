@@ -27,6 +27,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import org.junit.Test;
 
@@ -59,11 +60,11 @@ public class StaticMapAddressTranslatorNoIoTest {
 		GuardedResolverProvider.arm();
 
 		try {
-			Host hit = translator.translate(new Endpoint("BB9", "tls1", "node1.internal", 3000, SourceList.STANDARD));
-			Host miss = translator.translate(new Endpoint("BB9", "tls1", "node2.internal", 3000, SourceList.ALTERNATE));
+			Optional<Host> hit = translator.translate(new Endpoint("BB9", "tls1", "node1.internal", 3000, SourceList.STANDARD));
+			Optional<Host> miss = translator.translate(new Endpoint("BB9", "tls1", "node2.internal", 3000, SourceList.ALTERNATE));
 
-			assertEquals("node1.external.invalid", hit.name);
-			assertEquals("node2.internal", miss.name);
+			assertEquals("node1.external.invalid", hit.get().name);
+			assertFalse(miss.isPresent());
 		}
 		finally {
 			GuardedResolverProvider.disarm();

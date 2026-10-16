@@ -33,6 +33,7 @@ import com.aerospike.client.configuration.serializers.staticconfig.StaticClientC
 import com.aerospike.client.discovery.AddressTranslator;
 import com.aerospike.client.discovery.SeedCandidateProvider;
 import com.aerospike.client.discovery.SeedMergePolicy;
+import com.aerospike.client.discovery.TranslationMissMode;
 import com.aerospike.client.util.Util;
 
 /**
@@ -372,6 +373,26 @@ public class ClientPolicy {
 	public AddressTranslator addressTranslator;
 
 	/**
+	 * Action taken when the address translator has no mapping for a server advertised endpoint.
+	 * Applies to every translator, including the default
+	 * {@link com.aerospike.client.discovery.StaticMapAddressTranslator} built from {@link #ipMap}.
+	 * YAML key: {@code translation.on_miss}.
+	 * <ul>
+	 * <li>{@link TranslationMissMode#PASS_THROUGH} ({@code pass_through}): connect to the advertised
+	 * endpoint unchanged, as {@link #ipMap} does for an unmapped address.</li>
+	 * <li>{@link TranslationMissMode#STRICT} ({@code strict}): do not connect to the advertised
+	 * endpoint and do not create a node for it. The miss fails with
+	 * {@link com.aerospike.client.AerospikeException.TranslationMiss}, which names the node, the
+	 * advertised endpoint and the translator. A missed peer is logged at warning level and
+	 * retried on the next cluster tend.</li>
+	 * </ul>
+	 * A null value is treated as {@link TranslationMissMode#PASS_THROUGH}.
+	 * <p>
+	 * Default: {@link TranslationMissMode#PASS_THROUGH}
+	 */
+	public TranslationMissMode translationOnMiss = TranslationMissMode.PASS_THROUGH;
+
+	/**
 	 * Interval in milliseconds between periodic {@link #seedCandidateProvider} refreshes. The
 	 * client starts no thread for discovery: when the provider's
 	 * {@link SeedCandidateProvider#needsPeriodicRefresh()} returns true, the provider is called on
@@ -567,6 +588,7 @@ public class ClientPolicy {
 		this.ipMap = other.ipMap;
 		this.seedCandidateProvider = other.seedCandidateProvider;
 		this.addressTranslator = other.addressTranslator;
+		this.translationOnMiss = other.translationOnMiss;
 		this.discoveryRefreshInterval = other.discoveryRefreshInterval;
 		this.discoveryTendRefreshDeadline = other.discoveryTendRefreshDeadline;
 		this.discoveryMergePolicy = other.discoveryMergePolicy;
@@ -879,6 +901,10 @@ public class ClientPolicy {
 
 	public void setAddressTranslator(AddressTranslator addressTranslator) {
 		this.addressTranslator = addressTranslator;
+	}
+
+	public void setTranslationOnMiss(TranslationMissMode translationOnMiss) {
+		this.translationOnMiss = translationOnMiss;
 	}
 
 	public void setDiscoveryRefreshInterval(int discoveryRefreshInterval) {

@@ -22,6 +22,7 @@ import java.util.List;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Host;
 import com.aerospike.client.Info;
+import com.aerospike.client.Log;
 
 /**
  * Parse node's peers.
@@ -95,8 +96,14 @@ public final class PeerParser {
 		}
 
 		while (true) {
-			Host host = parseHost();
-			hosts.add(host);
+			try {
+				hosts.add(parseHost());
+			}
+			catch (AerospikeException.TranslationMiss tm) {
+				if (Log.warnEnabled()) {
+					Log.warn(tm.getMessage());
+				}
+			}
 
 			if (parser.buffer[parser.offset] == ']') {
 				parser.offset++;

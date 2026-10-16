@@ -13,10 +13,6 @@ discovery/translate/port-map.yaml:
   standard-map-alternate-endpoint-strict: { result: unsupported, reason: "CLIENT-5641 not implemented" }
 
 discovery/translate/on-miss.yaml:
-  static-map-explicit-pass-through: { result: unsupported, reason: "CLIENT-5640 not implemented" }
-  static-map-strict-hit-translates: { result: unsupported, reason: "CLIENT-5640 not implemented" }
-  static-map-strict-miss-fails: { result: unsupported, reason: "CLIENT-5640 not implemented" }
-  static-map-strict-empty-map-fails: { result: unsupported, reason: "CLIENT-5640 not implemented" }
   port-map-default-pass-through: { result: unsupported, reason: "CLIENT-5641 not implemented" }
   port-map-strict-miss-fails: { result: unsupported, reason: "CLIENT-5641 not implemented" }
 

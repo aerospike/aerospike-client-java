@@ -17,13 +17,14 @@
 package com.aerospike.client.discovery;
 
 import java.util.Map;
+import java.util.Optional;
 
 import com.aerospike.client.Host;
 
 /**
  * Address translator that replaces the advertised host name with the value mapped to it.
- * The port is kept. The advertised address is returned unchanged when the host name is not
- * mapped or the map is null.
+ * The port is kept. A host name that is not mapped, or any host name when the map is null, is a
+ * miss.
  */
 public final class StaticMapAddressTranslator implements AddressTranslator {
 	private final Map<String,String> ipMap;
@@ -37,19 +38,20 @@ public final class StaticMapAddressTranslator implements AddressTranslator {
 	}
 
 	/**
-	 * Return the advertised endpoint with its host name replaced when mapped. In-memory lookup only.
+	 * Return the advertised endpoint with its host name replaced when mapped, or empty when not
+	 * mapped. In-memory lookup only.
 	 */
 	@Override
-	public Host translate(Endpoint advertised) {
-		String host = advertised.host;
-
-		if (ipMap != null) {
-			String alternativeHost = ipMap.get(host);
-
-			if (alternativeHost != null) {
-				host = alternativeHost;
-			}
+	public Optional<Host> translate(Endpoint advertised) {
+		if (ipMap == null) {
+			return Optional.empty();
 		}
-		return new Host(host, advertised.tlsName, advertised.port);
+
+		String host = ipMap.get(advertised.host);
+
+		if (host == null) {
+			return Optional.empty();
+		}
+		return Optional.of(new Host(host, advertised.tlsName, advertised.port));
 	}
 }
