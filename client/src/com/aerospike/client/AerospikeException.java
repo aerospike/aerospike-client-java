@@ -451,6 +451,21 @@ public class AerospikeException extends RuntimeException {
 	}
 
 	/**
+	 * Exception thrown when a peer's translated address has the same host and port as another peer
+	 * in the same peers reply or as a live node with a different node name. No node is created for
+	 * the colliding peers and an existing live node is kept. Not retryable.
+	 */
+	public static final class TranslationCollision extends AerospikeException {
+		private static final long serialVersionUID = 1L;
+
+		public TranslationCollision(String nodeName, String otherNodeName, Host host, String translator) {
+			super(ResultCode.CLIENT_ERROR, "Address translator " + translator + " translated nodes " + nodeName +
+				" and " + otherNodeName + " to the same address " + host.name + ':' + host.port +
+				". Give each node its own reachable address or mapping");
+		}
+	}
+
+	/**
 	 * Exception thrown when namespace is invalid.
 	 */
 	public static final class InvalidNamespace extends AerospikeException {
