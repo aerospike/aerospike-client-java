@@ -71,7 +71,7 @@ public class ConformanceTest {
 	private static final String BLOCKED = "blocked";
 	private static final Set<String> RESULTS = Set.of(PASS, FAIL, UNSUPPORTED, BLOCKED);
 
-	private static final String FIXTURE_SET_VERSION = "0.1.0";
+	private static final String FIXTURE_SET_VERSION = "1.0.0";
 	private static final String DECLARED = "/conformance/java-declared.yaml";
 	private static final Path REPORT = Paths.get("target", "conformance-report.json");
 	private static final String TLS_REJECT_PREFIX = "Invalid TLS name: ";
@@ -109,6 +109,7 @@ public class ConformanceTest {
 		try (Stream<Path> stream = Files.walk(dir)) {
 			files = stream
 				.filter(p -> p.toString().endsWith(".yaml"))
+				.filter(p -> dir.relativize(p).getNameCount() > 1)
 				.filter(p -> ! dir.relativize(p).getName(0).toString().startsWith("."))
 				.sorted()
 				.collect(Collectors.toList());
@@ -224,7 +225,7 @@ public class ConformanceTest {
 		ClientPolicy policy = new ClientPolicy();
 
 		if (translation == null) {
-			policy.ipMap = stringMap(config.get("legacyHostMap"));
+			policy.ipMap = stringMap(config.get("ip_map"));
 		}
 		else {
 			String provider = (String)translation.get("provider");
@@ -233,14 +234,10 @@ public class ConformanceTest {
 				return new Outcome(UNSUPPORTED, "translator " + provider + " is not implemented");
 			}
 
-			if (translation.containsKey("onMiss")) {
-				policy.translationOnMiss = onMiss((String)translation.get("onMiss"));
+			if (translation.containsKey("on_miss")) {
+				policy.translationOnMiss = onMiss((String)translation.get("on_miss"));
 			}
-			policy.addressTranslator = new StaticMapAddressTranslator(stringMap(translation.get("staticMap")));
-		}
-
-		if (expect.containsKey("diagnostic")) {
-			return new Outcome(UNSUPPORTED, "translation-miss diagnostic is not implemented");
+			policy.addressTranslator = new StaticMapAddressTranslator(stringMap(translation.get("static_map")));
 		}
 
 		Endpoint.SourceList sourceList = input.get("sourceList").equals("alternate")?
@@ -288,8 +285,8 @@ public class ConformanceTest {
 		Map<String,Object> discovery = map(config.get("discovery"));
 		ClientPolicy policy = new ClientPolicy();
 
-		if (discovery != null && discovery.get("mergePolicy") != null) {
-			policy.discoveryMergePolicy = mergePolicy((String)discovery.get("mergePolicy"));
+		if (discovery != null && discovery.get("merge_policy") != null) {
+			policy.discoveryMergePolicy = mergePolicy((String)discovery.get("merge_policy"));
 		}
 
 		List<Host[]> results = new ArrayList<>();
@@ -336,27 +333,30 @@ public class ConformanceTest {
 
 	private static TranslationMissMode onMiss(String value) {
 		switch (value) {
-		case "passThrough":
+		case "pass_through":
 			return TranslationMissMode.PASS_THROUGH;
 
 		case "strict":
 			return TranslationMissMode.STRICT;
 
 		default:
-			throw new IllegalStateException("unknown onMiss " + value);
+			throw new IllegalStateException("unknown on_miss " + value);
 		}
 	}
 
 	private static SeedMergePolicy mergePolicy(String value) {
 		switch (value) {
+		case "merge":
+			return SeedMergePolicy.MERGE;
+
 		case "replace":
 			return SeedMergePolicy.REPLACE;
 
-		case "discovery-only":
+		case "discovery_only":
 			return SeedMergePolicy.DISCOVERY_ONLY;
 
 		default:
-			return SeedMergePolicy.MERGE;
+			throw new IllegalStateException("unknown merge_policy " + value);
 		}
 	}
 
@@ -403,7 +403,8 @@ public class ConformanceTest {
 				certificate = certificates.computeIfAbsent(shape,
 					s -> certificate(path.resolveSibling("certs").resolve(s + ".pem")));
 			}
-			rows.add(new Row(file, kind, (String)data.get("case"), (String)data.get("blockedBy"), data, certificate));
+			String blockedBy = BLOCKED.equals(data.get("state"))? (String)data.get("blockedBy") : null;
+			rows.add(new Row(file, kind, (String)data.get("case"), blockedBy, data, certificate));
 		}
 		return rows;
 	}
