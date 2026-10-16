@@ -42,7 +42,19 @@ public final class PeerParser {
 				cluster.useServicesAlternate ? "peers-tls-alt" : "peers-tls-std" :
 				cluster.useServicesAlternate ? "peers-clear-alt" : "peers-clear-std";
 
-		parser = new Info(node, conn, command);
+		List<String> stdNames = null;
+
+		if (cluster.useServicesAlternate) {
+			// The alternate list omits peers that have no alternate address.
+			String stdCommand = (cluster.tlsPolicy != null)? "peers-tls-std" : "peers-clear-std";
+			parser = new Info(node, conn, stdCommand, command);
+			parser.parseName(stdCommand);
+			stdNames = parseNodeNames();
+			parser.skipDelimiter('\n');
+		}
+		else {
+			parser = new Info(node, conn, command);
+		}
 
 		if (parser.length == 0) {
 			throw new AerospikeException.Parse(command + " response is empty");
@@ -58,10 +70,16 @@ public final class PeerParser {
 		// Reset peers
 		peers.clear();
 
-		if (parser.buffer[parser.offset] == ']') {
-			return;
+		if (parser.buffer[parser.offset] != ']') {
+			parsePeers(peers);
 		}
 
+		if (stdNames != null) {
+			addAlternateMissing(peers, stdNames);
+		}
+	}
+
+	private void parsePeers(List<Peer> peers) {
 		while (true) {
 			Peer peer = parsePeer();
 			peers.add(peer);
@@ -75,6 +93,47 @@ public final class PeerParser {
 		}
 	}
 
+	private List<String> parseNodeNames() {
+		ArrayList<String> names = new ArrayList<String>();
+		parser.skipDelimiter('[');
+		int depth = 1;
+
+		while (depth > 0 && parser.offset < parser.length && parser.buffer[parser.offset] != '\n') {
+			byte b = parser.buffer[parser.offset++];
+
+			if (b == '[') {
+				if (++depth == 2) {
+					names.add(parser.parseString(','));
+				}
+			}
+			else if (b == ']') {
+				depth--;
+			}
+		}
+		return names;
+	}
+
+	private static void addAlternateMissing(List<Peer> peers, List<String> stdNames) {
+		for (String name : stdNames) {
+			boolean found = false;
+
+			for (Peer peer : peers) {
+				if (peer.nodeName.equals(name)) {
+					found = true;
+					break;
+				}
+			}
+
+			if (! found) {
+				Peer peer = new Peer();
+				peer.nodeName = name;
+				peer.hosts = new ArrayList<Host>(0);
+				peer.alternateMissing = true;
+				peers.add(peer);
+			}
+		}
+	}
+
 	private Peer parsePeer() {
 		Peer peer = new Peer();
 		parser.expect('[');
@@ -82,6 +141,7 @@ public final class PeerParser {
 		parser.offset++;
 		peer.tlsName = tlsName = parser.parseString(',');
 		parser.offset++;
+		peer.alternateMissing = cluster.useServicesAlternate && parser.buffer[parser.offset + 1] == ']';
 		peer.hosts = parseHosts();
 		parser.expect(']');
 		return peer;
@@ -92,6 +152,7 @@ public final class PeerParser {
 		parser.expect('[');
 
 		if (parser.buffer[parser.offset] == ']') {
+			parser.offset++;
 			return hosts;
 		}
 

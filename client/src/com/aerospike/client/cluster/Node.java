@@ -444,6 +444,14 @@ public class Node implements Closeable {
 					continue;
 				}
 
+				if (peer.alternateMissing) {
+					if (Log.errorEnabled()) {
+						Log.error(new AerospikeException.AlternateAddressMissing(peer.nodeName, null).getMessage());
+					}
+					peersValidated = false;
+					continue;
+				}
+
 				AerospikeException.TranslationCollision collision = findCollision(peers, peer);
 
 				if (collision != null) {
@@ -491,7 +499,12 @@ public class Node implements Closeable {
 					catch (Throwable e) {
 						peers.fail(host);
 
-						if (Log.warnEnabled()) {
+						if (e instanceof AerospikeException.AlternateAddressMissing) {
+							if (Log.errorEnabled()) {
+								Log.error("Add node " + host + " failed: " + e.getMessage());
+							}
+						}
+						else if (Log.warnEnabled()) {
 							Log.warn("Add node " + host + " failed: " + Util.getErrorMessage(e));
 						}
 					}

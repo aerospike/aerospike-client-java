@@ -53,6 +53,7 @@ import com.aerospike.client.cluster.ConformanceAdapter;
 import com.aerospike.client.cluster.Connection;
 import com.aerospike.client.discovery.Endpoint;
 import com.aerospike.client.discovery.PassThroughAddressTranslator;
+import com.aerospike.client.discovery.PortMapAddressTranslator;
 import com.aerospike.client.discovery.SeedMergePolicy;
 import com.aerospike.client.discovery.StaticMapAddressTranslator;
 import com.aerospike.client.discovery.TranslationMissMode;
@@ -231,15 +232,26 @@ public class ConformanceTest {
 		else {
 			String provider = (String)translation.get("provider");
 
-			if (! provider.equals("static-map") && ! provider.equals("pass-through")) {
-				return new Outcome(UNSUPPORTED, "translator " + provider + " is not implemented");
-			}
-
 			if (translation.containsKey("on_miss")) {
 				policy.translationOnMiss = onMiss((String)translation.get("on_miss"));
 			}
-			policy.addressTranslator = provider.equals("pass-through")? PassThroughAddressTranslator.INSTANCE :
-				new StaticMapAddressTranslator(stringMap(translation.get("static_map")));
+
+			switch (provider) {
+			case "static-map":
+				policy.addressTranslator = new StaticMapAddressTranslator(stringMap(translation.get("static_map")));
+				break;
+
+			case "pass-through":
+				policy.addressTranslator = PassThroughAddressTranslator.INSTANCE;
+				break;
+
+			case "port-map":
+				policy.addressTranslator = new PortMapAddressTranslator(stringMap(translation.get("port_map")));
+				break;
+
+			default:
+				return new Outcome(UNSUPPORTED, "translator " + provider + " is not implemented");
+			}
 		}
 
 		Endpoint.SourceList sourceList = input.get("sourceList").equals("alternate")?

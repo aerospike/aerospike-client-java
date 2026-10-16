@@ -31,6 +31,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.junit.After;
 import org.junit.Before;
@@ -152,6 +153,7 @@ public class PassThroughTranslationTest {
 		FakeNode c = server("BB9C", "peers-clear-alt", "[]");
 		FakeNode a = server("BB9A", "peers-clear-alt",
 			"[[BB9B,,[127.0.0.1:" + b.port() + "]],[BB9C,,[127.0.0.1:" + c.port() + "]]]");
+		a.reply("peers-clear-std", "5,3000,[[BB9B,,[10.0.0.2:3000]],[BB9C,,[10.0.0.3:3000]]]");
 		ClientPolicy policy = policy();
 		policy.useServicesAlternate = true;
 		policy.translationOnMiss = TranslationMissMode.STRICT;
@@ -210,20 +212,22 @@ public class PassThroughTranslationTest {
 
 	private static final class FakeNode implements AutoCloseable {
 		final String name;
-		private final String peersCommand;
-		private final String peers;
+		private final Map<String,String> replies = new ConcurrentHashMap<>();
 		private final ServerSocket server;
 		private final List<Socket> sockets = new ArrayList<>();
 
 		FakeNode(String name, String peersCommand, String peers) throws IOException {
 			this.name = name;
-			this.peersCommand = peersCommand;
-			this.peers = peers;
+			replies.put(peersCommand, peers);
 			this.server = new ServerSocket(0, 16, InetAddress.getLoopbackAddress());
 
 			Thread thread = new Thread(this::accept);
 			thread.setDaemon(true);
 			thread.start();
+		}
+
+		void reply(String command, String value) {
+			replies.put(command, value);
 		}
 
 		int port() {
@@ -282,8 +286,10 @@ public class PassThroughTranslationTest {
 		}
 
 		private String value(String command) {
-			if (command.equals(peersCommand)) {
-				return peers;
+			String reply = replies.get(command);
+
+			if (reply != null) {
+				return reply;
 			}
 
 			switch (command) {
