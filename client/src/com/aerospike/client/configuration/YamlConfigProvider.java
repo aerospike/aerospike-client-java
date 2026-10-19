@@ -29,6 +29,7 @@ import org.yaml.snakeyaml.LoaderOptions;
 import org.yaml.snakeyaml.TypeDescription;
 import org.yaml.snakeyaml.Yaml;
 import org.yaml.snakeyaml.constructor.Constructor;
+import org.yaml.snakeyaml.error.YAMLException;
 import org.yaml.snakeyaml.representer.Representer;
 
 import com.aerospike.client.AerospikeException;
@@ -40,7 +41,7 @@ public class YamlConfigProvider implements ConfigurationProvider {
 	private static final String CONFIG_PATH_SYS_PROP = "AEROSPIKE_CLIENT_CONFIG_SYS_PROP";
 	private static final String YAML_SERIALIZERS_PATH = "com.aerospike.client.configuration.serializers.";
 	private static final String DEFAULT_CONFIG_URL_PREFIX = "file://";
-	private static final List<String> SUPPORTED_SCHEMA_VERSIONS = List.of("1.0.0", "1.1.0");
+	private static final List<String> SUPPORTED_SCHEMA_VERSIONS = List.of("1.0.0", "1.1.0", "1.2.0");
 
 	public static List<String> getSupportedVersions() {
 		return SUPPORTED_SCHEMA_VERSIONS;
@@ -137,7 +138,17 @@ public class YamlConfigProvider implements ConfigurationProvider {
 		}
 
 		try {
-			configuration = yaml.load(fileInputStream);
+			try {
+				configuration = yaml.load(fileInputStream);
+			}
+			catch (YAMLException e) {
+				for (Throwable cause = e.getCause(); cause != null; cause = cause.getCause()) {
+					if (cause instanceof AerospikeException) {
+						throw (AerospikeException)cause;
+					}
+				}
+				throw e;
+			}
 			lastModified = newLastModified;
 
 			if ( configuration.getVersion() == null ) {

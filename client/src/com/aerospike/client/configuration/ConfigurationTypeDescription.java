@@ -88,6 +88,13 @@ public class ConfigurationTypeDescription {
                         typeDescription.substituteProperty("txn_verify", DynamicTxnVerifyConfig.class, "getDynamicTxnVerifyConfig", "setDynamicTxnVerifyConfig");
                 case "dynamicMetricsConfig" ->
                         typeDescription.substituteProperty("metrics", DynamicMetricsConfig.class, "getDynamicMetricsConfig", "setDynamicMetricsConfig");
+                case "ipMap", "useServicesAlternate", "discovery", "translation" -> {
+                    // Read raw and validated by the setter so that a wrong type names its key.
+                    String capitalized = field.getName().substring(0, 1).toUpperCase() + field.getName().substring(1);
+                    typeDescription.substituteProperty(YamlFieldNameStrategies.camelToSnake(field.getName()), Object.class,
+                            null, "set" + capitalized);
+                    continue;
+                }
                 default -> {
                     String yamlKey = YamlFieldNameStrategies.camelToSnake(field.getName());
                     String capitalized = field.getName().substring(0, 1).toUpperCase() + field.getName().substring(1);

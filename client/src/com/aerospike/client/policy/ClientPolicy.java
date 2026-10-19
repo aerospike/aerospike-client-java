@@ -30,9 +30,14 @@ import com.aerospike.client.configuration.serializers.DynamicConfiguration;
 import com.aerospike.client.configuration.serializers.StaticConfiguration;
 import com.aerospike.client.configuration.serializers.dynamicconfig.DynamicClientConfig;
 import com.aerospike.client.configuration.serializers.staticconfig.StaticClientConfig;
+import com.aerospike.client.configuration.serializers.staticconfig.StaticDiscoveryConfig;
+import com.aerospike.client.configuration.serializers.staticconfig.StaticTranslationConfig;
 import com.aerospike.client.discovery.AddressTranslator;
+import com.aerospike.client.discovery.PassThroughAddressTranslator;
+import com.aerospike.client.discovery.PortMapAddressTranslator;
 import com.aerospike.client.discovery.SeedCandidateProvider;
 import com.aerospike.client.discovery.SeedMergePolicy;
+import com.aerospike.client.discovery.StaticMapAddressTranslator;
 import com.aerospike.client.discovery.TranslationMissMode;
 import com.aerospike.client.util.Util;
 
@@ -351,6 +356,8 @@ public class ClientPolicy {
 	 * value is the real IP address used to connect to the server.
 	 * <p>
 	 * Default: null (no IP address translation)
+	 * <p>
+	 * YAML key: {@code static.client.ip_map}
 	 */
 	public Map<String,String> ipMap;
 
@@ -360,6 +367,9 @@ public class ClientPolicy {
 	 * <p>
 	 * Default: null (use {@link com.aerospike.client.discovery.StaticSeedCandidateProvider} with
 	 * the seed hosts passed to the client constructor)
+	 * <p>
+	 * YAML key: {@code static.client.discovery.provider}. Only {@code static}, this default, is
+	 * accepted; other providers are set in code.
 	 */
 	public SeedCandidateProvider seedCandidateProvider;
 
@@ -378,6 +388,10 @@ public class ClientPolicy {
 	 * <p>
 	 * Default: null (use {@link com.aerospike.client.discovery.StaticMapAddressTranslator} with
 	 * {@link #ipMap})
+	 * <p>
+	 * YAML keys: {@code static.client.translation.provider} ({@code static-map}, {@code port-map}
+	 * or {@code pass-through}) with {@code static.client.translation.static_map} or
+	 * {@code static.client.translation.port_map}.
 	 */
 	public AddressTranslator addressTranslator;
 
@@ -385,7 +399,7 @@ public class ClientPolicy {
 	 * Action taken when the address translator has no mapping for a server advertised endpoint.
 	 * Applies to every translator, including the default
 	 * {@link com.aerospike.client.discovery.StaticMapAddressTranslator} built from {@link #ipMap}.
-	 * YAML key: {@code translation.on_miss}.
+	 * YAML key: {@code static.client.translation.on_miss}.
 	 * <ul>
 	 * <li>{@link TranslationMissMode#PASS_THROUGH} ({@code pass_through}): connect to the advertised
 	 * endpoint unchanged, as {@link #ipMap} does for an unmapped address.</li>
@@ -412,6 +426,8 @@ public class ClientPolicy {
 	 * when the provider does not need it.
 	 * <p>
 	 * Default: 30000
+	 * <p>
+	 * YAML key: {@code static.client.discovery.refresh_interval_ms}
 	 */
 	public int discoveryRefreshInterval = 30000;
 
@@ -427,6 +443,8 @@ public class ClientPolicy {
 	 * equal to {@link #tendInterval} / 2; otherwise client construction fails.
 	 * <p>
 	 * Default: 100
+	 * <p>
+	 * YAML key: {@code static.client.discovery.tend_refresh_deadline_ms}
 	 */
 	public int discoveryTendRefreshDeadline = 100;
 
@@ -451,6 +469,9 @@ public class ClientPolicy {
 	 * provider is configured, every value yields the seed hosts passed to the client constructor.
 	 * <p>
 	 * Default: {@link SeedMergePolicy#MERGE}
+	 * <p>
+	 * YAML key: {@code static.client.discovery.merge_policy} ({@code merge}, {@code replace} or
+	 * {@code discovery_only})
 	 */
 	public SeedMergePolicy discoveryMergePolicy = SeedMergePolicy.MERGE;
 
@@ -486,6 +507,9 @@ public class ClientPolicy {
 	 * 	Peers TLS addresses: peers-tls-alt
 	 * 	<p>
 	 * Default: false (use original "services" info request)
+	 * <p>
+	 * YAML keys: {@code static.client.use_services_alternate} and
+	 * {@code dynamic.client.use_service_alternative}
 	 */
 	public boolean useServicesAlternate;
 
@@ -677,6 +701,77 @@ public class ClientPolicy {
 			this.asyncMinConnsPerNode = staCC.asyncMinConnectionsPerNode.value;
 			if (logUpdate) {
 				Log.info("Set ClientPolicy.asyncMinConnsPerNode = " + this.asyncMinConnsPerNode);
+			}
+		}
+		if (staCC.ipMap != null && !staCC.ipMap.equals(this.ipMap)) {
+			this.ipMap = staCC.ipMap;
+			if (logUpdate) {
+				Log.info("Set ClientPolicy.ipMap = " + this.ipMap);
+			}
+		}
+		if (staCC.useServicesAlternate != null && this.useServicesAlternate != staCC.useServicesAlternate.value) {
+			this.useServicesAlternate = staCC.useServicesAlternate.value;
+			if (logUpdate) {
+				Log.info("Set ClientPolicy.useServicesAlternate = " + this.useServicesAlternate);
+			}
+		}
+
+		StaticDiscoveryConfig discovery = staCC.discovery;
+
+		if (discovery != null) {
+			if (discovery.provider != null && this.seedCandidateProvider != null) {
+				this.seedCandidateProvider = null;
+				if (logUpdate) {
+					Log.info("Set ClientPolicy.seedCandidateProvider = " + discovery.provider.value);
+				}
+			}
+			if (discovery.mergePolicy != null && this.discoveryMergePolicy != discovery.mergePolicy) {
+				this.discoveryMergePolicy = discovery.mergePolicy;
+				if (logUpdate) {
+					Log.info("Set ClientPolicy.discoveryMergePolicy = " + this.discoveryMergePolicy);
+				}
+			}
+			if (discovery.refreshIntervalMs != null && this.discoveryRefreshInterval != discovery.refreshIntervalMs.value) {
+				this.discoveryRefreshInterval = discovery.refreshIntervalMs.value;
+				if (logUpdate) {
+					Log.info("Set ClientPolicy.discoveryRefreshInterval = " + this.discoveryRefreshInterval);
+				}
+			}
+			if (discovery.tendRefreshDeadlineMs != null && this.discoveryTendRefreshDeadline != discovery.tendRefreshDeadlineMs.value) {
+				this.discoveryTendRefreshDeadline = discovery.tendRefreshDeadlineMs.value;
+				if (logUpdate) {
+					Log.info("Set ClientPolicy.discoveryTendRefreshDeadline = " + this.discoveryTendRefreshDeadline);
+				}
+			}
+		}
+
+		StaticTranslationConfig translation = staCC.translation;
+
+		if (translation != null) {
+			if (translation.provider != null) {
+				switch (translation.provider.value) {
+				case "port-map":
+					this.addressTranslator = new PortMapAddressTranslator(translation.portMap);
+					break;
+
+				case "pass-through":
+					this.addressTranslator = PassThroughAddressTranslator.INSTANCE;
+					break;
+
+				default:
+					this.addressTranslator = (translation.staticMap != null)?
+						new StaticMapAddressTranslator(translation.staticMap) : null;
+					break;
+				}
+				if (logUpdate) {
+					Log.info("Set ClientPolicy.addressTranslator = " + translation.provider.value);
+				}
+			}
+			if (translation.onMiss != null && this.translationOnMiss != translation.onMiss) {
+				this.translationOnMiss = translation.onMiss;
+				if (logUpdate) {
+					Log.info("Set ClientPolicy.translationOnMiss = " + this.translationOnMiss);
+				}
 			}
 		}
 
