@@ -17,6 +17,10 @@
 
 package com.aerospike.client.configuration.serializers.staticconfig;
 
+import java.util.Map;
+
+import com.aerospike.client.AerospikeException;
+import com.aerospike.client.configuration.primitiveprops.BooleanProperty;
 import com.aerospike.client.configuration.primitiveprops.IntProperty;
 import com.aerospike.client.Log;
 
@@ -26,6 +30,10 @@ public class StaticClientConfig {
     public IntProperty minConnectionsPerNode;
     public IntProperty asyncMaxConnectionsPerNode;
     public IntProperty asyncMinConnectionsPerNode;
+    public Map<String,String> ipMap;
+    public BooleanProperty useServicesAlternate;
+    public StaticDiscoveryConfig discovery;
+    public StaticTranslationConfig translation;
 
     public StaticClientConfig() {
     }
@@ -50,15 +58,49 @@ public class StaticClientConfig {
 
     public IntProperty getAsyncMinConnectionsPerNode() { return asyncMinConnectionsPerNode; }
 
+    private void setIpMap(Object ipMap) {
+        this.ipMap = (ipMap != null)? YamlValues.stringMap("static.client.ip_map", ipMap) : null;
+        checkStaticMap();
+    }
+
+    private void setUseServicesAlternate(Object useServicesAlternate) {
+        this.useServicesAlternate = (useServicesAlternate != null)?
+            new BooleanProperty(YamlValues.boolValue("static.client.use_services_alternate", useServicesAlternate)) : null;
+    }
+
+    private void setDiscovery(Object discovery) {
+        this.discovery = (discovery != null)? new StaticDiscoveryConfig(discovery) : null;
+    }
+
+    private void setTranslation(Object translation) {
+        this.translation = (translation != null)? new StaticTranslationConfig(translation) : null;
+        checkStaticMap();
+    }
+
+    private void checkStaticMap() {
+        if (ipMap != null && translation != null && translation.staticMap != null) {
+            throw new AerospikeException("static.client.translation.static_map and static.client.ip_map are both set. " +
+                "Set one of them");
+        }
+    }
+
+    private static Integer value(IntProperty property) {
+        return (property != null)? property.value : null;
+    }
+
     @Override
     public String toString() {
         StringBuffer propsString = new StringBuffer("{");
         try {
-            propsString.append(" config_interval=").append(configInterval.value).append(", ");
-            propsString.append(" max_connections_per_node=").append(maxConnectionsPerNode.value).append(", ");
-            propsString.append(" min_connections_per_node=").append(minConnectionsPerNode.value).append(", ");
-            propsString.append(" async_max_connections_per_node=").append(asyncMaxConnectionsPerNode.value).append(", ");
-            propsString.append(" async_min_connections_per_node=").append(asyncMinConnectionsPerNode.value).append(", ");
+            propsString.append(" config_interval=").append(value(configInterval)).append(", ");
+            propsString.append(" max_connections_per_node=").append(value(maxConnectionsPerNode)).append(", ");
+            propsString.append(" min_connections_per_node=").append(value(minConnectionsPerNode)).append(", ");
+            propsString.append(" async_max_connections_per_node=").append(value(asyncMaxConnectionsPerNode)).append(", ");
+            propsString.append(" async_min_connections_per_node=").append(value(asyncMinConnectionsPerNode)).append(", ");
+            propsString.append(" ip_map=").append(ipMap).append(", ");
+            propsString.append(" use_services_alternate=").append((useServicesAlternate != null)? useServicesAlternate.value : null).append(", ");
+            propsString.append(" discovery=").append(discovery).append(", ");
+            propsString.append(" translation=").append(translation).append(", ");
         } catch (Exception e) {
             Log.error(e.toString());
         }

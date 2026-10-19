@@ -1,0 +1,6 @@
+version: 1.2.0
+static:
+  client:
+    translation:
+      static_map:
+        10.0.0.1: 192.168.1.1
