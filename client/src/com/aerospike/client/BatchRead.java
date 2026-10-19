@@ -23,6 +23,8 @@ import com.aerospike.client.policy.BatchReadPolicy;
 /**
  * Batch key and read only operations with default policy.
  * Used in batch read commands where different bins are needed for each key.
+ * <p>
+ * A per-node sub-batch of size 1 already takes the single-record path; see {@link BatchRecord}.
  */
 public final class BatchRead extends BatchRecord {
 	/**

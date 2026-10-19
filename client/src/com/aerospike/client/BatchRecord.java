@@ -24,6 +24,11 @@ import com.aerospike.client.policy.Policy;
 
 /**
  * Batch key and record result.
+ * <p>
+ * Do not special-case a single key into the single-record command; the client already does
+ * that. {@code BatchNodeList.generate()} splits the keys per node, and a per-node sub-batch of
+ * size 1 is issued as {@code BatchSingle.*} on the sync path and {@code AsyncBatchSingle.*} on
+ * the async path rather than as a batch command.
  */
 public class BatchRecord {
 	/**

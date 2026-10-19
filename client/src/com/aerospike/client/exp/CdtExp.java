@@ -105,8 +105,8 @@ public class CdtExp {
 	 * The {@code returnType} should typically be {@link Exp.Type#MAP} or {@link Exp.Type#LIST}
 	 * to match the top-level type of the bin being modified.
 	 * <p>
-	 * Valid {@code modifyFlag} values are defined in {@link ModifyFlags} and can be combined
-	 * with bitwise OR (e.g. {@code ModifyFlags.APPLY | ModifyFlags.NO_FAIL}).
+	 * Valid {@code modifyFlag} values are {@link ModifyFlags#DEFAULT} and
+	 * {@link ModifyFlags#NO_FAIL}, which can be combined with bitwise OR.
 	 * <p>
 	 * The {@code modifyExp} can reference the current value via loop variable expressions
 	 * such as {@link Exp#floatLoopVar(LoopVarPart)}.
@@ -132,6 +132,24 @@ public class CdtExp {
 	 *         modifyExp,
 	 *         Exp.mapBin("myBin"),
 	 *         bookKey, allChildren, priceKey
+	 *     )
+	 * );
+	 * }</pre>
+	 *
+	 * Removal goes through this same method: pass {@link Exp#removeResult()} as {@code modifyExp}
+	 * and every element the context path matches is deleted rather than rewritten. There is no
+	 * separate remove-by-path expression. Requires server version 8.1.1+.
+	 *
+	 * <pre>{@code
+	 * // Remove every number greater than 10 from the "numbers" list.
+	 * Expression removeExp = Exp.build(
+	 *     CdtExp.modifyByPath(
+	 *         Exp.Type.MAP,
+	 *         ModifyFlags.DEFAULT,
+	 *         Exp.removeResult(),
+	 *         Exp.mapBin("myBin"),
+	 *         CTX.mapKey(Value.get("numbers")),
+	 *         CTX.allChildrenWithFilter(Exp.gt(Exp.intLoopVar(LoopVarPart.VALUE), Exp.val(10)))
 	 *     )
 	 * );
 	 * }</pre>
