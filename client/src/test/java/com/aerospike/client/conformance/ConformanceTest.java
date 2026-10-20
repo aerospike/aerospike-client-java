@@ -52,8 +52,11 @@ import com.aerospike.client.Host;
 import com.aerospike.client.cluster.ConformanceAdapter;
 import com.aerospike.client.cluster.Connection;
 import com.aerospike.client.discovery.Endpoint;
+import com.aerospike.client.discovery.PassThroughAddressTranslator;
+import com.aerospike.client.discovery.PortMapAddressTranslator;
 import com.aerospike.client.discovery.SeedMergePolicy;
 import com.aerospike.client.discovery.StaticMapAddressTranslator;
+import com.aerospike.client.discovery.TranslationMissMode;
 import com.aerospike.client.policy.ClientPolicy;
 import com.aerospike.client.policy.TlsPolicy;
 
@@ -70,7 +73,7 @@ public class ConformanceTest {
 	private static final String BLOCKED = "blocked";
 	private static final Set<String> RESULTS = Set.of(PASS, FAIL, UNSUPPORTED, BLOCKED);
 
-	private static final String FIXTURE_SET_VERSION = "0.1.0";
+	private static final String FIXTURE_SET_VERSION = "1.0.0";
 	private static final String DECLARED = "/conformance/java-declared.yaml";
 	private static final Path REPORT = Paths.get("target", "conformance-report.json");
 	private static final String TLS_REJECT_PREFIX = "Invalid TLS name: ";
@@ -108,6 +111,7 @@ public class ConformanceTest {
 		try (Stream<Path> stream = Files.walk(dir)) {
 			files = stream
 				.filter(p -> p.toString().endsWith(".yaml"))
+				.filter(p -> dir.relativize(p).getNameCount() > 1)
 				.filter(p -> ! dir.relativize(p).getName(0).toString().startsWith("."))
 				.sorted()
 				.collect(Collectors.toList());
@@ -223,40 +227,62 @@ public class ConformanceTest {
 		ClientPolicy policy = new ClientPolicy();
 
 		if (translation == null) {
-			policy.ipMap = stringMap(config.get("legacyHostMap"));
+			policy.ipMap = stringMap(config.get("ip_map"));
 		}
 		else {
 			String provider = (String)translation.get("provider");
 
-			if (! provider.equals("static-map")) {
+			if (translation.containsKey("on_miss")) {
+				policy.translationOnMiss = onMiss((String)translation.get("on_miss"));
+			}
+
+			switch (provider) {
+			case "static-map":
+				policy.addressTranslator = new StaticMapAddressTranslator(stringMap(translation.get("static_map")));
+				break;
+
+			case "pass-through":
+				policy.addressTranslator = PassThroughAddressTranslator.INSTANCE;
+				break;
+
+			case "port-map":
+				policy.addressTranslator = new PortMapAddressTranslator(stringMap(translation.get("port_map")));
+				break;
+
+			default:
 				return new Outcome(UNSUPPORTED, "translator " + provider + " is not implemented");
 			}
-
-			if (translation.containsKey("onMiss")) {
-				return new Outcome(UNSUPPORTED, "translation.onMiss is not implemented");
-			}
-			policy.addressTranslator = new StaticMapAddressTranslator(stringMap(translation.get("staticMap")));
-		}
-
-		if (expect.containsKey("error")) {
-			return new Outcome(UNSUPPORTED, "translation-miss error is not implemented");
-		}
-
-		if (expect.containsKey("diagnostic")) {
-			return new Outcome(UNSUPPORTED, "translation-miss diagnostic is not implemented");
 		}
 
 		Endpoint.SourceList sourceList = input.get("sourceList").equals("alternate")?
 			Endpoint.SourceList.ALTERNATE : Endpoint.SourceList.STANDARD;
 		Endpoint advertised = new Endpoint((String)input.get("nodeName"), (String)input.get("tlsName"),
 			(String)input.get("host"), (Integer)input.get("port"), sourceList);
+		Map<String,Object> error = map(expect.get("error"));
 		Host actual;
 
 		try {
 			actual = ConformanceAdapter.translate(policy, advertised);
 		}
+		catch (AerospikeException.TranslationMiss tm) {
+			if (error == null || ! error.get("category").equals("translation-miss")) {
+				return new Outcome(FAIL, "threw " + tm);
+			}
+
+			for (Object value : map(error.get("messageContains")).values()) {
+				if (! tm.getMessage().contains(String.valueOf(value))) {
+					return new Outcome(FAIL, "message does not contain " + value + ": " + tm.getMessage());
+				}
+			}
+			return new Outcome(PASS, null);
+		}
 		catch (Exception e) {
 			return new Outcome(FAIL, "threw " + e);
+		}
+
+		if (error != null) {
+			return new Outcome(FAIL, "expected " + error.get("category") + " error, got " +
+				endpoint(actual.name, actual.port, actual.tlsName));
 		}
 
 		String expected = endpoint((String)expect.get("host"), (Integer)expect.get("port"), (String)expect.get("tlsName"));
@@ -273,8 +299,8 @@ public class ConformanceTest {
 		Map<String,Object> discovery = map(config.get("discovery"));
 		ClientPolicy policy = new ClientPolicy();
 
-		if (discovery != null && discovery.get("mergePolicy") != null) {
-			policy.discoveryMergePolicy = mergePolicy((String)discovery.get("mergePolicy"));
+		if (discovery != null && discovery.get("merge_policy") != null) {
+			policy.discoveryMergePolicy = mergePolicy((String)discovery.get("merge_policy"));
 		}
 
 		List<Host[]> results = new ArrayList<>();
@@ -319,16 +345,32 @@ public class ConformanceTest {
 		return new Outcome(PASS, null);
 	}
 
+	private static TranslationMissMode onMiss(String value) {
+		switch (value) {
+		case "pass_through":
+			return TranslationMissMode.PASS_THROUGH;
+
+		case "strict":
+			return TranslationMissMode.STRICT;
+
+		default:
+			throw new IllegalStateException("unknown on_miss " + value);
+		}
+	}
+
 	private static SeedMergePolicy mergePolicy(String value) {
 		switch (value) {
+		case "merge":
+			return SeedMergePolicy.MERGE;
+
 		case "replace":
 			return SeedMergePolicy.REPLACE;
 
-		case "discovery-only":
+		case "discovery_only":
 			return SeedMergePolicy.DISCOVERY_ONLY;
 
 		default:
-			return SeedMergePolicy.MERGE;
+			throw new IllegalStateException("unknown merge_policy " + value);
 		}
 	}
 
@@ -375,7 +417,8 @@ public class ConformanceTest {
 				certificate = certificates.computeIfAbsent(shape,
 					s -> certificate(path.resolveSibling("certs").resolve(s + ".pem")));
 			}
-			rows.add(new Row(file, kind, (String)data.get("case"), (String)data.get("blockedBy"), data, certificate));
+			String blockedBy = BLOCKED.equals(data.get("state"))? (String)data.get("blockedBy") : null;
+			rows.add(new Row(file, kind, (String)data.get("case"), blockedBy, data, certificate));
 		}
 		return rows;
 	}

@@ -1,0 +1,12 @@
+version: 1.2.0
+unknown_top_level: 1
+static:
+  unknown_static_block:
+    foo: bar
+  client:
+    max_connections_per_node: 99
+    unknown_client_key: 5
+dynamic:
+  client:
+    timeout: 2002
+    unknown_dynamic_key: true

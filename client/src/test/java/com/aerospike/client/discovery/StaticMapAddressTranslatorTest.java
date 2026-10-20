@@ -17,11 +17,13 @@
 package com.aerospike.client.discovery;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 
 import org.junit.Test;
 
@@ -38,7 +40,7 @@ public class StaticMapAddressTranslatorTest {
 	@Test
 	public void hitReplacesHostName() {
 		Host host = new StaticMapAddressTranslator(ipMap()).translate(
-			new Endpoint("BB9", null, "10.0.0.1", 3000, SourceList.STANDARD));
+			new Endpoint("BB9", null, "10.0.0.1", 3000, SourceList.STANDARD)).get();
 
 		assertEquals("192.168.1.1", host.name);
 		assertEquals(3000, host.port);
@@ -46,28 +48,25 @@ public class StaticMapAddressTranslatorTest {
 	}
 
 	@Test
-	public void missReturnsAdvertised() {
-		Host host = new StaticMapAddressTranslator(ipMap()).translate(
+	public void missReturnsEmpty() {
+		Optional<Host> host = new StaticMapAddressTranslator(ipMap()).translate(
 			new Endpoint("BB9", "tls1", "10.0.0.2", 3000, SourceList.STANDARD));
 
-		assertEquals(new Host("10.0.0.2", "tls1", 3000), host);
-		assertEquals("tls1", host.tlsName);
+		assertFalse(host.isPresent());
 	}
 
 	@Test
-	public void nullMapReturnsAdvertised() {
-		Host host = new StaticMapAddressTranslator(null).translate(
+	public void nullMapReturnsEmpty() {
+		Optional<Host> host = new StaticMapAddressTranslator(null).translate(
 			new Endpoint("BB9", "tls1", "10.0.0.1", 3000, SourceList.ALTERNATE));
 
-		assertEquals("10.0.0.1", host.name);
-		assertEquals("tls1", host.tlsName);
-		assertEquals(3000, host.port);
+		assertFalse(host.isPresent());
 	}
 
 	@Test
 	public void hitPreservesPort() {
 		Host host = new StaticMapAddressTranslator(ipMap()).translate(
-			new Endpoint("BB9", null, "10.0.0.1", 4333, SourceList.STANDARD));
+			new Endpoint("BB9", null, "10.0.0.1", 4333, SourceList.STANDARD)).get();
 
 		assertEquals("192.168.1.1", host.name);
 		assertEquals(4333, host.port);
@@ -76,7 +75,7 @@ public class StaticMapAddressTranslatorTest {
 	@Test
 	public void hitPreservesTlsName() {
 		Host host = new StaticMapAddressTranslator(ipMap()).translate(
-			new Endpoint("BB9", "tls1", "10.0.0.1", 4333, SourceList.STANDARD));
+			new Endpoint("BB9", "tls1", "10.0.0.1", 4333, SourceList.STANDARD)).get();
 
 		assertEquals("192.168.1.1", host.name);
 		assertEquals("tls1", host.tlsName);
@@ -88,7 +87,7 @@ public class StaticMapAddressTranslatorTest {
 		StaticMapAddressTranslator translator = new StaticMapAddressTranslator(map);
 		map.put("10.0.0.1", "192.168.1.1");
 
-		Host host = translator.translate(new Endpoint("BB9", null, "10.0.0.1", 3000, SourceList.STANDARD));
+		Host host = translator.translate(new Endpoint("BB9", null, "10.0.0.1", 3000, SourceList.STANDARD)).get();
 		assertSame(map.get("10.0.0.1"), host.name);
 	}
 }

@@ -444,6 +444,24 @@ public class Node implements Closeable {
 					continue;
 				}
 
+				if (peer.alternateMissing) {
+					if (Log.errorEnabled()) {
+						Log.error(new AerospikeException.AlternateAddressMissing(peer.nodeName, null).getMessage());
+					}
+					peersValidated = false;
+					continue;
+				}
+
+				AerospikeException.TranslationCollision collision = findCollision(peers, peer);
+
+				if (collision != null) {
+					if (Log.warnEnabled()) {
+						Log.warn(collision.getMessage());
+					}
+					peersValidated = false;
+					continue;
+				}
+
 				boolean nodeValidated = false;
 
 				// Find first host that connects.
@@ -481,7 +499,12 @@ public class Node implements Closeable {
 					catch (Throwable e) {
 						peers.fail(host);
 
-						if (Log.warnEnabled()) {
+						if (e instanceof AerospikeException.AlternateAddressMissing) {
+							if (Log.errorEnabled()) {
+								Log.error("Add node " + host + " failed: " + e.getMessage());
+							}
+						}
+						else if (Log.warnEnabled()) {
 							Log.warn("Add node " + host + " failed: " + Util.getErrorMessage(e));
 						}
 					}
@@ -501,6 +524,40 @@ public class Node implements Closeable {
 		catch (Throwable e) {
 			refreshFailed(e);
 		}
+	}
+
+	private AerospikeException.TranslationCollision findCollision(Peers peers, Peer peer) {
+		for (Host host : peer.hosts) {
+			if (! name.equals(peer.nodeName) && this.host.equals(host)) {
+				return new AerospikeException.TranslationCollision(peer.nodeName, name, host, cluster.translatorName());
+			}
+
+			for (Peer other : peers.peers) {
+				if (! other.nodeName.equals(peer.nodeName) && other.hosts.contains(host)) {
+					return new AerospikeException.TranslationCollision(peer.nodeName, other.nodeName, host, cluster.translatorName());
+				}
+			}
+
+			Node node = findNodeByHost(cluster.nodesMap, peer.nodeName, host);
+
+			if (node == null) {
+				node = findNodeByHost(peers.nodes, peer.nodeName, host);
+			}
+
+			if (node != null) {
+				return new AerospikeException.TranslationCollision(peer.nodeName, node.name, host, cluster.translatorName());
+			}
+		}
+		return null;
+	}
+
+	private static Node findNodeByHost(HashMap<String,Node> nodes, String nodeName, Host host) {
+		for (Node node : nodes.values()) {
+			if (node.active && node.failures == 0 && ! node.name.equals(nodeName) && node.host.equals(host)) {
+				return node;
+			}
+		}
+		return null;
 	}
 
 	private static boolean findPeerNode(Cluster cluster, Peers peers, Peer peer) {

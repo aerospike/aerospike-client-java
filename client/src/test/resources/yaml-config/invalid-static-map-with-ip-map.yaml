@@ -1,0 +1,9 @@
+version: 1.2.0
+static:
+  client:
+    max_connections_per_node: 99
+    ip_map:
+      10.0.0.1: 192.168.1.1
+    translation:
+      static_map:
+        10.0.0.1: 192.168.1.2

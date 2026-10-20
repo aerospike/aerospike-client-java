@@ -18,6 +18,7 @@ package com.aerospike.client;
 
 import com.aerospike.client.cluster.Node;
 import com.aerospike.client.cluster.Partition;
+import com.aerospike.client.discovery.Endpoint;
 import com.aerospike.client.policy.Policy;
 
 import java.util.List;
@@ -429,6 +430,52 @@ public class AerospikeException extends RuntimeException {
 
 		public InvalidNode(String message) {
 			super(ResultCode.INVALID_NODE_ERROR, message);
+		}
+	}
+
+	/**
+	 * Exception thrown when the address translator has no mapping for a server advertised endpoint
+	 * and {@link com.aerospike.client.policy.ClientPolicy#translationOnMiss} is
+	 * {@link com.aerospike.client.discovery.TranslationMissMode#STRICT}. No node is created for the
+	 * endpoint. Not retryable.
+	 */
+	public static final class TranslationMiss extends AerospikeException {
+		private static final long serialVersionUID = 1L;
+
+		public TranslationMiss(Endpoint advertised, String translator) {
+			super(ResultCode.CLIENT_ERROR, "Address translator " + translator + " has no mapping for node " +
+				advertised.nodeName + " advertised address " + advertised.host + ':' + advertised.port + " in the " +
+				(advertised.sourceList == Endpoint.SourceList.ALTERNATE ? "alternate" : "standard") +
+				" list. Add a mapping for that endpoint or node, or set translation.on_miss to pass_through");
+		}
+	}
+
+	/**
+	 * Exception thrown when a peer's translated address has the same host and port as another peer
+	 * in the same peers reply or as a live node with a different node name. No node is created for
+	 * the colliding peers and an existing live node is kept. Not retryable.
+	 */
+	public static final class TranslationCollision extends AerospikeException {
+		private static final long serialVersionUID = 1L;
+
+		public TranslationCollision(String nodeName, String otherNodeName, Host host, String translator) {
+			super(ResultCode.CLIENT_ERROR, "Address translator " + translator + " translated nodes " + nodeName +
+				" and " + otherNodeName + " to the same address " + host.name + ':' + host.port +
+				". Give each node its own reachable address or mapping");
+		}
+	}
+
+	/**
+	 * Exception thrown when {@link com.aerospike.client.policy.ClientPolicy#useServicesAlternate}
+	 * is true and a node has no alternate-access-address. No node is created for it. Not retryable.
+	 */
+	public static final class AlternateAddressMissing extends AerospikeException {
+		private static final long serialVersionUID = 1L;
+
+		public AlternateAddressMissing(String nodeName, Host host) {
+			super(ResultCode.CLIENT_ERROR, "Node " + nodeName + (host != null ? " " + host : "") +
+				" has no alternate-access-address and useServicesAlternate is true. Configure " +
+				"alternate-access-address on the server or set useServicesAlternate to false");
 		}
 	}
 

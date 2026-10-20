@@ -25,6 +25,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
@@ -55,9 +56,12 @@ import com.aerospike.client.configuration.serializers.StaticConfiguration;
 import com.aerospike.client.configuration.serializers.staticconfig.StaticClientConfig;
 import com.aerospike.client.discovery.AddressTranslator;
 import com.aerospike.client.discovery.Endpoint;
+import com.aerospike.client.discovery.PassThroughAddressTranslator;
+import com.aerospike.client.discovery.PortMapAddressTranslator;
 import com.aerospike.client.discovery.SeedCandidateProvider;
 import com.aerospike.client.discovery.StaticMapAddressTranslator;
 import com.aerospike.client.discovery.StaticSeedCandidateProvider;
+import com.aerospike.client.discovery.TranslationMissMode;
 import com.aerospike.client.listener.ClusterStatsListener;
 import com.aerospike.client.metrics.MetricsListener;
 import com.aerospike.client.metrics.MetricsPolicy;
@@ -104,6 +108,9 @@ public class Cluster implements Runnable, Closeable {
 
 	// Advertised address translation.
 	protected final AddressTranslator addressTranslator;
+
+	// Action when the address translator has no mapping.
+	protected final TranslationMissMode translationOnMiss;
 
 	// TLS connection policy.
 	public final TlsPolicy tlsPolicy;
@@ -247,6 +254,8 @@ public class Cluster implements Runnable, Closeable {
 			policy.seedCandidateProvider : new StaticSeedCandidateProvider(hosts);
 		this.addressTranslator = (policy.addressTranslator != null)?
 			policy.addressTranslator : new StaticMapAddressTranslator(policy.ipMap);
+		this.translationOnMiss = (policy.translationOnMiss != null)?
+			policy.translationOnMiss : TranslationMissMode.PASS_THROUGH;
 
 		Host[] discovered = seedCandidateProvider.refreshSeedCandidates().toArray(new Host[0]);
 		this.seedRefresher = new SeedRefresher(seedCandidateProvider, policy, hosts, this::setSeeds);
@@ -476,21 +485,54 @@ public class Cluster implements Runnable, Closeable {
 
 	/**
 	 * Translate a server advertised address. The advertised TLS name is always kept.
+	 * Throw {@link AerospikeException.TranslationMiss} on a strict miss.
 	 */
 	final Host translateAddress(String nodeName, String tlsName, String host, int port) {
 		Endpoint.SourceList sourceList = useServicesAlternate?
 			Endpoint.SourceList.ALTERNATE : Endpoint.SourceList.STANDARD;
 
-		return translate(addressTranslator, new Endpoint(nodeName, tlsName, host, port, sourceList));
+		return translate(addressTranslator, translationOnMiss, new Endpoint(nodeName, tlsName, host, port, sourceList));
 	}
 
 	static Host translate(AddressTranslator translator, Endpoint advertised) {
-		Host host = translator.translate(advertised);
+		return translate(translator, TranslationMissMode.PASS_THROUGH, advertised);
+	}
+
+	static Host translate(AddressTranslator translator, TranslationMissMode onMiss, Endpoint advertised) {
+		Optional<Host> result = translator.translate(advertised);
+
+		if (result == null) {
+			throw new AerospikeException("Address translator " + translatorName(translator) +
+				" returned null for " + advertised);
+		}
+
+		if (! result.isPresent()) {
+			if (onMiss == TranslationMissMode.STRICT) {
+				throw new AerospikeException.TranslationMiss(advertised, translatorName(translator));
+			}
+			return new Host(advertised.host, advertised.tlsName, advertised.port);
+		}
+
+		Host host = result.get();
 
 		if (! Objects.equals(host.tlsName, advertised.tlsName)) {
 			host = new Host(host.name, advertised.tlsName, host.port);
 		}
 		return host;
+	}
+
+	final String translatorName() {
+		return translatorName(addressTranslator);
+	}
+
+	private static String translatorName(AddressTranslator translator) {
+		if (translator instanceof PassThroughAddressTranslator) {
+			return "pass-through";
+		}
+		if (translator instanceof PortMapAddressTranslator) {
+			return "port-map";
+		}
+		return (translator instanceof StaticMapAddressTranslator)? "static-map" : translator.getClass().getName();
 	}
 
 	private void defaultTlsNames(Host[] hosts) {
@@ -834,6 +876,11 @@ public class Cluster implements Runnable, Closeable {
 					}
 					exceptions[i] = e;
 				}
+				else if (e instanceof AerospikeException.AlternateAddressMissing) {
+					if (Log.errorEnabled()) {
+						Log.error("Seed " + seed + " failed: " + e.getMessage());
+					}
+				}
 				else {
 					if (Log.warnEnabled()) {
 						Log.warn("Seed " + seed + " failed: " + Util.getErrorMessage(e));
@@ -852,6 +899,14 @@ public class Cluster implements Runnable, Closeable {
 		}
 
 		if (failIfNotConnected) {
+			if (exceptions != null) {
+				for (Throwable ex : exceptions) {
+					if (ex instanceof AerospikeException.AlternateAddressMissing) {
+						throw (AerospikeException.AlternateAddressMissing)ex;
+					}
+				}
+			}
+
 			StringBuilder sb = new StringBuilder(500);
 			sb.append("Failed to connect to ["+ seedArray.length +"] host(s): ");
 			sb.append(System.lineSeparator());
