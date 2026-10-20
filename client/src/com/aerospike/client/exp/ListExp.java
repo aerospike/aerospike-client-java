@@ -308,7 +308,7 @@ public final class ListExp {
 	 * ListExp.join(Exp.listBin("a"))
 	 * }</pre>
 	 *
-	 * Requires server version 8.1.3 or later.
+	 * Requires server version 8.2.0 or later.
 	 */
 	public static Exp join(Exp bin, CTX... ctx) {
 		byte[] bytes = Pack.pack(STRING_LIST_JOIN, ctx);
@@ -326,7 +326,7 @@ public final class ListExp {
 	 * ListExp.join(Exp.val(","), Exp.listBin("a"))
 	 * }</pre>
 	 *
-	 * Requires server version 8.1.3 or later.
+	 * Requires server version 8.2.0 or later.
 	 */
 	public static Exp join(Exp separator, Exp bin, CTX... ctx) {
 		byte[] bytes = Pack.pack(STRING_LIST_JOIN, separator, ctx);

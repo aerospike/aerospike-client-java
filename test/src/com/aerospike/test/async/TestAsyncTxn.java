@@ -380,8 +380,18 @@ public class TestAsyncTxn extends TestAsync {
 					setError(new AerospikeException("Expected abort to be blocked"));
 					notifyComplete();
 				}
-				catch (AerospikeException ae) {
+				catch (AerospikeException.Abort ae) {
+					if (! assertEquals(AbortStatus.COMMIT_FAILED, ae.status)) {
+						notifyComplete();
+						return;
+					}
+
 					if (! assertEquals(ResultCode.TXN_FAILED, ae.getResultCode())) {
+						notifyComplete();
+						return;
+					}
+
+					if (! assertEquals("Transaction commit failed. Abort is not allowed.", ae.getBaseMessage())) {
 						notifyComplete();
 						return;
 					}
@@ -404,6 +414,10 @@ public class TestAsyncTxn extends TestAsync {
 							notifyComplete();
 						}
 					}, txn);
+				}
+				catch (AerospikeException ae) {
+					setError(new AerospikeException("Expected AerospikeException.Abort, received " + ae.getClass().getName()));
+					notifyComplete();
 				}
 			}
 		}, txn);

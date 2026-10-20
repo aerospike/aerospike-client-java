@@ -55,7 +55,7 @@ import com.aerospike.test.sync.TestSync;
  * than around individual API methods, so each test exercises a single intent
  * (e.g. "uppercase mutates the bin", "find returns the first match index").
  *
- * <p>String operations require server version 8.1.3+; the tests are skipped
+ * <p>String operations require server version 8.2.0+; the tests are skipped
  * on older clusters via {@link Assume}.
  */
 public class TestOperateString extends TestSync {
@@ -68,8 +68,8 @@ public class TestOperateString extends TestSync {
 	@BeforeClass
 	public static void serverVersionCheck() {
 		Assume.assumeTrue(
-			"Skipping: string operations require server version 8.1.3 or later",
-			args.serverVersion.isGreaterOrEqual(8, 1, 3, 0));
+			"Skipping: string operations require server version 8.2.0 or later",
+			args.serverVersion.isGreaterOrEqual(8, 2, 0, 0));
 	}
 
 	//-----------------------------------------------------------------
@@ -1152,7 +1152,7 @@ public class TestOperateString extends TestSync {
 		assertEquals("untouched", r.getString("other"));
 	}
 
-	// All eight additive ops create a missing bin from empty in server 8.1.3
+	// All eight additive ops create a missing bin from empty in server 8.2.0
 	// (string ops + SERVER-97 PR 1452, which adds overwrite/repeat/padStart/
 	// padEnd to the create-op set). Transform/subtractive ops still no-op.
 	// append is covered above in the append section.
@@ -1409,7 +1409,7 @@ public class TestOperateString extends TestSync {
 		put("hello");
 		// Unclosed character class — PCRE2 compile fails inside the op.
 		// Server returns PARAMETER_ERROR (the server doc table lists this row as
-		// "OP_NOT_APPLICABLE / error"; observed behavior on 8.1.3 is PARAMETER).
+		// "OP_NOT_APPLICABLE / error"; observed behavior on 8.2.0 is PARAMETER).
 		assertParamError(StringOperation.regexReplace(
 			POLICY, BIN, "[unclosed", "NUM", StringRegexFlags.DEFAULT));
 	}

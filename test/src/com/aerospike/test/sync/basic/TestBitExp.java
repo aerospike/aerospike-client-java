@@ -467,8 +467,8 @@ public class TestBitExp extends TestSync {
 	}
 	@Test
 	public void b64EncodeRead() {
-		org.junit.Assume.assumeTrue("bit b64Encode requires server version 8.1.3 or later",
-			args.serverVersion.isGreaterOrEqual(8, 1, 3, 0));
+		org.junit.Assume.assumeTrue("bit b64Encode requires server version 8.2.0 or later",
+			args.serverVersion.isGreaterOrEqual(8, 2, 0, 0));
 
 		Key key = new Key(args.namespace, args.set, 5002);
 		client.delete(null, key);

@@ -189,6 +189,18 @@ public class TestTxn extends TestSync {
 			client.abort(txn);
 			fail("Expected abort to be blocked");
 		}
+		catch (AerospikeException.Abort ae) {
+			assertEquals(AbortStatus.COMMIT_FAILED, ae.status);
+			assertEquals(ResultCode.TXN_FAILED, ae.getResultCode());
+			assertEquals("Transaction commit failed. Abort is not allowed.", ae.getBaseMessage());
+			assertEquals(Txn.State.COMMIT_FAILED, txn.getState());
+		}
+
+		// The subclass is still caught by a plain AerospikeException handler.
+		try {
+			client.abort(txn);
+			fail("Expected abort to be blocked");
+		}
 		catch (AerospikeException ae) {
 			assertEquals(ResultCode.TXN_FAILED, ae.getResultCode());
 			assertEquals(Txn.State.COMMIT_FAILED, txn.getState());

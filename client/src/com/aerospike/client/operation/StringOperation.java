@@ -33,7 +33,7 @@ import com.aerospike.client.util.Pack;
  * count from the end of the string ({@code -1} = last codepoint). Out-of-bounds
  * indexes are clamped to the valid range; no error is returned.
  * <p>
- * String operations require server version 8.1.3 or later. A non-empty {@link CTX}
+ * String operations require server version 8.2.0 or later. A non-empty {@link CTX}
  * argument navigates into a string nested inside a list or map bin; with no CTX
  * the operation targets the bin itself. The CTX-navigated leaf must already be an
  * Aerospike string — operations on non-string leaves return

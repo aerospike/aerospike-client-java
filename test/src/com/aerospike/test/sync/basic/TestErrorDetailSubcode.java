@@ -59,7 +59,7 @@ import org.junit.Test;
  *
  * <p>Subcodes that need cluster state (PARTITION_UNAVAILABLE), config (FAIL_FORBIDDEN
  * stop-writes / durability), concurrency (MRT_BLOCKED), or ACL are out of reach here
- * and intentionally not covered. Requires an 8.1.3+ server.
+ * and intentionally not covered. Requires an 8.2.0+ server.
  */
 public class TestErrorDetailSubcode extends TestSync {
 
@@ -67,8 +67,8 @@ public class TestErrorDetailSubcode extends TestSync {
 
 	@BeforeClass
 	public static void setup() {
-		org.junit.Assume.assumeTrue("Extended error-detail requires server version 8.1.3 or later",
-			args.serverVersion.isGreaterOrEqual(8, 1, 3, 0));
+		org.junit.Assume.assumeTrue("Extended error-detail requires server version 8.2.0 or later",
+			args.serverVersion.isGreaterOrEqual(8, 2, 0, 0));
 	}
 
 	/** WritePolicy at verbosity 2 (sub-code + message), the level these assertions expect. */

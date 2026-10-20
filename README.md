@@ -21,6 +21,7 @@ The `stage-jdk8` branch builds the Java 8 artifact.
 | Transactions | `test/.../sync/basic/` | behavior |
 | Async, event loops | `client/src/com/aerospike/client/async/`, `test/.../async/` | behavior |
 | Errors and result codes | `client/src/com/aerospike/client/{AerospikeException,ResultCode}.java` | codes |
+| Unit tests (no server) | `client/src/test/java/` | client-module JUnit; runs during `mvn install` |
 | Idiomatic use at feature scale | SubMilliPost — see below | when and why |
 
 ### Repository map
@@ -33,7 +34,7 @@ aerospike-client-java/
 ├── CLIENT-DEV.md          contributor-facing: branch porting between stage and stage-jdk8
 ├── client/                client library source — the API surface
 │   ├── README.md          build notes + SubMilliPost capability map
-│   └── src/com/aerospike/client/
+│   ├── src/com/aerospike/client/
 │       ├── policy/        read, write, batch, query, txn policies
 │       ├── cdt/           list and map operations
 │       ├── exp/           filter and operation expressions
@@ -45,6 +46,7 @@ aerospike-client-java/
 │       ├── configuration/ dynamic client configuration
 │       ├── cluster/, command/, listener/, task/, lua/, util/  internals
 │       └── AerospikeClient.java, AerospikeException.java, ResultCode.java, ...
+│   └── src/test/java/     unit tests (no server; surefire unskipped)
 ├── examples/              ~34 runnable single-purpose programs
 │   ├── README.md          example → description table
 │   └── src/com/aerospike/examples/
@@ -79,6 +81,14 @@ SubMilliPost shows *when and why* — record and bin layout, how operations comp
 5. aerospike.com/docs for server-side semantics and version gates
 
 Anything contradicting the Javadoc on a signature is stale. Report it rather than following it.
+
+### Known traps
+
+Three mistakes observed in generated code. Each names the wrong approach first.
+
+* **Don't special-case a one-key batch into a single-record call.** The client already does it: `BatchNodeList.generate()` splits keys per node, and a per-node sub-batch of size 1 is issued as `BatchSingle.*` (sync) or `AsyncBatchSingle.*` (async). Call the batch method unconditionally. Read `client/src/com/aerospike/client/BatchRecord.java`.
+* **Don't loop a single-record `get`/`delete`/`exists`/`operate` over a key list.** Every one of those has a batch overload that issues one command per node; the `@see` on each single-record overload names it. Read `client/src/com/aerospike/client/IAerospikeClient.java`.
+* **Don't conclude that path-based removal is missing.** `modifyByPath` removes: pass `Exp.removeResult()` as the modify expression and every element the context path matches is deleted (server 8.1.1+). Read `client/src/com/aerospike/client/cdt/CdtOperation.java` and `client/src/com/aerospike/client/exp/CdtExp.java`.
 
 ### Verifying generated code
 

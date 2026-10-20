@@ -26,7 +26,7 @@ import com.aerospike.client.util.Version;
 /**
  * Server-independent unit tests for {@link AerospikeClient#resolveIndexType}.
  *
- * Server versions 8.1.3+ use the "integer" index type instead of "numeric".
+ * Server versions 8.2.0+ use the "integer" index type instead of "numeric".
  * The client transparently maps between the two based on the target server
  * version. This is the only place the mapping is observable: on the server,
  * "numeric" and "integer" collapse to the same internal type, so the created
@@ -47,7 +47,7 @@ public class AerospikeClientIndexTypeTest {
 	public void numericUpgradesToIntegerAbove813() {
 		assertSame(IndexType.INTEGER, AerospikeClient.resolveIndexType(IndexType.NUMERIC, version(8, 1, 4, 0)));
 		assertSame(IndexType.INTEGER, AerospikeClient.resolveIndexType(IndexType.NUMERIC, version(9, 0, 0, 0)));
-		// Build component past the boundary still counts as >= 8.1.3.0.
+		// Build component past the boundary still counts as >= 8.2.0.0.
 		assertSame(IndexType.INTEGER, AerospikeClient.resolveIndexType(IndexType.NUMERIC, version(8, 1, 3, 5)));
 	}
 

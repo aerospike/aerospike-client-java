@@ -1,0 +1,196 @@
+# AI_PIPELINE.md — aerospike-client-java (Java Legacy client)
+
+Durable, repo-level facts for automated agents: how to build it, how to test it,
+where things live, and what the house rules are. Task-specific analysis belongs
+in the task spec, not here. Add to this file when you learn something that will
+still be true for the *next* task.
+
+## Project shape
+
+Maven multi-module, Java 21 (`<java.version>21</java.version>`), version
+`10.4.0` carried by the `${revision}` property in the root `pom.xml`.
+
+| Module | Contents |
+| --- | --- |
+| `client` | The client library — the shipped artifact. Public API lives here. Unit tests in `client/src/test/java/` run during `mvn install`. |
+| `test` | JUnit 4 integration suites. Requires a live Aerospike server. |
+| `examples` | Standalone example programs. |
+| `benchmarks` | Load-generation / benchmarking tool. |
+
+## Build
+
+Run from the repo root.
+
+```bash
+# Compile everything
+mvn compile -q
+
+# Build and install the client into the local repo (what the test module needs)
+mvn -q -pl client -am install -DskipTests
+
+# Offline (no network): add -o
+mvn -q -o -pl client -am install -DskipTests
+```
+
+Build the client before running the test module — `test` resolves
+`com.aerospike:aerospike-client` from the local repository, not from the reactor.
+
+`-o` only works for dependencies already in `~/.m2`. After changing a dependency
+version, run one **online** build (`mvn -pl client -am install -DskipTests` plus
+`mvn test-compile`) to fetch the new artifacts; the offline commands are
+meaningless until then, and an `-o` failure at that point is a missing download,
+not a code defect. `mvn dependency:go-offline` is not a substitute — it fails on
+netty's `${os.detected.name}-${os.detected.arch}` classifier, which only
+os-maven-plugin resolves, at every netty version.
+### Benchmarks
+
+The `benchmarks` module packages a runnable fat jar; `run_benchmarks` is a thin
+wrapper around it, so the package step must be rerun after editing benchmark
+sources.
+
+```bash
+mvn -o package -DskipTests -pl benchmarks -am
+cd benchmarks
+./run_benchmarks -h 127.0.0.1 -p 3000 -n test -k 10000 -o I:128 -w RU,50 -z 8
+```
+
+`-w I` linear insert, `-w RU,<readPct>` read/update, `-a`/`-async` async mode
+(`-C` sets max in-flight commands, default 100), `-g <tps>` target throughput,
+`-t <n>` transaction limit, `-l <columns>,<shift>` latency histograms. A run
+prints one stats line per second and exits only when the key count or
+transaction limit is reached, so time-box exploratory runs with `timeout`.
+
+Throughput throttling (`-g`) defers work to the end of the current one-second
+reporting period once the period's transaction count exceeds the target, in both
+sync and async mode. The steady-state rate therefore overshoots the target by
+roughly the concurrency level — thread count in sync mode, max in-flight
+commands in async mode.
+
+## Test
+
+There are two JUnit 4 + Maven Surefire surfaces. Do not confuse them.
+
+### Client-module unit tests (no server)
+
+`client/src/test/java/`. Surefire is **not** skipped: `mvn test` and
+`mvn install` from the repo root run these during the `client` module. A
+BUILD SUCCESS that reports `Tests run: 0` is a failed wiring — the client
+module sets `failIfNoTests`. Do **not** pass `-DskipTests` when the goal is
+to exercise this surface.
+
+```bash
+mvn -o -pl client test
+```
+
+The `test/` module's `skipTests=true` default does **not** apply here.
+
+### Integration tests (live server)
+
+`test/src/`. **A live Aerospike server is required**; the suites default to
+`127.0.0.1:3000`.
+
+Two properties control what runs, both defined in `test/pom.xml`:
+
+* `skipTests` — defaults to **`true`**. Tests do not run unless you pass
+  `-DskipTests=false`. A plain `mvn test` **in `test/`** reports
+  `BUILD SUCCESS` having run nothing; that is not a passing test run.
+* `runSuite` — surefire `<include>` selector, defaults to `**/SuiteAll.class`.
+
+```bash
+# From test/ — run one suite
+mvn -o test -DskipTests=false -DrunSuite='**/SuiteErrorDetail.class'
+
+# Run a single test class
+mvn -o test -DskipTests=false -DrunSuite='**/TestExpErrorDetail.class'
+
+# Everything
+mvn -o test -DskipTests=false
+```
+
+Available suites (`test/src/com/aerospike/test/`): `SuiteAll`, `SuiteSync`,
+`SuiteAsync`, `SuiteErrorDetail`, `SuiteEmpty`.
+
+`SuiteAsync` defaults to `EventLoopType.DIRECT_NIO`, the built-in NIO event loop,
+which touches no netty code. Netty is exercised only when the suite is given
+`-netty` (NETTY_NIO), `-nettyEpoll`, or `-elt <type>`, and those reach the suite
+through `-Dargs` alone. A netty change must be gated on a run carrying one of
+those flags; a default async run proves nothing about netty. The native
+transports cannot be loaded on Apple silicon — epoll and io_uring ship as
+`linux-x86_64` and kqueue as `osx-x86_64` — so `NETTY_NIO` is the only netty
+path testable on a macOS host.
+
+Server connection and auth flags are passed as one space-separated string in the
+`args` system property, parsed by `test/src/com/aerospike/test/util/Args.java`:
+
+```bash
+mvn -o test -DskipTests=false -Dargs="-h 127.0.0.1 -p 3000 -n test"
+```
+
+`-h host` `-p port` (default 3000) `-n namespace` `-U user` `-P password`
+`--auth <mode>` plus TLS options. The `run_tests` wrapper script at the repo
+root splits `-D…` from ordinary flags and builds this invocation for you.
+
+`Args` also detects the connected server's version into `args.serverVersion`;
+suites gate version-dependent tests with
+`org.junit.Assume.assumeTrue(args.serverVersion.isGreaterOrEqual(...))`.
+
+Tests also gate on environment capabilities the same way — `args.scMode` for
+transactions, plus enterprise-only and security-enabled features. Against a
+plain single-node dev server a non-zero `Skipped` count is therefore expected
+and is not a failure; compare it against a baseline run rather than expecting
+zero.
+
+**Verify results, not exit codes.** In `test/`, `-DskipTests` defaulting to
+true means an untouched `mvn test` exits 0 with zero tests executed. Always
+confirm the `Tests run: N` line, and that N is what you expected.
+
+### Asserting errors raised inside an expression
+
+The server's expression runtime collapses every CDT / bits / HLL / string
+sub-op failure into one generic fault, so `getResultCode()` on the expression
+path is always `OP_NOT_APPLICABLE` — never the `PARAMETER_ERROR` /
+`BIN_EXISTS_ERROR` the equivalent operate op returns. To assert *why* an
+expression faulted, set `policy.errorDetailVerbosity = 2` and read
+`AerospikeException.getSubCode()` and `getBaseMessage()`. At the default
+verbosity no detail is staged at all and the message is just the result-code
+string.
+
+A suite can carry a pre-existing failure against whatever server build is
+running locally — an assertion on a fault the server no longer raises still
+fails even on an untouched tree. Run the suites you are about to gate on
+*before* editing anything and keep that baseline; report only the delta.
+
+## Architecture
+
+Public API under `client/src/com/aerospike/client/`:
+
+| Package | Role |
+| --- | --- |
+| *(root)* | `AerospikeClient`, `AerospikeException`, `Bin`, `Key`, `Record`, `Value`, batch types |
+| `policy` | Read/write/batch/query policies |
+| `exp` | Filter and operation expressions (`Exp`, `ListExp`, `MapExp`, `BitExp`, `HLLExp`) |
+| `cdt` | Collection data types — list/map operations, contexts, policies |
+| `operation` | Operation builders |
+| `command` | Wire protocol encode/decode, msgpack packing (`util/Packer`) |
+| `cluster` | Node discovery, partition map, connection pooling |
+| `async` | Async/NIO/Netty event loops and listeners |
+| `query`, `task`, `admin`, `metrics`, `configuration`, `lua`, `listener`, `util` | Queries, long-running tasks, security admin, metrics, dynamic config, UDF support, callbacks, helpers |
+
+Unit tests under `client/src/test/java/`. Integration tests under
+`test/src/com/aerospike/test/`: `sync/basic`, `sync/query`, `async`, with
+shared helpers in `util`.
+
+## Conventions
+
+* **Additive and binary-compatible.** This is a released, versioned public API.
+  Do not remove or change existing public constructors, method signatures or
+  field types. New public methods and fields are fine.
+* **Javadoc on public methods and fields.**
+* Minimal, focused diff — do not touch unrelated files, do not reformat.
+* Match the existing style of the file you are editing, including comment
+  density (generally sparse). Do not add commentary restating what the code does.
+* Do not reference ticket numbers in source.
+* Tests are ported across clients (Go, C, C#, Python). When changing a test that
+  has counterparts, note the divergence rather than silently letting it drift.
+* Read `README.md`'s "AI coding agent entry point" section before generating
+  code that *uses* the client (see `AGENTS.md`).

@@ -38,7 +38,7 @@ import com.aerospike.client.operation.StringRegexFlags;
 import com.aerospike.test.sync.TestSync;
 
 /**
- * Negative tests for the server's bin-UTF-8 entry gate 8.1.3.
+ * Negative tests for the server's bin-UTF-8 entry gate 8.2.0.
  *
  * <p>Every read and modify op in {@link StringOperation} must reject a string
  * bin whose stored bytes are not well-formed UTF-8. The server's
@@ -66,8 +66,8 @@ public class TestStringInvalidUtf8 extends TestSync {
 	@BeforeClass
 	public static void serverVersionCheck() {
 		Assume.assumeTrue(
-			"Skipping: string operations require server version 8.1.3 or later",
-			args.serverVersion.isGreaterOrEqual(8, 1, 3, 0));
+			"Skipping: string operations require server version 8.2.0 or later",
+			args.serverVersion.isGreaterOrEqual(8, 2, 0, 0));
 	}
 
 	@Before
@@ -126,7 +126,7 @@ public class TestStringInvalidUtf8 extends TestSync {
 	}
 
 	// byte_length, to_blob, b64_decode, trim*, repeat, concat are listed in the
-	// 8.1.3 client report as "unaffected" by UTF-8, but per the doc's §3 and
+	// 8.2.0 client report as "unaffected" by UTF-8, but per the doc's §3 and
 	// §11 they hit the same bin gate as strlen and must also reject.
 	@Test public void byteLengthRejectsInvalidBin() {
 		assertInvalidEncoding(StringOperation.byteLength(BIN));
