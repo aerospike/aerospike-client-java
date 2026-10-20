@@ -58,6 +58,7 @@ import com.aerospike.client.discovery.AddressTranslator;
 import com.aerospike.client.discovery.Endpoint;
 import com.aerospike.client.discovery.PassThroughAddressTranslator;
 import com.aerospike.client.discovery.PortMapAddressTranslator;
+import com.aerospike.client.discovery.SeedCandidateContext;
 import com.aerospike.client.discovery.SeedCandidateProvider;
 import com.aerospike.client.discovery.StaticMapAddressTranslator;
 import com.aerospike.client.discovery.StaticSeedCandidateProvider;
@@ -202,6 +203,9 @@ public class Cluster implements Runnable, Closeable {
 	// Cluster tend counter
 	private int tendCount;
 
+	// Cluster view change counter passed to the address translator.
+	private int viewChange;
+
 	// Milliseconds between dynamic configuration check for file modifications.
 	public final int configInterval;
 
@@ -257,9 +261,31 @@ public class Cluster implements Runnable, Closeable {
 		this.translationOnMiss = (policy.translationOnMiss != null)?
 			policy.translationOnMiss : TranslationMissMode.PASS_THROUGH;
 
-		Host[] discovered = seedCandidateProvider.refreshSeedCandidates().toArray(new Host[0]);
+		Host[] discovered;
+		Throwable discoveryError = null;
+
+		try {
+			SeedCandidateContext ctx = new SeedCandidateContext(clusterName, hosts, 0);
+			discovered = seedCandidateProvider.refreshSeedCandidates(ctx).toArray(new Host[0]);
+		}
+		catch (Throwable e) {
+			discoveryError = e;
+			discovered = new Host[0];
+
+			if (Log.warnEnabled()) {
+				Log.warn("Seed candidate provider " + SeedRefresher.providerName(seedCandidateProvider) +
+					" failed: " + Util.getErrorMessage(e));
+			}
+		}
+
 		this.seedRefresher = new SeedRefresher(seedCandidateProvider, policy, hosts, this::setSeeds);
 		hosts = seedRefresher.merge(discovered, true);
+
+		if (discoveryError != null && hosts.length == 0) {
+			throw new AerospikeException(ResultCode.SEED_DISCOVERY_FAILED, "Seed candidate provider " +
+				SeedRefresher.providerName(seedCandidateProvider) + " failed and no seed host is left: " +
+				discoveryError, discoveryError);
+		}
 
 		// Default TLS names when TLS enabled.
 		if (tlsPolicy != null) {
@@ -712,6 +738,7 @@ public class Cluster implements Runnable, Closeable {
 	private final void tend(boolean failIfNotConnected, boolean isInit) {
 		// All node additions/deletions are performed in tend thread.
 		// Initialize tend iteration node statistics.
+		Node[] nodesBefore = nodes;
 		Peers peers = new Peers(nodes.length + 16);
 
 		// Clear node reference counts.
@@ -759,6 +786,10 @@ public class Cluster implements Runnable, Closeable {
 				addNodes(peers.nodes);
 				refreshPeers(peers);
 			}
+		}
+
+		if (! isInit && (nodes != nodesBefore || peers.addressChanged)) {
+			clusterViewChanged();
 		}
 
 		invalidNodeCount += peers.getInvalidCount();
@@ -841,6 +872,20 @@ public class Cluster implements Runnable, Closeable {
 		}
 
 		processRecoverQueue();
+	}
+
+	private void clusterViewChanged() {
+		viewChange++;
+
+		try {
+			addressTranslator.onClusterViewChanged(viewChange);
+		}
+		catch (Throwable e) {
+			if (Log.warnEnabled()) {
+				Log.warn("Address translator " + translatorName() + " onClusterViewChanged failed: " +
+					Util.getErrorMessage(e));
+			}
+		}
 	}
 
 	private final boolean seedNode(Peers peers, boolean failIfNotConnected) {
@@ -1284,23 +1329,34 @@ public class Cluster implements Runnable, Closeable {
 		ConfigurationProvider provider = client.getConfigProvider();
 
 		if (provider == null) {
-			provider = YamlConfigProvider.getConfigProvider(configPath);
-
-			if (provider == null) {
-				// Failed to read configuration file. Warning was already logged.
+			try {
+				provider = new YamlConfigProvider(configPath);
+			}
+			catch (Exception e) {
+				if (Log.warnEnabled()) {
+					Log.warn(e.getMessage());
+				}
 				return;
 			}
 
 			client.setConfigProvider(provider);
+
+			try {
+				client.mergePoliciesWithConfig();
+			}
+			catch (AerospikeException ae) {
+				client.setConfigProvider(null);
+				throw ae;
+			}
 		}
 		else {
 			if (!provider.loadConfiguration()) {
 				return;
 			}
+			client.mergePoliciesWithConfig();
 		}
 
 		config = provider.fetchConfiguration();
-		client.mergePoliciesWithConfig();
 		applyCommonClientPolicyParameters(client.getClientPolicy(), false);
 
 		synchronized(metricsLock) {
@@ -1757,6 +1813,7 @@ public class Cluster implements Runnable, Closeable {
 		// Stop cluster tend thread.
 		tendValid = false;
 		tendThread.interrupt();
+		seedRefresher.close();
 
 		synchronized(metricsLock) {
 			try {

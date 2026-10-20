@@ -30,6 +30,7 @@ public final class Peers {
 	private final HashSet<Host> invalidHosts;
 	public int refreshCount;
 	public boolean genChanged;
+	boolean addressChanged;
 
 	public Peers(int peerCapacity) {
 		peers = new ArrayList<Peer>(peerCapacity);

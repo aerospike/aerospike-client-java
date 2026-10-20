@@ -35,9 +35,16 @@ public class StaticDiscoveryConfig {
     private static final List<String> MERGE_POLICIES = List.of("merge", "replace", "discovery_only");
 
     /**
-     * {@code provider}. Only {@code static} is accepted.
+     * {@code provider}: {@code static} or a name registered with
+     * {@link com.aerospike.client.policy.ClientPolicy#registerSeedCandidateProvider}.
      */
     public StringProperty provider;
+
+    /**
+     * Every key of the block except {@code provider}, passed to the registered factory. Null when
+     * {@code provider} is absent or {@code static}.
+     */
+    public Map<String,Object> options;
 
     /**
      * {@code merge_policy}.
@@ -76,7 +83,13 @@ public class StaticDiscoveryConfig {
                 throw new AerospikeException(PATH + ".provider '" + value + "' is not yet configurable from YAML. " +
                     "Set ClientPolicy.seedCandidateProvider in code");
             }
-            provider = new StringProperty(YamlValues.enumValue(PATH + ".provider", value, List.of("static")));
+            if (value instanceof String && ! value.equals("static")) {
+                provider = new StringProperty((String)value);
+                options = YamlValues.options(PATH, map);
+            }
+            else {
+                provider = new StringProperty(YamlValues.enumValue(PATH + ".provider", value, List.of("static")));
+            }
         }
 
         value = map.get("merge_policy");

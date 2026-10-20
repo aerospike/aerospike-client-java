@@ -35,6 +35,7 @@ import org.yaml.snakeyaml.representer.Representer;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Log;
 import com.aerospike.client.configuration.serializers.Configuration;
+import com.aerospike.client.policy.ClientPolicy;
 
 public class YamlConfigProvider implements ConfigurationProvider {
 	private static final String CONFIG_PATH_ENV = "AEROSPIKE_CLIENT_CONFIG_URL";
@@ -59,7 +60,16 @@ public class YamlConfigProvider implements ConfigurationProvider {
 
 	public static YamlConfigProvider getConfigProvider(String configPath) {
 		try {
-			return new YamlConfigProvider(configPath);
+			YamlConfigProvider provider = new YamlConfigProvider(configPath);
+
+			try {
+				// Without a client policy, no provider or translator name is registered.
+				new ClientPolicy(new ClientPolicy(), provider);
+			}
+			catch (AerospikeException ae) {
+				throw new AerospikeException("Failed to parse " + DEFAULT_CONFIG_URL_PREFIX + provider.path + ": " + ae);
+			}
+			return provider;
 		}
 		catch (Exception e) {
 			if (Log.warnEnabled()) {

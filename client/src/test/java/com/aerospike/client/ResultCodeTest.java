@@ -35,4 +35,14 @@ public class ResultCodeTest {
 	public void getResultStringForKeyNotFound() {
 		assertEquals("Key not found", ResultCode.getResultString(ResultCode.KEY_NOT_FOUND_ERROR));
 	}
+
+	@Test
+	public void discoveryCodes() {
+		assertEquals(-25, ResultCode.TRANSLATION_MISS);
+		assertEquals(-26, ResultCode.TRANSLATION_COLLISION);
+		assertEquals(-27, ResultCode.SEED_DISCOVERY_FAILED);
+		assertEquals("Address translation miss", ResultCode.getResultString(ResultCode.TRANSLATION_MISS));
+		assertEquals("Address translation collision", ResultCode.getResultString(ResultCode.TRANSLATION_COLLISION));
+		assertEquals("Seed discovery failed", ResultCode.getResultString(ResultCode.SEED_DISCOVERY_FAILED));
+	}
 }

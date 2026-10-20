@@ -38,7 +38,7 @@ public final class StaticSeedCandidateProvider implements SeedCandidateProvider 
 	 * Return the fixed seed hosts.
 	 */
 	@Override
-	public List<Host> refreshSeedCandidates() {
+	public List<Host> refreshSeedCandidates(SeedCandidateContext ctx) {
 		return hosts;
 	}
 

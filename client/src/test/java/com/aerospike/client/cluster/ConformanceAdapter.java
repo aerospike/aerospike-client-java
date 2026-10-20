@@ -24,6 +24,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import com.aerospike.client.Host;
 import com.aerospike.client.discovery.AddressTranslator;
 import com.aerospike.client.discovery.Endpoint;
+import com.aerospike.client.discovery.SeedCandidateContext;
 import com.aerospike.client.discovery.SeedCandidateProvider;
 import com.aerospike.client.discovery.StaticMapAddressTranslator;
 import com.aerospike.client.discovery.TranslationMissMode;
@@ -60,7 +61,7 @@ public final class ConformanceAdapter {
 		Iterator<Host[]> iter = results.iterator();
 		SeedCandidateProvider provider = new SeedCandidateProvider() {
 			@Override
-			public List<Host> refreshSeedCandidates() {
+			public List<Host> refreshSeedCandidates(SeedCandidateContext ctx) {
 				return List.of(iter.next());
 			}
 
@@ -79,7 +80,8 @@ public final class ConformanceAdapter {
 		SeedRefresher refresher = new SeedRefresher(provider, policy, staticSeeds, snapshot::set);
 		List<Host[]> snapshots = new ArrayList<>(results.size());
 
-		Host[] seeds = refresher.merge(provider.refreshSeedCandidates().toArray(new Host[0]), true);
+		SeedCandidateContext ctx = new SeedCandidateContext(policy.clusterName, staticSeeds, 0);
+		Host[] seeds = refresher.merge(provider.refreshSeedCandidates(ctx).toArray(new Host[0]), true);
 		snapshot.set(seeds);
 		refresher.start(seeds);
 		snapshots.add(snapshot.get());

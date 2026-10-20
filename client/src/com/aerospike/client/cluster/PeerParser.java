@@ -32,6 +32,7 @@ public final class PeerParser {
 	private final Info parser;
 	private String nodeName;
 	private String tlsName;
+	private List<Host> advertised;
 	private final int portDefault;
 	public final int generation;
 
@@ -142,6 +143,7 @@ public final class PeerParser {
 		peer.tlsName = tlsName = parser.parseString(',');
 		parser.offset++;
 		peer.alternateMissing = cluster.useServicesAlternate && parser.buffer[parser.offset + 1] == ']';
+		peer.advertised = advertised = new ArrayList<Host>(4);
 		peer.hosts = parseHosts();
 		parser.expect(']');
 		return peer;
@@ -193,10 +195,12 @@ public final class PeerParser {
 			if (b == ':') {
 				parser.offset++;
 				int port = parser.parseInt();
+				advertised.add(new Host(host, tlsName, port));
 				return cluster.translateAddress(nodeName, tlsName, host, port);
 			}
 
 			if (b == ',' || b == ']') {
+				advertised.add(new Host(host, tlsName, portDefault));
 				return cluster.translateAddress(nodeName, tlsName, host, portDefault);
 			}
 		}

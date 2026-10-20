@@ -24,6 +24,7 @@ import java.net.SocketTimeoutException;
 import java.nio.ByteBuffer;
 import java.util.ArrayDeque;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -90,6 +91,7 @@ public class Node implements Closeable {
 	int partitionGeneration;
 	private int rebalanceGeneration;
 	protected int peersCount;
+	private List<Host> advertisedHosts;
 	protected int referenceCount;
 	protected int failures;
 	private final int features;
@@ -439,6 +441,8 @@ public class Node implements Closeable {
 			boolean peersValidated = true;
 
 			for (Peer peer : peers.peers) {
+				compareAdvertised(peers, peer);
+
 				if (findPeerNode(cluster, peers, peer)) {
 					// Node already exists. Do not even try to connect to hosts.
 					continue;
@@ -485,6 +489,7 @@ public class Node implements Closeable {
 
 						// Create new node.
 						Node node = cluster.createNode(nv);
+						node.advertisedHosts = peer.advertised;
 						peers.nodes.put(nv.name, node);
 						nodeValidated = true;
 
@@ -524,6 +529,19 @@ public class Node implements Closeable {
 		catch (Throwable e) {
 			refreshFailed(e);
 		}
+	}
+
+	private void compareAdvertised(Peers peers, Peer peer) {
+		Node node = cluster.nodesMap.get(peer.nodeName);
+
+		if (node == null || peer.advertised == null) {
+			return;
+		}
+
+		if (node.advertisedHosts != null && ! node.advertisedHosts.equals(peer.advertised)) {
+			peers.addressChanged = true;
+		}
+		node.advertisedHosts = peer.advertised;
 	}
 
 	private AerospikeException.TranslationCollision findCollision(Peers peers, Peer peer) {

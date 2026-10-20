@@ -35,10 +35,17 @@ public class StaticTranslationConfig {
     private static final List<String> ON_MISS = List.of("pass_through", "strict");
 
     /**
-     * {@code provider}: {@code static-map}, {@code port-map} or {@code pass-through}. Null when
-     * neither {@code provider} nor {@code static_map} is set.
+     * {@code provider}: {@code static-map}, {@code port-map}, {@code pass-through} or a name
+     * registered with {@link com.aerospike.client.policy.ClientPolicy#registerAddressTranslator}.
+     * Null when neither {@code provider} nor {@code static_map} is set.
      */
     public StringProperty provider;
+
+    /**
+     * Every key of the block except {@code provider}, passed to the registered factory. Null when
+     * {@code provider} is absent or a built-in name.
+     */
+    public Map<String,Object> options;
 
     /**
      * {@code on_miss}.
@@ -84,7 +91,15 @@ public class StaticTranslationConfig {
 
         value = map.get("provider");
 
-        String name = (value != null)? YamlValues.enumValue(PATH + ".provider", value, PROVIDERS) : "static-map";
+        String name;
+
+        if (value instanceof String && ! PROVIDERS.contains(value)) {
+            name = (String)value;
+            options = YamlValues.options(PATH, map);
+        }
+        else {
+            name = (value != null)? YamlValues.enumValue(PATH + ".provider", value, PROVIDERS) : "static-map";
+        }
 
         if (staticMap != null && ! name.equals("static-map")) {
             throw new AerospikeException(PATH + ".static_map is only valid with provider static-map, not '" + name + "'");

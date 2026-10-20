@@ -21,6 +21,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.IntFunction;
 
 import com.aerospike.client.Host;
+import com.aerospike.client.discovery.SeedCandidateContext;
 import com.aerospike.client.discovery.SeedCandidateProvider;
 
 final class TestSeedProvider implements SeedCandidateProvider {
@@ -39,7 +40,7 @@ final class TestSeedProvider implements SeedCandidateProvider {
 	}
 
 	@Override
-	public List<Host> refreshSeedCandidates() {
+	public List<Host> refreshSeedCandidates(SeedCandidateContext ctx) {
 		int call = calls.incrementAndGet();
 
 		if (sleepMillis > 0) {

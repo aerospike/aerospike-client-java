@@ -346,7 +346,15 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		String configPath = YamlConfigProvider.getConfigPath();
 
 		if (configPath != null) {
-			this.configProvider = YamlConfigProvider.getConfigProvider(configPath);
+			try {
+				this.configProvider = new YamlConfigProvider(configPath);
+			}
+			catch (Exception e) {
+				if (Log.warnEnabled()) {
+					Log.warn(e.getMessage());
+				}
+				this.configProvider = null;
+			}
 		}
 		else {
 			this.configProvider = null;
@@ -367,7 +375,15 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		mergedOperatePolicyReadDefault = operatePolicyReadDefault;
 
 		if (configProvider != null) {
-			mergePoliciesWithConfig();
+			try {
+				mergePoliciesWithConfig();
+			}
+			catch (AerospikeException ae) {
+				if (Log.warnEnabled()) {
+					Log.warn("Failed to parse " + configPath + ": " + ae);
+				}
+				this.configProvider = null;
+			}
 		}
 
 		version = Optional.ofNullable(getClass().getPackage())
@@ -642,19 +658,30 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * Restore default values to the merged default policies. A "re-merging" with any existing config will also occur.
 	 */
 	public void restorePolicyDefaults() {
-		mergedClientPolicy = new ClientPolicy(new ClientPolicy(), configProvider, true);
-		mergedReadPolicyDefault = new Policy(readPolicyDefault, configProvider, true);
-		mergedWritePolicyDefault = new WritePolicy(writePolicyDefault, configProvider, true, "");
-		mergedScanPolicyDefault = new ScanPolicy(scanPolicyDefault, configProvider, true);
-		mergedQueryPolicyDefault = new QueryPolicy(queryPolicyDefault, configProvider, true);
-		mergedBatchPolicyDefault = BatchPolicy.mergeRead(batchPolicyDefault, configProvider, true, "");
-		mergedBatchParentPolicyWriteDefault = BatchPolicy.mergeWrite(batchParentPolicyWriteDefault, configProvider, true, "(Parent)");
-		mergedBatchWritePolicyDefault = new BatchWritePolicy(batchWritePolicyDefault, configProvider, true);
-		mergedBatchDeletePolicyDefault = new BatchDeletePolicy(batchDeletePolicyDefault, configProvider, true);
-		mergedBatchUDFPolicyDefault = new BatchUDFPolicy(batchUDFPolicyDefault, configProvider, true);
-		mergedTxnVerifyPolicyDefault = new TxnVerifyPolicy(txnVerifyPolicyDefault, configProvider, true);
-		mergedTxnRollPolicyDefault = new TxnRollPolicy(txnRollPolicyDefault, configProvider, true);
-		mergedOperatePolicyReadDefault = new WritePolicy(operatePolicyReadDefault, configProvider, true, "(Operate)");
+		ConfigurationProvider provider = configProvider;
+
+		try {
+			mergedClientPolicy = new ClientPolicy(new ClientPolicy(), provider, true);
+		}
+		catch (AerospikeException ae) {
+			if (Log.warnEnabled()) {
+				Log.warn("Failed to parse " + YamlConfigProvider.getConfigPath() + ": " + ae);
+			}
+			provider = null;
+			mergedClientPolicy = new ClientPolicy();
+		}
+		mergedReadPolicyDefault = new Policy(readPolicyDefault, provider, true);
+		mergedWritePolicyDefault = new WritePolicy(writePolicyDefault, provider, true, "");
+		mergedScanPolicyDefault = new ScanPolicy(scanPolicyDefault, provider, true);
+		mergedQueryPolicyDefault = new QueryPolicy(queryPolicyDefault, provider, true);
+		mergedBatchPolicyDefault = BatchPolicy.mergeRead(batchPolicyDefault, provider, true, "");
+		mergedBatchParentPolicyWriteDefault = BatchPolicy.mergeWrite(batchParentPolicyWriteDefault, provider, true, "(Parent)");
+		mergedBatchWritePolicyDefault = new BatchWritePolicy(batchWritePolicyDefault, provider, true);
+		mergedBatchDeletePolicyDefault = new BatchDeletePolicy(batchDeletePolicyDefault, provider, true);
+		mergedBatchUDFPolicyDefault = new BatchUDFPolicy(batchUDFPolicyDefault, provider, true);
+		mergedTxnVerifyPolicyDefault = new TxnVerifyPolicy(txnVerifyPolicyDefault, provider, true);
+		mergedTxnRollPolicyDefault = new TxnRollPolicy(txnRollPolicyDefault, provider, true);
+		mergedOperatePolicyReadDefault = new WritePolicy(operatePolicyReadDefault, provider, true, "(Operate)");
 	}
 
 	//-------------------------------------------------------
