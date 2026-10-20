@@ -1977,6 +1977,7 @@ public class Command {
 	// Query
 	//--------------------------------------------------
 
+	@SuppressWarnings("deprecation")
 	public final void setQuery(
 		Cluster cluster,
 		Policy policy,
@@ -1986,22 +1987,8 @@ public class Command {
 		NodePartitions nodePartitions,
 		Node node
 	) {
-		setQuery(cluster, policy, statement, taskId, background, nodePartitions, node, false);
-	}
-
-	@SuppressWarnings("deprecation")
-	public final void setQuery(
-		Cluster cluster,
-		Policy policy,
-		Statement statement,
-		long taskId,
-		boolean background,
-		NodePartitions nodePartitions,
-		Node node,
-		boolean sendTopK
-	) {
 		byte[] functionArgBuffer = null;
-		TopKFields topKFields = getTopKFields(statement, sendTopK);
+		TopKFields topKFields = getTopKFields(statement);
 		int fieldCount = 0;
 		int filterSize = 0;
 		int binNameSize = 0;
@@ -2360,8 +2347,8 @@ public class Command {
 		return field;
 	}
 
-	private static TopKFields getTopKFields(Statement statement, boolean sendTopK) {
-		if (! sendTopK || ! statement.hasTopK()) {
+	private static TopKFields getTopKFields(Statement statement) {
+		if (! statement.hasTopK()) {
 			return null;
 		}
 		return new TopKFields(getTopKOrderByField(statement), getTopKField(statement.getTopKLimit()));

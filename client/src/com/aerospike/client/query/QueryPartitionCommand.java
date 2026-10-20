@@ -35,7 +35,6 @@ public final class QueryPartitionCommand extends MultiCommand {
 	private final ReduceSpec<Record, ?> reducer;
 	private final PartitionTracker tracker;
 	private final NodePartitions nodePartitions;
-	private final boolean sendTopK;
 
 	public QueryPartitionCommand(
 		Cluster cluster,
@@ -45,8 +44,7 @@ public final class QueryPartitionCommand extends MultiCommand {
 		RecordSet recordSet,
 		ReduceSpec<Record, ?> reducer,
 		PartitionTracker tracker,
-		NodePartitions nodePartitions,
-		boolean sendTopK
+		NodePartitions nodePartitions
 	) {
 		super(cluster, policy, nodePartitions.node, statement.namespace, tracker.socketTimeout, tracker.totalTimeout);
 		this.statement = statement;
@@ -55,7 +53,6 @@ public final class QueryPartitionCommand extends MultiCommand {
 		this.reducer = reducer;
 		this.tracker = tracker;
 		this.nodePartitions = nodePartitions;
-		this.sendTopK = sendTopK;
 	}
 
 	@Override
@@ -77,7 +74,7 @@ public final class QueryPartitionCommand extends MultiCommand {
 
 	@Override
 	protected final void writeBuffer() {
-		setQuery(cluster, policy, statement, taskId, false, nodePartitions, nodePartitions.node, sendTopK);
+		setQuery(cluster, policy, statement, taskId, false, nodePartitions, nodePartitions.node);
 	}
 
 	@Override

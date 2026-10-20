@@ -22,6 +22,7 @@ import static org.junit.Assert.assertTrue;
 import java.util.Arrays;
 
 import org.junit.AfterClass;
+import org.junit.Assume;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -51,6 +52,9 @@ public class TestQueryReduce extends TestSync {
 
 	@BeforeClass
 	public static void prepare() {
+		Assume.assumeTrue("Top-K requires server version 8.2.1 or later",
+			args.serverVersion.isGreaterOrEqual(8, 2, 1, 0));
+
 		try {
 			IndexTask itask = client.createIndex(args.indexPolicy, args.namespace, args.set, indexName, binName, IndexType.NUMERIC);
 			itask.waitTillComplete();

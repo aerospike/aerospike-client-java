@@ -9,6 +9,8 @@ package com.aerospike.client.query;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThrows;
+import static org.junit.Assert.assertTrue;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -18,10 +20,12 @@ import org.junit.Assume;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Bin;
 import com.aerospike.client.Key;
 import com.aerospike.client.Operation;
-import com.aerospike.client.cluster.Node;
+import com.aerospike.client.ResultCode;
+import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.exp.Exp;
 import com.aerospike.client.exp.ExpOperation;
 import com.aerospike.client.exp.ExpReadFlags;
@@ -55,11 +59,26 @@ public class TestTopKPushdown extends TestSync {
 	}
 
 	private static void requireCapableCluster() {
-		Node[] nodes = client.getCluster().getNodes();
-		Assume.assumeTrue(nodes.length > 0);
+		Assume.assumeTrue("Top-K pushdown requires server version 8.2.1 or later on every node",
+			client.getCluster().hasQueryOrderBy);
+	}
 
-		for (Node node : nodes) {
-			Assume.assumeTrue("Cluster must advertise query-order-by", node.hasQueryOrderBy());
+	@Test
+	public void topKFailsWhenAnyNodeLacksSupport() {
+		Cluster cluster = client.getCluster();
+		boolean saved = cluster.hasQueryOrderBy;
+		cluster.hasQueryOrderBy = false;
+
+		try {
+			AerospikeException ae = assertThrows(AerospikeException.class,
+				() -> client.query(null, pushdown(Order.DESC, 3)));
+			assertEquals(ResultCode.PARAMETER_ERROR, ae.getResultCode());
+			assertTrue(ae.getMessage().contains("not supported by all nodes"));
+
+			assertArrayEquals(new long[] {100, 99, 98}, values(clientOnly(Order.DESC, 3), BIN));
+		}
+		finally {
+			cluster.hasQueryOrderBy = saved;
 		}
 	}
 

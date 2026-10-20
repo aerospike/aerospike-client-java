@@ -32,20 +32,22 @@ import com.aerospike.test.sync.TestSync;
 
 public class TestTopKRequestEncoding extends TestSync {
 	@Test
-	public void topKFieldsAreEncodedOnlyForPushdown() {
+	public void topKFieldsAreEncodedOnlyForTopK() {
 		Cluster cluster = ((AerospikeClient)client).getCluster();
 		Node node = cluster.getRandomNode();
 		Statement statement = statement();
+		statement.setOrderBy("rank", BinDataType.INTEGER, Order.DESC);
+		statement.setTopK(3);
 
-		Map<Integer, byte[]> pushed = fields(build(cluster, node, statement, true));
-		assertEquals(6, pushed.size());
-		assertArrayEquals(new byte[] {1, 1, 0, 4, 'r', 'a', 'n', 'k'}, pushed.get(FieldType.ORDER_BY));
-		assertArrayEquals(new byte[] {0, 0, 0, 3}, pushed.get(FieldType.TOP_K));
+		Map<Integer, byte[]> topK = fields(build(cluster, node, statement));
+		assertEquals(6, topK.size());
+		assertArrayEquals(new byte[] {1, 1, 0, 4, 'r', 'a', 'n', 'k'}, topK.get(FieldType.ORDER_BY));
+		assertArrayEquals(new byte[] {0, 0, 0, 3}, topK.get(FieldType.TOP_K));
 
-		Map<Integer, byte[]> fallback = fields(build(cluster, node, statement, false));
-		assertEquals(4, fallback.size());
-		assertFalse(fallback.containsKey(FieldType.ORDER_BY));
-		assertFalse(fallback.containsKey(FieldType.TOP_K));
+		Map<Integer, byte[]> plain = fields(build(cluster, node, statement()));
+		assertEquals(4, plain.size());
+		assertFalse(plain.containsKey(FieldType.ORDER_BY));
+		assertFalse(plain.containsKey(FieldType.TOP_K));
 	}
 
 	private Statement statement() {
@@ -53,14 +55,12 @@ public class TestTopKRequestEncoding extends TestSync {
 		statement.setNamespace(args.namespace);
 		statement.setSetName("topKWire");
 		statement.setBinNames("rank");
-		statement.setOrderBy("rank", BinDataType.INTEGER, Order.DESC);
-		statement.setTopK(3);
 		return statement;
 	}
 
-	private byte[] build(Cluster cluster, Node node, Statement statement, boolean sendTopK) {
+	private byte[] build(Cluster cluster, Node node, Statement statement) {
 		Command command = new TestCommand();
-		command.setQuery(cluster, new QueryPolicy(), statement, 1, false, null, node, sendTopK);
+		command.setQuery(cluster, new QueryPolicy(), statement, 1, false, null, node);
 		return Arrays.copyOf(command.dataBuffer, command.dataOffset);
 	}
 
