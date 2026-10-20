@@ -27,8 +27,13 @@ import java.util.Map;
 
 import org.junit.Test;
 
+import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
+import com.aerospike.client.Operation;
 import com.aerospike.client.Record;
+import com.aerospike.client.ResultCode;
+import com.aerospike.client.cluster.Node;
+import com.aerospike.client.policy.QueryPolicy;
 
 /**
  * White-box unit tests for the package-private {@code Statement.setReduce} / {@code getReduce} /
@@ -137,13 +142,7 @@ public class TestStatementReduce {
 		Statement stmt = new Statement();
 		stmt.setReduce(Reduce.orderBy(BIN, BinDataType.INTEGER, Order.DESC, OrderByFlags.NONE));
 
-		try {
-			stmt.resolveReduce();
-			fail("Expected IllegalArgumentException");
-		}
-		catch (IllegalArgumentException expected) {
-			// pass
-		}
+		assertParameterError(stmt::resolveReduce);
 	}
 
 	@Test
@@ -153,13 +152,7 @@ public class TestStatementReduce {
 			Reduce.orderBy("binA", BinDataType.INTEGER, Order.DESC, OrderByFlags.NONE),
 			Reduce.limit("binB", 2));
 
-		try {
-			stmt.resolveReduce();
-			fail("Expected IllegalArgumentException for mismatched bins");
-		}
-		catch (IllegalArgumentException expected) {
-			// pass
-		}
+		assertParameterError(stmt::resolveReduce);
 	}
 
 	@Test
@@ -170,13 +163,7 @@ public class TestStatementReduce {
 			Reduce.orderBy(BIN, BinDataType.INTEGER, Order.ASC, OrderByFlags.NONE),
 			Reduce.limit(BIN, 2));
 
-		try {
-			stmt.resolveReduce();
-			fail("Expected IllegalArgumentException for duplicate orderBy");
-		}
-		catch (IllegalArgumentException expected) {
-			// pass
-		}
+		assertParameterError(stmt::resolveReduce);
 	}
 
 	@Test
@@ -187,13 +174,7 @@ public class TestStatementReduce {
 			Reduce.limit(BIN, 2),
 			Reduce.limit(BIN, 3));
 
-		try {
-			stmt.resolveReduce();
-			fail("Expected IllegalArgumentException for duplicate limit");
-		}
-		catch (IllegalArgumentException expected) {
-			// pass
-		}
+		assertParameterError(stmt::resolveReduce);
 	}
 
 	@Test
@@ -273,15 +254,108 @@ public class TestStatementReduce {
 		name.setOrderBy("sixteen-byte-bin", BinDataType.INTEGER, Order.ASC);
 		name.setTopK(1);
 		assertInvalidTopK(name);
+
+		Statement limit = new Statement();
+		limit.setOrderBy(BIN, BinDataType.INTEGER, Order.ASC);
+		limit.setTopK(0);
+		assertInvalidTopK(limit);
+
+		Statement noOrderKey = new Statement();
+		noOrderKey.setTopK(5);
+		assertInvalidTopK(noOrderKey);
+		assertParameterError(noOrderKey::resolveReduce);
+	}
+
+	@Test
+	public void setTopKBeforeSetOrderByResolvesToTopK() {
+		Statement stmt = new Statement();
+		stmt.setTopK(2);
+		stmt.setOrderBy(BIN, BinDataType.INTEGER, Order.ASC);
+		stmt.validateTopK();
+
+		ReduceSpec<Record, Record> resolved = stmt.resolveReduce();
+		resolved.acceptPartial(record(BIN, 3L), key("k1"));
+		resolved.acceptPartial(record(BIN, 1L), key("k2"));
+		resolved.acceptPartial(record(BIN, 2L), key("k3"));
+
+		Record[] result = resolved.getResult();
+		assertEquals(2, result.length);
+		assertEquals(1L, result[0].getLong(BIN));
+		assertEquals(2L, result[1].getLong(BIN));
+	}
+
+	@Test
+	public void repeatedSettersReplaceTopKParts() {
+		Statement stmt = new Statement();
+		stmt.setOrderBy(BIN, BinDataType.INTEGER, Order.ASC);
+		stmt.setTopK(5);
+		stmt.resolveReduce();
+
+		stmt.setTopK(3);
+		stmt.setOrderBy(BIN, BinDataType.INTEGER, Order.DESC);
+
+		assertEquals(3, stmt.getTopKLimit());
+		assertEquals(Order.DESC, stmt.getTopKOrder());
+
+		ReduceSpec<Record, Record> resolved = stmt.resolveReduce();
+
+		for (int i = 1; i <= 5; i++) {
+			resolved.acceptPartial(record(BIN, (long)i), key("k" + i));
+		}
+
+		Record[] result = resolved.getResult();
+		assertEquals(3, result.length);
+		assertEquals(5L, result[0].getLong(BIN));
+	}
+
+	@Test
+	public void topKRejectsOrderKeyFromMultipleProjectionOperations() {
+		Statement stmt = new Statement();
+		stmt.setOperations(new Operation[] {Operation.get(BIN), Operation.get(BIN)});
+		stmt.setOrderBy(BIN, BinDataType.INTEGER, Order.ASC);
+		stmt.setTopK(1);
+		assertInvalidTopK(stmt);
+	}
+
+	@Test
+	public void topKRejectsResumedPartitionFilter() {
+		Statement stmt = new Statement();
+		stmt.setNamespace(NS);
+		stmt.setOrderBy(BIN, BinDataType.INTEGER, Order.ASC);
+		stmt.setTopK(1);
+
+		PartitionFilter after = PartitionFilter.after(key("k1"));
+		assertParameterError(() -> new PartitionTracker(new QueryPolicy(), stmt, new Node[0], after));
+		assertNull(after.getPartitions());
+
+		PartitionFilter cursor = PartitionFilter.range(0, 2);
+		PartitionStatus resumed = new PartitionStatus(1);
+		resumed.digest = key("k1").digest;
+		cursor.setPartitions(new PartitionStatus[] {new PartitionStatus(0), resumed});
+		assertParameterError(() -> new PartitionTracker(new QueryPolicy(), stmt, 1, cursor));
+	}
+
+	@Test
+	public void topKAcceptsFreshPartitionFilter() {
+		Statement stmt = new Statement();
+		stmt.setNamespace(NS);
+		stmt.setOrderBy(BIN, BinDataType.INTEGER, Order.ASC);
+		stmt.setTopK(1);
+
+		new PartitionTracker(new QueryPolicy(), stmt, 1, PartitionFilter.range(0, 2));
 	}
 
 	private static void assertInvalidTopK(Statement statement) {
+		assertParameterError(statement::validateTopK);
+	}
+
+	private static void assertParameterError(Runnable action) {
 		try {
-			statement.validateTopK();
-			fail("Expected IllegalArgumentException");
+			action.run();
+			fail("Expected AerospikeException");
 		}
-		catch (IllegalArgumentException expected) {
-			// Expected.
+		catch (AerospikeException expected) {
+			assertEquals(ResultCode.PARAMETER_ERROR, expected.getResultCode());
 		}
 	}
 }

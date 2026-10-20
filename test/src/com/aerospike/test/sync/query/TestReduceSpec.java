@@ -29,8 +29,10 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import org.junit.Test;
 
+import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
+import com.aerospike.client.ResultCode;
 import com.aerospike.client.query.BinDataType;
 import com.aerospike.client.query.Order;
 import com.aerospike.client.query.OrderByFlags;
@@ -193,21 +195,8 @@ public class TestReduceSpec {
 
 	@Test
 	public void limitRejectsOutOfRangeValues() {
-		try {
-			Reduce.limit(BIN, 0);
-			fail("Expected IllegalArgumentException for limit below 1");
-		}
-		catch (IllegalArgumentException expected) {
-			// pass
-		}
-
-		try {
-			Reduce.limit(BIN, 1001);
-			fail("Expected IllegalArgumentException for limit above 1000");
-		}
-		catch (IllegalArgumentException expected) {
-			// pass
-		}
+		assertParameterError(() -> Reduce.limit(BIN, 0));
+		assertParameterError(() -> Reduce.limit(BIN, 1001));
 	}
 
 	@Test
@@ -243,15 +232,19 @@ public class TestReduceSpec {
 	//-------------------------------------------------------
 
 	@Test
-	public void setTopKWithoutSetOrderByThrows() {
+	public void setTopKWithoutSetOrderByFailsValidation() {
 		Statement stmt = new Statement();
+		stmt.setTopK(5);
+		assertParameterError(stmt::validateTopK);
+	}
 
+	private static void assertParameterError(Runnable action) {
 		try {
-			stmt.setTopK(5);
-			fail("Expected IllegalStateException");
+			action.run();
+			fail("Expected AerospikeException");
 		}
-		catch (IllegalStateException expected) {
-			// pass
+		catch (AerospikeException expected) {
+			assertEquals(ResultCode.PARAMETER_ERROR, expected.getResultCode());
 		}
 	}
 
