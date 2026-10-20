@@ -150,8 +150,9 @@ endpoints=[consul-1.example.com:8500]}` and the `nat-table` factory receives
 `static_map` is valid only with `static-map` and `port_map` only with `port-map`, so a block
 naming a registered translator cannot carry them.
 
-The client closes the provider it was constructed with: `AerospikeClient.close()` calls
-`SeedCandidateProvider.close()` once.
+The client closes the provider it was constructed with: after `AerospikeClient.close()`,
+`SeedCandidateProvider.close()` is called once on the tend thread as it exits, after the last
+refresh has returned. `AerospikeClient.close()` does not wait for it.
 
 ## Invalid settings
 

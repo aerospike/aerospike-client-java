@@ -213,7 +213,7 @@ public class SeedCandidateProviderSpiTest {
 		await(() -> provider.contexts.size() >= 2);
 
 		client.close();
-		assertEquals(1, provider.closes.get());
+		await(() -> provider.closes.get() == 1);
 		assertEquals(provider.callsAtClose, provider.contexts.size());
 
 		int tends = cluster.getInvalidNodeCount();
@@ -226,29 +226,30 @@ public class SeedCandidateProviderSpiTest {
 	}
 
 	@Test
-	public void closeExceptionIsLoggedNotThrown() {
+	public void closeExceptionIsLoggedNotThrown() throws Exception {
 		Provider provider = new Provider(false);
 		provider.closeError = new IllegalStateException("close boom");
 
 		AerospikeClient client = new AerospikeClient(policy(provider), DEAD_SEED);
 		client.close();
 
-		assertEquals(1, provider.closes.get());
+		await(() -> provider.closes.get() == 1);
+		await(() -> warnings.stream().anyMatch(m -> m.contains("close boom")));
 		assertTrue(warnings.toString(), warnings.stream().anyMatch(m ->
 			m.startsWith("Seed candidate provider " + Provider.class.getName() + " close failed") &&
 			m.contains("close boom")));
 	}
 
 	@Test
-	public void sharedProviderClosedByEachClient() {
+	public void sharedProviderClosedByEachClient() throws Exception {
 		Provider provider = new Provider(false);
 		AerospikeClient c1 = new AerospikeClient(policy(provider), DEAD_SEED);
 		AerospikeClient c2 = new AerospikeClient(policy(provider), DEAD_SEED);
 
 		c1.close();
-		assertEquals(1, provider.closes.get());
+		await(() -> provider.closes.get() == 1);
 		c2.close();
-		assertEquals(2, provider.closes.get());
+		await(() -> provider.closes.get() == 2);
 	}
 
 	private static void await(BooleanSupplier condition) throws InterruptedException {

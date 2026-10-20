@@ -374,8 +374,8 @@ public class ClientPolicy {
 	 * YAML key: {@code static.client.discovery.provider}: {@code static}, this default, or a name
 	 * registered with {@link #registerSeedCandidateProvider}. Other providers are set in code.
 	 * <p>
-	 * {@link com.aerospike.client.AerospikeClient#close()} calls {@link SeedCandidateProvider#close()}
-	 * on the provider once.
+	 * {@link SeedCandidateProvider#close()} is called on the provider once after
+	 * {@link com.aerospike.client.AerospikeClient#close()}.
 	 */
 	public SeedCandidateProvider seedCandidateProvider;
 
@@ -571,8 +571,6 @@ public class ClientPolicy {
 
 	private static final String DISCOVERY_PROVIDER = "static.client.discovery.provider";
 	private static final String TRANSLATION_PROVIDER = "static.client.translation.provider";
-	private static final List<String> BUILT_IN_SEED_PROVIDERS = List.of("static", "dns", "aws-tags");
-	private static final List<String> BUILT_IN_TRANSLATORS = List.of("static-map", "port-map", "pass-through");
 
 	private Map<String,Function<Map<String,Object>,SeedCandidateProvider>> seedCandidateProviderFactories;
 	private Map<String,Function<Map<String,Object>,AddressTranslator>> addressTranslatorFactories;
@@ -685,7 +683,7 @@ public class ClientPolicy {
 	 */
 	public void registerSeedCandidateProvider(String name, Function<Map<String,Object>,SeedCandidateProvider> factory) {
 		seedCandidateProviderFactories = register("seed candidate provider", name, factory,
-			BUILT_IN_SEED_PROVIDERS, seedCandidateProviderFactories);
+			StaticDiscoveryConfig.PROVIDERS, seedCandidateProviderFactories);
 	}
 
 	/**
@@ -711,7 +709,7 @@ public class ClientPolicy {
 	 */
 	public void registerAddressTranslator(String name, Function<Map<String,Object>,AddressTranslator> factory) {
 		addressTranslatorFactories = register("address translator", name, factory,
-			BUILT_IN_TRANSLATORS, addressTranslatorFactories);
+			StaticTranslationConfig.PROVIDERS, addressTranslatorFactories);
 	}
 
 	private static <T> Map<String,Function<Map<String,Object>,T>> register(
@@ -833,12 +831,12 @@ public class ClientPolicy {
 
 		if (staCC.discovery != null && staCC.discovery.provider != null) {
 			checkRegistered(DISCOVERY_PROVIDER, staCC.discovery.provider.value, staCC.discovery.options,
-				List.of("static"), seedCandidateProviderFactories);
+				StaticDiscoveryConfig.YAML_PROVIDERS, seedCandidateProviderFactories);
 		}
 
 		if (staCC.translation != null && staCC.translation.provider != null) {
 			checkRegistered(TRANSLATION_PROVIDER, staCC.translation.provider.value, staCC.translation.options,
-				BUILT_IN_TRANSLATORS, addressTranslatorFactories);
+				StaticTranslationConfig.PROVIDERS, addressTranslatorFactories);
 		}
 
 		if (log && Log.infoEnabled()) {
@@ -927,15 +925,15 @@ public class ClientPolicy {
 		if (translation != null) {
 			if (translation.provider != null) {
 				switch (translation.provider.value) {
-				case "port-map":
+				case StaticTranslationConfig.PORT_MAP:
 					this.addressTranslator = new PortMapAddressTranslator(translation.portMap);
 					break;
 
-				case "pass-through":
+				case StaticTranslationConfig.PASS_THROUGH:
 					this.addressTranslator = PassThroughAddressTranslator.INSTANCE;
 					break;
 
-				case "static-map":
+				case StaticTranslationConfig.STATIC_MAP:
 					this.addressTranslator = (translation.staticMap != null)?
 						new StaticMapAddressTranslator(translation.staticMap) : null;
 					break;

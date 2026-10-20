@@ -62,9 +62,11 @@ public interface SeedCandidateProvider {
 	/**
 	 * Release resources held by the provider. The default does nothing.
 	 * <p>
-	 * Called once by {@link com.aerospike.client.AerospikeClient#close()} on the application thread
-	 * that closes the client, after periodic refresh has stopped. An exception is logged at warning
-	 * level and not thrown. A provider instance shared by several clients is closed by each of them.
+	 * Called once after {@link com.aerospike.client.AerospikeClient#close()}, when the last refresh
+	 * has returned: on the cluster tend thread as it exits, or on the thread that closes the client
+	 * when no tend thread runs. {@code AerospikeClient.close()} does not wait for it. An exception is
+	 * logged at warning level and not thrown. A provider instance shared by several clients is closed
+	 * by each of them.
 	 */
 	default void close() {
 	}

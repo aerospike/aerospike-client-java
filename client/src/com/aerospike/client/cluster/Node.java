@@ -441,7 +441,9 @@ public class Node implements Closeable {
 			boolean peersValidated = true;
 
 			for (Peer peer : peers.peers) {
-				compareAdvertised(peers, peer);
+				if (cluster.notifyViewChange) {
+					compareAdvertised(peers, peer);
+				}
 
 				if (findPeerNode(cluster, peers, peer)) {
 					// Node already exists. Do not even try to connect to hosts.

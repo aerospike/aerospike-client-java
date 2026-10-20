@@ -54,6 +54,7 @@ import com.aerospike.client.configuration.YamlConfigProvider;
 import com.aerospike.client.configuration.serializers.Configuration;
 import com.aerospike.client.configuration.serializers.StaticConfiguration;
 import com.aerospike.client.configuration.serializers.staticconfig.StaticClientConfig;
+import com.aerospike.client.configuration.serializers.staticconfig.StaticTranslationConfig;
 import com.aerospike.client.discovery.AddressTranslator;
 import com.aerospike.client.discovery.Endpoint;
 import com.aerospike.client.discovery.PassThroughAddressTranslator;
@@ -206,6 +207,9 @@ public class Cluster implements Runnable, Closeable {
 	// Cluster view change counter passed to the address translator.
 	private int viewChange;
 
+	// True when the address translator overrides onClusterViewChanged.
+	final boolean notifyViewChange;
+
 	// Milliseconds between dynamic configuration check for file modifications.
 	public final int configInterval;
 
@@ -258,6 +262,7 @@ public class Cluster implements Runnable, Closeable {
 			policy.seedCandidateProvider : new StaticSeedCandidateProvider(hosts);
 		this.addressTranslator = (policy.addressTranslator != null)?
 			policy.addressTranslator : new StaticMapAddressTranslator(policy.ipMap);
+		this.notifyViewChange = overridesViewChange(addressTranslator);
 		this.translationOnMiss = (policy.translationOnMiss != null)?
 			policy.translationOnMiss : TranslationMissMode.PASS_THROUGH;
 
@@ -553,12 +558,12 @@ public class Cluster implements Runnable, Closeable {
 
 	private static String translatorName(AddressTranslator translator) {
 		if (translator instanceof PassThroughAddressTranslator) {
-			return "pass-through";
+			return StaticTranslationConfig.PASS_THROUGH;
 		}
 		if (translator instanceof PortMapAddressTranslator) {
-			return "port-map";
+			return StaticTranslationConfig.PORT_MAP;
 		}
-		return (translator instanceof StaticMapAddressTranslator)? "static-map" : translator.getClass().getName();
+		return (translator instanceof StaticMapAddressTranslator)? StaticTranslationConfig.STATIC_MAP : translator.getClass().getName();
 	}
 
 	private void defaultTlsNames(Host[] hosts) {
@@ -730,6 +735,7 @@ public class Cluster implements Runnable, Closeable {
 			// Sleep between polling intervals.
 			Util.sleep(tendInterval);
 		}
+		seedRefresher.close();
 	}
 
 	/**
@@ -788,7 +794,7 @@ public class Cluster implements Runnable, Closeable {
 			}
 		}
 
-		if (! isInit && (nodes != nodesBefore || peers.addressChanged)) {
+		if (notifyViewChange && ! isInit && (nodes != nodesBefore || peers.addressChanged)) {
 			clusterViewChanged();
 		}
 
@@ -872,6 +878,16 @@ public class Cluster implements Runnable, Closeable {
 		}
 
 		processRecoverQueue();
+	}
+
+	private static boolean overridesViewChange(AddressTranslator translator) {
+		try {
+			return translator.getClass().getMethod("onClusterViewChanged", int.class).getDeclaringClass() !=
+				AddressTranslator.class;
+		}
+		catch (NoSuchMethodException e) {
+			return false;
+		}
 	}
 
 	private void clusterViewChanged() {
@@ -1810,10 +1826,16 @@ public class Cluster implements Runnable, Closeable {
 			return;
 		}
 
+		// The tend thread closes the seed provider on exit, so close it here only if it never ran.
+		boolean tendRunning = tendThread != null && tendThread.isAlive();
+
 		// Stop cluster tend thread.
 		tendValid = false;
 		tendThread.interrupt();
-		seedRefresher.close();
+
+		if (! tendRunning) {
+			seedRefresher.close();
+		}
 
 		synchronized(metricsLock) {
 			try {

@@ -17,6 +17,7 @@
 package com.aerospike.client.cluster;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import java.io.DataInputStream;
@@ -98,6 +99,39 @@ public class ClusterViewChangeTest {
 
 		for (FakeNode server : servers.values()) {
 			server.close();
+		}
+	}
+
+	@Test
+	public void viewChangeTrackedOnlyWhenTranslatorOverrides() {
+		ClientPolicy policy = new ClientPolicy();
+		policy.failIfNotConnected = false;
+		policy.timeout = 100;
+		Host seed = new Host("127.0.0.1", 1);
+
+		try (AerospikeClient client = new AerospikeClient(policy, seed)) {
+			assertFalse(client.getCluster().notifyViewChange);
+		}
+
+		policy.addressTranslator = advertised -> Optional.empty();
+
+		try (AerospikeClient client = new AerospikeClient(policy, seed)) {
+			assertFalse(client.getCluster().notifyViewChange);
+		}
+
+		policy.addressTranslator = new AddressTranslator() {
+			@Override
+			public Optional<Host> translate(Endpoint advertised) {
+				return Optional.empty();
+			}
+
+			@Override
+			public void onClusterViewChanged(int viewChange) {
+			}
+		};
+
+		try (AerospikeClient client = new AerospikeClient(policy, seed)) {
+			assertTrue(client.getCluster().notifyViewChange);
 		}
 	}
 

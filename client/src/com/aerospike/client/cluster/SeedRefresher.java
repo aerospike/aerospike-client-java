@@ -23,6 +23,7 @@ import java.util.function.Consumer;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Host;
 import com.aerospike.client.Log;
+import com.aerospike.client.configuration.serializers.staticconfig.StaticDiscoveryConfig;
 import com.aerospike.client.discovery.SeedCandidateContext;
 import com.aerospike.client.discovery.SeedCandidateProvider;
 import com.aerospike.client.discovery.SeedMergePolicy;
@@ -47,7 +48,6 @@ final class SeedRefresher {
 	private Host[] initSeeds;
 	private volatile int overrunCount;
 	private volatile boolean tripped;
-	private boolean closed;
 
 	SeedRefresher(SeedCandidateProvider provider, ClientPolicy policy, Consumer<Host[]> publisher) {
 		this(provider, policy, new Host[0], publisher);
@@ -117,8 +117,8 @@ final class SeedRefresher {
 		return set.toArray(new Host[set.size()]);
 	}
 
-	synchronized void tend(int tendCount, int tendInterval) {
-		if (! periodic || tripped || closed || tendCount % (refreshInterval / tendInterval) != 0) {
+	void tend(int tendCount, int tendInterval) {
+		if (! periodic || tripped || tendCount % (refreshInterval / tendInterval) != 0) {
 			return;
 		}
 
@@ -182,16 +182,9 @@ final class SeedRefresher {
 	}
 
 	/**
-	 * Stop periodic refresh, waiting for a refresh in progress, then close the provider.
+	 * Close the provider. Call once, after the last {@link #tend} call has returned.
 	 */
 	void close() {
-		synchronized (this) {
-			if (closed) {
-				return;
-			}
-			closed = true;
-		}
-
 		try {
 			provider.close();
 		}
@@ -204,7 +197,7 @@ final class SeedRefresher {
 	}
 
 	static String providerName(SeedCandidateProvider provider) {
-		return (provider instanceof StaticSeedCandidateProvider)? "static" : provider.getClass().getName();
+		return (provider instanceof StaticSeedCandidateProvider)? StaticDiscoveryConfig.STATIC : provider.getClass().getName();
 	}
 
 	int getOverrunCount() {
