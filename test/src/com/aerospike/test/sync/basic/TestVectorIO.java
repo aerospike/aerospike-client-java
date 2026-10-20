@@ -18,26 +18,37 @@ package com.aerospike.test.sync.basic;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertThrows;
 
 import java.util.Collections;
-import java.util.List;
-import java.util.Map;
 
+import org.junit.Assume;
+import org.junit.BeforeClass;
 import org.junit.Test;
+import org.junit.function.ThrowingRunnable;
 
+import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Bin;
 import com.aerospike.client.Key;
 import com.aerospike.client.Operation;
 import com.aerospike.client.Record;
+import com.aerospike.client.ResultCode;
 import com.aerospike.client.vector.Vector;
 import com.aerospike.test.sync.TestSync;
 
 /**
- * Server-round-trip tests for the vector particle type: writing and reading vector bins, and
- * vectors nested in list/map bins.
+ * Server-round-trip tests for the vector particle type: writing and reading vector bins, and the
+ * server's refusal of a vector nested in a list or map bin.
  */
 public class TestVectorIO extends TestSync {
 	private static final String binName = "vecbin";
+
+	@BeforeClass
+	public static void assumeVectorSupport() {
+		Assume.assumeTrue("Vectors require server version 8.2.1 or later",
+			args.serverVersion.isGreaterOrEqual(8, 2, 1, 0));
+	}
 
 	@Test
 	public void putGetFloat16() {
@@ -84,34 +95,28 @@ public class TestVectorIO extends TestSync {
 	}
 
 	@Test
-	public void vectorInListBin() {
+	public void vectorInListBinRejectedByServer() {
 		Key key = new Key(args.namespace, args.set, "veclistbin");
 		client.delete(null, key);
 
 		Vector v = Vector.ofInt32(new int[] {1, 2, 3});
-		client.put(null, key, new Bin("listbin", Collections.singletonList(v)));
-
-		Record record = client.get(null, key);
-		assertRecordFound(key, record);
-
-		List<?> list = record.getList("listbin");
-		assertEquals(1, list.size());
-		assertEquals(v, list.get(0));
+		assertParameterError(() -> client.put(null, key, new Bin("listbin", Collections.singletonList(v))));
+		assertNull(client.get(null, key));
 	}
 
 	@Test
-	public void vectorInMapBin() {
+	public void vectorInMapBinRejectedByServer() {
 		Key key = new Key(args.namespace, args.set, "vecmapbin");
 		client.delete(null, key);
 
 		Vector v = Vector.ofFloat32(new float[] {1.5f, 2.5f});
-		client.put(null, key, new Bin("mapbin", Collections.singletonMap("k", v)));
+		assertParameterError(() -> client.put(null, key, new Bin("mapbin", Collections.singletonMap("k", v))));
+		assertNull(client.get(null, key));
+	}
 
-		Record record = client.get(null, key);
-		assertRecordFound(key, record);
-
-		Map<?, ?> map = record.getMap("mapbin");
-		assertEquals(v, map.get("k"));
+	private static void assertParameterError(ThrowingRunnable action) {
+		AerospikeException e = assertThrows(AerospikeException.class, action);
+		assertEquals(ResultCode.PARAMETER_ERROR, e.getResultCode());
 	}
 
 	@Test

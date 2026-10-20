@@ -170,10 +170,10 @@ public class TestVector extends TestBase {
 
 	@Test
 	public void wireSize() {
-		assertEquals(8 + 3 * 2, Vector.ofFloat16(new short[3]).getWireSize());
-		assertEquals(8 + 4 * 4, Vector.ofInt32(new int[4]).getWireSize());
-		assertEquals(8 + 5 * 4, Vector.ofFloat32(new float[5]).getWireSize());
-		assertEquals(8 + 2 * 8, Vector.ofFloat64(new double[2]).getWireSize());
+		assertEquals(6 + 3 * 2, Vector.ofFloat16(new short[3]).getWireSize());
+		assertEquals(6 + 4 * 4, Vector.ofInt32(new int[4]).getWireSize());
+		assertEquals(6 + 5 * 4, Vector.ofFloat32(new float[5]).getWireSize());
+		assertEquals(6 + 2 * 8, Vector.ofFloat64(new double[2]).getWireSize());
 	}
 
 	//-------------------------------------------------------
@@ -227,7 +227,7 @@ public class TestVector extends TestBase {
 		assertHeader(buffer, ElementType.FLOAT32, data.length);
 
 		for (int i = 0; i < data.length; i++) {
-			int bits = decodeIntLE(buffer, 8 + i * 4);
+			int bits = decodeIntLE(buffer, 6 + i * 4);
 			assertEquals(data[i], Float.intBitsToFloat(bits), 0.0f);
 		}
 	}
@@ -244,7 +244,7 @@ public class TestVector extends TestBase {
 		assertHeader(buffer, ElementType.FLOAT64, data.length);
 
 		for (int i = 0; i < data.length; i++) {
-			long bits = decodeLongLE(buffer, 8 + i * 8);
+			long bits = decodeLongLE(buffer, 6 + i * 8);
 			assertEquals(data[i], Double.longBitsToDouble(bits), 0.0);
 		}
 	}
@@ -261,7 +261,7 @@ public class TestVector extends TestBase {
 		assertHeader(buffer, ElementType.INT32, data.length);
 
 		for (int i = 0; i < data.length; i++) {
-			assertEquals(data[i], decodeIntLE(buffer, 8 + i * 4));
+			assertEquals(data[i], decodeIntLE(buffer, 6 + i * 4));
 		}
 	}
 
@@ -277,7 +277,7 @@ public class TestVector extends TestBase {
 		assertHeader(buffer, ElementType.FLOAT16, data.length);
 
 		for (int i = 0; i < data.length; i++) {
-			assertEquals(data[i], decodeShortLE(buffer, 8 + i * 2));
+			assertEquals(data[i], decodeShortLE(buffer, 6 + i * 2));
 		}
 	}
 
@@ -361,14 +361,19 @@ public class TestVector extends TestBase {
 	}
 
 	@Test
-	public void fromIgnoresTrailingBytes() {
+	public void fromTrailingBytesThrows() {
 		Vector v = Vector.ofInt32(new int[] {1, 2, 3});
 
-		byte[] buffer = new byte[v.getWireSize() + 10];
+		byte[] buffer = new byte[v.getWireSize() + 1];
 		v.writeTo(buffer, 0);
 
-		Vector parsed = Vector.from(buffer, 0, buffer.length);
-		assertEquals(v, parsed);
+		try {
+			Vector.from(buffer, 0, buffer.length);
+			fail("Expected IllegalArgumentException");
+		}
+		catch (IllegalArgumentException e) {
+			// expected
+		}
 	}
 
 	@Test
@@ -622,8 +627,6 @@ public class TestVector extends TestBase {
 		assertEquals(Vector.VERSION, buffer[0]);
 		assertEquals(type.getCode(), buffer[1]);
 		assertEquals(dimensions, decodeIntLE(buffer, 2));
-		assertEquals(0, buffer[6]);
-		assertEquals(0, buffer[7]);
 	}
 
 	// Vector wire format is little-endian to match the server.
