@@ -276,9 +276,9 @@ public abstract class Exp {
 	 * Create vector bin expression for use with {@link VectorExp}.
 	 *
 	 * <pre>{@code
-	 * // Cosine distance between vector bin "v" and a query vector > 0.8
+	 * // Cosine similarity between vector bin "v" and a query vector > 0.8
 	 * Exp.gt(
-	 *     VectorExp.distance(VectorDistanceMetric.COSINE, query, Exp.vectorBin("v")),
+	 *     VectorExp.distance(VectorDistanceMetric.COSINE_SIMILARITY, query, Exp.vectorBin("v")),
 	 *     Exp.val(0.8))
 	 * }</pre>
 	 */
@@ -1452,7 +1452,7 @@ public abstract class Exp {
 	private static final int INT_RSCAN = 41;
 	private static final int MIN = 50;
 	private static final int MAX = 51;
-	private static final int VECTOR_EUCLIDEAN_DIST = 52;
+	private static final int VECTOR_EUCLIDEAN_SQUARED = 52;
 	private static final int VECTOR_DOT_PRODUCT = 53;
 	private static final int VECTOR_COSINE_SIM = 54;
 	private static final int DIGEST_MODULO = 64;
@@ -1587,11 +1587,11 @@ public abstract class Exp {
 
 	static int vectorDistOpcode(com.aerospike.client.vector.VectorDistanceMetric metric) {
 		switch (metric) {
-			case EUCLIDEAN:
-				return VECTOR_EUCLIDEAN_DIST;
+			case EUCLIDEAN_SQUARED:
+				return VECTOR_EUCLIDEAN_SQUARED;
 			case DOT_PRODUCT:
 				return VECTOR_DOT_PRODUCT;
-			case COSINE:
+			case COSINE_SIMILARITY:
 				return VECTOR_COSINE_SIM;
 			default:
 				throw new IllegalArgumentException("Unsupported vector distance metric: " + metric);

@@ -77,7 +77,7 @@ public class TestVectorClusterSupport extends TestBase {
 	private static Expression vectorFilter() {
 		return Exp.build(
 			Exp.gt(
-				VectorExp.distance(VectorDistanceMetric.COSINE, vec, Exp.vectorBin("v")),
+				VectorExp.distance(VectorDistanceMetric.COSINE_SIMILARITY, vec, Exp.vectorBin("v")),
 				Exp.val(0.5)));
 	}
 

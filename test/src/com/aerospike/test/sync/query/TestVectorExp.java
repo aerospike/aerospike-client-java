@@ -89,7 +89,7 @@ public class TestVectorExp extends TestSync {
 
 	@Test
 	public void filterByEuclideanDistance() {
-		assertFilterIds(VectorDistanceMetric.EUCLIDEAN, false, 0.01, 5);
+		assertFilterIds(VectorDistanceMetric.EUCLIDEAN_SQUARED, false, 0.01, 5);
 	}
 
 	@Test
@@ -98,8 +98,8 @@ public class TestVectorExp extends TestSync {
 	}
 
 	@Test
-	public void filterByCosineDistance() {
-		assertFilterIds(VectorDistanceMetric.COSINE, true, 0.999999, 5);
+	public void filterByCosineSimilarity() {
+		assertFilterIds(VectorDistanceMetric.COSINE_SIMILARITY, true, 0.999999, 5);
 	}
 
 	@Test
@@ -156,7 +156,7 @@ public class TestVectorExp extends TestSync {
 
 			Record record = client.operate(null, key,
 				ExpOperation.read("distance",
-					Exp.build(VectorExp.distance(VectorDistanceMetric.EUCLIDEAN, query(0), Exp.vectorBin(vecBin))),
+					Exp.build(VectorExp.distance(VectorDistanceMetric.EUCLIDEAN_SQUARED, query(0), Exp.vectorBin(vecBin))),
 					ExpReadFlags.EVAL_NO_FAIL));
 
 			assertNull(record.getValue("distance"));
@@ -179,7 +179,7 @@ public class TestVectorExp extends TestSync {
 		stmt.setOperations(new Operation[] {
 			Operation.get(idBin),
 			ExpOperation.read(distBin,
-				Exp.build(VectorExp.distance(VectorDistanceMetric.EUCLIDEAN, query(0), Exp.vectorBin(vecBin))),
+				Exp.build(VectorExp.distance(VectorDistanceMetric.EUCLIDEAN_SQUARED, query(0), Exp.vectorBin(vecBin))),
 				ExpReadFlags.DEFAULT)
 		});
 		stmt.setOrderBy(distBin, BinDataType.DOUBLE, Order.ASC);
