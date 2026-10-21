@@ -16,6 +16,9 @@
  */
 package com.aerospike.client.query;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Operation;
 import com.aerospike.client.Record;
@@ -29,6 +32,7 @@ import com.aerospike.client.util.RandomShift;
  */
 public final class Statement {
 	private static final String NO_ORDER_KEY = "Top-K requires an order key; call setOrderBy()";
+	private static final int MAX_ORDER_KEYS = 2;
 
 	String namespace;
 	String setName;
@@ -42,13 +46,7 @@ public final class Statement {
 	Value[] functionArgs;
 	Operation[] operations;
 	ReduceSpec<?, ?>[] reduceSpecs;
-	private ReduceSpec<?, ?> resolvedReduce;
-	private boolean reduceResolved;
-	private String orderByBin;
-	private BinDataType orderByType;
-	private Order orderByOrder;
-	private OrderByFlags orderByFlags;
-	private boolean orderBySet;
+	private final List<OrderBy> orderBy = new ArrayList<>(MAX_ORDER_KEYS);
 	private int topK;
 	private boolean topKSet;
 	long taskId;
@@ -294,8 +292,7 @@ public final class Statement {
 	 */
 	void setReduce(ReduceSpec<?, ?>... reduceSpecs) {
 		this.reduceSpecs = reduceSpecs;
-		this.resolvedReduce = null;
-		this.reduceResolved = false;
+		this.orderBy.clear();
 		this.topKSet = false;
 	}
 
@@ -320,7 +317,8 @@ public final class Statement {
 
 	/**
 	 * Sort order for a Top-K query; see {@link #setTopK(int)}. May be called before or after
-	 * {@code setTopK}. Calling it again replaces the sort order and keeps k.
+	 * {@code setTopK}. Calling it again replaces every order key, including one added by
+	 * {@link #thenOrderBy}, and keeps k.
 	 *
 	 * @param binName	bin name to order by
 	 * @param type		scalar type of {@code binName}
@@ -329,19 +327,41 @@ public final class Statement {
 	 *                  {@link BinDataType#STRING} only)
 	 */
 	public void setOrderBy(String binName, BinDataType type, Order order, OrderByFlags flags) {
-		this.orderByBin = binName;
-		this.orderByType = type;
-		this.orderByOrder = order;
-		this.orderByFlags = flags;
-		this.orderBySet = true;
-		this.resolvedReduce = null;
-		this.reduceResolved = false;
+		orderBy.clear();
+		orderBy.add(new OrderBy(binName, type, order, flags));
 	}
 
 	/**
-	 * Ordered LIMIT k query, ranked by the sort order from {@link #setOrderBy}. The two calls
-	 * may come in either order; calling {@code setTopK} again replaces k. Like
-	 * {@code setReduce}, replaces any previously set reduce.
+	 * Add an order key for a Top-K query after the ones already set. Equivalent to
+	 * {@code thenOrderBy(binName, type, order, OrderByFlags.NONE)}.
+	 *
+	 * @param binName	bin name to order by
+	 * @param type		scalar type of {@code binName}
+	 * @param order		sort direction
+	 */
+	public void thenOrderBy(String binName, BinDataType type, Order order) {
+		thenOrderBy(binName, type, order, OrderByFlags.NONE);
+	}
+
+	/**
+	 * Add an order key for a Top-K query after the ones already set. A later key decides only
+	 * where the keys before it tie; called before {@link #setOrderBy}, it adds the first key.
+	 * A Top-K query takes at most two order keys, on different bins.
+	 *
+	 * @param binName	bin name to order by
+	 * @param type		scalar type of {@code binName}
+	 * @param order		sort direction
+	 * @param flags		comparison options ({@link OrderByFlags#CASE_INSENSITIVE} for
+	 *                  {@link BinDataType#STRING} only)
+	 */
+	public void thenOrderBy(String binName, BinDataType type, Order order, OrderByFlags flags) {
+		orderBy.add(new OrderBy(binName, type, order, flags));
+	}
+
+	/**
+	 * Ordered LIMIT k query, ranked by the order keys from {@link #setOrderBy} and
+	 * {@link #thenOrderBy}. The calls may come in any order; calling {@code setTopK} again
+	 * replaces k. Like {@code setReduce}, replaces any previously set reduce.
 	 * <p>
 	 * The Top-K specification is validated when the query runs; an invalid one, or a cluster where
 	 * any node doesn't support Top-K, fails with {@link ResultCode#PARAMETER_ERROR} before
@@ -351,8 +371,6 @@ public final class Statement {
 	 */
 	public void setTopK(int k) {
 		this.reduceSpecs = null;
-		this.resolvedReduce = null;
-		this.reduceResolved = false;
 		this.topK = k;
 		this.topKSet = true;
 	}
@@ -365,31 +383,18 @@ public final class Statement {
 	}
 
 	/**
-	 * Return the Top-K order-by bin name, or {@code null} when Top-K is not set.
+	 * Return whether this statement has an order key, with or without k.
 	 */
-	public String getTopKBin() {
-		return topKSet ? orderByBin : null;
+	public boolean hasOrderBy() {
+		return ! orderBy.isEmpty();
 	}
 
 	/**
-	 * Return the Top-K order-by type, or {@code null} when Top-K is not set.
+	 * Return the order keys, most significant first, or {@code null} when none is set. An order
+	 * key without k is still sent, and the server rejects the query.
 	 */
-	public BinDataType getTopKType() {
-		return topKSet ? orderByType : null;
-	}
-
-	/**
-	 * Return the Top-K order direction, or {@code null} when Top-K is not set.
-	 */
-	public Order getTopKOrder() {
-		return topKSet ? orderByOrder : null;
-	}
-
-	/**
-	 * Return the Top-K order-by flags, or {@code null} when Top-K is not set.
-	 */
-	public OrderByFlags getTopKFlags() {
-		return topKSet ? orderByFlags : null;
+	public OrderBy[] getOrderBy() {
+		return orderBy.isEmpty() ? null : orderBy.toArray(new OrderBy[0]);
 	}
 
 	/**
@@ -400,32 +405,27 @@ public final class Statement {
 	}
 
 	/**
-	 * Validate the Top-K specification.
+	 * Validate the Top-K specification. Does nothing unless k is set.
 	 *
-	 * @throws AerospikeException	with {@link ResultCode#PARAMETER_ERROR} if the specification
-	 *								is invalid
+	 * @throws AerospikeException	with {@link ResultCode#PARAMETER_ERROR} if Top-K has no order
+	 *								key or more than two, k is outside {@code [1, 1000]}, maxRecords
+	 *								is set, a UDF or aggregation function is set, an order key is
+	 *								incomplete, its bin name is not 1-15 UTF-8 bytes without NUL, it
+	 *								has flags on a non-STRING type, its bin is missing from the bin or
+	 *								operations projection or produced more than once by the
+	 *								operations projection, or both order keys use the same bin
 	 */
 	public void validateTopK() {
 		if (! topKSet) {
 			return;
 		}
 
-		if (! orderBySet) {
+		if (orderBy.isEmpty()) {
 			throw parameterError(NO_ORDER_KEY);
 		}
 
-		if (orderByBin == null || orderByType == null || orderByOrder == null || orderByFlags == null) {
-			throw parameterError("Top-K order-by specification is incomplete");
-		}
-
-		int length = Buffer.estimateSizeUtf8(orderByBin);
-
-		if (length == 0 || length > 15 || orderByBin.indexOf('\0') >= 0) {
-			throw parameterError("Top-K order-by bin name must be 1-15 UTF-8 bytes without NUL");
-		}
-
-		if (orderByFlags != OrderByFlags.NONE && orderByType != BinDataType.STRING) {
-			throw parameterError("Top-K order-by flags are only valid for STRING");
+		if (orderBy.size() > MAX_ORDER_KEYS) {
+			throw parameterError("Top-K takes at most " + MAX_ORDER_KEYS + " order keys");
 		}
 
 		if (topK < 1 || topK > 1000) {
@@ -440,11 +440,35 @@ public final class Statement {
 			throw parameterError("Top-K is only valid for foreground queries");
 		}
 
+		for (OrderBy key : orderBy) {
+			validateOrderBy(key);
+		}
+
+		if (orderBy.size() > 1 && orderBy.get(0).binName.equals(orderBy.get(1).binName)) {
+			throw parameterError("Top-K order keys must use different bins");
+		}
+	}
+
+	private void validateOrderBy(OrderBy key) {
+		if (key.binName == null || key.type == null || key.order == null || key.flags == null) {
+			throw parameterError("Top-K order-by specification is incomplete");
+		}
+
+		int length = Buffer.estimateSizeUtf8(key.binName);
+
+		if (length == 0 || length > 15 || key.binName.indexOf('\0') >= 0) {
+			throw parameterError("Top-K order-by bin name must be 1-15 UTF-8 bytes without NUL");
+		}
+
+		if (key.flags != OrderByFlags.NONE && key.type != BinDataType.STRING) {
+			throw parameterError("Top-K order-by flags are only valid for STRING");
+		}
+
 		if (operations != null) {
 			int count = 0;
 
 			for (Operation operation : operations) {
-				if (orderByBin.equals(operation.binName)) {
+				if (key.binName.equals(operation.binName)) {
 					count++;
 				}
 			}
@@ -461,7 +485,7 @@ public final class Statement {
 
 		if (binNames != null) {
 			for (String binName : binNames) {
-				if (orderByBin.equals(binName)) {
+				if (key.binName.equals(binName)) {
 					return;
 				}
 			}
@@ -473,7 +497,8 @@ public final class Statement {
 	 * Resolve the Top-K specification, or the reduce spec(s) set by {@code setReduce}, into a
 	 * single combiner usable by a query executor. Returns {@code null} if neither was set.
 	 * Composes a split {@link Reduce#orderBy} + {@link Reduce#limit} pair into a single Top-K
-	 * combiner.
+	 * combiner. A Top-K combiner is returned empty on every call, so a statement that runs again
+	 * does not rank the records of an earlier run.
 	 *
 	 * @throws AerospikeException	with {@link ResultCode#PARAMETER_ERROR} if Top-K has no order key,
 	 *								or the reduce specs are not a single reducer or a valid
@@ -481,20 +506,11 @@ public final class Statement {
 	 */
 	@SuppressWarnings("unchecked")
 	<I, O> ReduceSpec<I, O> resolveReduce() {
-		if (! reduceResolved) {
-			resolvedReduce = computeResolveReduce();
-			reduceResolved = true;
-		}
-		return (ReduceSpec<I, O>)resolvedReduce;
-	}
-
-	@SuppressWarnings("unchecked")
-	private ReduceSpec<?, ?> computeResolveReduce() {
 		if (topKSet) {
-			if (! orderBySet) {
+			if (orderBy.isEmpty()) {
 				throw parameterError(NO_ORDER_KEY);
 			}
-			return Reduce.topK(orderByBin, orderByType, orderByOrder, orderByFlags, topK);
+			return (ReduceSpec<I, O>)new TopKReduceSpec(orderBy.toArray(new OrderBy[0]), topK);
 		}
 
 		if (reduceSpecs == null || reduceSpecs.length == 0) {
@@ -504,18 +520,23 @@ public final class Statement {
 		boolean isSplit = reduceSpecs[0] instanceof OrderByReduceSpec || reduceSpecs[0] instanceof LimitReduceSpec;
 
 		if (reduceSpecs.length == 1 && !isSplit) {
-			return reduceSpecs[0];
+			ReduceSpec<?, ?> spec = reduceSpecs[0];
+
+			if (spec instanceof TopKReduceSpec) {
+				return (ReduceSpec<I, O>)((TopKReduceSpec)spec).emptyCopy();
+			}
+			return (ReduceSpec<I, O>)spec;
 		}
 
-		ReduceSpec<Record, Record> orderBy = null;
+		ReduceSpec<Record, Record> orderBySpec = null;
 		ReduceSpec<Record, Record> limit = null;
 
 		for (ReduceSpec<?, ?> spec : reduceSpecs) {
 			if (spec instanceof OrderByReduceSpec) {
-				if (orderBy != null) {
+				if (orderBySpec != null) {
 					throw parameterError("topK requires exactly one orderBy spec");
 				}
-				orderBy = (ReduceSpec<Record, Record>)spec;
+				orderBySpec = (ReduceSpec<Record, Record>)spec;
 			}
 			else if (spec instanceof LimitReduceSpec) {
 				if (limit != null) {
@@ -528,10 +549,10 @@ public final class Statement {
 			}
 		}
 
-		if (orderBy == null || limit == null) {
+		if (orderBySpec == null || limit == null) {
 			throw parameterError("topK requires both an orderBy spec and a limit spec");
 		}
-		return TopKReduceSpec.compose(orderBy, limit);
+		return (ReduceSpec<I, O>)TopKReduceSpec.compose(orderBySpec, limit);
 	}
 
 	private static AerospikeException parameterError(String message) {

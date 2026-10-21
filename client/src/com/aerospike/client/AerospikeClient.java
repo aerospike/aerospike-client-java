@@ -4608,6 +4608,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 
 	private void validateTopK(QueryPolicy policy, Statement statement) {
 		if (! statement.hasTopK()) {
+			checkOrderBySupport(statement);
 			return;
 		}
 
@@ -4618,10 +4619,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 				"Top-K requires partition query support");
 		}
 
-		if (! cluster.hasQueryOrderBy) {
-			throw new AerospikeException(ResultCode.PARAMETER_ERROR,
-				"Top-K is not supported by all nodes in the cluster");
-		}
+		checkOrderBySupport(statement);
 
 		if (! policy.includeBinData) {
 			throw new AerospikeException(ResultCode.PARAMETER_ERROR,
@@ -4634,10 +4632,20 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		}
 	}
 
-	private static void rejectTopK(Statement statement) {
+	private void rejectTopK(Statement statement) {
 		if (statement.hasTopK()) {
 			throw new AerospikeException(ResultCode.PARAMETER_ERROR,
 				"Top-K is only supported by synchronous partition queries");
+		}
+		checkOrderBySupport(statement);
+	}
+
+	// An order key without k is left for the server to reject, but a node that predates Top-K
+	// skips the field and runs a plain query, so a cluster with such a node fails up front.
+	private void checkOrderBySupport(Statement statement) {
+		if (statement.hasOrderBy() && ! cluster.hasQueryOrderBy) {
+			throw new AerospikeException(ResultCode.PARAMETER_ERROR,
+				"Top-K is not supported by all nodes in the cluster");
 		}
 	}
 

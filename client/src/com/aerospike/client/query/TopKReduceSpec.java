@@ -33,16 +33,13 @@ import com.aerospike.client.command.Buffer;
  * Ordered LIMIT k reduce combiner backing {@link Reduce#topK(String, BinDataType, Order, OrderByFlags, int)}
  * and the composed split form {@code setReduce(Reduce.orderBy(...), Reduce.limit(...))}.
  * <p>
- * Maintains a size-k heap keyed by the order bin, deduplicated by record digest (a record may
+ * Maintains a size-k heap keyed by the order keys, deduplicated by record digest (a record may
  * be re-scanned across partition migrations) with ties broken by digest ascending for stable,
  * deterministic results. Not part of the public API surface beyond the {@link Reduce#topK}
  * factory method.
  */
 final class TopKReduceSpec implements ReduceSpec<Record, Record> {
-	private final String bin;
-	private final BinDataType type;
-	private final Order order;
-	private final OrderByFlags flags;
+	private final OrderBy[] keys;
 	private final int limit;
 
 	/** digest (hex) -> (key, record), for dedup and result reconstruction. */
@@ -63,13 +60,20 @@ final class TopKReduceSpec implements ReduceSpec<Record, Record> {
 		}
 	}
 
-	private TopKReduceSpec(String bin, BinDataType type, Order order, OrderByFlags flags, int limit) {
-		this.bin = bin;
-		this.type = type;
-		this.order = order;
-		this.flags = flags;
+	/**
+	 * Create an empty combiner that ranks by {@code keys}, most significant first.
+	 */
+	TopKReduceSpec(OrderBy[] keys, int limit) {
+		this.keys = keys;
 		this.limit = limit;
 		this.heap = new PriorityQueue<>(limit + 1, TopKReduceSpec::compareWorstFirst);
+	}
+
+	/**
+	 * Create an empty combiner with the same order keys and limit.
+	 */
+	TopKReduceSpec emptyCopy() {
+		return new TopKReduceSpec(keys, limit);
 	}
 
 	/**
@@ -88,18 +92,18 @@ final class TopKReduceSpec implements ReduceSpec<Record, Record> {
 		OrderByReduceSpec ob = (OrderByReduceSpec)orderBy;
 		LimitReduceSpec lim = (LimitReduceSpec)limit;
 
-		if (!ob.bin.equals(lim.bin)) {
+		if (!ob.key.binName.equals(lim.bin)) {
 			throw new AerospikeException(ResultCode.PARAMETER_ERROR,
-				"orderBy bin (" + ob.bin + ") must match limit bin (" + lim.bin + ")");
+				"orderBy bin (" + ob.key.binName + ") must match limit bin (" + lim.bin + ")");
 		}
-		return new TopKReduceSpec(ob.bin, ob.type, ob.order, ob.flags, lim.limit);
+		return new TopKReduceSpec(new OrderBy[] {ob.key}, lim.limit);
 	}
 
 	@Override
 	public synchronized void acceptPartial(Record record, Key key) {
 		byte[] digest = key.digest;
 		String digestKey = digestKey(digest);
-		OrderKey candidate = new OrderKey(record, bin, type, order, flags, digest);
+		OrderKey candidate = new OrderKey(record, keys, digest);
 
 		// Dedup: at most one row per digest (partition migration may re-scan a record).
 		Entry existingEntry = byDigest.get(digestKey);

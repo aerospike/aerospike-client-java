@@ -7,6 +7,7 @@
  */
 package com.aerospike.client.query;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import java.util.HashMap;
@@ -39,6 +40,18 @@ public class TestOrderKey {
 		assertTrue(nanDescending.compareTo(finiteDescending) < 0);
 	}
 
+	@Test
+	public void negativeZeroEqualsZeroAndDigestDecides() {
+		for (Order order : Order.values()) {
+			OrderKey negative = key(-0.0, BinDataType.DOUBLE, order, OrderByFlags.NONE, "a");
+			OrderKey positive = key(0.0, BinDataType.DOUBLE, order, OrderByFlags.NONE, "b");
+			OrderKey sameValue = key(0.0, BinDataType.DOUBLE, order, OrderByFlags.NONE, "a");
+
+			assertEquals(Integer.signum(sameValue.compareTo(positive)),
+				Integer.signum(negative.compareTo(positive)));
+		}
+	}
+
 	private static OrderKey key(
 		Object value,
 		BinDataType type,
@@ -50,6 +63,6 @@ public class TestOrderKey {
 		bins.put(BIN, value);
 		Key key = new Key("test", "set", userKey);
 		return new OrderKey(
-			new Record(bins, 1, 0), BIN, type, order, flags, key.digest);
+			new Record(bins, 1, 0), new OrderBy[] {new OrderBy(BIN, type, order, flags)}, key.digest);
 	}
 }

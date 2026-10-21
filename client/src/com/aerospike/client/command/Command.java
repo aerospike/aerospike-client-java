@@ -59,6 +59,7 @@ import com.aerospike.client.query.BinDataType;
 import com.aerospike.client.query.Filter;
 import com.aerospike.client.query.IndexCollectionType;
 import com.aerospike.client.query.Order;
+import com.aerospike.client.query.OrderBy;
 import com.aerospike.client.query.OrderByFlags;
 import com.aerospike.client.query.PartitionStatus;
 import com.aerospike.client.query.PartitionTracker.NodePartitions;
@@ -1988,7 +1989,8 @@ public class Command {
 		Node node
 	) {
 		byte[] functionArgBuffer = null;
-		TopKFields topKFields = getTopKFields(statement);
+		byte[] orderByField = getOrderByField(statement);
+		byte[] topKField = statement.hasTopK() ? getTopKField(statement.getTopKLimit()) : null;
 		int fieldCount = 0;
 		int filterSize = 0;
 		int binNameSize = 0;
@@ -2101,10 +2103,14 @@ public class Command {
 			fieldCount++;
 		}
 
-		if (topKFields != null) {
-			dataOffset += FIELD_HEADER_SIZE + topKFields.orderBy.length;
-			dataOffset += FIELD_HEADER_SIZE + topKFields.limit.length;
-			fieldCount += 2;
+		if (orderByField != null) {
+			dataOffset += FIELD_HEADER_SIZE + orderByField.length;
+			fieldCount++;
+		}
+
+		if (topKField != null) {
+			dataOffset += FIELD_HEADER_SIZE + topKField.length;
+			fieldCount++;
 		}
 
 		long maxRecords = 0;
@@ -2230,9 +2236,12 @@ public class Command {
 		// Write taskId field
 		writeField(taskId, FieldType.QUERY_ID);
 
-		if (topKFields != null) {
-			writeField(topKFields.orderBy, FieldType.ORDER_BY);
-			writeField(topKFields.limit, FieldType.TOP_K);
+		if (orderByField != null) {
+			writeField(orderByField, FieldType.ORDER_BY);
+		}
+
+		if (topKField != null) {
+			writeField(topKField, FieldType.TOP_K);
 		}
 
 		if (filter != null) {
@@ -2336,22 +2345,36 @@ public class Command {
 		end();
 	}
 
-	private static byte[] getTopKOrderByField(Statement statement) {
-		byte[] bin = Buffer.stringToUtf8(statement.getTopKBin());
-		byte[] field = new byte[4 + bin.length];
-		field[0] = (byte)getOrderByType(statement.getTopKType());
-		field[1] = (byte)getOrderByDirection(statement.getTopKOrder());
-		field[2] = (byte)(statement.getTopKFlags() == OrderByFlags.CASE_INSENSITIVE ? 1 : 0);
-		field[3] = (byte)bin.length;
-		System.arraycopy(bin, 0, field, 4, bin.length);
-		return field;
-	}
+	// The server reads one self-delimiting spec per order key, concatenated in significance order.
+	// An order key without k is sent as is, so the server rejects it with the reason.
+	private static byte[] getOrderByField(Statement statement) {
+		OrderBy[] keys = statement.getOrderBy();
 
-	private static TopKFields getTopKFields(Statement statement) {
-		if (! statement.hasTopK()) {
+		if (keys == null) {
 			return null;
 		}
-		return new TopKFields(getTopKOrderByField(statement), getTopKField(statement.getTopKLimit()));
+
+		byte[][] bins = new byte[keys.length][];
+		int size = 0;
+
+		for (int i = 0; i < keys.length; i++) {
+			bins[i] = Buffer.stringToUtf8(keys[i].binName);
+			size += 4 + bins[i].length;
+		}
+
+		byte[] field = new byte[size];
+		int offset = 0;
+
+		for (int i = 0; i < keys.length; i++) {
+			byte[] bin = bins[i];
+			field[offset] = (byte)getOrderByType(keys[i].type);
+			field[offset + 1] = (byte)getOrderByDirection(keys[i].order);
+			field[offset + 2] = (byte)(keys[i].flags == OrderByFlags.CASE_INSENSITIVE ? 1 : 0);
+			field[offset + 3] = (byte)bin.length;
+			System.arraycopy(bin, 0, field, offset + 4, bin.length);
+			offset += 4 + bin.length;
+		}
+		return field;
 	}
 
 	private static byte[] getTopKField(int limit) {
@@ -2377,16 +2400,6 @@ public class Command {
 
 	private static int getOrderByDirection(Order order) {
 		return order == Order.ASC ? 0 : 1;
-	}
-
-	private static final class TopKFields {
-		final byte[] orderBy;
-		final byte[] limit;
-
-		TopKFields(byte[] orderBy, byte[] limit) {
-			this.orderBy = orderBy;
-			this.limit = limit;
-		}
 	}
 
 	//--------------------------------------------------

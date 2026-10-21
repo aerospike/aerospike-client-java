@@ -28,16 +28,10 @@ import com.aerospike.client.Record;
  * beyond the {@link Reduce#orderBy} factory method.
  */
 final class OrderByReduceSpec implements ReduceSpec<Record, Record> {
-	final String bin;
-	final BinDataType type;
-	final Order order;
-	final OrderByFlags flags;
+	final OrderBy key;
 
 	OrderByReduceSpec(String bin, BinDataType type, Order order, OrderByFlags flags) {
-		this.bin = bin;
-		this.type = type;
-		this.order = order;
-		this.flags = flags;
+		this.key = new OrderBy(bin, type, order, flags);
 	}
 
 	@Override

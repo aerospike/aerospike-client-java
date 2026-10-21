@@ -27,6 +27,7 @@ import com.aerospike.client.command.FieldType;
 import com.aerospike.client.policy.QueryPolicy;
 import com.aerospike.client.query.BinDataType;
 import com.aerospike.client.query.Order;
+import com.aerospike.client.query.OrderByFlags;
 import com.aerospike.client.query.Statement;
 import com.aerospike.test.sync.TestSync;
 
@@ -48,6 +49,34 @@ public class TestTopKRequestEncoding extends TestSync {
 		assertEquals(4, plain.size());
 		assertFalse(plain.containsKey(FieldType.ORDER_BY));
 		assertFalse(plain.containsKey(FieldType.TOP_K));
+	}
+
+	@Test
+	public void orderKeyWithoutKIsSentAsIs() {
+		Cluster cluster = ((AerospikeClient)client).getCluster();
+		Node node = cluster.getRandomNode();
+		Statement statement = statement();
+		statement.setOrderBy("rank", BinDataType.INTEGER, Order.DESC);
+
+		Map<Integer, byte[]> fields = fields(build(cluster, node, statement));
+		assertEquals(5, fields.size());
+		assertArrayEquals(new byte[] {1, 1, 0, 4, 'r', 'a', 'n', 'k'}, fields.get(FieldType.ORDER_BY));
+		assertFalse(fields.containsKey(FieldType.TOP_K));
+	}
+
+	@Test
+	public void orderKeysAreConcatenatedInOrder() {
+		Cluster cluster = ((AerospikeClient)client).getCluster();
+		Node node = cluster.getRandomNode();
+		Statement statement = statement();
+		statement.setOrderBy("rank", BinDataType.INTEGER, Order.DESC);
+		statement.thenOrderBy("name", BinDataType.STRING, Order.ASC, OrderByFlags.CASE_INSENSITIVE);
+		statement.setTopK(3);
+
+		Map<Integer, byte[]> fields = fields(build(cluster, node, statement));
+		assertArrayEquals(
+			new byte[] {1, 1, 0, 4, 'r', 'a', 'n', 'k', 3, 0, 1, 4, 'n', 'a', 'm', 'e'},
+			fields.get(FieldType.ORDER_BY));
 	}
 
 	private Statement statement() {
