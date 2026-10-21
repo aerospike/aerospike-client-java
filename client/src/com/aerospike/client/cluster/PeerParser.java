@@ -32,6 +32,7 @@ public final class PeerParser {
 	private final Info parser;
 	private String nodeName;
 	private String tlsName;
+	private List<Host> advertised;
 	private final int portDefault;
 	public final int generation;
 
@@ -142,6 +143,7 @@ public final class PeerParser {
 		peer.tlsName = tlsName = parser.parseString(',');
 		parser.offset++;
 		peer.alternateMissing = cluster.useServicesAlternate && parser.buffer[parser.offset + 1] == ']';
+		peer.advertised = advertised = cluster.notifyViewChange? new ArrayList<Host>() : null;
 		peer.hosts = parseHosts();
 		parser.expect(']');
 		return peer;
@@ -192,16 +194,22 @@ public final class PeerParser {
 
 			if (b == ':') {
 				parser.offset++;
-				int port = parser.parseInt();
-				return cluster.translateAddress(nodeName, tlsName, host, port);
+				return translate(host, parser.parseInt());
 			}
 
 			if (b == ',' || b == ']') {
-				return cluster.translateAddress(nodeName, tlsName, host, portDefault);
+				return translate(host, portDefault);
 			}
 		}
 
 		String response = parser.getTruncatedResponse();
 		throw new AerospikeException.Parse("Unterminated host in response: " + response);
+	}
+
+	private Host translate(String host, int port) {
+		if (advertised != null) {
+			advertised.add(new Host(host, tlsName, port));
+		}
+		return cluster.translateAddress(nodeName, tlsName, host, port);
 	}
 }

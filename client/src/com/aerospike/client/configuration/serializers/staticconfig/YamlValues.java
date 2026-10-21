@@ -50,6 +50,20 @@ final class YamlValues {
         return Collections.unmodifiableMap(map);
     }
 
+    static Map<String,Object> options(String path, Map<?,?> block) {
+        Map<String,Object> map = new LinkedHashMap<>();
+
+        for (Map.Entry<?,?> entry : block.entrySet()) {
+            if (!(entry.getKey() instanceof String)) {
+                throw new AerospikeException("Invalid key '" + entry.getKey() + "' in " + path + ": expected a string");
+            }
+            if (! entry.getKey().equals("provider")) {
+                map.put((String)entry.getKey(), entry.getValue());
+            }
+        }
+        return Collections.unmodifiableMap(map);
+    }
+
     static int intValue(String path, Object value) {
         if (!(value instanceof Integer)) {
             throw invalid(path, value, "expected an integer");

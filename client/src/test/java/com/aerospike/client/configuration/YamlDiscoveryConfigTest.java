@@ -47,6 +47,7 @@ import com.aerospike.client.discovery.Endpoint;
 import com.aerospike.client.discovery.Endpoint.SourceList;
 import com.aerospike.client.discovery.PassThroughAddressTranslator;
 import com.aerospike.client.discovery.PortMapAddressTranslator;
+import com.aerospike.client.discovery.SeedCandidateContext;
 import com.aerospike.client.discovery.SeedCandidateProvider;
 import com.aerospike.client.discovery.SeedMergePolicy;
 import com.aerospike.client.discovery.StaticMapAddressTranslator;
@@ -225,7 +226,7 @@ public class YamlDiscoveryConfigTest {
 		ClientPolicy code = new ClientPolicy();
 		code.seedCandidateProvider = new SeedCandidateProvider() {
 			@Override
-			public List<Host> refreshSeedCandidates() {
+			public List<Host> refreshSeedCandidates(SeedCandidateContext ctx) {
 				return List.of(new Host("127.0.0.1", 1));
 			}
 

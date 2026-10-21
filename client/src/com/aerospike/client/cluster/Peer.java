@@ -24,6 +24,7 @@ public final class Peer {
 	String nodeName;
 	String tlsName;
 	List<Host> hosts;
+	List<Host> advertised;
 	Node replaceNode;
 	boolean alternateMissing;
 }

@@ -443,7 +443,7 @@ public class AerospikeException extends RuntimeException {
 		private static final long serialVersionUID = 1L;
 
 		public TranslationMiss(Endpoint advertised, String translator) {
-			super(ResultCode.CLIENT_ERROR, "Address translator " + translator + " has no mapping for node " +
+			super(ResultCode.TRANSLATION_MISS, "Address translator " + translator + " has no mapping for node " +
 				advertised.nodeName + " advertised address " + advertised.host + ':' + advertised.port + " in the " +
 				(advertised.sourceList == Endpoint.SourceList.ALTERNATE ? "alternate" : "standard") +
 				" list. Add a mapping for that endpoint or node, or set translation.on_miss to pass_through");
@@ -459,7 +459,7 @@ public class AerospikeException extends RuntimeException {
 		private static final long serialVersionUID = 1L;
 
 		public TranslationCollision(String nodeName, String otherNodeName, Host host, String translator) {
-			super(ResultCode.CLIENT_ERROR, "Address translator " + translator + " translated nodes " + nodeName +
+			super(ResultCode.TRANSLATION_COLLISION, "Address translator " + translator + " translated nodes " + nodeName +
 				" and " + otherNodeName + " to the same address " + host.name + ':' + host.port +
 				". Give each node its own reachable address or mapping");
 		}

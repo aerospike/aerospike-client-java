@@ -17,11 +17,14 @@
 package com.aerospike.client.policy;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ExecutorService;
+import java.util.function.Function;
 
+import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Log;
 import com.aerospike.client.async.EventLoops;
 import com.aerospike.client.configuration.ConfigurationProvider;
@@ -368,8 +371,11 @@ public class ClientPolicy {
 	 * Default: null (use {@link com.aerospike.client.discovery.StaticSeedCandidateProvider} with
 	 * the seed hosts passed to the client constructor)
 	 * <p>
-	 * YAML key: {@code static.client.discovery.provider}. Only {@code static}, this default, is
-	 * accepted; other providers are set in code.
+	 * YAML key: {@code static.client.discovery.provider}: {@code static}, this default, or a name
+	 * registered with {@link #registerSeedCandidateProvider}. Other providers are set in code.
+	 * <p>
+	 * {@link SeedCandidateProvider#close()} is called on the provider once after
+	 * {@link com.aerospike.client.AerospikeClient#close()}.
 	 */
 	public SeedCandidateProvider seedCandidateProvider;
 
@@ -389,9 +395,9 @@ public class ClientPolicy {
 	 * Default: null (use {@link com.aerospike.client.discovery.StaticMapAddressTranslator} with
 	 * {@link #ipMap})
 	 * <p>
-	 * YAML keys: {@code static.client.translation.provider} ({@code static-map}, {@code port-map}
-	 * or {@code pass-through}) with {@code static.client.translation.static_map} or
-	 * {@code static.client.translation.port_map}.
+	 * YAML keys: {@code static.client.translation.provider} ({@code static-map}, {@code port-map},
+	 * {@code pass-through} or a name registered with {@link #registerAddressTranslator}) with
+	 * {@code static.client.translation.static_map} or {@code static.client.translation.port_map}.
 	 */
 	public AddressTranslator addressTranslator;
 
@@ -563,6 +569,14 @@ public class ClientPolicy {
 	 */
 	public String appId;
 
+	private static final String DISCOVERY_PROVIDER = "static.client.discovery.provider";
+	private static final String TRANSLATION_PROVIDER = "static.client.translation.provider";
+
+	private Map<String,Function<Map<String,Object>,SeedCandidateProvider>> seedCandidateProviderFactories;
+	private Map<String,Function<Map<String,Object>,AddressTranslator>> addressTranslatorFactories;
+	private Registered<SeedCandidateProvider> registeredSeedCandidateProvider;
+	private Registered<AddressTranslator> registeredAddressTranslator;
+
 	/**
 	 * Copy client policy from another client policy AND override certain policy attributes if they exist in the
 	 * configProvider. Any policy overrides will not get logged.
@@ -633,12 +647,151 @@ public class ClientPolicy {
 		this.rackId = other.rackId;
 		this.rackIds = (other.rackIds != null)? new ArrayList<Integer>(other.rackIds) : null;
 		this.appId = other.appId;
+		this.seedCandidateProviderFactories = (other.seedCandidateProviderFactories != null)?
+			new LinkedHashMap<>(other.seedCandidateProviderFactories) : null;
+		this.addressTranslatorFactories = (other.addressTranslatorFactories != null)?
+			new LinkedHashMap<>(other.addressTranslatorFactories) : null;
+		this.registeredSeedCandidateProvider = other.registeredSeedCandidateProvider;
+		this.registeredAddressTranslator = other.registeredAddressTranslator;
 	}
 
 	/**
 	 * Default constructor.
 	 */
 	public ClientPolicy() {
+	}
+
+	/**
+	 * Register a seed candidate provider factory under a name. When
+	 * {@code static.client.discovery.provider} in the YAML config file names it, the client calls
+	 * the factory with the other keys of the {@code static.client.discovery} block as the options
+	 * map and sets {@link #seedCandidateProvider} to the result. A name that is neither built-in nor
+	 * registered is an invalid setting.
+	 * <p>
+	 * The factory is called once, on the application thread that constructs the client. A reloaded
+	 * config file that changes the name or options does not call it again; the client keeps the
+	 * provider it was constructed with. The factory must not return null; an exception or a null
+	 * result makes the config file invalid.
+	 * <p>
+	 * The {@link #ClientPolicy(ClientPolicy)} copy constructor copies registrations.
+	 *
+	 * @param name		provider name; must not be a built-in name ({@code static}, {@code dns},
+	 * 					{@code aws-tags}) or a name already registered on this policy
+	 * @param factory	builds the provider from the options map
+	 * @throws AerospikeException	if the name is null, empty, built-in or already registered, or
+	 * 								the factory is null
+	 */
+	public void registerSeedCandidateProvider(String name, Function<Map<String,Object>,SeedCandidateProvider> factory) {
+		seedCandidateProviderFactories = register("seed candidate provider", name, factory,
+			StaticDiscoveryConfig.PROVIDERS, seedCandidateProviderFactories);
+	}
+
+	/**
+	 * Register an address translator factory under a name. When
+	 * {@code static.client.translation.provider} in the YAML config file names it, the client calls
+	 * the factory with the other keys of the {@code static.client.translation} block as the options
+	 * map and sets {@link #addressTranslator} to the result. A name that is neither built-in nor
+	 * registered is an invalid setting.
+	 * <p>
+	 * The factory is called once, on the application thread that constructs the client. A reloaded
+	 * config file that changes the name or options does not call it again; the client keeps the
+	 * translator it was constructed with. The factory must not return null; an exception or a null
+	 * result makes the config file invalid.
+	 * <p>
+	 * The {@link #ClientPolicy(ClientPolicy)} copy constructor copies registrations.
+	 *
+	 * @param name		translator name; must not be a built-in name ({@code static-map},
+	 * 					{@code port-map}, {@code pass-through}) or a name already registered on this
+	 * 					policy
+	 * @param factory	builds the translator from the options map
+	 * @throws AerospikeException	if the name is null, empty, built-in or already registered, or
+	 * 								the factory is null
+	 */
+	public void registerAddressTranslator(String name, Function<Map<String,Object>,AddressTranslator> factory) {
+		addressTranslatorFactories = register("address translator", name, factory,
+			StaticTranslationConfig.PROVIDERS, addressTranslatorFactories);
+	}
+
+	private static <T> Map<String,Function<Map<String,Object>,T>> register(
+		String type,
+		String name,
+		Function<Map<String,Object>,T> factory,
+		List<String> builtIn,
+		Map<String,Function<Map<String,Object>,T>> factories
+	) {
+		if (name == null || name.isEmpty()) {
+			throw new AerospikeException("Invalid " + type + " name: " + name);
+		}
+
+		if (builtIn.contains(name)) {
+			throw new AerospikeException("Invalid " + type + " name '" + name + "': built-in name");
+		}
+
+		if (factories != null && factories.containsKey(name)) {
+			throw new AerospikeException("Invalid " + type + " name '" + name + "': already registered");
+		}
+
+		if (factory == null) {
+			throw new AerospikeException("Invalid " + type + " factory for '" + name + "': null");
+		}
+
+		if (factories == null) {
+			factories = new LinkedHashMap<>();
+		}
+		factories.put(name, factory);
+		return factories;
+	}
+
+	private static final class Registered<T> {
+		final T instance;
+
+		Registered(T instance) {
+			this.instance = instance;
+		}
+	}
+
+	private static <T> Registered<T> build(
+		String path,
+		String name,
+		Map<String,Object> options,
+		Map<String,Function<Map<String,Object>,T>> factories,
+		Registered<T> previous
+	) {
+		if (previous != null) {
+			return previous;
+		}
+
+		T instance;
+
+		try {
+			instance = factories.get(name).apply(options);
+		}
+		catch (Throwable e) {
+			throw new AerospikeException("Invalid " + path + " value '" + name + "': factory failed: " + e, e);
+		}
+
+		if (instance == null) {
+			throw new AerospikeException("Invalid " + path + " value '" + name + "': factory returned null");
+		}
+		return new Registered<>(instance);
+	}
+
+	private static void checkRegistered(
+		String path,
+		String name,
+		Map<String,Object> options,
+		List<String> yamlNames,
+		Map<String,?> factories
+	) {
+		if (options != null && (factories == null || ! factories.containsKey(name))) {
+			List<String> names = new ArrayList<>(yamlNames);
+
+			if (factories != null) {
+				names.addAll(factories.keySet());
+			}
+			throw new AerospikeException("Invalid " + path + " value '" + name + "': valid values: " +
+				String.join(", ", names));
+		}
 	}
 
 	private void validateErrorRateConfig() {
@@ -674,6 +827,16 @@ public class ClientPolicy {
 		StaticClientConfig staCC = sConfig.getStaticClientConfig();
 		if (staCC == null) {
 			return;
+		}
+
+		if (staCC.discovery != null && staCC.discovery.provider != null) {
+			checkRegistered(DISCOVERY_PROVIDER, staCC.discovery.provider.value, staCC.discovery.options,
+				StaticDiscoveryConfig.YAML_PROVIDERS, seedCandidateProviderFactories);
+		}
+
+		if (staCC.translation != null && staCC.translation.provider != null) {
+			checkRegistered(TRANSLATION_PROVIDER, staCC.translation.provider.value, staCC.translation.options,
+				StaticTranslationConfig.PROVIDERS, addressTranslatorFactories);
 		}
 
 		if (log && Log.infoEnabled()) {
@@ -719,7 +882,19 @@ public class ClientPolicy {
 		StaticDiscoveryConfig discovery = staCC.discovery;
 
 		if (discovery != null) {
-			if (discovery.provider != null && this.seedCandidateProvider != null) {
+			if (discovery.options != null) {
+				Registered<SeedCandidateProvider> registered = build(DISCOVERY_PROVIDER, discovery.provider.value,
+					discovery.options, seedCandidateProviderFactories, registeredSeedCandidateProvider);
+
+				if (registered != registeredSeedCandidateProvider) {
+					this.registeredSeedCandidateProvider = registered;
+					this.seedCandidateProvider = registered.instance;
+					if (logUpdate) {
+						Log.info("Set ClientPolicy.seedCandidateProvider = " + discovery.provider.value);
+					}
+				}
+			}
+			else if (discovery.provider != null && this.seedCandidateProvider != null) {
 				this.seedCandidateProvider = null;
 				if (logUpdate) {
 					Log.info("Set ClientPolicy.seedCandidateProvider = " + discovery.provider.value);
@@ -750,17 +925,23 @@ public class ClientPolicy {
 		if (translation != null) {
 			if (translation.provider != null) {
 				switch (translation.provider.value) {
-				case "port-map":
+				case StaticTranslationConfig.PORT_MAP:
 					this.addressTranslator = new PortMapAddressTranslator(translation.portMap);
 					break;
 
-				case "pass-through":
+				case StaticTranslationConfig.PASS_THROUGH:
 					this.addressTranslator = PassThroughAddressTranslator.INSTANCE;
 					break;
 
-				default:
+				case StaticTranslationConfig.STATIC_MAP:
 					this.addressTranslator = (translation.staticMap != null)?
 						new StaticMapAddressTranslator(translation.staticMap) : null;
+					break;
+
+				default:
+					this.registeredAddressTranslator = build(TRANSLATION_PROVIDER, translation.provider.value,
+						translation.options, addressTranslatorFactories, registeredAddressTranslator);
+					this.addressTranslator = registeredAddressTranslator.instance;
 					break;
 				}
 				if (logUpdate) {

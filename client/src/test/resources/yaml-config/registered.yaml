@@ -1,0 +1,15 @@
+version: 1.2.0
+static:
+  client:
+    max_connections_per_node: 99
+    discovery:
+      provider: consul
+      merge_policy: merge
+      service: aerospike
+      endpoints:
+        - 127.0.0.1:1
+    translation:
+      provider: nat-table
+      on_miss: strict
+      table:
+        "10.0.0.1:3000": "127.0.0.1:1"

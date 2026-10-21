@@ -31,13 +31,34 @@ import com.aerospike.client.discovery.SeedMergePolicy;
  */
 public class StaticDiscoveryConfig {
     static final String PATH = "static.client.discovery";
-    private static final List<String> CODE_ONLY_PROVIDERS = List.of("dns", "aws-tags");
+
+    /**
+     * Built-in seed candidate provider names.
+     */
+    public static final String STATIC = "static";
+    public static final String DNS = "dns";
+    public static final String AWS_TAGS = "aws-tags";
+    public static final List<String> PROVIDERS = List.of(STATIC, DNS, AWS_TAGS);
+
+    /**
+     * Built-in provider names accepted from YAML.
+     */
+    public static final List<String> YAML_PROVIDERS = List.of(STATIC);
+
+    private static final List<String> CODE_ONLY_PROVIDERS = List.of(DNS, AWS_TAGS);
     private static final List<String> MERGE_POLICIES = List.of("merge", "replace", "discovery_only");
 
     /**
-     * {@code provider}. Only {@code static} is accepted.
+     * {@code provider}: {@code static} or a name registered with
+     * {@link com.aerospike.client.policy.ClientPolicy#registerSeedCandidateProvider}.
      */
     public StringProperty provider;
+
+    /**
+     * Every key of the block except {@code provider}, passed to the registered factory. Null when
+     * {@code provider} is absent or {@code static}.
+     */
+    public Map<String,Object> options;
 
     /**
      * {@code merge_policy}.
@@ -76,7 +97,13 @@ public class StaticDiscoveryConfig {
                 throw new AerospikeException(PATH + ".provider '" + value + "' is not yet configurable from YAML. " +
                     "Set ClientPolicy.seedCandidateProvider in code");
             }
-            provider = new StringProperty(YamlValues.enumValue(PATH + ".provider", value, List.of("static")));
+            if (value instanceof String && ! YAML_PROVIDERS.contains(value)) {
+                provider = new StringProperty((String)value);
+                options = YamlValues.options(PATH, map);
+            }
+            else {
+                provider = new StringProperty(YamlValues.enumValue(PATH + ".provider", value, YAML_PROVIDERS));
+            }
         }
 
         value = map.get("merge_policy");

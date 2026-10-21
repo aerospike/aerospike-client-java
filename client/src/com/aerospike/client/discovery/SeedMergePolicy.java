@@ -18,9 +18,10 @@ package com.aerospike.client.discovery;
 
 /**
  * How the static seeds (the hosts passed to the client constructor) and the discovered seeds
- * (the hosts returned by {@link SeedCandidateProvider#refreshSeedCandidates()}) are combined into
- * the seed list the client tries when it initializes the cluster or re-seeds because no nodes are
- * active. The policy only orders seed attempts; it does not change node identity.
+ * (the hosts returned by {@link SeedCandidateProvider#refreshSeedCandidates(SeedCandidateContext)})
+ * are combined into the seed list the client tries when it initializes the cluster or re-seeds
+ * because no nodes are active. The policy only orders seed attempts; it does not change node
+ * identity.
  * <p>
  * The seed list is rebuilt only when the provider is called: at client initialization and on each
  * periodic refresh. Duplicate hosts (same name and port) are removed, keeping the first occurrence.
