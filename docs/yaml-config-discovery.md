@@ -272,12 +272,11 @@ in code.
 - `discovery.provider: aws-tags`;
 - `discovery.provider: dns` without a `discovery.dns` block, or a `discovery.dns` block with
   any other provider or with no provider;
-- a `discovery.dns` block without `names`, with an empty `names`, or with an unknown
-  `record_type`;
+- a `discovery.dns` block without `names`, with an empty `names`, with an unknown
+  `record_type`, or with `port` outside 1 to 65535 or `timeout_ms` below 1;
 - a `discovery.dns` value that the `DnsSeedCandidateProvider` builder rejects, such as a
-  duplicate name, a port out of range or a `servers` entry that is not an IP address. This is
-  checked when the provider is built at client construction (`Invalid
-  static.client.discovery.provider value 'dns': factory failed: ...`);
+  duplicate name or a `servers` entry that is not an IP address. This is checked when the
+  provider is built at client construction (`Invalid static.client.discovery.dns: ...`);
 - `static_map` with a provider other than `static-map`, `port_map` with one other than
   `port-map`, or `provider: port-map` without `port_map`;
 - `static_map` and `ip_map` both set;

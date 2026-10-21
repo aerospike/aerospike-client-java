@@ -168,7 +168,7 @@ public class StaticDiscoveryConfig {
         value = map.get("port");
 
         if (value != null) {
-            builder.port(YamlValues.intValue(path + ".port", value));
+            builder.port(YamlValues.intValue(path + ".port", value, 1, 65535));
         }
 
         value = map.get("tls_name");
@@ -180,7 +180,7 @@ public class StaticDiscoveryConfig {
         value = map.get("timeout_ms");
 
         if (value != null) {
-            builder.timeout(YamlValues.intValue(path + ".timeout_ms", value));
+            builder.timeout(YamlValues.intValue(path + ".timeout_ms", value, 1, Integer.MAX_VALUE));
         }
 
         value = map.get("servers");

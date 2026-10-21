@@ -109,6 +109,9 @@ public class YamlDnsDiscoveryConfigTest {
 		assertInvalid("invalid-dns-record-type", "Invalid " + block + ".record_type value 'mx': valid values: a, srv");
 		assertInvalid("invalid-dns-port-type", "Invalid " + block + ".port value '3000x': expected an integer");
 		assertInvalid("invalid-dns-timeout-type", "Invalid " + block + ".timeout_ms value '1.5': expected an integer");
+		assertInvalid("invalid-dns-port-range", "Invalid " + block + ".port value '70000': expected an integer from 1 to 65535");
+		assertInvalid("invalid-dns-timeout-range",
+			"Invalid " + block + ".timeout_ms value '0': expected an integer from 1 to " + Integer.MAX_VALUE);
 		assertInvalid("invalid-dns-tls-name-type", "Invalid " + block + ".tls_name value '5': expected a string");
 		assertInvalid("invalid-dns-servers-type",
 			"Invalid " + block + ".servers value '127.0.0.1': expected a non-empty list of strings");
@@ -117,18 +120,18 @@ public class YamlDnsDiscoveryConfigTest {
 	@Test
 	public void valueRejectedByProviderMakesFileInvalidAtConstruction() throws Exception {
 		List<String> warnings = captureWarnings();
-		String path = path("invalid-dns-port-range");
+		String path = path("invalid-dns-server-address");
 		ClientPolicy code = offline();
 		code.maxConnsPerNode = 77;
 		System.setProperty(CONFIG_SYS_PROP, path);
 
 		try (AerospikeClient client = new AerospikeClient(code, new Host("127.0.0.1", 1))) {
 			String warning = warnings.stream().filter(m -> m.startsWith("Failed to parse " + path)).findFirst().orElse(null);
-			System.out.println("YAML-DNS-INVALID invalid-dns-port-range: " + warning);
+			System.out.println("YAML-DNS-INVALID invalid-dns-server-address: " + warning);
 
 			assertNotNull(warnings.toString(), warning);
-			assertTrue(warning, warning.contains("Invalid static.client.discovery.provider value 'dns'"));
-			assertTrue(warning, warning.contains("Invalid DNS seed provider port: 70000"));
+			assertTrue(warning, warning.contains("Invalid static.client.discovery.dns: Invalid DNS seed provider server: " +
+				"'seeds.example.com': expected an IP address"));
 			assertNull(client.getConfigProvider());
 			assertNull(client.getClientPolicy().seedCandidateProvider);
 			assertEquals(77, client.getClientPolicy().maxConnsPerNode);

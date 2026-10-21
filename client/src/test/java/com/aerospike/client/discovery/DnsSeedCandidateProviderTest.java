@@ -17,6 +17,7 @@
 package com.aerospike.client.discovery;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
@@ -249,6 +250,28 @@ public class DnsSeedCandidateProviderTest {
 
 		for (String warning : warnings) {
 			assertTrue(warning, warning.endsWith("dropped: timeout"));
+		}
+	}
+
+	@Test
+	public void truncatedAnswerWithUnansweredTcpReturnsWithinTimeout() throws Exception {
+		try (StubDnsServer silent = new StubDnsServer(true).hangTcp();
+			StubDnsServer truncated = new StubDnsServer().a("a.example.com", "10.0.0.1").truncate().hangTcp()) {
+			int timeout = 200;
+			DnsSeedCandidateProvider provider = DnsSeedCandidateProvider.builder()
+				.names("a.example.com")
+				.timeout(timeout)
+				.servers(silent.address(), truncated.address())
+				.build();
+
+			long begin = System.nanoTime();
+			AerospikeException ae = assertThrows(AerospikeException.class, () -> provider.refreshSeedCandidates(CTX));
+			long elapsed = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - begin);
+			System.out.println("DNS-TRUNCATED elapsed=" + elapsed + "ms timeout=" + timeout + "ms margin=" + MARGIN +
+				"ms udp=" + silent.queries() + truncated.queries() + " message=" + ae.getBaseMessage());
+
+			assertTrue("elapsed " + elapsed + "ms", elapsed <= timeout + MARGIN);
+			assertFalse(truncated.queries().toString(), truncated.queries().isEmpty());
 		}
 	}
 

@@ -574,6 +574,7 @@ public class ClientPolicy {
 	public String appId;
 
 	private static final String DISCOVERY_PROVIDER = "static.client.discovery.provider";
+	private static final String DISCOVERY_DNS = "static.client.discovery.dns";
 	private static final String TRANSLATION_PROVIDER = "static.client.translation.provider";
 
 	private Map<String,Function<Map<String,Object>,SeedCandidateProvider>> seedCandidateProviderFactories;
@@ -758,7 +759,7 @@ public class ClientPolicy {
 		String path,
 		String name,
 		Map<String,Object> options,
-		Function<Map<String,Object>,T> factory,
+		Map<String,Function<Map<String,Object>,T>> factories,
 		Registered<T> previous
 	) {
 		if (previous != null) {
@@ -768,7 +769,7 @@ public class ClientPolicy {
 		T instance;
 
 		try {
-			instance = factory.apply(options);
+			instance = factories.get(name).apply(options);
 		}
 		catch (Throwable e) {
 			throw new AerospikeException("Invalid " + path + " value '" + name + "': factory failed: " + e, e);
@@ -778,6 +779,22 @@ public class ClientPolicy {
 			throw new AerospikeException("Invalid " + path + " value '" + name + "': factory returned null");
 		}
 		return new Registered<>(instance);
+	}
+
+	private static Registered<SeedCandidateProvider> buildDns(
+		DnsSeedCandidateProvider.Builder builder,
+		Registered<SeedCandidateProvider> previous
+	) {
+		if (previous != null) {
+			return previous;
+		}
+
+		try {
+			return new Registered<>(builder.build());
+		}
+		catch (AerospikeException ae) {
+			throw new AerospikeException("Invalid " + DISCOVERY_DNS + ": " + ae.getBaseMessage(), ae);
+		}
 	}
 
 	private static void checkRegistered(
@@ -887,11 +904,10 @@ public class ClientPolicy {
 
 		if (discovery != null) {
 			if (discovery.options != null || discovery.dns != null) {
-				DnsSeedCandidateProvider.Builder dns = discovery.dns;
-				Function<Map<String,Object>,SeedCandidateProvider> factory = (dns != null)?
-					options -> dns.build() : seedCandidateProviderFactories.get(discovery.provider.value);
-				Registered<SeedCandidateProvider> registered = build(DISCOVERY_PROVIDER, discovery.provider.value,
-					discovery.options, factory, registeredSeedCandidateProvider);
+				Registered<SeedCandidateProvider> registered = (discovery.dns != null)?
+					buildDns(discovery.dns, registeredSeedCandidateProvider) :
+					build(DISCOVERY_PROVIDER, discovery.provider.value, discovery.options,
+						seedCandidateProviderFactories, registeredSeedCandidateProvider);
 
 				if (registered != registeredSeedCandidateProvider) {
 					this.registeredSeedCandidateProvider = registered;
@@ -947,8 +963,7 @@ public class ClientPolicy {
 
 				default:
 					this.registeredAddressTranslator = build(TRANSLATION_PROVIDER, translation.provider.value,
-						translation.options, addressTranslatorFactories.get(translation.provider.value),
-						registeredAddressTranslator);
+						translation.options, addressTranslatorFactories, registeredAddressTranslator);
 					this.addressTranslator = registeredAddressTranslator.instance;
 					break;
 				}
