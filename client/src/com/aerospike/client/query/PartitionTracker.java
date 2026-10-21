@@ -403,6 +403,14 @@ public final class PartitionTracker {
 		nodePartitions.recordCount++;
 	}
 
+	/**
+	 * Count a record without moving its partition's resume cursor, so a retry re-queries the
+	 * partition from the start.
+	 */
+	public void countRecord(NodePartitions nodePartitions) {
+		nodePartitions.recordCount++;
+	}
+
 	public boolean allowRecord(NodePartitions nodePartitions) {
 		if (recordCount == null || recordCount.incrementAndGet() <= maxRecords) {
 			return true;

@@ -9,6 +9,7 @@ package com.aerospike.client.query;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
@@ -88,6 +89,28 @@ public class TestTopKPushdown extends TestSync {
 		finally {
 			cluster.hasQueryOrderBy = saved;
 		}
+	}
+
+	@Test
+	public void pushdownLeavesNoResumeCursor() {
+		requireCapableCluster();
+
+		PartitionFilter pushdownFilter = PartitionFilter.all();
+		drain(client.queryPartitions(null, pushdown(Order.DESC, 3), pushdownFilter));
+
+		for (PartitionStatus ps : pushdownFilter.getPartitions()) {
+			assertNull(ps.digest);
+		}
+
+		PartitionFilter clientOnlyFilter = PartitionFilter.all();
+		drain(client.queryPartitions(null, clientOnly(Order.DESC, 3), clientOnlyFilter));
+
+		boolean anyCursor = false;
+
+		for (PartitionStatus ps : clientOnlyFilter.getPartitions()) {
+			anyCursor |= ps.digest != null;
+		}
+		assertTrue(anyCursor);
 	}
 
 	@Test
@@ -210,6 +233,16 @@ public class TestTopKPushdown extends TestSync {
 				ExpReadFlags.DEFAULT)
 		});
 		return statement;
+	}
+
+	private static void drain(RecordSet recordSet) {
+		try {
+			while (recordSet.next()) {
+			}
+		}
+		finally {
+			recordSet.close();
+		}
 	}
 
 	private long[] values(Statement statement, String valueBin) {
