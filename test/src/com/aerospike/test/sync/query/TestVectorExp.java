@@ -25,6 +25,7 @@ import java.util.HashSet;
 import java.util.Set;
 
 import org.junit.AfterClass;
+import org.junit.Assume;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -60,6 +61,9 @@ public class TestVectorExp extends TestSync {
 
 	@BeforeClass
 	public static void prepare() {
+		Assume.assumeTrue("Vectors require server version 8.2.1 or later",
+			args.serverVersion.isGreaterOrEqual(8, 2, 1, 0));
+
 		for (int i = 0; i < size; i++) {
 			Key key = new Key(args.namespace, setName, keyPrefix + i);
 			float[] data = new float[dims];

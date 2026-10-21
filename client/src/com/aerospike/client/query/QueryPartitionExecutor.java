@@ -84,7 +84,6 @@ public final class QueryPartitionExecutor implements IQueryExecutor, Runnable {
 
 		while (true) {
 			List<NodePartitions> list = tracker.assignPartitionsToNodes(cluster, statement.namespace);
-			boolean sendTopK = supportsTopKPushdown(list);
 
 			// Initialize maximum number of nodes to query in parallel.
 			maxConcurrentThreads = (policy.maxConcurrentNodes == 0 || policy.maxConcurrentNodes >= list.size()) ? list.size() : policy.maxConcurrentNodes;
@@ -105,7 +104,7 @@ public final class QueryPartitionExecutor implements IQueryExecutor, Runnable {
 
 					for (NodePartitions nodePartitions : list) {
 						MultiCommand command = new QueryPartitionCommand(
-							cluster, policy, statement, taskId, recordSet, reducer, tracker, nodePartitions, sendTopK);
+							cluster, policy, statement, taskId, recordSet, reducer, tracker, nodePartitions);
 						threads.add(new QueryThread(command));
 					}
 
@@ -122,7 +121,7 @@ public final class QueryPartitionExecutor implements IQueryExecutor, Runnable {
 			else {
 				for (NodePartitions nodePartitions : list) {
 					MultiCommand command = new QueryPartitionCommand(
-						cluster, policy, statement, taskId, recordSet, reducer, tracker, nodePartitions, sendTopK);
+						cluster, policy, statement, taskId, recordSet, reducer, tracker, nodePartitions);
 					command.execute();
 				}
 			}
@@ -162,19 +161,6 @@ public final class QueryPartitionExecutor implements IQueryExecutor, Runnable {
 			// taskId must be reset on next pass to avoid server duplicate query detection.
 			taskId = task.nextId();
 		}
-	}
-
-	private boolean supportsTopKPushdown(List<NodePartitions> list) {
-		if (! statement.hasTopK()) {
-			return false;
-		}
-
-		for (NodePartitions nodePartitions : list) {
-			if (! nodePartitions.node.hasQueryOrderBy()) {
-				return false;
-			}
-		}
-		return true;
 	}
 
 	private final void threadCompleted() {

@@ -4618,6 +4618,11 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 				"Top-K requires partition query support");
 		}
 
+		if (! cluster.hasQueryOrderBy) {
+			throw new AerospikeException(ResultCode.PARAMETER_ERROR,
+				"Top-K is not supported by all nodes in the cluster");
+		}
+
 		if (! policy.includeBinData) {
 			throw new AerospikeException(ResultCode.PARAMETER_ERROR,
 				"Top-K is incompatible with includeBinData=false");

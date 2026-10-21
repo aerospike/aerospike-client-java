@@ -369,7 +369,7 @@ public final class NodeValidator {
 			features |= Node.HAS_QUERY_OPS_PROJECTION_EXT;
 		}
 
-		if (serverVersion.isGreaterOrEqual(Version.SERVER_VERSION_8_1_3)) {
+		if (serverVersion.isGreaterOrEqual(Version.SERVER_VERSION_8_2_1)) {
 			features |= Node.HAS_QUERY_ORDER_BY;
 			features |= Node.HAS_VECTOR;
 		}

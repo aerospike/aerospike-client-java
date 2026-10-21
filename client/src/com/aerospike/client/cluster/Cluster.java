@@ -214,6 +214,9 @@ public class Cluster implements Runnable, Closeable {
 	// Does cluster support vectors.
 	public volatile boolean hasVector;
 
+	// Does cluster support Top-K queries.
+	public volatile boolean hasQueryOrderBy;
+
 	private boolean asyncComplete;
 
 	public boolean metricsEnabled;
@@ -931,6 +934,7 @@ public class Cluster implements Runnable, Closeable {
 		}
 		hasPartitionQuery = Cluster.supportsPartitionQuery(nodeArray);
 		hasVector = Cluster.supportsVector(nodeArray);
+		hasQueryOrderBy = Cluster.supportsQueryOrderBy(nodeArray);
 
 		// Replace nodes with copy.
 		nodes = nodeArray;
@@ -957,6 +961,7 @@ public class Cluster implements Runnable, Closeable {
 		}
 		hasPartitionQuery = Cluster.supportsPartitionQuery(nodeArray);
 		hasVector = Cluster.supportsVector(nodeArray);
+		hasQueryOrderBy = Cluster.supportsQueryOrderBy(nodeArray);
 
 		// Replace nodes with copy.
 		nodes = nodeArray;
@@ -1033,6 +1038,7 @@ public class Cluster implements Runnable, Closeable {
 		}
 		hasPartitionQuery = Cluster.supportsPartitionQuery(nodeArray);
 		hasVector = Cluster.supportsVector(nodeArray);
+		hasQueryOrderBy = Cluster.supportsQueryOrderBy(nodeArray);
 
 		// Replace nodes with copy.
 		nodes = nodeArray;
@@ -1530,6 +1536,19 @@ public class Cluster implements Runnable, Closeable {
 
 		for (Node node : nodes) {
 			if (! node.hasVector()) {
+				return false;
+			}
+		}
+		return true;
+	}
+
+	private static boolean supportsQueryOrderBy(Node[] nodes) {
+		if (nodes.length == 0) {
+			return false;
+		}
+
+		for (Node node : nodes) {
+			if (! node.hasQueryOrderBy()) {
 				return false;
 			}
 		}
