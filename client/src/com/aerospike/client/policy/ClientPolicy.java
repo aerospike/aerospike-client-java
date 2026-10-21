@@ -36,6 +36,7 @@ import com.aerospike.client.configuration.serializers.staticconfig.StaticClientC
 import com.aerospike.client.configuration.serializers.staticconfig.StaticDiscoveryConfig;
 import com.aerospike.client.configuration.serializers.staticconfig.StaticTranslationConfig;
 import com.aerospike.client.discovery.AddressTranslator;
+import com.aerospike.client.discovery.DnsSeedCandidateProvider;
 import com.aerospike.client.discovery.PassThroughAddressTranslator;
 import com.aerospike.client.discovery.PortMapAddressTranslator;
 import com.aerospike.client.discovery.SeedCandidateProvider;
@@ -371,8 +372,11 @@ public class ClientPolicy {
 	 * Default: null (use {@link com.aerospike.client.discovery.StaticSeedCandidateProvider} with
 	 * the seed hosts passed to the client constructor)
 	 * <p>
-	 * YAML key: {@code static.client.discovery.provider}: {@code static}, this default, or a name
-	 * registered with {@link #registerSeedCandidateProvider}. Other providers are set in code.
+	 * YAML key: {@code static.client.discovery.provider}: {@code static}, this default; {@code dns},
+	 * {@link com.aerospike.client.discovery.DnsSeedCandidateProvider} built from the
+	 * {@code static.client.discovery.dns} block; or a name registered with
+	 * {@link #registerSeedCandidateProvider}. Other providers are set in code. A provider built from
+	 * YAML is built once, at client construction, and kept when the file is reloaded.
 	 * <p>
 	 * {@link SeedCandidateProvider#close()} is called on the provider once after
 	 * {@link com.aerospike.client.AerospikeClient#close()}.
@@ -754,7 +758,7 @@ public class ClientPolicy {
 		String path,
 		String name,
 		Map<String,Object> options,
-		Map<String,Function<Map<String,Object>,T>> factories,
+		Function<Map<String,Object>,T> factory,
 		Registered<T> previous
 	) {
 		if (previous != null) {
@@ -764,7 +768,7 @@ public class ClientPolicy {
 		T instance;
 
 		try {
-			instance = factories.get(name).apply(options);
+			instance = factory.apply(options);
 		}
 		catch (Throwable e) {
 			throw new AerospikeException("Invalid " + path + " value '" + name + "': factory failed: " + e, e);
@@ -882,9 +886,12 @@ public class ClientPolicy {
 		StaticDiscoveryConfig discovery = staCC.discovery;
 
 		if (discovery != null) {
-			if (discovery.options != null) {
+			if (discovery.options != null || discovery.dns != null) {
+				DnsSeedCandidateProvider.Builder dns = discovery.dns;
+				Function<Map<String,Object>,SeedCandidateProvider> factory = (dns != null)?
+					options -> dns.build() : seedCandidateProviderFactories.get(discovery.provider.value);
 				Registered<SeedCandidateProvider> registered = build(DISCOVERY_PROVIDER, discovery.provider.value,
-					discovery.options, seedCandidateProviderFactories, registeredSeedCandidateProvider);
+					discovery.options, factory, registeredSeedCandidateProvider);
 
 				if (registered != registeredSeedCandidateProvider) {
 					this.registeredSeedCandidateProvider = registered;
@@ -940,7 +947,8 @@ public class ClientPolicy {
 
 				default:
 					this.registeredAddressTranslator = build(TRANSLATION_PROVIDER, translation.provider.value,
-						translation.options, addressTranslatorFactories, registeredAddressTranslator);
+						translation.options, addressTranslatorFactories.get(translation.provider.value),
+						registeredAddressTranslator);
 					this.addressTranslator = registeredAddressTranslator.instance;
 					break;
 				}

@@ -24,6 +24,7 @@ import java.util.Map;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.configuration.primitiveprops.IntProperty;
 import com.aerospike.client.configuration.primitiveprops.StringProperty;
+import com.aerospike.client.discovery.DnsSeedCandidateProvider;
 import com.aerospike.client.discovery.SeedMergePolicy;
 
 /**
@@ -43,13 +44,14 @@ public class StaticDiscoveryConfig {
     /**
      * Built-in provider names accepted from YAML.
      */
-    public static final List<String> YAML_PROVIDERS = List.of(STATIC);
+    public static final List<String> YAML_PROVIDERS = List.of(STATIC, DNS);
 
-    private static final List<String> CODE_ONLY_PROVIDERS = List.of(DNS, AWS_TAGS);
+    private static final List<String> CODE_ONLY_PROVIDERS = List.of(AWS_TAGS);
     private static final List<String> MERGE_POLICIES = List.of("merge", "replace", "discovery_only");
+    private static final List<String> RECORD_TYPES = List.of("a", "srv");
 
     /**
-     * {@code provider}: {@code static} or a name registered with
+     * {@code provider}: {@code static}, {@code dns} or a name registered with
      * {@link com.aerospike.client.policy.ClientPolicy#registerSeedCandidateProvider}.
      */
     public StringProperty provider;
@@ -59,6 +61,13 @@ public class StaticDiscoveryConfig {
      * {@code provider} is absent or {@code static}.
      */
     public Map<String,Object> options;
+
+    /**
+     * {@code dns}: settings of provider {@code dns}, validated by
+     * {@link DnsSeedCandidateProvider.Builder#build()} when the provider is built. Null unless
+     * {@code provider} is {@code dns}.
+     */
+    public DnsSeedCandidateProvider.Builder dns;
 
     /**
      * {@code merge_policy}.
@@ -106,6 +115,18 @@ public class StaticDiscoveryConfig {
             }
         }
 
+        value = map.get(DNS);
+
+        if (provider != null && DNS.equals(provider.value)) {
+            if (value == null) {
+                throw new AerospikeException(PATH + '.' + DNS + " is required with provider " + DNS);
+            }
+            dns = dns(value);
+        }
+        else if (value != null) {
+            throw new AerospikeException(PATH + '.' + DNS + " is only valid with provider " + DNS);
+        }
+
         value = map.get("merge_policy");
 
         if (value != null) {
@@ -124,6 +145,50 @@ public class StaticDiscoveryConfig {
         if (value != null) {
             tendRefreshDeadlineMs = new IntProperty(YamlValues.intValue(PATH + ".tend_refresh_deadline_ms", value));
         }
+    }
+
+    private static DnsSeedCandidateProvider.Builder dns(Object block) {
+        String path = PATH + '.' + DNS;
+        Map<?,?> map = YamlValues.block(path, block);
+        DnsSeedCandidateProvider.Builder builder = DnsSeedCandidateProvider.builder();
+        Object value = map.get("names");
+
+        if (value == null) {
+            throw new AerospikeException(path + ".names is required");
+        }
+        builder.names(YamlValues.stringList(path + ".names", value));
+
+        value = map.get("record_type");
+
+        if (value != null) {
+            String name = YamlValues.enumValue(path + ".record_type", value, RECORD_TYPES);
+            builder.recordType(DnsSeedCandidateProvider.RecordType.valueOf(name.toUpperCase(Locale.ROOT)));
+        }
+
+        value = map.get("port");
+
+        if (value != null) {
+            builder.port(YamlValues.intValue(path + ".port", value));
+        }
+
+        value = map.get("tls_name");
+
+        if (value != null) {
+            builder.tlsName(YamlValues.stringValue(path + ".tls_name", value));
+        }
+
+        value = map.get("timeout_ms");
+
+        if (value != null) {
+            builder.timeout(YamlValues.intValue(path + ".timeout_ms", value));
+        }
+
+        value = map.get("servers");
+
+        if (value != null) {
+            builder.servers(YamlValues.stringList(path + ".servers", value));
+        }
+        return builder;
     }
 
     @Override
