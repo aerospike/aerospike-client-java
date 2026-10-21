@@ -42,12 +42,16 @@ public class TestTopKPushdown extends TestSync {
 	private static final String SET = "topKPushdown";
 	private static final String BIN = "rank";
 	private static final String DERIVED = "derived";
+	private static final String GROUP = "group";
+	private static final String MEMBER = "member";
 	private static final int COUNT = 100;
 
 	@BeforeClass
 	public static void prepare() {
+		// Ten groups of ten records each, so a second order key has ties to break.
 		for (int i = 1; i <= COUNT; i++) {
-			client.put(null, new Key(args.namespace, SET, "key" + i), new Bin(BIN, i));
+			client.put(null, new Key(args.namespace, SET, "key" + i),
+				new Bin(BIN, i), new Bin(GROUP, (i - 1) / 10), new Bin(MEMBER, (i - 1) % 10));
 		}
 	}
 
@@ -75,11 +79,24 @@ public class TestTopKPushdown extends TestSync {
 			assertEquals(ResultCode.PARAMETER_ERROR, ae.getResultCode());
 			assertTrue(ae.getMessage().contains("not supported by all nodes"));
 
+			ae = assertThrows(AerospikeException.class,
+				() -> client.query(null, orderKeyOnly()));
+			assertTrue(ae.getMessage().contains("not supported by all nodes"));
+
 			assertArrayEquals(new long[] {100, 99, 98}, values(clientOnly(Order.DESC, 3), BIN));
 		}
 		finally {
 			cluster.hasQueryOrderBy = saved;
 		}
+	}
+
+	@Test
+	public void orderKeyWithoutKIsRejectedByServer() {
+		requireCapableCluster();
+
+		AerospikeException ae = assertThrows(AerospikeException.class,
+			() -> values(orderKeyOnly(), BIN));
+		assertEquals(ResultCode.PARAMETER_ERROR, ae.getResultCode());
 	}
 
 	@Test
@@ -128,6 +145,21 @@ public class TestTopKPushdown extends TestSync {
 		assertArrayEquals(expected, values(pushdownDerived(Order.ASC, k), DERIVED));
 	}
 
+	@Test
+	public void secondOrderKeyBreaksTies() {
+		requireCapableCluster();
+
+		Statement statement = base(BIN);
+		statement.setBinNames(BIN, GROUP, MEMBER);
+		statement.setOrderBy(GROUP, BinDataType.INTEGER, Order.DESC);
+		statement.thenOrderBy(MEMBER, BinDataType.INTEGER, Order.ASC);
+		statement.setTopK(15);
+
+		// The whole top group by member, then the next group's five smallest members.
+		long[] expected = {91, 92, 93, 94, 95, 96, 97, 98, 99, 100, 81, 82, 83, 84, 85};
+		assertArrayEquals(expected, values(statement, BIN));
+	}
+
 	private Statement clientOnly(Order order, int k) {
 		Statement statement = base(BIN);
 		statement.setReduce(Reduce.topK(BIN, BinDataType.INTEGER, order, OrderByFlags.NONE, k));
@@ -151,6 +183,12 @@ public class TestTopKPushdown extends TestSync {
 		Statement statement = derived();
 		statement.setOrderBy(DERIVED, BinDataType.INTEGER, order);
 		statement.setTopK(k);
+		return statement;
+	}
+
+	private Statement orderKeyOnly() {
+		Statement statement = base(BIN);
+		statement.setOrderBy(BIN, BinDataType.INTEGER, Order.DESC);
 		return statement;
 	}
 

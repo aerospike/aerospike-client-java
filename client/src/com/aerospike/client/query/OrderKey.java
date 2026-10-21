@@ -23,50 +23,52 @@ import java.util.Map;
 import com.aerospike.client.Record;
 
 /**
- * Sort key used internally by {@link TopKReduceSpec}.
+ * Sort key used internally by {@link TopKReduceSpec}: one value per order key, then the digest.
  * <p>
- * Missing, mismatched, and collection values are NIL and sort last.
+ * Missing, mismatched, and collection values are NIL and sort last for their order key, so a
+ * later order key still ranks records that are NIL on an earlier one.
  */
 final class OrderKey implements Comparable<OrderKey> {
-	final Object value;
-	final BinDataType type;
-	final Order order;
-	final OrderByFlags flags;
+	// A query has at most two order keys; fields instead of an array avoid an allocation per
+	// candidate.
+	final Object first;
+	final Object second;
+	final OrderBy[] keys;
 	final byte[] digest;
 
-	OrderKey(Record record, String bin, BinDataType type, Order order, OrderByFlags flags, byte[] digest) {
-		this.value = readValue(record, bin, type);
-		this.type = type;
-		this.order = order;
-		this.flags = flags;
+	OrderKey(Record record, OrderBy[] keys, byte[] digest) {
+		this.first = readValue(record, keys[0].binName, keys[0].type);
+		this.second = keys.length > 1 ? readValue(record, keys[1].binName, keys[1].type) : null;
+		this.keys = keys;
 		this.digest = digest;
-	}
-
-	boolean isNil() {
-		return value == null;
 	}
 
 	@Override
 	public int compareTo(OrderKey other) {
-		boolean nilA = isNil();
-		boolean nilB = other.isNil();
+		int cmp = compareKey(keys[0], first, other.first);
 
-		if (nilA || nilB) {
-			if (nilA && nilB) {
-				// Break NIL ties by digest.
-				return compareDigest(digest, other.digest);
-			}
-			// NIL sorts last in either direction.
-			return nilA ? 1 : -1;
+		if (cmp == 0 && keys.length > 1) {
+			cmp = compareKey(keys[1], second, other.second);
 		}
 
-		int cmp = compareValues(value, other.value, type, flags);
-
 		if (cmp != 0) {
-			return order == Order.ASC ? cmp : -cmp;
+			return cmp;
 		}
 		// Tie-break: digest ascending (stable, deterministic ordering).
 		return compareDigest(digest, other.digest);
+	}
+
+	private static int compareKey(OrderBy key, Object a, Object b) {
+		if (a == null || b == null) {
+			if (a == null && b == null) {
+				return 0;
+			}
+			// NIL sorts last in either direction.
+			return a == null ? 1 : -1;
+		}
+
+		int cmp = compareValues(a, b, key.type, key.flags);
+		return key.order == Order.ASC ? cmp : -cmp;
 	}
 
 	/**
@@ -104,6 +106,13 @@ final class OrderKey implements Comparable<OrderKey> {
 
 		if (type == BinDataType.BYTES) {
 			return compareBytes((byte[])a, (byte[])b);
+		}
+
+		if (type == BinDataType.DOUBLE) {
+			double x = (Double)a;
+			double y = (Double)b;
+			// The server compares with < and >, so -0.0 equals 0.0 and the digest decides.
+			return x == y ? 0 : Double.compare(x, y);
 		}
 		return ((Comparable<Object>)a).compareTo(b);
 	}
