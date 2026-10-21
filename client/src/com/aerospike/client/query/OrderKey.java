@@ -20,10 +20,12 @@ import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 
+import com.aerospike.client.Key;
 import com.aerospike.client.Record;
 
 /**
- * Sort key used internally by {@link TopKReduceSpec}: one value per order key, then the digest.
+ * Candidate held by {@link TopKReduceSpec}: the record and its key, ranked by one value per
+ * order key, then the digest.
  * <p>
  * Missing, mismatched, and collection values are NIL and sort last for their order key, so a
  * later order key still ranks records that are NIL on an earlier one.
@@ -34,13 +36,15 @@ final class OrderKey implements Comparable<OrderKey> {
 	final Object first;
 	final Object second;
 	final OrderBy[] keys;
-	final byte[] digest;
+	final Key key;
+	final Record record;
 
-	OrderKey(Record record, OrderBy[] keys, byte[] digest) {
+	OrderKey(Record record, OrderBy[] keys, Key key) {
 		this.first = readValue(record, keys[0].binName, keys[0].type);
 		this.second = keys.length > 1 ? readValue(record, keys[1].binName, keys[1].type) : null;
 		this.keys = keys;
-		this.digest = digest;
+		this.key = key;
+		this.record = record;
 	}
 
 	@Override
@@ -55,7 +59,7 @@ final class OrderKey implements Comparable<OrderKey> {
 			return cmp;
 		}
 		// Tie-break: digest ascending (stable, deterministic ordering).
-		return compareDigest(digest, other.digest);
+		return compareDigest(key.digest, other.key.digest);
 	}
 
 	private static int compareKey(OrderBy key, Object a, Object b) {

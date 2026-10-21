@@ -16,10 +16,8 @@
  */
 package com.aerospike.client.query;
 
-import java.util.ArrayList;
-import java.util.Comparator;
+import java.util.Arrays;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.PriorityQueue;
 
@@ -27,7 +25,6 @@ import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
 import com.aerospike.client.ResultCode;
-import com.aerospike.client.command.Buffer;
 
 /**
  * Ordered LIMIT k reduce combiner backing {@link Reduce#topK(String, BinDataType, Order, OrderByFlags, int)}
@@ -42,23 +39,12 @@ final class TopKReduceSpec implements ReduceSpec<Record, Record> {
 	private final OrderBy[] keys;
 	private final int limit;
 
-	/** digest (hex) -> (key, record), for dedup and result reconstruction. */
-	private final Map<String, Entry> byDigest = new HashMap<>();
+	// Key equality is namespace and digest, and a query has one namespace, so the key itself
+	// identifies a record without deriving anything from the digest.
+	private final Map<Key, OrderKey> byKey;
 
 	/** Worst-first heap: head is evicted first when the heap exceeds {@code limit}. */
 	private final PriorityQueue<OrderKey> heap;
-
-	private static final class Entry {
-		final Key key;
-		final Record record;
-		final OrderKey orderKey;
-
-		Entry(Key key, Record record, OrderKey orderKey) {
-			this.key = key;
-			this.record = record;
-			this.orderKey = orderKey;
-		}
-	}
 
 	/**
 	 * Create an empty combiner that ranks by {@code keys}, most significant first.
@@ -66,6 +52,7 @@ final class TopKReduceSpec implements ReduceSpec<Record, Record> {
 	TopKReduceSpec(OrderBy[] keys, int limit) {
 		this.keys = keys;
 		this.limit = limit;
+		this.byKey = new HashMap<>((limit + 1) * 4 / 3 + 1);
 		this.heap = new PriorityQueue<>(limit + 1, TopKReduceSpec::compareWorstFirst);
 	}
 
@@ -101,27 +88,26 @@ final class TopKReduceSpec implements ReduceSpec<Record, Record> {
 
 	@Override
 	public synchronized void acceptPartial(Record record, Key key) {
-		byte[] digest = key.digest;
-		String digestKey = digestKey(digest);
-		OrderKey candidate = new OrderKey(record, keys, digest);
+		OrderKey candidate = new OrderKey(record, keys, key);
 
 		// Dedup: at most one row per digest (partition migration may re-scan a record).
-		Entry existingEntry = byDigest.get(digestKey);
+		OrderKey existing = byKey.get(key);
 
-		if (existingEntry != null) {
-			if (candidate.compareTo(existingEntry.orderKey) >= 0) {
+		if (existing != null) {
+			if (candidate.compareTo(existing) >= 0) {
 				return; // existing entry is at least as good.
 			}
-			heap.remove(existingEntry.orderKey);
-			byDigest.remove(digestKey);
+			heap.remove(existing);
+		}
+		else if (heap.size() == limit && candidate.compareTo(heap.peek()) >= 0) {
+			return; // would be evicted at once.
 		}
 
 		heap.offer(candidate);
-		byDigest.put(digestKey, new Entry(key, record, candidate));
+		byKey.put(key, candidate);
 
 		if (heap.size() > limit) {
-			OrderKey evicted = heap.poll();
-			byDigest.remove(digestKey(evicted.digest));
+			byKey.remove(heap.poll().key);
 		}
 	}
 
@@ -138,39 +124,38 @@ final class TopKReduceSpec implements ReduceSpec<Record, Record> {
 
 	@Override
 	public synchronized Record[] getResult() {
-		List<OrderKey> list = new ArrayList<>(heap);
-		list.sort(Comparator.naturalOrder()); // best first.
+		OrderKey[] sorted = sorted();
+		Record[] out = new Record[sorted.length];
 
-		Record[] out = new Record[list.size()];
-
-		for (int i = 0; i < list.size(); i++) {
-			out[i] = byDigest.get(digestKey(list.get(i).digest)).record;
+		for (int i = 0; i < sorted.length; i++) {
+			out[i] = sorted[i].record;
 		}
 		return out;
 	}
 
 	/**
-	 * Return the record keys corresponding to {@link #getResult()}, in the same order.
-	 * Used by the query executor to reconstruct key/record pairs for {@link RecordSet}.
+	 * Return the key/record pairs of {@link #getResult()}, in the same order. Used by the query
+	 * executor to fill the {@link RecordSet}.
 	 */
-	synchronized Key[] getResultKeys() {
-		List<OrderKey> list = new ArrayList<>(heap);
-		list.sort(Comparator.naturalOrder()); // best first.
+	synchronized KeyRecord[] getResultKeyRecords() {
+		OrderKey[] sorted = sorted();
+		KeyRecord[] out = new KeyRecord[sorted.length];
 
-		Key[] out = new Key[list.size()];
-
-		for (int i = 0; i < list.size(); i++) {
-			out[i] = byDigest.get(digestKey(list.get(i).digest)).key;
+		for (int i = 0; i < sorted.length; i++) {
+			out[i] = new KeyRecord(sorted[i].key, sorted[i].record);
 		}
 		return out;
+	}
+
+	/** Return the kept candidates, best first. */
+	private OrderKey[] sorted() {
+		OrderKey[] sorted = heap.toArray(new OrderKey[0]);
+		Arrays.sort(sorted);
+		return sorted;
 	}
 
 	/** Evict the candidate with the worst sort key first (heap head = worst). */
 	private static int compareWorstFirst(OrderKey a, OrderKey b) {
 		return b.compareTo(a);
-	}
-
-	private static String digestKey(byte[] digest) {
-		return Buffer.bytesToHexString(digest);
 	}
 }
