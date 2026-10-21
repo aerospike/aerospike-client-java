@@ -30,10 +30,10 @@ public final class VectorExp {
 	 * The query vector's element type and dimension count must match the stored vector.
 	 *
 	 * <pre>{@code
-	 * // Records whose "embedding" vector is within cosine distance threshold of a query
+	 * // Records whose "embedding" vector has cosine similarity above 0.8 to a query vector
 	 * Vector query = Vector.ofFloat32(queryEmbedding);
 	 * Exp.gt(
-	 *     VectorExp.distance(VectorDistanceMetric.COSINE, query, Exp.vectorBin("embedding")),
+	 *     VectorExp.distance(VectorDistanceMetric.COSINE_SIMILARITY, query, Exp.vectorBin("embedding")),
 	 *     Exp.val(0.8))
 	 * }</pre>
 	 *
