@@ -95,6 +95,15 @@ final class YamlValues {
         return (Integer)value;
     }
 
+    static int intValue(String path, Object value, int min, int max) {
+        int v = intValue(path, value);
+
+        if (v < min || v > max) {
+            throw invalid(path, value, "expected an integer from " + min + " to " + max);
+        }
+        return v;
+    }
+
     static boolean boolValue(String path, Object value) {
         if (!(value instanceof Boolean)) {
             throw invalid(path, value, "expected true or false");

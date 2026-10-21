@@ -188,6 +188,14 @@ public final class DnsSeedCandidateProvider implements SeedCandidateProvider {
 			}
 			this.servers = Collections.unmodifiableList(new ArrayList<>(builder.servers));
 			this.providerUrl = sb.toString();
+
+			try {
+				context(providerUrl, 1).close();
+			}
+			catch (NamingException e) {
+				throw new AerospikeException("DNS seed provider: JDK DNS provider " + FACTORY +
+					" is unavailable (module jdk.naming.dns): " + e, e);
+			}
 		}
 		else {
 			this.servers = Collections.emptyList();
@@ -346,13 +354,8 @@ public final class DnsSeedCandidateProvider implements SeedCandidateProvider {
 			throw new DeadlineException();
 		}
 
-		Hashtable<String,String> env = new Hashtable<>();
-		env.put(Context.INITIAL_CONTEXT_FACTORY, FACTORY);
-		env.put(Context.PROVIDER_URL, providerUrl);
-		env.put(TIMEOUT_PROPERTY, Long.toString(Math.max(1, remaining / serverCount)));
-		env.put(RETRIES_PROPERTY, "1");
-
-		DirContext dir = new InitialDirContext(env);
+		// A truncated UDP answer is retried over TCP to every server with the same timeout again.
+		DirContext dir = context(providerUrl, Math.max(1, remaining / (2 * serverCount)));
 
 		try {
 			Attribute attr = dir.getAttributes(absolute(name), new String[] {type}).get(type);
@@ -370,6 +373,15 @@ public final class DnsSeedCandidateProvider implements SeedCandidateProvider {
 		finally {
 			dir.close();
 		}
+	}
+
+	private static DirContext context(String url, long timeout) throws NamingException {
+		Hashtable<String,String> env = new Hashtable<>();
+		env.put(Context.INITIAL_CONTEXT_FACTORY, FACTORY);
+		env.put(Context.PROVIDER_URL, url);
+		env.put(TIMEOUT_PROPERTY, Long.toString(timeout));
+		env.put(RETRIES_PROPERTY, "1");
+		return new InitialDirContext(env);
 	}
 
 	private static String absolute(String name) {
@@ -517,12 +529,8 @@ public final class DnsSeedCandidateProvider implements SeedCandidateProvider {
 	}
 
 	private static String systemProviderUrl() {
-		Hashtable<String,String> env = new Hashtable<>();
-		env.put(Context.INITIAL_CONTEXT_FACTORY, FACTORY);
-		env.put(Context.PROVIDER_URL, "dns:");
-
 		try {
-			DirContext dir = new InitialDirContext(env);
+			DirContext dir = context("dns:", 1);
 
 			try {
 				Object url = dir.getEnvironment().get(Context.PROVIDER_URL);

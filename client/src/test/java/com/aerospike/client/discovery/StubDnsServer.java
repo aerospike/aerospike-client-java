@@ -20,6 +20,7 @@ import java.io.ByteArrayOutputStream;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
+import java.net.ServerSocket;
 import java.net.SocketException;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
@@ -50,6 +51,8 @@ public final class StubDnsServer implements AutoCloseable {
 	private final Map<String,Integer> rcodes = new ConcurrentHashMap<>();
 	private final List<String> queries = new CopyOnWriteArrayList<>();
 	private volatile boolean silent;
+	private volatile boolean truncated;
+	private ServerSocket tcp;
 
 	public StubDnsServer() throws SocketException {
 		this(false);
@@ -72,6 +75,22 @@ public final class StubDnsServer implements AutoCloseable {
 
 	public void setSilent(boolean silent) {
 		this.silent = silent;
+	}
+
+	/**
+	 * Answer every query with the truncated flag and no records, so the client retries over TCP.
+	 */
+	public StubDnsServer truncate() {
+		this.truncated = true;
+		return this;
+	}
+
+	/**
+	 * Listen on the same TCP port and never answer. Connections complete in the backlog.
+	 */
+	public StubDnsServer hangTcp() throws Exception {
+		tcp = new ServerSocket(socket.getLocalPort(), 50, InetAddress.getLoopbackAddress());
+		return this;
 	}
 
 	public StubDnsServer a(String name, String... addresses) throws Exception {
@@ -175,7 +194,7 @@ public final class StubDnsServer implements AutoCloseable {
 					continue;
 				}
 
-				if (rcode != NOERROR) {
+				if (rcode != NOERROR || truncated) {
 					an = List.of();
 					ar = List.of();
 				}
@@ -183,7 +202,7 @@ public final class StubDnsServer implements AutoCloseable {
 				ByteArrayOutputStream out = new ByteArrayOutputStream();
 				ByteBuffer hdr = ByteBuffer.allocate(12);
 				hdr.putShort(id);
-				hdr.putShort((short)(0x8000 | 0x0400 | (flags & 0x0100) | 0x0080 | rcode));
+				hdr.putShort((short)(0x8000 | 0x0400 | (truncated? 0x0200 : 0) | (flags & 0x0100) | 0x0080 | rcode));
 				hdr.putShort((short)1).putShort((short)an.size()).putShort((short)0).putShort((short)ar.size());
 				out.writeBytes(hdr.array());
 				out.write(packet.getData(), qstart, qend - qstart);
@@ -256,7 +275,10 @@ public final class StubDnsServer implements AutoCloseable {
 	}
 
 	@Override
-	public void close() throws InterruptedException {
+	public void close() throws Exception {
+		if (tcp != null) {
+			tcp.close();
+		}
 		socket.close();
 		thread.join(1000);
 	}
