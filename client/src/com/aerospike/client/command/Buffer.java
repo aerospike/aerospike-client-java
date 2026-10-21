@@ -271,7 +271,12 @@ public final class Buffer {
 	}
 
 	public static Object bytesToVector(byte[] buf, int offset, int len) {
-		return Vector.from(buf, offset, len);
+		try {
+			return Vector.from(buf, offset, len);
+		}
+		catch (IllegalArgumentException e) {
+			throw new AerospikeException.Parse(e.getMessage());
+		}
 	}
 
 	public static Object bytesToNumber(byte[] buf, int offset, int len) {

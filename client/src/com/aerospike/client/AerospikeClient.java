@@ -4048,7 +4048,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			TxnMonitor.addKeys(cluster, batchPolicy, keys);
 		}
 
-		byte[] argBytes = Packer.pack(functionArgs);
+		byte[] argBytes = Packer.pack(functionArgs, cluster.hasVector);
 		BatchRecord[] records = new BatchRecord[keys.length];
 
 		for (int i = 0; i < keys.length; i++) {
@@ -4135,7 +4135,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		BatchAttr attr = new BatchAttr();
 		attr.setUDF(batchPolicy, udfPolicy);
 
-		byte[] argBytes = Packer.pack(functionArgs);
+		byte[] argBytes = Packer.pack(functionArgs, cluster.hasVector);
 		BatchRecord[] records = new BatchRecord[keys.length];
 
 		for (int i = 0; i < keys.length; i++) {
@@ -4216,7 +4216,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		BatchAttr attr = new BatchAttr();
 		attr.setUDF(batchPolicy, udfPolicy);
 
-		byte[] argBytes = Packer.pack(functionArgs);
+		byte[] argBytes = Packer.pack(functionArgs, cluster.hasVector);
 		boolean[] sent = new boolean[keys.length];
 		AsyncBatchExecutor.BatchRecordSequence executor = new AsyncBatchExecutor.BatchRecordSequence(
 			eventLoop, cluster, listener, sent);

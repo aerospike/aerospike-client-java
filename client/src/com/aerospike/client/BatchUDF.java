@@ -58,6 +58,11 @@ public final class BatchUDF extends BatchRecord {
 	public byte[] argBytes;
 
 	/**
+	 * Does {@link #argBytes} hold a vector? For internal use only.
+	 */
+	public boolean argsHaveVector;
+
+	/**
 	 * Constructor using default policy.
 	 */
 	public BatchUDF(Key key, String packageName, String functionName, Value[] functionArgs) {
@@ -151,7 +156,9 @@ public final class BatchUDF extends BatchRecord {
 
 		size += Buffer.estimateSizeUtf8(packageName) + Command.FIELD_HEADER_SIZE;
 		size += Buffer.estimateSizeUtf8(functionName) + Command.FIELD_HEADER_SIZE;
-		argBytes = Packer.pack(functionArgs);
+		Packer packer = Packer.packArray(functionArgs);
+		argBytes = packer.getBuffer();
+		argsHaveVector = packer.hasVector();
 		size += argBytes.length + Command.FIELD_HEADER_SIZE;
 		return size;
 	}

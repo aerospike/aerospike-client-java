@@ -30,6 +30,7 @@ import com.aerospike.client.ResultCode;
 import com.aerospike.client.Value;
 import com.aerospike.client.cdt.MapOrder;
 import com.aerospike.client.command.Buffer;
+import com.aerospike.client.command.Command;
 import com.aerospike.client.command.ParticleType;
 import com.aerospike.client.vector.Vector;
 
@@ -41,12 +42,30 @@ import com.aerospike.client.vector.Vector;
 public final class Packer {
 
 	public static byte[] pack(Value[] val) {
+		return packArray(val).getBuffer();
+	}
+
+	/**
+	 * Pack UDF arguments, failing when they hold a vector and the cluster lacks vector
+	 * support. For internal use only.
+	 */
+	public static byte[] pack(Value[] val, boolean vectorSupported) {
+		Packer packer = packArray(val);
+		Command.checkVectorSupport(packer.hasVector(), vectorSupported);
+		return packer.getBuffer();
+	}
+
+	/**
+	 * Pack values into a msgpack array and return the packer, whose buffer and vector flag
+	 * are both set. For internal use only.
+	 */
+	public static Packer packArray(Value[] val) {
 		try {
 			Packer packer = new Packer();
 			packer.packValueArray(val);
 			packer.createBuffer();
 			packer.packValueArray(val);
-			return packer.getBuffer();
+			return packer;
 		}
 		catch (Throwable e) {
 			throw new AerospikeException.Serialize(e);
