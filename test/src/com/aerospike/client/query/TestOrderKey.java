@@ -63,6 +63,6 @@ public class TestOrderKey {
 		bins.put(BIN, value);
 		Key key = new Key("test", "set", userKey);
 		return new OrderKey(
-			new Record(bins, 1, 0), new OrderBy[] {new OrderBy(BIN, type, order, flags)}, key.digest);
+			new Record(bins, 1, 0), new OrderBy[] {new OrderBy(BIN, type, order, flags)}, key);
 	}
 }

@@ -53,6 +53,11 @@ public class TestStatementReduce {
 		return new Key(NS, SET, userKey);
 	}
 
+	private static TopKReduceSpec topK(int k) {
+		return new TopKReduceSpec(
+			new OrderBy[] {new OrderBy(BIN, BinDataType.INTEGER, Order.DESC, OrderByFlags.NONE)}, k);
+	}
+
 	private static Record record(String binName, Object value) {
 		Map<String, Object> bins = new HashMap<>();
 		bins.put(binName, value);
@@ -74,6 +79,39 @@ public class TestStatementReduce {
 		resolved.acceptPartial(record(BIN, 1L), key("k1"));
 		resolved.acceptPartial(record(BIN, 2L), key("k2"));
 		assertEquals(2, resolved.getResult().length);
+	}
+
+	@Test
+	public void resultKeyRecordsPairKeysWithRecordsInRankOrder() {
+		TopKReduceSpec topK = topK(3);
+
+		for (int i = 1; i <= 5; i++) {
+			topK.acceptPartial(record(BIN, (long)i), key("k" + i));
+		}
+
+		KeyRecord[] result = topK.getResultKeyRecords();
+		assertEquals(3, result.length);
+
+		for (int i = 0; i < result.length; i++) {
+			long value = 5 - i;
+			assertEquals(value, result[i].record.getLong(BIN));
+			assertEquals(key("k" + value), result[i].key);
+		}
+	}
+
+	@Test
+	public void fullHeapAcceptsBetterRescanOfRejectedRecord() {
+		TopKReduceSpec topK = topK(2);
+		topK.acceptPartial(record(BIN, 10L), key("k10"));
+		topK.acceptPartial(record(BIN, 20L), key("k20"));
+		topK.acceptPartial(record(BIN, 5L), key("k5"));
+		topK.acceptPartial(record(BIN, 30L), key("k5"));
+
+		KeyRecord[] result = topK.getResultKeyRecords();
+		assertEquals(2, result.length);
+		assertEquals(key("k5"), result[0].key);
+		assertEquals(30L, result[0].record.getLong(BIN));
+		assertEquals(key("k20"), result[1].key);
 	}
 
 	@Test

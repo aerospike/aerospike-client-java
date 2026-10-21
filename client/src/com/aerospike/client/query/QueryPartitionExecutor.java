@@ -24,7 +24,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import com.aerospike.client.AerospikeException;
-import com.aerospike.client.Key;
 import com.aerospike.client.Record;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.command.MultiCommand;
@@ -135,12 +134,8 @@ public final class QueryPartitionExecutor implements IQueryExecutor, Runnable {
 
 			if (tracker.isComplete(cluster, policy)) {
 				if (reducer instanceof TopKReduceSpec) {
-					TopKReduceSpec topK = (TopKReduceSpec)reducer;
-					Record[] records = topK.getResult();
-					Key[] keys = topK.getResultKeys();
-
-					for (int i = 0; i < records.length; i++) {
-						recordSet.put(new KeyRecord(keys[i], records[i]));
+					for (KeyRecord keyRecord : ((TopKReduceSpec)reducer).getResultKeyRecords()) {
+						recordSet.put(keyRecord);
 					}
 				}
 				recordSet.put(RecordSet.END);
