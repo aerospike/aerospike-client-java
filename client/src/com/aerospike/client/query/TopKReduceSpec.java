@@ -23,8 +23,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.PriorityQueue;
 
+import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
+import com.aerospike.client.ResultCode;
 import com.aerospike.client.command.Buffer;
 
 /**
@@ -75,18 +77,19 @@ final class TopKReduceSpec implements ReduceSpec<Record, Record> {
 	 * single {@link TopKReduceSpec} combiner. Used by {@link Reduce#topK} and by
 	 * {@link Statement#resolveReduce()} when the two specs are set separately.
 	 *
-	 * @throws IllegalArgumentException if the specs are not exactly one orderBy + one limit, or
-	 *                                   their bins do not match
+	 * @throws AerospikeException	with {@link ResultCode#PARAMETER_ERROR} if the specs are not
+	 *								exactly one orderBy + one limit, or their bins do not match
 	 */
 	static TopKReduceSpec compose(ReduceSpec<Record, Record> orderBy, ReduceSpec<Record, Record> limit) {
 		if (!(orderBy instanceof OrderByReduceSpec) || !(limit instanceof LimitReduceSpec)) {
-			throw new IllegalArgumentException("topK requires one orderBy spec and one limit spec");
+			throw new AerospikeException(ResultCode.PARAMETER_ERROR,
+				"topK requires one orderBy spec and one limit spec");
 		}
 		OrderByReduceSpec ob = (OrderByReduceSpec)orderBy;
 		LimitReduceSpec lim = (LimitReduceSpec)limit;
 
 		if (!ob.bin.equals(lim.bin)) {
-			throw new IllegalArgumentException(
+			throw new AerospikeException(ResultCode.PARAMETER_ERROR,
 				"orderBy bin (" + ob.bin + ") must match limit bin (" + lim.bin + ")");
 		}
 		return new TopKReduceSpec(ob.bin, ob.type, ob.order, ob.flags, lim.limit);

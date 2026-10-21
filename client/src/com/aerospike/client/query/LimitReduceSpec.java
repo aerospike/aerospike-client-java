@@ -16,8 +16,10 @@
  */
 package com.aerospike.client.query;
 
+import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
+import com.aerospike.client.ResultCode;
 
 /**
  * Cap-metadata-only reduce spec produced by {@link Reduce#limit(String, int)}.
@@ -33,7 +35,7 @@ final class LimitReduceSpec implements ReduceSpec<Record, Record> {
 
 	LimitReduceSpec(String bin, int limit) {
 		if (limit < 1 || limit > 1000) {
-			throw new IllegalArgumentException("limit must be in [1, 1000], got: " + limit);
+			throw new AerospikeException(ResultCode.PARAMETER_ERROR, "limit must be in [1, 1000], got: " + limit);
 		}
 		this.bin = bin;
 		this.limit = limit;
