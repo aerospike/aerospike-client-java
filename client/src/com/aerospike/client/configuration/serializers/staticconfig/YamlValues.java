@@ -17,6 +17,7 @@
 
 package com.aerospike.client.configuration.serializers.staticconfig;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -62,6 +63,29 @@ final class YamlValues {
             }
         }
         return Collections.unmodifiableMap(map);
+    }
+
+    static List<String> stringList(String path, Object value) {
+        if (!(value instanceof List) || ((List<?>)value).isEmpty()) {
+            throw invalid(path, value, "expected a non-empty list of strings");
+        }
+
+        List<String> list = new ArrayList<>();
+
+        for (Object item : (List<?>)value) {
+            if (!(item instanceof String)) {
+                throw invalid(path, value, "expected a non-empty list of strings");
+            }
+            list.add((String)item);
+        }
+        return Collections.unmodifiableList(list);
+    }
+
+    static String stringValue(String path, Object value) {
+        if (!(value instanceof String)) {
+            throw invalid(path, value, "expected a string");
+        }
+        return (String)value;
     }
 
     static int intValue(String path, Object value) {

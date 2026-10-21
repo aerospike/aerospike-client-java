@@ -331,8 +331,7 @@ public class YamlDiscoveryConfigTest {
 
 	@Test
 	public void invalidDnsProvider() throws Exception {
-		assertInvalid("invalid-provider-dns",
-			"static.client.discovery.provider 'dns' is not yet configurable from YAML. Set ClientPolicy.seedCandidateProvider in code");
+		assertInvalid("invalid-provider-dns", "static.client.discovery.dns is required with provider dns");
 	}
 
 	@Test

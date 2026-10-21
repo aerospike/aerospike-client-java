@@ -43,7 +43,8 @@ static:
 
 | Key | Type | Values | Default | `ClientPolicy` field |
 | --- | --- | --- | --- | --- |
-| `provider` | string | `static`, or a name registered with `ClientPolicy.registerSeedCandidateProvider` | `static` | `seedCandidateProvider` (`static` sets it to null: `StaticSeedCandidateProvider` over the seed hosts passed to the client constructor, the same as setting nothing; a registered name sets it to the provider its factory builds, see [Registered names](#registered-names)) |
+| `provider` | string | `static`, `dns`, or a name registered with `ClientPolicy.registerSeedCandidateProvider` | `static` | `seedCandidateProvider` (`static` sets it to null: `StaticSeedCandidateProvider` over the seed hosts passed to the client constructor, the same as setting nothing; `dns` sets it to a `DnsSeedCandidateProvider` built from the `dns` block, see [`static.client.discovery.dns`](#staticclientdiscoverydns); a registered name sets it to the provider its factory builds, see [Registered names](#registered-names)) |
+| `dns` | map | see [`static.client.discovery.dns`](#staticclientdiscoverydns) | none | `seedCandidateProvider` (with `provider: dns`) |
 | `merge_policy` | string | `merge`, `replace`, `discovery_only` | `merge` | `discoveryMergePolicy` |
 | `refresh_interval_ms` | int | milliseconds | `30000` | `discoveryRefreshInterval` |
 | `tend_refresh_deadline_ms` | int | milliseconds | `100` | `discoveryTendRefreshDeadline` |
@@ -52,7 +53,6 @@ Code only for now:
 
 | Key or value | Status |
 | --- | --- |
-| `provider: dns` | Not yet configurable from YAML. Set `ClientPolicy.seedCandidateProvider` in code. |
 | `provider: aws-tags` | Not yet configurable from YAML. Set `ClientPolicy.seedCandidateProvider` in code. |
 | `provider_class` | Not read from YAML (ignored as an unknown key). Register a name with `ClientPolicy.registerSeedCandidateProvider`, or set `ClientPolicy.seedCandidateProvider` in code. |
 
@@ -67,6 +67,109 @@ Not supported in Java:
 `dynamic.client.tend_interval` at client construction when the provider needs periodic
 refresh, as when they are set in code. A value that fails the check fails client
 construction, whether it came from the file or from code.
+
+## `static.client.discovery.dns`
+
+`provider: dns` builds a `DnsSeedCandidateProvider` from the `dns` block, which is
+required with `provider: dns` and invalid with any other provider. On every refresh the
+provider resolves each name in `names` and returns the results as seed hosts.
+
+```yaml
+version: 1.2.0
+static:
+  client:
+    discovery:
+      provider: dns
+      merge_policy: merge
+      refresh_interval_ms: 30000
+      tend_refresh_deadline_ms: 100
+      dns:
+        names:
+          - seeds.aerospike.internal
+        record_type: a
+        port: 3000
+        timeout_ms: 50
+        servers:
+          - 10.0.0.2
+```
+
+| Key | Type | Values | Default | `DnsSeedCandidateProvider.Builder` method |
+| --- | --- | --- | --- | --- |
+| `names` | list of string | one or more DNS names, no duplicates (compared case-insensitively, trailing dot optional) | required | `names` |
+| `record_type` | string | `a` (A and AAAA records), `srv` (SRV records) | `a` | `recordType` |
+| `port` | int | port set on hosts resolved from A and AAAA records; ignored for `srv`, which uses each record's port | `3000` | `port` |
+| `tls_name` | string | TLS name set on every returned host | none | `tlsName` |
+| `timeout_ms` | int | total milliseconds for one refresh, across every name, record type, SRV target and resolver | `80` | `timeout` |
+| `servers` | list of string | resolver addresses, `ip[:port]` (an IPv6 address with a port in brackets, `"[2001:db8::1]:53"`), tried in order | the system resolvers, read once when the provider is built | `servers` |
+
+Unknown keys inside the block are ignored.
+
+Results:
+
+| `record_type` | Returned hosts |
+| --- | --- |
+| `a` | One host per A and AAAA address, as an IP address, with `port`. |
+| `srv` | One host per SRV record, with the record's port, ordered by priority (lowest first), then weight (highest first). Each target is resolved within the same refresh by an A query, then an AAAA query when it has no A record, and returned as an IP address. A target that does not resolve in time is dropped and logged at warning level. Addresses in the additional section of the SRV answer are not used: the JDK DNS provider exposes only the answer section. |
+
+Every returned host is an IP address, never a hostname, so the client does no further name
+resolution when it seeds from the result. Hosts are deduplicated and returned in the same
+order for the same DNS answers. Queries go through the JDK DNS provider
+(`com.sun.jndi.dns.DnsContextFactory`, module `jdk.naming.dns`); the provider starts no thread.
+
+Deadline: the provider needs periodic refresh and runs on the tend thread, so `timeout_ms`
+must not exceed `tend_refresh_deadline_ms` (`ClientPolicy.discoveryTendRefreshDeadline`).
+Client construction fails otherwise:
+
+```
+DNS seed provider timeout 150 must be less or equal to the discovery tend refresh deadline 100
+```
+
+With the default deadline of 100 ms, only a local resolver (on the client host or its local
+network) answers reliably in time.
+
+Failure:
+
+| Case | Behaviour |
+| --- | --- |
+| Some names resolve | Their hosts are returned. Each failed name is logged at warning level, for example `DNS seed name b.example.com failed: NXDOMAIN`. |
+| Every name fails (NXDOMAIN, SERVFAIL, timeout or an empty answer) | The refresh fails with `DNS seed discovery failed for every name: a.example.com: NXDOMAIN; b.example.com: timeout`. On a periodic refresh the warning `Seed candidate refresh failed: ...` is logged and the previous seed list is kept. At client construction the warning `Seed candidate provider dns failed: ...` is logged and the client continues with the seed hosts passed to the constructor; with none, construction fails with `SEED_DISCOVERY_FAILED` (-27). |
+
+Split network: the seed name resolves only on the client's network, to addresses the client
+can reach, while the servers advertise addresses of their own network. Point `servers` at
+the client network's resolver and pair the provider with a translator for the advertised
+addresses:
+
+```yaml
+version: 1.2.0
+static:
+  client:
+    use_services_alternate: true
+    discovery:
+      provider: dns
+      merge_policy: discovery_only
+      dns:
+        names:
+          - _aerospike._tcp.client-net.example.com
+        record_type: srv
+        timeout_ms: 50
+        servers:
+          - 10.20.0.2
+    translation:
+      provider: pass-through
+```
+
+The same provider in code:
+
+```java
+ClientPolicy policy = new ClientPolicy();
+policy.seedCandidateProvider = DnsSeedCandidateProvider.builder()
+    .names("_aerospike._tcp.client-net.example.com")
+    .recordType(DnsSeedCandidateProvider.RecordType.SRV)
+    .timeout(50)
+    .servers("10.20.0.2")
+    .build();
+AerospikeClient client = new AerospikeClient(policy);
+```
 
 ## `static.client.translation`
 
@@ -166,11 +269,19 @@ in code.
   on the `ClientPolicy` passed to the client constructor;
 - a registered factory that throws or returns null;
 - `discovery.execution_mode` or `discovery.refresh_timeout_ms`;
-- `discovery.provider: dns` or `discovery.provider: aws-tags`;
+- `discovery.provider: aws-tags`;
+- `discovery.provider: dns` without a `discovery.dns` block, or a `discovery.dns` block with
+  any other provider or with no provider;
+- a `discovery.dns` block without `names`, with an empty `names`, or with an unknown
+  `record_type`;
+- a `discovery.dns` value that the `DnsSeedCandidateProvider` builder rejects, such as a
+  duplicate name, a port out of range or a `servers` entry that is not an IP address. This is
+  checked when the provider is built at client construction (`Invalid
+  static.client.discovery.provider value 'dns': factory failed: ...`);
 - `static_map` with a provider other than `static-map`, `port_map` with one other than
   `port-map`, or `provider: port-map` without `port_map`;
 - `static_map` and `ip_map` both set;
-- a value of the wrong type, such as a string for `refresh_interval_ms`;
+- a value of the wrong type, such as a string for `refresh_interval_ms` or `dns.port`;
 - a `port_map` entry that the `PortMapAddressTranslator` constructor rejects.
 
 Example warning:
@@ -194,8 +305,9 @@ Unknown keys are ignored everywhere in the file, including inside `discovery` an
 
 The client checks the file for changes every `static.client.config_interval`. As for
 the other `static.client` keys, a changed value is copied into the client's merged
-`ClientPolicy` and logged (a registered provider or translator is not rebuilt: its factory
-is called only at construction), but the running cluster keeps the translator, `ip_map`,
+`ClientPolicy` and logged (a registered provider or translator and the `dns` provider are
+not rebuilt: they are built only at construction, and a reload that changes the `dns` block
+keeps the provider built from the original block), but the running cluster keeps the translator, `ip_map`,
 `on_miss`, seed provider and discovery settings it was constructed with. They take
 effect for a new client instance. `useServicesAlternate` is the exception: the cluster
 re-reads it on every reload because `dynamic.client.use_service_alternative` is dynamic,

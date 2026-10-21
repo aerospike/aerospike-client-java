@@ -24,6 +24,7 @@ import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Host;
 import com.aerospike.client.Log;
 import com.aerospike.client.configuration.serializers.staticconfig.StaticDiscoveryConfig;
+import com.aerospike.client.discovery.DnsSeedCandidateProvider;
 import com.aerospike.client.discovery.SeedCandidateContext;
 import com.aerospike.client.discovery.SeedCandidateProvider;
 import com.aerospike.client.discovery.SeedMergePolicy;
@@ -83,6 +84,15 @@ final class SeedRefresher {
 		if (tendRefreshDeadline <= 0 || tendRefreshDeadline > tendInterval / 2) {
 			throw new AerospikeException("Invalid discovery tend refresh deadline: " + tendRefreshDeadline +
 				". Must be > 0 and <= tend interval / 2 (" + (tendInterval / 2) + ")");
+		}
+
+		if (provider instanceof DnsSeedCandidateProvider) {
+			int timeout = ((DnsSeedCandidateProvider)provider).getTimeout();
+
+			if (timeout > tendRefreshDeadline) {
+				throw new AerospikeException("DNS seed provider timeout " + timeout +
+					" must be less or equal to the discovery tend refresh deadline " + tendRefreshDeadline);
+			}
 		}
 	}
 
@@ -197,7 +207,13 @@ final class SeedRefresher {
 	}
 
 	static String providerName(SeedCandidateProvider provider) {
-		return (provider instanceof StaticSeedCandidateProvider)? StaticDiscoveryConfig.STATIC : provider.getClass().getName();
+		if (provider instanceof StaticSeedCandidateProvider) {
+			return StaticDiscoveryConfig.STATIC;
+		}
+		if (provider instanceof DnsSeedCandidateProvider) {
+			return StaticDiscoveryConfig.DNS;
+		}
+		return provider.getClass().getName();
 	}
 
 	int getOverrunCount() {
