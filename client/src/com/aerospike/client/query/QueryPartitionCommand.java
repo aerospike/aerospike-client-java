@@ -114,7 +114,15 @@ public final class QueryPartitionCommand extends MultiCommand {
 				throw new AerospikeException.QueryTerminated();
 			}
 
-			tracker.setLast(nodePartitions, key, bval.val);
+			if (statement.hasTopK()) {
+				// The server streams Top-K in rank order, not digest order, so resuming after
+				// this digest would skip ranked candidates not yet streamed. The reducer drops
+				// the duplicates a full re-query returns.
+				tracker.countRecord(nodePartitions);
+			}
+			else {
+				tracker.setLast(nodePartitions, key, bval.val);
+			}
 		}
 		return true;
 	}
