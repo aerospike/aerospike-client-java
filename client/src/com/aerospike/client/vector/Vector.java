@@ -29,10 +29,11 @@ import com.aerospike.client.command.Buffer;
  * Offset  Size (bytes)  Field         Description
  * 0       1             version       The version of the vector format.
  * 1       1             element_type  Enum identifying the element type (see {@link ElementType}).
- * 2       4             dimensions    Number of dimensions (max depends on element_type).
- * 6       2             reserved      Reserved for future use &amp; padding (8-byte alignment).
- * 8       variable      data          Contiguous array of elements.
+ * 2       4             dimensions    Number of dimensions (at least 1; max depends on element_type).
+ * 6       variable      data          Contiguous array of elements.
  * </pre>
+ * Multi-byte fields are little-endian. The value length must equal the header size plus
+ * {@code dimensions} times the element size.
  */
 public final class Vector {
 	/**
@@ -43,12 +44,11 @@ public final class Vector {
 	private static final int VERSION_SIZE = 1;
 	private static final int ELEMENT_TYPE_SIZE = 1;
 	private static final int DIMENSIONS_SIZE = 4;
-	private static final int RESERVED_SIZE = 2;
 
 	/**
-	 * Size in bytes of the fixed header (version + element_type + dimensions + reserved).
+	 * Size in bytes of the fixed header (version + element_type + dimensions).
 	 */
-	public static final int HEADER_SIZE = VERSION_SIZE + ELEMENT_TYPE_SIZE + DIMENSIONS_SIZE + RESERVED_SIZE;
+	public static final int HEADER_SIZE = VERSION_SIZE + ELEMENT_TYPE_SIZE + DIMENSIONS_SIZE;
 
 	/**
 	 * Vector element type.
@@ -126,9 +126,6 @@ public final class Vector {
 
 	private final Object data;
 
-	// Reserved header bytes preserved verbatim across read/write.
-	private byte[] reserved = new byte[RESERVED_SIZE];
-
 	private Integer wireSize;
 	private Integer hash;
 
@@ -165,8 +162,6 @@ public final class Vector {
 		buffer[pos++] = elementType.getCode();
 		Buffer.intToLittleBytes(dimensions, buffer, pos);
 		pos += DIMENSIONS_SIZE;
-		System.arraycopy(reserved, 0, buffer, pos, RESERVED_SIZE);
-		pos += RESERVED_SIZE;
 
 		final int dataSize = dimensions * elementType.getByteSize();
 		final ByteBuffer view = ByteBuffer.wrap(buffer, pos, dataSize).order(ByteOrder.LITTLE_ENDIAN);
@@ -197,7 +192,7 @@ public final class Vector {
 	}
 
 	/**
-	 * Return the complete vector wire value, including the 8-byte header.
+	 * Return the complete vector wire value, including the {@link #HEADER_SIZE}-byte header.
 	 */
 	public byte[] getWireBytes() {
 		final byte[] bytes = new byte[getWireSize()];
@@ -206,8 +201,7 @@ public final class Vector {
 	}
 
 	/**
-	 * Return the raw element array in little-endian wire byte order, without the
-	 * 8-byte header.
+	 * Return the raw element array in little-endian wire byte order, without the header.
 	 */
 	public byte[] getElementBytes() {
 		final int dataSize = dimensions * elementType.getByteSize();
@@ -243,8 +237,11 @@ public final class Vector {
 	 *
 	 * @param buffer	buffer containing the vector wire format
 	 * @param offset	offset in buffer where the vector starts
-	 * @param length	number of bytes available for this vector (must be at least
-	 *                  {@link #HEADER_SIZE})
+	 * @param length	size in bytes of the vector value; must equal {@link #HEADER_SIZE} plus
+	 *                  the element data size given by the header
+	 * @throws IllegalArgumentException if the format version is not {@link #VERSION}, the
+	 *                                  header has no dimensions, or the header or length is
+	 *                                  invalid
 	 */
 	public static Vector from(final byte[] buffer, final int offset, final int length) {
 		if (length < HEADER_SIZE) {
@@ -254,26 +251,27 @@ public final class Vector {
 		int pos = offset;
 
 		final byte version = buffer[pos++];
-		final ElementType elementType = ElementType.fromCode(buffer[pos++]);
-		final int dimensions = Buffer.littleBytesToInt(buffer, pos);
-		pos += DIMENSIONS_SIZE;
-		final byte[] reserved = Arrays.copyOfRange(buffer, pos, pos + RESERVED_SIZE);
-		pos += RESERVED_SIZE;
 
-		if (dimensions < 0) {
-			throw new IllegalArgumentException("Invalid vector dimensions: " + dimensions);
+		if (version != VERSION) {
+			throw new IllegalArgumentException("Unsupported vector format version " + version +
+				" (expected " + VERSION + ")");
 		}
+
+		final ElementType elementType = ElementType.fromCode(buffer[pos++]);
+		final int dimensions = checkDimensions(Buffer.littleBytesToInt(buffer, pos));
+		pos += DIMENSIONS_SIZE;
 
 		// Use long math so a large dimensions count cannot overflow the int size computation
 		// (which could otherwise bypass the bounds check and trigger a huge allocation).
 		final long dataSizeLong = (long)dimensions * elementType.getByteSize();
 
-		if (length < HEADER_SIZE + dataSizeLong) {
+		// Exact, as on the server, so each vector has exactly one valid encoding.
+		if (length != HEADER_SIZE + dataSizeLong) {
 			throw new IllegalArgumentException("Invalid vector length: " + length +
-				", expected at least " + (HEADER_SIZE + dataSizeLong));
+				", expected " + (HEADER_SIZE + dataSizeLong));
 		}
 
-		// Safe to narrow: dataSizeLong <= length - HEADER_SIZE, and length is an int.
+		// Safe to narrow: dataSizeLong == length - HEADER_SIZE, and length is an int.
 		final int dataSize = (int)dataSizeLong;
 		final ByteBuffer view = ByteBuffer.wrap(buffer, pos, dataSize).order(ByteOrder.LITTLE_ENDIAN);
 		final Object data;
@@ -311,39 +309,52 @@ public final class Vector {
 				throw new IllegalStateException("Unsupported vector element type: " + elementType);
 		}
 
-		final Vector vector = new Vector(version, elementType, dimensions, data);
-		vector.reserved = reserved;
-		return vector;
+		return new Vector(version, elementType, dimensions, data);
 	}
 
 	/**
 	 * Create a vector of raw float16 (IEEE 754 half precision) elements.
 	 * Since Java has no native float16 type, each element is passed as its
 	 * raw 16-bit bit pattern.
+	 *
+	 * @throws IllegalArgumentException if {@code data} is empty
 	 */
 	public static Vector ofFloat16(final short[] data) {
-		return new Vector(VERSION, ElementType.FLOAT16, data.length, data.clone());
+		return new Vector(VERSION, ElementType.FLOAT16, checkDimensions(data.length), data.clone());
 	}
 
 	/**
 	 * Create a vector of int32 elements.
+	 *
+	 * @throws IllegalArgumentException if {@code data} is empty
 	 */
 	public static Vector ofInt32(final int[] data) {
-		return new Vector(VERSION, ElementType.INT32, data.length, data.clone());
+		return new Vector(VERSION, ElementType.INT32, checkDimensions(data.length), data.clone());
 	}
 
 	/**
 	 * Create a vector of float (fp32) elements.
+	 *
+	 * @throws IllegalArgumentException if {@code data} is empty
 	 */
 	public static Vector ofFloat32(final float[] data) {
-		return new Vector(VERSION, ElementType.FLOAT32, data.length, data.clone());
+		return new Vector(VERSION, ElementType.FLOAT32, checkDimensions(data.length), data.clone());
 	}
 
 	/**
 	 * Create a vector of double (fp64) elements.
+	 *
+	 * @throws IllegalArgumentException if {@code data} is empty
 	 */
 	public static Vector ofFloat64(final double[] data) {
-		return new Vector(VERSION, ElementType.FLOAT64, data.length, data.clone());
+		return new Vector(VERSION, ElementType.FLOAT64, checkDimensions(data.length), data.clone());
+	}
+
+	private static int checkDimensions(final int dimensions) {
+		if (dimensions < 1) {
+			throw new IllegalArgumentException("Vector must have at least 1 dimension: " + dimensions);
+		}
+		return dimensions;
 	}
 
 	/**

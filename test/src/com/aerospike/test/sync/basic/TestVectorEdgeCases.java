@@ -21,6 +21,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.fail;
 
 import java.util.Arrays;
@@ -57,25 +58,11 @@ public class TestVectorEdgeCases {
 	//-------------------------------------------------------
 
 	@Test
-	public void emptyVectorAllTypes() {
-		assertEmptyRoundTrip(Vector.ofFloat16(new short[0]), ElementType.FLOAT16);
-		assertEmptyRoundTrip(Vector.ofInt32(new int[0]), ElementType.INT32);
-		assertEmptyRoundTrip(Vector.ofFloat32(new float[0]), ElementType.FLOAT32);
-		assertEmptyRoundTrip(Vector.ofFloat64(new double[0]), ElementType.FLOAT64);
-	}
-
-	private static void assertEmptyRoundTrip(Vector v, ElementType type) {
-		assertEquals(0, v.dimensions);
-		assertSame(type, v.elementType);
-		assertEquals(Vector.HEADER_SIZE, v.getWireSize());
-		assertEquals(0, v.getElementBytes().length);
-
-		byte[] buffer = new byte[v.getWireSize()];
-		int written = v.writeTo(buffer, 0);
-		assertEquals(Vector.HEADER_SIZE, written);
-
-		Vector parsed = Vector.from(buffer, 0, buffer.length);
-		assertEquals(v, parsed);
+	public void emptyVectorRejectedAllTypes() {
+		assertThrows(IllegalArgumentException.class, () -> Vector.ofFloat16(new short[0]));
+		assertThrows(IllegalArgumentException.class, () -> Vector.ofInt32(new int[0]));
+		assertThrows(IllegalArgumentException.class, () -> Vector.ofFloat32(new float[0]));
+		assertThrows(IllegalArgumentException.class, () -> Vector.ofFloat64(new double[0]));
 	}
 
 	//-------------------------------------------------------
@@ -236,6 +223,16 @@ public class TestVectorEdgeCases {
 	}
 
 	@Test
+	public void fromZeroDimensionsThrowsIllegalArgument() {
+		// A bare header is otherwise self-consistent: its length matches zero elements.
+		byte[] buffer = new byte[Vector.HEADER_SIZE];
+		buffer[0] = Vector.VERSION;
+		buffer[1] = ElementType.FLOAT32.getCode();
+
+		assertThrows(IllegalArgumentException.class, () -> Vector.from(buffer, 0, buffer.length));
+	}
+
+	@Test
 	public void fromHugeDimensionsThrowsIllegalArgument() {
 		// dimensions * byteSize overflows int and would otherwise trigger a huge allocation.
 		byte[] buffer = new byte[Vector.HEADER_SIZE];
@@ -253,31 +250,22 @@ public class TestVectorEdgeCases {
 	}
 
 	@Test
-	public void fromPreservesReservedBytes() {
+	public void fromUnknownVersionThrowsIllegalArgument() {
 		Vector v = Vector.ofInt32(new int[] {1, 2, 3});
 		byte[] buffer = new byte[v.getWireSize()];
 		v.writeTo(buffer, 0);
 
-		buffer[6] = (byte)0xaa;
-		buffer[7] = (byte)0xbb;
+		for (byte version : new byte[] {0, 2, (byte)0xff}) {
+			buffer[0] = version;
 
-		Vector parsed = Vector.from(buffer, 0, buffer.length);
-		assertArrayEquals(buffer, parsed.getWireBytes());
-		assertEquals(v, parsed);
-	}
-
-	@Test
-	public void fromPreservesUnknownVersion() {
-		Vector v = Vector.ofInt32(new int[] {1, 2, 3});
-		byte[] buffer = new byte[v.getWireSize()];
-		v.writeTo(buffer, 0);
-
-		buffer[0] = (byte)0x02; // bump version
-
-		Vector parsed = Vector.from(buffer, 0, buffer.length);
-		assertEquals(2, parsed.version);
-		assertNotEquals(v, parsed); // equals() compares version
-		assertArrayEquals(buffer, parsed.getWireBytes());
+			try {
+				Vector.from(buffer, 0, buffer.length);
+				fail("Expected IllegalArgumentException for version " + version);
+			}
+			catch (IllegalArgumentException e) {
+				// expected
+			}
+		}
 	}
 
 	//-------------------------------------------------------
