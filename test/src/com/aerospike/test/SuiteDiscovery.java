@@ -23,14 +23,19 @@ import org.junit.runners.Suite;
 import com.aerospike.client.Log;
 import com.aerospike.client.policy.ClientPolicy;
 import com.aerospike.test.discovery.TestDiscoveryConfig;
+import com.aerospike.test.discovery.TestL2CnOnlyCertificate;
+import com.aerospike.test.discovery.TestL2PassThrough;
+import com.aerospike.test.discovery.TestL2PortMapRange;
 import com.aerospike.test.discovery.TestL2ReachableNode;
 import com.aerospike.test.discovery.TestL2Topology;
 import com.aerospike.test.util.Args;
 
 /**
  * Runs the discovery tests. {@link TestL2Topology} runs against the L2 topology built by
- * .github/workflows/discovery-l2.yaml or test/discovery/run_l2.sh. {@link TestL2ReachableNode}
- * needs the reachable profile of run_l2.sh and is skipped without it.
+ * .github/workflows/discovery-l2.yaml or test/discovery/run_l2.sh. {@link TestL2ReachableNode},
+ * {@link TestL2PassThrough}, {@link TestL2PortMapRange} and {@link TestL2CnOnlyCertificate} need
+ * the reachable, pass-through-names or pass-through-ports, port-map-range and cn-only profiles of
+ * run_l2.sh and are skipped without them.
  *
  * <p>The suite builds no shared client: the seed is reachable only through the endpoint and its
  * peers only through a translator, so each test class builds its own {@link ClientPolicy}. The
@@ -41,7 +46,10 @@ import com.aerospike.test.util.Args;
 @Suite.SuiteClasses({
 	TestDiscoveryConfig.class,
 	TestL2Topology.class,
-	TestL2ReachableNode.class
+	TestL2ReachableNode.class,
+	TestL2PassThrough.class,
+	TestL2PortMapRange.class,
+	TestL2CnOnlyCertificate.class
 })
 public class SuiteDiscovery {
 	public static ClientPolicy clientPolicy = null;

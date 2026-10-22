@@ -30,15 +30,39 @@
 #                             shares, and serves each <id>.request written there with <id>.ack: "start"
 #                             starts one more node on the server network with the same config and mesh
 #                             seeds and acknowledges its container and address, "stop <container>"
-#                             removes that node
-#   L2_PROFILE                default or reachable (default: default). reachable builds the same topology,
-#                             then recreates the nodes with one rendered config per node: the last node sets
-#                             access-address as-reachable.test and access-port to its listener port,
-#                             the others keep their private addresses and set alternate-access-address
-#                             as-reachable.test and alternate-access-port to their own listener port.
-#                             The hostname resolves to Toxiproxy in the server and client containers
-#                             (extra hosts). Sets DISCOVERY_REACHABLE_NODE to the last node's container
-#                             and runs TestL2ReachableNode (N-10) only
+#                             removes that node. "start" takes optional arguments: alternate-port=<port>
+#                             renders the node's config with the pass-through-ports hostname and that
+#                             alternate-access-port, address=<ip> starts the node on that address
+#   L2_PROFILE                default, reachable, pass-through-names, pass-through-ports, port-map-range or
+#                             cn-only (default: default). Every profile but default and cn-only recreates the
+#                             nodes with one rendered config per node, or starts them on fixed addresses, and
+#                             runs only the test class of its rows:
+#                             reachable: the last node sets access-address as-reachable.test and access-port
+#                             to its listener port, the others keep their private addresses and set
+#                             alternate-access-address as-reachable.test and alternate-access-port to their
+#                             own listener port. The hostname resolves to Toxiproxy in the server and client
+#                             containers (extra hosts). Sets DISCOVERY_REACHABLE_NODE to the last node's
+#                             container and runs TestL2ReachableNode (N-10) only
+#                             pass-through-names: node N sets alternate-access-address node-N.pass-through.test
+#                             and alternate-access-port to its own listener port, every name resolving to
+#                             Toxiproxy as above. Sets DISCOVERY_PASS_THROUGH_BRANCH=A and runs
+#                             TestL2PassThrough (N-15)
+#                             pass-through-ports: every node sets alternate-access-address
+#                             as-pass-through.test and alternate-access-port to its own listener port. Sets
+#                             DISCOVERY_PASS_THROUGH_BRANCH=B, turns on L2_NODE_CONTROL and runs
+#                             TestL2PassThrough (N-16, N-18)
+#                             port-map-range: the server network is L2_SUBNET.0/24 and the nodes start on
+#                             L2_SUBNET.11 upwards. Toxiproxy gets one listener per address of the range
+#                             L2_SUBNET.11 to L2_SUBNET.26, on port L2_PORT_MAP_PORT_BASE plus the last octet,
+#                             upstream by IP. Sets DISCOVERY_PORT_MAP_RANGE and DISCOVERY_PORT_MAP_PORT_BASE,
+#                             turns on L2_NODE_CONTROL and runs TestL2PortMapRange (N-19)
+#                             cn-only: ee only. The server certificate carries aerospike-tls only as its
+#                             subject CN, with no matching SAN. Sets DISCOVERY_TLS_CERT_SHAPE=cn-only and runs
+#                             TestL2CnOnlyCertificate (N-17)
+#                             On ee every other profile uses a certificate with aerospike-tls as a dNSName SAN
+#                             and a CN that does not match it (DISCOVERY_TLS_CERT_SHAPE=san-only)
+#   L2_SUBNET                 first three octets of the port-map-range server network (default 10.213.66)
+#   L2_PORT_MAP_PORT_BASE     port-map-range listener port base (default 31000)
 #   L2_SKIP_BUILD             set to 1 to skip installing the client module first
 #   L2_MAVEN_OFFLINE          set to 0 to let Maven resolve dependencies online (default 1)
 #
@@ -64,7 +88,12 @@ run_client() {
 	local suite='**/SuiteDiscovery.class'
 	local args check_ports port
 
-	[ "${L2_PROFILE:-default}" = "reachable" ] && suite='**/TestL2ReachableNode.class'
+	case "${L2_PROFILE:-default}" in
+		reachable) suite='**/TestL2ReachableNode.class' ;;
+		pass-through-names|pass-through-ports) suite='**/TestL2PassThrough.class' ;;
+		port-map-range) suite='**/TestL2PortMapRange.class' ;;
+		cn-only) suite='**/TestL2CnOnlyCertificate.class' ;;
+	esac
 
 	if [ "$subset" = "ee" ]; then
 		local tls_ports="${DISCOVERY_TLS_ENDPOINT_PORTS:?DISCOVERY_TLS_ENDPOINT_PORTS is required}"
@@ -111,6 +140,14 @@ CURL_IMAGE=curlimages/curl:8.11.1
 SUBSET="${DISCOVERY_SUBSET:-ce}"
 PROFILE="${L2_PROFILE:-default}"
 REACHABLE_HOSTNAME=as-reachable.test
+PASS_THROUGH_HOSTNAME=as-pass-through.test
+PASS_THROUGH_DOMAIN=pass-through.test
+SUBNET="${L2_SUBNET:-10.213.66}"
+RANGE_FIRST=11
+RANGE_LAST=26
+PORT_MAP_PORT_BASE="${L2_PORT_MAP_PORT_BASE:-31000}"
+NODE_CONTROL="${L2_NODE_CONTROL:-0}"
+CERT_SHAPE=""
 PREFIX="discovery-l2-$$"
 WORK_DIR="$TEST_DIR/target/discovery-l2"
 AS_NETWORK="$PREFIX-aerospike-net"
@@ -137,9 +174,13 @@ case "$SUBSET" in
 esac
 
 case "$PROFILE" in
-	default|reachable) ;;
-	*) die "L2_PROFILE must be default or reachable (got: $PROFILE)" ;;
+	default|reachable|pass-through-names) ;;
+	pass-through-ports|port-map-range) NODE_CONTROL=1 ;;
+	cn-only) [ "$SUBSET" = "ee" ] || die "L2_PROFILE=cn-only needs DISCOVERY_SUBSET=ee" ;;
+	*) die "L2_PROFILE must be default, reachable, pass-through-names, pass-through-ports, port-map-range or cn-only (got: $PROFILE)" ;;
 esac
+[[ "$SUBNET" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || die "L2_SUBNET must be three octets (got: $SUBNET)"
+[[ "$PORT_MAP_PORT_BASE" =~ ^[0-9]+$ ]] || die "L2_PORT_MAP_PORT_BASE must be a port (got: $PORT_MAP_PORT_BASE)"
 
 command -v docker >/dev/null 2>&1 || die "docker CLI not found"
 docker info >/dev/null 2>&1 || die "docker daemon not reachable"
@@ -212,7 +253,16 @@ if [ "$SUBSET" = "ee" ]; then
 	feature_key="feature-key-file /etc/aerospike/features.conf"
 	run_args+=(-v "$FEATURES:/etc/aerospike/features.conf:ro")
 
-	# Certificates as setup-aerospike-server generates them.
+	# Certificates as setup-aerospike-server generates them, in the shapes its tls-cert-cn and
+	# include-tls-name-san inputs produce: san-only (aerospike-tls as a dNSName SAN, a CN that does not
+	# match it) or cn-only (aerospike-tls as the CN, no matching SAN).
+	if [ "$PROFILE" = "cn-only" ]; then
+		CERT_SHAPE=cn-only
+		cert_cn=aerospike-tls
+	else
+		CERT_SHAPE=san-only
+		cert_cn=not-the-tls-name
+	fi
 	TLS_DIR="$WORK_DIR/tls"
 	mkdir -p "$TLS_DIR"
 	{
@@ -224,18 +274,21 @@ if [ "$SUBSET" = "ee" ]; then
 		done
 		echo "DNS.$((NODES + 1)) = localhost"
 		echo "DNS.$((NODES + 2)) = docker"
+		[ "$CERT_SHAPE" = "san-only" ] && echo "DNS.$((NODES + 3)) = aerospike-tls"
 		echo "IP.1 = 127.0.0.1"
 	} > "$TLS_DIR/san.ext"
 	(
 		cd "$TLS_DIR"
 		openssl req -x509 -newkey rsa:4096 -nodes -keyout ca.key -out ca.crt -days 365 \
 			-subj "/CN=Aerospike-Server-Test-CA"
-		openssl req -newkey rsa:4096 -nodes -keyout server.key -out server.csr -subj "/CN=aerospike-tls"
+		openssl req -newkey rsa:4096 -nodes -keyout server.key -out server.csr -subj "/CN=$cert_cn"
 		openssl x509 -req -in server.csr -CA ca.crt -CAkey ca.key -CAcreateserial -out server.crt -days 365 \
 			-extensions v3_req -extfile san.ext
 		rm -f ./*.csr ./*.srl san.ext
 	) > "$WORK_DIR/openssl.log" 2>&1 || { cat "$WORK_DIR/openssl.log" >&2; die "certificate generation failed"; }
 	chmod 644 "$TLS_DIR"/*
+	echo "Server certificate ($CERT_SHAPE):"
+	openssl x509 -in "$TLS_DIR/server.crt" -noout -subject -ext subjectAltName
 	run_args+=(-v "$TLS_DIR:/etc/aerospike/tls:ro")
 
 	tls_config="    tls aerospike-tls {
@@ -320,9 +373,20 @@ container_address() {
 	docker inspect -f "{{(index .NetworkSettings.Networks \"$2\").IPAddress}}" "$1"
 }
 
-# Serve the requests N-11 writes to CONTROL_DIR until killed.
+# render_conf <config file in conf/> <lines added to the service context>
+render_conf() {
+	ACCESS="$2" awk '{print} $1 == "port" && $2 == "3000" {printf "%s", ENVIRON["ACCESS"]}' \
+		"$WORK_DIR/conf/aerospike.conf" > "$WORK_DIR/conf/$1"
+}
+
+alternate_access() {
+	printf '        alternate-access-address %s\n        alternate-access-port %s\n' "$1" "$2"
+}
+
+# Serve the requests the tests write to CONTROL_DIR until killed.
 control_loop() {
-	local extra="$NODES" request id action arg name ack
+	local extra="$NODES" request id action arg name ack conf option error
+	local options=()
 
 	while true; do
 		for request in "$CONTROL_DIR"/*.request; do
@@ -338,9 +402,37 @@ control_loop() {
 				start)
 					extra=$((extra + 1))
 					name="$PREFIX-$extra"
-					if start_node "$name" aerospike.conf 2> "$WORK_DIR/control.err"; then
+					conf=aerospike.conf
+					options=()
+					error=""
+					for option in $arg; do
+						case "$option" in
+							alternate-port=*)
+								if [ "$PROFILE" = "pass-through-ports" ] && [[ "${option#*=}" =~ ^[0-9]+$ ]]; then
+									conf="$name.conf"
+									render_conf "$conf" "$(alternate_access "$PASS_THROUGH_HOSTNAME" "${option#*=}")"$'\n'
+								else
+									error="$option needs a port and L2_PROFILE=pass-through-ports"
+								fi
+								;;
+							address=*)
+								if [[ "${option#*=}" =~ ^[0-9]+(\.[0-9]+){3}$ ]]; then
+									options+=(--ip "${option#*=}")
+								else
+									error="$option is not an IPv4 address"
+								fi
+								;;
+							*)
+								error="unknown start option $option"
+								;;
+						esac
+					done
+					if [ -n "$error" ]; then
+						printf 'error=%s\n' "$error" > "$ack"
+					elif start_node "$name" "$conf" "${options[@]+"${options[@]}"}" "${node_hosts[@]+"${node_hosts[@]}"}" \
+						2> "$WORK_DIR/control.err"; then
 						printf 'container=%s\naddress=%s\n' "$name" "$(container_address "$name" "$AS_NETWORK")" > "$ack"
-						echo "Control: started $name"
+						echo "Control: started $name $arg"
 					else
 						printf 'error=%s\n' "$(tr '\n' ' ' < "$WORK_DIR/control.err")" > "$ack"
 					fi
@@ -365,12 +457,20 @@ control_loop() {
 
 echo "Starting $NODES node $SUBSET cluster on $AS_NETWORK, no published ports ($IMAGE)"
 STARTED_NETWORKS+=("$CLIENT_NETWORK" "$AS_NETWORK")
-docker network create "$AS_NETWORK" >/dev/null
+network_args=()
+[ "$PROFILE" = "port-map-range" ] && network_args=(--subnet "$SUBNET.0/24" --ip-range "$SUBNET.128/25")
+docker network create "${network_args[@]+"${network_args[@]}"}" "$AS_NETWORK" >/dev/null
 
 IFS=',' read -r -a containers <<< "$container_names"
+octet=$RANGE_FIRST
 for container in "${containers[@]}"; do
 	STARTED+=("$container")
-	start_node "$container" aerospike.conf
+	if [ "$PROFILE" = "port-map-range" ]; then
+		start_node "$container" aerospike.conf --ip "$SUBNET.$octet"
+		octet=$((octet + 1))
+	else
+		start_node "$container" aerospike.conf
+	fi
 done
 for container in "${containers[@]}"; do
 	wait_cluster_size "$container" "$NODES"
@@ -407,50 +507,100 @@ export L2_MAVEN_OFFLINE="${L2_MAVEN_OFFLINE:-1}"
 export L2_PROFILE="$PROFILE"
 export DISCOVERY_CONTROL_DIR=""
 export DISCOVERY_REACHABLE_NODE=""
+export DISCOVERY_PASS_THROUGH_BRANCH=""
+export DISCOVERY_PORT_MAP_RANGE=""
+export DISCOVERY_PORT_MAP_PORT_BASE=""
+export DISCOVERY_TLS_CERT_SHAPE="$CERT_SHAPE"
 
 client_args=(--rm --name "$CLIENT" --network "$CLIENT_NETWORK" --workdir "$ROOT_DIR"
 	-v "$ROOT_DIR:$ROOT_DIR" -v "$HOME/.m2:/root/.m2")
+node_hosts=()
 
-if [ "$PROFILE" = "reachable" ]; then
-	proxy_server_address="$(container_address "$PROXY" "$AS_NETWORK")"
-	proxy_client_address="$(container_address "$PROXY" "$CLIENT_NETWORK")"
-	[ -n "$proxy_server_address" ] && [ -n "$proxy_client_address" ] || die "no Toxiproxy address"
-	DISCOVERY_REACHABLE_NODE="${containers[$((NODES - 1))]}"
+case "$PROFILE" in
+	reachable|pass-through-names|pass-through-ports)
+		proxy_server_address="$(container_address "$PROXY" "$AS_NETWORK")"
+		proxy_client_address="$(container_address "$PROXY" "$CLIENT_NETWORK")"
+		[ -n "$proxy_server_address" ] && [ -n "$proxy_client_address" ] || die "no Toxiproxy address"
+		hostnames=()
+		case "$PROFILE" in
+			reachable)
+				DISCOVERY_REACHABLE_NODE="${containers[$((NODES - 1))]}"
+				hostnames=("$REACHABLE_HOSTNAME")
+				;;
+			pass-through-names)
+				DISCOVERY_PASS_THROUGH_BRANCH=A
+				;;
+			pass-through-ports)
+				DISCOVERY_PASS_THROUGH_BRANCH=B
+				hostnames=("$PASS_THROUGH_HOSTNAME")
+				;;
+		esac
 
-	# One rendered config per node, as setup-aerospike-server renders them.
-	for container in "${containers[@]}"; do
-		port=""
-		IFS=',' read -r -a proxies <<< "$DISCOVERY_PROXY_MAP"
-		for entry in "${proxies[@]}"; do
-			[ "${entry%:*}" = "$container" ] && port="${entry##*:}"
+		# One rendered config per node, as setup-aerospike-server renders them.
+		index=0
+		for container in "${containers[@]}"; do
+			index=$((index + 1))
+			port=""
+			IFS=',' read -r -a proxies <<< "$DISCOVERY_PROXY_MAP"
+			for entry in "${proxies[@]}"; do
+				[ "${entry%:*}" = "$container" ] && port="${entry##*:}"
+			done
+			[ -n "$port" ] || die "no listener for $container in $DISCOVERY_PROXY_MAP"
+
+			case "$PROFILE" in
+				reachable)
+					if [ "$container" = "$DISCOVERY_REACHABLE_NODE" ]; then
+						access="        access-address $REACHABLE_HOSTNAME"$'\n'"        access-port $port"$'\n'
+					else
+						access="$(alternate_access "$REACHABLE_HOSTNAME" "$port")"$'\n'
+					fi
+					;;
+				pass-through-names)
+					hostnames+=("node-$index.$PASS_THROUGH_DOMAIN")
+					access="$(alternate_access "node-$index.$PASS_THROUGH_DOMAIN" "$port")"$'\n'
+					;;
+				pass-through-ports)
+					access="$(alternate_access "$PASS_THROUGH_HOSTNAME" "$port")"$'\n'
+					;;
+			esac
+			render_conf "$container.conf" "$access"
+			echo "Node $container listener $port:"
+			grep -E "access-(address|port)" "$WORK_DIR/conf/$container.conf"
 		done
-		[ -n "$port" ] || die "no listener for $container in $DISCOVERY_PROXY_MAP"
 
-		if [ "$container" = "$DISCOVERY_REACHABLE_NODE" ]; then
-			access="        access-address $REACHABLE_HOSTNAME"$'\n'"        access-port $port"$'\n'
-		else
-			access="        alternate-access-address $REACHABLE_HOSTNAME"$'\n'"        alternate-access-port $port"$'\n'
-		fi
-		ACCESS="$access" awk '{print} $1 == "port" && $2 == "3000" {printf "%s", ENVIRON["ACCESS"]}' \
-			"$WORK_DIR/conf/aerospike.conf" > "$WORK_DIR/conf/$container.conf"
-		echo "Node $container listener $port:"
-		grep -E "access-(address|port)" "$WORK_DIR/conf/$container.conf"
-	done
+		# The server resolves access addresses at startup; any address will do.
+		for hostname in "${hostnames[@]}"; do
+			node_hosts+=(--add-host "$hostname:$proxy_server_address")
+			client_args+=(--add-host "$hostname:$proxy_client_address")
+		done
 
-	echo "Recreating the nodes with $REACHABLE_HOSTNAME -> $proxy_server_address"
-	for container in "${containers[@]}"; do
-		docker rm -f "$container" >/dev/null
-	done
-	for container in "${containers[@]}"; do
-		start_node "$container" "$container.conf" --add-host "$REACHABLE_HOSTNAME:$proxy_server_address"
-	done
-	for container in "${containers[@]}"; do
-		wait_cluster_size "$container" "$NODES"
-	done
-	client_args+=(--add-host "$REACHABLE_HOSTNAME:$proxy_client_address")
-fi
+		echo "Recreating the nodes with ${hostnames[*]} -> $proxy_server_address"
+		for container in "${containers[@]}"; do
+			docker rm -f "$container" >/dev/null
+		done
+		for container in "${containers[@]}"; do
+			start_node "$container" "$container.conf" "${node_hosts[@]}"
+		done
+		for container in "${containers[@]}"; do
+			wait_cluster_size "$container" "$NODES"
+		done
+		;;
+	port-map-range)
+		DISCOVERY_PORT_MAP_RANGE="$SUBNET.$RANGE_FIRST-$SUBNET.$RANGE_LAST"
+		DISCOVERY_PORT_MAP_PORT_BASE="$PORT_MAP_PORT_BASE"
+		echo "Adding a Toxiproxy listener on port $PORT_MAP_PORT_BASE + last octet for $DISCOVERY_PORT_MAP_RANGE"
+		for octet in $(seq "$RANGE_FIRST" "$RANGE_LAST"); do
+			"$WORK_DIR/bin/curl" -sf -X POST "$TOXIPROXY_URL/proxies" -H "Content-Type: application/json" \
+				-d "{\"name\":\"range-$SUBNET.$octet\",\"listen\":\"0.0.0.0:$((PORT_MAP_PORT_BASE + octet))\",\"upstream\":\"$SUBNET.$octet:3000\",\"enabled\":true}" \
+				> /dev/null || die "failed to add the listener for $SUBNET.$octet"
+		done
+		for container in "${containers[@]}"; do
+			echo "Node $container address $(container_address "$container" "$AS_NETWORK")"
+		done
+		;;
+esac
 
-if [ "${L2_NODE_CONTROL:-0}" = "1" ]; then
+if [ "$NODE_CONTROL" = "1" ]; then
 	DISCOVERY_CONTROL_DIR="$CONTROL_DIR"
 	control_loop &
 	CONTROL_PID=$!
@@ -490,6 +640,10 @@ docker run "${client_args[@]}" \
 	-e L2_PROFILE \
 	-e DISCOVERY_CONTROL_DIR \
 	-e DISCOVERY_REACHABLE_NODE \
+	-e DISCOVERY_PASS_THROUGH_BRANCH \
+	-e DISCOVERY_PORT_MAP_RANGE \
+	-e DISCOVERY_PORT_MAP_PORT_BASE \
+	-e DISCOVERY_TLS_CERT_SHAPE \
 	"$CLIENT_IMAGE" \
 	bash test/discovery/run_l2.sh --client > "$log" 2>&1
 rc=$?

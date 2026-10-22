@@ -45,6 +45,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReferenceArray;
 import java.util.function.BooleanSupplier;
 import java.util.regex.Matcher;
@@ -75,6 +76,14 @@ import com.aerospike.test.util.Args;
  * nodes on request; unset when the host offers no node control</li>
  * <li>DISCOVERY_REACHABLE_NODE: optional container of the node that advertises an address the
  * client can reach; set only by the reachable profile of run_l2.sh</li>
+ * <li>DISCOVERY_PASS_THROUGH_BRANCH: optional, A when each node advertises its own
+ * alternate-access-address hostname and B when every node advertises one hostname, each with its
+ * own listener port; set only by the pass-through-names and pass-through-ports profiles</li>
+ * <li>DISCOVERY_PORT_MAP_RANGE: optional {@code first-last} range of node addresses on the server
+ * network, each with a listener on DISCOVERY_PORT_MAP_PORT_BASE plus its last octet; set only by
+ * the port-map-range profile</li>
+ * <li>DISCOVERY_TLS_CERT_SHAPE: optional, san-only when the server certificate carries the tls-name
+ * only as a dNSName SAN and cn-only when it carries it only as the subject CN; set on ee</li>
  * </ul>
  * Each node's name and advertised addresses are read through its listener at runtime.
  */
@@ -98,6 +107,10 @@ final class L2Topology {
 	static final List<String> containers = List.of(required("AEROSPIKE_CONTAINER_NAMES").split(","));
 	static final String controlDir = optional("DISCOVERY_CONTROL_DIR");
 	static final String reachableNode = optional("DISCOVERY_REACHABLE_NODE");
+	static final String passThroughBranch = optional("DISCOVERY_PASS_THROUGH_BRANCH");
+	static final String portMapRange = optional("DISCOVERY_PORT_MAP_RANGE");
+	static final String portMapPortBase = optional("DISCOVERY_PORT_MAP_PORT_BASE");
+	static final String tlsCertShape = optional("DISCOVERY_TLS_CERT_SHAPE");
 	static final String namespace = Args.Instance.namespace;
 
 	/**
@@ -405,13 +418,25 @@ final class L2Topology {
 	 * that port.
 	 */
 	static int addListener(String proxy, String upstream) throws IOException, InterruptedException {
+		return addListener(proxy, nextListenerPort(), upstream);
+	}
+
+	/**
+	 * Return the first free port above every Toxiproxy listener in use.
+	 */
+	static int nextListenerPort() throws IOException, InterruptedException {
 		int port = 0;
 
 		for (int used : listenerPorts()) {
 			port = Math.max(port, used);
 		}
-		port++;
+		return port + 1;
+	}
 
+	/**
+	 * Create a Toxiproxy listener on {@code port} and return that port.
+	 */
+	static int addListener(String proxy, int port, String upstream) throws IOException, InterruptedException {
 		HttpResponse<String> response = toxiproxy("POST", "/proxies", "{\"name\":\"" + proxy + "\",\"listen\":\"0.0.0.0:" +
 			port + "\",\"upstream\":\"" + upstream + "\",\"enabled\":true}");
 
@@ -439,7 +464,7 @@ final class L2Topology {
 		return Integer.parseInt(m.group(1));
 	}
 
-	private static Set<Integer> listenerPorts() throws IOException, InterruptedException {
+	static Set<Integer> listenerPorts() throws IOException, InterruptedException {
 		HttpResponse<String> response = toxiproxy("GET", "/proxies", null);
 		Matcher m = LISTEN_PORT.matcher(response.body());
 		Set<Integer> set = new HashSet<>(proxyPorts.values());
@@ -494,6 +519,71 @@ final class L2Topology {
 
 	static long peersGeneration(L2Node node) {
 		return Long.parseLong(Info.request(host, node.port, "peers-generation"));
+	}
+
+	/**
+	 * Node that joined the client and the time from the peers-generation bump that announced it to
+	 * the node being active.
+	 */
+	static final class Joined {
+		final Node node;
+		final long bumpToActiveMs;
+		final long generation;
+
+		Joined(Node node, long bumpToActiveMs, long generation) {
+			this.node = node;
+			this.bumpToActiveMs = bumpToActiveMs;
+			this.generation = generation;
+		}
+	}
+
+	/**
+	 * Wait for the peers-generation of {@code observer} to move from {@code generation} and for an
+	 * active node not in {@code names} to appear in the client, as N-11 measures it.
+	 */
+	static Joined waitJoined(AerospikeClient client, L2Node observer, long generation, List<String> names)
+		throws InterruptedException {
+		long[] bump = {0};
+		long[] active = {0};
+		Node[] added = {null};
+
+		assertTrue("No peers-generation bump or no active node after generation " + generation, waitFor(() -> {
+			long now = System.nanoTime();
+
+			if (bump[0] == 0 && peersGeneration(observer) != generation) {
+				bump[0] = now;
+			}
+
+			if (active[0] == 0) {
+				for (Node node : client.getNodes()) {
+					if (node.isActive() && ! names.contains(node.getName())) {
+						active[0] = now;
+						added[0] = node;
+					}
+				}
+			}
+			return bump[0] != 0 && active[0] != 0;
+		}, 5));
+		return new Joined(added[0], TimeUnit.NANOSECONDS.toMillis(active[0] - bump[0]), peersGeneration(observer));
+	}
+
+	/**
+	 * Return the alternate {@code host:port} list a node advertises in service-clear-alt.
+	 */
+	static List<String> alternates(L2Node node) {
+		return endpoints(Info.request(host, node.port, "service-clear-alt"));
+	}
+
+	/**
+	 * Return the name of the peer {@code observer} lists with {@code endpoint} in a peers reply.
+	 */
+	static String peerName(L2Node observer, String command, String endpoint) {
+		for (Peer peer : parsePeers(Info.request(host, observer.port, command))) {
+			if (peer.endpoints.contains(endpoint)) {
+				return peer.name;
+			}
+		}
+		return null;
 	}
 
 	/**
