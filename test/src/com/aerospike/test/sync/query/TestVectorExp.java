@@ -20,8 +20,10 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 import org.junit.AfterClass;
@@ -208,5 +210,69 @@ public class TestVectorExp extends TestSync {
 		}
 
 		assertEquals(k, count);
+	}
+
+	@Test
+	public void vectorSearchTopKRanksUncomparableLast() {
+		Key[] uncomparable = {
+			new Key(args.namespace, setName, keyPrefix + "_short"),
+			new Key(args.namespace, setName, keyPrefix + "_int")
+		};
+
+		client.put(null, uncomparable[0], new Bin(vecBin, Vector.ofFloat32(new float[] {0, 0, 0})));
+		client.put(null, uncomparable[1], new Bin(idBin, -1));
+
+		try {
+			int k = size + uncomparable.length;
+			List<Object> ranked = distances(ExpReadFlags.EVAL_NO_FAIL, k);
+			assertEquals(k, ranked.size());
+
+			double previous = Double.NEGATIVE_INFINITY;
+
+			for (int i = 0; i < size; i++) {
+				double dist = (Double)ranked.get(i);
+				assertTrue("Comparable distances must come first, ascending", dist >= previous);
+				previous = dist;
+			}
+			assertNull(ranked.get(size));
+			assertNull(ranked.get(size + 1));
+
+			// Without eval-no-fail, a distance that can't be computed leaves the record out.
+			assertEquals(size, distances(ExpReadFlags.DEFAULT, k).size());
+		}
+		finally {
+			for (Key key : uncomparable) {
+				client.delete(null, key);
+			}
+		}
+	}
+
+	// Projects only the distance, so a record whose distance is unknown has no other bin to send.
+	private List<Object> distances(int readFlags, int k) {
+		String distBin = "dist";
+
+		Statement stmt = new Statement();
+		stmt.setNamespace(args.namespace);
+		stmt.setSetName(setName);
+		stmt.setOperations(new Operation[] {
+			ExpOperation.read(distBin,
+				Exp.build(VectorExp.distance(VectorDistanceMetric.EUCLIDEAN_SQUARED, query(0), Exp.vectorBin(vecBin))),
+				readFlags)
+		});
+		stmt.setOrderBy(distBin, BinDataType.DOUBLE, Order.ASC);
+		stmt.setTopK(k);
+
+		RecordSet rs = client.query(null, stmt);
+		List<Object> ranked = new ArrayList<>();
+
+		try {
+			while (rs.next()) {
+				ranked.add(rs.getRecord().getValue(distBin));
+			}
+		}
+		finally {
+			rs.close();
+		}
+		return ranked;
 	}
 }

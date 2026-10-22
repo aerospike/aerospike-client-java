@@ -183,6 +183,48 @@ public class TestTopKPushdown extends TestSync {
 		assertArrayEquals(expected, values(statement, BIN));
 	}
 
+	@Test
+	public void missingOrderKeyRanksLast() {
+		requireCapableCluster();
+
+		Key[] missing = {
+			new Key(args.namespace, SET, "missing1"),
+			new Key(args.namespace, SET, "missing2")
+		};
+
+		for (Key key : missing) {
+			client.put(null, key, new Bin(GROUP, -1));
+		}
+
+		try {
+			int k = COUNT + missing.length;
+
+			for (Order order : new Order[] {Order.ASC, Order.DESC}) {
+				Statement byBinName = pushdown(order, k);
+				Statement byOperation = pushdown(order, k);
+				byOperation.setBinNames((String[])null);
+				byOperation.setOperations(new Operation[] {Operation.get(BIN)});
+
+				for (Statement statement : new Statement[] {byBinName, byOperation}) {
+					List<Object> ranked = rankedValues(statement, BIN);
+					assertEquals(k, ranked.size());
+
+					for (int i = 0; i < COUNT; i++) {
+						long expected = order == Order.ASC ? i + 1 : COUNT - i;
+						assertEquals(expected, ranked.get(i));
+					}
+					assertNull(ranked.get(COUNT));
+					assertNull(ranked.get(COUNT + 1));
+				}
+			}
+		}
+		finally {
+			for (Key key : missing) {
+				client.delete(null, key);
+			}
+		}
+	}
+
 	private Statement clientOnly(Order order, int k) {
 		Statement statement = base(BIN);
 		statement.setReduce(Reduce.topK(BIN, BinDataType.INTEGER, order, OrderByFlags.NONE, k));
@@ -264,5 +306,20 @@ public class TestTopKPushdown extends TestSync {
 			ordered[i] = values.get(i);
 		}
 		return ordered;
+	}
+
+	private List<Object> rankedValues(Statement statement, String valueBin) {
+		List<Object> values = new ArrayList<>();
+		RecordSet recordSet = client.query(null, statement);
+
+		try {
+			while (recordSet.next()) {
+				values.add(recordSet.getRecord().getValue(valueBin));
+			}
+		}
+		finally {
+			recordSet.close();
+		}
+		return values;
 	}
 }
