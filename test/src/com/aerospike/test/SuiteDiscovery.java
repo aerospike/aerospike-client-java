@@ -23,12 +23,14 @@ import org.junit.runners.Suite;
 import com.aerospike.client.Log;
 import com.aerospike.client.policy.ClientPolicy;
 import com.aerospike.test.discovery.TestDiscoveryConfig;
+import com.aerospike.test.discovery.TestL2ReachableNode;
 import com.aerospike.test.discovery.TestL2Topology;
 import com.aerospike.test.util.Args;
 
 /**
  * Runs the discovery tests. {@link TestL2Topology} runs against the L2 topology built by
- * .github/workflows/discovery-l2.yaml or test/discovery/run_l2.sh.
+ * .github/workflows/discovery-l2.yaml or test/discovery/run_l2.sh. {@link TestL2ReachableNode}
+ * needs the reachable profile of run_l2.sh and is skipped without it.
  *
  * <p>The suite builds no shared client: the seed is reachable only through the endpoint and its
  * peers only through a translator, so each test class builds its own {@link ClientPolicy}. The
@@ -38,7 +40,8 @@ import com.aerospike.test.util.Args;
 @RunWith(Suite.class)
 @Suite.SuiteClasses({
 	TestDiscoveryConfig.class,
-	TestL2Topology.class
+	TestL2Topology.class,
+	TestL2ReachableNode.class
 })
 public class SuiteDiscovery {
 	public static ClientPolicy clientPolicy = null;

@@ -25,6 +25,20 @@
 #                             of downloading it
 #   L2_DISABLE_LISTENERS      set to 1 to disable every Toxiproxy listener before the suite starts and
 #                             skip the TCP check, to prove N-1's guard. Every L2 test then fails
+#   L2_NODE_CONTROL           set to 1 to let N-11 start a node. The script sets DISCOVERY_CONTROL_DIR
+#                             to a directory under the work directory, which the client container
+#                             shares, and serves each <id>.request written there with <id>.ack: "start"
+#                             starts one more node on the server network with the same config and mesh
+#                             seeds and acknowledges its container and address, "stop <container>"
+#                             removes that node
+#   L2_PROFILE                default or reachable (default: default). reachable builds the same topology,
+#                             then recreates the nodes with one rendered config per node: the last node sets
+#                             access-address as-reachable.test and access-port to its listener port,
+#                             the others keep their private addresses and set alternate-access-address
+#                             as-reachable.test and alternate-access-port to their own listener port.
+#                             The hostname resolves to Toxiproxy in the server and client containers
+#                             (extra hosts). Sets DISCOVERY_REACHABLE_NODE to the last node's container
+#                             and runs TestL2ReachableNode (N-10) only
 #   L2_SKIP_BUILD             set to 1 to skip installing the client module first
 #   L2_MAVEN_OFFLINE          set to 0 to let Maven resolve dependencies online (default 1)
 #
@@ -47,7 +61,10 @@ run_client() {
 	local ports="${DISCOVERY_ENDPOINT_PORTS:?DISCOVERY_ENDPOINT_PORTS is required}"
 	local port_base="${DISCOVERY_ENDPOINT_PORT_BASE:?DISCOVERY_ENDPOINT_PORT_BASE is required}"
 	local subset="${DISCOVERY_SUBSET:?DISCOVERY_SUBSET is required}"
+	local suite='**/SuiteDiscovery.class'
 	local args check_ports port
+
+	[ "${L2_PROFILE:-default}" = "reachable" ] && suite='**/TestL2ReachableNode.class'
 
 	if [ "$subset" = "ee" ]; then
 		local tls_ports="${DISCOVERY_TLS_ENDPOINT_PORTS:?DISCOVERY_TLS_ENDPOINT_PORTS is required}"
@@ -77,7 +94,7 @@ run_client() {
 	local mvn=(mvn -B)
 	[ "${L2_MAVEN_OFFLINE:-1}" = "1" ] && mvn+=(-o)
 	exec "${mvn[@]}" -pl test -DskipTests=false \
-		-DrunSuite='**/SuiteDiscovery.class' \
+		"-DrunSuite=${suite}" \
 		"-Dargs=${args}" \
 		test
 }
@@ -87,17 +104,20 @@ if [ "${1:-}" = "--client" ]; then
 fi
 
 # setup-discovery-topology and setup-aerospike-server commit pinned in discovery-l2.yaml.
-SHARED_WORKFLOWS_COMMIT=97ce72ad2c72b10fb3690c35ef871131fce7dff6
+SHARED_WORKFLOWS_COMMIT=9c1d4e91489995aa95187152b670b32cca9e890b
 ACTION_PATH=.github/actions/setup-discovery-topology
 CLIENT_IMAGE=maven:3-ibm-semeru-21-noble@sha256:0ad9f1918f4a30f89713a03e39659ef3135a2a08b257a90168a6033335a48bcb
 CURL_IMAGE=curlimages/curl:8.11.1
 SUBSET="${DISCOVERY_SUBSET:-ce}"
+PROFILE="${L2_PROFILE:-default}"
+REACHABLE_HOSTNAME=as-reachable.test
 PREFIX="discovery-l2-$$"
 WORK_DIR="$TEST_DIR/target/discovery-l2"
 AS_NETWORK="$PREFIX-aerospike-net"
 CLIENT_NETWORK="$PREFIX-client-net"
 PROXY="$PREFIX-toxiproxy"
 CLIENT="$PREFIX-client"
+CONTROL_DIR="$WORK_DIR/control"
 NODES=3
 
 case "$SUBSET" in
@@ -116,6 +136,11 @@ case "$SUBSET" in
 		;;
 esac
 
+case "$PROFILE" in
+	default|reachable) ;;
+	*) die "L2_PROFILE must be default or reachable (got: $PROFILE)" ;;
+esac
+
 command -v docker >/dev/null 2>&1 || die "docker CLI not found"
 docker info >/dev/null 2>&1 || die "docker daemon not reachable"
 ((BASH_VERSINFO[0] >= 4)) || die "bash 4 or later is required by setup-discovery-topology"
@@ -125,9 +150,18 @@ MVN=(mvn)
 
 STARTED=()
 STARTED_NETWORKS=()
+CONTROL_PID=""
 
+# Nodes started on request carry the prefix but are not in STARTED.
 cleanup() {
+	if [ -n "$CONTROL_PID" ]; then
+		kill "$CONTROL_PID" >/dev/null 2>&1 || true
+		wait "$CONTROL_PID" 2>/dev/null || true
+	fi
 	for c in "${STARTED[@]+"${STARTED[@]}"}"; do
+		docker rm -f "$c" >/dev/null 2>&1 || true
+	done
+	for c in $(docker ps -aq --filter "name=^$PREFIX-" 2>/dev/null); do
 		docker rm -f "$c" >/dev/null 2>&1 || true
 	done
 	for n in "${STARTED_NETWORKS[@]+"${STARTED_NETWORKS[@]}"}"; do
@@ -143,7 +177,7 @@ if [ "${L2_SKIP_BUILD:-0}" != "1" ]; then
 fi
 
 rm -rf "$WORK_DIR"
-mkdir -p "$WORK_DIR/conf" "$WORK_DIR/action" "$WORK_DIR/bin"
+mkdir -p "$WORK_DIR/conf" "$WORK_DIR/action" "$WORK_DIR/bin" "$CONTROL_DIR"
 
 for f in entrypoint.sh proxy_map.sh; do
 	if [ -n "${SHARED_WORKFLOWS_DIR:-}" ]; then
@@ -273,6 +307,62 @@ wait_cluster_size() {
 	die "container $name did not reach cluster size $size after 60s"
 }
 
+# start_node <container> <config file in conf/> [docker run options]
+start_node() {
+	local name="$1" conf="$2"
+	shift 2
+	docker run -d --name "$name" --network "$AS_NETWORK" --ulimit nofile=15000 "$@" \
+		-v "$WORK_DIR/conf:/etc/aerospike/conf:ro" "${run_args[@]+"${run_args[@]}"}" \
+		--entrypoint asd "$IMAGE" --foreground --config-file "/etc/aerospike/conf/$conf" >/dev/null
+}
+
+container_address() {
+	docker inspect -f "{{(index .NetworkSettings.Networks \"$2\").IPAddress}}" "$1"
+}
+
+# Serve the requests N-11 writes to CONTROL_DIR until killed.
+control_loop() {
+	local extra="$NODES" request id action arg name ack
+
+	while true; do
+		for request in "$CONTROL_DIR"/*.request; do
+			[ -e "$request" ] || continue
+			id="$(basename "$request" .request)"
+			action=""
+			arg=""
+			read -r action arg < "$request" || true
+			rm -f "$request"
+			ack="$CONTROL_DIR/$id.tmp"
+
+			case "$action" in
+				start)
+					extra=$((extra + 1))
+					name="$PREFIX-$extra"
+					if start_node "$name" aerospike.conf 2> "$WORK_DIR/control.err"; then
+						printf 'container=%s\naddress=%s\n' "$name" "$(container_address "$name" "$AS_NETWORK")" > "$ack"
+						echo "Control: started $name"
+					else
+						printf 'error=%s\n' "$(tr '\n' ' ' < "$WORK_DIR/control.err")" > "$ack"
+					fi
+					;;
+				stop)
+					if [[ "$arg" == "$PREFIX"-* ]] && docker rm -f "$arg" > /dev/null 2> "$WORK_DIR/control.err"; then
+						printf 'removed=%s\n' "$arg" > "$ack"
+						echo "Control: removed $arg"
+					else
+						printf 'error=cannot remove %s %s\n' "$arg" "$(tr '\n' ' ' < "$WORK_DIR/control.err" 2>/dev/null)" > "$ack"
+					fi
+					;;
+				*)
+					printf 'error=unknown request: %s %s\n' "$action" "$arg" > "$ack"
+					;;
+			esac
+			mv "$ack" "$CONTROL_DIR/$id.ack"
+		done
+		sleep 0.1
+	done
+}
+
 echo "Starting $NODES node $SUBSET cluster on $AS_NETWORK, no published ports ($IMAGE)"
 STARTED_NETWORKS+=("$CLIENT_NETWORK" "$AS_NETWORK")
 docker network create "$AS_NETWORK" >/dev/null
@@ -280,9 +370,7 @@ docker network create "$AS_NETWORK" >/dev/null
 IFS=',' read -r -a containers <<< "$container_names"
 for container in "${containers[@]}"; do
 	STARTED+=("$container")
-	docker run -d --name "$container" --network "$AS_NETWORK" --ulimit nofile=15000 \
-		-v "$WORK_DIR/conf:/etc/aerospike/conf:ro" "${run_args[@]+"${run_args[@]}"}" \
-		--entrypoint asd "$IMAGE" --foreground --config-file /etc/aerospike/conf/aerospike.conf >/dev/null
+	start_node "$container" aerospike.conf
 done
 for container in "${containers[@]}"; do
 	wait_cluster_size "$container" "$NODES"
@@ -316,6 +404,58 @@ export TOXIPROXY_CONTROL_PORT=8474
 export AEROSPIKE_CONTAINER_NAMES="$container_names"
 export L2_DISABLE_LISTENERS="${L2_DISABLE_LISTENERS:-0}"
 export L2_MAVEN_OFFLINE="${L2_MAVEN_OFFLINE:-1}"
+export L2_PROFILE="$PROFILE"
+export DISCOVERY_CONTROL_DIR=""
+export DISCOVERY_REACHABLE_NODE=""
+
+client_args=(--rm --name "$CLIENT" --network "$CLIENT_NETWORK" --workdir "$ROOT_DIR"
+	-v "$ROOT_DIR:$ROOT_DIR" -v "$HOME/.m2:/root/.m2")
+
+if [ "$PROFILE" = "reachable" ]; then
+	proxy_server_address="$(container_address "$PROXY" "$AS_NETWORK")"
+	proxy_client_address="$(container_address "$PROXY" "$CLIENT_NETWORK")"
+	[ -n "$proxy_server_address" ] && [ -n "$proxy_client_address" ] || die "no Toxiproxy address"
+	DISCOVERY_REACHABLE_NODE="${containers[$((NODES - 1))]}"
+
+	# One rendered config per node, as setup-aerospike-server renders them.
+	for container in "${containers[@]}"; do
+		port=""
+		IFS=',' read -r -a proxies <<< "$DISCOVERY_PROXY_MAP"
+		for entry in "${proxies[@]}"; do
+			[ "${entry%:*}" = "$container" ] && port="${entry##*:}"
+		done
+		[ -n "$port" ] || die "no listener for $container in $DISCOVERY_PROXY_MAP"
+
+		if [ "$container" = "$DISCOVERY_REACHABLE_NODE" ]; then
+			access="        access-address $REACHABLE_HOSTNAME"$'\n'"        access-port $port"$'\n'
+		else
+			access="        alternate-access-address $REACHABLE_HOSTNAME"$'\n'"        alternate-access-port $port"$'\n'
+		fi
+		ACCESS="$access" awk '{print} $1 == "port" && $2 == "3000" {printf "%s", ENVIRON["ACCESS"]}' \
+			"$WORK_DIR/conf/aerospike.conf" > "$WORK_DIR/conf/$container.conf"
+		echo "Node $container listener $port:"
+		grep -E "access-(address|port)" "$WORK_DIR/conf/$container.conf"
+	done
+
+	echo "Recreating the nodes with $REACHABLE_HOSTNAME -> $proxy_server_address"
+	for container in "${containers[@]}"; do
+		docker rm -f "$container" >/dev/null
+	done
+	for container in "${containers[@]}"; do
+		start_node "$container" "$container.conf" --add-host "$REACHABLE_HOSTNAME:$proxy_server_address"
+	done
+	for container in "${containers[@]}"; do
+		wait_cluster_size "$container" "$NODES"
+	done
+	client_args+=(--add-host "$REACHABLE_HOSTNAME:$proxy_client_address")
+fi
+
+if [ "${L2_NODE_CONTROL:-0}" = "1" ]; then
+	DISCOVERY_CONTROL_DIR="$CONTROL_DIR"
+	control_loop &
+	CONTROL_PID=$!
+	echo "Serving node control requests in $CONTROL_DIR"
+fi
 
 if [ "$L2_DISABLE_LISTENERS" = "1" ]; then
 	IFS=',' read -r -a proxies <<< "$DISCOVERY_PROXY_MAP"
@@ -327,14 +467,12 @@ if [ "$L2_DISABLE_LISTENERS" = "1" ]; then
 	done
 fi
 
-client_args=(--rm --name "$CLIENT" --network "$CLIENT_NETWORK" --workdir "$ROOT_DIR"
-	-v "$ROOT_DIR:$ROOT_DIR" -v "$HOME/.m2:/root/.m2")
 if [ "$SUBSET" = "ee" ]; then
 	client_args+=(-v "$TLS_DIR:/aerospike-tls:ro" -e "AEROSPIKE_CA_CERT=/aerospike-tls/ca.crt")
 fi
 
 log="$WORK_DIR/mvn.log"
-echo "Running SuiteDiscovery in $CLIENT on $CLIENT_NETWORK ($CLIENT_IMAGE)"
+echo "Running the $PROFILE profile in $CLIENT on $CLIENT_NETWORK ($CLIENT_IMAGE)"
 set +e
 docker run "${client_args[@]}" \
 	-e DISCOVERY_SUBSET \
@@ -349,12 +487,16 @@ docker run "${client_args[@]}" \
 	-e AEROSPIKE_CONTAINER_NAMES \
 	-e L2_DISABLE_LISTENERS \
 	-e L2_MAVEN_OFFLINE \
+	-e L2_PROFILE \
+	-e DISCOVERY_CONTROL_DIR \
+	-e DISCOVERY_REACHABLE_NODE \
 	"$CLIENT_IMAGE" \
 	bash test/discovery/run_l2.sh --client > "$log" 2>&1
 rc=$?
 set -e
 
 grep -E "L2-|CLIENT-LOG (WARN|ERROR)" "$log" || true
+grep -E "^(\[[A-Z]+\] )?Tests run:.*in com\.aerospike" "$log" || true
 grep -E "^\[ERROR\]|AssertionError|^java\.lang\." "$log" | head -20 || true
 grep -E "^(\[[A-Z]+\] )?Tests run:" "$log" | tail -1 || echo "no 'Tests run' line"
 echo "maven log: $log"

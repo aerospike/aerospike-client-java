@@ -20,19 +20,25 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.IdentityHashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.atomic.AtomicReferenceArray;
 
 import org.junit.After;
@@ -51,10 +57,13 @@ import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.Node;
 import com.aerospike.client.cluster.Partition;
 import com.aerospike.client.cluster.Partitions;
+import com.aerospike.client.discovery.AddressTranslator;
 import com.aerospike.client.discovery.DnsSeedCandidateProvider;
 import com.aerospike.client.discovery.DnsSeedCandidateProvider.RecordType;
 import com.aerospike.client.discovery.Endpoint;
 import com.aerospike.client.discovery.PortMapAddressTranslator;
+import com.aerospike.client.discovery.SeedCandidateContext;
+import com.aerospike.client.discovery.SeedCandidateProvider;
 import com.aerospike.client.discovery.TranslationMissMode;
 import com.aerospike.client.policy.ClientPolicy;
 import com.aerospike.client.policy.Policy;
@@ -66,8 +75,9 @@ import com.aerospike.test.discovery.L2Topology.Peer;
 import com.aerospike.test.util.TestBase;
 
 /**
- * Testing strategy section 4.3 rows N-1 to N-8 against the {@link L2Topology}. N-3 is retired.
- * Every case seeds the first listener and builds its own {@link ClientPolicy}.
+ * Testing strategy section 4.3 rows N-1 to N-14 against the {@link L2Topology}. N-3 is retired,
+ * N-10 is in {@link TestL2ReachableNode} and N-13 is not implemented. Every case seeds the first
+ * listener and builds its own {@link ClientPolicy}.
  */
 public class TestL2Topology extends TestBase {
 	private static final String SET = "l2";
@@ -75,9 +85,56 @@ public class TestL2Topology extends TestBase {
 	private static final int MISS_RETRIES = 3;
 	private static final String DNS_BLOCKER = "N-4 needs a DNS server on the L2 client network serving SRV " +
 		"records for the endpoint; the L2 topology has none yet (E4 gap)";
-	private static final List<String> warnings = new CopyOnWriteArrayList<>();
+	private static final String NODE_CONTROL_BLOCKER = "N-11 needs DISCOVERY_CONTROL_DIR so the host can start a " +
+		"fourth node; blocked on CLIENT-5756 (start-nodes, aerospike-node-control) plus an E6 step";
+	private static final int REFRESH_INTERVAL = 600000;
+	private static final int MISS_KEY_COUNT = 200;
+	static final List<String> warnings = new CopyOnWriteArrayList<>();
+	static final List<String> errors = new CopyOnWriteArrayList<>();
 
 	private String disabledProxy;
+	private final List<String> disabledProxies = new ArrayList<>();
+	private String addedProxy;
+	private String addedNode;
+
+	public static final class EmptyTranslator implements AddressTranslator {
+		@Override
+		public Optional<Host> translate(Endpoint advertised) {
+			return Optional.empty();
+		}
+	}
+
+	/**
+	 * Seed provider that returns fixed seeds and records the time of every call.
+	 */
+	static final class CountingSeedProvider implements SeedCandidateProvider {
+		final List<Long> calls = new CopyOnWriteArrayList<>();
+		private final List<Host> seeds;
+
+		CountingSeedProvider(Host... seeds) {
+			this.seeds = List.of(seeds);
+		}
+
+		@Override
+		public List<Host> refreshSeedCandidates(SeedCandidateContext ctx) {
+			calls.add(System.nanoTime());
+			return seeds;
+		}
+
+		@Override
+		public boolean needsPeriodicRefresh() {
+			return true;
+		}
+
+		@Override
+		public boolean supportsDeadline() {
+			return true;
+		}
+
+		long callsBetween(long begin, long end) {
+			return calls.stream().filter(t -> t >= begin && t <= end).count();
+		}
+	}
 
 	@After
 	public void restore() throws Exception {
@@ -86,6 +143,22 @@ public class TestL2Topology extends TestBase {
 		if (disabledProxy != null) {
 			L2Topology.setListener(disabledProxy, true);
 			disabledProxy = null;
+		}
+
+		for (String proxy : disabledProxies) {
+			L2Topology.setListener(proxy, true);
+		}
+		disabledProxies.clear();
+
+		if (addedProxy != null) {
+			L2Topology.removeListener(addedProxy);
+			addedProxy = null;
+		}
+
+		if (addedNode != null) {
+			L2Topology.control("stop " + addedNode);
+			addedNode = null;
+			L2Topology.waitClusterStable(L2Topology.nodes().size());
 		}
 	}
 
@@ -465,6 +538,266 @@ public class TestL2Topology extends TestBase {
 		}
 	}
 
+	/**
+	 * N-11: a node started mid-test is an active {@link Node} in the client within 2 x
+	 * tend_interval of the peers-generation bump that announces it, and eventually owns
+	 * partitions. The host starts the node through DISCOVERY_CONTROL_DIR and the test gives it a
+	 * listener and a port-map entry before it joins.
+	 */
+	@Test
+	public void n11NewNodeActiveWithinTwoTendIntervals() throws Exception {
+		skipUnless(! L2Topology.controlDir.isEmpty(), NODE_CONTROL_BLOCKER);
+
+		List<L2Node> nodes = L2Topology.nodes();
+		L2Node first = nodes.get(0);
+		List<String> names = L2Topology.nodeNames();
+		AtomicReference<PortMapAddressTranslator> portMap =
+			new AtomicReference<>(new PortMapAddressTranslator(L2Topology.portMapByEndpoint(nodes)));
+		ClientPolicy policy = L2Topology.policy();
+		policy.addressTranslator = advertised -> portMap.get().translate(advertised);
+
+		try (AerospikeClient client = new AerospikeClient(policy, L2Topology.seed())) {
+			L2Topology.waitNodes(client, names);
+			L2Topology.assertAllPartitionsOwned("N-11-before", client);
+
+			long generation = L2Topology.peersGeneration(first);
+			Map<String,String> ack = L2Topology.control("start");
+			addedNode = ack.get("container");
+			int upstreamPort = L2Topology.upstreamPort(first.proxy);
+			int port = L2Topology.addListener(addedNode, addedNode + ':' + upstreamPort);
+			addedProxy = addedNode;
+
+			String advertised = ack.get("address") + ':' + upstreamPort;
+			Map<String,String> map = new LinkedHashMap<>(L2Topology.portMapByEndpoint(nodes));
+			map.put(advertised, L2Topology.listener(port));
+			portMap.set(new PortMapAddressTranslator(map));
+			System.out.println("L2-N11-MAPPED " + advertised + "=" + L2Topology.listener(port));
+
+			long mappedGeneration = L2Topology.peersGeneration(first);
+			assertEquals("peers-generation bumped before " + addedNode + " had a listener and a mapping",
+				generation, mappedGeneration);
+
+			long[] bump = {0};
+			long[] active = {0};
+			Node[] added = {null};
+
+			assertTrue("No peers-generation bump or no active node for " + addedNode, L2Topology.waitFor(() -> {
+				long now = System.nanoTime();
+
+				if (bump[0] == 0 && L2Topology.peersGeneration(first) != generation) {
+					bump[0] = now;
+				}
+
+				if (active[0] == 0) {
+					for (Node node : client.getNodes()) {
+						if (node.isActive() && ! names.contains(node.getName())) {
+							active[0] = now;
+							added[0] = node;
+						}
+					}
+				}
+				return bump[0] != 0 && active[0] != 0;
+			}, 5));
+
+			long elapsed = TimeUnit.NANOSECONDS.toMillis(active[0] - bump[0]);
+			long budget = 2L * policy.tendInterval;
+			Node node = added[0];
+			Map<String,String> info = Info.request(L2Topology.host, port, "node", "service-clear-std");
+			System.out.println("L2-N11-TIMING node=" + node.getName() + " host=" + node.getHost() + " container=" + addedNode +
+				" generation=" + generation + "->" + L2Topology.peersGeneration(first) + " bumpToActiveMs=" + elapsed +
+				" tendInterval=" + policy.tendInterval + " budgetMs=" + budget);
+			assertEquals(info.get("node"), node.getName());
+			assertTrue(advertised + " not in " + info, info.get("service-clear-std").contains(advertised));
+			assertEquals(port, node.getHost().port);
+			assertTrue(node.getName() + " active " + elapsed + "ms after the bump, budget " + budget + "ms", elapsed <= budget);
+
+			boolean owns = L2Topology.waitFor(() -> L2Topology.owners(client).containsKey(node.getName()));
+			System.out.println("L2-N11-OWNERS " + L2Topology.owners(client));
+			assertTrue(node.getName() + " owns no partitions", owns);
+		}
+	}
+
+	/**
+	 * N-12: re-seed on zero active nodes. With every listener disabled the client drops to zero
+	 * nodes; once they are enabled again it re-seeds from the seeds it holds within 2 x
+	 * tend_interval plus the connect timeout, without a seed provider refresh, and the partition
+	 * map is complete again.
+	 */
+	@Test
+	public void n12ReseedOnZeroActiveNodes() throws Exception {
+		List<L2Node> nodes = L2Topology.nodes();
+		CountingSeedProvider provider = new CountingSeedProvider(L2Topology.seed());
+		ClientPolicy policy = L2Topology.policy();
+		policy.seedCandidateProvider = provider;
+		policy.discoveryRefreshInterval = REFRESH_INTERVAL;
+		policy.addressTranslator = new PortMapAddressTranslator(L2Topology.portMapByEndpoint(nodes));
+
+		try (AerospikeClient client = new AerospikeClient(policy)) {
+			L2Topology.waitNodes(client, L2Topology.nodeNames());
+			L2Topology.assertAllPartitionsOwned("N-12-before", client);
+
+			for (String proxy : L2Topology.proxyPorts.keySet()) {
+				disabledProxies.add(proxy);
+				L2Topology.setListener(proxy, false);
+			}
+			assertTrue("Client kept nodes " + L2Topology.nodeNames(client) + " with every listener disabled",
+				L2Topology.waitFor(() -> client.getNodes().length == 0));
+
+			int callsBefore = provider.calls.size();
+			long reenable = System.nanoTime();
+
+			for (String proxy : L2Topology.proxyPorts.keySet()) {
+				L2Topology.setListener(proxy, true);
+			}
+			disabledProxies.clear();
+
+			assertTrue("Client did not re-seed", L2Topology.waitFor(() -> client.getNodes().length > 0, 5));
+			long reseeded = System.nanoTime();
+			long elapsed = TimeUnit.NANOSECONDS.toMillis(reseeded - reenable);
+			long budget = 2L * policy.tendInterval + policy.timeout;
+			long refreshes = provider.callsBetween(reenable, reseeded);
+
+			System.out.println("L2-N12-RESEED reenableToFirstNodeMs=" + elapsed + " tendInterval=" + policy.tendInterval +
+				" connectTimeout=" + policy.timeout + " budgetMs=" + budget + " refreshesInWindow=" + refreshes +
+				" refreshCallsBeforeReenable=" + callsBefore + " refreshCalls=" + provider.calls.size() +
+				" refreshInterval=" + policy.discoveryRefreshInterval + " nodes=" + L2Topology.nodeNames(client));
+			assertEquals(0, refreshes);
+			assertEquals(1, provider.calls.size());
+			assertTrue("Re-seeded " + elapsed + "ms after re-enable, budget " + budget + "ms", elapsed <= budget);
+
+			L2Topology.waitNodes(client, L2Topology.nodeNames());
+			L2Topology.assertAllPartitionsOwned("N-12-after", client);
+		}
+	}
+
+	/**
+	 * N-14: useServicesAlternate against a cluster with no alternate access address. The seed's
+	 * service-clear-alt is empty and client initialization fails with an error that names the
+	 * flag instead of presenting an empty cluster.
+	 */
+	@Test
+	public void n14UseServicesAlternateWithoutAlternateFailsInit() {
+		L2Node first = L2Topology.nodes().get(0);
+		String alternate = Info.request(L2Topology.host, first.port, "service-clear-alt");
+		System.out.println("L2-N14-SEED " + first.name + " service-clear-alt=[" + (alternate == null ? "" : alternate) + "]");
+		assertTrue(alternate, alternate == null || alternate.isEmpty());
+
+		ClientPolicy policy = L2Topology.policy();
+		policy.useServicesAlternate = true;
+
+		AerospikeException.AlternateAddressMissing e = assertThrows(AerospikeException.AlternateAddressMissing.class,
+			() -> new AerospikeClient(policy, L2Topology.seed()).close());
+
+		System.out.println("L2-N14-ERROR " + e.getClass().getName() + ": " + e.getMessage());
+		assertTrue(e.getMessage(), e.getMessage().contains("useServicesAlternate"));
+		assertTrue(e.getMessage(), e.getMessage().contains(first.name));
+	}
+
+	/**
+	 * on_miss strict with an empty static-map (ipMap): every peer misses, the UX-2 error names the
+	 * peer, its advertised endpoint, the standard list and the translator, and is repeated every
+	 * tend. Only the seed is a {@link Node} and serves the keys it holds.
+	 */
+	@Test
+	public void strictEmptyIpMapDropsPeers() throws Exception {
+		ClientPolicy policy = L2Topology.policy();
+		policy.ipMap = new HashMap<>();
+		policy.translationOnMiss = TranslationMissMode.STRICT;
+		assertStrictMissDropsPeers("ipmap-empty-strict", policy, "static-map");
+	}
+
+	/**
+	 * on_miss strict with a custom translator that maps nothing: as with the empty ipMap, named by
+	 * the translator class.
+	 */
+	@Test
+	public void strictEmptyCustomTranslatorDropsPeers() throws Exception {
+		ClientPolicy policy = L2Topology.policy();
+		policy.addressTranslator = new EmptyTranslator();
+		policy.translationOnMiss = TranslationMissMode.STRICT;
+		assertStrictMissDropsPeers("custom-empty-strict", policy, EmptyTranslator.class.getName());
+	}
+
+	private static void assertStrictMissDropsPeers(String row, ClientPolicy policy, String translator) throws Exception {
+		List<L2Node> nodes = L2Topology.nodes();
+		L2Node seed = nodes.get(0);
+		List<L2Node> peers = nodes.subList(1, nodes.size());
+
+		captureWarnings();
+
+		try (AerospikeClient client = new AerospikeClient(policy, L2Topology.seed())) {
+			L2Topology.waitFor(() -> {
+				assertEquals(List.of(seed.name), L2Topology.nodeNames(client));
+
+				for (L2Node peer : peers) {
+					if (misses(peer).size() < MISS_RETRIES) {
+						return false;
+					}
+				}
+				return true;
+			});
+
+			for (L2Node peer : peers) {
+				List<String> misses = misses(peer);
+				System.out.println("L2-MISS-RESULT " + row + " peer=" + peer.name + " nodes=" + L2Topology.nodeNames(client) +
+					" missWarnings=" + misses.size());
+				assertTrue("Missed peer " + peer.name + " not retried every tend: " + warnings, misses.size() >= MISS_RETRIES);
+
+				String message = misses.get(0);
+				System.out.println("L2-MISS-LOG " + row + ' ' + message);
+
+				for (String part : new String[] {peer.name, peer.advertised.get(0), "standard", translator, "pass_through"}) {
+					assertTrue(part + " not in: " + message, message.contains(part));
+				}
+			}
+			assertEquals(List.of(seed.name), L2Topology.nodeNames(client));
+			assertSeedKeysWork(row, client, seed);
+		}
+	}
+
+	static void assertSeedKeysWork(String row, AerospikeClient client, L2Node seed) {
+		Cluster cluster = client.getCluster();
+		WritePolicy policy = client.copyWritePolicyDefault();
+		int onSeed = 0;
+		int notOwned = 0;
+
+		for (int i = 0; i < MISS_KEY_COUNT; i++) {
+			Key key = new Key(L2Topology.namespace, SET, "miss-" + i);
+			Node node;
+
+			try {
+				node = Partition.write(cluster, policy, key).getNodeWrite(cluster);
+			}
+			catch (AerospikeException.InvalidNode ine) {
+				notOwned++;
+				continue;
+			}
+
+			assertEquals(seed.name, node.getName());
+			client.put(policy, key, new Bin("v", i));
+			assertEquals(i, client.get(null, key).getInt("v"));
+			onSeed++;
+		}
+		System.out.println("L2-MISS-KEYS " + row + " seed=" + seed.name + " keysOnSeed=" + onSeed + " keysNotOwned=" + notOwned);
+		assertTrue(onSeed > 0);
+		assertTrue(notOwned > 0);
+	}
+
+	static void captureWarnings() {
+		warnings.clear();
+		errors.clear();
+		Log.setLevel(Log.Level.WARN);
+		Log.setCallback((level, message) -> {
+			if (level == Log.Level.WARN) {
+				warnings.add(message);
+			}
+			else if (level == Log.Level.ERROR) {
+				errors.add(message);
+			}
+			System.out.println("CLIENT-LOG " + level + ' ' + message);
+		});
+	}
+
 	private static void assertPortMapJoins(String row, Map<String,String> portMap) throws Exception {
 		ClientPolicy policy = L2Topology.policy();
 		policy.addressTranslator = new PortMapAddressTranslator(portMap);
@@ -516,7 +849,7 @@ public class TestL2Topology extends TestBase {
 		assertTrue(missedKeys > 0);
 	}
 
-	private static List<String> misses(L2Node victim) {
+	static List<String> misses(L2Node victim) {
 		List<String> misses = new ArrayList<>();
 
 		for (String warning : warnings) {
@@ -537,7 +870,7 @@ public class TestL2Topology extends TestBase {
 		}
 	}
 
-	private static void skipUnless(boolean condition, String reason) {
+	static void skipUnless(boolean condition, String reason) {
 		if (! condition) {
 			System.out.println("L2-SKIP " + reason);
 		}
