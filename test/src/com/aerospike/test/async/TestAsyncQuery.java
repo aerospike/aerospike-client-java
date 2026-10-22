@@ -19,8 +19,10 @@ package com.aerospike.test.async;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.AfterClass;
+import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
+import org.junit.function.ThrowingRunnable;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Bin;
@@ -29,8 +31,11 @@ import com.aerospike.client.Record;
 import com.aerospike.client.ResultCode;
 import com.aerospike.client.listener.RecordSequenceListener;
 import com.aerospike.client.listener.WriteListener;
+import com.aerospike.client.query.BinDataType;
 import com.aerospike.client.query.Filter;
 import com.aerospike.client.query.IndexType;
+import com.aerospike.client.query.Order;
+import com.aerospike.client.query.PartitionFilter;
 import com.aerospike.client.query.Statement;
 import com.aerospike.client.task.IndexTask;
 
@@ -118,5 +123,34 @@ public class TestAsyncQuery extends TestAsync {
 			}
 
 		}, null, stmt);
+	}
+
+	@Test
+	public void topKIsRejected() {
+		Statement stmt = new Statement();
+		stmt.setNamespace(args.namespace);
+		stmt.setSetName(args.set);
+		stmt.setOrderBy(binName, BinDataType.INTEGER, Order.DESC);
+		stmt.setTopK(3);
+
+		RecordSequenceListener listener = new RecordSequenceListener() {
+			public void onRecord(Key key, Record record) {
+			}
+
+			public void onSuccess() {
+			}
+
+			public void onFailure(AerospikeException e) {
+			}
+		};
+
+		assertTopKRejected(() -> client.query(eventLoop, listener, null, stmt));
+		assertTopKRejected(() -> client.queryPartitions(eventLoop, listener, null, stmt, PartitionFilter.all()));
+	}
+
+	private static void assertTopKRejected(ThrowingRunnable call) {
+		AerospikeException ae = Assert.assertThrows(AerospikeException.class, call);
+		Assert.assertEquals(ResultCode.PARAMETER_ERROR, ae.getResultCode());
+		Assert.assertTrue(ae.getMessage(), ae.getMessage().contains("only supported by synchronous partition queries"));
 	}
 }
