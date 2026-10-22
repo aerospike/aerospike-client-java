@@ -28,6 +28,13 @@ on:
         type: string
         required: false
         default: ""
+      profile:
+        description: >-
+          default, or reachable for TestL2ReachableNode (one node advertises an
+          address the client can reach)
+        type: string
+        required: false
+        default: default
 
 permissions:
   id-token: write
@@ -59,12 +66,15 @@ jobs:
 
       - name: Setup Aerospike cluster
         id: aerospike
-        uses: aerospike/shared-workflows/.github/actions/setup-aerospike-server@f7d1ce30b376733a51ea05b99f20646d0e248afc # main
+        # CLIENT-5756 head (PR #374, stacked on #371) for start-nodes and extra-hosts; repin to main once merged
+        uses: aerospike/shared-workflows/.github/actions/setup-aerospike-server@9c1d4e91489995aa95187152b670b32cca9e890b
         with:
           server-edition: ${{ inputs.server-edition }}
           server-container-repo: ${{ inputs.server-container-repo }}
           server-tag: ${{ inputs.server-tag }}
-          num-nodes: "3"
+          num-nodes: ${{ inputs.profile == 'reachable' && '3' || '4' }}
+          start-nodes: "3"
+          extra-hosts: ${{ inputs.profile == 'reachable' && 'as-reachable.test:127.0.0.1' || '' }}
           container-name-prefix: discovery-as
           network-name: discovery-aerospike-net
           publish-ports: "false"
@@ -74,13 +84,32 @@ jobs:
           oidc-provider: ${{ secrets.JFROG_OIDC_PROVIDER }}
           oidc-audience: ${{ secrets.JFROG_OIDC_AUDIENCE }}
 
+      - name: Split running and parked nodes
+        id: nodes
+        env:
+          CONTAINER_NAMES: ${{ steps.aerospike.outputs.container-names }}
+        run: |
+          set -euo pipefail
+          echo "running=$(cut -d, -f1-3 <<< "${CONTAINER_NAMES}")" >> "${GITHUB_OUTPUT}"
+          echo "parked=$(cut -s -d, -f4- <<< "${CONTAINER_NAMES}")" >> "${GITHUB_OUTPUT}"
+
       - name: Setup discovery topology
         id: topology
         uses: aerospike/shared-workflows/.github/actions/setup-discovery-topology@f7d1ce30b376733a51ea05b99f20646d0e248afc # main
         with:
-          container-names: ${{ steps.aerospike.outputs.container-names }}
+          container-names: ${{ steps.nodes.outputs.running }}
           aerospike-network-name: ${{ steps.aerospike.outputs.network-name }}
           tls-listen-port-base: ${{ inputs.tls-listen-port-base }}
+
+      - name: Apply reachable profile
+        id: reachable
+        if: ${{ inputs.profile == 'reachable' }}
+        env:
+          AEROSPIKE_CONTAINER_NAMES: ${{ steps.nodes.outputs.running }}
+          DISCOVERY_PROXY_MAP: ${{ steps.topology.outputs.proxy-name-port-map }}
+          CLIENT_NETWORK: ${{ steps.topology.outputs.client-network-name }}
+          TOXIPROXY_HOST: ${{ steps.topology.outputs.toxiproxy-container-name }}
+        run: bash .github/discovery/apply-reachable-profile.sh
 
       - name: Setup L2 Java client runner
         id: runner
@@ -102,7 +131,12 @@ jobs:
           DISCOVERY_PROXY_MAP: ${{ steps.topology.outputs.proxy-name-port-map }}
           TOXIPROXY_URL: ${{ steps.topology.outputs.toxiproxy-url }}
           TOXIPROXY_HOST: ${{ steps.topology.outputs.toxiproxy-container-name }}
-          AEROSPIKE_CONTAINER_NAMES: ${{ steps.aerospike.outputs.container-names }}
+          AEROSPIKE_CONTAINER_NAMES: ${{ steps.nodes.outputs.running }}
+          AEROSPIKE_NETWORK: ${{ steps.aerospike.outputs.network-name }}
+          PARKED_NODES: ${{ steps.nodes.outputs.parked }}
+          DISCOVERY_REACHABLE_NODE: ${{ steps.reachable.outputs.reachable-node }}
+          REACHABLE_HOST: ${{ steps.reachable.outputs.client-host }}
+          L2_SUITE: ${{ inputs.profile == 'reachable' && '**/TestL2ReachableNode.class' || '**/SuiteDiscovery.class' }}
           TLS_CERT_DIR: ${{ steps.aerospike.outputs.tls-cert-dir }}
         run: |
           set -euo pipefail
@@ -126,6 +160,16 @@ jobs:
             run_args+=(-v "${TLS_CERT_DIR}:/aerospike-tls:ro")
             run_args+=(-e "AEROSPIKE_CA_CERT=/aerospike-tls/ca.crt")
           fi
+          if [[ -n "${REACHABLE_HOST}" ]]; then
+            run_args+=(--add-host "${REACHABLE_HOST}")
+          fi
+          if [[ -n "${PARKED_NODES}" ]]; then
+            export DISCOVERY_CONTROL_DIR="${GITHUB_WORKSPACE}/test/target/l2-control"
+            mkdir -p "${DISCOVERY_CONTROL_DIR}"
+            bash .github/discovery/node-control.sh "${DISCOVERY_CONTROL_DIR}" "${AEROSPIKE_NETWORK}" "${PARKED_NODES}" &
+            control_pid=$!
+            trap 'kill "${control_pid}" 2>/dev/null || true' EXIT
+          fi
           # Image entrypoint is mvn-entrypoint.sh, which execs the arguments.
           docker run "${run_args[@]}" \
             -e DISCOVERY_SUBSET \
@@ -138,6 +182,9 @@ jobs:
             -e TOXIPROXY_HOST \
             -e TOXIPROXY_CONTROL_PORT=8474 \
             -e AEROSPIKE_CONTAINER_NAMES \
+            -e DISCOVERY_CONTROL_DIR \
+            -e DISCOVERY_REACHABLE_NODE \
+            -e L2_SUITE \
             "${CLIENT_IMAGE}" \
             bash .github/discovery/run-l2-suite.sh
 
@@ -154,4 +201,4 @@ jobs:
         uses: EnricoMi/publish-unit-test-result-action@d0a4676d0e0b938bc201470d88276b7c74c712b3 # v2.24.0
         with:
           files: test/target/surefire-reports/*.xml
-          check_name: "L2 discovery (${{ inputs.subset }})"
+          check_name: "L2 discovery (${{ inputs.subset }}${{ inputs.profile != 'default' && format(', {0}', inputs.profile) || '' }})"

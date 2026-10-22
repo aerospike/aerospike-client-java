@@ -14,7 +14,7 @@ name: Discovery integration
 # same FEATURES_CONF gate and does not run on fork pull requests.
 #
 # setup-aerospike-server and setup-discovery-topology are pinned in
-# discovery-l2.yaml to shared-workflows main, which generates the TLS
+# discovery-l2.yaml to shared-workflows commits that generate the TLS
 # multi-node config (#335), so this workflow does not supply aerospike.conf.
 # v5.0.0 does not have publish-ports, which this topology requires.
 
@@ -53,6 +53,18 @@ jobs:
       server-container-repo: database-docker-virtual/aerospike-server
       server-tag: latest
       enable-tls: "false"
+    secrets: inherit
+
+  l2-reachable:
+    name: L2 discovery (ce, reachable)
+    uses: ./.github/workflows/discovery-l2.yaml
+    with:
+      subset: ce
+      server-edition: community
+      server-container-repo: database-docker-virtual/aerospike-server
+      server-tag: latest
+      enable-tls: "false"
+      profile: reachable
     secrets: inherit
 
   l2-ee:
