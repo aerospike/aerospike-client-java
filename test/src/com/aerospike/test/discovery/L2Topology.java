@@ -1,0 +1,468 @@
+/*
+ * Copyright 2012-2026 Aerospike, Inc.
+ *
+ * Portions may be licensed to Aerospike, Inc. under one or more contributor
+ * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
+ */
+package com.aerospike.test.discovery;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.fail;
+
+import java.io.IOException;
+import java.net.InetSocketAddress;
+import java.net.Socket;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.time.Duration;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
+import java.util.concurrent.atomic.AtomicReferenceArray;
+import java.util.function.BooleanSupplier;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+import com.aerospike.client.AerospikeClient;
+import com.aerospike.client.Host;
+import com.aerospike.client.Info;
+import com.aerospike.client.cluster.Node;
+import com.aerospike.client.cluster.Partitions;
+import com.aerospike.client.policy.ClientPolicy;
+import com.aerospike.test.util.Args;
+
+/**
+ * L2 topology built by .github/workflows/discovery-l2.yaml or test/discovery/run_l2.sh: a three node
+ * cluster on a private network with no published ports, reachable from the client only through one
+ * Toxiproxy listener per node behind one endpoint hostname. The client has no route to the node
+ * addresses. The topology arrives as environment variables:
+ * <ul>
+ * <li>DISCOVERY_ENDPOINT_HOSTNAME: hostname every listener is behind</li>
+ * <li>DISCOVERY_ENDPOINT_PORTS: clear listener ports, one per node</li>
+ * <li>DISCOVERY_TLS_ENDPOINT_PORTS: TLS listener ports, one per node; empty on ce</li>
+ * <li>DISCOVERY_PROXY_MAP: Toxiproxy proxy name to listener port</li>
+ * <li>DISCOVERY_SUBSET: ce or ee</li>
+ * <li>TOXIPROXY_URL: Toxiproxy control API</li>
+ * <li>AEROSPIKE_CONTAINER_NAMES: server containers, one per node</li>
+ * </ul>
+ * Each node's name and advertised addresses are read through its listener at runtime.
+ */
+final class L2Topology {
+	static final int TEND_INTERVAL = 250;
+	static final int WAIT_MS = 30000;
+	static final String TLS_PROXY_SUFFIX = "-tls";
+
+	private static final Pattern PEER = Pattern.compile("\\[([0-9A-Fa-f]+),([^,\\[\\]]*),\\[((?:[^\\[\\]]|\\[[^\\]]*\\])*)\\]\\]");
+	private static final HttpClient HTTP = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5)).build();
+	private static List<L2Node> nodes;
+
+	static final String host = required("DISCOVERY_ENDPOINT_HOSTNAME");
+	static final List<Integer> ports = ports(required("DISCOVERY_ENDPOINT_PORTS"));
+	static final List<Integer> tlsPorts = ports(optional("DISCOVERY_TLS_ENDPOINT_PORTS"));
+	static final Map<String,Integer> proxyPorts = proxyPorts(required("DISCOVERY_PROXY_MAP"));
+	static final String subset = required("DISCOVERY_SUBSET");
+	static final String toxiproxyUrl = required("TOXIPROXY_URL");
+	static final List<String> containers = List.of(required("AEROSPIKE_CONTAINER_NAMES").split(","));
+	static final String namespace = Args.Instance.namespace;
+
+	/**
+	 * Node behind one listener, as it advertises itself.
+	 */
+	static final class L2Node {
+		final String proxy;
+		final int port;
+		final String name;
+		final List<String> advertised;
+		final int tlsPort;
+		final List<String> tlsAdvertised;
+		String tlsName;
+
+		L2Node(String proxy, int port, String name, List<String> advertised, int tlsPort, List<String> tlsAdvertised) {
+			this.proxy = proxy;
+			this.port = port;
+			this.name = name;
+			this.advertised = advertised;
+			this.tlsPort = tlsPort;
+			this.tlsAdvertised = tlsAdvertised;
+		}
+
+		@Override
+		public String toString() {
+			return name + " proxy=" + proxy + " listener=" + port + " advertised=" + advertised +
+				(tlsPort > 0 ? " tlsListener=" + tlsPort + " tlsAdvertised=" + tlsAdvertised + " tlsName=" + tlsName : "");
+		}
+	}
+
+	/**
+	 * Peer as listed by a node's peers reply.
+	 */
+	static final class Peer {
+		final String name;
+		final String tlsName;
+		final List<String> endpoints;
+
+		Peer(String name, String tlsName, List<String> endpoints) {
+			this.name = name;
+			this.tlsName = tlsName;
+			this.endpoints = endpoints;
+		}
+	}
+
+	/**
+	 * Query every listener for its node's name and advertised addresses. Read once per run.
+	 */
+	static List<L2Node> nodes() {
+		if (nodes != null) {
+			return nodes;
+		}
+
+		assertEquals("DISCOVERY_ENDPOINT_PORTS " + ports + " vs AEROSPIKE_CONTAINER_NAMES " + containers,
+			containers.size(), ports.size());
+
+		List<L2Node> list = new ArrayList<>();
+		Map<String,String> tlsNames = new HashMap<>();
+
+		String[] commands = tlsPorts.isEmpty() ? new String[] {"node", "service-clear-std"} :
+			new String[] {"node", "service-clear-std", "service-tls-std", "peers-tls-std"};
+
+		for (int port : ports) {
+			String proxy = proxyName(port);
+			Map<String,String> info = Info.request(host, port, commands);
+			String name = info.get("node");
+			assertNotNull("No node name from listener " + port, name);
+
+			Integer tlsPort = proxyPorts.get(proxy + TLS_PROXY_SUFFIX);
+			L2Node node = new L2Node(proxy, port, name, endpoints(info.get("service-clear-std")),
+				tlsPort == null ? 0 : tlsPort, endpoints(info.get("service-tls-std")));
+			assertFalse("Node " + name + " advertises no clear address", node.advertised.isEmpty());
+			list.add(node);
+
+			for (Peer peer : parsePeers(info.get("peers-tls-std"))) {
+				if (! peer.tlsName.isEmpty()) {
+					tlsNames.put(peer.name, peer.tlsName);
+				}
+			}
+		}
+
+		for (L2Node node : list) {
+			node.tlsName = tlsNames.get(node.name);
+			System.out.println("L2-NODE " + node);
+		}
+		nodes = Collections.unmodifiableList(list);
+		return nodes;
+	}
+
+	static List<String> nodeNames() {
+		List<String> names = new ArrayList<>();
+
+		for (L2Node node : nodes()) {
+			names.add(node.name);
+		}
+		names.sort(null);
+		return names;
+	}
+
+	static Host seed() {
+		return new Host(host, nodes().get(0).port);
+	}
+
+	static String listener(int port) {
+		return host + ':' + port;
+	}
+
+	static ClientPolicy policy() {
+		ClientPolicy policy = new ClientPolicy();
+		policy.tendInterval = TEND_INTERVAL;
+		policy.timeout = 1000;
+		return policy;
+	}
+
+	/**
+	 * port-map from each node's advertised clear {@code host:port} to its listener.
+	 */
+	static Map<String,String> portMapByEndpoint(List<L2Node> list) {
+		Map<String,String> map = new LinkedHashMap<>();
+
+		for (L2Node node : list) {
+			for (String advertised : node.advertised) {
+				map.put(advertised, listener(node.port));
+			}
+		}
+		return map;
+	}
+
+	/**
+	 * port-map from each node's name to its listener.
+	 */
+	static Map<String,String> portMapByNodeName(List<L2Node> list) {
+		Map<String,String> map = new LinkedHashMap<>();
+
+		for (L2Node node : list) {
+			map.put(node.name, listener(node.port));
+		}
+		return map;
+	}
+
+	/**
+	 * port-map from each node's advertised TLS {@code host:port} to its TLS listener.
+	 */
+	static Map<String,String> tlsPortMap(List<L2Node> list) {
+		Map<String,String> map = new LinkedHashMap<>();
+
+		for (L2Node node : list) {
+			for (String advertised : node.tlsAdvertised) {
+				map.put(advertised, listener(node.tlsPort));
+			}
+		}
+		return map;
+	}
+
+	static List<String> nodeNames(AerospikeClient client) {
+		List<String> names = new ArrayList<>();
+
+		for (Node node : client.getNodes()) {
+			names.add(node.getName());
+		}
+		names.sort(null);
+		return names;
+	}
+
+	static boolean waitFor(BooleanSupplier condition) throws InterruptedException {
+		long deadline = System.currentTimeMillis() + WAIT_MS;
+
+		while (! condition.getAsBoolean()) {
+			if (System.currentTimeMillis() >= deadline) {
+				return false;
+			}
+			Thread.sleep(100);
+		}
+		return true;
+	}
+
+	static void waitNodes(AerospikeClient client, List<String> names) throws InterruptedException {
+		waitFor(() -> nodeNames(client).equals(names));
+		assertEquals(names, nodeNames(client));
+	}
+
+	/**
+	 * Wait until every partition of the namespace has an active master in the client's partition
+	 * map and return the master of each partition. Same check as
+	 * {@code PortMapCluster.assertAllPartitionsOwned}, which reads run_port_map.sh's system
+	 * properties on load.
+	 */
+	static Node[] assertAllPartitionsOwned(String row, AerospikeClient client) throws InterruptedException {
+		Node[] masters = new Node[Node.PARTITIONS];
+		waitFor(() -> unowned(client, masters) == 0);
+		int unowned = unowned(client, masters);
+
+		System.out.println("L2-PARTITIONS " + row + " partitions=" + Node.PARTITIONS + " unowned=" + unowned +
+			" owners=" + owners(masters));
+		assertEquals(0, unowned);
+		return masters;
+	}
+
+	static Map<String,Integer> owners(Node[] masters) {
+		Map<String,Integer> owners = new TreeMap<>();
+
+		for (Node node : masters) {
+			if (node != null) {
+				owners.merge(node.getName(), 1, Integer::sum);
+			}
+		}
+		return owners;
+	}
+
+	private static int unowned(AerospikeClient client, Node[] masters) {
+		Partitions partitions = client.getCluster().partitionMap.get(namespace);
+		int unowned = 0;
+
+		for (int i = 0; i < Node.PARTITIONS; i++) {
+			Node node = null;
+
+			if (partitions != null) {
+				AtomicReferenceArray<Node> replicas = partitions.replicas[0];
+				node = replicas.get(i);
+			}
+
+			if (node == null || ! node.isActive()) {
+				masters[i] = null;
+				unowned++;
+			}
+			else {
+				masters[i] = node;
+			}
+		}
+		return unowned;
+	}
+
+	static void assertUnreachable(String endpoint) {
+		int index = endpoint.lastIndexOf(':');
+		String h = endpoint.substring(0, index);
+		int port = Integer.parseInt(endpoint.substring(index + 1));
+
+		try (Socket socket = new Socket()) {
+			socket.connect(new InetSocketAddress(h, port), 2000);
+			fail("Advertised address " + endpoint + " is reachable from the client");
+		}
+		catch (IOException expected) {
+			System.out.println("L2-UNREACHABLE " + endpoint + ' ' + expected);
+		}
+	}
+
+	/**
+	 * Return the namespace statistics of a node, read through its listener.
+	 */
+	static Map<String,Long> namespaceStats(L2Node node, String... names) {
+		String reply = Info.request(host, node.port, "namespace/" + namespace);
+		Map<String,Long> stats = new HashMap<>();
+
+		for (String token : reply.split(";")) {
+			int index = token.indexOf('=');
+
+			if (index > 0) {
+				String name = token.substring(0, index);
+
+				for (String wanted : names) {
+					if (wanted.equals(name)) {
+						stats.put(name, Long.parseLong(token.substring(index + 1)));
+					}
+				}
+			}
+		}
+
+		for (String wanted : names) {
+			assertNotNull("Node " + node.name + " has no namespace statistic " + wanted, stats.get(wanted));
+		}
+		return stats;
+	}
+
+	/**
+	 * Enable or disable a Toxiproxy listener.
+	 */
+	static void setListener(String proxy, boolean enabled) throws IOException, InterruptedException {
+		HttpRequest request = HttpRequest.newBuilder(URI.create(toxiproxyUrl + "/proxies/" + proxy))
+			.timeout(Duration.ofSeconds(10))
+			.header("Content-Type", "application/json")
+			.POST(HttpRequest.BodyPublishers.ofString("{\"enabled\":" + enabled + "}"))
+			.build();
+		HttpResponse<String> response = HTTP.send(request, HttpResponse.BodyHandlers.ofString());
+
+		System.out.println("L2-TOXIPROXY " + proxy + " enabled=" + enabled + " status=" + response.statusCode() +
+			' ' + response.body());
+		assertEquals(proxy + ": " + response.body(), 200, response.statusCode());
+	}
+
+	/**
+	 * Parse a peers-clear-std or peers-tls-std reply:
+	 * {@code gen,port,[[node,tls-name,[address[:port],...]],...]}.
+	 */
+	static List<Peer> parsePeers(String reply) {
+		List<Peer> peers = new ArrayList<>();
+
+		if (reply == null) {
+			return peers;
+		}
+
+		int first = reply.indexOf(',');
+		int second = reply.indexOf(',', first + 1);
+
+		if (first < 0 || second < 0) {
+			return peers;
+		}
+
+		String portString = reply.substring(first + 1, second);
+		int defaultPort = portString.isEmpty() ? 0 : Integer.parseInt(portString);
+		Matcher m = PEER.matcher(reply.substring(second + 1));
+
+		while (m.find()) {
+			List<String> endpoints = new ArrayList<>();
+
+			for (String address : m.group(3).split(",")) {
+				if (address.isEmpty()) {
+					continue;
+				}
+
+				boolean hasPort = address.startsWith("[") ? address.contains("]:") : address.contains(":");
+				endpoints.add(hasPort ? address : address + ':' + defaultPort);
+			}
+			peers.add(new Peer(m.group(1), m.group(2), endpoints));
+		}
+		return peers;
+	}
+
+	private static List<String> endpoints(String reply) {
+		List<String> list = new ArrayList<>();
+
+		if (reply == null || reply.isEmpty()) {
+			return list;
+		}
+
+		for (Host h : Host.parseServiceHosts(reply)) {
+			list.add(h.name.indexOf(':') >= 0 ? "[" + h.name + "]:" + h.port : h.name + ':' + h.port);
+		}
+		return list;
+	}
+
+	private static String proxyName(int port) {
+		for (Map.Entry<String,Integer> entry : proxyPorts.entrySet()) {
+			if (entry.getValue() == port) {
+				return entry.getKey();
+			}
+		}
+		throw new IllegalStateException("DISCOVERY_PROXY_MAP has no proxy for listener " + port + ": " + proxyPorts);
+	}
+
+	private static Map<String,Integer> proxyPorts(String csv) {
+		Map<String,Integer> map = new LinkedHashMap<>();
+
+		for (String entry : csv.split(",")) {
+			int index = entry.lastIndexOf(':');
+			map.put(entry.substring(0, index), Integer.parseInt(entry.substring(index + 1)));
+		}
+		return map;
+	}
+
+	private static List<Integer> ports(String csv) {
+		List<Integer> list = new ArrayList<>();
+
+		for (String port : csv.split(",")) {
+			if (! port.isEmpty()) {
+				list.add(Integer.parseInt(port));
+			}
+		}
+		return Collections.unmodifiableList(list);
+	}
+
+	private static String optional(String name) {
+		String value = System.getenv(name);
+		return value == null ? "" : value;
+	}
+
+	private static String required(String name) {
+		String value = System.getenv(name);
+
+		if (value == null || value.isEmpty()) {
+			throw new IllegalStateException("Environment variable " + name +
+				" is not set. Run test/discovery/run_l2.sh or the discovery-l2 workflow");
+		}
+		return value;
+	}
+}
