@@ -469,6 +469,7 @@ public class Node implements Closeable {
 				}
 
 				boolean nodeValidated = false;
+				collision = null;
 
 				// Find first host that connects.
 				for (Host host : peer.hosts) {
@@ -481,6 +482,13 @@ public class Node implements Closeable {
 						// Attempt connection to host.
 						NodeValidator nv = new NodeValidator();
 						nv.validateNode(cluster, host);
+
+						collision = findCollision(peers, peer, host, nv);
+
+						if (collision != null) {
+							nv.primaryConn.close();
+							break;
+						}
 
 						if (! peer.nodeName.equals(nv.name)) {
 							// Must look for new node name in the unlikely event that node names do not agree.
@@ -514,6 +522,12 @@ public class Node implements Closeable {
 						else if (Log.warnEnabled()) {
 							Log.warn("Add node " + host + " failed: " + Util.getErrorMessage(e));
 						}
+					}
+				}
+
+				if (collision != null) {
+					if (Log.warnEnabled()) {
+						Log.warn(collision.getMessage());
 					}
 				}
 
@@ -569,6 +583,66 @@ public class Node implements Closeable {
 			}
 		}
 		return null;
+	}
+
+	private AerospikeException.TranslationCollision findCollision(Peers peers, Peer peer, Host host, NodeValidator nv) {
+		String other;
+
+		if (name.equals(nv.name) || address.equals(nv.primaryAddress)) {
+			other = name;
+		}
+		else {
+			Node node = findValidatedNode(cluster.nodesMap, peer.nodeName, nv);
+
+			if (node == null) {
+				node = findValidatedNode(peers.nodes, peer.nodeName, nv);
+
+				if (node != null) {
+					// Neither peer becomes a node when both validate as the same node in this tend.
+					peers.nodes.remove(node.name);
+					node.close();
+				}
+			}
+
+			if (node != null) {
+				other = node.name;
+			}
+			else if (! peer.nodeName.equals(nv.name) && findPeer(peers, nv.name)) {
+				other = nv.name;
+			}
+			else {
+				other = peers.collided.get(nv.name);
+			}
+		}
+
+		if (other == null) {
+			return null;
+		}
+		peers.collided.put(nv.name, peer.nodeName);
+		return new AerospikeException.TranslationCollision(peer.nodeName, other, host, cluster.translatorName());
+	}
+
+	private static Node findValidatedNode(HashMap<String,Node> nodes, String nodeName, NodeValidator nv) {
+		for (Node node : nodes.values()) {
+			if (node.name.equals(nodeName)) {
+				continue;
+			}
+
+			if (node.name.equals(nv.name) ||
+				(node.active && node.failures == 0 && node.address.equals(nv.primaryAddress))) {
+				return node;
+			}
+		}
+		return null;
+	}
+
+	private static boolean findPeer(Peers peers, String nodeName) {
+		for (Peer peer : peers.peers) {
+			if (peer.nodeName.equals(nodeName)) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 	private static Node findNodeByHost(HashMap<String,Node> nodes, String nodeName, Host host) {
