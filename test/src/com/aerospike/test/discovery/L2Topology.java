@@ -19,6 +19,7 @@ package com.aerospike.test.discovery;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.io.IOException;
@@ -28,14 +29,22 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.TreeMap;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReferenceArray;
 import java.util.function.BooleanSupplier;
 import java.util.regex.Matcher;
@@ -62,6 +71,10 @@ import com.aerospike.test.util.Args;
  * <li>DISCOVERY_SUBSET: ce or ee</li>
  * <li>TOXIPROXY_URL: Toxiproxy control API</li>
  * <li>AEROSPIKE_CONTAINER_NAMES: server containers, one per node</li>
+ * <li>DISCOVERY_CONTROL_DIR: optional directory shared with the host, which starts and removes
+ * nodes on request; unset when the host offers no node control</li>
+ * <li>DISCOVERY_REACHABLE_NODE: optional container of the node that advertises an address the
+ * client can reach; set only by the reachable profile of run_l2.sh</li>
  * </ul>
  * Each node's name and advertised addresses are read through its listener at runtime.
  */
@@ -70,6 +83,8 @@ final class L2Topology {
 	static final int WAIT_MS = 30000;
 	static final String TLS_PROXY_SUFFIX = "-tls";
 
+	private static final Pattern UPSTREAM_PORT = Pattern.compile("\"upstream\":\"[^\"]*:(\\d+)\"");
+	private static final Pattern LISTEN_PORT = Pattern.compile("\"listen\":\"[^\"]*:(\\d+)\"");
 	private static final Pattern PEER = Pattern.compile("\\[([0-9A-Fa-f]+),([^,\\[\\]]*),\\[((?:[^\\[\\]]|\\[[^\\]]*\\])*)\\]\\]");
 	private static final HttpClient HTTP = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5)).build();
 	private static List<L2Node> nodes;
@@ -81,6 +96,8 @@ final class L2Topology {
 	static final String subset = required("DISCOVERY_SUBSET");
 	static final String toxiproxyUrl = required("TOXIPROXY_URL");
 	static final List<String> containers = List.of(required("AEROSPIKE_CONTAINER_NAMES").split(","));
+	static final String controlDir = optional("DISCOVERY_CONTROL_DIR");
+	static final String reachableNode = optional("DISCOVERY_REACHABLE_NODE");
 	static final String namespace = Args.Instance.namespace;
 
 	/**
@@ -246,13 +263,17 @@ final class L2Topology {
 	}
 
 	static boolean waitFor(BooleanSupplier condition) throws InterruptedException {
+		return waitFor(condition, 100);
+	}
+
+	static boolean waitFor(BooleanSupplier condition, int pollMs) throws InterruptedException {
 		long deadline = System.currentTimeMillis() + WAIT_MS;
 
 		while (! condition.getAsBoolean()) {
 			if (System.currentTimeMillis() >= deadline) {
 				return false;
 			}
-			Thread.sleep(100);
+			Thread.sleep(pollMs);
 		}
 		return true;
 	}
@@ -277,6 +298,15 @@ final class L2Topology {
 			" owners=" + owners(masters));
 		assertEquals(0, unowned);
 		return masters;
+	}
+
+	/**
+	 * Return the number of partitions each node is master of in the client's partition map.
+	 */
+	static Map<String,Integer> owners(AerospikeClient client) {
+		Node[] masters = new Node[Node.PARTITIONS];
+		unowned(client, masters);
+		return owners(masters);
 	}
 
 	static Map<String,Integer> owners(Node[] masters) {
@@ -368,6 +398,127 @@ final class L2Topology {
 		System.out.println("L2-TOXIPROXY " + proxy + " enabled=" + enabled + " status=" + response.statusCode() +
 			' ' + response.body());
 		assertEquals(proxy + ": " + response.body(), 200, response.statusCode());
+	}
+
+	/**
+	 * Create a Toxiproxy listener on the first free port above every listener in use and return
+	 * that port.
+	 */
+	static int addListener(String proxy, String upstream) throws IOException, InterruptedException {
+		int port = 0;
+
+		for (int used : listenerPorts()) {
+			port = Math.max(port, used);
+		}
+		port++;
+
+		HttpResponse<String> response = toxiproxy("POST", "/proxies", "{\"name\":\"" + proxy + "\",\"listen\":\"0.0.0.0:" +
+			port + "\",\"upstream\":\"" + upstream + "\",\"enabled\":true}");
+
+		System.out.println("L2-TOXIPROXY add " + proxy + " status=" + response.statusCode() + ' ' + response.body());
+		assertEquals(proxy + ": " + response.body(), 201, response.statusCode());
+		return port;
+	}
+
+	static void removeListener(String proxy) throws IOException, InterruptedException {
+		HttpResponse<String> response = toxiproxy("DELETE", "/proxies/" + proxy, null);
+
+		System.out.println("L2-TOXIPROXY remove " + proxy + " status=" + response.statusCode());
+		assertEquals(proxy + ": " + response.body(), 204, response.statusCode());
+	}
+
+	/**
+	 * Return the port a Toxiproxy listener forwards to.
+	 */
+	static int upstreamPort(String proxy) throws IOException, InterruptedException {
+		HttpResponse<String> response = toxiproxy("GET", "/proxies/" + proxy, null);
+		Matcher m = UPSTREAM_PORT.matcher(response.body());
+
+		assertEquals(proxy + ": " + response.body(), 200, response.statusCode());
+		assertTrue("No upstream port for " + proxy + ": " + response.body(), m.find());
+		return Integer.parseInt(m.group(1));
+	}
+
+	private static Set<Integer> listenerPorts() throws IOException, InterruptedException {
+		HttpResponse<String> response = toxiproxy("GET", "/proxies", null);
+		Matcher m = LISTEN_PORT.matcher(response.body());
+		Set<Integer> set = new HashSet<>(proxyPorts.values());
+
+		assertEquals(response.body(), 200, response.statusCode());
+
+		while (m.find()) {
+			set.add(Integer.parseInt(m.group(1)));
+		}
+		return set;
+	}
+
+	private static HttpResponse<String> toxiproxy(String method, String path, String body)
+		throws IOException, InterruptedException {
+		HttpRequest request = HttpRequest.newBuilder(URI.create(toxiproxyUrl + path))
+			.timeout(Duration.ofSeconds(10))
+			.header("Content-Type", "application/json")
+			.method(method, body == null ? HttpRequest.BodyPublishers.noBody() : HttpRequest.BodyPublishers.ofString(body))
+			.build();
+		return HTTP.send(request, HttpResponse.BodyHandlers.ofString());
+	}
+
+	/**
+	 * Ask the host to act on the server cluster through DISCOVERY_CONTROL_DIR and return its
+	 * acknowledgement. The request is written as {@code <id>.request} and the host answers with
+	 * {@code <id>.ack}, one {@code key=value} per line.
+	 */
+	static Map<String,String> control(String command) throws IOException, InterruptedException {
+		Path dir = Paths.get(controlDir);
+		String id = UUID.randomUUID().toString();
+		Path tmp = dir.resolve(id + ".tmp");
+		Path ack = dir.resolve(id + ".ack");
+
+		Files.write(tmp, (command + '\n').getBytes(StandardCharsets.UTF_8));
+		Files.move(tmp, dir.resolve(id + ".request"), StandardCopyOption.ATOMIC_MOVE);
+		assertTrue("No acknowledgement for '" + command + "' in " + dir, waitFor(() -> Files.exists(ack)));
+
+		Map<String,String> map = new LinkedHashMap<>();
+
+		for (String line : Files.readAllLines(ack, StandardCharsets.UTF_8)) {
+			int index = line.indexOf('=');
+
+			if (index > 0) {
+				map.put(line.substring(0, index), line.substring(index + 1));
+			}
+		}
+		Files.delete(ack);
+		System.out.println("L2-CONTROL " + command + ' ' + map);
+		assertFalse("'" + command + "' failed: " + map.get("error"), map.containsKey("error"));
+		return map;
+	}
+
+	static long peersGeneration(L2Node node) {
+		return Long.parseLong(Info.request(host, node.port, "peers-generation"));
+	}
+
+	/**
+	 * Wait until every node reports the same cluster key for a cluster of {@code size} nodes with no
+	 * migrations left.
+	 */
+	static void waitClusterStable(int size) throws InterruptedException {
+		String command = "cluster-stable:size=" + size + ";ignore-migrations=false";
+		List<String> keys = new ArrayList<>();
+
+		boolean stable = waitFor(() -> {
+			keys.clear();
+
+			for (L2Node node : nodes()) {
+				try {
+					keys.add(Info.request(host, node.port, command));
+				}
+				catch (RuntimeException e) {
+					keys.add(e.getMessage());
+				}
+			}
+			return keys.stream().distinct().count() == 1 && ! keys.get(0).startsWith("ERROR");
+		});
+		System.out.println("L2-CLUSTER-STABLE size=" + size + ' ' + keys);
+		assertTrue("Cluster not stable at size " + size + ": " + keys, stable);
 	}
 
 	/**
