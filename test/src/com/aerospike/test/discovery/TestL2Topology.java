@@ -86,7 +86,7 @@ public class TestL2Topology extends TestBase {
 	private static final String DNS_BLOCKER = "N-4 needs a DNS server on the L2 client network serving SRV " +
 		"records for the endpoint; the L2 topology has none yet (E4 gap)";
 	private static final String NODE_CONTROL_BLOCKER = "N-11 needs DISCOVERY_CONTROL_DIR so the host can start a " +
-		"fourth node; blocked on CLIENT-5756 (start-nodes, aerospike-node-control) plus an E6 step";
+		"fourth node (run_l2.sh L2_NODE_CONTROL=1, or the discovery-l2 workflow)";
 	private static final int REFRESH_INTERVAL = 600000;
 	private static final int MISS_KEY_COUNT = 200;
 	static final List<String> warnings = new CopyOnWriteArrayList<>();
