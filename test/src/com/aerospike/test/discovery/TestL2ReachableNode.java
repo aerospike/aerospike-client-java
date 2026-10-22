@@ -54,7 +54,7 @@ import com.aerospike.test.util.TestBase;
  */
 public class TestL2ReachableNode extends TestBase {
 	private static final String BLOCKER = " needs DISCOVERY_REACHABLE_NODE, a node advertising an address the " +
-		"client can reach (run_l2.sh L2_PROFILE=reachable); blocked on CLIENT-5754 (shared-workflows #371) and E6 adopting it";
+		"client can reach (run_l2.sh L2_PROFILE=reachable, or the discovery-l2 workflow's reachable profile)";
 	private static final int MISS_RETRIES = 3;
 
 	@After
