@@ -5,9 +5,9 @@ name: Discovery integration
 # every matrix cell.
 #
 # CE (community, 3 nodes, no feature key) runs on every pull request.
-# EE (enterprise, 3 nodes, N-6, N-14) runs on same-repo pull requests, on
-# push to the target branches (merge), and on workflow_dispatch. Fork pull
-# requests do not receive FEATURES_CONF.
+# EE (enterprise, 3 nodes, TLS rows such as N-6) runs on same-repo pull
+# requests, on push to the target branches (merge), and on workflow_dispatch.
+# Fork pull requests do not receive FEATURES_CONF.
 #
 # TLS certificate matching (CLIENT-5638) is a separate EE-only job. Its
 # driver starts one Enterprise container per certificate, so it uses the
