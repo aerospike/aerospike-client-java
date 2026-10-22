@@ -28,6 +28,7 @@ public final class Peers {
 	public final HashMap<String,Node> nodes;
 	public final HashSet<Node> removeNodes;
 	private final HashSet<Host> invalidHosts;
+	final HashMap<String,String> collided;
 	public int refreshCount;
 	public boolean genChanged;
 	boolean addressChanged;
@@ -37,6 +38,7 @@ public final class Peers {
 		nodes = new HashMap<String,Node>(16);
 		removeNodes = new HashSet<Node>(8);
 		invalidHosts = new HashSet<Host>(8);
+		collided = new HashMap<String,String>(8);
 	}
 
 	public boolean hasFailed(Host host) {
