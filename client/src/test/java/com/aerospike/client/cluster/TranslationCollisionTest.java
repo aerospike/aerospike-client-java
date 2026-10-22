@@ -48,6 +48,7 @@ import com.aerospike.client.ResultCode;
 import com.aerospike.client.command.Buffer;
 import com.aerospike.client.discovery.AddressTranslator;
 import com.aerospike.client.discovery.Endpoint;
+import com.aerospike.client.discovery.PassThroughAddressTranslator;
 import com.aerospike.client.policy.ClientPolicy;
 import com.aerospike.client.util.Version;
 
@@ -229,6 +230,123 @@ public class TranslationCollisionTest {
 	}
 
 	@Test
+	public void passThroughNewcomerOnLiveNodeEndpointCreatesNoNode() throws Exception {
+		FakeNode live = server("BB9L");
+		FakeNode a = server("BB9A", "[[BB9N,,[localhost:" + live.port() + "]]]");
+		ClientPolicy policy = policy();
+		policy.addressTranslator = PassThroughAddressTranslator.INSTANCE;
+		Node seed = node(policy, a);
+		Node liveNode = node(live);
+		Cluster cluster = client.getCluster();
+		cluster.nodesMap.put(liveNode.getName(), liveNode);
+
+		try {
+			for (int tend = 1; tend <= 3; tend++) {
+				Peers peers = new Peers(16);
+				seed.refreshPeers(peers);
+				nodes.addAll(peers.nodes.values());
+
+				assertTrue(peers.nodes.keySet().toString(), peers.nodes.isEmpty());
+				assertNoSharedName(cluster, peers);
+				assertSame(liveNode, cluster.nodesMap.get("BB9L"));
+				assertTrue(liveNode.isActive());
+				assertEquals(-1, seed.getPeersGeneration());
+				assertEquals(tend, collisions().size());
+			}
+
+			for (String message : collisions()) {
+				assertNames(message, "BB9N", "BB9L", "localhost:" + live.port(), "pass-through");
+			}
+		}
+		finally {
+			cluster.nodesMap.remove(liveNode.getName());
+		}
+	}
+
+	@Test
+	public void passThroughNewcomerOnRefreshingNodeEndpointCreatesNoNode() throws Exception {
+		FakeNode a = server("BB9A", "[[BB9N,,[localhost:0]]]");
+		a.setPeers("[[BB9N,,[localhost:" + a.port() + "]]]");
+		ClientPolicy policy = policy();
+		policy.addressTranslator = PassThroughAddressTranslator.INSTANCE;
+		Node seed = node(policy, a);
+		Cluster cluster = client.getCluster();
+		cluster.nodesMap.put(seed.getName(), seed);
+
+		try {
+			Peers peers = new Peers(16);
+			seed.refreshPeers(peers);
+			nodes.addAll(peers.nodes.values());
+
+			assertTrue(peers.nodes.keySet().toString(), peers.nodes.isEmpty());
+			assertNoSharedName(cluster, peers);
+			assertSame(seed, cluster.nodesMap.get("BB9A"));
+			assertTrue(seed.isActive());
+			assertEquals(-1, seed.getPeersGeneration());
+			assertEquals(1, collisions().size());
+			assertNames(collisions().get(0), "BB9N", "BB9A", "localhost:" + a.port(), "pass-through");
+		}
+		finally {
+			cluster.nodesMap.remove(seed.getName());
+		}
+	}
+
+	@Test
+	public void passThroughPeersOnOneEndpointInOneReplyCreateNeither() throws Exception {
+		FakeNode b = server("BB9B");
+		FakeNode a = server("BB9A", "[[BB9B,,[127.0.0.1:" + b.port() + "]],[BB9N,,[localhost:" + b.port() + "]]]");
+		ClientPolicy policy = policy();
+		policy.addressTranslator = PassThroughAddressTranslator.INSTANCE;
+		Node seed = node(policy, a);
+
+		Peers peers = new Peers(16);
+		seed.refreshPeers(peers);
+		nodes.addAll(peers.nodes.values());
+
+		assertTrue(peers.nodes.keySet().toString(), peers.nodes.isEmpty());
+		assertEquals(-1, seed.getPeersGeneration());
+		assertEquals(1, collisions().size());
+		assertNames(collisions().get(0), "BB9N", "BB9B", "localhost:" + b.port(), "pass-through");
+	}
+
+	@Test
+	public void passThroughPeersOnOneEndpointInReverseOrderCreateNeither() throws Exception {
+		FakeNode b = server("BB9B");
+		FakeNode a = server("BB9A", "[[BB9N,,[localhost:" + b.port() + "]],[BB9B,,[127.0.0.1:" + b.port() + "]]]");
+		ClientPolicy policy = policy();
+		policy.addressTranslator = PassThroughAddressTranslator.INSTANCE;
+		Node seed = node(policy, a);
+
+		Peers peers = new Peers(16);
+		seed.refreshPeers(peers);
+		nodes.addAll(peers.nodes.values());
+
+		assertTrue(peers.nodes.keySet().toString(), peers.nodes.isEmpty());
+		assertEquals(-1, seed.getPeersGeneration());
+		assertEquals(2, collisions().size());
+		assertNames(collisions().get(0), "BB9N", "BB9B", "localhost:" + b.port(), "pass-through");
+		assertNames(collisions().get(1), "BB9B", "BB9N", "127.0.0.1:" + b.port(), "pass-through");
+	}
+
+	@Test
+	public void passThroughPeerOnUnadvertisedNodeIsCreatedUnderItsName() throws Exception {
+		FakeNode b = server("BB9B");
+		FakeNode a = server("BB9A", "[[BB9N,,[localhost:" + b.port() + "]]]");
+		ClientPolicy policy = policy();
+		policy.addressTranslator = PassThroughAddressTranslator.INSTANCE;
+		Node seed = node(policy, a);
+
+		Peers peers = new Peers(16);
+		seed.refreshPeers(peers);
+		nodes.addAll(peers.nodes.values());
+
+		assertEquals(List.of("BB9B"), new ArrayList<>(peers.nodes.keySet()));
+		assertEquals(5, seed.getPeersGeneration());
+		assertEquals(1, warnings().size());
+		assertNames(warnings().get(0), "Peer node BB9N is different than actual node BB9B");
+	}
+
+	@Test
 	public void exceptionIsTranslationCollision() {
 		AerospikeException.TranslationCollision tc = new AerospikeException.TranslationCollision(
 			"BB9B", "BB9C", new Host("127.0.0.1", 3000), "static-map");
@@ -236,6 +354,12 @@ public class TranslationCollisionTest {
 		assertEquals(ResultCode.TRANSLATION_COLLISION, tc.getResultCode());
 		assertFalse(tc.getInDoubt());
 		assertNames(tc.getMessage(), "BB9B", "BB9C", "127.0.0.1:3000", "static-map");
+	}
+
+	private static void assertNoSharedName(Cluster cluster, Peers peers) {
+		for (String name : peers.nodes.keySet()) {
+			assertFalse(name, cluster.nodesMap.containsKey(name));
+		}
 	}
 
 	private static void assertNames(String message, String... parts) {
@@ -305,7 +429,7 @@ public class TranslationCollisionTest {
 	private static final class FakeNode implements AutoCloseable {
 		final String name;
 		final AtomicInteger accepted = new AtomicInteger();
-		private final String peers;
+		private volatile String peers;
 		private final ServerSocket server;
 		private final List<Socket> sockets = new ArrayList<>();
 
@@ -321,6 +445,10 @@ public class TranslationCollisionTest {
 
 		int port() {
 			return server.getLocalPort();
+		}
+
+		void setPeers(String peers) {
+			this.peers = "5,3000," + peers;
 		}
 
 		private void accept() {
