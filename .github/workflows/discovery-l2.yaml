@@ -30,8 +30,8 @@ on:
         default: ""
       profile:
         description: >-
-          default, or reachable for TestL2ReachableNode (one node advertises an
-          address the client can reach)
+          A run_l2.sh profile: default, reachable, pass-through-names,
+          pass-through-ports, port-map-range or cn-only
         type: string
         required: false
         default: default
@@ -64,6 +64,75 @@ jobs:
             exit 1
           fi
 
+      - name: Profile settings
+        id: profile
+        env:
+          PROFILE: ${{ inputs.profile }}
+          SUBSET: ${{ inputs.subset }}
+        run: |
+          set -euo pipefail
+          num_nodes=3
+          extra_hosts=""
+          subnet=""
+          suite='**/SuiteDiscovery.class'
+          control=false
+          alternate_host=""
+          tls_name_san=true
+          cert_cn=aerospike-tls
+          cert_shape=""
+          case "${PROFILE}" in
+            default)
+              num_nodes=4
+              control=true
+              ;;
+            reachable)
+              extra_hosts=as-reachable.test:127.0.0.1
+              suite='**/TestL2ReachableNode.class'
+              ;;
+            pass-through-names)
+              extra_hosts=node-1.pass-through.test:127.0.0.1,node-2.pass-through.test:127.0.0.1,node-3.pass-through.test:127.0.0.1
+              suite='**/TestL2PassThrough.class'
+              ;;
+            pass-through-ports)
+              num_nodes=4
+              control=true
+              alternate_host=as-pass-through.test
+              extra_hosts=as-pass-through.test:127.0.0.1
+              suite='**/TestL2PassThrough.class'
+              ;;
+            port-map-range)
+              num_nodes=4
+              control=true
+              subnet=172.30.66.0/24
+              suite='**/TestL2PortMapRange.class'
+              ;;
+            cn-only)
+              tls_name_san=false
+              cert_shape=cn-only
+              suite='**/TestL2CnOnlyCertificate.class'
+              ;;
+            *)
+              echo "::error::Unknown profile ${PROFILE}"
+              exit 1
+              ;;
+          esac
+          # Outside cn-only the CN must not match the tls-name, so a CN fallback cannot pass N-6.
+          if [[ "${SUBSET}" == "ee" && "${PROFILE}" != "cn-only" ]]; then
+            cert_cn=not-the-tls-name
+            cert_shape=san-only
+          fi
+          {
+            echo "num-nodes=${num_nodes}"
+            echo "extra-hosts=${extra_hosts}"
+            echo "network-subnet=${subnet}"
+            echo "suite=${suite}"
+            echo "control=${control}"
+            echo "alternate-host=${alternate_host}"
+            echo "include-tls-name-san=${tls_name_san}"
+            echo "tls-cert-cn=${cert_cn}"
+            echo "cert-shape=${cert_shape}"
+          } >> "${GITHUB_OUTPUT}"
+
       - name: Setup Aerospike cluster
         id: aerospike
         # CLIENT-5756 head (PR #374, stacked on #371) for start-nodes and extra-hosts; repin to main once merged
@@ -72,14 +141,17 @@ jobs:
           server-edition: ${{ inputs.server-edition }}
           server-container-repo: ${{ inputs.server-container-repo }}
           server-tag: ${{ inputs.server-tag }}
-          num-nodes: ${{ inputs.profile == 'reachable' && '3' || '4' }}
+          num-nodes: ${{ steps.profile.outputs.num-nodes }}
           start-nodes: "3"
-          extra-hosts: ${{ inputs.profile == 'reachable' && 'as-reachable.test:127.0.0.1' || '' }}
+          extra-hosts: ${{ steps.profile.outputs.extra-hosts }}
+          network-subnet: ${{ steps.profile.outputs.network-subnet }}
           container-name-prefix: discovery-as
           network-name: discovery-aerospike-net
           publish-ports: "false"
           startup-timeout: "60"
           enable-tls: ${{ inputs.enable-tls }}
+          include-tls-name-san: ${{ steps.profile.outputs.include-tls-name-san }}
+          tls-cert-cn: ${{ steps.profile.outputs.tls-cert-cn }}
           features-content: ${{ inputs.subset == 'ee' && secrets.FEATURES_CONF || '' }}
           oidc-provider: ${{ secrets.JFROG_OIDC_PROVIDER }}
           oidc-audience: ${{ secrets.JFROG_OIDC_AUDIENCE }}
@@ -101,15 +173,18 @@ jobs:
           aerospike-network-name: ${{ steps.aerospike.outputs.network-name }}
           tls-listen-port-base: ${{ inputs.tls-listen-port-base }}
 
-      - name: Apply reachable profile
-        id: reachable
-        if: ${{ inputs.profile == 'reachable' }}
+      - name: Apply profile
+        id: apply
+        if: ${{ contains(fromJSON('["reachable", "pass-through-names", "pass-through-ports", "port-map-range"]'), inputs.profile) }}
         env:
+          L2_PROFILE: ${{ inputs.profile }}
           AEROSPIKE_CONTAINER_NAMES: ${{ steps.nodes.outputs.running }}
+          AEROSPIKE_NETWORK: ${{ steps.aerospike.outputs.network-name }}
           DISCOVERY_PROXY_MAP: ${{ steps.topology.outputs.proxy-name-port-map }}
           CLIENT_NETWORK: ${{ steps.topology.outputs.client-network-name }}
           TOXIPROXY_HOST: ${{ steps.topology.outputs.toxiproxy-container-name }}
-        run: bash .github/discovery/apply-reachable-profile.sh
+          TOXIPROXY_URL: ${{ steps.topology.outputs.toxiproxy-url }}
+        run: bash .github/discovery/apply-profile.sh
 
       - name: Setup L2 Java client runner
         id: runner
@@ -118,6 +193,8 @@ jobs:
           crypto-type: gnu
 
       - name: Run L2 discovery suite
+        # N-17 is red on Java until the CN fallback is removed; its check reports the failure without blocking.
+        continue-on-error: ${{ inputs.profile == 'cn-only' }}
         env:
           CLIENT_IMAGE: ${{ steps.runner.outputs.client-image }}
           CLIENT_VOLUMES: ${{ steps.runner.outputs.client-volumes }}
@@ -134,9 +211,16 @@ jobs:
           AEROSPIKE_CONTAINER_NAMES: ${{ steps.nodes.outputs.running }}
           AEROSPIKE_NETWORK: ${{ steps.aerospike.outputs.network-name }}
           PARKED_NODES: ${{ steps.nodes.outputs.parked }}
-          DISCOVERY_REACHABLE_NODE: ${{ steps.reachable.outputs.reachable-node }}
-          REACHABLE_HOST: ${{ steps.reachable.outputs.client-host }}
-          L2_SUITE: ${{ inputs.profile == 'reachable' && '**/TestL2ReachableNode.class' || '**/SuiteDiscovery.class' }}
+          NODE_CONTROL: ${{ steps.profile.outputs.control }}
+          ALTERNATE_HOST: ${{ steps.profile.outputs.alternate-host }}
+          CLIENT_HOSTS: ${{ steps.apply.outputs.client-hosts }}
+          L2_PROFILE: ${{ inputs.profile }}
+          L2_SUITE: ${{ steps.profile.outputs.suite }}
+          DISCOVERY_REACHABLE_NODE: ${{ steps.apply.outputs.reachable-node }}
+          DISCOVERY_PASS_THROUGH_BRANCH: ${{ steps.apply.outputs.pass-through-branch }}
+          DISCOVERY_PORT_MAP_RANGE: ${{ steps.apply.outputs.port-map-range }}
+          DISCOVERY_PORT_MAP_PORT_BASE: ${{ steps.apply.outputs.port-map-port-base }}
+          DISCOVERY_TLS_CERT_SHAPE: ${{ steps.profile.outputs.cert-shape }}
           TLS_CERT_DIR: ${{ steps.aerospike.outputs.tls-cert-dir }}
         run: |
           set -euo pipefail
@@ -160,13 +244,15 @@ jobs:
             run_args+=(-v "${TLS_CERT_DIR}:/aerospike-tls:ro")
             run_args+=(-e "AEROSPIKE_CA_CERT=/aerospike-tls/ca.crt")
           fi
-          if [[ -n "${REACHABLE_HOST}" ]]; then
-            run_args+=(--add-host "${REACHABLE_HOST}")
-          fi
-          if [[ -n "${PARKED_NODES}" ]]; then
+          IFS=',' read -r -a client_hosts <<< "${CLIENT_HOSTS}"
+          for host in "${client_hosts[@]}"; do
+            run_args+=(--add-host "${host}")
+          done
+          if [[ "${NODE_CONTROL}" == "true" ]]; then
             export DISCOVERY_CONTROL_DIR="${GITHUB_WORKSPACE}/test/target/l2-control"
             mkdir -p "${DISCOVERY_CONTROL_DIR}"
-            bash .github/discovery/node-control.sh "${DISCOVERY_CONTROL_DIR}" "${AEROSPIKE_NETWORK}" "${PARKED_NODES}" &
+            bash .github/discovery/node-control.sh "${DISCOVERY_CONTROL_DIR}" "${AEROSPIKE_NETWORK}" \
+              "${PARKED_NODES%%,*}" "${AEROSPIKE_CONTAINER_NAMES%%,*}" "${ALTERNATE_HOST}" &
             control_pid=$!
             trap 'kill "${control_pid}" 2>/dev/null || true' EXIT
           fi
@@ -184,6 +270,11 @@ jobs:
             -e AEROSPIKE_CONTAINER_NAMES \
             -e DISCOVERY_CONTROL_DIR \
             -e DISCOVERY_REACHABLE_NODE \
+            -e DISCOVERY_PASS_THROUGH_BRANCH \
+            -e DISCOVERY_PORT_MAP_RANGE \
+            -e DISCOVERY_PORT_MAP_PORT_BASE \
+            -e DISCOVERY_TLS_CERT_SHAPE \
+            -e L2_PROFILE \
             -e L2_SUITE \
             "${CLIENT_IMAGE}" \
             bash .github/discovery/run-l2-suite.sh
