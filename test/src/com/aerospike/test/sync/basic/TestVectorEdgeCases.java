@@ -268,6 +268,54 @@ public class TestVectorEdgeCases {
 		}
 	}
 
+	@Test
+	public void fromLengthPastBufferThrowsIllegalArgument() {
+		Vector v = Vector.ofInt32(new int[] {1, 2, 3});
+		byte[] buffer = new byte[v.getWireSize()];
+		v.writeTo(buffer, 0);
+
+		assertThrows(IllegalArgumentException.class, () -> Vector.from(buffer, 1, buffer.length));
+		assertThrows(IllegalArgumentException.class, () -> Vector.from(buffer, -1, buffer.length));
+		assertThrows(IllegalArgumentException.class,
+			() -> Vector.from(buffer, Integer.MAX_VALUE, buffer.length));
+	}
+
+	@Test
+	public void wireUnknownVersionThrowsParse() {
+		Vector v = Vector.ofInt32(new int[] {1, 2, 3});
+		byte[] buffer = new byte[v.getWireSize()];
+		v.writeTo(buffer, 0);
+		buffer[0] = 2;
+
+		AerospikeException ae = assertThrows(AerospikeException.Parse.class,
+			() -> Buffer.bytesToVector(buffer, 0, buffer.length));
+		assertEquals(ResultCode.PARSE_ERROR, ae.getResultCode());
+	}
+
+	@Test
+	public void wireUnknownVersionInListThrowsParse() {
+		Vector v = Vector.ofInt32(new int[] {1, 2, 3});
+		byte[] wire = new byte[v.getWireSize()];
+		v.writeTo(wire, 0);
+
+		byte[] list = Packer.pack(Collections.singletonList(v));
+		int start = indexOf(list, wire);
+		list[start] = 2;
+
+		AerospikeException ae = assertThrows(AerospikeException.Parse.class,
+			() -> Unpacker.unpackObjectList(list, 0, list.length));
+		assertEquals(ResultCode.PARSE_ERROR, ae.getResultCode());
+	}
+
+	private static int indexOf(byte[] buffer, byte[] target) {
+		for (int i = 0; i <= buffer.length - target.length; i++) {
+			if (Arrays.equals(buffer, i, i + target.length, target, 0, target.length)) {
+				return i;
+			}
+		}
+		throw new AssertionError("Vector wire bytes not found in packed list");
+	}
+
 	//-------------------------------------------------------
 	// Record.getVector
 	//-------------------------------------------------------

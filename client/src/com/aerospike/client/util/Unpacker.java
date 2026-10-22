@@ -31,7 +31,6 @@ import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Value;
 import com.aerospike.client.command.Buffer;
 import com.aerospike.client.command.ParticleType;
-import com.aerospike.client.vector.Vector;
 
 /**
  * De-serialize collection objects using MessagePack format specification:
@@ -74,6 +73,9 @@ public abstract class Unpacker<T> {
 				return getList(new ArrayList<T>(0));
 			}
 			return unpackList(count);
+		}
+		catch (AerospikeException ae) {
+			throw ae;
 		}
 		catch (Throwable e) {
 			throw new AerospikeException.Serialize(e);
@@ -136,6 +138,9 @@ public abstract class Unpacker<T> {
 				return getMap(new HashMap<T,T>(0));
 			}
 			return unpackMap(count);
+		}
+		catch (AerospikeException ae) {
+			throw ae;
 		}
 		catch (Throwable e) {
 			throw new AerospikeException.Serialize(e);
@@ -481,6 +486,9 @@ public abstract class Unpacker<T> {
 			ObjectUnpacker unpacker = new ObjectUnpacker(buffer, offset, length);
 			return unpacker.unpackObject();
 		}
+		catch (AerospikeException ae) {
+			throw ae;
+		}
 		catch (Throwable e) {
 			throw new AerospikeException.Serialize(e);
 		}
@@ -539,7 +547,7 @@ public abstract class Unpacker<T> {
 
 		@Override
 		protected Object getVector(byte[] value) {
-			return Vector.from(value, 0, value.length);
+			return Buffer.bytesToVector(value, 0, value.length);
 		}
 	}
 }

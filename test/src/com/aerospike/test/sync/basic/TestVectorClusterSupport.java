@@ -30,6 +30,7 @@ import java.util.Map;
 import org.junit.Test;
 
 import com.aerospike.client.AerospikeException;
+import com.aerospike.client.BatchUDF;
 import com.aerospike.client.Bin;
 import com.aerospike.client.Key;
 import com.aerospike.client.Operation;
@@ -293,6 +294,38 @@ public class TestVectorClusterSupport extends TestBase {
 			assertEquals(ResultCode.PARAMETER_ERROR, e.getResultCode());
 			assertTrue(e.getMessage().contains(EXPECTED_MESSAGE));
 		}
+	}
+
+	//-------------------------------------------------------
+	// End-to-end serialization: UDF argument path
+	//-------------------------------------------------------
+
+	@Test
+	public void udfVectorArgFailsWhenUnsupported() {
+		Value[] args = new Value[] {Value.get(vec)};
+
+		try {
+			newCommand(false).setUdf(new WritePolicy(), key, "pkg", "fn", args);
+			fail("Expected AerospikeException");
+		}
+		catch (AerospikeException e) {
+			assertEquals(ResultCode.PARAMETER_ERROR, e.getResultCode());
+			assertTrue(e.getMessage().contains(EXPECTED_MESSAGE));
+		}
+
+		newCommand(true).setUdf(new WritePolicy(), key, "pkg", "fn", args);
+		newCommand(false).setUdf(new WritePolicy(), key, "pkg", "fn", new Value[] {Value.get(1)});
+	}
+
+	@Test
+	public void batchUdfSizeRecordsVectorArgs() {
+		BatchUDF withVector = new BatchUDF(key, "pkg", "fn", new Value[] {Value.get(vec)});
+		withVector.size(false);
+		assertTrue(withVector.argsHaveVector);
+
+		BatchUDF withoutVector = new BatchUDF(key, "pkg", "fn", new Value[] {Value.get(1)});
+		withoutVector.size(false);
+		assertFalse(withoutVector.argsHaveVector);
 	}
 
 	@Test

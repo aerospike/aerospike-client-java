@@ -788,7 +788,7 @@ public class Command {
 			fieldCount++;
 		}
 
-		byte[] argBytes = Packer.pack(args);
+		byte[] argBytes = Packer.pack(args, vectorSupported);
 		fieldCount += estimateUdfSize(packageName, functionName, argBytes);
 
 		sizeBuffer();
@@ -807,7 +807,7 @@ public class Command {
 	}
 
 	public final void setUdf(Policy policy, BatchAttr attr, Key key, String packageName, String functionName, Value[] args) {
-		byte[] argBytes = Packer.pack(args);
+		byte[] argBytes = Packer.pack(args, vectorSupported);
 		setUdf(policy, attr, key, packageName, functionName, argBytes);
 	}
 
@@ -1251,6 +1251,7 @@ public class Command {
 							}
 						}
 
+						checkVectorSupport(bu.argsHaveVector);
 						attr.setUDF(bup, sendKey, durableDelete);
 						writeBatchWrite(key, txn, ver, attr, attr.filterExp, 3, 0);
 						writeField(bu.packageName, FieldType.UDF_PACKAGE_NAME);
@@ -2089,7 +2090,7 @@ public class Command {
 			dataOffset += Buffer.estimateSizeUtf8(statement.getFunctionName()) + FIELD_HEADER_SIZE;
 
 			if (statement.getFunctionArgs().length > 0) {
-				functionArgBuffer = Packer.pack(statement.getFunctionArgs());
+				functionArgBuffer = Packer.pack(statement.getFunctionArgs(), vectorSupported);
 			}
 			else {
 				functionArgBuffer = new byte[0];
@@ -2485,6 +2486,13 @@ public class Command {
 	 * Verify vector support. For internal use only.
 	 */
 	public final void checkVectorSupport(boolean vectorPresent) {
+		checkVectorSupport(vectorPresent, vectorSupported);
+	}
+
+	/**
+	 * Verify vector support for a cluster. For internal use only.
+	 */
+	public static void checkVectorSupport(boolean vectorPresent, boolean vectorSupported) {
 		if (vectorPresent && ! vectorSupported) {
 			throw new AerospikeException(ResultCode.PARAMETER_ERROR,
 				"Vector is not supported by all nodes in the cluster");

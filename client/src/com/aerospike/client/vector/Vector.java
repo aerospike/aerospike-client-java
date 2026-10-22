@@ -240,12 +240,18 @@ public final class Vector {
 	 * @param length	size in bytes of the vector value; must equal {@link #HEADER_SIZE} plus
 	 *                  the element data size given by the header
 	 * @throws IllegalArgumentException if the format version is not {@link #VERSION}, the
-	 *                                  header has no dimensions, or the header or length is
-	 *                                  invalid
+	 *                                  header has no dimensions, the header or length is
+	 *                                  invalid, or offset and length run past the buffer
 	 */
 	public static Vector from(final byte[] buffer, final int offset, final int length) {
 		if (length < HEADER_SIZE) {
 			throw new IllegalArgumentException("Invalid vector length: " + length);
+		}
+
+		// Subtraction form, so a huge offset or length cannot overflow past the check.
+		if (offset < 0 || offset > buffer.length - length) {
+			throw new IllegalArgumentException("Vector offset " + offset + " and length " + length +
+				" run past a " + buffer.length + " byte buffer");
 		}
 
 		int pos = offset;
