@@ -31,14 +31,29 @@ import com.aerospike.client.discovery.TranslationMissMode;
  */
 public class StaticTranslationConfig {
     static final String PATH = "static.client.translation";
-    private static final List<String> PROVIDERS = List.of("static-map", "port-map", "pass-through");
+
+    /**
+     * Built-in address translator names.
+     */
+    public static final String STATIC_MAP = "static-map";
+    public static final String PORT_MAP = "port-map";
+    public static final String PASS_THROUGH = "pass-through";
+    public static final List<String> PROVIDERS = List.of(STATIC_MAP, PORT_MAP, PASS_THROUGH);
+
     private static final List<String> ON_MISS = List.of("pass_through", "strict");
 
     /**
-     * {@code provider}: {@code static-map}, {@code port-map} or {@code pass-through}. Null when
-     * neither {@code provider} nor {@code static_map} is set.
+     * {@code provider}: {@code static-map}, {@code port-map}, {@code pass-through} or a name
+     * registered with {@link com.aerospike.client.policy.ClientPolicy#registerAddressTranslator}.
+     * Null when neither {@code provider} nor {@code static_map} is set.
      */
     public StringProperty provider;
+
+    /**
+     * Every key of the block except {@code provider}, passed to the registered factory. Null when
+     * {@code provider} is absent or a built-in name.
+     */
+    public Map<String,Object> options;
 
     /**
      * {@code on_miss}.
@@ -84,17 +99,25 @@ public class StaticTranslationConfig {
 
         value = map.get("provider");
 
-        String name = (value != null)? YamlValues.enumValue(PATH + ".provider", value, PROVIDERS) : "static-map";
+        String name;
 
-        if (staticMap != null && ! name.equals("static-map")) {
+        if (value instanceof String && ! PROVIDERS.contains(value)) {
+            name = (String)value;
+            options = YamlValues.options(PATH, map);
+        }
+        else {
+            name = (value != null)? YamlValues.enumValue(PATH + ".provider", value, PROVIDERS) : STATIC_MAP;
+        }
+
+        if (staticMap != null && ! name.equals(STATIC_MAP)) {
             throw new AerospikeException(PATH + ".static_map is only valid with provider static-map, not '" + name + "'");
         }
 
-        if (portMap != null && ! name.equals("port-map")) {
+        if (portMap != null && ! name.equals(PORT_MAP)) {
             throw new AerospikeException(PATH + ".port_map is only valid with provider port-map, not '" + name + "'");
         }
 
-        if (name.equals("port-map")) {
+        if (name.equals(PORT_MAP)) {
             if (portMap == null) {
                 throw new AerospikeException(PATH + ".port_map is required with provider port-map");
             }

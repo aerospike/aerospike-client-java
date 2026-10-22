@@ -29,11 +29,13 @@ import org.junit.Test;
 import com.aerospike.client.Host;
 
 public class StaticSeedCandidateProviderTest {
+	private static final SeedCandidateContext CTX = new SeedCandidateContext(null, new Host[0], 0);
+
 	@Test
 	public void returnsConfiguredHosts() {
 		Host h1 = new Host("10.0.0.1", 3000);
 		Host h2 = new Host("10.0.0.2", "tls2", 4333);
-		List<Host> hosts = new StaticSeedCandidateProvider(h1, h2).refreshSeedCandidates();
+		List<Host> hosts = new StaticSeedCandidateProvider(h1, h2).refreshSeedCandidates(CTX);
 
 		assertEquals(List.of(h1, h2), hosts);
 		assertEquals("tls2", hosts.get(1).tlsName);
@@ -45,7 +47,7 @@ public class StaticSeedCandidateProviderTest {
 		StaticSeedCandidateProvider provider = new StaticSeedCandidateProvider(hosts);
 		hosts[0] = new Host("10.0.0.9", 3000);
 
-		assertEquals("10.0.0.1", provider.refreshSeedCandidates().get(0).name);
+		assertEquals("10.0.0.1", provider.refreshSeedCandidates(CTX).get(0).name);
 	}
 
 	@Test
@@ -62,7 +64,7 @@ public class StaticSeedCandidateProviderTest {
 		long started = bean.getTotalStartedThreadCount();
 
 		StaticSeedCandidateProvider provider = new StaticSeedCandidateProvider(new Host("10.0.0.1", 3000));
-		provider.refreshSeedCandidates();
+		provider.refreshSeedCandidates(CTX);
 		provider.needsPeriodicRefresh();
 		provider.supportsDeadline();
 

@@ -47,6 +47,7 @@ import com.aerospike.client.discovery.Endpoint;
 import com.aerospike.client.discovery.Endpoint.SourceList;
 import com.aerospike.client.discovery.PassThroughAddressTranslator;
 import com.aerospike.client.discovery.PortMapAddressTranslator;
+import com.aerospike.client.discovery.SeedCandidateContext;
 import com.aerospike.client.discovery.SeedCandidateProvider;
 import com.aerospike.client.discovery.SeedMergePolicy;
 import com.aerospike.client.discovery.StaticMapAddressTranslator;
@@ -225,7 +226,7 @@ public class YamlDiscoveryConfigTest {
 		ClientPolicy code = new ClientPolicy();
 		code.seedCandidateProvider = new SeedCandidateProvider() {
 			@Override
-			public List<Host> refreshSeedCandidates() {
+			public List<Host> refreshSeedCandidates(SeedCandidateContext ctx) {
 				return List.of(new Host("127.0.0.1", 1));
 			}
 
@@ -330,8 +331,7 @@ public class YamlDiscoveryConfigTest {
 
 	@Test
 	public void invalidDnsProvider() throws Exception {
-		assertInvalid("invalid-provider-dns",
-			"static.client.discovery.provider 'dns' is not yet configurable from YAML. Set ClientPolicy.seedCandidateProvider in code");
+		assertInvalid("invalid-provider-dns", "static.client.discovery.dns is required with provider dns");
 	}
 
 	@Test

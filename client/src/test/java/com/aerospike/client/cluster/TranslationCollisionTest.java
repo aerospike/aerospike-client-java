@@ -229,11 +229,11 @@ public class TranslationCollisionTest {
 	}
 
 	@Test
-	public void exceptionIsClientError() {
+	public void exceptionIsTranslationCollision() {
 		AerospikeException.TranslationCollision tc = new AerospikeException.TranslationCollision(
 			"BB9B", "BB9C", new Host("127.0.0.1", 3000), "static-map");
 
-		assertEquals(ResultCode.CLIENT_ERROR, tc.getResultCode());
+		assertEquals(ResultCode.TRANSLATION_COLLISION, tc.getResultCode());
 		assertFalse(tc.getInDoubt());
 		assertNames(tc.getMessage(), "BB9B", "BB9C", "127.0.0.1:3000", "static-map");
 	}

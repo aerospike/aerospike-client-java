@@ -17,6 +17,7 @@
 
 package com.aerospike.client.configuration.serializers.staticconfig;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -50,11 +51,57 @@ final class YamlValues {
         return Collections.unmodifiableMap(map);
     }
 
+    static Map<String,Object> options(String path, Map<?,?> block) {
+        Map<String,Object> map = new LinkedHashMap<>();
+
+        for (Map.Entry<?,?> entry : block.entrySet()) {
+            if (!(entry.getKey() instanceof String)) {
+                throw new AerospikeException("Invalid key '" + entry.getKey() + "' in " + path + ": expected a string");
+            }
+            if (! entry.getKey().equals("provider")) {
+                map.put((String)entry.getKey(), entry.getValue());
+            }
+        }
+        return Collections.unmodifiableMap(map);
+    }
+
+    static List<String> stringList(String path, Object value) {
+        if (!(value instanceof List) || ((List<?>)value).isEmpty()) {
+            throw invalid(path, value, "expected a non-empty list of strings");
+        }
+
+        List<String> list = new ArrayList<>();
+
+        for (Object item : (List<?>)value) {
+            if (!(item instanceof String)) {
+                throw invalid(path, value, "expected a non-empty list of strings");
+            }
+            list.add((String)item);
+        }
+        return Collections.unmodifiableList(list);
+    }
+
+    static String stringValue(String path, Object value) {
+        if (!(value instanceof String)) {
+            throw invalid(path, value, "expected a string");
+        }
+        return (String)value;
+    }
+
     static int intValue(String path, Object value) {
         if (!(value instanceof Integer)) {
             throw invalid(path, value, "expected an integer");
         }
         return (Integer)value;
+    }
+
+    static int intValue(String path, Object value, int min, int max) {
+        int v = intValue(path, value);
+
+        if (v < min || v > max) {
+            throw invalid(path, value, "expected an integer from " + min + " to " + max);
+        }
+        return v;
     }
 
     static boolean boolValue(String path, Object value) {

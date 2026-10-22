@@ -1,0 +1,19 @@
+version: 1.2.0
+static:
+  client:
+    max_connections_per_node: 99
+    discovery:
+      provider: dns
+      merge_policy: replace
+      dns:
+        names:
+          - seeds-a.example.com
+          - seeds-b.example.com.
+        record_type: srv
+        port: 3100
+        tls_name: tls-seed
+        timeout_ms: 50
+        servers:
+          - 127.0.0.1:5353
+          - "[::1]:5353"
+        unknown_key: ignored

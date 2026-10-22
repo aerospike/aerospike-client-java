@@ -16,62 +16,39 @@
  */
 package com.aerospike.test;
 
-import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.runner.RunWith;
 import org.junit.runners.Suite;
 
-import com.aerospike.client.AerospikeClient;
-import com.aerospike.client.Host;
-import com.aerospike.client.IAerospikeClient;
 import com.aerospike.client.Log;
 import com.aerospike.client.policy.ClientPolicy;
 import com.aerospike.test.discovery.TestDiscoveryConfig;
+import com.aerospike.test.discovery.TestL2Topology;
 import com.aerospike.test.util.Args;
 
 /**
- * Runs the discovery tests against a live server.
+ * Runs the discovery tests. {@link TestL2Topology} runs against the L2 topology built by
+ * .github/workflows/discovery-l2.yaml or test/discovery/run_l2.sh.
  *
- * <p>The suite exposes the {@link ClientPolicy} it built so tests can assert that a
- * discovery flag passed in {@code -Dargs} actually reached the client.
+ * <p>The suite builds no shared client: the seed is reachable only through the endpoint and its
+ * peers only through a translator, so each test class builds its own {@link ClientPolicy}. The
+ * suite exposes the {@link ClientPolicy} built from {@code -Dargs} so tests can assert that a
+ * discovery flag actually reached the policy.
  */
 @RunWith(Suite.class)
 @Suite.SuiteClasses({
-	TestDiscoveryConfig.class
+	TestDiscoveryConfig.class,
+	TestL2Topology.class
 })
 public class SuiteDiscovery {
-	public static IAerospikeClient client = null;
 	public static ClientPolicy clientPolicy = null;
 
 	@BeforeClass
 	public static void init() {
 		Log.setCallback(null);
 
-		System.out.println("Begin AerospikeClient");
-		Args args = Args.Instance;
-
 		ClientPolicy policy = new ClientPolicy();
-		args.setClientPolicy(policy);
+		Args.Instance.setClientPolicy(policy);
 		clientPolicy = policy;
-
-		Host[] hosts = Host.parseHosts(args.host, args.port);
-
-		client = new AerospikeClient(policy, hosts);
-
-		try {
-			args.setServerSpecific(client);
-		}
-		catch (RuntimeException re) {
-			client.close();
-			throw re;
-		}
-	}
-
-	@AfterClass
-	public static void destroy() {
-		System.out.println("End AerospikeClient");
-		if (client != null) {
-			client.close();
-		}
 	}
 }

@@ -42,4 +42,21 @@ public interface AddressTranslator {
 	 * regardless of the TLS name on the returned host.
 	 */
 	Optional<Host> translate(Endpoint advertised);
+
+	/**
+	 * Notify the translator that the cluster view changed, so it can drop cached state. The default
+	 * does nothing.
+	 * <p>
+	 * The client keeps one counter per client instance, starting at 0, and adds one each time a peers
+	 * refresh adds or removes a node or changes the address a node advertises. This method is then
+	 * called with the new counter value. The cluster view established at client initialization is
+	 * the starting view and is not notified.
+	 * <p>
+	 * This method is called on the cluster tend thread and must be in-memory only. An exception is
+	 * logged at warning level and does not stop the cluster tend.
+	 *
+	 * @param viewChange	counter value: 1 for the first change, then 2, 3, ...
+	 */
+	default void onClusterViewChanged(int viewChange) {
+	}
 }

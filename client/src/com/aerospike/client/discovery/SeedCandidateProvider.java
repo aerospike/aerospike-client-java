@@ -31,20 +31,43 @@ public interface SeedCandidateProvider {
 	/**
 	 * Return the current seed candidates. Returned hosts are used as seeds, so they must carry the
 	 * TLS name when TLS is enabled; a null TLS name is defaulted the same way as for configured seeds.
+	 * <p>
+	 * Called once at client initialization on the application thread that constructs the client,
+	 * with {@link SeedCandidateContext#tendIteration} 0, and on each periodic refresh on the cluster
+	 * tend thread. An exception at initialization is logged at warning level and the client continues
+	 * with the seeds left by {@link com.aerospike.client.policy.ClientPolicy#discoveryMergePolicy};
+	 * when none are left, client construction fails with
+	 * {@link com.aerospike.client.ResultCode#SEED_DISCOVERY_FAILED}. An exception on a periodic
+	 * refresh is logged at warning level and the previous seed list is kept.
+	 *
+	 * @param ctx	cluster name, configured seeds and tend count for this call
 	 */
-	List<Host> refreshSeedCandidates();
+	List<Host> refreshSeedCandidates(SeedCandidateContext ctx);
 
 	/**
 	 * Return true if the provider's candidates can change and must be refreshed periodically.
 	 * Return false if the candidates are fixed, in which case the client schedules no periodic
-	 * work for this provider.
+	 * work for this provider. Called once on the application thread that constructs the client.
 	 */
 	boolean needsPeriodicRefresh();
 
 	/**
-	 * Return true if {@link #refreshSeedCandidates()} honors a deadline: it either does no I/O or
-	 * bounds all of its I/O so that it can return within a caller-supplied time limit. Only providers
-	 * that return true are eligible to run on the cluster tend thread.
+	 * Return true if {@link #refreshSeedCandidates(SeedCandidateContext)} honors a deadline: it either
+	 * does no I/O or bounds all of its I/O so that it can return within a caller-supplied time limit.
+	 * Only providers that return true are eligible to run on the cluster tend thread. Called once on
+	 * the application thread that constructs the client.
 	 */
 	boolean supportsDeadline();
+
+	/**
+	 * Release resources held by the provider. The default does nothing.
+	 * <p>
+	 * Called once after {@link com.aerospike.client.AerospikeClient#close()}, when the last refresh
+	 * has returned: on the cluster tend thread as it exits, or on the thread that closes the client
+	 * when no tend thread runs. {@code AerospikeClient.close()} does not wait for it. An exception is
+	 * logged at warning level and not thrown. A provider instance shared by several clients is closed
+	 * by each of them.
+	 */
+	default void close() {
+	}
 }

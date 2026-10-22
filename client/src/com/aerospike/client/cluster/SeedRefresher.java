@@ -23,8 +23,12 @@ import java.util.function.Consumer;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Host;
 import com.aerospike.client.Log;
+import com.aerospike.client.configuration.serializers.staticconfig.StaticDiscoveryConfig;
+import com.aerospike.client.discovery.DnsSeedCandidateProvider;
+import com.aerospike.client.discovery.SeedCandidateContext;
 import com.aerospike.client.discovery.SeedCandidateProvider;
 import com.aerospike.client.discovery.SeedMergePolicy;
+import com.aerospike.client.discovery.StaticSeedCandidateProvider;
 import com.aerospike.client.policy.ClientPolicy;
 import com.aerospike.client.util.Util;
 
@@ -36,6 +40,7 @@ final class SeedRefresher {
 
 	private final SeedCandidateProvider provider;
 	private final Consumer<Host[]> publisher;
+	private final String clusterName;
 	private final Host[] staticSeeds;
 	private final SeedMergePolicy mergePolicy;
 	private final boolean periodic;
@@ -52,6 +57,7 @@ final class SeedRefresher {
 	SeedRefresher(SeedCandidateProvider provider, ClientPolicy policy, Host[] staticSeeds, Consumer<Host[]> publisher) {
 		this.provider = provider;
 		this.publisher = publisher;
+		this.clusterName = policy.clusterName;
 		this.staticSeeds = staticSeeds.clone();
 		this.mergePolicy = (policy.discoveryMergePolicy != null)?
 			policy.discoveryMergePolicy : SeedMergePolicy.MERGE;
@@ -78,6 +84,15 @@ final class SeedRefresher {
 		if (tendRefreshDeadline <= 0 || tendRefreshDeadline > tendInterval / 2) {
 			throw new AerospikeException("Invalid discovery tend refresh deadline: " + tendRefreshDeadline +
 				". Must be > 0 and <= tend interval / 2 (" + (tendInterval / 2) + ")");
+		}
+
+		if (provider instanceof DnsSeedCandidateProvider) {
+			int timeout = ((DnsSeedCandidateProvider)provider).getTimeout();
+
+			if (timeout > tendRefreshDeadline) {
+				throw new AerospikeException("DNS seed provider timeout " + timeout +
+					" must be less or equal to the discovery tend refresh deadline " + tendRefreshDeadline);
+			}
 		}
 	}
 
@@ -118,7 +133,7 @@ final class SeedRefresher {
 		}
 
 		long begin = System.nanoTime();
-		Host[] hosts = refresh();
+		Host[] hosts = refresh(tendCount);
 		long elapsed = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - begin);
 
 		if (elapsed > tendRefreshDeadline) {
@@ -152,9 +167,10 @@ final class SeedRefresher {
 		}
 	}
 
-	private Host[] refresh() {
+	private Host[] refresh(int tendCount) {
 		try {
-			return provider.refreshSeedCandidates().toArray(new Host[0]);
+			SeedCandidateContext ctx = new SeedCandidateContext(clusterName, staticSeeds, tendCount);
+			return provider.refreshSeedCandidates(ctx).toArray(new Host[0]);
 		}
 		catch (Throwable e) {
 			if (Log.warnEnabled()) {
@@ -173,6 +189,31 @@ final class SeedRefresher {
 				Log.warn("Seed candidate publish failed: " + Util.getErrorMessage(e));
 			}
 		}
+	}
+
+	/**
+	 * Close the provider. Call once, after the last {@link #tend} call has returned.
+	 */
+	void close() {
+		try {
+			provider.close();
+		}
+		catch (Throwable e) {
+			if (Log.warnEnabled()) {
+				Log.warn("Seed candidate provider " + providerName(provider) + " close failed: " +
+					Util.getErrorMessage(e));
+			}
+		}
+	}
+
+	static String providerName(SeedCandidateProvider provider) {
+		if (provider instanceof StaticSeedCandidateProvider) {
+			return StaticDiscoveryConfig.STATIC;
+		}
+		if (provider instanceof DnsSeedCandidateProvider) {
+			return StaticDiscoveryConfig.DNS;
+		}
+		return provider.getClass().getName();
 	}
 
 	int getOverrunCount() {
