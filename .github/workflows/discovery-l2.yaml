@@ -59,7 +59,7 @@ jobs:
 
       - name: Setup Aerospike cluster
         id: aerospike
-        uses: aerospike/shared-workflows/.github/actions/setup-aerospike-server@97ce72ad2c72b10fb3690c35ef871131fce7dff6 # TLS multi-node config, PR #335
+        uses: aerospike/shared-workflows/.github/actions/setup-aerospike-server@f7d1ce30b376733a51ea05b99f20646d0e248afc # main
         with:
           server-edition: ${{ inputs.server-edition }}
           server-container-repo: ${{ inputs.server-container-repo }}
@@ -76,7 +76,7 @@ jobs:
 
       - name: Setup discovery topology
         id: topology
-        uses: aerospike/shared-workflows/.github/actions/setup-discovery-topology@97ce72ad2c72b10fb3690c35ef871131fce7dff6 # TLS multi-node config, PR #335
+        uses: aerospike/shared-workflows/.github/actions/setup-discovery-topology@f7d1ce30b376733a51ea05b99f20646d0e248afc # main
         with:
           container-names: ${{ steps.aerospike.outputs.container-names }}
           aerospike-network-name: ${{ steps.aerospike.outputs.network-name }}

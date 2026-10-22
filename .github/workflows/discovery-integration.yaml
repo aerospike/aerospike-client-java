@@ -14,9 +14,8 @@ name: Discovery integration
 # same FEATURES_CONF gate and does not run on fork pull requests.
 #
 # setup-aerospike-server and setup-discovery-topology are pinned in
-# discovery-l2.yaml to shared-workflows 97ce72a (draft PR #335). That commit
-# is CLIENT-5538 plus a generated TLS multi-node config, so this workflow
-# does not supply aerospike.conf.
+# discovery-l2.yaml to shared-workflows main, which generates the TLS
+# multi-node config (#335), so this workflow does not supply aerospike.conf.
 # v5.0.0 does not have publish-ports, which this topology requires.
 
 permissions:
@@ -32,6 +31,7 @@ on:
       - stage
       - stage-jdk8
       - dev/*
+      - pluggable-discovery
     types:
       - opened
       - reopened
@@ -40,6 +40,7 @@ on:
     branches:
       - stage
       - stage-jdk8
+      - pluggable-discovery
   workflow_dispatch:
 
 jobs:
