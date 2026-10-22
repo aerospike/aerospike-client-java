@@ -324,7 +324,8 @@ public class TestL2Topology extends TestBase {
 
 	/**
 	 * N-6: TLS through the proxy, ee only. The handshake validates the certificate against the
-	 * node's tls-name, not the endpoint hostname the client connects to.
+	 * node's tls-name, not the endpoint hostname the client connects to. The server certificate
+	 * carries the tls-name only as a dNSName SAN, so no CN fallback warning is logged.
 	 */
 	@Test
 	public void n6TlsValidatesAgainstNodeTlsName() throws Exception {
@@ -345,6 +346,7 @@ public class TestL2Topology extends TestBase {
 		ClientPolicy policy = L2Topology.policy();
 		policy.tlsPolicy = new TlsPolicy();
 		policy.addressTranslator = new PortMapAddressTranslator(L2Topology.tlsPortMap(nodes));
+		captureWarnings();
 
 		try (AerospikeClient client = new AerospikeClient(policy, new Host(L2Topology.host, first.tlsName, first.tlsPort))) {
 			L2Topology.waitNodes(client, L2Topology.nodeNames());
@@ -382,6 +384,9 @@ public class TestL2Topology extends TestBase {
 			System.out.println("L2-N6-ERROR " + message);
 			assertTrue(message, message.contains("Invalid TLS name: " + L2Topology.host));
 		}
+
+		System.out.println("L2-N6-CN-FALLBACK certShape=" + L2Topology.tlsCertShape + " warnings=" + cnFallbackWarnings());
+		assertEquals(List.of(), cnFallbackWarnings());
 	}
 
 	/**
@@ -783,6 +788,21 @@ public class TestL2Topology extends TestBase {
 		assertTrue(notOwned > 0);
 	}
 
+	/**
+	 * Return the warnings that a certificate matched the tls-name only by the deprecated CN
+	 * fallback.
+	 */
+	static List<String> cnFallbackWarnings() {
+		List<String> list = new ArrayList<>();
+
+		for (String warning : warnings) {
+			if (warning.contains("matched the server certificate only by the legacy rule")) {
+				list.add(warning);
+			}
+		}
+		return list;
+	}
+
 	static void captureWarnings() {
 		warnings.clear();
 		errors.clear();
@@ -886,7 +906,7 @@ public class TestL2Topology extends TestBase {
 		throw new IllegalStateException("Unknown node " + name);
 	}
 
-	private static String messages(Throwable t) {
+	static String messages(Throwable t) {
 		StringBuilder sb = new StringBuilder();
 
 		for (Throwable e = t; e != null; e = e.getCause()) {
