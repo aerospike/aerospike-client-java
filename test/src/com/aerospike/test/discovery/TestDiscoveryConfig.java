@@ -25,6 +25,7 @@ import static org.junit.Assert.fail;
 import org.junit.Test;
 
 import com.aerospike.client.AerospikeException;
+import com.aerospike.client.discovery.TranslationMissMode;
 import com.aerospike.client.policy.ClientPolicy;
 import com.aerospike.test.SuiteDiscovery;
 import com.aerospike.test.util.Args;
@@ -35,27 +36,14 @@ import com.aerospike.test.util.TestBase;
  * what each flag parses into, which values are rejected, and what reaches the client policy.
  */
 public class TestDiscoveryConfig extends TestBase {
-	private static final String[] SPI_FLAGS = {
-		"--discovery-provider seeds",
-		"--translation-provider translator",
-		"--endpoint-hostname gateway.local",
-		"--endpoint-port-base 4100",
-		"--on-miss strict",
-		"--execution-mode tend"
-	};
-
 	@Test
 	public void flagsParseIntoPublicFields() {
 		Args a = parse("--discovery-provider seeds --translation-provider translator" +
-			" --endpoint-hostname gateway.local --endpoint-port-base 4100" +
-			" --on-miss strict --execution-mode tend --use-services-alternate");
+			" --on-miss strict --use-services-alternate");
 
 		assertEquals("seeds", a.discoveryProvider);
 		assertEquals("translator", a.translationProvider);
-		assertEquals("gateway.local", a.endpointHostname);
-		assertEquals(4100, a.endpointPortBase);
-		assertEquals(Args.OnMiss.strict, a.onMiss);
-		assertEquals(Args.ExecutionMode.tend, a.executionMode);
+		assertEquals(TranslationMissMode.STRICT, a.onMiss);
 		assertTrue(a.useServicesAlternate);
 	}
 
@@ -65,19 +53,14 @@ public class TestDiscoveryConfig extends TestBase {
 
 		assertNull(a.discoveryProvider);
 		assertNull(a.translationProvider);
-		assertNull(a.endpointHostname);
-		assertEquals(0, a.endpointPortBase);
-		assertEquals(Args.OnMiss.passThrough, a.onMiss);
-		assertEquals(Args.ExecutionMode.thread, a.executionMode);
+		assertEquals(new ClientPolicy().translationOnMiss, a.onMiss);
 		assertFalse(a.useServicesAlternate);
 	}
 
 	@Test
-	public void declaredEnumValuesParse() {
-		assertEquals(Args.OnMiss.passThrough, parse("--on-miss passThrough").onMiss);
-		assertEquals(Args.OnMiss.strict, parse("--on-miss strict").onMiss);
-		assertEquals(Args.ExecutionMode.thread, parse("--execution-mode thread").executionMode);
-		assertEquals(Args.ExecutionMode.tend, parse("--execution-mode tend").executionMode);
+	public void declaredOnMissValuesParse() {
+		assertEquals(TranslationMissMode.PASS_THROUGH, parse("--on-miss pass_through").onMiss);
+		assertEquals(TranslationMissMode.STRICT, parse("--on-miss strict").onMiss);
 	}
 
 	@Test
@@ -86,24 +69,30 @@ public class TestDiscoveryConfig extends TestBase {
 	}
 
 	@Test
-	public void unknownExecutionModeValueIsRejected() {
-		assertParseFailure("--execution-mode bogus");
+	public void camelCaseOnMissValueIsRejected() {
+		assertParseFailure("--on-miss passThrough");
 	}
 
 	@Test
-	public void discoveryFlagsAreRejectedByName() {
-		for (String flag : SPI_FLAGS) {
-			String name = flag.substring(0, flag.indexOf(' '));
-			Args a = parse(flag);
+	public void removedFlagsAreRejected() {
+		assertParseFailure("--endpoint-hostname gateway.local");
+		assertParseFailure("--endpoint-port-base 4100");
+		assertParseFailure("--execution-mode tend");
+	}
 
-			try {
-				a.setClientPolicy(new ClientPolicy());
-				fail("Expected " + name + " to be rejected");
-			}
-			catch (AerospikeException ae) {
-				assertTrue(name + " not named in: " + ae.getMessage(), ae.getMessage().contains(name));
-			}
-		}
+	@Test
+	public void discoveryFlagsDoNotFailClientPolicy() {
+		ClientPolicy p = new ClientPolicy();
+		parse("--discovery-provider seeds --translation-provider translator").setClientPolicy(p);
+		assertNull(p.seedCandidateProvider);
+		assertNull(p.addressTranslator);
+	}
+
+	@Test
+	public void onMissAppliesToClientPolicy() {
+		ClientPolicy p = new ClientPolicy();
+		parse("--on-miss strict").setClientPolicy(p);
+		assertEquals(TranslationMissMode.STRICT, p.translationOnMiss);
 	}
 
 	@Test

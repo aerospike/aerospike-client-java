@@ -35,6 +35,7 @@ import com.aerospike.client.Log.Level;
 import com.aerospike.client.async.EventLoopType;
 import com.aerospike.client.cluster.Node;
 import com.aerospike.client.cluster.Partitions;
+import com.aerospike.client.discovery.TranslationMissMode;
 import com.aerospike.client.policy.AuthMode;
 import com.aerospike.client.policy.ClientPolicy;
 import com.aerospike.client.policy.Policy;
@@ -44,16 +45,6 @@ import com.aerospike.client.util.Version;
 
 public class Args {
 	public static Args Instance = new Args();
-
-	public enum OnMiss {
-		passThrough,
-		strict
-	}
-
-	public enum ExecutionMode {
-		thread,
-		tend
-	}
 
 	public String host;
 	public int port;
@@ -73,12 +64,8 @@ public class Args {
 	public Version serverVersion;
 	public String discoveryProvider;
 	public String translationProvider;
-	public String endpointHostname;
-	public int endpointPortBase;
-	public OnMiss onMiss = OnMiss.passThrough;
-	public ExecutionMode executionMode = ExecutionMode.thread;
+	public TranslationMissMode onMiss = TranslationMissMode.PASS_THROUGH;
 	public boolean useServicesAlternate;
-	private String discoveryFlag;
 
 	public Args() {
 		host = "127.0.0.1";
@@ -153,17 +140,10 @@ public class Args {
 
 			options.addOption(null, "discovery-provider", true, "Seed candidate provider name");
 			options.addOption(null, "translation-provider", true, "Address translator name");
-			options.addOption(null, "endpoint-hostname", true, "Single reachable endpoint hostname");
-			options.addOption(null, "endpoint-port-base", true, "Base for the computed per-node port");
 			options.addOption(null, "on-miss", true,
-					"Behavior when a seed candidate has no mapping\n" +
-					"Values: " + Arrays.toString(OnMiss.values()) + "\n" +
-					"Default: passThrough"
-					);
-			options.addOption(null, "execution-mode", true,
-					"Discovery execution mode\n" +
-					"Values: " + Arrays.toString(ExecutionMode.values()) + "\n" +
-					"Default: thread"
+					"Behavior when the address translator has no mapping\n" +
+					"Values: pass_through, strict\n" +
+					"Default: pass_through"
 					);
 			options.addOption(null, "use-services-alternate", false, "Use alternate service addresses");
 
@@ -252,32 +232,14 @@ public class Args {
 
 			if (cl.hasOption("discovery-provider")) {
 				discoveryProvider = cl.getOptionValue("discovery-provider");
-				discoveryFlag = "--discovery-provider";
 			}
 
 			if (cl.hasOption("translation-provider")) {
 				translationProvider = cl.getOptionValue("translation-provider");
-				discoveryFlag = "--translation-provider";
-			}
-
-			if (cl.hasOption("endpoint-hostname")) {
-				endpointHostname = cl.getOptionValue("endpoint-hostname");
-				discoveryFlag = "--endpoint-hostname";
-			}
-
-			if (cl.hasOption("endpoint-port-base")) {
-				endpointPortBase = Integer.parseInt(cl.getOptionValue("endpoint-port-base"));
-				discoveryFlag = "--endpoint-port-base";
 			}
 
 			if (cl.hasOption("on-miss")) {
-				onMiss = OnMiss.valueOf(cl.getOptionValue("on-miss"));
-				discoveryFlag = "--on-miss";
-			}
-
-			if (cl.hasOption("execution-mode")) {
-				executionMode = ExecutionMode.valueOf(cl.getOptionValue("execution-mode"));
-				discoveryFlag = "--execution-mode";
+				onMiss = parseOnMiss(cl.getOptionValue("on-miss"));
 			}
 
 			if (cl.hasOption("use-services-alternate")) {
@@ -307,13 +269,17 @@ public class Args {
 		p.batchParentPolicyWriteDefault.socketTimeout = socketTimeout;
 		p.batchParentPolicyWriteDefault.totalTimeout = totalTimeout;
 		p.useServicesAlternate = useServicesAlternate;
-		applyDiscovery(p);
+		p.translationOnMiss = onMiss;
 	}
 
-	private void applyDiscovery(ClientPolicy p) {
-		if (discoveryFlag != null) {
-			throw new AerospikeException(discoveryFlag +
-				" was parsed, but this client build carries no discovery framework to apply it to.");
+	private static TranslationMissMode parseOnMiss(String value) {
+		switch (value) {
+		case "pass_through":
+			return TranslationMissMode.PASS_THROUGH;
+		case "strict":
+			return TranslationMissMode.STRICT;
+		default:
+			throw new IllegalArgumentException("Invalid on-miss: " + value);
 		}
 	}
 
