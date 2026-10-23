@@ -33,10 +33,11 @@
 #                             removes that node. "start" takes optional arguments: alternate-port=<port>
 #                             renders the node's config with the pass-through-ports hostname and that
 #                             alternate-access-port, address=<ip> starts the node on that address
-#   L2_PROFILE                default, reachable, pass-through-names, pass-through-ports, port-map-range or
-#                             cn-only (default: default). Every profile but default and cn-only recreates the
-#                             nodes with one rendered config per node, or starts them on fixed addresses, and
-#                             runs only the test class of its rows:
+#   L2_PROFILE                default, reachable, pass-through-names, pass-through-ports, port-map-range,
+#                             cn-only, low-mtu, port-range or idle-reset (default: default). reachable, the
+#                             pass-through profiles and port-map-range recreate the nodes with one rendered config
+#                             per node, or start them on fixed addresses. Every profile but default runs only the
+#                             test class of its rows:
 #                             reachable: the last node sets access-address as-reachable.test and access-port
 #                             to its listener port, the others keep their private addresses and set
 #                             alternate-access-address as-reachable.test and alternate-access-port to their
@@ -59,10 +60,20 @@
 #                             cn-only: ee only. The server certificate carries aerospike-tls only as its
 #                             subject CN, with no matching SAN. Sets DISCOVERY_TLS_CERT_SHAPE=cn-only and runs
 #                             TestL2CnOnlyCertificate (N-17)
+#                             low-mtu: the client network is created with MTU L2_CLIENT_NETWORK_MTU and the
+#                             namespace sets max-record-size 8M. Sets DISCOVERY_CLIENT_NETWORK_MTU and runs
+#                             TestL2LowMtu (F-2)
+#                             port-range: Toxiproxy runs with net.ipv4.ip_local_port_range set to
+#                             L2_PROXY_PORT_RANGE, which bounds its upstream connections. Sets
+#                             DISCOVERY_PROXY_PORT_RANGE and runs TestL2SourcePortRange (F-3)
+#                             idle-reset: the default topology. Sets DISCOVERY_IDLE_RESET=1 and runs TestL2IdleReset
+#                             (F-1), which fails on Java until pooled sockets are checked on checkout
 #                             On ee every other profile uses a certificate with aerospike-tls as a dNSName SAN
 #                             and a CN that does not match it (DISCOVERY_TLS_CERT_SHAPE=san-only)
 #   L2_SUBNET                 first three octets of the port-map-range server network (default 10.213.66)
 #   L2_PORT_MAP_PORT_BASE     port-map-range listener port base (default 31000)
+#   L2_CLIENT_NETWORK_MTU     low-mtu client network MTU (default 1200)
+#   L2_PROXY_PORT_RANGE       port-range Toxiproxy local port range, "<first> <last>" (default "40000 40009")
 #   L2_SKIP_BUILD             set to 1 to skip installing the client module first
 #   L2_MAVEN_OFFLINE          set to 0 to let Maven resolve dependencies online (default 1)
 #
@@ -93,6 +104,9 @@ run_client() {
 		pass-through-names|pass-through-ports) suite='**/TestL2PassThrough.class' ;;
 		port-map-range) suite='**/TestL2PortMapRange.class' ;;
 		cn-only) suite='**/TestL2CnOnlyCertificate.class' ;;
+		low-mtu) suite='**/TestL2LowMtu.class' ;;
+		port-range) suite='**/TestL2SourcePortRange.class' ;;
+		idle-reset) suite='**/TestL2IdleReset.class' ;;
 	esac
 
 	if [ "$subset" = "ee" ]; then
@@ -132,8 +146,8 @@ if [ "${1:-}" = "--client" ]; then
 	run_client
 fi
 
-# setup-discovery-topology and setup-aerospike-server commit pinned in discovery-l2.yaml.
-SHARED_WORKFLOWS_COMMIT=9c1d4e91489995aa95187152b670b32cca9e890b
+# setup-discovery-topology at shared-workflows #370 head; repin to main once #370, #371 and #374 merge.
+SHARED_WORKFLOWS_COMMIT=30b2b980e2b5fa2c06c48a5bcad71575a4b40c2b
 ACTION_PATH=.github/actions/setup-discovery-topology
 CLIENT_IMAGE=maven:3-ibm-semeru-21-noble@sha256:0ad9f1918f4a30f89713a03e39659ef3135a2a08b257a90168a6033335a48bcb
 CURL_IMAGE=curlimages/curl:8.11.1
@@ -146,6 +160,11 @@ SUBNET="${L2_SUBNET:-10.213.66}"
 RANGE_FIRST=11
 RANGE_LAST=26
 PORT_MAP_PORT_BASE="${L2_PORT_MAP_PORT_BASE:-31000}"
+CLIENT_NETWORK_MTU=""
+PROXY_SYSCTLS=""
+IDLE_RESET=""
+PROXY_PORT_RANGE=""
+MAX_RECORD_SIZE=""
 NODE_CONTROL="${L2_NODE_CONTROL:-0}"
 CERT_SHAPE=""
 PREFIX="discovery-l2-$$"
@@ -175,9 +194,20 @@ esac
 
 case "$PROFILE" in
 	default|reachable|pass-through-names) ;;
+	idle-reset) IDLE_RESET=1 ;;
 	pass-through-ports|port-map-range) NODE_CONTROL=1 ;;
 	cn-only) [ "$SUBSET" = "ee" ] || die "L2_PROFILE=cn-only needs DISCOVERY_SUBSET=ee" ;;
-	*) die "L2_PROFILE must be default, reachable, pass-through-names, pass-through-ports, port-map-range or cn-only (got: $PROFILE)" ;;
+	low-mtu)
+		CLIENT_NETWORK_MTU="${L2_CLIENT_NETWORK_MTU:-1200}"
+		MAX_RECORD_SIZE="max-record-size 8M"
+		[[ "$CLIENT_NETWORK_MTU" =~ ^[0-9]+$ ]] || die "L2_CLIENT_NETWORK_MTU must be a number (got: $CLIENT_NETWORK_MTU)"
+		;;
+	port-range)
+		PROXY_PORT_RANGE="${L2_PROXY_PORT_RANGE:-40000 40009}"
+		[[ "$PROXY_PORT_RANGE" =~ ^[0-9]+\ [0-9]+$ ]] || die "L2_PROXY_PORT_RANGE must be '<first> <last>' (got: $PROXY_PORT_RANGE)"
+		PROXY_SYSCTLS="net.ipv4.ip_local_port_range=$PROXY_PORT_RANGE"
+		;;
+	*) die "L2_PROFILE must be default, reachable, pass-through-names, pass-through-ports, port-map-range, cn-only, low-mtu, port-range or idle-reset (got: $PROFILE)" ;;
 esac
 [[ "$SUBNET" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || die "L2_SUBNET must be three octets (got: $SUBNET)"
 [[ "$PORT_MAP_PORT_BASE" =~ ^[0-9]+$ ]] || die "L2_PORT_MAP_PORT_BASE must be a port (got: $PORT_MAP_PORT_BASE)"
@@ -336,6 +366,7 @@ $mesh_seeds    }
 
 namespace test {
     replication-factor 2
+    $MAX_RECORD_SIZE
     storage-engine memory {
         data-size 1G
     }
@@ -485,6 +516,8 @@ PATH="$WORK_DIR/bin:$PATH" \
 	CLIENT_NETWORK_NAME="$CLIENT_NETWORK" \
 	PROXY_CONTAINER_NAME="$PROXY" \
 	TLS_LISTEN_PORT_BASE="$TLS_LISTEN_PORT_BASE" \
+	CLIENT_NETWORK_MTU="$CLIENT_NETWORK_MTU" \
+	PROXY_SYSCTLS="$PROXY_SYSCTLS" \
 	GITHUB_OUTPUT="$WORK_DIR/topology.out" \
 	bash "$WORK_DIR/action/entrypoint.sh" || die "setup-discovery-topology failed"
 
@@ -494,7 +527,7 @@ output() {
 
 export DISCOVERY_SUBSET="$SUBSET"
 export DISCOVERY_ENDPOINT_HOSTNAME="$(output endpoint-hostname)"
-export DISCOVERY_ENDPOINT_PORT_BASE="$(output endpoint-port-base)"
+export DISCOVERY_ENDPOINT_PORT_BASE="$(output listen-port-base)"
 export DISCOVERY_ENDPOINT_PORTS="$(output endpoint-ports)"
 export DISCOVERY_TLS_ENDPOINT_PORTS="$(output tls-endpoint-ports)"
 export DISCOVERY_PROXY_MAP="$(output proxy-name-port-map)"
@@ -511,6 +544,9 @@ export DISCOVERY_PASS_THROUGH_BRANCH=""
 export DISCOVERY_PORT_MAP_RANGE=""
 export DISCOVERY_PORT_MAP_PORT_BASE=""
 export DISCOVERY_TLS_CERT_SHAPE="$CERT_SHAPE"
+export DISCOVERY_CLIENT_NETWORK_MTU="$CLIENT_NETWORK_MTU"
+export DISCOVERY_IDLE_RESET="$IDLE_RESET"
+export DISCOVERY_PROXY_PORT_RANGE="$PROXY_PORT_RANGE"
 
 client_args=(--rm --name "$CLIENT" --network "$CLIENT_NETWORK" --workdir "$ROOT_DIR"
 	-v "$ROOT_DIR:$ROOT_DIR" -v "$HOME/.m2:/root/.m2")
@@ -598,6 +634,13 @@ case "$PROFILE" in
 			echo "Node $container address $(container_address "$container" "$AS_NETWORK")"
 		done
 		;;
+	low-mtu)
+		echo "Client network $CLIENT_NETWORK options: $(docker network inspect -f '{{json .Options}}' "$CLIENT_NETWORK")"
+		;;
+	port-range)
+		echo "Toxiproxy net.ipv4.ip_local_port_range: $(docker run --rm --network "container:$PROXY" "$CURL_IMAGE" \
+			cat /proc/sys/net/ipv4/ip_local_port_range)"
+		;;
 esac
 
 if [ "$NODE_CONTROL" = "1" ]; then
@@ -644,6 +687,9 @@ docker run "${client_args[@]}" \
 	-e DISCOVERY_PORT_MAP_RANGE \
 	-e DISCOVERY_PORT_MAP_PORT_BASE \
 	-e DISCOVERY_TLS_CERT_SHAPE \
+	-e DISCOVERY_CLIENT_NETWORK_MTU \
+	-e DISCOVERY_IDLE_RESET \
+	-e DISCOVERY_PROXY_PORT_RANGE \
 	"$CLIENT_IMAGE" \
 	bash test/discovery/run_l2.sh --client > "$log" 2>&1
 rc=$?

@@ -36,25 +36,35 @@ import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Queue;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReferenceArray;
 import java.util.function.BooleanSupplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import com.aerospike.client.AerospikeClient;
+import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Host;
 import com.aerospike.client.Info;
+import com.aerospike.client.cluster.ClusterStats;
 import com.aerospike.client.cluster.Node;
+import com.aerospike.client.cluster.NodeStats;
 import com.aerospike.client.cluster.Partitions;
 import com.aerospike.client.policy.ClientPolicy;
 import com.aerospike.test.util.Args;
@@ -84,6 +94,10 @@ import com.aerospike.test.util.Args;
  * the port-map-range profile</li>
  * <li>DISCOVERY_TLS_CERT_SHAPE: optional, san-only when the server certificate carries the tls-name
  * only as a dNSName SAN and cn-only when it carries it only as the subject CN; set on ee</li>
+ * <li>DISCOVERY_CLIENT_NETWORK_MTU: optional MTU the client network was created with; set only by
+ * the low-mtu profile</li>
+ * <li>DISCOVERY_PROXY_PORT_RANGE: optional {@code first last} local port range of the Toxiproxy
+ * container; set only by the port-range profile</li>
  * </ul>
  * Each node's name and advertised addresses are read through its listener at runtime.
  */
@@ -111,6 +125,9 @@ final class L2Topology {
 	static final String portMapRange = optional("DISCOVERY_PORT_MAP_RANGE");
 	static final String portMapPortBase = optional("DISCOVERY_PORT_MAP_PORT_BASE");
 	static final String tlsCertShape = optional("DISCOVERY_TLS_CERT_SHAPE");
+	static final String clientNetworkMtu = optional("DISCOVERY_CLIENT_NETWORK_MTU");
+	static final String proxyPortRange = optional("DISCOVERY_PROXY_PORT_RANGE");
+	static final String idleReset = optional("DISCOVERY_IDLE_RESET");
 	static final String namespace = Args.Instance.namespace;
 
 	/**
@@ -453,6 +470,38 @@ final class L2Topology {
 	}
 
 	/**
+	 * Add a toxic to a Toxiproxy listener. {@code attributes} is the JSON object of the toxic's
+	 * attributes.
+	 */
+	static void addToxic(String proxy, String name, String type, String stream, double toxicity, String attributes)
+		throws IOException, InterruptedException {
+		HttpResponse<String> response = toxiproxy("POST", "/proxies/" + proxy + "/toxics", "{\"name\":\"" + name +
+			"\",\"type\":\"" + type + "\",\"stream\":\"" + stream + "\",\"toxicity\":" + toxicity +
+			",\"attributes\":" + attributes + '}');
+
+		System.out.println("L2-TOXIPROXY toxic add " + proxy + ' ' + name + " status=" + response.statusCode() + ' ' +
+			response.body());
+		assertEquals(proxy + ": " + response.body(), 200, response.statusCode());
+	}
+
+	static void removeToxic(String proxy, String name) throws IOException, InterruptedException {
+		HttpResponse<String> response = toxiproxy("DELETE", "/proxies/" + proxy + "/toxics/" + name, null);
+
+		System.out.println("L2-TOXIPROXY toxic remove " + proxy + ' ' + name + " status=" + response.statusCode());
+		assertEquals(proxy + ": " + response.body(), 204, response.statusCode());
+	}
+
+	/**
+	 * Return the toxics of a Toxiproxy listener as the JSON array the control API returns.
+	 */
+	static String toxics(String proxy) throws IOException, InterruptedException {
+		HttpResponse<String> response = toxiproxy("GET", "/proxies/" + proxy + "/toxics", null);
+
+		assertEquals(proxy + ": " + response.body(), 200, response.statusCode());
+		return response.body();
+	}
+
+	/**
 	 * Return the port a Toxiproxy listener forwards to.
 	 */
 	static int upstreamPort(String proxy) throws IOException, InterruptedException {
@@ -519,6 +568,152 @@ final class L2Topology {
 
 	static long peersGeneration(L2Node node) {
 		return Long.parseLong(Info.request(host, node.port, "peers-generation"));
+	}
+
+	/**
+	 * Command run repeatedly by a {@link Load} thread.
+	 */
+	interface Command {
+		void run(int thread, int iteration);
+	}
+
+	/**
+	 * One command run by a {@link Load}: when it started, how long it took and the error it
+	 * raised, null on success.
+	 */
+	static final class Outcome {
+		final long startNanos;
+		final long elapsedMs;
+		final Throwable error;
+
+		Outcome(long startNanos, long elapsedMs, Throwable error) {
+			this.startNanos = startNanos;
+			this.elapsedMs = elapsedMs;
+			this.error = error;
+		}
+
+		String kind() {
+			if (error instanceof AerospikeException) {
+				return error.getClass().getSimpleName() + '(' + ((AerospikeException)error).getResultCode() + ')';
+			}
+			return error.getClass().getName();
+		}
+	}
+
+	/**
+	 * Threads that run a {@link Command} until stopped and record every {@link Outcome}.
+	 */
+	static final class Load {
+		final Queue<Outcome> outcomes = new ConcurrentLinkedQueue<>();
+		private final AtomicBoolean stopped = new AtomicBoolean();
+		private final ExecutorService executor;
+		private final String name;
+
+		Load(String name, int threads, Command command) {
+			AtomicInteger count = new AtomicInteger();
+			this.name = name;
+			this.executor = Executors.newFixedThreadPool(threads, r -> new Thread(r, name + '-' + count.getAndIncrement()));
+
+			for (int i = 0; i < threads; i++) {
+				int thread = i;
+				executor.execute(() -> {
+					for (int iteration = 0; ! stopped.get(); iteration++) {
+						long begin = System.nanoTime();
+						Throwable error = null;
+
+						try {
+							command.run(thread, iteration);
+						}
+						catch (Throwable t) {
+							error = t;
+						}
+						outcomes.add(new Outcome(begin, TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - begin), error));
+					}
+				});
+			}
+		}
+
+		/**
+		 * Stop the threads and return true if every thread has returned within {@code boundMs}.
+		 * Print the stack of every thread still running.
+		 */
+		boolean stop(long boundMs) throws InterruptedException {
+			stopped.set(true);
+			executor.shutdown();
+			boolean done = executor.awaitTermination(boundMs, TimeUnit.MILLISECONDS);
+
+			if (! done) {
+				for (Map.Entry<Thread,StackTraceElement[]> entry : Thread.getAllStackTraces().entrySet()) {
+					if (entry.getKey().getName().startsWith(name + '-')) {
+						System.out.println("L2-BLOCKED " + entry.getKey().getName() + ' ' + Arrays.toString(entry.getValue()));
+					}
+				}
+				executor.shutdownNow();
+			}
+			return done;
+		}
+
+		List<Outcome> errors() {
+			List<Outcome> list = new ArrayList<>();
+
+			for (Outcome outcome : outcomes) {
+				if (outcome.error != null) {
+					list.add(outcome);
+				}
+			}
+			return list;
+		}
+
+		long successes() {
+			return outcomes.stream().filter(o -> o.error == null).count();
+		}
+	}
+
+	/**
+	 * Return the number of outcomes of each error kind.
+	 */
+	static Map<String,Integer> kinds(List<Outcome> outcomes) {
+		Map<String,Integer> map = new TreeMap<>();
+
+		for (Outcome outcome : outcomes) {
+			map.merge(outcome.kind(), 1, Integer::sum);
+		}
+		return map;
+	}
+
+	static final int IN_USE = 0;
+	static final int IN_POOL = 1;
+	static final int OPENED = 2;
+	static final int CLOSED = 3;
+	static final int ERRORS = 4;
+	static final int TIMEOUTS = 5;
+
+	/**
+	 * Return the sync connection and error counters of every node, by node name, indexed by
+	 * {@link #IN_USE}, {@link #IN_POOL}, {@link #OPENED}, {@link #CLOSED}, {@link #ERRORS} and
+	 * {@link #TIMEOUTS}.
+	 */
+	static Map<String,long[]> connectionStats(AerospikeClient client) {
+		ClusterStats stats = client.getClusterStats();
+		Map<String,long[]> map = new TreeMap<>();
+
+		for (NodeStats node : stats.nodes) {
+			map.put(node.node.getName(), new long[] {node.sync.inUse, node.sync.inPool, node.sync.opened, node.sync.closed,
+				node.errorCount, node.timeoutCount});
+		}
+		return map;
+	}
+
+	static String format(Map<String,long[]> stats) {
+		StringBuilder sb = new StringBuilder();
+
+		for (Map.Entry<String,long[]> entry : stats.entrySet()) {
+			long[] v = entry.getValue();
+			sb.append(entry.getKey()).append("{inUse=").append(v[0]).append(",inPool=").append(v[1]).append(",opened=")
+				.append(v[2]).append(",closed=").append(v[3]).append(",errors=").append(v[4]).append(",timeouts=")
+				.append(v[5]).append("} ");
+		}
+		return sb.toString().trim();
 	}
 
 	/**
