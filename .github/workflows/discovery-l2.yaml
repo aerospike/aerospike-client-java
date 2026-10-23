@@ -227,7 +227,7 @@ jobs:
           CLIENT_NETWORK: ${{ steps.topology.outputs.client-network-name }}
           DISCOVERY_SUBSET: ${{ inputs.subset }}
           DISCOVERY_ENDPOINT_HOSTNAME: ${{ steps.topology.outputs.endpoint-hostname }}
-          DISCOVERY_ENDPOINT_PORT_BASE: ${{ steps.topology.outputs.endpoint-port-base }}
+          DISCOVERY_ENDPOINT_PORT_BASE: ${{ steps.topology.outputs.listen-port-base }}
           DISCOVERY_ENDPOINT_PORTS: ${{ steps.topology.outputs.endpoint-ports }}
           DISCOVERY_TLS_ENDPOINT_PORTS: ${{ steps.topology.outputs.tls-endpoint-ports }}
           DISCOVERY_PROXY_MAP: ${{ steps.topology.outputs.proxy-name-port-map }}
