@@ -96,9 +96,11 @@ case "$profile" in
     done
     {
       echo "client-hosts=${client_hosts}"
-      [[ "$profile" == reachable ]] && echo "reachable-node=${containers[-1]}"
-      [[ "$profile" == pass-through-names ]] && echo "pass-through-branch=A"
-      [[ "$profile" == pass-through-ports ]] && echo "pass-through-branch=B"
+      case "$profile" in
+        reachable) echo "reachable-node=${containers[-1]}" ;;
+        pass-through-names) echo "pass-through-branch=A" ;;
+        pass-through-ports) echo "pass-through-branch=B" ;;
+      esac
     } >> "${GITHUB_OUTPUT}"
     ;;
   port-map-range)
