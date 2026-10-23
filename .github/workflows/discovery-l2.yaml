@@ -31,7 +31,8 @@ on:
       profile:
         description: >-
           A run_l2.sh profile: default, reachable, pass-through-names,
-          pass-through-ports, port-map-range or cn-only
+          pass-through-ports, port-map-range, cn-only, low-mtu, port-range or
+          idle-reset
         type: string
         required: false
         default: default
@@ -80,6 +81,10 @@ jobs:
           tls_name_san=true
           cert_cn=aerospike-tls
           cert_shape=""
+          client_mtu=""
+          port_range=""
+          proxy_sysctls=""
+          idle_reset=""
           case "${PROFILE}" in
             default)
               num_nodes=4
@@ -111,6 +116,19 @@ jobs:
               cert_shape=cn-only
               suite='**/TestL2CnOnlyCertificate.class'
               ;;
+            low-mtu)
+              client_mtu=1200
+              suite='**/TestL2LowMtu.class'
+              ;;
+            port-range)
+              port_range="40000 40009"
+              proxy_sysctls="net.ipv4.ip_local_port_range=${port_range}"
+              suite='**/TestL2SourcePortRange.class'
+              ;;
+            idle-reset)
+              idle_reset=1
+              suite='**/TestL2IdleReset.class'
+              ;;
             *)
               echo "::error::Unknown profile ${PROFILE}"
               exit 1
@@ -131,6 +149,10 @@ jobs:
             echo "include-tls-name-san=${tls_name_san}"
             echo "tls-cert-cn=${cert_cn}"
             echo "cert-shape=${cert_shape}"
+            echo "client-network-mtu=${client_mtu}"
+            echo "proxy-port-range=${port_range}"
+            echo "proxy-sysctls=${proxy_sysctls}"
+            echo "idle-reset=${idle_reset}"
           } >> "${GITHUB_OUTPUT}"
 
       - name: Setup Aerospike cluster
@@ -167,15 +189,18 @@ jobs:
 
       - name: Setup discovery topology
         id: topology
-        uses: aerospike/shared-workflows/.github/actions/setup-discovery-topology@f7d1ce30b376733a51ea05b99f20646d0e248afc # main
+        # CLIENT-5757 head (PR #370) for client-network-mtu and proxy-sysctls; repin to main once merged
+        uses: aerospike/shared-workflows/.github/actions/setup-discovery-topology@30b2b980e2b5fa2c06c48a5bcad71575a4b40c2b
         with:
           container-names: ${{ steps.nodes.outputs.running }}
           aerospike-network-name: ${{ steps.aerospike.outputs.network-name }}
           tls-listen-port-base: ${{ inputs.tls-listen-port-base }}
+          client-network-mtu: ${{ steps.profile.outputs.client-network-mtu }}
+          proxy-sysctls: ${{ steps.profile.outputs.proxy-sysctls }}
 
       - name: Apply profile
         id: apply
-        if: ${{ contains(fromJSON('["reachable", "pass-through-names", "pass-through-ports", "port-map-range"]'), inputs.profile) }}
+        if: ${{ contains(fromJSON('["reachable", "pass-through-names", "pass-through-ports", "port-map-range", "low-mtu"]'), inputs.profile) }}
         env:
           L2_PROFILE: ${{ inputs.profile }}
           AEROSPIKE_CONTAINER_NAMES: ${{ steps.nodes.outputs.running }}
@@ -193,8 +218,8 @@ jobs:
           crypto-type: gnu
 
       - name: Run L2 discovery suite
-        # N-17 is red on Java until the CN fallback is removed; its check reports the failure without blocking.
-        continue-on-error: ${{ inputs.profile == 'cn-only' }}
+        # N-17 (CN fallback) and F-1 (unchecked pooled sockets) are red on Java; their checks report without blocking.
+        continue-on-error: ${{ inputs.profile == 'cn-only' || inputs.profile == 'idle-reset' }}
         env:
           CLIENT_IMAGE: ${{ steps.runner.outputs.client-image }}
           CLIENT_VOLUMES: ${{ steps.runner.outputs.client-volumes }}
@@ -221,6 +246,9 @@ jobs:
           DISCOVERY_PORT_MAP_RANGE: ${{ steps.apply.outputs.port-map-range }}
           DISCOVERY_PORT_MAP_PORT_BASE: ${{ steps.apply.outputs.port-map-port-base }}
           DISCOVERY_TLS_CERT_SHAPE: ${{ steps.profile.outputs.cert-shape }}
+          DISCOVERY_CLIENT_NETWORK_MTU: ${{ steps.profile.outputs.client-network-mtu }}
+          DISCOVERY_PROXY_PORT_RANGE: ${{ steps.profile.outputs.proxy-port-range }}
+          DISCOVERY_IDLE_RESET: ${{ steps.profile.outputs.idle-reset }}
           TLS_CERT_DIR: ${{ steps.aerospike.outputs.tls-cert-dir }}
         run: |
           set -euo pipefail
@@ -274,6 +302,9 @@ jobs:
             -e DISCOVERY_PORT_MAP_RANGE \
             -e DISCOVERY_PORT_MAP_PORT_BASE \
             -e DISCOVERY_TLS_CERT_SHAPE \
+            -e DISCOVERY_CLIENT_NETWORK_MTU \
+            -e DISCOVERY_PROXY_PORT_RANGE \
+            -e DISCOVERY_IDLE_RESET \
             -e L2_PROFILE \
             -e L2_SUITE \
             "${CLIENT_IMAGE}" \

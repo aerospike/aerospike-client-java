@@ -4,7 +4,8 @@
 # (N-16, N-18) rewrite each running node's access addresses and restart it;
 # setup-aerospike-server already maps the advertised hostnames with
 # extra-hosts, because the server must resolve them to start. port-map-range
-# (N-19) adds one listener per address of the node subnet range.
+# (N-19) adds one listener per address of the node subnet range. low-mtu (F-2)
+# raises the namespace's max-record-size so a 1 MiB record fits.
 set -euo pipefail
 
 profile="${L2_PROFILE:?}"
@@ -124,6 +125,19 @@ case "$profile" in
       echo "port-map-range=${prefix}.${range_first}-${prefix}.${range_last}"
       echo "port-map-port-base=${port_base}"
     } >> "${GITHUB_OUTPUT}"
+    ;;
+  low-mtu)
+    for container in "${containers[@]}"; do
+      docker cp "${container}:${conf_dir}/${container}.conf" "${work}/${container}.conf"
+      awk '{print} /^namespace / {print "    max-record-size 8M"}' "${work}/${container}.conf" > "${work}/${container}.new"
+      if ! grep -q "max-record-size 8M" "${work}/${container}.new"; then
+        echo "No namespace in ${container}'s config" >&2
+        exit 1
+      fi
+      docker cp "${work}/${container}.new" "${container}:${conf_dir}/${container}.conf"
+    done
+    docker restart "${containers[@]}" > /dev/null
+    wait_cluster
     ;;
   *)
     echo "No profile step for ${profile}" >&2

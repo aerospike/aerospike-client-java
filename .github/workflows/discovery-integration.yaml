@@ -103,6 +103,42 @@ jobs:
       profile: port-map-range
     secrets: inherit
 
+  l2-low-mtu:
+    name: L2 discovery (ce, low-mtu)
+    uses: ./.github/workflows/discovery-l2.yaml
+    with:
+      subset: ce
+      server-edition: community
+      server-container-repo: database-docker-virtual/aerospike-server
+      server-tag: latest
+      enable-tls: "false"
+      profile: low-mtu
+    secrets: inherit
+
+  l2-port-range:
+    name: L2 discovery (ce, port-range)
+    uses: ./.github/workflows/discovery-l2.yaml
+    with:
+      subset: ce
+      server-edition: community
+      server-container-repo: database-docker-virtual/aerospike-server
+      server-tag: latest
+      enable-tls: "false"
+      profile: port-range
+    secrets: inherit
+
+  l2-idle-reset:
+    name: L2 discovery (ce, idle-reset)
+    uses: ./.github/workflows/discovery-l2.yaml
+    with:
+      subset: ce
+      server-edition: community
+      server-container-repo: database-docker-virtual/aerospike-server
+      server-tag: latest
+      enable-tls: "false"
+      profile: idle-reset
+    secrets: inherit
+
   l2-ee:
     name: L2 discovery (ee)
     if: >-
