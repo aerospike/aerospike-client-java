@@ -31,6 +31,8 @@ import java.util.List;
 import java.util.Map;
 
 import org.junit.Test;
+import org.luaj.vm2.LuaInteger;
+import org.luaj.vm2.LuaValue;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Bin;
@@ -39,7 +41,10 @@ import com.aerospike.client.ResultCode;
 import com.aerospike.client.Value;
 import com.aerospike.client.Value.VectorValue;
 import com.aerospike.client.command.Buffer;
+import com.aerospike.client.command.ParticleType;
+import com.aerospike.client.lua.LuaBytes;
 import com.aerospike.client.lua.LuaInstance;
+import com.aerospike.client.lua.LuaList;
 import com.aerospike.client.util.Packer;
 import com.aerospike.client.util.Unpacker;
 import com.aerospike.client.vector.Vector;
@@ -336,16 +341,25 @@ public class TestVectorEdgeCases {
 	//-------------------------------------------------------
 
 	@Test
-	public void vectorValueGetLuaValueThrows() {
-		Value value = Value.get(Vector.ofInt32(new int[] {1, 2, 3}));
+	public void vectorValueGetLuaValueIsVectorBytes() {
+		Vector v = Vector.ofInt32(new int[] {1, 2, 3});
+		LuaInstance instance = new LuaInstance();
 
-		try {
-			value.getLuaValue((LuaInstance)null);
-			fail("Expected AerospikeException");
-		}
-		catch (AerospikeException e) {
-			assertEquals(ResultCode.PARAMETER_ERROR, e.getResultCode());
-		}
+		assertVectorBytes(v, Value.get(v).getLuaValue(instance));
+		assertVectorBytes(v, first(instance.getLuaValue(Collections.singletonList(v))));
+
+		byte[] packed = Packer.pack(Collections.singletonList(v));
+		assertVectorBytes(v, first(instance.getLuaValue(ParticleType.LIST, packed, 0, packed.length)));
+	}
+
+	private static LuaValue first(LuaValue list) {
+		return ((LuaList)list).get(LuaInteger.valueOf(1));
+	}
+
+	private static void assertVectorBytes(Vector expected, LuaValue value) {
+		LuaBytes bytes = (LuaBytes)value;
+		assertEquals(ParticleType.VECTOR, bytes.getType());
+		assertArrayEquals(expected.getWireBytes(), (byte[])bytes.luaToObject());
 	}
 
 	//-------------------------------------------------------

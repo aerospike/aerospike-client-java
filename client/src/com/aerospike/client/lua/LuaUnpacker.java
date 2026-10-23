@@ -26,6 +26,7 @@ import org.luaj.vm2.LuaNumber;
 import org.luaj.vm2.LuaString;
 import org.luaj.vm2.LuaValue;
 
+import com.aerospike.client.command.ParticleType;
 import com.aerospike.client.util.Unpacker;
 
 public class LuaUnpacker extends Unpacker<LuaValue> {
@@ -49,6 +50,11 @@ public class LuaUnpacker extends Unpacker<LuaValue> {
 	@Override
 	protected LuaBytes getBlob(byte[] value) {
 		return new LuaBytes(instance, value);
+	}
+
+	@Override
+	protected LuaBytes getVector(byte[] value) {
+		return new LuaBytes(instance, value, ParticleType.VECTOR);
 	}
 
 	@Override
