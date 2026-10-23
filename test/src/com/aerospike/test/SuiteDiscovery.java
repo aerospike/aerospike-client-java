@@ -24,17 +24,23 @@ import com.aerospike.client.Log;
 import com.aerospike.client.policy.ClientPolicy;
 import com.aerospike.test.discovery.TestDiscoveryConfig;
 import com.aerospike.test.discovery.TestL2CnOnlyCertificate;
+import com.aerospike.test.discovery.TestL2FaultInjection;
+import com.aerospike.test.discovery.TestL2IdleReset;
+import com.aerospike.test.discovery.TestL2LowMtu;
 import com.aerospike.test.discovery.TestL2PassThrough;
 import com.aerospike.test.discovery.TestL2PortMapRange;
 import com.aerospike.test.discovery.TestL2ReachableNode;
+import com.aerospike.test.discovery.TestL2SourcePortRange;
 import com.aerospike.test.discovery.TestL2Topology;
 import com.aerospike.test.util.Args;
 
 /**
  * Runs the discovery tests. {@link TestL2Topology} runs against the L2 topology built by
- * .github/workflows/discovery-l2.yaml or test/discovery/run_l2.sh. {@link TestL2ReachableNode},
- * {@link TestL2PassThrough}, {@link TestL2PortMapRange} and {@link TestL2CnOnlyCertificate} need
- * the reachable, pass-through-names or pass-through-ports, port-map-range and cn-only profiles of
+ * .github/workflows/discovery-l2.yaml or test/discovery/run_l2.sh, as does
+ * {@link TestL2FaultInjection}. {@link TestL2ReachableNode}, {@link TestL2PassThrough},
+ * {@link TestL2PortMapRange}, {@link TestL2CnOnlyCertificate}, {@link TestL2LowMtu},
+ * {@link TestL2SourcePortRange} and {@link TestL2IdleReset} need the reachable, pass-through-names or
+ * pass-through-ports, port-map-range, cn-only, low-mtu, port-range and idle-reset profiles of
  * run_l2.sh and are skipped without them.
  *
  * <p>The suite builds no shared client: the seed is reachable only through the endpoint and its
@@ -49,7 +55,11 @@ import com.aerospike.test.util.Args;
 	TestL2ReachableNode.class,
 	TestL2PassThrough.class,
 	TestL2PortMapRange.class,
-	TestL2CnOnlyCertificate.class
+	TestL2CnOnlyCertificate.class,
+	TestL2FaultInjection.class,
+	TestL2LowMtu.class,
+	TestL2SourcePortRange.class,
+	TestL2IdleReset.class
 })
 public class SuiteDiscovery {
 	public static ClientPolicy clientPolicy = null;
