@@ -152,19 +152,19 @@ public class TestStatementReduce {
 
 	@Test
 	public void resolveReduceReturnsEmptyCombinerEachRun() {
-		Statement pushdown = new Statement();
-		pushdown.setOrderBy(BIN, BinDataType.INTEGER, Order.DESC);
-		pushdown.setTopK(2);
+		Statement serverSide = new Statement();
+		serverSide.setOrderBy(BIN, BinDataType.INTEGER, Order.DESC);
+		serverSide.setTopK(2);
 
-		Statement clientOnly = new Statement();
-		clientOnly.setReduce(Reduce.topK(BIN, BinDataType.INTEGER, Order.DESC, OrderByFlags.NONE, 2));
+		Statement clientSide = new Statement();
+		clientSide.setReduce(Reduce.topK(BIN, BinDataType.INTEGER, Order.DESC, OrderByFlags.NONE, 2));
 
 		Statement split = new Statement();
 		split.setReduce(
 			Reduce.orderBy(BIN, BinDataType.INTEGER, Order.DESC, OrderByFlags.NONE),
 			Reduce.limit(BIN, 2));
 
-		for (Statement stmt : new Statement[] {pushdown, clientOnly, split}) {
+		for (Statement stmt : new Statement[] {serverSide, clientSide, split}) {
 			ReduceSpec<Record, Record> first = stmt.resolveReduce();
 			first.acceptPartial(record(BIN, 1L), key("k1"));
 
@@ -338,7 +338,7 @@ public class TestStatementReduce {
 	}
 
 	@Test
-	public void clientOnlyReduceClearsOrderKeys() {
+	public void clientSideReduceClearsOrderKeys() {
 		Statement stmt = new Statement();
 		stmt.setOrderBy(BIN, BinDataType.INTEGER, Order.DESC);
 		stmt.setTopK(2);

@@ -97,7 +97,7 @@ public class TestTopKRejections extends TestSync {
 	}
 
 	private static void requireCapableCluster() {
-		Assume.assumeTrue("Top-K pushdown requires server version 8.2.1 or later on every node",
+		Assume.assumeTrue("Server-side Top-K requires server version 8.2.1 or later on every node",
 			client.getCluster().hasQueryOrderBy);
 	}
 
