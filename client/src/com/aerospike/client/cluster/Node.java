@@ -755,6 +755,7 @@ public class Node implements Closeable {
 				if (cluster.isConnCurrentTran(conn.getLastUsed())) {
 					try {
 						conn.setTimeout(socketTimeout);
+						conn.setReadDeadline(cmd == null ? 0 : cmd.getDeadline());
 						return conn;
 					}
 					catch (Throwable e) {
@@ -849,6 +850,7 @@ public class Node implements Closeable {
 					cmd.resetDeadline(startTime);
 				}
 
+				conn.setReadDeadline(cmd == null ? 0 : cmd.getDeadline());
 				return conn;
 			}
 			else {
@@ -884,6 +886,8 @@ public class Node implements Closeable {
 	 * @param conn					socket connection
 	 */
 	public final void putConnection(Connection conn) {
+		conn.setReadDeadline(0);
+
 		if (! active || ! conn.pool.offer(conn)) {
 			closeConnection(conn);
 		}
