@@ -20,8 +20,11 @@ import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThrows;
+import static org.junit.Assert.assertTrue;
 
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
 
 import org.junit.Assume;
 import org.junit.BeforeClass;
@@ -29,11 +32,14 @@ import org.junit.Test;
 import org.junit.function.ThrowingRunnable;
 
 import com.aerospike.client.AerospikeException;
+import com.aerospike.client.BatchRecord;
+import com.aerospike.client.BatchWrite;
 import com.aerospike.client.Bin;
 import com.aerospike.client.Key;
 import com.aerospike.client.Operation;
 import com.aerospike.client.Record;
 import com.aerospike.client.ResultCode;
+import com.aerospike.client.policy.BatchPolicy;
 import com.aerospike.client.vector.Vector;
 import com.aerospike.test.sync.TestSync;
 
@@ -153,6 +159,46 @@ public class TestVectorIO extends TestSync {
 			assertRecordFound(keys[i], records[i]);
 			assertEquals(vectors[i], records[i].getVector(binName));
 		}
+	}
+
+	@Test
+	public void batchOperateWritesVectors() {
+		int count = 5;
+		Key[] keys = new Key[count];
+		Vector[] vectors = new Vector[count];
+		List<BatchRecord> writes = new ArrayList<>();
+
+		for (int i = 0; i < count; i++) {
+			keys[i] = new Key(args.namespace, args.set, "vecbatchwrite" + i);
+			client.delete(null, keys[i]);
+			vectors[i] = Vector.ofFloat64(new double[] {i, i * 0.5, -i});
+			writes.add(new BatchWrite(keys[i], Operation.array(Operation.put(new Bin(binName, vectors[i])))));
+		}
+
+		BatchPolicy policy = new BatchPolicy();
+		assertTrue(client.operate(policy, writes));
+
+		for (BatchRecord write : writes) {
+			assertEquals(ResultCode.OK, write.resultCode);
+		}
+
+		Record[] records = client.get(policy, keys);
+
+		for (int i = 0; i < count; i++) {
+			assertRecordFound(keys[i], records[i]);
+			assertEquals(vectors[i], records[i].getVector(binName));
+		}
+	}
+
+	@Test
+	public void oversizedVectorRejectedByServer() {
+		Key key = new Key(args.namespace, args.set, "vecoversized");
+		client.delete(null, key);
+
+		// One element over the 32-bit float ceiling of 65,536 dimensions.
+		Vector v = Vector.ofFloat32(new float[65537]);
+		assertParameterError(() -> client.put(null, key, new Bin(binName, v)));
+		assertNull(client.get(null, key));
 	}
 
 	@Test

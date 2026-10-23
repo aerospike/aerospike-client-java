@@ -89,9 +89,10 @@ import com.aerospike.test.sync.query.TestQueryRPS;
 import com.aerospike.test.sync.query.TestQueryReduce;
 import com.aerospike.test.sync.query.TestQueryString;
 import com.aerospike.test.sync.query.TestQuerySum;
+import com.aerospike.test.sync.query.TestTopKRejections;
 import com.aerospike.test.sync.query.TestTopKRequestEncoding;
 import com.aerospike.test.sync.query.TestVectorExp;
-import com.aerospike.client.query.TestTopKPushdown;
+import com.aerospike.client.query.TestTopKQuery;
 import com.aerospike.test.util.Args;
 import com.aerospike.client.AerospikeClientIndexTypeTest;
 
@@ -160,9 +161,10 @@ import com.aerospike.client.AerospikeClientIndexTypeTest;
 	TestQueryReduce.class,
 	TestQueryString.class,
 	TestQuerySum.class,
+	TestTopKRejections.class,
 	TestTopKRequestEncoding.class,
 	TestVectorExp.class,
-	TestTopKPushdown.class,
+	TestTopKQuery.class,
 	AerospikeClientIndexTypeTest.class
 })
 public class SuiteSync {
