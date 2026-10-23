@@ -99,7 +99,8 @@ public final class ExampleRegistry {
 		registerSync(examples, "QueryExp", QueryExp.class, QueryExampleFixtures.queryExpExample());
 		registerSync(examples, "QueryPage", QueryPage.class, QueryExampleFixtures.queryPageExample());
 		registerSync(examples, "QueryResume", QueryResume.class, QueryExampleFixtures.queryResumeExample());
-		registerSync(examples, "QueryTopK", QueryTopK.class);
+		registerSync(examples, "QueryTopK", QueryTopK.class, ExampleServerRequirement.minimumServerVersion(8, 2, 1));
+		registerSync(examples, "QueryVectorTopK", QueryVectorTopK.class, ExampleServerRequirement.minimumServerVersion(8, 2, 1));
 		registerSync(examples, "QuerySum", QuerySum.class, QueryExampleFixtures.querySumExample());
 		registerSync(examples, "QueryAverage", QueryAverage.class, QueryExampleFixtures.queryAverageExample());
 		registerSync(examples, "QueryCollection", QueryCollection.class, QueryExampleFixtures.queryCollectionExample());

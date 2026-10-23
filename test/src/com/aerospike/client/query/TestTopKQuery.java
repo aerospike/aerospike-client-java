@@ -148,9 +148,15 @@ public class TestTopKQuery extends TestSync {
 	public void orderKeyWithoutKIsRejectedByServer() {
 		requireCapableCluster();
 
+		QueryPolicy policy = new QueryPolicy();
+		policy.errorDetailVerbosity = 2;
+
 		AerospikeException ae = assertThrows(AerospikeException.class,
-			() -> values(orderKeyOnly(), BIN));
+			() -> values(client.query(policy, orderKeyOnly()), BIN));
 		assertEquals(ResultCode.PARAMETER_ERROR, ae.getResultCode());
+		// The subcode is not asserted because its number is not final.
+		assertTrue("Expected the server's reason, got: " + ae.getBaseMessage(),
+			ae.getBaseMessage().contains("top-k needs both order-by and top-k fields"));
 	}
 
 	@Test

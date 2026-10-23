@@ -54,6 +54,11 @@ public final class Expression implements Serializable {
 
 	/**
 	 * Return a new expression from packed expression instructions in bytes.
+	 * <p>
+	 * Packed bytes are opaque to the client, so an expression rebuilt this way skips the check
+	 * that rejects a vector expression when not all nodes in the cluster support vectors. A node
+	 * without vector support then rejects the expression itself, as it does any expression it
+	 * can't parse.
 	 */
 	public static Expression fromBytes(byte[] bytes) {
 		return new Expression(bytes);
@@ -61,6 +66,7 @@ public final class Expression implements Serializable {
 
 	/**
 	 * Return a new expression from packed expression instructions in base64 encoded bytes.
+	 * Like {@link #fromBytes(byte[])}, this skips the client's vector support check.
 	 */
 	public static Expression fromBase64(byte[] bytes) {
 		return Expression.fromBytes(Crypto.decodeBase64(bytes, 0, bytes.length));
@@ -68,6 +74,7 @@ public final class Expression implements Serializable {
 
 	/**
 	 * Return a new expression from packed expression instructions in base64 encoded string.
+	 * Like {@link #fromBytes(byte[])}, this skips the client's vector support check.
 	 */
 	public static Expression fromBase64(String s) {
 		return Expression.fromBase64(s.getBytes());
