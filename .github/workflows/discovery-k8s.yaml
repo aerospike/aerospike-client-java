@@ -63,7 +63,7 @@ jobs:
       - name: Setup kind and AKO
         id: kind-ako
         # CLIENT-5541 head (PR #336); repin to main once merged
-        uses: aerospike/shared-workflows/.github/actions/setup-kind-ako@9d6557702b1da475a4a33f89b8fae722fa79a072
+        uses: aerospike/shared-workflows/.github/actions/setup-kind-ako@703eeb9ae9e8909e7f321d93d510028cda8b082b
         with:
           features-content: ${{ secrets.FEATURES_CONF }}
 
