@@ -1,0 +1,98 @@
+name: Discovery conformance
+
+# L1: run the aerospike-client-conformance fixture set through ConformanceTest.
+# The fixture set comes from JFrog, so the job fails without the OIDC secrets
+# (fork pull requests) instead of skipping.
+
+permissions:
+  id-token: write
+  contents: read
+
+on:
+  pull_request:
+    branches:
+      - stage
+      - stage-jdk8
+      - dev/*
+      - pluggable-discovery
+    types:
+      - opened
+      - reopened
+      - synchronize
+  push:
+    branches:
+      - stage
+      - stage-jdk8
+      - pluggable-discovery
+  workflow_dispatch:
+
+jobs:
+  l1:
+    name: L1 conformance
+    runs-on: ${{ vars.BUILD_CONTAINER_DISTRO_VERSION }}
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          ref: ${{ github.ref }}
+
+      - name: Require JFrog OIDC
+        env:
+          OIDC_PROVIDER: ${{ secrets.JFROG_OIDC_PROVIDER }}
+          OIDC_AUDIENCE: ${{ secrets.JFROG_OIDC_AUDIENCE }}
+        run: |
+          set -euo pipefail
+          if [[ -z "${OIDC_PROVIDER}" || -z "${OIDC_AUDIENCE}" ]]; then
+            echo "::error::JFROG_OIDC_PROVIDER and JFROG_OIDC_AUDIENCE are required to fetch the conformance fixtures."
+            exit 1
+          fi
+
+      - name: Fetch conformance fixtures
+        id: fixtures
+        # CLIENT-5546 head (PR #363); repin to main once merged
+        uses: aerospike/shared-workflows/.github/actions/fetch-conformance-fixtures@661b43d9c6943e148ad9862cf7b68fbf881a3a4a
+        with:
+          version: 1.0.0
+          oidc-provider-name: ${{ secrets.JFROG_OIDC_PROVIDER }}
+          oidc-audience: ${{ secrets.JFROG_OIDC_AUDIENCE }}
+
+      - name: Setup Java
+        uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4.9.1
+        with:
+          distribution: ${{ vars.JAVA_PROVIDER }}
+          java-version: "21"
+
+      - name: Cache Maven repository
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: ~/.m2/repository
+          key: m2-conformance-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            m2-conformance-
+
+      - name: Run conformance fixtures
+        env:
+          FIXTURES_DIRECTORY: ${{ steps.fixtures.outputs.fixtures-directory }}
+        run: mvn -B -pl client -am test -Dtest=ConformanceTest "-Dconformance.dir=${FIXTURES_DIRECTORY}"
+
+      - name: Upload conformance report
+        if: ${{ always() }}
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        with:
+          name: conformance-report-java
+          path: client/target/conformance-report.json
+
+      - name: Setup Python
+        if: ${{ always() }}
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: "3.12"
+
+      - name: Collect conformance report
+        if: ${{ always() }}
+        # CLIENT-5546 head (PR #363); repin to main once merged
+        uses: aerospike/shared-workflows/.github/actions/collect-conformance-report@661b43d9c6943e148ad9862cf7b68fbf881a3a4a
+        with:
+          reports-directory: client/target
+          fixtures-directory: ${{ steps.fixtures.outputs.fixtures-directory }}
+          declarations-directory: client/src/test/resources/conformance
