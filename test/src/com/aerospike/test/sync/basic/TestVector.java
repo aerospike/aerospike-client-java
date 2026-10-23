@@ -20,8 +20,14 @@ import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertThrows;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import java.nio.DoubleBuffer;
+import java.nio.FloatBuffer;
+import java.nio.IntBuffer;
+import java.nio.ShortBuffer;
 import java.util.Collections;
 import java.util.List;
 
@@ -162,6 +168,43 @@ public class TestVector extends TestBase {
 		catch (IllegalStateException e) {
 			// expected
 		}
+	}
+
+	@Test
+	public void bufferViewsMatchDataAndAreReadOnly() {
+		short[] f16 = {0x3c00, (short)0xc000};
+		ShortBuffer f16View = Vector.ofFloat16(f16).asFloat16Buffer();
+		short[] f16Out = new short[f16View.remaining()];
+		f16View.get(f16Out);
+		assertArrayEquals(f16, f16Out);
+		assertTrue(f16View.isReadOnly());
+
+		int[] i32 = {-5, 7};
+		IntBuffer i32View = Vector.ofInt32(i32).asInt32Buffer();
+		int[] i32Out = new int[i32View.remaining()];
+		i32View.get(i32Out);
+		assertArrayEquals(i32, i32Out);
+		assertTrue(i32View.isReadOnly());
+
+		float[] f32 = {1.5f, -2.25f};
+		FloatBuffer f32View = Vector.ofFloat32(f32).asFloat32Buffer();
+		float[] f32Out = new float[f32View.remaining()];
+		f32View.get(f32Out);
+		assertArrayEquals(f32, f32Out, 0.0f);
+		assertTrue(f32View.isReadOnly());
+
+		double[] f64 = {1.5, -2.25};
+		DoubleBuffer f64View = Vector.ofFloat64(f64).asFloat64Buffer();
+		double[] f64Out = new double[f64View.remaining()];
+		f64View.get(f64Out);
+		assertArrayEquals(f64, f64Out, 0.0);
+		assertTrue(f64View.isReadOnly());
+	}
+
+	@Test
+	public void wrongTypeBufferViewThrows() {
+		Vector v = Vector.ofFloat32(new float[] {1.0f});
+		assertThrows(IllegalStateException.class, v::asInt32Buffer);
 	}
 
 	//-------------------------------------------------------
