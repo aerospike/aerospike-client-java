@@ -70,7 +70,6 @@ import com.aerospike.test.sync.basic.TestUDF;
 import com.aerospike.test.sync.basic.TestVector;
 import com.aerospike.test.sync.basic.TestVectorEdgeCases;
 import com.aerospike.test.sync.basic.TestVectorIO;
-import com.aerospike.test.sync.basic.TestVectorUdf;
 import com.aerospike.test.sync.basic.TestVectorUdfClusterSupport;
 import com.aerospike.test.sync.query.TestIndex;
 import com.aerospike.test.sync.query.TestExpSecondaryIndex;
@@ -143,7 +142,6 @@ import com.aerospike.client.AerospikeClientIndexTypeTest;
 	TestVector.class,
 	TestVectorEdgeCases.class,
 	TestVectorIO.class,
-	TestVectorUdf.class,
 	TestVectorUdfClusterSupport.class,
 	TestIndex.class,
 	TestExpSecondaryIndex.class,
