@@ -1543,7 +1543,7 @@ public abstract class Value {
 
 		@Override
 		public LuaValue getLuaValue(final LuaInstance instance) {
-			throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid lua type: Vector");
+			return new LuaBytes(instance, vector.getWireBytes(), ParticleType.VECTOR);
 		}
 
 		@Override

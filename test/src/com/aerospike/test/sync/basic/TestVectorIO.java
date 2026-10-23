@@ -18,6 +18,7 @@ package com.aerospike.test.sync.basic;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
@@ -25,6 +26,7 @@ import static org.junit.Assert.assertTrue;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 import org.junit.Assume;
 import org.junit.BeforeClass;
@@ -36,24 +38,37 @@ import com.aerospike.client.BatchRecord;
 import com.aerospike.client.BatchWrite;
 import com.aerospike.client.Bin;
 import com.aerospike.client.Key;
+import com.aerospike.client.Language;
 import com.aerospike.client.Operation;
 import com.aerospike.client.Record;
 import com.aerospike.client.ResultCode;
+import com.aerospike.client.Value;
+import com.aerospike.client.command.ParticleType;
 import com.aerospike.client.policy.BatchPolicy;
+import com.aerospike.client.query.ResultSet;
+import com.aerospike.client.query.Statement;
+import com.aerospike.client.task.RegisterTask;
 import com.aerospike.client.vector.Vector;
 import com.aerospike.test.sync.TestSync;
 
 /**
- * Server-round-trip tests for the vector particle type: writing and reading vector bins, and the
- * server's refusal of a vector nested in a list or map bin.
+ * Server-round-trip tests for the vector particle type: writing and reading vector bins, the
+ * server's refusal of a vector nested in a list or map bin, and vectors through UDFs.
  */
 public class TestVectorIO extends TestSync {
 	private static final String binName = "vecbin";
+	private static final String udfSet = "vecStream";
+	private static final String udfPackage = "vector_example";
+	private static final String udfModule = "udf/vector_example.lua";
 
 	@BeforeClass
-	public static void assumeVectorSupport() {
+	public static void prepare() {
 		Assume.assumeTrue("Vectors require server version 8.2.1 or later",
 			args.serverVersion.isGreaterOrEqual(8, 2, 1, 0));
+
+		RegisterTask task = client.register(null, TestVectorIO.class.getClassLoader(), udfModule,
+			"vector_example.lua", Language.LUA);
+		task.waitTillComplete();
 	}
 
 	@Test
@@ -211,5 +226,64 @@ public class TestVectorIO extends TestSync {
 		Record record = client.get(null, key);
 		assertRecordFound(key, record);
 		assertArrayEquals(v.getInt32Data(), record.getVector(binName).getInt32Data());
+	}
+
+	@Test
+	public void recordUdfReturnsVector() {
+		Key key = new Key(args.namespace, udfSet, "vececho");
+		Vector[] vectors = {
+			Vector.ofFloat16(new short[] {0x3c00, (short)0xc000, 0x7bff}),
+			Vector.ofInt32(new int[] {Integer.MIN_VALUE, 0, Integer.MAX_VALUE}),
+			Vector.ofFloat32(new float[] {-Float.MAX_VALUE, Float.MIN_VALUE, 0.5f}),
+			Vector.ofFloat64(new double[] {-Double.MAX_VALUE, Double.MIN_VALUE, 0.25})
+		};
+
+		for (Vector v : vectors) {
+			assertEquals(v, client.execute(null, key, udfPackage, "echo", Value.get(v)));
+		}
+	}
+
+	@Test
+	public void aggregationReceivesStoredVectorAsBytes() {
+		Vector stored = Vector.ofFloat32(new float[] {1.5f, -2.25f, 3.0f});
+		assertDescribes(stored, aggregate(stored, "describe_bin", Value.get(binName)));
+	}
+
+	@Test
+	public void aggregationReceivesVectorArgumentAsBytes() {
+		Vector argument = Vector.ofInt32(new int[] {7, 8, 9});
+		assertDescribes(argument, aggregate(argument, "describe_arg", Value.get(argument)));
+	}
+
+	private static Object aggregate(Vector stored, String function, Value arg) {
+		// The set holds only this record, so the aggregation yields exactly one result.
+		client.put(null, new Key(args.namespace, udfSet, "vecstream"), new Bin(binName, stored));
+
+		Statement statement = new Statement();
+		statement.setNamespace(args.namespace);
+		statement.setSetName(udfSet);
+		statement.setAggregateFunction(TestVectorIO.class.getClassLoader(), udfModule, udfPackage,
+			function, arg);
+
+		ResultSet rs = client.queryAggregate(null, statement);
+
+		try {
+			assertTrue("Expected an aggregation result", rs.next());
+			Object result = rs.getObject();
+			assertFalse("Expected exactly one aggregation result", rs.next());
+			return result;
+		}
+		finally {
+			rs.close();
+		}
+	}
+
+	private static void assertDescribes(Vector expected, Object result) {
+		Map<?,?> description = (Map<?,?>)result;
+		byte[] wire = expected.getWireBytes();
+
+		assertEquals((long)wire.length, description.get("size"));
+		assertEquals((long)ParticleType.VECTOR, description.get("type"));
+		assertArrayEquals(wire, (byte[])description.get("value"));
 	}
 }
