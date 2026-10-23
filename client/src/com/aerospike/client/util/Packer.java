@@ -710,9 +710,15 @@ public final class Packer {
 
 	public void packVector(Vector val) {
 		hasVector = true;
-		byte[] buffer = new byte[val.getWireSize()];
-		val.writeTo(buffer, 0);
-		packParticleBytes(buffer, ParticleType.VECTOR);
+		int size = val.getWireSize();
+		packByteArrayBegin(size + 1);
+		packByte(ParticleType.VECTOR);
+
+		if (buffer == null) {
+			offset += size;
+			return;
+		}
+		offset += val.writeTo(buffer, offset);
 	}
 
 	private void packByteArrayBegin(int size) {

@@ -18,6 +18,10 @@ package com.aerospike.client.vector;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.nio.DoubleBuffer;
+import java.nio.FloatBuffer;
+import java.nio.IntBuffer;
+import java.nio.ShortBuffer;
 import java.util.Arrays;
 
 import com.aerospike.client.command.Buffer;
@@ -126,8 +130,8 @@ public final class Vector {
 
 	private final Object data;
 
-	private Integer wireSize;
-	private Integer hash;
+	// 0 means not yet computed. A vector whose hash really is 0 just recomputes it.
+	private int hash;
 
 	private Vector(final byte version, final ElementType elementType, final int dimensions, final Object data) {
 		this.version = version;
@@ -138,13 +142,10 @@ public final class Vector {
 
 	/**
 	 * Return the number of bytes needed to serialize this vector in wire format
-	 * (header plus element data). Computed lazily and cached on first call.
+	 * (header plus element data).
 	 */
 	public int getWireSize() {
-		if (wireSize == null) {
-			wireSize = HEADER_SIZE + (dimensions * elementType.getByteSize());
-		}
-		return wireSize;
+		return HEADER_SIZE + (dimensions * elementType.getByteSize());
 	}
 
 	/**
@@ -364,8 +365,10 @@ public final class Vector {
 	}
 
 	/**
-	 * Return raw float16 data. Throws {@link IllegalStateException} if this
-	 * vector's element type is not {@link ElementType#FLOAT16}.
+	 * Return a copy of the raw float16 data. Each call copies every element; use
+	 * {@link #asFloat16Buffer()} to read without copying.
+	 *
+	 * @throws IllegalStateException if this vector's element type is not {@link ElementType#FLOAT16}
 	 */
 	public short[] getFloat16Data() {
 		validateType(ElementType.FLOAT16);
@@ -373,8 +376,10 @@ public final class Vector {
 	}
 
 	/**
-	 * Return int32 data. Throws {@link IllegalStateException} if this
-	 * vector's element type is not {@link ElementType#INT32}.
+	 * Return a copy of the int32 data. Each call copies every element; use
+	 * {@link #asInt32Buffer()} to read without copying.
+	 *
+	 * @throws IllegalStateException if this vector's element type is not {@link ElementType#INT32}
 	 */
 	public int[] getInt32Data() {
 		validateType(ElementType.INT32);
@@ -382,8 +387,10 @@ public final class Vector {
 	}
 
 	/**
-	 * Return float (fp32) data. Throws {@link IllegalStateException} if this
-	 * vector's element type is not {@link ElementType#FLOAT32}.
+	 * Return a copy of the float (fp32) data. Each call copies every element; use
+	 * {@link #asFloat32Buffer()} to read without copying.
+	 *
+	 * @throws IllegalStateException if this vector's element type is not {@link ElementType#FLOAT32}
 	 */
 	public float[] getFloat32Data() {
 		validateType(ElementType.FLOAT32);
@@ -391,12 +398,55 @@ public final class Vector {
 	}
 
 	/**
-	 * Return double (fp64) data. Throws {@link IllegalStateException} if this
-	 * vector's element type is not {@link ElementType#FLOAT64}.
+	 * Return a copy of the double (fp64) data. Each call copies every element; use
+	 * {@link #asFloat64Buffer()} to read without copying.
+	 *
+	 * @throws IllegalStateException if this vector's element type is not {@link ElementType#FLOAT64}
 	 */
 	public double[] getFloat64Data() {
 		validateType(ElementType.FLOAT64);
 		return ((double[])data).clone();
+	}
+
+	/**
+	 * Return a read-only view of the raw float16 data, without copying it. Each element is
+	 * the raw 16-bit bit pattern, as in {@link #ofFloat16(short[])}.
+	 *
+	 * @throws IllegalStateException if this vector's element type is not {@link ElementType#FLOAT16}
+	 */
+	public ShortBuffer asFloat16Buffer() {
+		validateType(ElementType.FLOAT16);
+		return ShortBuffer.wrap((short[])data).asReadOnlyBuffer();
+	}
+
+	/**
+	 * Return a read-only view of the int32 data, without copying it.
+	 *
+	 * @throws IllegalStateException if this vector's element type is not {@link ElementType#INT32}
+	 */
+	public IntBuffer asInt32Buffer() {
+		validateType(ElementType.INT32);
+		return IntBuffer.wrap((int[])data).asReadOnlyBuffer();
+	}
+
+	/**
+	 * Return a read-only view of the float (fp32) data, without copying it.
+	 *
+	 * @throws IllegalStateException if this vector's element type is not {@link ElementType#FLOAT32}
+	 */
+	public FloatBuffer asFloat32Buffer() {
+		validateType(ElementType.FLOAT32);
+		return FloatBuffer.wrap((float[])data).asReadOnlyBuffer();
+	}
+
+	/**
+	 * Return a read-only view of the double (fp64) data, without copying it.
+	 *
+	 * @throws IllegalStateException if this vector's element type is not {@link ElementType#FLOAT64}
+	 */
+	public DoubleBuffer asFloat64Buffer() {
+		validateType(ElementType.FLOAT64);
+		return DoubleBuffer.wrap((double[])data).asReadOnlyBuffer();
 	}
 
 	private void validateType(final ElementType expected) {
@@ -454,8 +504,10 @@ public final class Vector {
 
 	@Override
 	public int hashCode() {
-		if (hash == null) {
-			int h = version;
+		int h = hash;
+
+		if (h == 0) {
+			h = version;
 			h = 31 * h + elementType.hashCode();
 			h = 31 * h + dimensions;
 
@@ -478,6 +530,6 @@ public final class Vector {
 			}
 			hash = h;
 		}
-		return hash;
+		return h;
 	}
 }
