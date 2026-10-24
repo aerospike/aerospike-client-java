@@ -3,7 +3,7 @@ name: Discovery k8s
 # CLIENT-5542. L3 is merge and nightly only. Kind plus AKO takes 3-5 minutes,
 # which does not fit the ~8 minute per-PR budget. The job also needs the
 # Enterprise feature key (FEATURES_CONF). Fork pull requests do not receive
-# repository secrets, so this workflow has no pull_request trigger.
+# repository secrets, so on a fork pull request the job fails at the key check.
 #
 # setup-kind-ako is pinned to the CLIENT-5541 head (shared-workflows PR #336)
 # until that action is released. The JVM runs on the runner. The action
@@ -11,8 +11,8 @@ name: Discovery k8s
 # into the runner hosts file. The client ports are fixed at 30000-32767,
 # so an advertised NodePort is reachable on the same number.
 #
-# A schedule runs from the default branch. That run checks out stage, which
-# is the line these tests develop on. A push checks out the pushed commit.
+# A schedule runs from the default branch. That run checks out stage. A push
+# to pluggable-discovery, stage or stage-jdk8 checks out the pushed commit.
 
 permissions:
   contents: read
@@ -23,6 +23,7 @@ on:
   pull_request:
   push:
     branches:
+      - pluggable-discovery
       - stage
       - stage-jdk8
   schedule:
