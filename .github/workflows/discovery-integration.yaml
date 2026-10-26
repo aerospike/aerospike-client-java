@@ -44,8 +44,22 @@ on:
   workflow_dispatch:
 
 jobs:
+  # A job if is evaluated before the matrix, so the fork gate cannot live on a
+  # matrix cell. Community and enterprise stay two jobs.
   l2-ce:
-    name: L2 discovery (ce)
+    name: L2 discovery (ce${{ matrix.profile != 'default' && format(', {0}', matrix.profile) || '' }})
+    strategy:
+      fail-fast: false
+      matrix:
+        profile:
+          - default
+          - reachable
+          - pass-through-names
+          - pass-through-ports
+          - port-map-range
+          - low-mtu
+          - port-range
+          - idle-reset
     uses: ./.github/workflows/discovery-l2.yaml
     with:
       subset: ce
@@ -53,98 +67,21 @@ jobs:
       server-container-repo: database-docker-virtual/aerospike-server
       server-tag: latest
       enable-tls: "false"
-    secrets: inherit
-
-  l2-reachable:
-    name: L2 discovery (ce, reachable)
-    uses: ./.github/workflows/discovery-l2.yaml
-    with:
-      subset: ce
-      server-edition: community
-      server-container-repo: database-docker-virtual/aerospike-server
-      server-tag: latest
-      enable-tls: "false"
-      profile: reachable
-    secrets: inherit
-
-  l2-pass-through-names:
-    name: L2 discovery (ce, pass-through-names)
-    uses: ./.github/workflows/discovery-l2.yaml
-    with:
-      subset: ce
-      server-edition: community
-      server-container-repo: database-docker-virtual/aerospike-server
-      server-tag: latest
-      enable-tls: "false"
-      profile: pass-through-names
-    secrets: inherit
-
-  l2-pass-through-ports:
-    name: L2 discovery (ce, pass-through-ports)
-    uses: ./.github/workflows/discovery-l2.yaml
-    with:
-      subset: ce
-      server-edition: community
-      server-container-repo: database-docker-virtual/aerospike-server
-      server-tag: latest
-      enable-tls: "false"
-      profile: pass-through-ports
-    secrets: inherit
-
-  l2-port-map-range:
-    name: L2 discovery (ce, port-map-range)
-    uses: ./.github/workflows/discovery-l2.yaml
-    with:
-      subset: ce
-      server-edition: community
-      server-container-repo: database-docker-virtual/aerospike-server
-      server-tag: latest
-      enable-tls: "false"
-      profile: port-map-range
-    secrets: inherit
-
-  l2-low-mtu:
-    name: L2 discovery (ce, low-mtu)
-    uses: ./.github/workflows/discovery-l2.yaml
-    with:
-      subset: ce
-      server-edition: community
-      server-container-repo: database-docker-virtual/aerospike-server
-      server-tag: latest
-      enable-tls: "false"
-      profile: low-mtu
-    secrets: inherit
-
-  l2-port-range:
-    name: L2 discovery (ce, port-range)
-    uses: ./.github/workflows/discovery-l2.yaml
-    with:
-      subset: ce
-      server-edition: community
-      server-container-repo: database-docker-virtual/aerospike-server
-      server-tag: latest
-      enable-tls: "false"
-      profile: port-range
-    secrets: inherit
-
-  l2-idle-reset:
-    name: L2 discovery (ce, idle-reset)
-    uses: ./.github/workflows/discovery-l2.yaml
-    with:
-      subset: ce
-      server-edition: community
-      server-container-repo: database-docker-virtual/aerospike-server
-      server-tag: latest
-      enable-tls: "false"
-      profile: idle-reset
+      profile: ${{ matrix.profile }}
     secrets: inherit
 
   l2-ee:
-    name: L2 discovery (ee)
+    name: L2 discovery (ee${{ matrix.profile != 'default' && format(', {0}', matrix.profile) || '' }})
     if: >-
       github.event_name == 'push'
       || github.event_name == 'workflow_dispatch'
       || github.event.pull_request.head.repo.full_name == github.repository
+    strategy:
+      fail-fast: false
+      matrix:
+        profile:
+          - default
+          - cn-only
     uses: ./.github/workflows/discovery-l2.yaml
     with:
       subset: ee
@@ -153,23 +90,7 @@ jobs:
       server-tag: 8.2.0.0
       enable-tls: "true"
       tls-listen-port-base: "43331"
-    secrets: inherit
-
-  l2-cn-only:
-    name: L2 discovery (ee, cn-only)
-    if: >-
-      github.event_name == 'push'
-      || github.event_name == 'workflow_dispatch'
-      || github.event.pull_request.head.repo.full_name == github.repository
-    uses: ./.github/workflows/discovery-l2.yaml
-    with:
-      subset: ee
-      server-edition: enterprise
-      server-container-repo: database-docker-dev-local/aerospike-server-enterprise
-      server-tag: 8.2.0.0
-      enable-tls: "true"
-      tls-listen-port-base: "43331"
-      profile: cn-only
+      profile: ${{ matrix.profile }}
     secrets: inherit
 
   tls-matching:
