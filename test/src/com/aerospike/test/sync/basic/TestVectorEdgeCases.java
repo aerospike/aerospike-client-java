@@ -22,6 +22,7 @@ import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertThrows;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.util.Arrays;
@@ -52,8 +53,9 @@ import com.aerospike.client.vector.Vector.ElementType;
 
 /**
  * Boundary and malformed-input unit tests for {@link Vector} and its serialization glue that are
- * not covered by {@link TestVector}'s happy-path tests: empty/oversized vectors, special
- * floating-point bit patterns (NaN/Infinity/-0.0/subnormals), adversarial {@code Vector.from()}
+ * not covered by {@link TestVector}'s happy-path tests: empty/oversized vectors, rejected NaN and
+ * infinite elements, finite special floating-point values (-0.0/subnormals/extremes), adversarial
+ * {@code Vector.from()}
  * input, and additional nesting/wrapper permutations. Pure client-side (no cluster required);
  * registered in {@code SuiteUnit}.
  */
@@ -114,10 +116,29 @@ public class TestVectorEdgeCases {
 	//-------------------------------------------------------
 
 	@Test
+	public void nonFiniteElementsRejected() {
+		for (float f : new float[] {Float.NaN, Float.POSITIVE_INFINITY, Float.NEGATIVE_INFINITY}) {
+			assertThrows(IllegalArgumentException.class, () -> Vector.ofFloat32(new float[] {1.0f, f}));
+		}
+
+		for (double d : new double[] {Double.NaN, Double.POSITIVE_INFINITY, Double.NEGATIVE_INFINITY}) {
+			assertThrows(IllegalArgumentException.class, () -> Vector.ofFloat64(new double[] {1.0, d}));
+		}
+
+		// +Inf, -Inf, quiet NaN, and the NaN with the smallest mantissa.
+		for (short bits : new short[] {(short)0x7c00, (short)0xfc00, (short)0x7e00, (short)0x7c01}) {
+			assertThrows(IllegalArgumentException.class, () -> Vector.ofFloat16(new short[] {0x3c00, bits}));
+		}
+
+		IllegalArgumentException e = assertThrows(IllegalArgumentException.class,
+			() -> Vector.ofFloat32(new float[] {1.0f, 2.0f, Float.NaN}));
+		assertTrue(e.getMessage(), e.getMessage().contains("element 2 is NaN"));
+	}
+
+	@Test
 	public void float32SpecialValuesRoundTrip() {
 		float[] data = new float[] {
-			Float.NaN, Float.POSITIVE_INFINITY, Float.NEGATIVE_INFINITY,
-			-0.0f, 0.0f, Float.MIN_VALUE, Float.MAX_VALUE
+			-0.0f, 0.0f, Float.MIN_VALUE, Float.MAX_VALUE, -Float.MAX_VALUE
 		};
 		Vector v = Vector.ofFloat32(data);
 
@@ -135,8 +156,7 @@ public class TestVectorEdgeCases {
 	@Test
 	public void float64SpecialValuesRoundTrip() {
 		double[] data = new double[] {
-			Double.NaN, Double.POSITIVE_INFINITY, Double.NEGATIVE_INFINITY,
-			-0.0, 0.0, Double.MIN_VALUE, Double.MAX_VALUE
+			-0.0, 0.0, Double.MIN_VALUE, Double.MAX_VALUE, -Double.MAX_VALUE
 		};
 		Vector v = Vector.ofFloat64(data);
 
@@ -153,19 +173,16 @@ public class TestVectorEdgeCases {
 
 	@Test
 	public void equalsUsesBitSemanticsForFloats() {
-		// Arrays.equals(float[]) treats NaN==NaN as true and -0.0f != 0.0f.
-		assertEquals(Vector.ofFloat32(new float[] {Float.NaN}), Vector.ofFloat32(new float[] {Float.NaN}));
+		// Arrays.equals(float[]) compares bits, so -0.0f != 0.0f even though -0.0f == 0.0f.
 		assertNotEquals(Vector.ofFloat32(new float[] {-0.0f}), Vector.ofFloat32(new float[] {0.0f}));
-		assertEquals(Vector.ofFloat64(new double[] {Double.NaN}), Vector.ofFloat64(new double[] {Double.NaN}));
 		assertNotEquals(Vector.ofFloat64(new double[] {-0.0}), Vector.ofFloat64(new double[] {0.0}));
 	}
 
 	@Test
 	public void float16SpecialBitPatternsRoundTrip() {
 		short[] data = new short[] {
-			(short)0x7c00, // +Inf
-			(short)0xfc00, // -Inf
-			(short)0x7e00, // NaN
+			(short)0x7bff, // largest finite
+			(short)0xfbff, // most negative finite
 			(short)0x0000, // +0
 			(short)0x8000, // -0
 			(short)0x0001  // smallest subnormal
