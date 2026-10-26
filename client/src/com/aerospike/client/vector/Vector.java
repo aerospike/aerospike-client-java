@@ -48,6 +48,7 @@ public final class Vector {
 	private static final int VERSION_SIZE = 1;
 	private static final int ELEMENT_TYPE_SIZE = 1;
 	private static final int DIMENSIONS_SIZE = 4;
+	private static final int FLOAT16_EXPONENT_MASK = 0x7c00;
 
 	/**
 	 * Size in bytes of the fixed header (version + element_type + dimensions).
@@ -324,10 +325,10 @@ public final class Vector {
 	 * Since Java has no native float16 type, each element is passed as its
 	 * raw 16-bit bit pattern.
 	 *
-	 * @throws IllegalArgumentException if {@code data} is empty
+	 * @throws IllegalArgumentException if {@code data} is empty or has a NaN or infinite element
 	 */
 	public static Vector ofFloat16(final short[] data) {
-		return new Vector(VERSION, ElementType.FLOAT16, checkDimensions(data.length), data.clone());
+		return new Vector(VERSION, ElementType.FLOAT16, checkDimensions(data.length), checkFinite(data.clone()));
 	}
 
 	/**
@@ -342,19 +343,19 @@ public final class Vector {
 	/**
 	 * Create a vector of float (fp32) elements.
 	 *
-	 * @throws IllegalArgumentException if {@code data} is empty
+	 * @throws IllegalArgumentException if {@code data} is empty or has a NaN or infinite element
 	 */
 	public static Vector ofFloat32(final float[] data) {
-		return new Vector(VERSION, ElementType.FLOAT32, checkDimensions(data.length), data.clone());
+		return new Vector(VERSION, ElementType.FLOAT32, checkDimensions(data.length), checkFinite(data.clone()));
 	}
 
 	/**
 	 * Create a vector of double (fp64) elements.
 	 *
-	 * @throws IllegalArgumentException if {@code data} is empty
+	 * @throws IllegalArgumentException if {@code data} is empty or has a NaN or infinite element
 	 */
 	public static Vector ofFloat64(final double[] data) {
-		return new Vector(VERSION, ElementType.FLOAT64, checkDimensions(data.length), data.clone());
+		return new Vector(VERSION, ElementType.FLOAT64, checkDimensions(data.length), checkFinite(data.clone()));
 	}
 
 	private static int checkDimensions(final int dimensions) {
@@ -362,6 +363,41 @@ public final class Vector {
 			throw new IllegalArgumentException("Vector must have at least 1 dimension: " + dimensions);
 		}
 		return dimensions;
+	}
+
+	// The finite checks run on the factory's private copy, so a caller mutating its array
+	// concurrently cannot slip a non-finite element past them.
+	private static short[] checkFinite(final short[] data) {
+		for (int i = 0; i < data.length; i++) {
+			// An all-ones exponent is infinity (zero mantissa) or NaN (nonzero mantissa).
+			if ((data[i] & FLOAT16_EXPONENT_MASK) == FLOAT16_EXPONENT_MASK) {
+				throw notFinite(i, String.format("0x%04x", data[i] & 0xffff));
+			}
+		}
+		return data;
+	}
+
+	private static float[] checkFinite(final float[] data) {
+		for (int i = 0; i < data.length; i++) {
+			if (!Float.isFinite(data[i])) {
+				throw notFinite(i, Float.toString(data[i]));
+			}
+		}
+		return data;
+	}
+
+	private static double[] checkFinite(final double[] data) {
+		for (int i = 0; i < data.length; i++) {
+			if (!Double.isFinite(data[i])) {
+				throw notFinite(i, Double.toString(data[i]));
+			}
+		}
+		return data;
+	}
+
+	private static IllegalArgumentException notFinite(final int index, final String value) {
+		return new IllegalArgumentException(
+			"Vector elements must be finite (no NaN or infinity): element " + index + " is " + value);
 	}
 
 	/**
