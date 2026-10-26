@@ -24,6 +24,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
@@ -51,10 +52,14 @@ import com.aerospike.client.configuration.ConfigurationProvider;
 import com.aerospike.client.configuration.YamlConfigProvider;
 import com.aerospike.client.configuration.serializers.Configuration;
 import com.aerospike.client.configuration.serializers.StaticConfiguration;
+import com.aerospike.client.configuration.serializers.dynamicconfig.DynamicMetricsConfig;
 import com.aerospike.client.configuration.serializers.staticconfig.StaticClientConfig;
 import com.aerospike.client.listener.ClusterStatsListener;
+import com.aerospike.client.metrics.IMetricsExporter;
+import com.aerospike.client.metrics.MetricsExporterType;
 import com.aerospike.client.metrics.MetricsListener;
 import com.aerospike.client.metrics.MetricsPolicy;
+import com.aerospike.client.metrics.MetricsThread;
 import com.aerospike.client.metrics.MetricsWriter;
 import com.aerospike.client.policy.AuthMode;
 import com.aerospike.client.policy.ClientPolicy;
@@ -216,6 +221,10 @@ public class Cluster implements Runnable, Closeable {
 	public boolean metricsEnabled;
 	MetricsPolicy metricsPolicy;
 	private volatile MetricsListener metricsListener;
+
+	// Periodic metrics thread that builds snapshot and exports metrics to registered exporters
+	private volatile MetricsThread metricsThread;
+	private volatile MetricsWriter metricsWriter;
 	private final Object metricsLock = new Object();
 	private final AtomicLong retryCount = new AtomicLong();
 	private final AtomicLong commandCount = new AtomicLong();
@@ -520,10 +529,13 @@ public class Cluster implements Runnable, Closeable {
 			addSeeds(seedsToAdd.toArray(new Host[seedsToAdd.size()]));
 		}
 
-		if (config != null && config.hasMetrics() && config.dynamicConfiguration.dynamicMetricsConfig.enable != null &&
-			config.dynamicConfiguration.dynamicMetricsConfig.enable.value) {
+		Boolean metricsConfigEnabled = getMetricsConfigEnabled();
+		if (Boolean.TRUE.equals(metricsConfigEnabled)) {
 			synchronized(metricsLock) {
-				enableMetricsInternal(metricsPolicy);
+				MetricsPolicy effectivePolicy =
+					mergeMetricsPolicyWithConfig(metricsPolicy);
+				effectivePolicy.validate();
+				enableMetricsInternal(effectivePolicy);
 			}
 		}
 
@@ -713,7 +725,8 @@ public class Cluster implements Runnable, Closeable {
 
 		// Perform metrics snapshot.
 		synchronized(metricsLock) {
-			if (metricsEnabled && (tendCount % metricsPolicy.interval) == 0) {
+			if (metricsEnabled && metricsListener != null &&
+				(tendCount % metricsPolicy.interval) == 0) {
 				metricsListener.onSnapshot(this);
 			}
 		}
@@ -976,7 +989,7 @@ public class Cluster implements Runnable, Closeable {
 			nodesMap.remove(node.getName());
 
 			synchronized(metricsLock) {
-				if (metricsEnabled) {
+				if (metricsEnabled && metricsListener != null) {
 					// Flush node metrics before removal.
 					try {
 						metricsListener.onNodeClose(node);
@@ -1185,24 +1198,30 @@ public class Cluster implements Runnable, Closeable {
 		applyCommonClientPolicyParameters(client.getClientPolicy(), false);
 
 		synchronized(metricsLock) {
-			metricsPolicy = mergeMetricsPolicyWithConfig(metricsPolicy);
+			MetricsPolicy previousPolicy = metricsPolicy;
+			MetricsPolicy effectivePolicy =
+				mergeMetricsPolicyWithConfig(previousPolicy);
+			effectivePolicy.validate();
+			Boolean configEnabled = getMetricsConfigEnabled();
 
-			if (metricsEnabled && metricsPolicy.isMetricsRestartRequired()) {
+			if (Boolean.FALSE.equals(configEnabled)) {
 				disableMetricsInternal();
-				enableMetricsInternal(metricsPolicy);
-				metricsPolicy.setMetricsRestartRequired(false);
+				metricsPolicy = effectivePolicy;
 				return;
 			}
 
-			if (config != null && config.hasMetrics() &&
-					config.dynamicConfiguration.dynamicMetricsConfig.enable != null) {
-				if (!metricsEnabled && config.dynamicConfiguration.dynamicMetricsConfig.enable.value) {
-					enableMetricsInternal(metricsPolicy);
-				}
-				else if (metricsEnabled && !config.dynamicConfiguration.dynamicMetricsConfig.enable.value) {
-					disableMetricsInternal();
-				}
+			if (Boolean.TRUE.equals(configEnabled) && !metricsEnabled) {
+				enableMetricsInternal(effectivePolicy);
+				return;
 			}
+
+			if (metricsEnabled &&
+				metricsRuntimeSettingsChanged(previousPolicy, effectivePolicy)) {
+				disableMetricsInternal();
+				enableMetricsInternal(effectivePolicy);
+				return;
+			}
+			metricsPolicy = effectivePolicy;
 		}
 	}
 
@@ -1210,40 +1229,84 @@ public class Cluster implements Runnable, Closeable {
 		if (mp == null) {
 			mp = new MetricsPolicy();
 		}
-        return new MetricsPolicy(mp, config, metricsEnabled);
+		return new MetricsPolicy(mp, config);
+	}
+
+	/**
+	 * Return whether settings captured by the active metrics runtime changed.
+	 */
+	static boolean metricsRuntimeSettingsChanged(
+		MetricsPolicy previous,
+		MetricsPolicy current
+	) {
+		return previous == null ||
+			!Objects.equals(previous.exportInterval, current.exportInterval) ||
+			previous.exporter != current.exporter ||
+			!Objects.equals(previous.reportDir, current.reportDir) ||
+			previous.reportSizeLimit != current.reportSizeLimit ||
+			!Objects.equals(previous.labels, current.labels) ||
+			previous.enableOperationalMetrics != current.enableOperationalMetrics ||
+			previous.enableUsageMetrics != current.enableUsageMetrics ||
+			previous.latencyUnit != current.latencyUnit ||
+			previous.latencyColumns != current.latencyColumns ||
+			previous.latencyShift != current.latencyShift ||
+			previous.samplerRange != current.samplerRange ||
+			previous.samplerThreshold != current.samplerThreshold;
+	}
+
+	private Boolean getMetricsConfigEnabled() {
+		if (config == null || !config.hasMetrics()) {
+			return null;
+		}
+
+		DynamicMetricsConfig metrics = config.dynamicConfiguration.dynamicMetricsConfig;
+		if (metrics.enabled != null && metrics.enable != null &&
+			metrics.enabled.value != metrics.enable.value) {
+			throw new AerospikeException(
+				"Conflicting metrics.enabled and legacy metrics.enable values");
+		}
+		if (metrics.enabled != null) {
+			return metrics.enabled.value;
+		}
+		return metrics.enable == null ? null : metrics.enable.value;
 	}
 
 	public final void enableMetrics(MetricsPolicy policy) {
-		if (config != null) {
-			if (config.hasMetrics() && config.dynamicConfiguration.dynamicMetricsConfig.enable != null) {
-				if (!config.dynamicConfiguration.dynamicMetricsConfig.enable.value) {
-					Log.warn("When a config exists, metrics can not be enabled via enableMetrics unless they" +
-							" are enabled in the config provider.");
-					this.metricsPolicy = mergeMetricsPolicyWithConfig(policy);
-					return;
-				}
-			}
-		}
-
 		synchronized(metricsLock) {
-			enableMetricsInternal(policy);
+			MetricsPolicy effectivePolicy = mergeMetricsPolicyWithConfig(policy);
+			effectivePolicy.validate();
+
+			if (config != null && Boolean.FALSE.equals(getMetricsConfigEnabled())) {
+				Log.warn("When a config exists, metrics can not be enabled via enableMetrics unless they" +
+						" are enabled in the config provider.");
+				this.metricsPolicy = effectivePolicy;
+				return;
+			}
+			enableMetricsInternal(effectivePolicy);
 		}
 	}
 
 	private void enableMetricsInternal(MetricsPolicy policy) {
-		MetricsPolicy mergedMP = mergeMetricsPolicyWithConfig(policy);
-		MetricsListener listener = mergedMP.listener;
+		if (metricsEnabled) {
+			disableMetricsInternal();
+		}
 
-		if (listener == null) {
-			listener = new MetricsWriter(mergedMP.reportDir);
+		MetricsListener listener = policy.listener;
+		MetricsWriter writer = null;
+		List<IMetricsExporter> activeExporters = new ArrayList<>();
+
+		if (policy.exporter == MetricsExporterType.FILE &&
+			policy.reportDir != null && !policy.reportDir.isEmpty()) {
+			writer = new MetricsWriter(policy);
+			activeExporters.add(writer);
+		}
+		else if (policy.exporter == MetricsExporterType.CUSTOM) {
+			activeExporters.addAll(policy.getExporters());
 		}
 
 		this.metricsListener = listener;
-		this.metricsPolicy = mergedMP;
-
-		if (metricsEnabled) {
-			this.metricsListener.onDisable(this);
-		}
+		this.metricsWriter = writer;
+		this.metricsPolicy = policy;
 
 		Node[] nodeArray = nodes;
 
@@ -1251,15 +1314,17 @@ public class Cluster implements Runnable, Closeable {
 			node.enableMetrics(this.metricsPolicy);
 		}
 
-		this.metricsListener.onEnable(this, this.metricsPolicy);
+		if (this.metricsListener != null) {
+			this.metricsListener.onEnable(this, this.metricsPolicy);
+		}
+		startMetricsThread(policy, activeExporters);
 		metricsEnabled = true;
 		Log.info("Metrics have been enabled.");
 	}
 
 	public final void disableMetrics() {
 		if (config != null) {
-			if (config.hasMetrics() && config.dynamicConfiguration.dynamicMetricsConfig.enable != null &&
-				config.dynamicConfiguration.dynamicMetricsConfig.enable.value) {
+			if (Boolean.TRUE.equals(getMetricsConfigEnabled())) {
 				Log.warn("Metrics can not be disabled via disableMetrics() when they are enabled via config.");
 				return;
 			}
@@ -1273,8 +1338,39 @@ public class Cluster implements Runnable, Closeable {
 	private void disableMetricsInternal() {
 		if (metricsEnabled) {
 			metricsEnabled = false;
-			metricsListener.onDisable(this);
+			stopMetricsThread();
+
+			if (metricsListener != null) {
+				metricsListener.onDisable(this);
+				metricsListener = null;
+			}
+			if (metricsWriter != null) {
+				metricsWriter.closeWriter();
+				metricsWriter = null;
+			}
 			Log.info("Metrics have been disabled.");
+		}
+	}
+
+	private void startMetricsThread(
+		MetricsPolicy policy,
+		List<IMetricsExporter> exporters
+	) {
+		if (!exporters.isEmpty()) {
+			metricsThread = new MetricsThread(this, policy, exporters);
+			metricsThread.start();
+		}
+	}
+
+	/**
+	 * Stop periodic metrics and wait for the final export to complete.
+	 */
+	private void stopMetricsThread() {
+		MetricsThread thread = metricsThread;
+
+		if (thread != null) {
+			thread.stopAndAwaitFinalExport();
+			metricsThread = null;
 		}
 	}
 
