@@ -26,88 +26,187 @@ import java.util.Map;
 /**
  * Immutable point-in-time snapshot of client metrics.
  * <p>
- * Standard metrics are exact counters or current gauges collected with negligible
- * overhead. Extended metrics (CPU, memory, command count, per-namespace counters,
- * latency histograms) may carry a performance cost and are only populated when
- * {@link #extendedMetricsEnabled} is {@code true}.
+ * The snapshot and all contained collections are immutable.
  */
 public final class MetricsSnapshot {
-
-    // Snapshot information.
-
+	/** Point in time represented by this snapshot. */
     public final Instant timestamp;
-    public final boolean extendedMetricsEnabled;
 
-    // Identifying metadata.
+	/** Whether metrics collection is enabled for this client. */
+	public final boolean metricsEnabled;
 
+	/** Whether operational metrics collection is enabled for this client. */
+	public final boolean operationalMetricsEnabled;
+
+	/** Whether usage metrics collection is enabled for this client. */
+	public final boolean usageMetricsEnabled;
+
+	/** Cluster name. */
     public final String clusterName;
+
+	/** Client implementation type. */
     public final String clientType;
+
+	/** Client library version. */
     public final String clientVersion;
+
+	/** Application identifier resolved for this client. */
     public final String appId;
+
+	/** Immutable application-defined labels. */
     public final Map<String, String> labels;
 
-    // Standard cluster-level gauges and cumulative counters.
+	/** Current number of active cluster nodes. */
+	public final int totalNodes;
 
+	/** Current number of commands in the recovery queue. */
     public final int recoverQueueSize;
+
+	/** Current number of invalid cluster nodes. */
     public final int invalidNodeCount;
-    public final long retryCount;
+
+	/** Cumulative commands that timed out in the delay queue. */
     public final long delayQueueTimeoutCount;
-    public final int totalNodes;
+
+	/** Current number of open client connections. */
     public final long openConnections;
-    public final long exceededMaxRetries;
-    public final long exceededTotalTimeout;
 
-    // Extended cluster-level metrics.
+	/** Cumulative client commands. */
+	public final long commandCount;
 
+	/** Cumulative command retries. */
+	public final long commandRetries;
+
+	/**
+	 * Legacy alias for {@link #commandRetries}.
+	 */
+	public final long retryCount;
+
+	/**
+	 * Batch partial failure count. Remains zero until collection is implemented.
+	 */
+	// TODO: Populate when the corresponding client collection support is implemented.
+	public final long batchPartialFailure;
+
+	/**
+	 * Legacy Java count of commands that exceeded maximum retries.
+	 * Remains zero until collection is implemented.
+	 */
+	// TODO: Populate when the corresponding client collection support is implemented.
+	public final long exceededMaxRetries;
+
+	/**
+	 * Legacy Java count of commands that exceeded total timeout.
+	 * Remains zero until collection is implemented.
+	 */
+	// TODO: Populate when the corresponding client collection support is implemented.
+	public final long exceededTotalTimeout;
+
+	/** Current process CPU usage percentage. */
     public final double cpuPercent;
+
+	/** Current process memory usage in bytes. */
     public final long memoryBytes;
-    public final long commandCount;
 
-    // Event loop snapshots (Java-specific).
+	/** Cluster-scoped read latency histogram. */
+	public final LatencySnapshot readLatency;
 
-    public final List<EventLoopSnapshot> eventLoops;
+	/** Cluster-scoped write latency histogram. */
+	public final LatencySnapshot writeLatency;
 
-    // Per-node and cluster-aggregated snapshots.
+	/** Cluster-scoped batch latency histogram. */
+	public final LatencySnapshot batchLatency;
 
-    public final List<NodeSnapshot> nodes;
-    public final NodeSnapshot clusterAggregated;
+	/** Cluster-scoped query latency histogram. */
+	public final LatencySnapshot queryLatency;
 
-    // Histogram configuration.
+	/**
+	 * Connection validation open failures. Remains zero until collection is implemented.
+	 */
+	// TODO: Populate when the corresponding client collection support is implemented.
+	public final long validationOpenFailure;
 
-    public final HistogramType histogramType;
+	/**
+	 * Connection validation TLS failures. Remains zero until collection is implemented.
+	 */
+	// TODO: Populate when the corresponding client collection support is implemented.
+	public final long validationTlsFailure;
+
+	/**
+	 * Connection validation authentication failures. Remains zero until collection is implemented.
+	 */
+	// TODO: Populate when the corresponding client collection support is implemented.
+	public final long validationAuthFailure;
+
+	/** Current metrics for Java event loops. */
+    public final List<EventLoopMetricsSnapshot> eventLoops;
+
+	/** Current metrics for active cluster nodes. */
+    public final List<NodeMetricsSnapshot> nodes;
+
+	/**
+	 * Metrics for departed nodes awaiting reporting. Remains empty until collection support
+	 * is implemented.
+	 */
+	// TODO: Populate when the corresponding client collection support is implemented.
+	public final List<NodeMetricsSnapshot> nodesDeparted;
+
+	/** Client usage counters. */
+	public final UsageMetricsSnapshot usage;
+
+	/** Unit used for latency histogram buckets. */
     public final LatencyUnit latencyUnit;
-    public final int latencyBase;
+
+	/** Number of latency histogram columns. */
     public final int latencyColumns;
 
+	/** Exponential shift between latency histogram columns. */
+	public final int latencyShift;
+
+	/**
+	 * Initialize an immutable point-in-time metrics snapshot.
+	 */
     public MetricsSnapshot(
             Instant timestamp,
-            boolean extendedMetricsEnabled,
+			boolean metricsEnabled,
+			boolean operationalMetricsEnabled,
+			boolean usageMetricsEnabled,
             String clusterName,
             String clientType,
             String clientVersion,
             String appId,
             Map<String, String> labels,
-            int recoverQueueSize,
-            int invalidNodeCount,
-            long retryCount,
-            long delayQueueTimeoutCount,
             int totalNodes,
+			int recoverQueueSize,
+			int invalidNodeCount,
+			long delayQueueTimeoutCount,
             long openConnections,
+			long commandCount,
+			long commandRetries,
+			long batchPartialFailure,
             long exceededMaxRetries,
             long exceededTotalTimeout,
             double cpuPercent,
             long memoryBytes,
-            long commandCount,
-            List<EventLoopSnapshot> eventLoops,
-            List<NodeSnapshot> nodes,
-            NodeSnapshot clusterAggregated,
-            HistogramType histogramType,
+			LatencySnapshot readLatency,
+			LatencySnapshot writeLatency,
+			LatencySnapshot batchLatency,
+			LatencySnapshot queryLatency,
+			long validationOpenFailure,
+			long validationTlsFailure,
+			long validationAuthFailure,
+            List<EventLoopMetricsSnapshot> eventLoops,
+            List<NodeMetricsSnapshot> nodes,
+			List<NodeMetricsSnapshot> nodesDeparted,
+			UsageMetricsSnapshot usage,
             LatencyUnit latencyUnit,
-            int latencyBase,
-            int latencyColumns
+            int latencyColumns,
+			int latencyShift
     ) {
         this.timestamp = timestamp;
-        this.extendedMetricsEnabled = extendedMetricsEnabled;
+		this.metricsEnabled = metricsEnabled;
+		this.operationalMetricsEnabled = operationalMetricsEnabled;
+		this.usageMetricsEnabled = usageMetricsEnabled;
         this.clusterName = clusterName;
         this.clientType = clientType;
         this.clientVersion = clientVersion;
@@ -115,431 +214,74 @@ public final class MetricsSnapshot {
         this.labels = labels != null
                 ? Collections.unmodifiableMap(new HashMap<>(labels))
                 : Collections.emptyMap();
+        this.totalNodes = totalNodes;
         this.recoverQueueSize = recoverQueueSize;
         this.invalidNodeCount = invalidNodeCount;
-        this.retryCount = retryCount;
         this.delayQueueTimeoutCount = delayQueueTimeoutCount;
-        this.totalNodes = totalNodes;
         this.openConnections = openConnections;
+		this.commandCount = commandCount;
+		this.commandRetries = commandRetries;
+		this.retryCount = commandRetries;
+		this.batchPartialFailure = batchPartialFailure;
         this.exceededMaxRetries = exceededMaxRetries;
         this.exceededTotalTimeout = exceededTotalTimeout;
         this.cpuPercent = cpuPercent;
         this.memoryBytes = memoryBytes;
-        this.commandCount = commandCount;
+		this.readLatency = readLatency;
+		this.writeLatency = writeLatency;
+		this.batchLatency = batchLatency;
+		this.queryLatency = queryLatency;
+		this.validationOpenFailure = validationOpenFailure;
+		this.validationTlsFailure = validationTlsFailure;
+		this.validationAuthFailure = validationAuthFailure;
         this.eventLoops = Collections.unmodifiableList(new ArrayList<>(eventLoops));
         this.nodes = Collections.unmodifiableList(new ArrayList<>(nodes));
-        this.clusterAggregated = clusterAggregated;
-        this.histogramType = histogramType;
+		this.nodesDeparted = Collections.unmodifiableList(new ArrayList<>(nodesDeparted));
+		this.usage = usage;
         this.latencyUnit = latencyUnit;
-        this.latencyBase = latencyBase;
         this.latencyColumns = latencyColumns;
+		this.latencyShift = latencyShift;
     }
 
-    // Inner classes.
-
-    /**
-     * Metrics snapshot for a single cluster node. Counter fields are cumulative
-     * unless their names describe a current gauge.
-     */
-    public static final class NodeSnapshot {
-        public final String nodeName;
-        public final String nodeAddress;
-        public final int nodePort;
-
-        /**
-         * Standard connection pool metrics for synchronous connections.
-         */
-        public final ConnectionSnapshot syncConnections;
-
-        /**
-         * Standard connection pool metrics for asynchronous connections.
-         */
-        public final ConnectionSnapshot asyncConnections;
-
-        /**
-         * Reserved: total connection attempts to this node since node creation.
-         * Not tracked by the Java client. Defined in the Rust reference model.
-         * Currently always 0.
-         */
-        public final long connectionAttempts;
-
-        /**
-         * Reserved: successful connection attempts to this node.
-         * Not tracked by the Java client. Defined in the Rust reference model.
-         * Currently always 0.
-         */
-        public final long connectionsSuccessful;
-
-        /**
-         * Reserved: failed connection attempts to this node.
-         * Not tracked by the Java client. Defined in the Rust reference model.
-         * Currently always 0.
-         */
-        public final long connectionsFailed;
-
-        /**
-         * Reserved: connection timeout errors for this node.
-         * Not tracked by the Java client. Defined in the Rust reference model.
-         * Currently always 0.
-         */
-        public final long connectionTimeoutErrors;
-
-        /**
-         * Reserved: non-timeout connection errors for this node.
-         * Not tracked by the Java client. Defined in the Rust reference model.
-         * Currently always 0.
-         */
-        public final long connectionOtherErrors;
-
-        /**
-         * Reserved: circuit breaker hit count for this node.
-         * Not tracked by the Java client. Defined in the Rust reference model.
-         * Currently always 0.
-         */
-        public final long circuitBreakerHits;
-
-        /**
-         * Reserved: count of times a connection was requested but the pool was empty.
-         * Not tracked by the Java client. Defined in the Rust reference model.
-         * Currently always 0.
-         */
-        public final long connectionPoolEmptyCount;
-
-        /**
-         * Reserved: count of times a connection was returned but the pool was full.
-         * Not tracked by the Java client. Defined in the Rust reference model.
-         * Currently always 0.
-         */
-        public final long connectionPoolOverflowCount;
-
-        /**
-         * Reserved: count of idle connections dropped from the pool.
-         * Not tracked by the Java client. Defined in the Rust reference model.
-         * Currently always 0.
-         */
-        public final long idleConnectionsDropped;
-
-        /**
-         * Current number of open connections to this node.
-         * Calculated as syncConnections.inUse + syncConnections.inPool
-         * + asyncConnections.inUse + asyncConnections.inPool.
-         */
-        public final long openConnections;
-
-        /**
-         * Reserved: node-level aggregate of closed connections.
-         * Per-pool closed counts are available via {@link #syncConnections} and
-         * {@link #asyncConnections} ({@code ConnectionSnapshot.closed}).
-         * This field is reserved for a separate node-level aggregate not currently
-         * tracked by the Java client. Currently always 0.
-         */
-        public final long closedConnections;
-
-        /**
-         * Reserved: count of connections recovered after transient errors.
-         * Not tracked by the Java client. Defined in the Rust reference model.
-         * Currently always 0.
-         */
-        public final long recoveredConnections;
-
-        /**
-         * Reserved: total tend cycles executed for this node.
-         * Tend counters are not tracked per-node in the Java client.
-         * Currently always 0.
-         */
-        public final long tendsTotal;
-
-        /**
-         * Reserved: successful tend cycles for this node.
-         * Tend counters are not tracked per-node in the Java client.
-         * Currently always 0.
-         */
-        public final long tendsSuccessful;
-
-        /**
-         * Reserved: failed tend cycles for this node.
-         * Tend counters are not tracked per-node in the Java client.
-         * Currently always 0.
-         */
-        public final long tendsFailed;
-
-        /**
-         * Reserved: number of partition map updates received for this node.
-         * Not tracked per-node in the Java client. Defined in the Rust reference model.
-         * Currently always 0.
-         */
-        public final long partitionMapUpdates;
-
-        /**
-         * Reserved: number of times nodes were added to the cluster during tending.
-         * Not tracked per-node in the Java client. Defined in the Rust reference model.
-         * Currently always 0.
-         */
-        public final long nodesAdded;
-
-        /**
-         * Reserved: number of times nodes were removed from the cluster during tending.
-         * Not tracked per-node in the Java client. Defined in the Rust reference model.
-         * Currently always 0.
-         */
-        public final long nodesRemoved;
-
-        /**
-         * Reserved: per-node transaction retry count.
-         * Not tracked separately from the cluster-level {@link MetricsSnapshot#retryCount}.
-         * Currently always 0.
-         */
-        public final long transactionRetryCount;
-
-        /**
-         * Reserved: per-node transaction error count.
-         * Not tracked separately from per-namespace error counters.
-         * Currently always 0.
-         */
-        public final long transactionErrorCount;
-
-        /**
-         * Reserved: detailed per-command-type latency histograms (GET, PUT, DELETE, etc.).
-         * Requires client-side instrumentation of command hot paths to populate.
-         * Currently always an empty map. The fine-grained {@link CommandType} categories
-         * will replace the legacy broad categories (CONN, READ, WRITE, BATCH, QUERY)
-         * available in {@link NamespaceSnapshot#compatibilityLatencies}.
-         */
-        public final Map<CommandType, HistogramSnapshot> commandLatencies;
-
-        /**
-         * Extended: per-namespace metrics for this node. Only populated when
-         * {@link MetricsPolicy#enableExtendedMetrics} is {@code true}.
-         */
-        public final List<NamespaceSnapshot> namespaces;
-
-        public NodeSnapshot(
-                String nodeName,
-                String nodeAddress,
-                int nodePort,
-                ConnectionSnapshot syncConnections,
-                ConnectionSnapshot asyncConnections,
-                long connectionAttempts,
-                long connectionsSuccessful,
-                long connectionsFailed,
-                long connectionTimeoutErrors,
-                long connectionOtherErrors,
-                long circuitBreakerHits,
-                long connectionPoolEmptyCount,
-                long connectionPoolOverflowCount,
-                long idleConnectionsDropped,
-                long openConnections,
-                long closedConnections,
-                long recoveredConnections,
-                long tendsTotal,
-                long tendsSuccessful,
-                long tendsFailed,
-                long partitionMapUpdates,
-                long nodesAdded,
-                long nodesRemoved,
-                long transactionRetryCount,
-                long transactionErrorCount,
-                Map<CommandType, HistogramSnapshot> commandLatencies,
-                List<NamespaceSnapshot> namespaces
-        ) {
-            this.nodeName = nodeName;
-            this.nodeAddress = nodeAddress;
-            this.nodePort = nodePort;
-            this.syncConnections = syncConnections;
-            this.asyncConnections = asyncConnections;
-            this.connectionAttempts = connectionAttempts;
-            this.connectionsSuccessful = connectionsSuccessful;
-            this.connectionsFailed = connectionsFailed;
-            this.connectionTimeoutErrors = connectionTimeoutErrors;
-            this.connectionOtherErrors = connectionOtherErrors;
-            this.circuitBreakerHits = circuitBreakerHits;
-            this.connectionPoolEmptyCount = connectionPoolEmptyCount;
-            this.connectionPoolOverflowCount = connectionPoolOverflowCount;
-            this.idleConnectionsDropped = idleConnectionsDropped;
-            this.openConnections = openConnections;
-            this.closedConnections = closedConnections;
-            this.recoveredConnections = recoveredConnections;
-            this.tendsTotal = tendsTotal;
-            this.tendsSuccessful = tendsSuccessful;
-            this.tendsFailed = tendsFailed;
-            this.partitionMapUpdates = partitionMapUpdates;
-            this.nodesAdded = nodesAdded;
-            this.nodesRemoved = nodesRemoved;
-            this.transactionRetryCount = transactionRetryCount;
-            this.transactionErrorCount = transactionErrorCount;
-            this.commandLatencies = Collections.unmodifiableMap(new HashMap<>(commandLatencies));
-            this.namespaces = Collections.unmodifiableList(new ArrayList<>(namespaces));
-        }
-    }
-
-    /**
-     * Standard connection pool statistics.
-     */
-    public static final class ConnectionSnapshot {
-        public final int inUse;
-        public final int inPool;
-        public final int opened;
-        public final int closed;
-
-        public ConnectionSnapshot(int inUse, int inPool, int opened, int closed) {
-            this.inUse = inUse;
-            this.inPool = inPool;
-            this.opened = opened;
-            this.closed = closed;
-        }
-    }
-
-    /**
-     * Java event-loop measurements.
-     */
-    public static final class EventLoopSnapshot {
-        public final int processSize;
-        public final int queueSize;
-
-        public EventLoopSnapshot(int processSize, int queueSize) {
-            this.processSize = processSize;
-            this.queueSize = queueSize;
-        }
-    }
-
-    /**
-     * Extended metrics for one namespace on one node.
-     */
-    public static final class NamespaceSnapshot {
-        public final String namespace;
-        public final long errors;
-        public final long timeouts;
-        public final long keyBusy;
-        public final long bytesIn;
-        public final long bytesOut;
-
-        /**
-         * Compatibility latency histograms for broad operation types
-         * (conn, read, write, batch, query).
-         */
-        public final Map<LatencyType, HistogramSnapshot> compatibilityLatencies;
-
-        /**
-         * Detailed sampled measurements by command type.
-         * Empty when no detailed measurements are available.
-         */
-        public final Map<CommandType, CommandSnapshot> commands;
-
-        public NamespaceSnapshot(
-                String namespace,
-                long errors,
-                long timeouts,
-                long keyBusy,
-                long bytesIn,
-                long bytesOut,
-                Map<LatencyType, HistogramSnapshot> compatibilityLatencies,
-                Map<CommandType, CommandSnapshot> commands
-        ) {
-            this.namespace = namespace;
-            this.errors = errors;
-            this.timeouts = timeouts;
-            this.keyBusy = keyBusy;
-            this.bytesIn = bytesIn;
-            this.bytesOut = bytesOut;
-            this.compatibilityLatencies = Collections.unmodifiableMap(new HashMap<>(compatibilityLatencies));
-            this.commands = Collections.unmodifiableMap(new HashMap<>(commands));
-        }
-    }
-
-    /**
-     * Reserved: detailed sampled measurements for one command type within a namespace.
-     * <p>
-     * Requires per-command phase-level timing instrumentation (connection acquisition,
-     * request write, response parse) in the client command pipeline. These measurements
-     * are defined in the Rust reference model and are not yet implemented in the Java client.
-     * <p>
-     * Fields in this class will be populated when the client team adds the necessary
-     * instrumentation to command hot paths (SyncCommand, NioCommand, NettyCommand, etc.).
-     */
-    public static final class CommandSnapshot {
-        public final CommandType commandType;
-        public final HistogramSnapshot connectionAcquisition;
-        public final HistogramSnapshot requestWrite;
-        public final HistogramSnapshot responseParse;
-        public final HistogramSnapshot latency;
-        public final HistogramSnapshot bytesSent;
-        public final HistogramSnapshot bytesReceived;
-        public final long retryCount;
-        public final long errorCount;
-        public final Map<Integer, Long> resultCodeCounts;
-
-        public CommandSnapshot(
-                CommandType commandType,
-                HistogramSnapshot connectionAcquisition,
-                HistogramSnapshot requestWrite,
-                HistogramSnapshot responseParse,
-                HistogramSnapshot latency,
-                HistogramSnapshot bytesSent,
-                HistogramSnapshot bytesReceived,
-                long retryCount,
-                long errorCount,
-                Map<Integer, Long> resultCodeCounts
-        ) {
-            this.commandType = commandType;
-            this.connectionAcquisition = connectionAcquisition;
-            this.requestWrite = requestWrite;
-            this.responseParse = responseParse;
-            this.latency = latency;
-            this.bytesSent = bytesSent;
-            this.bytesReceived = bytesReceived;
-            this.retryCount = retryCount;
-            this.errorCount = errorCount;
-            this.resultCodeCounts = Collections.unmodifiableMap(new HashMap<>(resultCodeCounts));
-        }
-    }
-
-    /**
-     * Histogram bucket counts and summary statistics. Latency histograms use
-     * {@link MetricsSnapshot#latencyUnit}; byte histograms use bytes.
-     */
-    public static final class HistogramSnapshot {
-        private final long[] buckets;
-        public final long min;
-        public final long max;
-        public final double sum;
-        public final long count;
-
-        public HistogramSnapshot(long[] buckets, long min, long max, double sum, long count) {
-            this.buckets = buckets.clone();
-            this.min = min;
-            this.max = max;
-            this.sum = sum;
-            this.count = count;
-        }
-
-        public long[] getBuckets() {
-            return buckets.clone();
-        }
-    }
-
-    // Enums.
-
-    public enum HistogramType {
-        LINEAR,
-        LOGARITHMIC
-    }
-
-    public enum LatencyUnit {
-        MILLISECONDS,
-        MICROSECONDS
-    }
-
-    public enum CommandType {
-        GET,
-        GET_HEADER,
-        EXISTS,
-        PUT,
-        DELETE,
-        OPERATE,
-        QUERY,
-        SCAN,
-        UDF,
-        BATCH_READ,
-        BATCH_WRITE
-    }
+	@Override
+	public String toString() {
+		return "MetricsSnapshot{"
+			+ "timestamp=" + timestamp
+			+ ", metricsEnabled=" + metricsEnabled
+			+ ", operationalMetricsEnabled=" + operationalMetricsEnabled
+			+ ", usageMetricsEnabled=" + usageMetricsEnabled
+			+ ", clusterName='" + clusterName + '\''
+			+ ", clientType='" + clientType + '\''
+			+ ", clientVersion='" + clientVersion + '\''
+			+ ", appId='" + appId + '\''
+			+ ", labels=" + labels
+			+ ", totalNodes=" + totalNodes
+			+ ", recoverQueueSize=" + recoverQueueSize
+			+ ", invalidNodeCount=" + invalidNodeCount
+			+ ", delayQueueTimeoutCount=" + delayQueueTimeoutCount
+			+ ", openConnections=" + openConnections
+			+ ", commandCount=" + commandCount
+			+ ", commandRetries=" + commandRetries
+			+ ", retryCount=" + retryCount
+			+ ", batchPartialFailure=" + batchPartialFailure
+			+ ", exceededMaxRetries=" + exceededMaxRetries
+			+ ", exceededTotalTimeout=" + exceededTotalTimeout
+			+ ", cpuPercent=" + cpuPercent
+			+ ", memoryBytes=" + memoryBytes
+			+ ", readLatency=" + readLatency
+			+ ", writeLatency=" + writeLatency
+			+ ", batchLatency=" + batchLatency
+			+ ", queryLatency=" + queryLatency
+			+ ", validationOpenFailure=" + validationOpenFailure
+			+ ", validationTlsFailure=" + validationTlsFailure
+			+ ", validationAuthFailure=" + validationAuthFailure
+			+ ", eventLoops=" + eventLoops
+			+ ", nodes=" + nodes
+			+ ", nodesDeparted=" + nodesDeparted
+			+ ", usage=" + usage
+			+ ", latencyUnit=" + latencyUnit
+			+ ", latencyColumns=" + latencyColumns
+			+ ", latencyShift=" + latencyShift
+			+ '}';
+	}
 }

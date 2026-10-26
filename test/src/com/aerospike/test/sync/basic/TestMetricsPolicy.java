@@ -20,6 +20,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
+import java.time.Duration;
 import java.util.List;
 
 import org.junit.Test;
@@ -28,7 +29,10 @@ import com.aerospike.client.configuration.primitiveprops.BooleanProperty;
 import com.aerospike.client.configuration.serializers.Configuration;
 import com.aerospike.client.configuration.serializers.DynamicConfiguration;
 import com.aerospike.client.configuration.serializers.dynamicconfig.DynamicMetricsConfig;
+import com.aerospike.client.configuration.serializers.dynamicconfig.DynamicMetricsExtendedConfig;
+import com.aerospike.client.configuration.serializers.dynamicconfig.DynamicMetricsOperationalConfig;
 import com.aerospike.client.metrics.IMetricsExporter;
+import com.aerospike.client.metrics.MetricsExporterType;
 import com.aerospike.client.metrics.MetricsPolicy;
 import com.aerospike.client.metrics.MetricsSnapshot;
 
@@ -38,40 +42,40 @@ public class TestMetricsPolicy {
 	public void testDefaultValues() {
 		MetricsPolicy policy = new MetricsPolicy();
 
-		assertTrue(policy.enableExtendedMetrics);
+		assertTrue(policy.enableOperationalMetrics);
 		assertEquals(30, policy.interval);
+		assertEquals(Duration.ofSeconds(30), policy.exportInterval);
+		assertEquals(MetricsExporterType.FILE, policy.exporter);
 		assertEquals(7, policy.latencyColumns);
 		assertEquals(1, policy.latencyShift);
 		assertEquals(3, policy.maxConsecutiveFailures);
 		assertEquals(60, policy.suspendRetryInterval);
-		assertEquals(10, policy.exportTimeout);
 		assertTrue(policy.getExporters().isEmpty());
-		assertFalse(policy.isMetricsRestartRequired());
 	}
 
 	@Test
 	public void testCopyConstructor() {
 		MetricsPolicy original = new MetricsPolicy();
-		original.enableExtendedMetrics = false;
+		original.enableOperationalMetrics = false;
 		original.interval = 10;
 		original.latencyColumns = 5;
 		original.latencyShift = 3;
 		original.maxConsecutiveFailures = 5;
 		original.suspendRetryInterval = 120;
-		original.exportTimeout = 15;
+		original.exportInterval = Duration.ofSeconds(15);
 
 		IMetricsExporter exporter = new NoOpExporter();
 		original.addExporter(exporter);
 
 		MetricsPolicy copy = new MetricsPolicy(original);
 
-		assertFalse(copy.enableExtendedMetrics);
+		assertFalse(copy.enableOperationalMetrics);
 		assertEquals(10, copy.interval);
 		assertEquals(5, copy.latencyColumns);
 		assertEquals(3, copy.latencyShift);
 		assertEquals(5, copy.maxConsecutiveFailures);
 		assertEquals(120, copy.suspendRetryInterval);
-		assertEquals(15, copy.exportTimeout);
+		assertEquals(Duration.ofSeconds(15), copy.exportInterval);
 		assertEquals(1, copy.getExporters().size());
 		assertEquals(exporter, copy.getExporters().get(0));
 	}
@@ -106,42 +110,39 @@ public class TestMetricsPolicy {
 	}
 
 	@Test
-	public void testConfigMergeEnableExtendedMetrics() {
+	public void testConfigMergeOperationalMetrics() {
 		MetricsPolicy original = new MetricsPolicy();
-		assertTrue(original.enableExtendedMetrics);
+		assertTrue(original.enableOperationalMetrics);
 
-		Configuration config = buildConfigWithExtendedMetrics(false);
+		Configuration config = buildConfigWithOperationalMetrics(false);
 
-		MetricsPolicy merged = new MetricsPolicy(original, config, true);
+		MetricsPolicy merged = new MetricsPolicy(original, config);
 
-		assertFalse(merged.enableExtendedMetrics);
-		assertTrue(merged.isMetricsRestartRequired());
+		assertFalse(merged.enableOperationalMetrics);
 	}
 
 	@Test
 	public void testConfigMergeNoChange() {
 		MetricsPolicy original = new MetricsPolicy();
-		assertTrue(original.enableExtendedMetrics);
+		assertTrue(original.enableOperationalMetrics);
 
-		Configuration config = buildConfigWithExtendedMetrics(true);
+		Configuration config = buildConfigWithOperationalMetrics(true);
 
-		MetricsPolicy merged = new MetricsPolicy(original, config, true);
+		MetricsPolicy merged = new MetricsPolicy(original, config);
 
-		assertTrue(merged.enableExtendedMetrics);
-		assertFalse(merged.isMetricsRestartRequired());
+		assertTrue(merged.enableOperationalMetrics);
 	}
 
 	@Test
 	public void testConfigMergeNullConfig() {
 		MetricsPolicy original = new MetricsPolicy();
-		original.enableExtendedMetrics = false;
+		original.enableOperationalMetrics = false;
 		original.interval = 15;
 
-		MetricsPolicy merged = new MetricsPolicy(original, null, true);
+		MetricsPolicy merged = new MetricsPolicy(original, null);
 
-		assertFalse(merged.enableExtendedMetrics);
+		assertFalse(merged.enableOperationalMetrics);
 		assertEquals(15, merged.interval);
-		assertFalse(merged.isMetricsRestartRequired());
 	}
 
 	@Test
@@ -154,14 +155,13 @@ public class TestMetricsPolicy {
 		Configuration config = new Configuration();
 		config.dynamicConfiguration = dynConfig;
 
-		MetricsPolicy merged = new MetricsPolicy(original, config, true);
+		MetricsPolicy merged = new MetricsPolicy(original, config);
 
-		assertTrue(merged.enableExtendedMetrics);
-		assertFalse(merged.isMetricsRestartRequired());
+		assertTrue(merged.enableOperationalMetrics);
 	}
 
 	@Test
-	public void testConfigMergeLatencyColumnsValidation() {
+	public void testConfigMergeRetainsInvalidLatencyColumnsForValidation() {
 		MetricsPolicy original = new MetricsPolicy();
 		original.latencyColumns = 7;
 
@@ -175,14 +175,50 @@ public class TestMetricsPolicy {
 		Configuration config = new Configuration();
 		config.dynamicConfiguration = dynConfig;
 
-		MetricsPolicy merged = new MetricsPolicy(original, config, true);
+		MetricsPolicy merged = new MetricsPolicy(original, config);
 
-		assertEquals(7, merged.latencyColumns);
+		assertEquals(0, merged.latencyColumns);
+
+		try {
+			merged.validate();
+		}
+		catch (IllegalArgumentException expected) {
+			return;
+		}
+		throw new AssertionError("Expected invalid latency columns to be rejected");
 	}
 
-	private static Configuration buildConfigWithExtendedMetrics(boolean value) {
+	@Test
+	public void testConfigMergeNestedOperationalHistogramSettings() {
+		MetricsPolicy original = new MetricsPolicy();
 		DynamicMetricsConfig dynMC = new DynamicMetricsConfig();
-		dynMC.enableExtendedMetrics = new BooleanProperty(value);
+		DynamicMetricsExtendedConfig extended = new DynamicMetricsExtendedConfig();
+		DynamicMetricsOperationalConfig operational = new DynamicMetricsOperationalConfig();
+		operational.latencyColumns =
+			new com.aerospike.client.configuration.primitiveprops.IntProperty(9);
+		operational.latencyShift =
+			new com.aerospike.client.configuration.primitiveprops.IntProperty(3);
+		extended.operational = operational;
+		dynMC.extended = extended;
+
+		DynamicConfiguration dynConfig = new DynamicConfiguration();
+		dynConfig.dynamicMetricsConfig = dynMC;
+		Configuration config = new Configuration();
+		config.dynamicConfiguration = dynConfig;
+
+		MetricsPolicy merged = new MetricsPolicy(original, config);
+
+		assertEquals(9, merged.latencyColumns);
+		assertEquals(3, merged.latencyShift);
+	}
+
+	private static Configuration buildConfigWithOperationalMetrics(boolean value) {
+		DynamicMetricsConfig dynMC = new DynamicMetricsConfig();
+		DynamicMetricsExtendedConfig extended = new DynamicMetricsExtendedConfig();
+		DynamicMetricsOperationalConfig operational = new DynamicMetricsOperationalConfig();
+		operational.enabled = new BooleanProperty(value);
+		extended.operational = operational;
+		dynMC.extended = extended;
 
 		DynamicConfiguration dynConfig = new DynamicConfiguration();
 		dynConfig.dynamicMetricsConfig = dynMC;
@@ -193,52 +229,42 @@ public class TestMetricsPolicy {
 	}
 
 	@Test
-	public void testDynamicMetricsConfigToStringNullSafe() {
-		DynamicMetricsConfig dynMC = new DynamicMetricsConfig();
-		dynMC.enable = new BooleanProperty(true);
-		dynMC.enableExtendedMetrics = null;
-
-		String result = dynMC.toString();
-		assertTrue(result.contains("enable_extended_metrics=null"));
-	}
-
-	@Test
-	public void testExporterSettingsAcceptBoundaryValues() {
+	public void testValidationAcceptsBoundaryValues() {
 		MetricsPolicy policy = new MetricsPolicy();
 		policy.interval = 1;
 		policy.maxConsecutiveFailures = 1;
 		policy.suspendRetryInterval = 0;
-		policy.exportTimeout = 1;
+		policy.exportInterval = Duration.ofMillis(1);
 
-		policy.validateExporterSettings();
+		policy.validate();
 	}
 
 	@Test(expected = IllegalArgumentException.class)
-	public void testExporterSettingsRejectNonPositiveInterval() {
+	public void testValidationRejectsNonPositiveInterval() {
 		MetricsPolicy policy = new MetricsPolicy();
 		policy.interval = 0;
-		policy.validateExporterSettings();
+		policy.validate();
 	}
 
 	@Test(expected = IllegalArgumentException.class)
-	public void testExporterSettingsRejectNonPositiveFailureLimit() {
+	public void testValidationRejectsNonPositiveFailureLimit() {
 		MetricsPolicy policy = new MetricsPolicy();
 		policy.maxConsecutiveFailures = 0;
-		policy.validateExporterSettings();
+		policy.validate();
 	}
 
 	@Test(expected = IllegalArgumentException.class)
-	public void testExporterSettingsRejectNegativeRetryInterval() {
+	public void testValidationRejectsNegativeRetryInterval() {
 		MetricsPolicy policy = new MetricsPolicy();
 		policy.suspendRetryInterval = -1;
-		policy.validateExporterSettings();
+		policy.validate();
 	}
 
 	@Test(expected = IllegalArgumentException.class)
-	public void testExporterSettingsRejectNonPositiveTimeout() {
+	public void testValidationRejectsNonPositiveExportInterval() {
 		MetricsPolicy policy = new MetricsPolicy();
-		policy.exportTimeout = 0;
-		policy.validateExporterSettings();
+		policy.exportInterval = Duration.ZERO;
+		policy.validate();
 	}
 
 	private static class NoOpExporter implements IMetricsExporter {
@@ -246,8 +272,5 @@ public class TestMetricsPolicy {
 		public void export(MetricsSnapshot snapshot) {
 		}
 
-		@Override
-		public void close() {
-		}
 	}
 }

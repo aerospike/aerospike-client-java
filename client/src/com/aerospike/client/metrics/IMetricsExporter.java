@@ -22,31 +22,22 @@ package com.aerospike.client.metrics;
  * Implementations can export metrics to OpenTelemetry, Prometheus, log files,
  * or any custom observability platform.
  * <p>
- * The exporter is responsible for its own initialization and cleanup.
- * The snapshot passed to {@link #export(MetricsSnapshot)} is immutable and
- * safe to retain, but exporters should avoid holding references longer than
- * necessary to reduce memory pressure.
- * <p>
- * Exporter calls are isolated per exporter. A failure in one exporter does
- * not prevent other exporters from receiving the same snapshot. Exporters
- * are invoked from the metrics thread, never from the tend thread or
- * command hot path.
+ * Exporters are invoked sequentially from the metrics thread, never from the tend thread,
+ * command hot path or disable/client-close caller thread.
+ * The client does not close application-owned exporters.
  *
  * @see MetricsSnapshot
  * @see MetricsPolicy
  */
 public interface IMetricsExporter {
 
-	/**
-	 * Export a metrics snapshot. Called periodically by the metrics thread
-	 * based on the configured interval.
-	 *
-	 * @param snapshot immutable point-in-time snapshot of all client metrics
-	 */
-	void export(MetricsSnapshot snapshot);
+    /**
+     * Exports client metrics. Called periodically and once more during
+     * disable/client close by the metrics thread. Periodic snapshots report
+     * metrics enabled; the final snapshot reports metrics disabled.
+     *
+     * @param snapshot immutable point-in-time snapshot of all client metrics
+     */
+    void export(MetricsSnapshot snapshot);
 
-	/**
-	 * Release any resources held by this exporter (connections, threads, etc.).
-	 */
-	void close();
 }

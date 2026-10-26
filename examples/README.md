@@ -6,6 +6,7 @@ This project contains source code examples using the Aerospike Java Client.
 Example | Description | Link 
 --- | --- | --- 
 ServerInfo          | Use Aerospike info protocol to query a server node for statistics.                   | [View](src/com/aerospike/examples/ServerInfo.java)
+Metrics             | Export metrics through two custom exporters and the built-in file exporter.          | [View](src/com/aerospike/examples/Metrics.java)
 PutGet              | Write and read a record.                                                             | [View](src/com/aerospike/examples/PutGet.java)
 Replace             | Write bins using the replace option.                                                 | [View](src/com/aerospike/examples/Replace.java)
 Add                 | Perform a server integer add.                                                        | [View](src/com/aerospike/examples/Add.java)
@@ -100,6 +101,7 @@ options:
 
     ./run_examples -h localhost -p 3000 -n test -s demoset all
     ./run_examples -h localhost -p 3000 -n test -s demoset ServerInfo PutGet Generation
+    ./run_examples -h localhost -p 3000 -n test -s demoset Metrics
     ./run_examples -g -h localhost -p 3000 -n test -s demoset
 
 #### CI Reporting

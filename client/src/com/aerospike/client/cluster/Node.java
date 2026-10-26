@@ -24,7 +24,9 @@ import java.net.SocketTimeoutException;
 import java.nio.ByteBuffer;
 import java.util.ArrayDeque;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import com.aerospike.client.AerospikeException;
@@ -1240,6 +1242,23 @@ public class Node implements Closeable {
 	 */
 	public long getBytesOutByNS(String namespace) {
 		return metrics.bytesOutCounter.getCountByNS(namespace);
+	}
+
+	/**
+	 * Return all namespaces represented by currently collected node metrics.
+	 */
+	public Set<String> getMetricNamespaces() {
+		Set<String> namespaces = new HashSet<>();
+		namespaces.addAll(errorCounter.getNamespaces());
+		namespaces.addAll(timeoutCounter.getNamespaces());
+		namespaces.addAll(keyBusyCounter.getNamespaces());
+
+		if (metrics != null) {
+			namespaces.addAll(metrics.bytesInCounter.getNamespaces());
+			namespaces.addAll(metrics.bytesOutCounter.getNamespaces());
+			namespaces.addAll(metrics.getHistograms().getMap().keySet());
+		}
+		return namespaces;
 	}
 
 	/**

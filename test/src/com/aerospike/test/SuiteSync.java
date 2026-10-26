@@ -26,7 +26,10 @@ import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.Host;
 import com.aerospike.client.IAerospikeClient;
 import com.aerospike.client.Log;
-import com.aerospike.client.metrics.TestMetricsExporterDispatcher;
+import com.aerospike.client.cluster.TestMetricsRuntimeSettings;
+import com.aerospike.client.metrics.TestDynamicMetricsConfig;
+import com.aerospike.client.metrics.TestMetricsExporterManager;
+import com.aerospike.client.metrics.TestMetricsWriter;
 import com.aerospike.client.policy.ClientPolicy;
 import com.aerospike.test.sync.basic.TestAdd;
 import com.aerospike.test.sync.basic.TestAppend;
@@ -114,7 +117,10 @@ import com.aerospike.client.AerospikeClientIndexTypeTest;
 	TestListExp.class,
 	TestListMap.class,
 	TestMapExp.class,
-	TestMetricsExporterDispatcher.class,
+	TestDynamicMetricsConfig.class,
+	TestMetricsExporterManager.class,
+	TestMetricsRuntimeSettings.class,
+	TestMetricsWriter.class,
 	TestMetricsExporter.class,
 	TestMetricsPolicy.class,
 	TestMetricsSnapshot.class,
