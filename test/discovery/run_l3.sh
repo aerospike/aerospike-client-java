@@ -4,20 +4,22 @@
 # Kubernetes Operator, built locally.
 #
 # The default profile builds the cluster .github/workflows/discovery-k8s.yaml builds, with
-# shared-workflows setup-kind-ako at the commit that workflow pins: one kind node with every
-# NodePort and the ingress-nginx tcp-services ports published on 127.0.0.1, the operator, an
+# shared-workflows setup-kind-ako at the commit that workflow pins: one kind node, the operator, an
 # AerospikeCluster with multiPodPerHost: true and alternateAccess: configuredIP, the node labelled
-# with the endpoint hostname, and a CoreDNS entry for it. It then sets the variables
-# .github/discovery/run-l3-suite.sh sets and runs SuiteDiscoveryK8s on this machine, as that script
-# does. The action also writes the endpoint hostname into /etc/hosts; this script never does, and
-# stops at the start with the line to add when the hostname does not resolve to 127.0.0.1.
+# with the endpoint hostname, a CoreDNS entry for it, and ingress-nginx tcp-services. It then sets
+# the variables .github/discovery/run-l3-suite.sh sets and runs SuiteDiscoveryK8s, as that script
+# does.
 #
 # The per-node profile builds what setup-kind-ako cannot: one Aerospike pod per kind worker
 # (multiPodPerHost: false), each worker labelled with its own configured-alternate-access-address
 # (node-1.<L3_PER_NODE_DOMAIN>, node-2..., one per worker), and CoreDNS resolving each name to its
 # worker. The operator, the AerospikeCluster and the secrets come from the same setup-kind-ako
-# functions. Every pod listens on the same port on its own worker, so the client runs in a container
-# on the kind network, where each name resolves to its worker's address.
+# functions.
+#
+# The client dials each kind node's address, as the workflow's client does on a Linux runner. That
+# address is not reachable from a macOS host, so the client runs in a container on the kind network,
+# where each labelled hostname resolves to its node. The action writes the endpoint hostname into
+# /etc/hosts; this script never does.
 #
 # The script refuses to start when a kind cluster with the same name exists, and deletes the kind
 # cluster, the client container and the kind network (when it created that network) on exit,
@@ -73,7 +75,7 @@ if [ "${1:-}" = "--client" ]; then
 fi
 
 # setup-kind-ako at shared-workflows #336 head, the commit discovery-k8s.yaml pins.
-SHARED_WORKFLOWS_COMMIT=703eeb9ae9e8909e7f321d93d510028cda8b082b
+SHARED_WORKFLOWS_COMMIT=9ab82802cc324d8407bcb42e728d4e03aa180565
 ACTION_PATH=.github/actions/setup-kind-ako
 CLIENT_IMAGE=maven:3-ibm-semeru-21-noble@sha256:0ad9f1918f4a30f89713a03e39659ef3135a2a08b257a90168a6033335a48bcb
 PROFILE="${L3_PROFILE:-default}"
@@ -113,24 +115,6 @@ if kind get clusters 2>/dev/null | grep -qx "$CLUSTER"; then
 	die "kind cluster $CLUSTER already exists; delete it or set L3_KIND_CLUSTER"
 fi
 
-addresses() {
-	if command -v getent >/dev/null 2>&1; then
-		getent ahostsv4 "$1" | awk '{print $1}' | sort -u
-	elif command -v dscacheutil >/dev/null 2>&1; then
-		dscacheutil -q host -a name "$1" | awk '$1 == "ip_address:" {print $2}' | sort -u
-	else
-		die "neither getent nor dscacheutil is available to resolve $1"
-	fi
-}
-
-check_tcp() {
-	if command -v timeout >/dev/null 2>&1; then
-		timeout 10 bash -c "echo >/dev/tcp/$1/$2"
-	else
-		perl -e 'alarm shift; exec @ARGV' 10 bash -c "echo >/dev/tcp/$1/$2"
-	fi
-}
-
 MVN=(mvn)
 [ "${L3_MAVEN_OFFLINE:-1}" = "1" ] && MVN+=(-o)
 
@@ -162,17 +146,11 @@ KIND_IMAGE="$(grep -oE 'kindest/node:[^ "]+' "$ACTION_DIR/action.yaml" | head -1
 SERVER_IMAGE="$(sed -n '/^  server-image:/,/default:/s/^ *default: *//p' "$ACTION_DIR/action.yaml")"
 [ -n "$KIND_IMAGE" ] || die "no kind node image in action.yaml"
 [ -n "$SERVER_IMAGE" ] || die "no server-image default in action.yaml"
-ENDPOINT_HOSTNAME="$(bash -c 'source "$1"; printf %s "$ENDPOINT_HOSTNAME"' _ "$ACTION_DIR/lib.sh")"
 DEFAULT_SIZE="$(sed -n '/^  cluster-size:/,/default:/s/^ *default: *"\{0,1\}\([0-9]*\)"\{0,1\}$/\1/p' "$ACTION_DIR/action.yaml")"
 CLUSTER_SIZE="${L3_CLUSTER_SIZE:-$DEFAULT_SIZE}"
 
 per_node_names=()
-if [ "$PROFILE" = "default" ]; then
-	resolved="$(addresses "$ENDPOINT_HOSTNAME" | paste -sd, -)"
-	[ "$resolved" = "127.0.0.1" ] ||
-		die "$ENDPOINT_HOSTNAME resolves to '${resolved}', not 127.0.0.1. Add this line to /etc/hosts:
-127.0.0.1 $ENDPOINT_HOSTNAME"
-else
+if [ "$PROFILE" = "per-node" ]; then
 	CLUSTER_SIZE="$WORKERS"
 	for i in $(seq 1 "$WORKERS"); do
 		per_node_names+=("node-$i.$PER_NODE_DOMAIN")
@@ -231,24 +209,8 @@ fi
 
 echo "Creating kind cluster $CLUSTER ($KIND_IMAGE)"
 CREATED=1
-set +e
 kind create cluster --name "$CLUSTER" --image "$KIND_IMAGE" --config "$KIND_CONFIG" --wait 180s \
-	--kubeconfig "$KUBECONFIG" 2>&1 | tee "$WORK_DIR/kind-create.log"
-status=("${PIPESTATUS[@]}")
-set -e
-if [ "${status[0]}" != "0" ]; then
-	# kind's podman provider reads the node's published ports as one JSON line, which with every
-	# NodePort published exceeds its 64 KiB line limit. The cluster is up by then; only the
-	# kubeconfig is missing, so write it with the API server on its published port.
-	api_port="$(sed -n 's/^  apiServerPort: *//p' "$KIND_CONFIG")"
-	[ "$DOCKER" = "podman" ] && [ -n "$api_port" ] &&
-		grep -q 'network details should only be one line, got 0 lines' "$WORK_DIR/kind-create.log" ||
-		die "kind create cluster failed"
-	echo "Writing the kubeconfig for $CLUSTER with the API server on 127.0.0.1:$api_port"
-	kind get kubeconfig --internal --name "$CLUSTER" |
-		sed "s#server: https://$CLUSTER-control-plane:6443#server: https://127.0.0.1:$api_port#" > "$KUBECONFIG"
-	kubectl wait --for=condition=Ready nodes --all --timeout=180s || die "kind nodes not Ready"
-fi
+	--kubeconfig "$KUBECONFIG" || die "kind create cluster failed"
 
 if [ "$PROFILE" = "default" ]; then
 	ADMIN_PASSWORD="$PASSWORD" CLUSTER_SIZE="$CLUSTER_SIZE" FEATURES_CONTENT="$FEATURES_CONTENT" \
@@ -260,16 +222,11 @@ if [ "$PROFILE" = "default" ]; then
 	export DISCOVERY_INGRESS_PORTS="$(output ingress-ports "$WORK_DIR/setup.out")"
 	export DISCOVERY_SERVICE_NODE_PORTS="$(output service-node-ports "$WORK_DIR/setup.out")"
 	export DISCOVERY_NODE_PORT_RANGE="$(output node-port-range "$WORK_DIR/setup.out")"
-	export DISCOVERY_KUBECONFIG="$KUBECONFIG"
+	export DISCOVERY_KUBECONFIG=/kubeconfig
 	export AEROSPIKE_ADMIN_PASSWORD="$PASSWORD"
 	[ "$DISCOVERY_NODE_PORT_RANGE" = "30000-32767" ] ||
 		die "NodePort range must stay 30000-32767 (got: $DISCOVERY_NODE_PORT_RANGE)"
 	L3_SEED="$DISCOVERY_ENDPOINT_HOSTNAME:${DISCOVERY_INGRESS_PORTS%%,*}"
-	IFS=',' read -r -a check_ports <<< "$DISCOVERY_INGRESS_PORTS,$DISCOVERY_SERVICE_NODE_PORTS"
-	for port in "${check_ports[@]}"; do
-		echo "Checking TCP $DISCOVERY_ENDPOINT_HOSTNAME:$port"
-		check_tcp "$DISCOVERY_ENDPOINT_HOSTNAME" "$port" || die "$DISCOVERY_ENDPOINT_HOSTNAME:$port is not reachable"
-	done
 else
 	# Not in an && or || list, so set -e holds inside the subshell.
 	set +e
@@ -356,37 +313,32 @@ echo "Running SuiteDiscoveryK8s, $PROFILE profile, seed $L3_SEED"
 export L3_SEED
 export L3_MAVEN_OFFLINE="${L3_MAVEN_OFFLINE:-1}"
 set +e
-if [ "$PROFILE" = "default" ]; then
-	(cd "$ROOT_DIR" && run_suite) > "$log" 2>&1
+"$DOCKER" cp "$CLUSTER-control-plane:/usr/bin/kubectl" "$WORK_DIR/bin/kubectl" &&
+	kind get kubeconfig --internal --name "$CLUSTER" > "$WORK_DIR/kubeconfig-internal"
+rc=$?
+client_args=(--rm --name "$CLIENT" --network "$KIND_NETWORK" --workdir "$ROOT_DIR"
+	-v "$ROOT_DIR:$ROOT_DIR" -v "$HOME/.m2:/root/.m2"
+	-v "$WORK_DIR/bin/kubectl:/usr/local/bin/kubectl:ro" -v "$WORK_DIR/kubeconfig-internal:/kubeconfig:ro"
+	--add-host "$CLUSTER-control-plane:$("$DOCKER" inspect -f "{{(index .NetworkSettings.Networks \"$KIND_NETWORK\").IPAddress}}" "$CLUSTER-control-plane")")
+while read -r name address; do
+	[ -n "$name" ] || continue
+	client_args+=(--add-host "$name:$address")
+	echo "Client resolves $name to $address"
+done < <(kubectl get nodes -l "aerospike.com/configured-alternate-access-address" -o \
+	jsonpath='{range .items[*]}{.metadata.labels.aerospike\.com/configured-alternate-access-address} {.status.addresses[?(@.type=="InternalIP")].address}{"\n"}{end}')
+if [ $rc -eq 0 ]; then
+	"$DOCKER" run "${client_args[@]}" \
+		-e DISCOVERY_ENDPOINT_HOSTNAME \
+		-e DISCOVERY_INGRESS_PORTS \
+		-e DISCOVERY_SERVICE_NODE_PORTS \
+		-e DISCOVERY_NODE_PORT_RANGE \
+		-e DISCOVERY_KUBECONFIG \
+		-e AEROSPIKE_ADMIN_PASSWORD \
+		-e L3_SEED \
+		-e L3_MAVEN_OFFLINE \
+		"$CLIENT_IMAGE" \
+		bash test/discovery/run_l3.sh --client > "$log" 2>&1
 	rc=$?
-else
-	"$DOCKER" cp "$CLUSTER-control-plane:/usr/bin/kubectl" "$WORK_DIR/bin/kubectl" &&
-		kind get kubeconfig --internal --name "$CLUSTER" > "$WORK_DIR/kubeconfig-internal"
-	rc=$?
-	client_args=(--rm --name "$CLIENT" --network "$KIND_NETWORK" --workdir "$ROOT_DIR"
-		-v "$ROOT_DIR:$ROOT_DIR" -v "$HOME/.m2:/root/.m2"
-		-v "$WORK_DIR/bin/kubectl:/usr/local/bin/kubectl:ro" -v "$WORK_DIR/kubeconfig-internal:/kubeconfig:ro"
-		--add-host "$CLUSTER-control-plane:$("$DOCKER" inspect -f "{{(index .NetworkSettings.Networks \"$KIND_NETWORK\").IPAddress}}" "$CLUSTER-control-plane")")
-	for i in "${!per_node_names[@]}"; do
-		worker="$(kubectl get nodes -l "aerospike.com/configured-alternate-access-address=${per_node_names[$i]}" \
-			-o jsonpath='{.items[0].status.addresses[?(@.type=="InternalIP")].address}')"
-		client_args+=(--add-host "${per_node_names[$i]}:$worker")
-		echo "Client resolves ${per_node_names[$i]} to $worker"
-	done
-	if [ $rc -eq 0 ]; then
-		"$DOCKER" run "${client_args[@]}" \
-			-e DISCOVERY_ENDPOINT_HOSTNAME \
-			-e DISCOVERY_INGRESS_PORTS \
-			-e DISCOVERY_SERVICE_NODE_PORTS \
-			-e DISCOVERY_NODE_PORT_RANGE \
-			-e DISCOVERY_KUBECONFIG \
-			-e AEROSPIKE_ADMIN_PASSWORD \
-			-e L3_SEED \
-			-e L3_MAVEN_OFFLINE \
-			"$CLIENT_IMAGE" \
-			bash test/discovery/run_l3.sh --client > "$log" 2>&1
-		rc=$?
-	fi
 fi
 set -e
 
