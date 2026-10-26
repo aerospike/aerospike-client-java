@@ -326,6 +326,7 @@
             <include>com/aerospike/client/operation/*</include>
             <include>com/aerospike/client/policy/*</include>
             <include>com/aerospike/client/task/*</include>
+            <include>com/aerospike/client/vector/*</include>
             <include>com/aerospike/client/admin/Privilege.java</include>
             <include>com/aerospike/client/admin/PrivilegeCode.java</include>
             <include>com/aerospike/client/admin/Role.java</include>
@@ -350,9 +351,13 @@
             <include>com/aerospike/client/cluster/ThreadDaemonFactory.java</include>
             <include>com/aerospike/client/lua/LuaConfig.java</include>
             <include>com/aerospike/client/lua/LuaCache.java</include>
+            <include>com/aerospike/client/query/BinDataType.java</include>
             <include>com/aerospike/client/query/Filter.java</include>
             <include>com/aerospike/client/query/IndexCollectionType.java</include>
             <include>com/aerospike/client/query/IndexType.java</include>
+            <include>com/aerospike/client/query/Order.java</include>
+            <include>com/aerospike/client/query/OrderBy.java</include>
+            <include>com/aerospike/client/query/OrderByFlags.java</include>
             <include>com/aerospike/client/query/PartitionFilter.java</include>
             <include>com/aerospike/client/query/QueryListener.java</include>
             <include>com/aerospike/client/query/RecordSet.java</include>
