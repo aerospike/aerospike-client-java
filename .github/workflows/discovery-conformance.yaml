@@ -50,7 +50,7 @@ jobs:
       - name: Fetch conformance fixtures
         id: fixtures
         # CLIENT-5546 head (PR #363); repin to main once merged
-        uses: aerospike/shared-workflows/.github/actions/fetch-conformance-fixtures@661b43d9c6943e148ad9862cf7b68fbf881a3a4a
+        uses: aerospike/shared-workflows/.github/actions/fetch-conformance-fixtures@5ce5d6efd81116f2f55716d55480b75e3d6bb09a
         with:
           version: 1.0.0
           oidc-provider-name: ${{ secrets.JFROG_OIDC_PROVIDER }}
@@ -91,7 +91,7 @@ jobs:
       - name: Collect conformance report
         if: ${{ always() }}
         # CLIENT-5546 head (PR #363); repin to main once merged
-        uses: aerospike/shared-workflows/.github/actions/collect-conformance-report@661b43d9c6943e148ad9862cf7b68fbf881a3a4a
+        uses: aerospike/shared-workflows/.github/actions/collect-conformance-report@5ce5d6efd81116f2f55716d55480b75e3d6bb09a
         with:
           reports-directory: client/target
           fixtures-directory: ${{ steps.fixtures.outputs.fixtures-directory }}
