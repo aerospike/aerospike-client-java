@@ -36,13 +36,12 @@ import com.aerospike.client.query.Filter;
 import com.aerospike.client.query.IndexType;
 import com.aerospike.client.query.Order;
 import com.aerospike.client.query.RecordSet;
-import com.aerospike.client.query.Reduce;
 import com.aerospike.client.query.Statement;
 import com.aerospike.client.task.IndexTask;
 import com.aerospike.test.sync.TestSync;
 
 /**
- * End-to-end tests for Top-K queries ({@link Reduce#topK}).
+ * End-to-end tests for Top-K queries ({@link Statement#setTopK}).
  */
 public class TestQueryReduce extends TestSync {
 	private static final String indexName = "reduceindex";

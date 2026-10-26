@@ -17,8 +17,8 @@
 package com.aerospike.client.query;
 
 /**
- * Scalar bin data type used by {@link Reduce} order/reduce specs to interpret a bin's
- * value for comparison (min/max/order-by).
+ * Scalar bin data type of a Top-K order key, used to interpret the bin's value for
+ * comparison; see {@link Statement#setOrderBy(String, BinDataType, Order, OrderByFlags)}.
  * <p>
  * Note: investigate {@code ParticleType} as a possible replacement for this type during
  * implementation.

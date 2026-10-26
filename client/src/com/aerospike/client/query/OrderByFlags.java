@@ -17,8 +17,9 @@
 package com.aerospike.client.query;
 
 /**
- * Options for {@link Reduce#orderBy(String, BinDataType, Order, OrderByFlags)} and
- * {@link Reduce#topK(String, BinDataType, Order, OrderByFlags, int)}.
+ * Comparison options for a Top-K order key; see
+ * {@link Statement#setOrderBy(String, BinDataType, Order, OrderByFlags)} and
+ * {@link Statement#thenOrderBy(String, BinDataType, Order, OrderByFlags)}.
  */
 public enum OrderByFlags {
 	/**

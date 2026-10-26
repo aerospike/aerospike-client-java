@@ -24,7 +24,7 @@ import com.aerospike.client.Record;
  * Supports ordered LIMIT k reduces ({@link #topK}, or {@link #orderBy} + {@link #limit} passed
  * together) — returns up to k full records, globally ordered.
  */
-public final class Reduce {
+final class Reduce {
 
 	private Reduce() {
 	}
@@ -41,7 +41,7 @@ public final class Reduce {
 	 *              {@link BinDataType#STRING} only)
 	 * @param k		maximum number of records to return, in {@code [1, 1000]}
 	 */
-	public static ReduceSpec<Record, Record> topK(String bin, BinDataType type, Order order, OrderByFlags flags, int k) {
+	static ReduceSpec<Record, Record> topK(String bin, BinDataType type, Order order, OrderByFlags flags, int k) {
 		return TopKReduceSpec.compose(orderBy(bin, type, order, flags), limit(bin, k));
 	}
 
@@ -50,7 +50,7 @@ public final class Reduce {
 	 * on the same bin via {@link Statement#setReduce(ReduceSpec...)}; using it alone throws
 	 * {@link UnsupportedOperationException}.
 	 */
-	public static ReduceSpec<Record, Record> orderBy(String bin, BinDataType type, Order order, OrderByFlags flags) {
+	static ReduceSpec<Record, Record> orderBy(String bin, BinDataType type, Order order, OrderByFlags flags) {
 		return new OrderByReduceSpec(bin, type, order, flags);
 	}
 
@@ -63,7 +63,7 @@ public final class Reduce {
 	 * @param bin	bin name; must match the paired {@code orderBy} bin
 	 * @param limit	maximum number of records to return, in {@code [1, 1000]}
 	 */
-	public static ReduceSpec<Record, Record> limit(String bin, int limit) {
+	static ReduceSpec<Record, Record> limit(String bin, int limit) {
 		return new LimitReduceSpec(bin, limit);
 	}
 }
