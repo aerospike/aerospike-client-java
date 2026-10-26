@@ -14,7 +14,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.aerospike.test.sync.query;
+package com.aerospike.client.query;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertSame;
@@ -33,16 +33,10 @@ import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
 import com.aerospike.client.ResultCode;
-import com.aerospike.client.query.BinDataType;
-import com.aerospike.client.query.Order;
-import com.aerospike.client.query.OrderByFlags;
-import com.aerospike.client.query.Reduce;
-import com.aerospike.client.query.ReduceSpec;
-import com.aerospike.client.query.Statement;
 
 /**
- * Pure client-side unit tests for the {@link ReduceSpec} / {@link Reduce} / {@link Statement}
- * map-reduce framework (see docs/REDUCE-SPEC-DESIGN.md).
+ * Pure client-side unit tests for the package-private {@link ReduceSpec} / {@link Reduce}
+ * reducers behind Top-K, and the public {@link Statement} Top-K setters.
  * <p>
  * These tests do not require a running Aerospike cluster: {@link Key} digests are computed
  * locally (RIPEMD-160), and {@link Record} instances are constructed directly. They deliberately
@@ -227,8 +221,8 @@ public class TestReduceSpec {
 
 	//-------------------------------------------------------
 	// Statement.setOrderBy / setTopK sugar (public API surface only;
-	// see com.aerospike.client.query.TestStatementReduce for white-box
-	// coverage of the package-private setReduce/getReduce/resolveReduce)
+	// see TestStatementReduce for white-box coverage of the package-private
+	// setReduce/getReduce/resolveReduce)
 	//-------------------------------------------------------
 
 	@Test

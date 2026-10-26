@@ -20,11 +20,11 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Suite;
 
 import com.aerospike.client.query.TestOrderKey;
+import com.aerospike.client.query.TestReduceSpec;
 import com.aerospike.client.query.TestStatementReduce;
 import com.aerospike.test.sync.basic.TestVector;
 import com.aerospike.test.sync.basic.TestVectorClusterSupport;
 import com.aerospike.test.sync.basic.TestVectorEdgeCases;
-import com.aerospike.test.sync.query.TestReduceSpec;
 
 /**
  * Pure client-side unit tests that do not require a running Aerospike cluster.

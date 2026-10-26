@@ -33,7 +33,7 @@ import com.aerospike.client.Key;
  *                  (usually {@link com.aerospike.client.Record})
  * @param <TResult> element type returned by {@link #getResult()}
  */
-public interface ReduceSpec<TInput, TResult> {
+interface ReduceSpec<TInput, TResult> {
 
 	/**
 	 * Merge one partial result from a node into this combiner.
