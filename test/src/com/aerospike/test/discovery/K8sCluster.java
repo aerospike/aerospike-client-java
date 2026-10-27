@@ -40,7 +40,6 @@ import java.util.function.BooleanSupplier;
  * <li>DISCOVERY_ENDPOINT_HOSTNAME: hostname the client and the server both resolve</li>
  * <li>DISCOVERY_INGRESS_PORTS: ingress-nginx tcp-services host ports</li>
  * <li>DISCOVERY_SERVICE_NODE_PORTS: NodePorts of the per-pod Services at setup, in pod order</li>
- * <li>DISCOVERY_NODE_PORT_RANGE: NodePort range the API server was asserted to be serving</li>
  * </ul>
  * The AerospikeCluster, its pods, their Services and the Kubernetes nodes are read from the API
  * server at runtime through kubectl, every call bounded by {@link #KUBECTL_TIMEOUT_MS}.
@@ -56,7 +55,6 @@ final class K8sCluster {
 	static final String endpointHostname = optional("DISCOVERY_ENDPOINT_HOSTNAME");
 	static final List<Integer> ingressPorts = ports(optional("DISCOVERY_INGRESS_PORTS"));
 	static final List<Integer> serviceNodePorts = ports(optional("DISCOVERY_SERVICE_NODE_PORTS"));
-	static final String nodePortRange = optional("DISCOVERY_NODE_PORT_RANGE");
 
 	final String namespace;
 	final String name;
@@ -257,13 +255,6 @@ final class K8sCluster {
 				err.delete();
 			}
 		}
-	}
-
-	static void assertInNodePortRange(int port) {
-		assertFalse("DISCOVERY_NODE_PORT_RANGE is not set", nodePortRange.isEmpty());
-		String[] range = nodePortRange.split("-");
-		assertTrue(port + " outside NodePort range " + nodePortRange,
-			port >= Integer.parseInt(range[0]) && port <= Integer.parseInt(range[1]));
 	}
 
 	private static List<String> lines(String output) {

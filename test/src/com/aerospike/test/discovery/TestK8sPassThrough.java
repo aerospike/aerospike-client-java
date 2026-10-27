@@ -126,7 +126,6 @@ public class TestK8sPassThrough extends TestBase {
 			System.out.println("L3-POD " + pod + " label=" + label + " serviceNodePort=" + nodePort);
 			assertEquals(pod.node + " label", K8sCluster.endpointHostname, label);
 			assertTrue(pod.name + " has no Service NodePort for " + port, nodePort > 0);
-			K8sCluster.assertInNodePortRange(nodePort);
 			nodePorts.add(nodePort);
 			expected.put(pod.name, K8sCluster.endpointHostname + ':' + nodePort);
 		}

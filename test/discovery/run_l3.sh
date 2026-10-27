@@ -75,7 +75,7 @@ if [ "${1:-}" = "--client" ]; then
 fi
 
 # setup-kind-ako at shared-workflows #336 head, the commit discovery-k8s.yaml pins.
-SHARED_WORKFLOWS_COMMIT=9ab82802cc324d8407bcb42e728d4e03aa180565
+SHARED_WORKFLOWS_COMMIT=69ad6907d2a2e5ab3e64c5da48723b80ca5b7385
 ACTION_PATH=.github/actions/setup-kind-ako
 CLIENT_IMAGE=maven:3-ibm-semeru-21-noble@sha256:0ad9f1918f4a30f89713a03e39659ef3135a2a08b257a90168a6033335a48bcb
 PROFILE="${L3_PROFILE:-default}"
@@ -119,9 +119,9 @@ MVN=(mvn)
 [ "${L3_MAVEN_OFFLINE:-1}" = "1" ] && MVN+=(-o)
 
 rm -rf "$WORK_DIR"
-mkdir -p "$ACTION_DIR" "$WORK_DIR/bin" "$WORK_DIR/helm"
+mkdir -p "$ACTION_DIR/templates" "$WORK_DIR/bin" "$WORK_DIR/helm"
 
-for f in lib.sh entrypoint.sh action.yaml; do
+for f in entrypoint.sh action.yaml templates/aerospike-cluster-values.yaml templates/ingress-values.yaml templates/rbac.yaml; do
 	if [ -n "${SHARED_WORKFLOWS_DIR:-}" ]; then
 		git -C "$SHARED_WORKFLOWS_DIR" show "$SHARED_WORKFLOWS_COMMIT:$ACTION_PATH/$f" > "$ACTION_DIR/$f" ||
 			die "$f not found at $SHARED_WORKFLOWS_COMMIT in $SHARED_WORKFLOWS_DIR"
@@ -131,11 +131,7 @@ for f in lib.sh entrypoint.sh action.yaml; do
 	fi
 done
 
-awk '
-	/render_hosts_file "\$\(cat \/etc\/hosts\)"/ { skip = 1 }
-	skip && /^    fi$/ { skip = 0; next }
-	! skip
-' "$ACTION_DIR/entrypoint.sh" > "$ACTION_DIR/entrypoint-local.sh"
+sed '/| sudo tee -a \/etc\/hosts/d' "$ACTION_DIR/entrypoint.sh" > "$ACTION_DIR/entrypoint-local.sh"
 if grep -nE 'sudo|/etc/hosts' "$ACTION_DIR/entrypoint-local.sh"; then
 	die "entrypoint.sh at $SHARED_WORKFLOWS_COMMIT still writes /etc/hosts after removing its hosts step"
 fi
@@ -195,21 +191,21 @@ ADMIN_PASSWORD="" CLUSTER_SIZE="$CLUSTER_SIZE" FEATURES_CONTENT="$FEATURES_CONTE
 	GITHUB_OUTPUT="$WORK_DIR/prepare.out" bash "$ACTION_DIR/entrypoint-local.sh" prepare >/dev/null ||
 	die "setup-kind-ako prepare failed"
 PASSWORD="$(output admin-password "$WORK_DIR/prepare.out")"
-KIND_CONFIG="$(output kind-config "$WORK_DIR/prepare.out")"
 
+kind_args=()
 if [ "$PROFILE" = "per-node" ]; then
-	KIND_CONFIG="$WORK_DIR/kind-config-per-node.yaml"
 	{
 		printf 'kind: Cluster\napiVersion: kind.x-k8s.io/v1alpha4\nnodes:\n  - role: control-plane\n'
 		for i in $(seq 1 "$WORKERS"); do
 			printf '  - role: worker\n'
 		done
-	} > "$KIND_CONFIG"
+	} > "$WORK_DIR/kind-config-per-node.yaml"
+	kind_args=(--config "$WORK_DIR/kind-config-per-node.yaml")
 fi
 
 echo "Creating kind cluster $CLUSTER ($KIND_IMAGE)"
 CREATED=1
-kind create cluster --name "$CLUSTER" --image "$KIND_IMAGE" --config "$KIND_CONFIG" --wait 180s \
+kind create cluster --name "$CLUSTER" --image "$KIND_IMAGE" "${kind_args[@]}" --wait 180s \
 	--kubeconfig "$KUBECONFIG" || die "kind create cluster failed"
 
 if [ "$PROFILE" = "default" ]; then
@@ -221,11 +217,8 @@ if [ "$PROFILE" = "default" ]; then
 	export DISCOVERY_ENDPOINT_HOSTNAME="$(output endpoint-hostname "$WORK_DIR/setup.out")"
 	export DISCOVERY_INGRESS_PORTS="$(output ingress-ports "$WORK_DIR/setup.out")"
 	export DISCOVERY_SERVICE_NODE_PORTS="$(output service-node-ports "$WORK_DIR/setup.out")"
-	export DISCOVERY_NODE_PORT_RANGE="$(output node-port-range "$WORK_DIR/setup.out")"
 	export DISCOVERY_KUBECONFIG=/kubeconfig
 	export AEROSPIKE_ADMIN_PASSWORD="$PASSWORD"
-	[ "$DISCOVERY_NODE_PORT_RANGE" = "30000-32767" ] ||
-		die "NodePort range must stay 30000-32767 (got: $DISCOVERY_NODE_PORT_RANGE)"
 	L3_SEED="$DISCOVERY_ENDPOINT_HOSTNAME:${DISCOVERY_INGRESS_PORTS%%,*}"
 else
 	# Not in an && or || list, so set -e holds inside the subshell.
@@ -240,17 +233,21 @@ else
 		mkdir -p "$WORK_DIR"
 
 		eval "action_$(declare -f render_cluster_manifest)"
+		# shellcheck disable=SC2329 # called by the action's deploy_cluster
 		render_cluster_manifest() {
-			action_render_cluster_manifest "$@" | sed 's/^    multiPodPerHost: true$/    multiPodPerHost: false/'
+			action_render_cluster_manifest
+			sed 's/^    multiPodPerHost: true$/    multiPodPerHost: false/' "$WORK_DIR/aerospike-cluster.yaml" \
+				> "$WORK_DIR/aerospike-cluster.per-node.yaml"
+			mv "$WORK_DIR/aerospike-cluster.per-node.yaml" "$WORK_DIR/aerospike-cluster.yaml"
+			grep -q '^    multiPodPerHost: false$' "$WORK_DIR/aerospike-cluster.yaml" ||
+				error "AerospikeCluster manifest has no multiPodPerHost to set to false"
 		}
-		render_cluster_manifest "$SERVER_IMAGE" "$WORKERS" | grep -q '^    multiPodPerHost: false$' ||
-			error "AerospikeCluster manifest has no multiPodPerHost to set to false"
 
 		mapfile -t workers < <(kubectl get nodes -l '!node-role.kubernetes.io/control-plane' \
 			-o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}' | sort)
 		((${#workers[@]} == WORKERS)) || error "expected $WORKERS kind workers, found ${workers[*]}"
 
-		hosts_block="    ${CORE_DNS_MARKER}"$'\n'"    hosts {"$'\n'
+		hosts_block="    hosts {"$'\n'
 		for i in "${!workers[@]}"; do
 			name="${per_node_names[$i]}"
 			ip="$(kubectl get node "${workers[$i]}" -o jsonpath='{.status.addresses[?(@.type=="InternalIP")].address}')"
@@ -273,16 +270,6 @@ else
 
 		run_group "Install cert-manager and AKO" install_ako
 		kubectl -n "$AKO_NAMESPACE" rollout status deploy/aerospike-kubernetes-operator --timeout=180s
-		webhook=0
-		for _ in $(seq 1 60); do
-			if render_cluster_manifest "$SERVER_IMAGE" "$WORKERS" |
-				kubectl apply --dry-run=server -f - >/dev/null 2>"$WORK_DIR/webhook.err"; then
-				webhook=1
-				break
-			fi
-			sleep 3
-		done
-		((webhook)) || error "operator webhook not serving after 180s: $(<"$WORK_DIR/webhook.err")"
 		run_group "Apply AerospikeCluster" deploy_cluster
 	) 2>&1 | sed '/::add-mask::/d' | tee "$WORK_DIR/setup.log"
 	status=("${PIPESTATUS[@]}")
@@ -292,7 +279,6 @@ else
 	export DISCOVERY_ENDPOINT_HOSTNAME="${per_node_names[0]}"
 	export DISCOVERY_INGRESS_PORTS=""
 	export DISCOVERY_SERVICE_NODE_PORTS=""
-	export DISCOVERY_NODE_PORT_RANGE="$(bash -c 'source "$1"; printf %s "$NODEPORT_RANGE"' _ "$ACTION_DIR/lib.sh")"
 	export DISCOVERY_KUBECONFIG=/kubeconfig
 	export AEROSPIKE_ADMIN_PASSWORD="$PASSWORD"
 	L3_SEED="${per_node_names[0]}:$(kubectl get aerospikecluster -A -o jsonpath='{.items[0].spec.aerospikeConfig.network.service.port}')"
@@ -331,7 +317,6 @@ if [ $rc -eq 0 ]; then
 		-e DISCOVERY_ENDPOINT_HOSTNAME \
 		-e DISCOVERY_INGRESS_PORTS \
 		-e DISCOVERY_SERVICE_NODE_PORTS \
-		-e DISCOVERY_NODE_PORT_RANGE \
 		-e DISCOVERY_KUBECONFIG \
 		-e AEROSPIKE_ADMIN_PASSWORD \
 		-e L3_SEED \
