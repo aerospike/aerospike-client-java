@@ -7,6 +7,9 @@ logging at info level, each override is logged as `Set ClientPolicy.<field> = <v
 A key that is absent leaves the field as it is: the value set in code, otherwise the
 `ClientPolicy` default.
 
+To write a custom seed candidate provider or address translator, see the
+[plugin author guide](discovery-plugin-guide.md).
+
 Schema version `1.2.0` adds these keys. Files declaring `1.0.0` or `1.1.0` load them too.
 
 ```yaml
@@ -45,7 +48,7 @@ static:
 | --- | --- | --- | --- | --- |
 | `provider` | string | `static`, `dns`, or a name registered with `ClientPolicy.registerSeedCandidateProvider` | `static` | `seedCandidateProvider` (`static` sets it to null: `StaticSeedCandidateProvider` over the seed hosts passed to the client constructor, the same as setting nothing; `dns` sets it to a `DnsSeedCandidateProvider` built from the `dns` block, see [`static.client.discovery.dns`](#staticclientdiscoverydns); a registered name sets it to the provider its factory builds, see [Registered names](#registered-names)) |
 | `dns` | map | see [`static.client.discovery.dns`](#staticclientdiscoverydns) | none | `seedCandidateProvider` (with `provider: dns`) |
-| `merge_policy` | string | `merge`, `replace`, `discovery_only` | `merge` | `discoveryMergePolicy` |
+| `merge_policy` | string | `merge`, `replace`, `discovery_only`, see [Merge policy](discovery-plugin-guide.md#merge-policy) | `merge` | `discoveryMergePolicy` |
 | `refresh_interval_ms` | int | milliseconds | `30000` | `discoveryRefreshInterval` |
 | `tend_refresh_deadline_ms` | int | milliseconds | `100` | `discoveryTendRefreshDeadline` |
 
@@ -185,8 +188,8 @@ AerospikeClient client = new AerospikeClient(policy);
 | Value | `addressTranslator` |
 | --- | --- |
 | `static-map` | `StaticMapAddressTranslator` over `static_map`. Without `static_map`, null: the default `StaticMapAddressTranslator` over `ip_map`. |
-| `port-map` | `PortMapAddressTranslator` over `port_map`, which is required. Entries are validated by the `PortMapAddressTranslator` constructor. |
-| `pass-through` | `PassThroughAddressTranslator`. Use with `use_services_alternate: true` when each node advertises a client-reachable alternate address and port. |
+| `port-map` | `PortMapAddressTranslator` over `port_map`, which is required. Entries are validated by the `PortMapAddressTranslator` constructor. On AWS, see [Deployment limits](discovery-plugin-guide.md#deployment-limits). |
+| `pass-through` | `PassThroughAddressTranslator`. Use with `use_services_alternate: true` when each node advertises a client-reachable alternate address and port. On AWS with `alternate-access-port`, see [Deployment limits](discovery-plugin-guide.md#deployment-limits). |
 | a registered name | The translator its factory builds, see [Registered names](#registered-names). |
 
 `on_miss` applies when the translator has no mapping for an advertised endpoint:
@@ -207,7 +210,8 @@ name with `ClientPolicy.registerAddressTranslator`, or set `ClientPolicy.address
 ## Registered names
 
 A custom seed candidate provider or address translator can be selected from YAML by a name
-registered on the `ClientPolicy` passed to the client constructor:
+registered on the `ClientPolicy` passed to the client constructor. For writing one, see the
+[plugin author guide](discovery-plugin-guide.md):
 
 ```java
 ClientPolicy policy = new ClientPolicy();
