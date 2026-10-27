@@ -189,8 +189,7 @@ jobs:
 
       - name: Setup discovery topology
         id: topology
-        # CLIENT-5757 head (PR #370) for client-network-mtu and proxy-sysctls; repin to main once merged
-        uses: aerospike/shared-workflows/.github/actions/setup-discovery-topology@30b2b980e2b5fa2c06c48a5bcad71575a4b40c2b
+        uses: aerospike/shared-workflows/.github/actions/setup-discovery-topology@318e453bea7f3c068ead24057dab07312a7fe62e
         with:
           container-names: ${{ steps.nodes.outputs.running }}
           aerospike-network-name: ${{ steps.aerospike.outputs.network-name }}
