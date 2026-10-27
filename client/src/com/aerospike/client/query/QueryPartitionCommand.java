@@ -107,7 +107,7 @@ public final class QueryPartitionCommand extends MultiCommand {
 				// Feed the client-side global reduce combiner instead of streaming this
 				// partial result directly to the caller. The executor emits the merged
 				// result (if any) once all partitions have been received.
-				reducer.acceptPartial(record, key);
+				reducer.acceptPartial(record, key, lastUpdateTime);
 			}
 			else if (! recordSet.put(new KeyRecord(key, record))) {
 				stop();

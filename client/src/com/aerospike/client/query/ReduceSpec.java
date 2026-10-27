@@ -23,13 +23,13 @@ import com.aerospike.client.Key;
  * <p>
  * Each cluster node produces a partial result for a query (e.g. a locally bounded Top-K
  * heap). The query executor feeds every node's partial results into
- * {@link #acceptPartial(Object, Key)} in any order (nodes complete concurrently), then reads
- * the merged result via {@link #getScalarResult()} or {@link #getResult()}.
+ * {@link #acceptPartial(Object, Key, long)} in any order (nodes complete concurrently), then
+ * reads the merged result via {@link #getScalarResult()} or {@link #getResult()}.
  * <p>
  * Instances are created via {@link Reduce} factory methods and passed to
  * {@link Statement#setReduce(ReduceSpec...)}.
  *
- * @param <TInput>  type of each partial accepted by {@link #acceptPartial(Object, Key)}
+ * @param <TInput>  type of each partial accepted by {@link #acceptPartial(Object, Key, long)}
  *                  (usually {@link com.aerospike.client.Record})
  * @param <TResult> element type returned by {@link #getResult()}
  */
@@ -38,10 +38,13 @@ interface ReduceSpec<TInput, TResult> {
 	/**
 	 * Merge one partial result from a node into this combiner.
 	 *
-	 * @param record	partial result (usually a {@link com.aerospike.client.Record})
-	 * @param key		record key; used for digest-based deduplication and tie-breaking
+	 * @param record			partial result (usually a {@link com.aerospike.client.Record})
+	 * @param key				record key; used for digest-based deduplication and tie-breaking
+	 * @param lastUpdateTime	record's last-update time as sent by the server, or zero when
+	 *							the server did not send one; decides which of two copies of a
+	 *							record is kept
 	 */
-	void acceptPartial(TInput record, Key key);
+	void acceptPartial(TInput record, Key key, long lastUpdateTime);
 
 	/**
 	 * Return a single scalar view of the merged result (e.g. the best-ranked record for a

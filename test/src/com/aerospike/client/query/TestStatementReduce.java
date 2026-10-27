@@ -76,8 +76,8 @@ public class TestStatementReduce {
 		stmt.setReduce(Reduce.topK(BIN, BinDataType.INTEGER, Order.DESC, OrderByFlags.NONE, 2));
 
 		ReduceSpec<Record, Record> resolved = stmt.resolveReduce();
-		resolved.acceptPartial(record(BIN, 1L), key("k1"));
-		resolved.acceptPartial(record(BIN, 2L), key("k2"));
+		resolved.acceptPartial(record(BIN, 1L), key("k1"), 0);
+		resolved.acceptPartial(record(BIN, 2L), key("k2"), 0);
 		assertEquals(2, resolved.getResult().length);
 	}
 
@@ -86,7 +86,7 @@ public class TestStatementReduce {
 		TopKReduceSpec topK = topK(3);
 
 		for (int i = 1; i <= 5; i++) {
-			topK.acceptPartial(record(BIN, (long)i), key("k" + i));
+			topK.acceptPartial(record(BIN, (long)i), key("k" + i), 0);
 		}
 
 		KeyRecord[] result = topK.getResultKeyRecords();
@@ -102,10 +102,10 @@ public class TestStatementReduce {
 	@Test
 	public void fullHeapAcceptsBetterRescanOfRejectedRecord() {
 		TopKReduceSpec topK = topK(2);
-		topK.acceptPartial(record(BIN, 10L), key("k10"));
-		topK.acceptPartial(record(BIN, 20L), key("k20"));
-		topK.acceptPartial(record(BIN, 5L), key("k5"));
-		topK.acceptPartial(record(BIN, 30L), key("k5"));
+		topK.acceptPartial(record(BIN, 10L), key("k10"), 0);
+		topK.acceptPartial(record(BIN, 20L), key("k20"), 0);
+		topK.acceptPartial(record(BIN, 5L), key("k5"), 0);
+		topK.acceptPartial(record(BIN, 30L), key("k5"), 0);
 
 		KeyRecord[] result = topK.getResultKeyRecords();
 		assertEquals(2, result.length);
@@ -123,9 +123,9 @@ public class TestStatementReduce {
 
 		ReduceSpec<Record, Record> resolved = stmt.resolveReduce();
 
-		resolved.acceptPartial(record(BIN, 1L), key("k1"));
-		resolved.acceptPartial(record(BIN, 5L), key("k2"));
-		resolved.acceptPartial(record(BIN, 3L), key("k3"));
+		resolved.acceptPartial(record(BIN, 1L), key("k1"), 0);
+		resolved.acceptPartial(record(BIN, 5L), key("k2"), 0);
+		resolved.acceptPartial(record(BIN, 3L), key("k3"), 0);
 
 		Record[] result = resolved.getResult();
 		assertEquals(2, result.length);
@@ -142,8 +142,8 @@ public class TestStatementReduce {
 			Reduce.orderBy(BIN, BinDataType.INTEGER, Order.ASC, OrderByFlags.NONE));
 
 		ReduceSpec<Record, Record> resolved = stmt.resolveReduce();
-		resolved.acceptPartial(record(BIN, 3L), key("k1"));
-		resolved.acceptPartial(record(BIN, 1L), key("k2"));
+		resolved.acceptPartial(record(BIN, 3L), key("k1"), 0);
+		resolved.acceptPartial(record(BIN, 1L), key("k2"), 0);
 
 		Record[] result = resolved.getResult();
 		assertEquals(2, result.length);
@@ -166,7 +166,7 @@ public class TestStatementReduce {
 
 		for (Statement stmt : new Statement[] {serverSide, clientSide, split}) {
 			ReduceSpec<Record, Record> first = stmt.resolveReduce();
-			first.acceptPartial(record(BIN, 1L), key("k1"));
+			first.acceptPartial(record(BIN, 1L), key("k1"), 0);
 
 			// A statement that runs again must not rank the records of an earlier run.
 			assertEquals(0, stmt.<Record, Record>resolveReduce().getResult().length);
@@ -236,9 +236,9 @@ public class TestStatementReduce {
 		stmt.setTopK(2);
 
 		ReduceSpec<Record, Record> resolved = stmt.resolveReduce();
-		resolved.acceptPartial(record(BIN, 3.0), key("k1"));
-		resolved.acceptPartial(record(BIN, 1.0), key("k2"));
-		resolved.acceptPartial(record(BIN, 2.0), key("k3"));
+		resolved.acceptPartial(record(BIN, 3.0), key("k1"), 0);
+		resolved.acceptPartial(record(BIN, 1.0), key("k2"), 0);
+		resolved.acceptPartial(record(BIN, 2.0), key("k3"), 0);
 
 		Record[] result = resolved.getResult();
 		assertEquals(2, result.length);
@@ -253,8 +253,8 @@ public class TestStatementReduce {
 		stmt.setTopK(2);
 
 		ReduceSpec<Record, Record> resolved = stmt.resolveReduce();
-		resolved.acceptPartial(record(BIN, "banana"), key("k1"));
-		resolved.acceptPartial(record(BIN, "Apple"), key("k2"));
+		resolved.acceptPartial(record(BIN, "banana"), key("k1"), 0);
+		resolved.acceptPartial(record(BIN, "Apple"), key("k2"), 0);
 
 		Record[] result = resolved.getResult();
 		assertEquals(2, result.length);
@@ -272,7 +272,7 @@ public class TestStatementReduce {
 		ReduceSpec<Record, Record> resolved = stmt.resolveReduce();
 
 		for (int i = 1; i <= 5; i++) {
-			resolved.acceptPartial(record(BIN, (long)i), key("k" + i));
+			resolved.acceptPartial(record(BIN, (long)i), key("k" + i), 0);
 		}
 
 		Record[] result = resolved.getResult();
@@ -317,9 +317,9 @@ public class TestStatementReduce {
 		stmt.validateTopK();
 
 		ReduceSpec<Record, Record> resolved = stmt.resolveReduce();
-		resolved.acceptPartial(record(BIN, 3L), key("k1"));
-		resolved.acceptPartial(record(BIN, 1L), key("k2"));
-		resolved.acceptPartial(record(BIN, 2L), key("k3"));
+		resolved.acceptPartial(record(BIN, 3L), key("k1"), 0);
+		resolved.acceptPartial(record(BIN, 1L), key("k2"), 0);
+		resolved.acceptPartial(record(BIN, 2L), key("k3"), 0);
 
 		Record[] result = resolved.getResult();
 		assertEquals(2, result.length);
@@ -365,7 +365,7 @@ public class TestStatementReduce {
 		ReduceSpec<Record, Record> resolved = stmt.resolveReduce();
 
 		for (int i = 1; i <= 5; i++) {
-			resolved.acceptPartial(record(BIN, (long)i), key("k" + i));
+			resolved.acceptPartial(record(BIN, (long)i), key("k" + i), 0);
 		}
 
 		Record[] result = resolved.getResult();
@@ -527,7 +527,7 @@ public class TestStatementReduce {
 		ReduceSpec<Record, Record> resolved = stmt.resolveReduce();
 
 		for (int i = 0; i < records.length; i++) {
-			resolved.acceptPartial(records[i], key("k" + i));
+			resolved.acceptPartial(records[i], key("k" + i), 0);
 		}
 		return resolved.getResult();
 	}

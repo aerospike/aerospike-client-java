@@ -149,6 +149,10 @@ public class Command {
 	protected int serverSubcode = SubCode.NONE;
 	protected ExpressionTrace expTrace;
 
+	// Last-update time from the current query row's LUT field (field 14), or zero when the row
+	// has none. Only Top-K rows ranked by the server carry it. Reset by parseKey.
+	protected long lastUpdateTime;
+
 	public final int maxRetries;
 	public final int serverTimeout;
 	public int socketTimeout;
@@ -3138,6 +3142,7 @@ public class Command {
 		// Reset first so a row without a field-45 detail does not inherit the
 		// previous row's.
 		resetServerErrorDetail();
+		lastUpdateTime = 0;
 
 		for (int i = 0; i < fieldCount; i++) {
 			int fieldlen = Buffer.bytesToInt(dataBuffer, dataOffset);
@@ -3168,6 +3173,10 @@ public class Command {
 
 			case FieldType.BVAL_ARRAY:
 				bval.val = Buffer.littleBytesToLong(dataBuffer, dataOffset);
+				break;
+
+			case FieldType.LUT:
+				lastUpdateTime = Buffer.bytesToLong(dataBuffer, dataOffset);
 				break;
 
 			case FieldType.ERROR_MESSAGE:

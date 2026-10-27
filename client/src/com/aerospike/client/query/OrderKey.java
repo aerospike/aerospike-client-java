@@ -38,13 +38,15 @@ final class OrderKey implements Comparable<OrderKey> {
 	final OrderBy[] keys;
 	final Key key;
 	final Record record;
+	final long lastUpdateTime;
 
-	OrderKey(Record record, OrderBy[] keys, Key key) {
+	OrderKey(Record record, OrderBy[] keys, Key key, long lastUpdateTime) {
 		this.first = readValue(record, keys[0].binName, keys[0].type);
 		this.second = keys.length > 1 ? readValue(record, keys[1].binName, keys[1].type) : null;
 		this.keys = keys;
 		this.key = key;
 		this.record = record;
+		this.lastUpdateTime = lastUpdateTime;
 	}
 
 	@Override
