@@ -157,8 +157,7 @@ jobs:
 
       - name: Setup Aerospike cluster
         id: aerospike
-        # CLIENT-5756 head (PR #374, stacked on #371) for start-nodes and extra-hosts; repin to main once merged
-        uses: aerospike/shared-workflows/.github/actions/setup-aerospike-server@9c1d4e91489995aa95187152b670b32cca9e890b
+        uses: aerospike/shared-workflows/.github/actions/setup-aerospike-server@318e453bea7f3c068ead24057dab07312a7fe62e
         with:
           server-edition: ${{ inputs.server-edition }}
           server-container-repo: ${{ inputs.server-container-repo }}
