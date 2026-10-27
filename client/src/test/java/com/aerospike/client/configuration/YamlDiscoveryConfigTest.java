@@ -336,8 +336,7 @@ public class YamlDiscoveryConfigTest {
 
 	@Test
 	public void invalidAwsTagsProvider() throws Exception {
-		assertInvalid("invalid-provider-aws-tags",
-			"static.client.discovery.provider 'aws-tags' is not yet configurable from YAML. Set ClientPolicy.seedCandidateProvider in code");
+		assertInvalid("invalid-provider-aws-tags", "static.client.discovery.aws is required with provider aws-tags");
 	}
 
 	@Test

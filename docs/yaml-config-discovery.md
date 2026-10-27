@@ -46,8 +46,9 @@ static:
 
 | Key | Type | Values | Default | `ClientPolicy` field |
 | --- | --- | --- | --- | --- |
-| `provider` | string | `static`, `dns`, or a name registered with `ClientPolicy.registerSeedCandidateProvider` | `static` | `seedCandidateProvider` (`static` sets it to null: `StaticSeedCandidateProvider` over the seed hosts passed to the client constructor, the same as setting nothing; `dns` sets it to a `DnsSeedCandidateProvider` built from the `dns` block, see [`static.client.discovery.dns`](#staticclientdiscoverydns); a registered name sets it to the provider its factory builds, see [Registered names](#registered-names)) |
+| `provider` | string | `static`, `dns`, `aws-tags`, or a name registered with `ClientPolicy.registerSeedCandidateProvider` | `static` | `seedCandidateProvider` (`static` sets it to null: `StaticSeedCandidateProvider` over the seed hosts passed to the client constructor, the same as setting nothing; `dns` sets it to a `DnsSeedCandidateProvider` built from the `dns` block, see [`static.client.discovery.dns`](#staticclientdiscoverydns); `aws-tags` sets it to an `AwsEc2TagSeedCandidateProvider` built from the `aws` block, see [`static.client.discovery.aws`](#staticclientdiscoveryaws); a registered name sets it to the provider its factory builds, see [Registered names](#registered-names)) |
 | `dns` | map | see [`static.client.discovery.dns`](#staticclientdiscoverydns) | none | `seedCandidateProvider` (with `provider: dns`) |
+| `aws` | map | see [`static.client.discovery.aws`](#staticclientdiscoveryaws) | none | `seedCandidateProvider` (with `provider: aws-tags`) |
 | `merge_policy` | string | `merge`, `replace`, `discovery_only`, see [Merge policy](discovery-plugin-guide.md#merge-policy) | `merge` | `discoveryMergePolicy` |
 | `refresh_interval_ms` | int | milliseconds | `30000` | `discoveryRefreshInterval` |
 | `tend_refresh_deadline_ms` | int | milliseconds | `100` | `discoveryTendRefreshDeadline` |
@@ -56,7 +57,6 @@ Code only for now:
 
 | Key or value | Status |
 | --- | --- |
-| `provider: aws-tags` | Not yet configurable from YAML. Set `ClientPolicy.seedCandidateProvider` in code. |
 | `provider_class` | Not read from YAML (ignored as an unknown key). Register a name with `ClientPolicy.registerSeedCandidateProvider`, or set `ClientPolicy.seedCandidateProvider` in code. |
 
 Not supported in Java:
@@ -174,6 +174,147 @@ policy.seedCandidateProvider = DnsSeedCandidateProvider.builder()
 AerospikeClient client = new AerospikeClient(policy);
 ```
 
+## `static.client.discovery.aws`
+
+`provider: aws-tags` builds an `AwsEc2TagSeedCandidateProvider` from the `aws` block, which
+is required with `provider: aws-tags` and invalid with any other provider. On every refresh
+the provider lists the running EC2 instances that match `filters`, usually a tag, through
+the EC2 `DescribeInstances` API, and returns one seed host per instance. Use it for a
+self-managed Aerospike cluster on EC2 whose nodes carry a known tag.
+
+Self-managed EC2 example: the nodes carry the tag `aerospike-cluster=prod-a` and are
+reached on their private IPs, port 3000. The seed host passed to the client constructor
+is kept as a fallback (`merge`):
+
+```yaml
+version: 1.2.0
+static:
+  client:
+    discovery:
+      provider: aws-tags
+      merge_policy: merge
+      refresh_interval_ms: 30000
+      tend_refresh_deadline_ms: 100
+      aws:
+        region: us-east-1
+        filters:
+          - name: tag:aerospike-cluster
+            values:
+              - prod-a
+        address_field: private_ip
+        port: 3000
+        timeout_ms: 80
+```
+
+The same provider in code:
+
+```java
+ClientPolicy policy = new ClientPolicy();
+policy.seedCandidateProvider = AwsEc2TagSeedCandidateProvider.builder()
+    .region("us-east-1")
+    .tagFilter("aerospike-cluster", "prod-a")
+    .addressField(AwsEc2TagSeedCandidateProvider.AddressField.PRIVATE_IP)
+    .port(3000)
+    .build();
+policy.discoveryMergePolicy = SeedMergePolicy.MERGE;
+AerospikeClient client = new AerospikeClient(policy, new Host("10.0.1.10", 3000));
+```
+
+| Key | Type | Values | Default | `AwsEc2TagSeedCandidateProvider.Builder` method |
+| --- | --- | --- | --- | --- |
+| `region` | string | AWS region of the instances and of the EC2 and STS endpoints, such as `us-east-1` | required | `region` |
+| `filters` | list of maps | one or more `name` (string) and `values` (non-empty list of strings) pairs, passed to `DescribeInstances` as given: `tag:<key>` or any other EC2 filter name except `instance-state-name` | required | `filter`, `tagFilter` |
+| `address_field` | string | `private_ip`, `public_ip`, `private_dns`, `public_dns` | `private_ip` | `addressField` |
+| `port` | int | port set on every host | `3000` | `port` |
+| `tls_name` | string | TLS name set on every host | none | `tlsName` |
+| `timeout_ms` | int | total milliseconds for one tend refresh, credentials and every page included | `80` | `timeout` |
+| `init_timeout_ms` | int | total milliseconds for the first refresh, which runs in the client constructor and resolves the credentials | `10000` | `initTimeout` |
+| `endpoint` | string | EC2 endpoint URL, `http` or `https`, such as a VPC interface endpoint | `https://ec2.<region>.amazonaws.com` | `endpoint` |
+
+Unknown keys inside the block are ignored. Static access keys (`credentials`) and the
+credentials hook (`credentialsHook`) are set in code only.
+
+Results: each refresh sends one SigV4-signed EC2 Query API `DescribeInstances` request
+(API version `2016-11-15`) with `filters` plus `instance-state-name=running`, and follows
+`NextToken` pagination within the same timeout. It returns one host per instance with a
+non-empty `address_field`, with `port` and `tls_name`, deduplicated and sorted by address.
+An instance without that field is skipped and the count is logged at debug level. The
+provider adds no SDK or other dependency to the client, and starts no thread. It does not
+use an HTTP proxy.
+
+Minimum IAM policy of the credentials the provider uses:
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {"Effect": "Allow", "Action": ["ec2:DescribeInstances"], "Resource": "*"}
+  ]
+}
+```
+
+The provider sees only the instances of the credentials' own account, so it serves
+self-managed clusters on EC2, not Aerospike Cloud.
+
+Credentials. When `credentialsHook` is set in code, it replaces the chain below. Otherwise
+the first source found, in this order, is used:
+
+1. `credentials` access key, secret and session token set in code;
+2. environment variables `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` and `AWS_SESSION_TOKEN`;
+3. static keys (`aws_access_key_id`, `aws_secret_access_key`, `aws_session_token`) of profile
+   `AWS_PROFILE` (default `default`) in the shared credentials file
+   `AWS_SHARED_CREDENTIALS_FILE` (default `~/.aws/credentials`);
+4. EKS web identity: `AWS_WEB_IDENTITY_TOKEN_FILE` and `AWS_ROLE_ARN` (and the optional
+   `AWS_ROLE_SESSION_NAME`), exchanged through STS `AssumeRoleWithWebIdentity` on the
+   regional STS endpoint;
+5. ECS container credentials: `AWS_CONTAINER_CREDENTIALS_RELATIVE_URI` or
+   `AWS_CONTAINER_CREDENTIALS_FULL_URI`, with the authorization token from
+   `AWS_CONTAINER_AUTHORIZATION_TOKEN_FILE` or `AWS_CONTAINER_AUTHORIZATION_TOKEN`;
+6. the EC2 instance profile through IMDSv2 (a session token `PUT`, then the role
+   credentials), unless `AWS_EC2_METADATA_DISABLED` is `true`.
+
+Not in the chain: SSO, `credential_process`, `role_arn` profiles and cross-account roles.
+Use the hook for them; it may wrap the application's own AWS SDK credentials provider. The
+hook runs on the thread that refreshes the provider, the tend thread included, so it must
+return quickly. Credentials it returns with an expiry are cached until five minutes before
+it; without one they are used for the life of the provider.
+
+The chain resolves once, at the first refresh, within `init_timeout_ms`, and logs
+`AWS EC2 seed provider credentials from <source>: access key <id>` at info level. Later
+refreshes reuse the source that answered. Temporary credentials are cached with their
+expiry and reloaded on the refreshing thread when they are within five minutes of expiry,
+never on a timer. No access key secret, session token, web identity token or signature is
+logged or put in a message.
+
+Deadline: the Java client runs discovery on the tend thread only. The provider needs
+periodic refresh, so `timeout_ms` must not exceed `tend_refresh_deadline_ms`
+(`ClientPolicy.discoveryTendRefreshDeadline`). Client construction fails otherwise:
+
+```
+AWS EC2 seed provider timeout 150 must be less or equal to the discovery tend refresh deadline 100
+```
+
+Every connect and read of a refresh is bounded by the time left of `timeout_ms`, credentials
+included, and the first refresh by `init_timeout_ms`. The endpoint host names are resolved
+by the system resolver, which the provider cannot bound. For an in-region endpoint, keep the
+defaults, `timeout_ms: 80` and `tend_refresh_deadline_ms: 100`. An out-of-region endpoint, or
+a credential reload on tend that is slow (STS, ECS or IMDS), makes refreshes overrun the
+deadline: each overrun is logged as
+`Seed candidate refresh took 101ms, exceeding tend deadline 100ms. Consecutive overruns: 1`,
+and after three consecutive overruns the client disables the provider for the life of the
+client and restores the initial seeds
+(`Seed candidate provider exceeded tend deadline 3 consecutive times. Provider disabled for this client and initial seeds restored`).
+
+Failure:
+
+| Case | Behaviour |
+| --- | --- |
+| An EC2 or STS error | The refresh fails with the HTTP status, AWS error code, message and request id, for example `AWS EC2 seed provider: DescribeInstances failed: HTTP 403 UnauthorizedOperation: You are not authorized to perform this operation. (request id ea966190-f9aa-478e-9ede-example)`. |
+| No credentials | The refresh fails with `AWS EC2 seed provider: no AWS credentials found in config, environment, shared credentials file, web identity or ECS, and IMDS token timed out` (or the IMDS failure). |
+| Timeout | The refresh fails with `AWS EC2 seed provider: DescribeInstances timed out after 80ms`. |
+| Any failure | On a periodic refresh the warning `Seed candidate refresh failed: ...` is logged and the previous seed list is kept. At client construction the warning `Seed candidate provider aws-tags failed: ...` is logged and the client continues with the seed hosts passed to the constructor; with none, construction fails with `SEED_DISCOVERY_FAILED` (-27). |
+| No instance matches | Not a failure: the refresh returns no host, and `merge_policy` decides the seed list. |
+
 ## `static.client.translation`
 
 | Key | Type | Values | Default | `ClientPolicy` field |
@@ -273,7 +414,15 @@ in code.
   on the `ClientPolicy` passed to the client constructor;
 - a registered factory that throws or returns null;
 - `discovery.execution_mode` or `discovery.refresh_timeout_ms`;
-- `discovery.provider: aws-tags`;
+- `discovery.provider: aws-tags` without a `discovery.aws` block, or a `discovery.aws` block with
+  any other provider or with no provider;
+- a `discovery.aws` block without `region` or `filters`, with an empty `filters`, a filter
+  without `name` or with an empty `values`, an unknown `address_field`, or with `port` outside
+  1 to 65535 or `timeout_ms` or `init_timeout_ms` below 1;
+- a `discovery.aws` value that the `AwsEc2TagSeedCandidateProvider` builder rejects, such as a
+  `region` that is not a region name, an `endpoint` that is not an `http` or `https` URL, or a
+  filter named `instance-state-name`. This is checked when the provider is built at client
+  construction (`Invalid static.client.discovery.aws: ...`);
 - `discovery.provider: dns` without a `discovery.dns` block, or a `discovery.dns` block with
   any other provider or with no provider;
 - a `discovery.dns` block without `names`, with an empty `names`, with an unknown
@@ -284,7 +433,7 @@ in code.
 - `static_map` with a provider other than `static-map`, `port_map` with one other than
   `port-map`, or `provider: port-map` without `port_map`;
 - `static_map` and `ip_map` both set;
-- a value of the wrong type, such as a string for `refresh_interval_ms` or `dns.port`;
+- a value of the wrong type, such as a string for `refresh_interval_ms`, `dns.port` or `aws.port`;
 - a `port_map` entry that the `PortMapAddressTranslator` constructor rejects.
 
 Example warning:
@@ -308,9 +457,9 @@ Unknown keys are ignored everywhere in the file, including inside `discovery` an
 
 The client checks the file for changes every `static.client.config_interval`. As for
 the other `static.client` keys, a changed value is copied into the client's merged
-`ClientPolicy` and logged (a registered provider or translator and the `dns` provider are
-not rebuilt: they are built only at construction, and a reload that changes the `dns` block
-keeps the provider built from the original block), but the running cluster keeps the translator, `ip_map`,
+`ClientPolicy` and logged (a registered provider or translator and the `dns` and `aws-tags`
+providers are not rebuilt: they are built only at construction, and a reload that changes the
+`dns` or `aws` block keeps the provider built from the original block), but the running cluster keeps the translator, `ip_map`,
 `on_miss`, seed provider and discovery settings it was constructed with. They take
 effect for a new client instance. `useServicesAlternate` is the exception: the cluster
 re-reads it on every reload because `dynamic.client.use_service_alternative` is dynamic,

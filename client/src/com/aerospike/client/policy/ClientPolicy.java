@@ -36,6 +36,7 @@ import com.aerospike.client.configuration.serializers.staticconfig.StaticClientC
 import com.aerospike.client.configuration.serializers.staticconfig.StaticDiscoveryConfig;
 import com.aerospike.client.configuration.serializers.staticconfig.StaticTranslationConfig;
 import com.aerospike.client.discovery.AddressTranslator;
+import com.aerospike.client.discovery.AwsEc2TagSeedCandidateProvider;
 import com.aerospike.client.discovery.DnsSeedCandidateProvider;
 import com.aerospike.client.discovery.PassThroughAddressTranslator;
 import com.aerospike.client.discovery.PortMapAddressTranslator;
@@ -374,7 +375,9 @@ public class ClientPolicy {
 	 * <p>
 	 * YAML key: {@code static.client.discovery.provider}: {@code static}, this default; {@code dns},
 	 * {@link com.aerospike.client.discovery.DnsSeedCandidateProvider} built from the
-	 * {@code static.client.discovery.dns} block; or a name registered with
+	 * {@code static.client.discovery.dns} block; {@code aws-tags},
+	 * {@link com.aerospike.client.discovery.AwsEc2TagSeedCandidateProvider} built from the
+	 * {@code static.client.discovery.aws} block; or a name registered with
 	 * {@link #registerSeedCandidateProvider}. Other providers are set in code. A provider built from
 	 * YAML is built once, at client construction, and kept when the file is reloaded.
 	 * <p>
@@ -575,6 +578,7 @@ public class ClientPolicy {
 
 	private static final String DISCOVERY_PROVIDER = "static.client.discovery.provider";
 	private static final String DISCOVERY_DNS = "static.client.discovery.dns";
+	private static final String DISCOVERY_AWS = "static.client.discovery.aws";
 	private static final String TRANSLATION_PROVIDER = "static.client.translation.provider";
 
 	private Map<String,Function<Map<String,Object>,SeedCandidateProvider>> seedCandidateProviderFactories;
@@ -797,6 +801,22 @@ public class ClientPolicy {
 		}
 	}
 
+	private static Registered<SeedCandidateProvider> buildAwsTags(
+		AwsEc2TagSeedCandidateProvider.Builder builder,
+		Registered<SeedCandidateProvider> previous
+	) {
+		if (previous != null) {
+			return previous;
+		}
+
+		try {
+			return new Registered<>(builder.build());
+		}
+		catch (AerospikeException ae) {
+			throw new AerospikeException("Invalid " + DISCOVERY_AWS + ": " + ae.getBaseMessage(), ae);
+		}
+	}
+
 	private static void checkRegistered(
 		String path,
 		String name,
@@ -903,11 +923,19 @@ public class ClientPolicy {
 		StaticDiscoveryConfig discovery = staCC.discovery;
 
 		if (discovery != null) {
-			if (discovery.options != null || discovery.dns != null) {
-				Registered<SeedCandidateProvider> registered = (discovery.dns != null)?
-					buildDns(discovery.dns, registeredSeedCandidateProvider) :
-					build(DISCOVERY_PROVIDER, discovery.provider.value, discovery.options,
+			if (discovery.options != null || discovery.dns != null || discovery.aws != null) {
+				Registered<SeedCandidateProvider> registered;
+
+				if (discovery.dns != null) {
+					registered = buildDns(discovery.dns, registeredSeedCandidateProvider);
+				}
+				else if (discovery.aws != null) {
+					registered = buildAwsTags(discovery.aws, registeredSeedCandidateProvider);
+				}
+				else {
+					registered = build(DISCOVERY_PROVIDER, discovery.provider.value, discovery.options,
 						seedCandidateProviderFactories, registeredSeedCandidateProvider);
+				}
 
 				if (registered != registeredSeedCandidateProvider) {
 					this.registeredSeedCandidateProvider = registered;

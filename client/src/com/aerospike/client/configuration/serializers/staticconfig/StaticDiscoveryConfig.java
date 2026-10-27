@@ -24,6 +24,7 @@ import java.util.Map;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.configuration.primitiveprops.IntProperty;
 import com.aerospike.client.configuration.primitiveprops.StringProperty;
+import com.aerospike.client.discovery.AwsEc2TagSeedCandidateProvider;
 import com.aerospike.client.discovery.DnsSeedCandidateProvider;
 import com.aerospike.client.discovery.SeedMergePolicy;
 
@@ -44,14 +45,15 @@ public class StaticDiscoveryConfig {
     /**
      * Built-in provider names accepted from YAML.
      */
-    public static final List<String> YAML_PROVIDERS = List.of(STATIC, DNS);
+    public static final List<String> YAML_PROVIDERS = List.of(STATIC, DNS, AWS_TAGS);
 
-    private static final List<String> CODE_ONLY_PROVIDERS = List.of(AWS_TAGS);
+    private static final String AWS = "aws";
     private static final List<String> MERGE_POLICIES = List.of("merge", "replace", "discovery_only");
     private static final List<String> RECORD_TYPES = List.of("a", "srv");
+    private static final List<String> ADDRESS_FIELDS = List.of("private_ip", "public_ip", "private_dns", "public_dns");
 
     /**
-     * {@code provider}: {@code static}, {@code dns} or a name registered with
+     * {@code provider}: {@code static}, {@code dns}, {@code aws-tags} or a name registered with
      * {@link com.aerospike.client.policy.ClientPolicy#registerSeedCandidateProvider}.
      */
     public StringProperty provider;
@@ -68,6 +70,13 @@ public class StaticDiscoveryConfig {
      * {@code provider} is {@code dns}.
      */
     public DnsSeedCandidateProvider.Builder dns;
+
+    /**
+     * {@code aws}: settings of provider {@code aws-tags}, validated by
+     * {@link AwsEc2TagSeedCandidateProvider.Builder#build()} when the provider is built. Null unless
+     * {@code provider} is {@code aws-tags}.
+     */
+    public AwsEc2TagSeedCandidateProvider.Builder aws;
 
     /**
      * {@code merge_policy}.
@@ -102,10 +111,6 @@ public class StaticDiscoveryConfig {
         Object value = map.get("provider");
 
         if (value != null) {
-            if (CODE_ONLY_PROVIDERS.contains(value)) {
-                throw new AerospikeException(PATH + ".provider '" + value + "' is not yet configurable from YAML. " +
-                    "Set ClientPolicy.seedCandidateProvider in code");
-            }
             if (value instanceof String && ! YAML_PROVIDERS.contains(value)) {
                 provider = new StringProperty((String)value);
                 options = YamlValues.options(PATH, map);
@@ -125,6 +130,18 @@ public class StaticDiscoveryConfig {
         }
         else if (value != null) {
             throw new AerospikeException(PATH + '.' + DNS + " is only valid with provider " + DNS);
+        }
+
+        value = map.get(AWS);
+
+        if (provider != null && AWS_TAGS.equals(provider.value)) {
+            if (value == null) {
+                throw new AerospikeException(PATH + '.' + AWS + " is required with provider " + AWS_TAGS);
+            }
+            aws = aws(value);
+        }
+        else if (value != null) {
+            throw new AerospikeException(PATH + '.' + AWS + " is only valid with provider " + AWS_TAGS);
         }
 
         value = map.get("merge_policy");
@@ -187,6 +204,83 @@ public class StaticDiscoveryConfig {
 
         if (value != null) {
             builder.servers(YamlValues.stringList(path + ".servers", value));
+        }
+        return builder;
+    }
+
+    private static AwsEc2TagSeedCandidateProvider.Builder aws(Object block) {
+        String path = PATH + '.' + AWS;
+        Map<?,?> map = YamlValues.block(path, block);
+        AwsEc2TagSeedCandidateProvider.Builder builder = AwsEc2TagSeedCandidateProvider.builder();
+        Object value = map.get("region");
+
+        if (value == null) {
+            throw new AerospikeException(path + ".region is required");
+        }
+        builder.region(YamlValues.stringValue(path + ".region", value));
+
+        value = map.get("filters");
+
+        if (value == null) {
+            throw new AerospikeException(path + ".filters is required");
+        }
+        if (!(value instanceof List) || ((List<?>)value).isEmpty()) {
+            throw new AerospikeException("Invalid " + path + ".filters value '" + value +
+                "': expected a non-empty list of name and values");
+        }
+
+        List<?> list = (List<?>)value;
+
+        for (int i = 0; i < list.size(); i++) {
+            String filter = path + ".filters[" + i + ']';
+            Map<?,?> entry = YamlValues.block(filter, list.get(i));
+            Object name = entry.get("name");
+            Object values = entry.get("values");
+
+            if (name == null) {
+                throw new AerospikeException(filter + ".name is required");
+            }
+            if (values == null) {
+                throw new AerospikeException(filter + ".values is required");
+            }
+            builder.filter(YamlValues.stringValue(filter + ".name", name), YamlValues.stringList(filter + ".values", values));
+        }
+
+        value = map.get("address_field");
+
+        if (value != null) {
+            String name = YamlValues.enumValue(path + ".address_field", value, ADDRESS_FIELDS);
+            builder.addressField(AwsEc2TagSeedCandidateProvider.AddressField.valueOf(name.toUpperCase(Locale.ROOT)));
+        }
+
+        value = map.get("port");
+
+        if (value != null) {
+            builder.port(YamlValues.intValue(path + ".port", value, 1, 65535));
+        }
+
+        value = map.get("tls_name");
+
+        if (value != null) {
+            builder.tlsName(YamlValues.stringValue(path + ".tls_name", value));
+        }
+
+        value = map.get("timeout_ms");
+
+        if (value != null) {
+            builder.timeout(YamlValues.intValue(path + ".timeout_ms", value, 1, Integer.MAX_VALUE));
+        }
+
+        value = map.get("init_timeout_ms");
+
+        if (value != null) {
+            builder.initTimeout(YamlValues.intValue(path + ".init_timeout_ms", value, 1, Integer.MAX_VALUE));
+        }
+
+        value = map.get("endpoint");
+
+        if (value != null) {
+            builder.endpoint(YamlValues.stringValue(path + ".endpoint", value));
         }
         return builder;
     }

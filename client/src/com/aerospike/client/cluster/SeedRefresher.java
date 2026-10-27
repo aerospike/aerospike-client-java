@@ -24,6 +24,7 @@ import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Host;
 import com.aerospike.client.Log;
 import com.aerospike.client.configuration.serializers.staticconfig.StaticDiscoveryConfig;
+import com.aerospike.client.discovery.AwsEc2TagSeedCandidateProvider;
 import com.aerospike.client.discovery.DnsSeedCandidateProvider;
 import com.aerospike.client.discovery.SeedCandidateContext;
 import com.aerospike.client.discovery.SeedCandidateProvider;
@@ -91,6 +92,15 @@ final class SeedRefresher {
 
 			if (timeout > tendRefreshDeadline) {
 				throw new AerospikeException("DNS seed provider timeout " + timeout +
+					" must be less or equal to the discovery tend refresh deadline " + tendRefreshDeadline);
+			}
+		}
+
+		if (provider instanceof AwsEc2TagSeedCandidateProvider) {
+			int timeout = ((AwsEc2TagSeedCandidateProvider)provider).getTimeout();
+
+			if (timeout > tendRefreshDeadline) {
+				throw new AerospikeException("AWS EC2 seed provider timeout " + timeout +
 					" must be less or equal to the discovery tend refresh deadline " + tendRefreshDeadline);
 			}
 		}
@@ -212,6 +222,9 @@ final class SeedRefresher {
 		}
 		if (provider instanceof DnsSeedCandidateProvider) {
 			return StaticDiscoveryConfig.DNS;
+		}
+		if (provider instanceof AwsEc2TagSeedCandidateProvider) {
+			return StaticDiscoveryConfig.AWS_TAGS;
 		}
 		return provider.getClass().getName();
 	}
