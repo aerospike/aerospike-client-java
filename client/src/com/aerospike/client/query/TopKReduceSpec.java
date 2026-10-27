@@ -31,9 +31,9 @@ import com.aerospike.client.ResultCode;
  * and the composed split form {@code setReduce(Reduce.orderBy(...), Reduce.limit(...))}.
  * <p>
  * Maintains a size-k heap keyed by the order keys, deduplicated by record digest (a record may
- * be re-scanned across partition migrations) with ties broken by digest ascending for stable,
- * deterministic results. Not part of the public API surface beyond the {@link Reduce#topK}
- * factory method.
+ * reach the client from two nodes while its partition migrates, keeping the copy with the later
+ * last-update time) with ties broken by digest ascending for stable, deterministic results. Not
+ * part of the public API surface beyond the {@link Reduce#topK} factory method.
  */
 final class TopKReduceSpec implements ReduceSpec<Record, Record> {
 	private final OrderBy[] keys;
@@ -87,15 +87,15 @@ final class TopKReduceSpec implements ReduceSpec<Record, Record> {
 	}
 
 	@Override
-	public synchronized void acceptPartial(Record record, Key key) {
-		OrderKey candidate = new OrderKey(record, keys, key);
+	public synchronized void acceptPartial(Record record, Key key, long lastUpdateTime) {
+		OrderKey candidate = new OrderKey(record, keys, key, lastUpdateTime);
 
 		// Dedup: at most one row per digest (partition migration may re-scan a record).
 		OrderKey existing = byKey.get(key);
 
 		if (existing != null) {
-			if (candidate.compareTo(existing) >= 0) {
-				return; // existing entry is at least as good.
+			if (! replaces(candidate, existing)) {
+				return;
 			}
 			heap.remove(existing);
 		}
@@ -152,6 +152,19 @@ final class TopKReduceSpec implements ReduceSpec<Record, Record> {
 		OrderKey[] sorted = heap.toArray(new OrderKey[0]);
 		Arrays.sort(sorted);
 		return sorted;
+	}
+
+	/**
+	 * Return whether {@code candidate} should replace {@code existing}, another copy of the same
+	 * record: the later last-update time wins, even when it ranks worse. Equal times, including
+	 * none sent by the server, fall back to the better rank so the result does not depend on
+	 * which node answers first.
+	 */
+	private static boolean replaces(OrderKey candidate, OrderKey existing) {
+		if (candidate.lastUpdateTime != existing.lastUpdateTime) {
+			return candidate.lastUpdateTime > existing.lastUpdateTime;
+		}
+		return candidate.compareTo(existing) < 0;
 	}
 
 	/** Evict the candidate with the worst sort key first (heap head = worst). */

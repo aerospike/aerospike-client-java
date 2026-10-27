@@ -70,7 +70,7 @@ public class TestReduceSpec {
 		ReduceSpec<Record, Record> reducer = Reduce.topK(BIN, BinDataType.INTEGER, Order.DESC, OrderByFlags.NONE, 3);
 
 		for (int i = 1; i <= 10; i++) {
-			reducer.acceptPartial(record(BIN, (long)i), key("k" + i));
+			reducer.acceptPartial(record(BIN, (long)i), key("k" + i), 0);
 		}
 
 		Record[] result = reducer.getResult();
@@ -85,7 +85,7 @@ public class TestReduceSpec {
 		ReduceSpec<Record, Record> reducer = Reduce.topK(BIN, BinDataType.INTEGER, Order.ASC, OrderByFlags.NONE, 3);
 
 		for (int i = 1; i <= 10; i++) {
-			reducer.acceptPartial(record(BIN, (long)i), key("k" + i));
+			reducer.acceptPartial(record(BIN, (long)i), key("k" + i), 0);
 		}
 
 		Record[] result = reducer.getResult();
@@ -99,9 +99,9 @@ public class TestReduceSpec {
 	public void topKScalarResultIsBestRanked() {
 		ReduceSpec<Record, Record> reducer = Reduce.topK(BIN, BinDataType.INTEGER, Order.DESC, OrderByFlags.NONE, 3);
 
-		reducer.acceptPartial(record(BIN, 1L), key("k1"));
-		reducer.acceptPartial(record(BIN, 5L), key("k2"));
-		reducer.acceptPartial(record(BIN, 3L), key("k3"));
+		reducer.acceptPartial(record(BIN, 1L), key("k1"), 0);
+		reducer.acceptPartial(record(BIN, 5L), key("k2"), 0);
+		reducer.acceptPartial(record(BIN, 3L), key("k3"), 0);
 
 		assertEquals(5L, reducer.getScalarResult().getLong(BIN));
 	}
@@ -110,8 +110,8 @@ public class TestReduceSpec {
 	public void topKFewerThanKMatchesReturnsAllOfThem() {
 		ReduceSpec<Record, Record> reducer = Reduce.topK(BIN, BinDataType.INTEGER, Order.DESC, OrderByFlags.NONE, 5);
 
-		reducer.acceptPartial(record(BIN, 1L), key("k1"));
-		reducer.acceptPartial(record(BIN, 2L), key("k2"));
+		reducer.acceptPartial(record(BIN, 1L), key("k1"), 0);
+		reducer.acceptPartial(record(BIN, 2L), key("k2"), 0);
 
 		assertEquals(2, reducer.getResult().length);
 	}
@@ -123,10 +123,11 @@ public class TestReduceSpec {
 		Key k1 = key("k1");
 
 		// Same key re-scanned (e.g. across a partition migration retry) with a worse, then
-		// better, value. Only one entry for k1 should survive, holding the better value.
-		reducer.acceptPartial(record(BIN, 1L), k1);
-		reducer.acceptPartial(record(BIN, 1L), key("k2"));
-		reducer.acceptPartial(record(BIN, 9L), k1);
+		// better, value and no last-update time. Only one entry for k1 should survive, holding
+		// the better value.
+		reducer.acceptPartial(record(BIN, 1L), k1, 0);
+		reducer.acceptPartial(record(BIN, 1L), key("k2"), 0);
+		reducer.acceptPartial(record(BIN, 9L), k1, 0);
 
 		Record[] result = reducer.getResult();
 		assertEquals(2, result.length);
@@ -140,9 +141,10 @@ public class TestReduceSpec {
 
 		Key k1 = key("k1");
 
-		// Better value seen first; a later, worse re-scan of the same key must not replace it.
-		reducer.acceptPartial(record(BIN, 9L), k1);
-		reducer.acceptPartial(record(BIN, 1L), k1);
+		// Better value seen first; a later, worse re-scan of the same key with the same
+		// last-update time must not replace it.
+		reducer.acceptPartial(record(BIN, 9L), k1, 100);
+		reducer.acceptPartial(record(BIN, 1L), k1, 100);
 
 		Record[] result = reducer.getResult();
 		assertEquals(1, result.length);
@@ -150,16 +152,41 @@ public class TestReduceSpec {
 	}
 
 	@Test
+	public void topKDedupeKeepsLaterLastUpdateTime() {
+		Key k1 = key("k1");
+
+		// The newer copy wins even though it ranks worse, whichever node's copy arrives first.
+		for (boolean newerFirst : new boolean[] {false, true}) {
+			ReduceSpec<Record, Record> reducer = Reduce.topK(BIN, BinDataType.INTEGER, Order.DESC, OrderByFlags.NONE, 5);
+
+			if (newerFirst) {
+				reducer.acceptPartial(record(BIN, 1L), k1, 200);
+				reducer.acceptPartial(record(BIN, 9L), k1, 100);
+			}
+			else {
+				reducer.acceptPartial(record(BIN, 9L), k1, 100);
+				reducer.acceptPartial(record(BIN, 1L), k1, 200);
+			}
+			reducer.acceptPartial(record(BIN, 5L), key("k2"), 100);
+
+			Record[] result = reducer.getResult();
+			assertEquals(2, result.length);
+			assertEquals(5L, result[0].getLong(BIN));
+			assertEquals(1L, result[1].getLong(BIN));
+		}
+	}
+
+	@Test
 	public void topKTiesBrokenDeterministicallyByDigest() {
 		ReduceSpec<Record, Record> a = Reduce.topK(BIN, BinDataType.INTEGER, Order.DESC, OrderByFlags.NONE, 2);
-		a.acceptPartial(record(BIN, 5L), key("alpha"));
-		a.acceptPartial(record(BIN, 5L), key("beta"));
-		a.acceptPartial(record(BIN, 5L), key("gamma"));
+		a.acceptPartial(record(BIN, 5L), key("alpha"), 0);
+		a.acceptPartial(record(BIN, 5L), key("beta"), 0);
+		a.acceptPartial(record(BIN, 5L), key("gamma"), 0);
 
 		ReduceSpec<Record, Record> b = Reduce.topK(BIN, BinDataType.INTEGER, Order.DESC, OrderByFlags.NONE, 2);
-		b.acceptPartial(record(BIN, 5L), key("gamma"));
-		b.acceptPartial(record(BIN, 5L), key("alpha"));
-		b.acceptPartial(record(BIN, 5L), key("beta"));
+		b.acceptPartial(record(BIN, 5L), key("gamma"), 0);
+		b.acceptPartial(record(BIN, 5L), key("alpha"), 0);
+		b.acceptPartial(record(BIN, 5L), key("beta"), 0);
 
 		// Same input set fed in different orders must produce the same result (stable
 		// tie-break by digest), regardless of acceptPartial() call order.
@@ -176,9 +203,9 @@ public class TestReduceSpec {
 	public void topKCaseInsensitiveStringOrdering() {
 		ReduceSpec<Record, Record> reducer = Reduce.topK(BIN, BinDataType.STRING, Order.ASC, OrderByFlags.CASE_INSENSITIVE, 3);
 
-		reducer.acceptPartial(record(BIN, "banana"), key("k1"));
-		reducer.acceptPartial(record(BIN, "Apple"), key("k2"));
-		reducer.acceptPartial(record(BIN, "cherry"), key("k3"));
+		reducer.acceptPartial(record(BIN, "banana"), key("k1"), 0);
+		reducer.acceptPartial(record(BIN, "Apple"), key("k2"), 0);
+		reducer.acceptPartial(record(BIN, "cherry"), key("k3"), 0);
 
 		Record[] result = reducer.getResult();
 		assertEquals(3, result.length);
@@ -198,7 +225,7 @@ public class TestReduceSpec {
 		ReduceSpec<Record, Record> orderBy = Reduce.orderBy(BIN, BinDataType.INTEGER, Order.ASC, OrderByFlags.NONE);
 
 		try {
-			orderBy.acceptPartial(record(BIN, 1L), key("k1"));
+			orderBy.acceptPartial(record(BIN, 1L), key("k1"), 0);
 			fail("Expected UnsupportedOperationException");
 		}
 		catch (UnsupportedOperationException expected) {
@@ -211,7 +238,7 @@ public class TestReduceSpec {
 		ReduceSpec<Record, Record> limit = Reduce.limit(BIN, 5);
 
 		try {
-			limit.acceptPartial(record(BIN, 1L), key("k1"));
+			limit.acceptPartial(record(BIN, 1L), key("k1"), 0);
 			fail("Expected UnsupportedOperationException");
 		}
 		catch (UnsupportedOperationException expected) {
@@ -251,7 +278,7 @@ public class TestReduceSpec {
 		ReduceSpec<Record, Record> reducer = Reduce.topK(BIN, BinDataType.INTEGER, Order.DESC, OrderByFlags.NONE, 1);
 
 		for (int i = 1; i <= 5; i++) {
-			reducer.acceptPartial(record(BIN, (long)i), key("k" + i));
+			reducer.acceptPartial(record(BIN, (long)i), key("k" + i), 0);
 		}
 
 		Record[] result = reducer.getResult();
@@ -290,8 +317,8 @@ public class TestReduceSpec {
 		// and ordering can be asserted by reference.
 		for (String uk : userKeys) {
 			Record shared = record(BIN, 5L);
-			asc.acceptPartial(shared, key(uk));
-			desc.acceptPartial(shared, key(uk));
+			asc.acceptPartial(shared, key(uk), 0);
+			desc.acceptPartial(shared, key(uk), 0);
 		}
 
 		Record[] ra = asc.getResult();
@@ -309,9 +336,9 @@ public class TestReduceSpec {
 	public void topKBytesOrdering() {
 		ReduceSpec<Record, Record> reducer = Reduce.topK(BIN, BinDataType.BYTES, Order.ASC, OrderByFlags.NONE, 2);
 
-		reducer.acceptPartial(record(BIN, new byte[] {0x01, 0x02}), key("k1"));
-		reducer.acceptPartial(record(BIN, new byte[] {0x01}), key("k2"));
-		reducer.acceptPartial(record(BIN, new byte[] {(byte)0xff}), key("k3"));
+		reducer.acceptPartial(record(BIN, new byte[] {0x01, 0x02}), key("k1"), 0);
+		reducer.acceptPartial(record(BIN, new byte[] {0x01}), key("k2"), 0);
+		reducer.acceptPartial(record(BIN, new byte[] {(byte)0xff}), key("k3"), 0);
 
 		Record[] result = reducer.getResult();
 		assertEquals(2, result.length);
@@ -325,9 +352,9 @@ public class TestReduceSpec {
 		// Without CASE_INSENSITIVE, uppercase sorts before lowercase (ASCII order).
 		ReduceSpec<Record, Record> reducer = Reduce.topK(BIN, BinDataType.STRING, Order.ASC, OrderByFlags.NONE, 3);
 
-		reducer.acceptPartial(record(BIN, "banana"), key("k1"));
-		reducer.acceptPartial(record(BIN, "Apple"), key("k2"));
-		reducer.acceptPartial(record(BIN, "Cherry"), key("k3"));
+		reducer.acceptPartial(record(BIN, "banana"), key("k1"), 0);
+		reducer.acceptPartial(record(BIN, "Apple"), key("k2"), 0);
+		reducer.acceptPartial(record(BIN, "Cherry"), key("k3"), 0);
 
 		Record[] result = reducer.getResult();
 		assertEquals("Apple", result[0].getString(BIN));
@@ -351,7 +378,7 @@ public class TestReduceSpec {
 		runConcurrent(threads, (t) -> {
 			for (int i = 0; i < perThread; i++) {
 				long val = (long)t * perThread + i;
-				reducer.acceptPartial(record(BIN, val), key("t" + t + "-k" + i));
+				reducer.acceptPartial(record(BIN, val), key("t" + t + "-k" + i), 0);
 			}
 		});
 

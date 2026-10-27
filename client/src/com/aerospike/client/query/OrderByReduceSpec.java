@@ -35,7 +35,7 @@ final class OrderByReduceSpec implements ReduceSpec<Record, Record> {
 	}
 
 	@Override
-	public void acceptPartial(Record record, Key key) {
+	public void acceptPartial(Record record, Key key, long lastUpdateTime) {
 		throw new UnsupportedOperationException("orderBy must be combined with limit (see Reduce.topK)");
 	}
 
