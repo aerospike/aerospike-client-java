@@ -1,0 +1,81 @@
+name: Discovery k8s
+
+# CLIENT-5542. Kind plus AKO takes 3-5 minutes, so L3 runs as its own job.
+# The job needs the Enterprise feature key (FEATURES_CONF). Fork pull requests
+# do not receive repository secrets, so on a fork pull request the job fails
+# at the key check.
+#
+# The JVM runs on the runner. setup-kind-ako writes the endpoint hostname
+# into the runner hosts file, aimed at the kind node.
+#
+# A schedule runs from the default branch. That run checks out stage. A push
+# to pluggable-discovery, stage or stage-jdk8 checks out the pushed commit.
+
+permissions:
+  contents: read
+  checks: write
+  pull-requests: write
+
+on:
+  pull_request:
+  push:
+    branches:
+      - pluggable-discovery
+      - stage
+      - stage-jdk8
+  schedule:
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+
+jobs:
+  l3:
+    name: L3 discovery (k8s)
+    runs-on: ${{ vars.BUILD_CONTAINER_DISTRO_VERSION }}
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          ref: ${{ github.event_name == 'schedule' && 'stage' || github.sha }}
+
+      - name: Get java version
+        id: java
+        run: |
+          echo java-version="$(grep '<java.version>' pom.xml | sed -e 's/<[^>]*>//g' | awk '{$1=$1};1' | sed 's/^1\.8$/8/')" >> "$GITHUB_OUTPUT"
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: ${{ vars.JAVA_PROVIDER }}
+          java-version: ${{ steps.java.outputs.java-version }}
+
+      - name: Require the Enterprise feature key
+        env:
+          FEATURES_CONF: ${{ secrets.FEATURES_CONF }}
+        run: |
+          set -euo pipefail
+          if [[ -z "${FEATURES_CONF}" ]]; then
+            echo "::error::FEATURES_CONF is required to start the Enterprise cluster. L3 does not run on fork pull requests."
+            exit 1
+          fi
+
+      - name: Setup kind and AKO
+        id: kind-ako
+        uses: aerospike/shared-workflows/.github/actions/setup-kind-ako@308f37e0cd5c7a6386a99ea7afc379d5a4ea9256 # v5.1.0
+        with:
+          features-content: ${{ secrets.FEATURES_CONF }}
+
+      - name: Run K suite
+        env:
+          DISCOVERY_ENDPOINT_HOSTNAME: ${{ steps.kind-ako.outputs.endpoint-hostname }}
+          DISCOVERY_INGRESS_PORTS: ${{ steps.kind-ako.outputs.ingress-ports }}
+          DISCOVERY_SERVICE_NODE_PORTS: ${{ steps.kind-ako.outputs.service-node-ports }}
+          DISCOVERY_KUBECONFIG: ${{ steps.kind-ako.outputs.kubeconfig }}
+          AEROSPIKE_ADMIN_PASSWORD: ${{ steps.kind-ako.outputs.admin-password }}
+        run: bash .github/discovery/run-l3-suite.sh
+
+      - name: Publish Test Results
+        if: ${{ always() && hashFiles('test/target/surefire-reports/TEST-*.xml') != '' }}
+        uses: EnricoMi/publish-unit-test-result-action@d0a4676d0e0b938bc201470d88276b7c74c712b3 # v2.24.0
+        with:
+          files: test/target/surefire-reports/*.xml
+          check_name: "L3 discovery (k8s)"
