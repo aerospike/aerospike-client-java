@@ -63,10 +63,8 @@ jobs:
     uses: ./.github/workflows/discovery-l2.yaml
     with:
       subset: ce
-      server-edition: community
       server-container-repo: database-docker-virtual/aerospike-server
       server-tag: latest
-      enable-tls: "false"
       profile: ${{ matrix.profile }}
     secrets: inherit
 
@@ -85,10 +83,8 @@ jobs:
     uses: ./.github/workflows/discovery-l2.yaml
     with:
       subset: ee
-      server-edition: enterprise
       server-container-repo: database-docker-dev-local/aerospike-server-enterprise
       server-tag: 8.2.0.0
-      enable-tls: "true"
       tls-listen-port-base: "43331"
       profile: ${{ matrix.profile }}
     secrets: inherit

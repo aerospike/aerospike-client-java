@@ -4,11 +4,7 @@ on:
   workflow_call:
     inputs:
       subset:
-        description: ce or ee
-        type: string
-        required: true
-      server-edition:
-        description: community or enterprise
+        description: ce runs a community cluster without TLS, ee an enterprise cluster with TLS
         type: string
         required: true
       server-container-repo:
@@ -17,10 +13,6 @@ on:
         required: true
       server-tag:
         description: Aerospike image tag
-        type: string
-        required: true
-      enable-tls:
-        description: Enable server TLS and TLS proxy listeners
         type: string
         required: true
       tls-listen-port-base:
@@ -160,7 +152,7 @@ jobs:
         # CLIENT-5756 (shared-workflows PR #385) for start-nodes, network-subnet and node control; repin to main once merged
         uses: aerospike/shared-workflows/.github/actions/setup-aerospike-server@74c2c191a236dce68aa5e3a8de7cce1cea1e02a7
         with:
-          server-edition: ${{ inputs.server-edition }}
+          server-edition: ${{ inputs.subset == 'ee' && 'enterprise' || 'community' }}
           server-container-repo: ${{ inputs.server-container-repo }}
           server-tag: ${{ inputs.server-tag }}
           num-nodes: ${{ steps.profile.outputs.num-nodes }}
@@ -171,7 +163,7 @@ jobs:
           network-name: discovery-aerospike-net
           publish-ports: "false"
           startup-timeout: "60"
-          enable-tls: ${{ inputs.enable-tls }}
+          enable-tls: ${{ inputs.subset == 'ee' }}
           include-tls-name-san: ${{ steps.profile.outputs.include-tls-name-san }}
           tls-cert-cn: ${{ steps.profile.outputs.tls-cert-cn }}
           features-content: ${{ inputs.subset == 'ee' && secrets.FEATURES_CONF || '' }}
