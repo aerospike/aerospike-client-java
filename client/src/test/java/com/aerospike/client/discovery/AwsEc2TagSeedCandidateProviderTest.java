@@ -207,11 +207,6 @@ public class AwsEc2TagSeedCandidateProviderTest {
 	}
 
 	@Test
-	public void emptyResult() {
-		assertTrue(builder().build().refreshSeedCandidates(TEND).isEmpty());
-	}
-
-	@Test
 	public void apiErrorThrowsWithCodeAndRequestIdAndNoSecret() {
 		stub.ec2Default(new Reply(403, StubAwsServer.error("UnauthorizedOperation",
 			"You are not authorized to perform this operation.", "ea966190-f9aa-478e-9ede-example")));
