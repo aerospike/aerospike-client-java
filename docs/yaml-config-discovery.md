@@ -280,10 +280,10 @@ return quickly. Credentials it returns with an expiry are cached until five minu
 it; without one they are used for the life of the provider.
 
 The chain resolves once, at the first refresh, within `init_timeout_ms`, and logs
-`AWS EC2 seed provider credentials from <source>: access key <id>` at info level. Later
+`AWS EC2 seed provider credentials from <source>` at info level. Later
 refreshes reuse the source that answered. Temporary credentials are cached with their
 expiry and reloaded on the refreshing thread when they are within five minutes of expiry,
-never on a timer. No access key secret, session token, web identity token or signature is
+never on a timer. No access key id, secret, session token, web identity token or signature is
 logged or put in a message.
 
 Deadline: the Java client runs discovery on the tend thread only. The provider needs

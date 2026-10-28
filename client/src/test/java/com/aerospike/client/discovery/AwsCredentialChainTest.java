@@ -21,6 +21,7 @@ import static com.aerospike.client.discovery.AwsEc2TagSeedCandidateProviderTest.
 import static com.aerospike.client.discovery.AwsEc2TagSeedCandidateProviderTest.TOKEN;
 import static com.aerospike.client.discovery.AwsEc2TagSeedCandidateProviderTest.assertNoSecret;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
@@ -139,8 +140,8 @@ public class AwsCredentialChainTest {
 		assertEquals("AKIAENV", refresh(provider));
 		assertEquals("environment", provider.credentialSource());
 		assertEquals(TOKEN, lastEc2().headers.get("x-amz-security-token"));
-		assertTrue(messages.toString(), messages.contains("INFO AWS EC2 seed provider credentials from environment: " +
-			"access key AKIAENV"));
+		assertTrue(messages.toString(), messages.contains("INFO AWS EC2 seed provider credentials from environment"));
+		assertFalse(messages.toString(), messages.toString().contains("AKIAENV"));
 		assertNoSecret(messages.toString(), "");
 	}
 
