@@ -22,7 +22,7 @@ on:
         default: ""
       profile:
         description: >-
-          A run_l2.sh profile: default, reachable, pass-through-names,
+          A discovery-l2-topology profile: default, reachable, pass-through-names,
           pass-through-ports, port-map-range, cn-only, low-mtu, port-range or
           idle-reset
         type: string
@@ -46,176 +46,49 @@ jobs:
         with:
           ref: ${{ github.ref }}
 
-      - name: Require JFrog OIDC
-        env:
-          OIDC_PROVIDER: ${{ secrets.JFROG_OIDC_PROVIDER }}
-          OIDC_AUDIENCE: ${{ secrets.JFROG_OIDC_AUDIENCE }}
-        run: |
-          set -euo pipefail
-          if [[ -z "${OIDC_PROVIDER}" || -z "${OIDC_AUDIENCE}" ]]; then
-            echo "::error::JFROG_OIDC_PROVIDER and JFROG_OIDC_AUDIENCE are required to pull the Aerospike image."
-            exit 1
-          fi
-
-      - name: Profile settings
-        id: profile
+      - name: Profile suite
+        id: suite
         env:
           PROFILE: ${{ inputs.profile }}
-          SUBSET: ${{ inputs.subset }}
         run: |
           set -euo pipefail
-          num_nodes=3
-          extra_hosts=""
-          subnet=""
-          suite='**/SuiteDiscovery.class'
-          control=false
-          alternate_host=""
-          tls_name_san=true
-          cert_cn=aerospike-tls
-          cert_shape=""
-          client_mtu=""
-          port_range=""
-          proxy_sysctls=""
-          idle_reset=""
           case "${PROFILE}" in
-            default)
-              num_nodes=4
-              control=true
-              ;;
-            reachable)
-              extra_hosts=as-reachable.test:127.0.0.1
-              suite='**/TestL2ReachableNode.class'
-              ;;
-            pass-through-names)
-              extra_hosts=node-1.pass-through.test:127.0.0.1,node-2.pass-through.test:127.0.0.1,node-3.pass-through.test:127.0.0.1
-              suite='**/TestL2PassThrough.class'
-              ;;
-            pass-through-ports)
-              num_nodes=4
-              control=true
-              alternate_host=as-pass-through.test
-              extra_hosts=as-pass-through.test:127.0.0.1
-              suite='**/TestL2PassThrough.class'
-              ;;
-            port-map-range)
-              num_nodes=4
-              control=true
-              subnet=172.30.66.0/24
-              suite='**/TestL2PortMapRange.class'
-              ;;
-            cn-only)
-              tls_name_san=false
-              cert_shape=cn-only
-              suite='**/TestL2CnOnlyCertificate.class'
-              ;;
-            low-mtu)
-              client_mtu=1200
-              suite='**/TestL2LowMtu.class'
-              ;;
-            port-range)
-              port_range="40000 40009"
-              proxy_sysctls="net.ipv4.ip_local_port_range=${port_range}"
-              suite='**/TestL2SourcePortRange.class'
-              ;;
-            idle-reset)
-              idle_reset=1
-              suite='**/TestL2IdleReset.class'
-              ;;
+            default) suite='**/SuiteDiscovery.class' ;;
+            port-range) suite='**/TestL2SourcePortRange.class' ;;
+            reachable) suite='**/TestL2ReachableNode.class' ;;
+            pass-through-names | pass-through-ports) suite='**/TestL2PassThrough.class' ;;
+            port-map-range) suite='**/TestL2PortMapRange.class' ;;
+            cn-only) suite='**/TestL2CnOnlyCertificate.class' ;;
+            low-mtu) suite='**/TestL2LowMtu.class' ;;
+            idle-reset) suite='**/TestL2IdleReset.class' ;;
             *)
               echo "::error::Unknown profile ${PROFILE}"
               exit 1
               ;;
           esac
-          # Outside cn-only the CN must not match the tls-name, so a CN fallback cannot pass N-6.
-          if [[ "${SUBSET}" == "ee" && "${PROFILE}" != "cn-only" ]]; then
-            cert_cn=not-the-tls-name
-            cert_shape=san-only
-          fi
-          {
-            echo "num-nodes=${num_nodes}"
-            echo "extra-hosts=${extra_hosts}"
-            echo "network-subnet=${subnet}"
-            echo "suite=${suite}"
-            echo "control=${control}"
-            echo "alternate-host=${alternate_host}"
-            echo "include-tls-name-san=${tls_name_san}"
-            echo "tls-cert-cn=${cert_cn}"
-            echo "cert-shape=${cert_shape}"
-            echo "client-network-mtu=${client_mtu}"
-            echo "proxy-port-range=${port_range}"
-            echo "proxy-sysctls=${proxy_sysctls}"
-            echo "idle-reset=${idle_reset}"
-          } >> "${GITHUB_OUTPUT}"
+          echo "suite=${suite}" >> "${GITHUB_OUTPUT}"
 
-      - name: Setup Aerospike cluster
-        id: aerospike
-        # CLIENT-5756 (shared-workflows PR #385) for start-nodes, network-subnet and node control; repin to main once merged
-        uses: aerospike/shared-workflows/.github/actions/setup-aerospike-server@74c2c191a236dce68aa5e3a8de7cce1cea1e02a7
+      - name: Setup L2 topology
+        id: l2
+        # Moves to a release tag of aerospike-client-conformance once discovery-l2-topology is published.
+        uses: aerospike/aerospike-client-conformance/.github/actions/discovery-l2-topology@discovery-node-server
         with:
+          profile: ${{ inputs.profile }}
+          subset: ${{ inputs.subset }}
           server-edition: ${{ inputs.subset == 'ee' && 'enterprise' || 'community' }}
           server-container-repo: ${{ inputs.server-container-repo }}
           server-tag: ${{ inputs.server-tag }}
-          num-nodes: ${{ steps.profile.outputs.num-nodes }}
-          start-nodes: "3"
-          extra-hosts: ${{ steps.profile.outputs.extra-hosts }}
-          network-subnet: ${{ steps.profile.outputs.network-subnet }}
-          container-name-prefix: discovery-as
-          network-name: discovery-aerospike-net
-          publish-ports: "false"
-          startup-timeout: "60"
           enable-tls: ${{ inputs.subset == 'ee' }}
-          include-tls-name-san: ${{ steps.profile.outputs.include-tls-name-san }}
-          tls-cert-cn: ${{ steps.profile.outputs.tls-cert-cn }}
+          tls-listen-port-base: ${{ inputs.tls-listen-port-base }}
           features-content: ${{ inputs.subset == 'ee' && secrets.FEATURES_CONF || '' }}
           oidc-provider: ${{ secrets.JFROG_OIDC_PROVIDER }}
           oidc-audience: ${{ secrets.JFROG_OIDC_AUDIENCE }}
-
-      - name: List running nodes
-        id: nodes
-        env:
-          CONTAINER_NAMES: ${{ steps.aerospike.outputs.container-names }}
-        run: |
-          set -euo pipefail
-          echo "running=$(cut -d, -f1-3 <<< "${CONTAINER_NAMES}")" >> "${GITHUB_OUTPUT}"
-
-      - name: Setup discovery topology
-        id: topology
-        uses: aerospike/shared-workflows/.github/actions/setup-discovery-topology@318e453bea7f3c068ead24057dab07312a7fe62e
-        with:
-          container-names: ${{ steps.nodes.outputs.running }}
-          aerospike-network-name: ${{ steps.aerospike.outputs.network-name }}
-          tls-listen-port-base: ${{ inputs.tls-listen-port-base }}
-          client-network-mtu: ${{ steps.profile.outputs.client-network-mtu }}
-          proxy-sysctls: ${{ steps.profile.outputs.proxy-sysctls }}
-
-      - name: Apply profile
-        id: apply
-        if: ${{ contains(fromJSON('["reachable", "pass-through-names", "pass-through-ports", "port-map-range", "low-mtu"]'), inputs.profile) }}
-        env:
-          L2_PROFILE: ${{ inputs.profile }}
-          AEROSPIKE_CONTAINER_NAMES: ${{ steps.nodes.outputs.running }}
-          AEROSPIKE_NETWORK: ${{ steps.aerospike.outputs.network-name }}
-          DISCOVERY_PROXY_MAP: ${{ steps.topology.outputs.proxy-name-port-map }}
-          CLIENT_NETWORK: ${{ steps.topology.outputs.client-network-name }}
-          TOXIPROXY_HOST: ${{ steps.topology.outputs.toxiproxy-container-name }}
-          TOXIPROXY_URL: ${{ steps.topology.outputs.toxiproxy-url }}
-        run: bash .github/discovery/apply-profile.sh
 
       - name: Setup L2 Java client runner
         id: runner
         uses: ./.github/actions/setup-l2-client-runner
         with:
           crypto-type: gnu
-
-      - name: Start node control helper
-        id: control
-        if: ${{ steps.profile.outputs.control == 'true' }}
-        uses: aerospike/shared-workflows/.github/actions/aerospike-node-control@74c2c191a236dce68aa5e3a8de7cce1cea1e02a7
-        with:
-          cluster-settings: ${{ steps.aerospike.outputs.cluster-settings }}
-          template-node-index: ${{ steps.profile.outputs.num-nodes }}
-          control-dir: ${{ github.workspace }}/test/target/l2-control
-          alternate-access-address: ${{ steps.profile.outputs.alternate-host }}
 
       - name: Run L2 discovery suite
         # N-17 (CN fallback) and F-1 (unchecked pooled sockets) are red on Java; their checks report without blocking.
@@ -224,35 +97,20 @@ jobs:
           CLIENT_IMAGE: ${{ steps.runner.outputs.client-image }}
           CLIENT_VOLUMES: ${{ steps.runner.outputs.client-volumes }}
           CLIENT_WORKDIR: ${{ steps.runner.outputs.client-workdir }}
-          CLIENT_NETWORK: ${{ steps.topology.outputs.client-network-name }}
+          CLIENT_NETWORK: ${{ steps.l2.outputs.client-network }}
+          ENV_FILE: ${{ steps.l2.outputs.env-file }}
+          CLIENT_HOSTS: ${{ steps.l2.outputs.client-hosts }}
+          TLS_CERT_DIR: ${{ steps.l2.outputs.tls-cert-dir }}
           DISCOVERY_SUBSET: ${{ inputs.subset }}
-          DISCOVERY_ENDPOINT_HOSTNAME: ${{ steps.topology.outputs.endpoint-hostname }}
-          DISCOVERY_ENDPOINT_PORT_BASE: ${{ steps.topology.outputs.listen-port-base }}
-          DISCOVERY_ENDPOINT_PORTS: ${{ steps.topology.outputs.endpoint-ports }}
-          DISCOVERY_TLS_ENDPOINT_PORTS: ${{ steps.topology.outputs.tls-endpoint-ports }}
-          DISCOVERY_PROXY_MAP: ${{ steps.topology.outputs.proxy-name-port-map }}
-          TOXIPROXY_URL: ${{ steps.topology.outputs.toxiproxy-url }}
-          TOXIPROXY_HOST: ${{ steps.topology.outputs.toxiproxy-container-name }}
-          AEROSPIKE_CONTAINER_NAMES: ${{ steps.nodes.outputs.running }}
-          DISCOVERY_CONTROL_DIR: ${{ steps.control.outputs.control-dir }}
-          CLIENT_HOSTS: ${{ steps.apply.outputs.client-hosts }}
-          L2_PROFILE: ${{ inputs.profile }}
-          L2_SUITE: ${{ steps.profile.outputs.suite }}
-          DISCOVERY_REACHABLE_NODE: ${{ steps.apply.outputs.reachable-node }}
-          DISCOVERY_PASS_THROUGH_BRANCH: ${{ steps.apply.outputs.pass-through-branch }}
-          DISCOVERY_PORT_MAP_RANGE: ${{ steps.apply.outputs.port-map-range }}
-          DISCOVERY_PORT_MAP_PORT_BASE: ${{ steps.apply.outputs.port-map-port-base }}
-          DISCOVERY_TLS_CERT_SHAPE: ${{ steps.profile.outputs.cert-shape }}
-          DISCOVERY_CLIENT_NETWORK_MTU: ${{ steps.profile.outputs.client-network-mtu }}
-          DISCOVERY_PROXY_PORT_RANGE: ${{ steps.profile.outputs.proxy-port-range }}
-          DISCOVERY_IDLE_RESET: ${{ steps.profile.outputs.idle-reset }}
-          TLS_CERT_DIR: ${{ steps.aerospike.outputs.tls-cert-dir }}
+          L2_SUITE: ${{ steps.suite.outputs.suite }}
         run: |
           set -euo pipefail
           run_args=(
             --rm
             --network "${CLIENT_NETWORK}"
             --workdir "${CLIENT_WORKDIR}"
+            --env-file "${ENV_FILE}"
+            -e L2_SUITE
           )
           remainder="${CLIENT_VOLUMES}"
           while [[ -n "${remainder}" ]]; do
@@ -274,30 +132,13 @@ jobs:
             run_args+=(--add-host "${host}")
           done
           # Image entrypoint is mvn-entrypoint.sh, which execs the arguments.
-          docker run "${run_args[@]}" \
-            -e DISCOVERY_SUBSET \
-            -e DISCOVERY_ENDPOINT_HOSTNAME \
-            -e DISCOVERY_ENDPOINT_PORT_BASE \
-            -e DISCOVERY_ENDPOINT_PORTS \
-            -e DISCOVERY_TLS_ENDPOINT_PORTS \
-            -e DISCOVERY_PROXY_MAP \
-            -e TOXIPROXY_URL \
-            -e TOXIPROXY_HOST \
-            -e TOXIPROXY_CONTROL_PORT=8474 \
-            -e AEROSPIKE_CONTAINER_NAMES \
-            -e DISCOVERY_CONTROL_DIR \
-            -e DISCOVERY_REACHABLE_NODE \
-            -e DISCOVERY_PASS_THROUGH_BRANCH \
-            -e DISCOVERY_PORT_MAP_RANGE \
-            -e DISCOVERY_PORT_MAP_PORT_BASE \
-            -e DISCOVERY_TLS_CERT_SHAPE \
-            -e DISCOVERY_CLIENT_NETWORK_MTU \
-            -e DISCOVERY_PROXY_PORT_RANGE \
-            -e DISCOVERY_IDLE_RESET \
-            -e L2_PROFILE \
-            -e L2_SUITE \
-            "${CLIENT_IMAGE}" \
-            bash .github/discovery/run-l2-suite.sh
+          docker run "${run_args[@]}" "${CLIENT_IMAGE}" bash .github/discovery/run-l2-suite.sh
+
+      - name: Show the node server log
+        if: ${{ always() && steps.l2.outputs.node-server-log != '' }}
+        env:
+          LOG_FILE: ${{ steps.l2.outputs.node-server-log }}
+        run: cat "${LOG_FILE}"
 
       - name: Fix bind-mount ownership
         if: ${{ always() }}
