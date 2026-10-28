@@ -146,8 +146,7 @@ if [ "${1:-}" = "--client" ]; then
 	run_client
 fi
 
-# setup-discovery-topology at shared-workflows #370 head; repin to main once #370, #371 and #374 merge.
-SHARED_WORKFLOWS_COMMIT=30b2b980e2b5fa2c06c48a5bcad71575a4b40c2b
+SHARED_WORKFLOWS_COMMIT=318e453bea7f3c068ead24057dab07312a7fe62e
 ACTION_PATH=.github/actions/setup-discovery-topology
 CLIENT_IMAGE=maven:3-ibm-semeru-21-noble@sha256:0ad9f1918f4a30f89713a03e39659ef3135a2a08b257a90168a6033335a48bcb
 CURL_IMAGE=curlimages/curl:8.11.1
