@@ -157,7 +157,8 @@ jobs:
 
       - name: Setup Aerospike cluster
         id: aerospike
-        uses: aerospike/shared-workflows/.github/actions/setup-aerospike-server@318e453bea7f3c068ead24057dab07312a7fe62e
+        # CLIENT-5756 (shared-workflows PR #385) for start-nodes, network-subnet and node control; repin to main once merged
+        uses: aerospike/shared-workflows/.github/actions/setup-aerospike-server@74c2c191a236dce68aa5e3a8de7cce1cea1e02a7
         with:
           server-edition: ${{ inputs.server-edition }}
           server-container-repo: ${{ inputs.server-container-repo }}
@@ -177,14 +178,13 @@ jobs:
           oidc-provider: ${{ secrets.JFROG_OIDC_PROVIDER }}
           oidc-audience: ${{ secrets.JFROG_OIDC_AUDIENCE }}
 
-      - name: Split running and parked nodes
+      - name: List running nodes
         id: nodes
         env:
           CONTAINER_NAMES: ${{ steps.aerospike.outputs.container-names }}
         run: |
           set -euo pipefail
           echo "running=$(cut -d, -f1-3 <<< "${CONTAINER_NAMES}")" >> "${GITHUB_OUTPUT}"
-          echo "parked=$(cut -s -d, -f4- <<< "${CONTAINER_NAMES}")" >> "${GITHUB_OUTPUT}"
 
       - name: Setup discovery topology
         id: topology
@@ -215,6 +215,16 @@ jobs:
         with:
           crypto-type: gnu
 
+      - name: Start node control helper
+        id: control
+        if: ${{ steps.profile.outputs.control == 'true' }}
+        uses: aerospike/shared-workflows/.github/actions/aerospike-node-control@74c2c191a236dce68aa5e3a8de7cce1cea1e02a7
+        with:
+          cluster-settings: ${{ steps.aerospike.outputs.cluster-settings }}
+          template-node-index: ${{ steps.profile.outputs.num-nodes }}
+          control-dir: ${{ github.workspace }}/test/target/l2-control
+          alternate-access-address: ${{ steps.profile.outputs.alternate-host }}
+
       - name: Run L2 discovery suite
         # N-17 (CN fallback) and F-1 (unchecked pooled sockets) are red on Java; their checks report without blocking.
         continue-on-error: ${{ inputs.profile == 'cn-only' || inputs.profile == 'idle-reset' }}
@@ -232,10 +242,7 @@ jobs:
           TOXIPROXY_URL: ${{ steps.topology.outputs.toxiproxy-url }}
           TOXIPROXY_HOST: ${{ steps.topology.outputs.toxiproxy-container-name }}
           AEROSPIKE_CONTAINER_NAMES: ${{ steps.nodes.outputs.running }}
-          AEROSPIKE_NETWORK: ${{ steps.aerospike.outputs.network-name }}
-          PARKED_NODES: ${{ steps.nodes.outputs.parked }}
-          NODE_CONTROL: ${{ steps.profile.outputs.control }}
-          ALTERNATE_HOST: ${{ steps.profile.outputs.alternate-host }}
+          DISCOVERY_CONTROL_DIR: ${{ steps.control.outputs.control-dir }}
           CLIENT_HOSTS: ${{ steps.apply.outputs.client-hosts }}
           L2_PROFILE: ${{ inputs.profile }}
           L2_SUITE: ${{ steps.profile.outputs.suite }}
@@ -274,14 +281,6 @@ jobs:
           for host in "${client_hosts[@]}"; do
             run_args+=(--add-host "${host}")
           done
-          if [[ "${NODE_CONTROL}" == "true" ]]; then
-            export DISCOVERY_CONTROL_DIR="${GITHUB_WORKSPACE}/test/target/l2-control"
-            mkdir -p "${DISCOVERY_CONTROL_DIR}"
-            bash .github/discovery/node-control.sh "${DISCOVERY_CONTROL_DIR}" "${AEROSPIKE_NETWORK}" \
-              "${PARKED_NODES%%,*}" "${AEROSPIKE_CONTAINER_NAMES%%,*}" "${ALTERNATE_HOST}" &
-            control_pid=$!
-            trap 'kill "${control_pid}" 2>/dev/null || true' EXIT
-          fi
           # Image entrypoint is mvn-entrypoint.sh, which execs the arguments.
           docker run "${run_args[@]}" \
             -e DISCOVERY_SUBSET \
