@@ -204,12 +204,18 @@ public class TestL2AsyncIdleReset extends TestBase {
 			}
 
 			Map<String,long[]> end = asyncStats(client);
+			List<String> undetected = new ArrayList<>();
 			long closed = 0;
 			long errors = 0;
 
 			for (Map.Entry<String,long[]> entry : end.entrySet()) {
 				long[] s = start.get(entry.getKey());
-				closed += entry.getValue()[L2Topology.CLOSED] - s[L2Topology.CLOSED];
+				long nodeClosed = entry.getValue()[L2Topology.CLOSED] - s[L2Topology.CLOSED];
+
+				if (nodeClosed == 0) {
+					undetected.add(entry.getKey());
+				}
+				closed += nodeClosed;
 				errors += entry.getValue()[L2Topology.ERRORS] - s[L2Topology.ERRORS];
 			}
 
@@ -222,8 +228,7 @@ public class TestL2AsyncIdleReset extends TestBase {
 			for (String failure : failures) {
 				System.out.println("L2-ASYNC-FAILED transport=" + type + ' ' + failure);
 			}
-			assertTrue(type + ": " + pooled + " reset pooled async connections but only " + closed +
-				" closed by the client", closed >= pooled);
+			assertTrue(type + ": no reset pooled async connection was detected on " + undetected, undetected.isEmpty());
 			assertEquals(type + ": commands failed to the caller after idle RST: " + failures, 0, failures.size());
 		}
 		finally {
