@@ -198,7 +198,7 @@ public class TestL2IdleReset extends TestBase {
 	 * Open a connection through a listener and complete one info request on it, so Toxiproxy has
 	 * linked it to the node.
 	 */
-	private static Socket probe(L2Node node) throws IOException {
+	static Socket probe(L2Node node) throws IOException {
 		Socket socket = new Socket();
 		socket.connect(new InetSocketAddress(L2Topology.host, node.port), PROBE_TIMEOUT);
 		socket.setSoTimeout(PROBE_TIMEOUT);
@@ -219,7 +219,7 @@ public class TestL2IdleReset extends TestBase {
 	/**
 	 * Read the next byte of a probe connection: RST when the peer reset it, FIN when it closed it.
 	 */
-	private static String probeResult(Socket socket) {
+	static String probeResult(Socket socket) {
 		try {
 			int b = socket.getInputStream().read();
 			return b < 0 ? "FIN" : "DATA " + b;
