@@ -172,9 +172,9 @@ public final class AwsTagsRealProbe {
 			long wait = (long)refreshes * policy.discoveryRefreshInterval + 60000;
 			deadline = System.currentTimeMillis() + wait;
 
-			while (count(" returned ") < refreshes && count("Seed candidate provider exceeded") == 0) {
+			while (refreshes() < refreshes && count("Seed candidate provider exceeded") == 0) {
 				if (System.currentTimeMillis() > deadline) {
-					return counts(json, client, namespace).field("error", "only " + count(" returned ") +
+					return counts(json, client, namespace).field("error", "only " + refreshes() +
 						" refreshes in " + wait + "ms").end();
 				}
 				Thread.sleep(100);
@@ -197,7 +197,7 @@ public final class AwsTagsRealProbe {
 		return json.field("nodes", client.getNodes().length)
 			.field("owned_partitions", ownedPartitions(client, namespace))
 			.field("partitions", Node.PARTITIONS)
-			.field("refreshes", count(" returned "))
+			.field("refreshes", refreshes())
 			.field("overruns", count("exceeding tend deadline"))
 			.strings("failures", failures)
 			.field("tripped", count("Seed candidate provider exceeded") > 0);
@@ -212,6 +212,17 @@ public final class AwsTagsRealProbe {
 			}
 		}
 		return null;
+	}
+
+	private static int refreshes() {
+		int n = 0;
+
+		for (String m : messages) {
+			if (m.startsWith("AWS EC2 seed provider ") && m.contains(" returned ")) {
+				n++;
+			}
+		}
+		return n;
 	}
 
 	private static int count(String text) {
