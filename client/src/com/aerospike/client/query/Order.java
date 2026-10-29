@@ -18,8 +18,8 @@ package com.aerospike.client.query;
 
 /**
  * Sort direction for a Top-K order key; see
- * {@link Statement#setOrderBy(String, BinDataType, Order, OrderByFlags)} and
- * {@link Statement#thenOrderBy(String, BinDataType, Order, OrderByFlags)}.
+ * {@link Statement#setOrderBy(String, BinDataType, Order)} and
+ * {@link Statement#thenOrderBy(String, BinDataType, Order)}.
  */
 public enum Order {
 	/**

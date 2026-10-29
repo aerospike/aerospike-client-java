@@ -60,7 +60,6 @@ import com.aerospike.client.query.Filter;
 import com.aerospike.client.query.IndexCollectionType;
 import com.aerospike.client.query.Order;
 import com.aerospike.client.query.OrderBy;
-import com.aerospike.client.query.OrderByFlags;
 import com.aerospike.client.query.PartitionStatus;
 import com.aerospike.client.query.PartitionTracker.NodePartitions;
 import com.aerospike.client.query.Statement;
@@ -2394,7 +2393,7 @@ public class Command {
 			byte[] bin = bins[i];
 			field[offset] = (byte)getOrderByType(keys[i].type);
 			field[offset + 1] = (byte)getOrderByDirection(keys[i].order);
-			field[offset + 2] = (byte)(keys[i].flags == OrderByFlags.CASE_INSENSITIVE ? 1 : 0);
+			field[offset + 2] = 0; // Flags: none apply to the supported order-by types.
 			field[offset + 3] = (byte)bin.length;
 			System.arraycopy(bin, 0, field, offset + 4, bin.length);
 			offset += 4 + bin.length;
@@ -2414,8 +2413,6 @@ public class Command {
 				return 1;
 			case DOUBLE:
 				return 2;
-			case STRING:
-				return 3;
 			case BYTES:
 				return 4;
 			default:

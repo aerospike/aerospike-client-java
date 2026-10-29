@@ -27,7 +27,6 @@ import com.aerospike.client.command.FieldType;
 import com.aerospike.client.policy.QueryPolicy;
 import com.aerospike.client.query.BinDataType;
 import com.aerospike.client.query.Order;
-import com.aerospike.client.query.OrderByFlags;
 import com.aerospike.client.query.Statement;
 import com.aerospike.test.sync.TestSync;
 
@@ -70,12 +69,12 @@ public class TestTopKRequestEncoding extends TestSync {
 		Node node = cluster.getRandomNode();
 		Statement statement = statement();
 		statement.setOrderBy("rank", BinDataType.INTEGER, Order.DESC);
-		statement.thenOrderBy("name", BinDataType.STRING, Order.ASC, OrderByFlags.CASE_INSENSITIVE);
+		statement.thenOrderBy("blob", BinDataType.BYTES, Order.ASC);
 		statement.setTopK(3);
 
 		Map<Integer, byte[]> fields = fields(build(cluster, node, statement));
 		assertArrayEquals(
-			new byte[] {1, 1, 0, 4, 'r', 'a', 'n', 'k', 3, 0, 1, 4, 'n', 'a', 'm', 'e'},
+			new byte[] {1, 1, 0, 4, 'r', 'a', 'n', 'k', 4, 0, 0, 4, 'b', 'l', 'o', 'b'},
 			fields.get(FieldType.ORDER_BY));
 	}
 

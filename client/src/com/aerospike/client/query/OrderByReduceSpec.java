@@ -20,7 +20,7 @@ import com.aerospike.client.Key;
 import com.aerospike.client.Record;
 
 /**
- * Sort-metadata-only reduce spec produced by {@link Reduce#orderBy(String, BinDataType, Order, OrderByFlags)}.
+ * Sort-metadata-only reduce spec produced by {@link Reduce#orderBy(String, BinDataType, Order)}.
  * <p>
  * Carries no combiner logic by itself. {@link Statement#setReduce(ReduceSpec...)} pairs this
  * with a {@link LimitReduceSpec} on the same bin and composes them into a {@link TopKReduceSpec}
@@ -30,8 +30,8 @@ import com.aerospike.client.Record;
 final class OrderByReduceSpec implements ReduceSpec<Record, Record> {
 	final OrderBy key;
 
-	OrderByReduceSpec(String bin, BinDataType type, Order order, OrderByFlags flags) {
-		this.key = new OrderBy(bin, type, order, flags);
+	OrderByReduceSpec(String bin, BinDataType type, Order order) {
+		this.key = new OrderBy(bin, type, order);
 	}
 
 	@Override

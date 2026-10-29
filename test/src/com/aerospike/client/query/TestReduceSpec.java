@@ -67,7 +67,7 @@ public class TestReduceSpec {
 
 	@Test
 	public void topKReturnsKLargestDescending() {
-		ReduceSpec<Record, Record> reducer = Reduce.topK(BIN, BinDataType.INTEGER, Order.DESC, OrderByFlags.NONE, 3);
+		ReduceSpec<Record, Record> reducer = Reduce.topK(BIN, BinDataType.INTEGER, Order.DESC, 3);
 
 		for (int i = 1; i <= 10; i++) {
 			reducer.acceptPartial(record(BIN, (long)i), key("k" + i), 0);
@@ -82,7 +82,7 @@ public class TestReduceSpec {
 
 	@Test
 	public void topKReturnsKSmallestAscending() {
-		ReduceSpec<Record, Record> reducer = Reduce.topK(BIN, BinDataType.INTEGER, Order.ASC, OrderByFlags.NONE, 3);
+		ReduceSpec<Record, Record> reducer = Reduce.topK(BIN, BinDataType.INTEGER, Order.ASC, 3);
 
 		for (int i = 1; i <= 10; i++) {
 			reducer.acceptPartial(record(BIN, (long)i), key("k" + i), 0);
@@ -97,7 +97,7 @@ public class TestReduceSpec {
 
 	@Test
 	public void topKScalarResultIsBestRanked() {
-		ReduceSpec<Record, Record> reducer = Reduce.topK(BIN, BinDataType.INTEGER, Order.DESC, OrderByFlags.NONE, 3);
+		ReduceSpec<Record, Record> reducer = Reduce.topK(BIN, BinDataType.INTEGER, Order.DESC, 3);
 
 		reducer.acceptPartial(record(BIN, 1L), key("k1"), 0);
 		reducer.acceptPartial(record(BIN, 5L), key("k2"), 0);
@@ -108,7 +108,7 @@ public class TestReduceSpec {
 
 	@Test
 	public void topKFewerThanKMatchesReturnsAllOfThem() {
-		ReduceSpec<Record, Record> reducer = Reduce.topK(BIN, BinDataType.INTEGER, Order.DESC, OrderByFlags.NONE, 5);
+		ReduceSpec<Record, Record> reducer = Reduce.topK(BIN, BinDataType.INTEGER, Order.DESC, 5);
 
 		reducer.acceptPartial(record(BIN, 1L), key("k1"), 0);
 		reducer.acceptPartial(record(BIN, 2L), key("k2"), 0);
@@ -118,7 +118,7 @@ public class TestReduceSpec {
 
 	@Test
 	public void topKDedupesSameDigestKeepingBetterValue() {
-		ReduceSpec<Record, Record> reducer = Reduce.topK(BIN, BinDataType.INTEGER, Order.DESC, OrderByFlags.NONE, 5);
+		ReduceSpec<Record, Record> reducer = Reduce.topK(BIN, BinDataType.INTEGER, Order.DESC, 5);
 
 		Key k1 = key("k1");
 
@@ -137,7 +137,7 @@ public class TestReduceSpec {
 
 	@Test
 	public void topKDedupeIgnoresWorseRescan() {
-		ReduceSpec<Record, Record> reducer = Reduce.topK(BIN, BinDataType.INTEGER, Order.DESC, OrderByFlags.NONE, 5);
+		ReduceSpec<Record, Record> reducer = Reduce.topK(BIN, BinDataType.INTEGER, Order.DESC, 5);
 
 		Key k1 = key("k1");
 
@@ -157,7 +157,7 @@ public class TestReduceSpec {
 
 		// The newer copy wins even though it ranks worse, whichever node's copy arrives first.
 		for (boolean newerFirst : new boolean[] {false, true}) {
-			ReduceSpec<Record, Record> reducer = Reduce.topK(BIN, BinDataType.INTEGER, Order.DESC, OrderByFlags.NONE, 5);
+			ReduceSpec<Record, Record> reducer = Reduce.topK(BIN, BinDataType.INTEGER, Order.DESC, 5);
 
 			if (newerFirst) {
 				reducer.acceptPartial(record(BIN, 1L), k1, 200);
@@ -178,12 +178,12 @@ public class TestReduceSpec {
 
 	@Test
 	public void topKTiesBrokenDeterministicallyByDigest() {
-		ReduceSpec<Record, Record> a = Reduce.topK(BIN, BinDataType.INTEGER, Order.DESC, OrderByFlags.NONE, 2);
+		ReduceSpec<Record, Record> a = Reduce.topK(BIN, BinDataType.INTEGER, Order.DESC, 2);
 		a.acceptPartial(record(BIN, 5L), key("alpha"), 0);
 		a.acceptPartial(record(BIN, 5L), key("beta"), 0);
 		a.acceptPartial(record(BIN, 5L), key("gamma"), 0);
 
-		ReduceSpec<Record, Record> b = Reduce.topK(BIN, BinDataType.INTEGER, Order.DESC, OrderByFlags.NONE, 2);
+		ReduceSpec<Record, Record> b = Reduce.topK(BIN, BinDataType.INTEGER, Order.DESC, 2);
 		b.acceptPartial(record(BIN, 5L), key("gamma"), 0);
 		b.acceptPartial(record(BIN, 5L), key("alpha"), 0);
 		b.acceptPartial(record(BIN, 5L), key("beta"), 0);
@@ -200,21 +200,6 @@ public class TestReduceSpec {
 	}
 
 	@Test
-	public void topKCaseInsensitiveStringOrdering() {
-		ReduceSpec<Record, Record> reducer = Reduce.topK(BIN, BinDataType.STRING, Order.ASC, OrderByFlags.CASE_INSENSITIVE, 3);
-
-		reducer.acceptPartial(record(BIN, "banana"), key("k1"), 0);
-		reducer.acceptPartial(record(BIN, "Apple"), key("k2"), 0);
-		reducer.acceptPartial(record(BIN, "cherry"), key("k3"), 0);
-
-		Record[] result = reducer.getResult();
-		assertEquals(3, result.length);
-		assertEquals("Apple", result[0].getString(BIN));
-		assertEquals("banana", result[1].getString(BIN));
-		assertEquals("cherry", result[2].getString(BIN));
-	}
-
-	@Test
 	public void limitRejectsOutOfRangeValues() {
 		assertParameterError(() -> Reduce.limit(BIN, 0));
 		assertParameterError(() -> Reduce.limit(BIN, 1001));
@@ -222,7 +207,7 @@ public class TestReduceSpec {
 
 	@Test
 	public void orderByAloneThrowsUnsupported() {
-		ReduceSpec<Record, Record> orderBy = Reduce.orderBy(BIN, BinDataType.INTEGER, Order.ASC, OrderByFlags.NONE);
+		ReduceSpec<Record, Record> orderBy = Reduce.orderBy(BIN, BinDataType.INTEGER, Order.ASC);
 
 		try {
 			orderBy.acceptPartial(record(BIN, 1L), key("k1"), 0);
@@ -275,7 +260,7 @@ public class TestReduceSpec {
 
 	@Test
 	public void topKWithKOne() {
-		ReduceSpec<Record, Record> reducer = Reduce.topK(BIN, BinDataType.INTEGER, Order.DESC, OrderByFlags.NONE, 1);
+		ReduceSpec<Record, Record> reducer = Reduce.topK(BIN, BinDataType.INTEGER, Order.DESC, 1);
 
 		for (int i = 1; i <= 5; i++) {
 			reducer.acceptPartial(record(BIN, (long)i), key("k" + i), 0);
@@ -289,12 +274,12 @@ public class TestReduceSpec {
 
 	@Test
 	public void topKUpperBoundKThousandAccepted() {
-		Reduce.topK(BIN, BinDataType.INTEGER, Order.DESC, OrderByFlags.NONE, 1000); // must not throw
+		Reduce.topK(BIN, BinDataType.INTEGER, Order.DESC, 1000); // must not throw
 	}
 
 	@Test
 	public void topKScalarResultBeforeAnyAcceptThrows() {
-		ReduceSpec<Record, Record> reducer = Reduce.topK(BIN, BinDataType.INTEGER, Order.DESC, OrderByFlags.NONE, 3);
+		ReduceSpec<Record, Record> reducer = Reduce.topK(BIN, BinDataType.INTEGER, Order.DESC, 3);
 
 		try {
 			reducer.getScalarResult();
@@ -308,8 +293,8 @@ public class TestReduceSpec {
 	@Test
 	public void topKDescTiesOrderedByDigestAscending() {
 		// All values equal; tie-break is digest-ascending and independent of Order direction.
-		ReduceSpec<Record, Record> asc = Reduce.topK(BIN, BinDataType.INTEGER, Order.ASC, OrderByFlags.NONE, 3);
-		ReduceSpec<Record, Record> desc = Reduce.topK(BIN, BinDataType.INTEGER, Order.DESC, OrderByFlags.NONE, 3);
+		ReduceSpec<Record, Record> asc = Reduce.topK(BIN, BinDataType.INTEGER, Order.ASC, 3);
+		ReduceSpec<Record, Record> desc = Reduce.topK(BIN, BinDataType.INTEGER, Order.DESC, 3);
 
 		String[] userKeys = {"alpha", "beta", "gamma", "delta", "epsilon"};
 
@@ -334,7 +319,7 @@ public class TestReduceSpec {
 
 	@Test
 	public void topKBytesOrdering() {
-		ReduceSpec<Record, Record> reducer = Reduce.topK(BIN, BinDataType.BYTES, Order.ASC, OrderByFlags.NONE, 2);
+		ReduceSpec<Record, Record> reducer = Reduce.topK(BIN, BinDataType.BYTES, Order.ASC, 2);
 
 		reducer.acceptPartial(record(BIN, new byte[] {0x01, 0x02}), key("k1"), 0);
 		reducer.acceptPartial(record(BIN, new byte[] {0x01}), key("k2"), 0);
@@ -347,28 +332,13 @@ public class TestReduceSpec {
 		assertEquals(2, result[1].getBytes(BIN).length);
 	}
 
-	@Test
-	public void topKCaseSensitiveStringOrdering() {
-		// Without CASE_INSENSITIVE, uppercase sorts before lowercase (ASCII order).
-		ReduceSpec<Record, Record> reducer = Reduce.topK(BIN, BinDataType.STRING, Order.ASC, OrderByFlags.NONE, 3);
-
-		reducer.acceptPartial(record(BIN, "banana"), key("k1"), 0);
-		reducer.acceptPartial(record(BIN, "Apple"), key("k2"), 0);
-		reducer.acceptPartial(record(BIN, "Cherry"), key("k3"), 0);
-
-		Record[] result = reducer.getResult();
-		assertEquals("Apple", result[0].getString(BIN));
-		assertEquals("Cherry", result[1].getString(BIN));
-		assertEquals("banana", result[2].getString(BIN));
-	}
-
 	//-------------------------------------------------------
 	// Concurrency: combiners are fed from one thread per node concurrently
 	//-------------------------------------------------------
 
 	@Test
 	public void topKIsThreadSafeUnderConcurrentAccept() throws Exception {
-		ReduceSpec<Record, Record> reducer = Reduce.topK(BIN, BinDataType.INTEGER, Order.DESC, OrderByFlags.NONE, 5);
+		ReduceSpec<Record, Record> reducer = Reduce.topK(BIN, BinDataType.INTEGER, Order.DESC, 5);
 		int threads = 8;
 		int perThread = 20000;
 		long total = (long)threads * perThread;

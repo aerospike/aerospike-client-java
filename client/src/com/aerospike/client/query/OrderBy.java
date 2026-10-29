@@ -36,15 +36,9 @@ public final class OrderBy {
 	 */
 	public final Order order;
 
-	/**
-	 * Comparison options.
-	 */
-	public final OrderByFlags flags;
-
-	OrderBy(String binName, BinDataType type, Order order, OrderByFlags flags) {
+	OrderBy(String binName, BinDataType type, Order order) {
 		this.binName = binName;
 		this.type = type;
 		this.order = order;
-		this.flags = flags;
 	}
 }

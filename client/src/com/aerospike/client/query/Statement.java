@@ -279,7 +279,7 @@ public final class Statement {
 	 * <ul>
 	 *   <li>zero args — clear any reduce (stream all matching records; default behavior)</li>
 	 *   <li>one Top-K spec — e.g.
-	 *       {@code setReduce(Reduce.topK("d", BinDataType.DOUBLE, Order.ASC, OrderByFlags.NONE, 10))}</li>
+	 *       {@code setReduce(Reduce.topK("d", BinDataType.DOUBLE, Order.ASC, 10))}</li>
 	 *   <li>exactly one {@link Reduce#orderBy} + one {@link Reduce#limit} on the same bin —
 	 *       split Top-K, equivalent to {@link Reduce#topK}</li>
 	 * </ul>
@@ -304,18 +304,6 @@ public final class Statement {
 	}
 
 	/**
-	 * Sort order for a Top-K query; see {@link #setTopK(int)}. Equivalent to
-	 * {@code setOrderBy(binName, type, order, OrderByFlags.NONE)}.
-	 *
-	 * @param binName	bin name to order by
-	 * @param type		scalar type of {@code binName}
-	 * @param order		sort direction
-	 */
-	public void setOrderBy(String binName, BinDataType type, Order order) {
-		setOrderBy(binName, type, order, OrderByFlags.NONE);
-	}
-
-	/**
 	 * Sort order for a Top-K query; see {@link #setTopK(int)}. May be called before or after
 	 * {@code setTopK}. Calling it again replaces every order key, including one added by
 	 * {@link #thenOrderBy}, and keeps k.
@@ -323,24 +311,10 @@ public final class Statement {
 	 * @param binName	bin name to order by
 	 * @param type		scalar type of {@code binName}
 	 * @param order		sort direction
-	 * @param flags		comparison options ({@link OrderByFlags#CASE_INSENSITIVE} for
-	 *                  {@link BinDataType#STRING} only)
 	 */
-	public void setOrderBy(String binName, BinDataType type, Order order, OrderByFlags flags) {
+	public void setOrderBy(String binName, BinDataType type, Order order) {
 		orderBy.clear();
-		orderBy.add(new OrderBy(binName, type, order, flags));
-	}
-
-	/**
-	 * Add an order key for a Top-K query after the ones already set. Equivalent to
-	 * {@code thenOrderBy(binName, type, order, OrderByFlags.NONE)}.
-	 *
-	 * @param binName	bin name to order by
-	 * @param type		scalar type of {@code binName}
-	 * @param order		sort direction
-	 */
-	public void thenOrderBy(String binName, BinDataType type, Order order) {
-		thenOrderBy(binName, type, order, OrderByFlags.NONE);
+		orderBy.add(new OrderBy(binName, type, order));
 	}
 
 	/**
@@ -351,11 +325,9 @@ public final class Statement {
 	 * @param binName	bin name to order by
 	 * @param type		scalar type of {@code binName}
 	 * @param order		sort direction
-	 * @param flags		comparison options ({@link OrderByFlags#CASE_INSENSITIVE} for
-	 *                  {@link BinDataType#STRING} only)
 	 */
-	public void thenOrderBy(String binName, BinDataType type, Order order, OrderByFlags flags) {
-		orderBy.add(new OrderBy(binName, type, order, flags));
+	public void thenOrderBy(String binName, BinDataType type, Order order) {
+		orderBy.add(new OrderBy(binName, type, order));
 	}
 
 	/**
@@ -410,10 +382,10 @@ public final class Statement {
 	 * @throws AerospikeException.InvalidArgument	if Top-K has no order key or more than two, k
 	 *								is outside {@code [1, 1000]}, maxRecords is set, an aggregate
 	 *								UDF is set, an order key's bin name is not 1-15 UTF-8 bytes
-	 *								without NUL, it has no type or direction, it has flags on a
-	 *								non-STRING type, its bin is missing from the bin or operations
-	 *								projection or produced more than once by the operations
-	 *								projection, or both order keys use the same bin
+	 *								without NUL, it has no type or direction, its bin is missing
+	 *								from the bin or operations projection or produced more than
+	 *								once by the operations projection, or both order keys use the
+	 *								same bin
 	 */
 	public void validateTopK() {
 		if (! topKSet) {
@@ -465,15 +437,6 @@ public final class Statement {
 
 		if (key.order == null) {
 			throw new AerospikeException.InvalidArgument("orderBy direction must be ASC or DESC");
-		}
-
-		if (key.flags == null) {
-			throw new AerospikeException.InvalidArgument(
-				"orderBy flags must not be null; use OrderByFlags.NONE");
-		}
-
-		if (key.flags != OrderByFlags.NONE && key.type != BinDataType.STRING) {
-			throw new AerospikeException.InvalidArgument("orderBy flags are only valid with type STRING");
 		}
 
 		if (operations != null) {

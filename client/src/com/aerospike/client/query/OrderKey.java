@@ -16,7 +16,6 @@
  */
 package com.aerospike.client.query;
 
-import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 
@@ -73,7 +72,7 @@ final class OrderKey implements Comparable<OrderKey> {
 			return a == null ? 1 : -1;
 		}
 
-		int cmp = compareValues(a, b, key.type, key.flags);
+		int cmp = compareValues(a, b, key.type);
 		return key.order == Order.ASC ? cmp : -cmp;
 	}
 
@@ -92,8 +91,6 @@ final class OrderKey implements Comparable<OrderKey> {
 				return (value instanceof Long) ? value : null;
 			case DOUBLE:
 				return (value instanceof Double) ? value : null;
-			case STRING:
-				return (value instanceof String) ? value : null;
 			case BYTES:
 				return (value instanceof byte[]) ? value : null;
 			default:
@@ -101,15 +98,7 @@ final class OrderKey implements Comparable<OrderKey> {
 		}
 	}
 
-	@SuppressWarnings("unchecked")
-	private static int compareValues(Object a, Object b, BinDataType type, OrderByFlags flags) {
-		if (type == BinDataType.STRING) {
-			return compareBytes(
-				((String)a).getBytes(StandardCharsets.UTF_8),
-				((String)b).getBytes(StandardCharsets.UTF_8),
-				flags == OrderByFlags.CASE_INSENSITIVE);
-		}
-
+	private static int compareValues(Object a, Object b, BinDataType type) {
 		if (type == BinDataType.BYTES) {
 			return compareBytes((byte[])a, (byte[])b);
 		}
@@ -120,31 +109,14 @@ final class OrderKey implements Comparable<OrderKey> {
 			// The server compares with < and >, so -0.0 equals 0.0 and the digest decides.
 			return x == y ? 0 : Double.compare(x, y);
 		}
-		return ((Comparable<Object>)a).compareTo(b);
+		return Long.compare((Long)a, (Long)b);
 	}
 
 	private static int compareBytes(byte[] a, byte[] b) {
-		return compareBytes(a, b, false);
-	}
-
-	private static int compareBytes(byte[] a, byte[] b, boolean foldAscii) {
 		int len = Math.min(a.length, b.length);
 
 		for (int i = 0; i < len; i++) {
-			int ai = a[i] & 0xff;
-			int bi = b[i] & 0xff;
-
-			if (foldAscii) {
-				if (ai >= 'A' && ai <= 'Z') {
-					ai += 'a' - 'A';
-				}
-
-				if (bi >= 'A' && bi <= 'Z') {
-					bi += 'a' - 'A';
-				}
-			}
-
-			int cmp = ai - bi;
+			int cmp = (a[i] & 0xff) - (b[i] & 0xff);
 
 			if (cmp != 0) {
 				return cmp;
