@@ -57,7 +57,7 @@ public class TestStatementReduce {
 
 	private static TopKReduceSpec topK(int k) {
 		return new TopKReduceSpec(
-			new OrderBy[] {new OrderBy(BIN, BinDataType.INTEGER, Order.DESC, OrderByFlags.NONE)}, k);
+			new OrderBy[] {new OrderBy(BIN, BinDataType.INTEGER, Order.DESC)}, k);
 	}
 
 	private static Record record(String binName, Object value) {
@@ -75,7 +75,7 @@ public class TestStatementReduce {
 	@Test
 	public void statementResolvesSingleTopK() {
 		Statement stmt = new Statement();
-		stmt.setReduce(Reduce.topK(BIN, BinDataType.INTEGER, Order.DESC, OrderByFlags.NONE, 2));
+		stmt.setReduce(Reduce.topK(BIN, BinDataType.INTEGER, Order.DESC, 2));
 
 		ReduceSpec<Record, Record> resolved = stmt.resolveReduce();
 		resolved.acceptPartial(record(BIN, 1L), key("k1"), 0);
@@ -120,7 +120,7 @@ public class TestStatementReduce {
 	public void statementComposesSplitOrderByAndLimit() {
 		Statement stmt = new Statement();
 		stmt.setReduce(
-			Reduce.orderBy(BIN, BinDataType.INTEGER, Order.DESC, OrderByFlags.NONE),
+			Reduce.orderBy(BIN, BinDataType.INTEGER, Order.DESC),
 			Reduce.limit(BIN, 2));
 
 		ReduceSpec<Record, Record> resolved = stmt.resolveReduce();
@@ -141,7 +141,7 @@ public class TestStatementReduce {
 		// limit passed before orderBy; order within setReduce should not matter.
 		stmt.setReduce(
 			Reduce.limit(BIN, 2),
-			Reduce.orderBy(BIN, BinDataType.INTEGER, Order.ASC, OrderByFlags.NONE));
+			Reduce.orderBy(BIN, BinDataType.INTEGER, Order.ASC));
 
 		ReduceSpec<Record, Record> resolved = stmt.resolveReduce();
 		resolved.acceptPartial(record(BIN, 3L), key("k1"), 0);
@@ -159,11 +159,11 @@ public class TestStatementReduce {
 		serverSide.setTopK(2);
 
 		Statement clientSide = new Statement();
-		clientSide.setReduce(Reduce.topK(BIN, BinDataType.INTEGER, Order.DESC, OrderByFlags.NONE, 2));
+		clientSide.setReduce(Reduce.topK(BIN, BinDataType.INTEGER, Order.DESC, 2));
 
 		Statement split = new Statement();
 		split.setReduce(
-			Reduce.orderBy(BIN, BinDataType.INTEGER, Order.DESC, OrderByFlags.NONE),
+			Reduce.orderBy(BIN, BinDataType.INTEGER, Order.DESC),
 			Reduce.limit(BIN, 2));
 
 		for (Statement stmt : new Statement[] {serverSide, clientSide, split}) {
@@ -179,7 +179,7 @@ public class TestStatementReduce {
 	@Test
 	public void statementResolveReduceOrderByWithoutLimitThrows() {
 		Statement stmt = new Statement();
-		stmt.setReduce(Reduce.orderBy(BIN, BinDataType.INTEGER, Order.DESC, OrderByFlags.NONE));
+		stmt.setReduce(Reduce.orderBy(BIN, BinDataType.INTEGER, Order.DESC));
 
 		assertInvalidArgument(stmt::resolveReduce);
 	}
@@ -188,7 +188,7 @@ public class TestStatementReduce {
 	public void statementResolveReduceComposeBinMismatchThrows() {
 		Statement stmt = new Statement();
 		stmt.setReduce(
-			Reduce.orderBy("binA", BinDataType.INTEGER, Order.DESC, OrderByFlags.NONE),
+			Reduce.orderBy("binA", BinDataType.INTEGER, Order.DESC),
 			Reduce.limit("binB", 2));
 
 		assertInvalidArgument(stmt::resolveReduce);
@@ -198,8 +198,8 @@ public class TestStatementReduce {
 	public void statementResolveReduceDuplicateOrderByThrows() {
 		Statement stmt = new Statement();
 		stmt.setReduce(
-			Reduce.orderBy(BIN, BinDataType.INTEGER, Order.DESC, OrderByFlags.NONE),
-			Reduce.orderBy(BIN, BinDataType.INTEGER, Order.ASC, OrderByFlags.NONE),
+			Reduce.orderBy(BIN, BinDataType.INTEGER, Order.DESC),
+			Reduce.orderBy(BIN, BinDataType.INTEGER, Order.ASC),
 			Reduce.limit(BIN, 2));
 
 		assertInvalidArgument(stmt::resolveReduce);
@@ -209,7 +209,7 @@ public class TestStatementReduce {
 	public void statementResolveReduceDuplicateLimitThrows() {
 		Statement stmt = new Statement();
 		stmt.setReduce(
-			Reduce.orderBy(BIN, BinDataType.INTEGER, Order.DESC, OrderByFlags.NONE),
+			Reduce.orderBy(BIN, BinDataType.INTEGER, Order.DESC),
 			Reduce.limit(BIN, 2),
 			Reduce.limit(BIN, 3));
 
@@ -219,7 +219,7 @@ public class TestStatementReduce {
 	@Test
 	public void setReduceEmptyClearsReduce() {
 		Statement stmt = new Statement();
-		stmt.setReduce(Reduce.topK(BIN, BinDataType.INTEGER, Order.DESC, OrderByFlags.NONE, 2));
+		stmt.setReduce(Reduce.topK(BIN, BinDataType.INTEGER, Order.DESC, 2));
 		assertTrue(stmt.resolveReduce() != null);
 
 		stmt.setReduce(); // empty varargs
@@ -249,24 +249,9 @@ public class TestStatementReduce {
 	}
 
 	@Test
-	public void setOrderByWithFlagsThenSetTopKResolvesToTopK() {
-		Statement stmt = new Statement();
-		stmt.setOrderBy(BIN, BinDataType.STRING, Order.ASC, OrderByFlags.CASE_INSENSITIVE);
-		stmt.setTopK(2);
-
-		ReduceSpec<Record, Record> resolved = stmt.resolveReduce();
-		resolved.acceptPartial(record(BIN, "banana"), key("k1"), 0);
-		resolved.acceptPartial(record(BIN, "Apple"), key("k2"), 0);
-
-		Record[] result = resolved.getResult();
-		assertEquals(2, result.length);
-		assertEquals("Apple", result[0].getString(BIN));
-	}
-
-	@Test
 	public void setTopKOverridesPriorReduce() {
 		Statement stmt = new Statement();
-		stmt.setReduce(Reduce.topK(BIN, BinDataType.INTEGER, Order.ASC, OrderByFlags.NONE, 5));
+		stmt.setReduce(Reduce.topK(BIN, BinDataType.INTEGER, Order.ASC, 5));
 		stmt.setOrderBy(BIN, BinDataType.INTEGER, Order.DESC);
 		stmt.setTopK(3);
 
@@ -284,11 +269,6 @@ public class TestStatementReduce {
 
 	@Test
 	public void topKRejectsInvalidWireSpecification() {
-		Statement flags = new Statement();
-		flags.setOrderBy(BIN, BinDataType.INTEGER, Order.ASC, OrderByFlags.CASE_INSENSITIVE);
-		flags.setTopK(1);
-		assertInvalidTopK(flags, "orderBy flags are only valid with type STRING");
-
 		Statement projection = new Statement();
 		projection.setBinNames("other");
 		projection.setOrderBy(BIN, BinDataType.INTEGER, Order.ASC);
@@ -377,7 +357,7 @@ public class TestStatementReduce {
 		Statement stmt = new Statement();
 		stmt.setOrderBy(BIN, BinDataType.INTEGER, Order.DESC);
 		stmt.setTopK(2);
-		stmt.setReduce(Reduce.topK(BIN, BinDataType.INTEGER, Order.DESC, OrderByFlags.NONE, 2));
+		stmt.setReduce(Reduce.topK(BIN, BinDataType.INTEGER, Order.DESC, 2));
 
 		assertFalse(stmt.hasTopK());
 		assertFalse(stmt.hasOrderBy());

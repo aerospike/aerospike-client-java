@@ -56,22 +56,19 @@ public class TestTopKQuery extends TestSync {
 	private static final String DERIVED = "derived";
 	private static final String GROUP = "group";
 	private static final String MEMBER = "member";
-	private static final String NAME = "name";
 	private static final String BLOB = "blob";
 	private static final int COUNT = 100;
 
 	@BeforeClass
 	public static void prepare() {
 		for (int i = 1; i <= COUNT; i++) {
-			// Even ranks start upper case, so the case-sensitive and case-insensitive orders differ.
-			String name = (i % 2 == 0 ? "Item" : "item") + String.format("%03d", i);
 			// First bytes run from 0x65 to 0xc8, across 0x7f/0x80, where a signed comparison
 			// inverts the order.
 			byte[] blob = {(byte)(i + 100), 0};
 
 			// Ten groups of ten records each, so a second order key has ties to break.
 			client.put(null, key(i), new Bin(BIN, i), new Bin(GROUP, (i - 1) / 10),
-				new Bin(MEMBER, (i - 1) % 10), new Bin(NAME, name), new Bin(BLOB, blob));
+				new Bin(MEMBER, (i - 1) % 10), new Bin(BLOB, blob));
 		}
 
 		try {
@@ -301,39 +298,6 @@ public class TestTopKQuery extends TestSync {
 	}
 
 	@Test
-	public void stringKeyIsCaseSensitiveUnlessFlagged() {
-		requireCapableCluster();
-
-		// The server compares UTF-8 bytes, so upper case ranks before lower case.
-		assertArrayEquals(new long[] {2, 4, 6}, values(topK(NAME, BinDataType.STRING, Order.ASC, 3), BIN));
-
-		Statement statement = topK(NAME, BinDataType.STRING, Order.ASC, 3);
-		statement.setOrderBy(NAME, BinDataType.STRING, Order.ASC, OrderByFlags.CASE_INSENSITIVE);
-
-		assertArrayEquals(new long[] {1, 2, 3}, values(statement, BIN));
-	}
-
-	@Test
-	public void stringKeyOrdersByUtf8NotUtf16() {
-		requireCapableCluster();
-
-		// UTF-16 puts U+10000 (a surrogate pair) before U+FFFF; UTF-8 puts it after.
-		Key bmp = new Key(args.namespace, SET, "bmp");
-		Key supplementary = new Key(args.namespace, SET, "supplementary");
-		client.put(null, bmp, new Bin(BIN, COUNT + 1), new Bin(NAME, "\uFFFF"));
-		client.put(null, supplementary, new Bin(BIN, COUNT + 2), new Bin(NAME, "\uD800\uDC00"));
-
-		try {
-			assertArrayEquals(new long[] {COUNT + 2, COUNT + 1},
-				values(topK(NAME, BinDataType.STRING, Order.DESC, 2), BIN));
-		}
-		finally {
-			client.delete(null, bmp);
-			client.delete(null, supplementary);
-		}
-	}
-
-	@Test
 	public void bytesKeyComparesUnsigned() {
 		requireCapableCluster();
 
@@ -343,13 +307,13 @@ public class TestTopKQuery extends TestSync {
 	}
 
 	@Test
-	public void stringSecondKeyBreaksTies() {
+	public void bytesSecondKeyBreaksTies() {
 		requireCapableCluster();
 
 		Statement statement = topK(GROUP, BinDataType.INTEGER, Order.DESC, 3);
-		statement.thenOrderBy(NAME, BinDataType.STRING, Order.ASC);
+		statement.thenOrderBy(BLOB, BinDataType.BYTES, Order.DESC);
 
-		assertArrayEquals(new long[] {92, 94, 96}, values(statement, BIN));
+		assertArrayEquals(new long[] {100, 99, 98}, values(statement, BIN));
 	}
 
 	@Test
@@ -471,7 +435,7 @@ public class TestTopKQuery extends TestSync {
 
 		for (Node node : client.getNodes()) {
 			Statement clientSide = statement();
-			clientSide.setReduce(Reduce.topK(BIN, BinDataType.INTEGER, Order.DESC, OrderByFlags.NONE, k));
+			clientSide.setReduce(Reduce.topK(BIN, BinDataType.INTEGER, Order.DESC, k));
 
 			long[] expected = values(client.queryNode(null, clientSide, node), BIN);
 			long[] serverSide = values(client.queryNode(null, topK(BIN, BinDataType.INTEGER, Order.DESC, k), node), BIN);
@@ -487,7 +451,7 @@ public class TestTopKQuery extends TestSync {
 
 	private Statement clientSide(Order order, int k) {
 		Statement statement = base(BIN);
-		statement.setReduce(Reduce.topK(BIN, BinDataType.INTEGER, order, OrderByFlags.NONE, k));
+		statement.setReduce(Reduce.topK(BIN, BinDataType.INTEGER, order, k));
 		return statement;
 	}
 
@@ -500,7 +464,7 @@ public class TestTopKQuery extends TestSync {
 
 	private Statement clientSideDerived(Order order, int k) {
 		Statement statement = derived();
-		statement.setReduce(Reduce.topK(DERIVED, BinDataType.INTEGER, order, OrderByFlags.NONE, k));
+		statement.setReduce(Reduce.topK(DERIVED, BinDataType.INTEGER, order, k));
 		return statement;
 	}
 

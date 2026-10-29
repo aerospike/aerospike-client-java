@@ -18,10 +18,7 @@ package com.aerospike.client.query;
 
 /**
  * Scalar bin data type of a Top-K order key, used to interpret the bin's value for
- * comparison; see {@link Statement#setOrderBy(String, BinDataType, Order, OrderByFlags)}.
- * <p>
- * Note: investigate {@code ParticleType} as a possible replacement for this type during
- * implementation.
+ * comparison; see {@link Statement#setOrderBy(String, BinDataType, Order)}.
  */
 public enum BinDataType {
 	/**
@@ -35,12 +32,7 @@ public enum BinDataType {
 	DOUBLE,
 
 	/**
-	 * String value.
-	 */
-	STRING,
-
-	/**
-	 * Byte array value.
+	 * Byte array value, compared as unsigned bytes; a prefix ranks before the longer value.
 	 */
 	BYTES
 }

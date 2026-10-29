@@ -37,12 +37,10 @@ final class Reduce {
 	 *              {@link Statement#setOperations(com.aerospike.client.Operation[])}
 	 * @param type	scalar type of {@code bin}
 	 * @param order	sort direction
-	 * @param flags	comparison options ({@link OrderByFlags#CASE_INSENSITIVE} for
-	 *              {@link BinDataType#STRING} only)
 	 * @param k		maximum number of records to return, in {@code [1, 1000]}
 	 */
-	static ReduceSpec<Record, Record> topK(String bin, BinDataType type, Order order, OrderByFlags flags, int k) {
-		return TopKReduceSpec.compose(orderBy(bin, type, order, flags), limit(bin, k));
+	static ReduceSpec<Record, Record> topK(String bin, BinDataType type, Order order, int k) {
+		return TopKReduceSpec.compose(orderBy(bin, type, order), limit(bin, k));
 	}
 
 	/**
@@ -50,13 +48,13 @@ final class Reduce {
 	 * on the same bin via {@link Statement#setReduce(ReduceSpec...)}; using it alone throws
 	 * {@link UnsupportedOperationException}.
 	 */
-	static ReduceSpec<Record, Record> orderBy(String bin, BinDataType type, Order order, OrderByFlags flags) {
-		return new OrderByReduceSpec(bin, type, order, flags);
+	static ReduceSpec<Record, Record> orderBy(String bin, BinDataType type, Order order) {
+		return new OrderByReduceSpec(bin, type, order);
 	}
 
 	/**
 	 * Cap building block for {@code topK}. Must be paired with
-	 * {@link #orderBy(String, BinDataType, Order, OrderByFlags)} on the same bin via
+	 * {@link #orderBy(String, BinDataType, Order)} on the same bin via
 	 * {@link Statement#setReduce(ReduceSpec...)}; using it alone throws
 	 * {@link UnsupportedOperationException}.
 	 *

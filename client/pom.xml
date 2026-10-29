@@ -357,7 +357,6 @@
             <include>com/aerospike/client/query/IndexType.java</include>
             <include>com/aerospike/client/query/Order.java</include>
             <include>com/aerospike/client/query/OrderBy.java</include>
-            <include>com/aerospike/client/query/OrderByFlags.java</include>
             <include>com/aerospike/client/query/PartitionFilter.java</include>
             <include>com/aerospike/client/query/QueryListener.java</include>
             <include>com/aerospike/client/query/RecordSet.java</include>

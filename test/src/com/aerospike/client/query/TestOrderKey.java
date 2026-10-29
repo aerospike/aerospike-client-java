@@ -22,30 +22,22 @@ public class TestOrderKey {
 	private static final String BIN = "bin";
 
 	@Test
-	public void caseInsensitiveStringUsesAsciiFolding() {
-		OrderKey ascii = key("K", BinDataType.STRING, Order.ASC, OrderByFlags.CASE_INSENSITIVE, "ascii");
-		OrderKey kelvin = key("\u212a", BinDataType.STRING, Order.ASC, OrderByFlags.CASE_INSENSITIVE, "kelvin");
-
-		assertTrue(ascii.compareTo(kelvin) < 0);
-	}
-
-	@Test
 	public void nanUsesNaturalOrderBeforeDirection() {
-		OrderKey finiteAscending = key(1.0, BinDataType.DOUBLE, Order.ASC, OrderByFlags.NONE, "finite");
-		OrderKey nanAscending = key(Double.NaN, BinDataType.DOUBLE, Order.ASC, OrderByFlags.NONE, "nan");
+		OrderKey finiteAscending = key(1.0, BinDataType.DOUBLE, Order.ASC, "finite");
+		OrderKey nanAscending = key(Double.NaN, BinDataType.DOUBLE, Order.ASC, "nan");
 		assertTrue(finiteAscending.compareTo(nanAscending) < 0);
 
-		OrderKey finiteDescending = key(1.0, BinDataType.DOUBLE, Order.DESC, OrderByFlags.NONE, "finite");
-		OrderKey nanDescending = key(Double.NaN, BinDataType.DOUBLE, Order.DESC, OrderByFlags.NONE, "nan");
+		OrderKey finiteDescending = key(1.0, BinDataType.DOUBLE, Order.DESC, "finite");
+		OrderKey nanDescending = key(Double.NaN, BinDataType.DOUBLE, Order.DESC, "nan");
 		assertTrue(nanDescending.compareTo(finiteDescending) < 0);
 	}
 
 	@Test
 	public void negativeZeroEqualsZeroAndDigestDecides() {
 		for (Order order : Order.values()) {
-			OrderKey negative = key(-0.0, BinDataType.DOUBLE, order, OrderByFlags.NONE, "a");
-			OrderKey positive = key(0.0, BinDataType.DOUBLE, order, OrderByFlags.NONE, "b");
-			OrderKey sameValue = key(0.0, BinDataType.DOUBLE, order, OrderByFlags.NONE, "a");
+			OrderKey negative = key(-0.0, BinDataType.DOUBLE, order, "a");
+			OrderKey positive = key(0.0, BinDataType.DOUBLE, order, "b");
+			OrderKey sameValue = key(0.0, BinDataType.DOUBLE, order, "a");
 
 			assertEquals(Integer.signum(sameValue.compareTo(positive)),
 				Integer.signum(negative.compareTo(positive)));
@@ -56,13 +48,12 @@ public class TestOrderKey {
 		Object value,
 		BinDataType type,
 		Order order,
-		OrderByFlags flags,
 		String userKey
 	) {
 		Map<String, Object> bins = new HashMap<>();
 		bins.put(BIN, value);
 		Key key = new Key("test", "set", userKey);
 		return new OrderKey(
-			new Record(bins, 1, 0), new OrderBy[] {new OrderBy(BIN, type, order, flags)}, key, 0);
+			new Record(bins, 1, 0), new OrderBy[] {new OrderBy(BIN, type, order)}, key, 0);
 	}
 }

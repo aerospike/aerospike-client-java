@@ -26,7 +26,7 @@ import com.aerospike.client.Key;
 import com.aerospike.client.Record;
 
 /**
- * Ordered LIMIT k reduce combiner backing {@link Reduce#topK(String, BinDataType, Order, OrderByFlags, int)}
+ * Ordered LIMIT k reduce combiner backing {@link Reduce#topK(String, BinDataType, Order, int)}
  * and the composed split form {@code setReduce(Reduce.orderBy(...), Reduce.limit(...))}.
  * <p>
  * Maintains a size-k heap keyed by the order keys, deduplicated by record digest (a record may
