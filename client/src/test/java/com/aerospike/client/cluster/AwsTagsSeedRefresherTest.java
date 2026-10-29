@@ -44,6 +44,7 @@ import com.aerospike.client.policy.ClientPolicy;
 
 public class AwsTagsSeedRefresherTest {
 	private static final Host[] INIT = new Host[] {new Host("10.0.0.1", 3000)};
+	private static final int MARGIN = 50;
 
 	private final List<String> warnings = new CopyOnWriteArrayList<>();
 	private final AtomicReference<Host[]> snapshot = new AtomicReference<>();
@@ -164,14 +165,18 @@ public class AwsTagsSeedRefresherTest {
 				snapshot::set);
 			r.validate(1000);
 			r.start(INIT);
-			int calls = 0;
+			int calls = SeedRefresher.MAX_OVERRUNS - 1;
 
-			while (! r.isTripped() && calls < 50) {
-				r.tend(30 * ++calls, 1000);
+			for (int i = 1; i <= calls; i++) {
+				long begin = System.nanoTime();
+				r.tend(30 * i, 1000);
+				long elapsed = (System.nanoTime() - begin) / 1000000;
+				System.out.println("AWS-TAGS-REFRESHER-BOUNDED call=" + i + " elapsed=" + elapsed + "ms deadline=50ms");
+				assertTrue(elapsed + "ms", elapsed <= 50 + MARGIN);
 			}
-			System.out.println("AWS-TAGS-REFRESHER-TRIP calls=" + calls + " tripped=" + r.isTripped() + " warnings=" + warnings);
-			assertTrue(r.isTripped());
 			assertSame(INIT, snapshot.get());
+			assertEquals(warnings.toString(), calls, warnings.stream().filter(w ->
+				w.startsWith("Seed candidate refresh failed: ") && w.contains("timed out after 50ms")).count());
 		}
 	}
 }
