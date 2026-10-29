@@ -87,6 +87,7 @@ public class ConformanceTest {
 	private static final Set<String> RESULTS = Set.of(PASS, FAIL, UNSUPPORTED, BLOCKED);
 
 	private static final String FIXTURE_SET_VERSION = "1.1.0";
+	private static final List<String> FIXTURE_ROOTS = List.of("discovery", "tls");
 	private static final String DECLARED = "/conformance/java-declared.yaml";
 	private static final Path REPORT = Paths.get("target", "conformance-report.json");
 	private static final String TLS_REJECT_PREFIX = "Invalid TLS name: ";
@@ -132,16 +133,14 @@ public class ConformanceTest {
 				FIXTURE_SET_VERSION + " expected: check out that release or update the declarations");
 		}
 
-		List<Path> files;
+		List<Path> files = new ArrayList<>();
 
-		try (Stream<Path> stream = Files.walk(dir)) {
-			files = stream
-				.filter(p -> p.toString().endsWith(".yaml"))
-				.filter(p -> dir.relativize(p).getNameCount() > 1)
-				.filter(p -> ! dir.relativize(p).getName(0).toString().startsWith("."))
-				.sorted()
-				.collect(Collectors.toList());
+		for (String root : FIXTURE_ROOTS) {
+			try (Stream<Path> stream = Files.walk(dir.resolve(root))) {
+				stream.filter(p -> p.toString().endsWith(".yaml")).forEach(files::add);
+			}
 		}
+		Collections.sort(files);
 
 		Map<String,Map<String,Row>> rows = new LinkedHashMap<>();
 		List<Object[]> params = new ArrayList<>();
