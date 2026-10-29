@@ -445,6 +445,19 @@ public class AerospikeException extends RuntimeException {
 	}
 
 	/**
+	 * Exception thrown when the client rejects a command's arguments before sending it. The
+	 * result code is {@link ResultCode#PARAMETER_ERROR}, the same code the server returns when it
+	 * rejects a command's arguments; a server rejection is a plain {@link AerospikeException}.
+	 */
+	public static final class InvalidArgument extends AerospikeException {
+		private static final long serialVersionUID = 1L;
+
+		public InvalidArgument(String message) {
+			super(ResultCode.PARAMETER_ERROR, message);
+		}
+	}
+
+	/**
 	 * Exception thrown when a batch exists method fails.
 	 */
 	public static final class BatchExists extends AerospikeException {

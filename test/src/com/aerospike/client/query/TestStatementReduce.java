@@ -19,13 +19,14 @@ package com.aerospike.client.query;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
 
 import java.util.HashMap;
 import java.util.Map;
 
 import org.junit.Test;
+import org.junit.function.ThrowingRunnable;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
@@ -48,6 +49,7 @@ public class TestStatementReduce {
 	private static final String BIN = "val";
 	private static final String GROUP = "group";
 	private static final String MEMBER = "member";
+	private static final String BIN_NAME = "Top-K order-by bin name must be 1-15 UTF-8 bytes without NUL";
 
 	private static Key key(String userKey) {
 		return new Key(NS, SET, userKey);
@@ -179,7 +181,7 @@ public class TestStatementReduce {
 		Statement stmt = new Statement();
 		stmt.setReduce(Reduce.orderBy(BIN, BinDataType.INTEGER, Order.DESC, OrderByFlags.NONE));
 
-		assertParameterError(stmt::resolveReduce);
+		assertInvalidArgument(stmt::resolveReduce);
 	}
 
 	@Test
@@ -189,7 +191,7 @@ public class TestStatementReduce {
 			Reduce.orderBy("binA", BinDataType.INTEGER, Order.DESC, OrderByFlags.NONE),
 			Reduce.limit("binB", 2));
 
-		assertParameterError(stmt::resolveReduce);
+		assertInvalidArgument(stmt::resolveReduce);
 	}
 
 	@Test
@@ -200,7 +202,7 @@ public class TestStatementReduce {
 			Reduce.orderBy(BIN, BinDataType.INTEGER, Order.ASC, OrderByFlags.NONE),
 			Reduce.limit(BIN, 2));
 
-		assertParameterError(stmt::resolveReduce);
+		assertInvalidArgument(stmt::resolveReduce);
 	}
 
 	@Test
@@ -211,7 +213,7 @@ public class TestStatementReduce {
 			Reduce.limit(BIN, 2),
 			Reduce.limit(BIN, 3));
 
-		assertParameterError(stmt::resolveReduce);
+		assertInvalidArgument(stmt::resolveReduce);
 	}
 
 	@Test
@@ -285,28 +287,61 @@ public class TestStatementReduce {
 		Statement flags = new Statement();
 		flags.setOrderBy(BIN, BinDataType.INTEGER, Order.ASC, OrderByFlags.CASE_INSENSITIVE);
 		flags.setTopK(1);
-		assertInvalidTopK(flags);
+		assertInvalidTopK(flags, "orderBy flags are only valid with type STRING");
 
 		Statement projection = new Statement();
 		projection.setBinNames("other");
 		projection.setOrderBy(BIN, BinDataType.INTEGER, Order.ASC);
 		projection.setTopK(1);
-		assertInvalidTopK(projection);
+		assertInvalidTopK(projection,
+			"orderBy bin 'val' is not in projection; add it to the projection or remove the projection");
 
 		Statement name = new Statement();
 		name.setOrderBy("sixteen-byte-bin", BinDataType.INTEGER, Order.ASC);
 		name.setTopK(1);
-		assertInvalidTopK(name);
+		assertInvalidTopK(name, BIN_NAME);
+
+		Statement noName = new Statement();
+		noName.setOrderBy(null, BinDataType.INTEGER, Order.ASC);
+		noName.setTopK(1);
+		assertInvalidTopK(noName, BIN_NAME);
 
 		Statement limit = new Statement();
 		limit.setOrderBy(BIN, BinDataType.INTEGER, Order.ASC);
 		limit.setTopK(0);
-		assertInvalidTopK(limit);
+		assertInvalidTopK(limit, "topK must be in [1, 1000]; got 0");
+
+		limit.setTopK(1001);
+		assertInvalidTopK(limit, "topK must be in [1, 1000]; got 1001");
 
 		Statement noOrderKey = new Statement();
 		noOrderKey.setTopK(5);
-		assertInvalidTopK(noOrderKey);
-		assertParameterError(noOrderKey::resolveReduce);
+		assertInvalidTopK(noOrderKey, "Top-K requires an order key; call setOrderBy()");
+		assertInvalidArgument(noOrderKey::resolveReduce);
+	}
+
+	@Test
+	public void topKRejectsOrderKeyWithoutTypeOrDirection() {
+		Statement type = new Statement();
+		type.setOrderBy(BIN, null, Order.ASC);
+		type.setTopK(1);
+		assertInvalidTopK(type,
+			"orderBy requires a type declaration (INTEGER or DOUBLE); Aerospike has no schema");
+
+		Statement direction = new Statement();
+		direction.setOrderBy(BIN, BinDataType.INTEGER, null);
+		direction.setTopK(1);
+		assertInvalidTopK(direction, "orderBy direction must be ASC or DESC");
+	}
+
+	@Test
+	public void topKRejectsAggregateFunction() {
+		Statement stmt = new Statement();
+		stmt.setAggregateFunction("sum_example", "sum_single_bin");
+		stmt.setOrderBy(BIN, BinDataType.INTEGER, Order.ASC);
+		stmt.setTopK(1);
+		assertInvalidTopK(stmt,
+			"orderBy is incompatible with aggregate UDFs; use the UDF's own reduce stage");
 	}
 
 	@Test
@@ -379,7 +414,7 @@ public class TestStatementReduce {
 		stmt.setOperations(new Operation[] {Operation.get(BIN), Operation.get(BIN)});
 		stmt.setOrderBy(BIN, BinDataType.INTEGER, Order.ASC);
 		stmt.setTopK(1);
-		assertInvalidTopK(stmt);
+		assertInvalidTopK(stmt, "orderBy bin 'val' is produced by more than one operation");
 	}
 
 	@Test
@@ -390,14 +425,16 @@ public class TestStatementReduce {
 		stmt.setTopK(1);
 
 		PartitionFilter after = PartitionFilter.after(key("k1"));
-		assertParameterError(() -> new PartitionTracker(new QueryPolicy(), stmt, new Node[0], after));
+		AerospikeException ae = assertInvalidArgument(
+			() -> new PartitionTracker(new QueryPolicy(), stmt, new Node[0], after));
+		assertEquals("Top-K can't resume a partition filter from an earlier query", ae.getBaseMessage());
 		assertNull(after.getPartitions());
 
 		PartitionFilter cursor = PartitionFilter.range(0, 2);
 		PartitionStatus resumed = new PartitionStatus(1);
 		resumed.digest = key("k1").digest;
 		cursor.setPartitions(new PartitionStatus[] {new PartitionStatus(0), resumed});
-		assertParameterError(() -> new PartitionTracker(new QueryPolicy(), stmt, 1, cursor));
+		assertInvalidArgument(() -> new PartitionTracker(new QueryPolicy(), stmt, 1, cursor));
 	}
 
 	@Test
@@ -483,7 +520,7 @@ public class TestStatementReduce {
 		stmt.thenOrderBy(MEMBER, BinDataType.INTEGER, Order.ASC);
 		stmt.thenOrderBy(BIN, BinDataType.INTEGER, Order.ASC);
 		stmt.setTopK(1);
-		assertInvalidTopK(stmt);
+		assertInvalidTopK(stmt, "orderBy supports at most two keys");
 	}
 
 	@Test
@@ -492,7 +529,7 @@ public class TestStatementReduce {
 		stmt.setOrderBy(GROUP, BinDataType.INTEGER, Order.ASC);
 		stmt.thenOrderBy(GROUP, BinDataType.INTEGER, Order.DESC);
 		stmt.setTopK(1);
-		assertInvalidTopK(stmt);
+		assertInvalidTopK(stmt, "orderBy keys must use different bins");
 	}
 
 	@Test
@@ -502,7 +539,8 @@ public class TestStatementReduce {
 		binList.setOrderBy(GROUP, BinDataType.INTEGER, Order.ASC);
 		binList.thenOrderBy(MEMBER, BinDataType.INTEGER, Order.ASC);
 		binList.setTopK(1);
-		assertInvalidTopK(binList);
+		assertInvalidTopK(binList, "orderBy bin 'member' is not in projection; " +
+			"add it to the projection or remove the projection");
 
 		Statement operations = new Statement();
 		operations.setOperations(new Operation[] {
@@ -510,7 +548,7 @@ public class TestStatementReduce {
 		operations.setOrderBy(GROUP, BinDataType.INTEGER, Order.ASC);
 		operations.thenOrderBy(MEMBER, BinDataType.INTEGER, Order.ASC);
 		operations.setTopK(1);
-		assertInvalidTopK(operations);
+		assertInvalidTopK(operations, "orderBy bin 'member' is produced by more than one operation");
 	}
 
 	private static Record record2(Object group, Object member) {
@@ -532,17 +570,13 @@ public class TestStatementReduce {
 		return resolved.getResult();
 	}
 
-	private static void assertInvalidTopK(Statement statement) {
-		assertParameterError(statement::validateTopK);
+	private static void assertInvalidTopK(Statement statement, String message) {
+		assertEquals(message, assertInvalidArgument(statement::validateTopK).getBaseMessage());
 	}
 
-	private static void assertParameterError(Runnable action) {
-		try {
-			action.run();
-			fail("Expected AerospikeException");
-		}
-		catch (AerospikeException expected) {
-			assertEquals(ResultCode.PARAMETER_ERROR, expected.getResultCode());
-		}
+	private static AerospikeException assertInvalidArgument(ThrowingRunnable action) {
+		AerospikeException ae = assertThrows(AerospikeException.InvalidArgument.class, action);
+		assertEquals(ResultCode.PARAMETER_ERROR, ae.getResultCode());
+		return ae;
 	}
 }

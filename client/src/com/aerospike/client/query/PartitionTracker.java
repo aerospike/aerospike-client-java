@@ -149,8 +149,8 @@ public final class PartitionTracker {
 		}
 
 		if (resumed) {
-			throw new AerospikeException(ResultCode.PARAMETER_ERROR,
-				"Top-K is not supported with a resumed partition filter");
+			throw new AerospikeException.InvalidArgument(
+				"Top-K can't resume a partition filter from an earlier query");
 		}
 		return filter;
 	}

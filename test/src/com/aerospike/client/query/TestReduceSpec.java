@@ -262,9 +262,9 @@ public class TestReduceSpec {
 	private static void assertParameterError(Runnable action) {
 		try {
 			action.run();
-			fail("Expected AerospikeException");
+			fail("Expected AerospikeException.InvalidArgument");
 		}
-		catch (AerospikeException expected) {
+		catch (AerospikeException.InvalidArgument expected) {
 			assertEquals(ResultCode.PARAMETER_ERROR, expected.getResultCode());
 		}
 	}

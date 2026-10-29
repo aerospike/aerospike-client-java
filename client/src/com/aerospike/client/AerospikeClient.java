@@ -4270,7 +4270,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		}
 
 		statement.setAggregateFunction(packageName, functionName, functionArgs);
-		rejectTopK(statement);
+		rejectTopK(statement, TOP_K_BACKGROUND);
 
 		cluster.addCommandCount();
 
@@ -4312,7 +4312,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		if (operations.length > 0) {
 			statement.setOperations(operations);
 		}
-		rejectTopK(statement);
+		rejectTopK(statement, TOP_K_BACKGROUND);
 
 		cluster.addCommandCount();
 
@@ -4396,7 +4396,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		} else if (configProvider != null) {
 			policy = new QueryPolicy(policy, configProvider);
 		}
-		rejectTopK(statement);
+		rejectTopK(statement, TOP_K_SYNC_ONLY);
 
 		Node[] nodes = cluster.validateNodes();
 
@@ -4434,7 +4434,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		} else if (configProvider != null) {
 			policy = new QueryPolicy(policy, configProvider);
 		}
-		rejectTopK(statement);
+		rejectTopK(statement, TOP_K_SYNC_ONLY);
 
 		Node[] nodes = cluster.validateNodes();
 
@@ -4479,7 +4479,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		} else if (configProvider != null) {
 			policy = new QueryPolicy(policy, configProvider);
 		}
-		rejectTopK(statement);
+		rejectTopK(statement, TOP_K_SYNC_ONLY);
 
 		Node[] nodes = cluster.validateNodes();
 
@@ -4593,7 +4593,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		} else if (configProvider != null) {
 			policy = new QueryPolicy(policy, configProvider);
 		}
-		rejectTopK(statement);
+		rejectTopK(statement, TOP_K_SYNC_ONLY);
 
 		Node[] nodes = cluster.validateNodes();
 
@@ -4606,6 +4606,14 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		}
 	}
 
+	private static final String TOP_K_SYNC_ONLY =
+		"Top-K is only supported by synchronous partition queries";
+	private static final String TOP_K_BACKGROUND =
+		"orderBy/topK is only valid on foreground (SELECT-style) queries; " +
+		"background (UPDATE-style) queries do not produce a result stream";
+	private static final String TOP_K_AGGREGATE =
+		"orderBy is incompatible with aggregate UDFs; use the UDF's own reduce stage";
+
 	private void validateTopK(QueryPolicy policy, Statement statement) {
 		if (! statement.hasTopK()) {
 			checkOrderBySupport(statement);
@@ -4615,27 +4623,23 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		statement.validateTopK();
 
 		if (! cluster.hasPartitionQuery) {
-			throw new AerospikeException(ResultCode.PARAMETER_ERROR,
-				"Top-K requires partition query support");
+			throw new AerospikeException.InvalidArgument("Top-K requires partition query support");
 		}
 
 		checkOrderBySupport(statement);
 
 		if (! policy.includeBinData) {
-			throw new AerospikeException(ResultCode.PARAMETER_ERROR,
-				"Top-K is incompatible with includeBinData=false");
+			throw new AerospikeException.InvalidArgument("Top-K is incompatible with includeBinData=false");
 		}
 
 		if (policy.maxRecords != 0) {
-			throw new AerospikeException(ResultCode.PARAMETER_ERROR,
-				"Top-K is incompatible with maxRecords");
+			throw new AerospikeException.InvalidArgument("Top-K is incompatible with maxRecords");
 		}
 	}
 
-	private void rejectTopK(Statement statement) {
+	private void rejectTopK(Statement statement, String message) {
 		if (statement.hasTopK()) {
-			throw new AerospikeException(ResultCode.PARAMETER_ERROR,
-				"Top-K is only supported by synchronous partition queries");
+			throw new AerospikeException.InvalidArgument(message);
 		}
 		checkOrderBySupport(statement);
 	}
@@ -4644,8 +4648,8 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	// skips the field and runs a plain query, so a cluster with such a node fails up front.
 	private void checkOrderBySupport(Statement statement) {
 		if (statement.hasOrderBy() && ! cluster.hasQueryOrderBy) {
-			throw new AerospikeException(ResultCode.PARAMETER_ERROR,
-				"Top-K is not supported by all nodes in the cluster");
+			throw new AerospikeException.InvalidArgument(
+				"orderBy/topK is not supported by all nodes in the cluster");
 		}
 	}
 
@@ -4700,7 +4704,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		} else if (configProvider != null) {
 			policy = new QueryPolicy(policy, configProvider);
 		}
-		rejectTopK(statement);
+		rejectTopK(statement, TOP_K_AGGREGATE);
 
 		Node[] nodes = cluster.validateNodes();
 		QueryAggregateExecutor executor = new QueryAggregateExecutor(cluster, policy, statement, nodes);
@@ -4730,7 +4734,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		} else if (configProvider != null) {
 			policy = new QueryPolicy(policy, configProvider);
 		}
-		rejectTopK(statement);
+		rejectTopK(statement, TOP_K_AGGREGATE);
 
 		QueryAggregateExecutor executor = new QueryAggregateExecutor(cluster, policy, statement, new Node[] {node});
 		return executor.getResultSet();
