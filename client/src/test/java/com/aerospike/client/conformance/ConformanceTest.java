@@ -18,7 +18,15 @@ package com.aerospike.client.conformance;
 
 import static org.junit.Assert.assertEquals;
 
+import java.io.BufferedReader;
 import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.net.InetAddress;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -32,6 +40,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeSet;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -51,9 +61,12 @@ import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Host;
 import com.aerospike.client.cluster.ConformanceAdapter;
 import com.aerospike.client.cluster.Connection;
+import com.aerospike.client.discovery.AwsEc2TagSeedCandidateProvider;
+import com.aerospike.client.discovery.DnsSeedCandidateProvider;
 import com.aerospike.client.discovery.Endpoint;
 import com.aerospike.client.discovery.PassThroughAddressTranslator;
 import com.aerospike.client.discovery.PortMapAddressTranslator;
+import com.aerospike.client.discovery.SeedCandidateProvider;
 import com.aerospike.client.discovery.SeedMergePolicy;
 import com.aerospike.client.discovery.StaticMapAddressTranslator;
 import com.aerospike.client.discovery.TranslationMissMode;
@@ -73,14 +86,28 @@ public class ConformanceTest {
 	private static final String BLOCKED = "blocked";
 	private static final Set<String> RESULTS = Set.of(PASS, FAIL, UNSUPPORTED, BLOCKED);
 
-	private static final String FIXTURE_SET_VERSION = "1.0.0";
+	private static final String FIXTURE_SET_VERSION = "1.1.0";
+	private static final List<String> FIXTURE_ROOTS = List.of("discovery", "tls");
 	private static final String DECLARED = "/conformance/java-declared.yaml";
 	private static final Path REPORT = Paths.get("target", "conformance-report.json");
 	private static final String TLS_REJECT_PREFIX = "Invalid TLS name: ";
+	private static final String FIXTURE_SERVER = "discovery/providers/fixture-server.py";
+	private static final int PROVIDER_TIMEOUT = 2000;
+	private static final String ACCESS_KEY = "AKIDCONFORMANCE00000";
+	private static final String SECRET_KEY = "conformance-secret-key-not-real";
+	private static final String SESSION_TOKEN = "conformance-session-token-not-real";
+	private static final Map<String,String> ERROR_MARKERS = Map.of(
+		"discovery-failed", "DNS seed discovery failed for every name",
+		"aws-error", "DescribeInstances failed",
+		"timeout", "timed out");
 
 	private static final List<Map<String,Object>> reportRows = Collections.synchronizedList(new ArrayList<>());
 	private static Path dir;
 	private static String fixtureSetVersion;
+	private static Process fixtureServer;
+	private static int fixtureDnsPort;
+	private static int fixtureHttpPort;
+	private static HttpClient http;
 
 	@Parameters(name = "{0}")
 	public static Collection<Object[]> data() throws Exception {
@@ -106,16 +133,14 @@ public class ConformanceTest {
 				FIXTURE_SET_VERSION + " expected: check out that release or update the declarations");
 		}
 
-		List<Path> files;
+		List<Path> files = new ArrayList<>();
 
-		try (Stream<Path> stream = Files.walk(dir)) {
-			files = stream
-				.filter(p -> p.toString().endsWith(".yaml"))
-				.filter(p -> dir.relativize(p).getNameCount() > 1)
-				.filter(p -> ! dir.relativize(p).getName(0).toString().startsWith("."))
-				.sorted()
-				.collect(Collectors.toList());
+		for (String root : FIXTURE_ROOTS) {
+			try (Stream<Path> stream = Files.walk(dir.resolve(root))) {
+				stream.filter(p -> p.toString().endsWith(".yaml")).forEach(files::add);
+			}
 		}
+		Collections.sort(files);
 
 		Map<String,Map<String,Row>> rows = new LinkedHashMap<>();
 		List<Object[]> params = new ArrayList<>();
@@ -132,6 +157,15 @@ public class ConformanceTest {
 		}
 
 		applyDeclarations(rows);
+
+		for (Object[] param : params) {
+			String kind = ((Row)param[1]).kind;
+
+			if (kind.equals("dns") || kind.equals("aws-tags")) {
+				startFixtureServer();
+				break;
+			}
+		}
 		return params;
 	}
 
@@ -164,6 +198,15 @@ public class ConformanceTest {
 
 		assertEquals(row.file + ":" + row.name + " declared " + declared.result + ", actual " +
 			actual.result + (actual.reason != null? ": " + actual.reason : ""), declared.result, actual.result);
+	}
+
+	@AfterClass
+	public static void stopFixtureServer() throws Exception {
+		if (fixtureServer != null) {
+			fixtureServer.destroy();
+			fixtureServer.waitFor(5, TimeUnit.SECONDS);
+			fixtureServer = null;
+		}
 	}
 
 	@AfterClass
@@ -213,6 +256,12 @@ public class ConformanceTest {
 
 		case "tls":
 			return tls();
+
+		case "dns":
+			return provider(dnsProvider());
+
+		case "aws-tags":
+			return provider(awsProvider());
 
 		default:
 			throw new IllegalStateException(row + ": unknown kind " + row.kind);
@@ -343,6 +392,245 @@ public class ConformanceTest {
 			return new Outcome(FAIL, "expected " + expected + ", got " + got);
 		}
 		return new Outcome(PASS, null);
+	}
+
+	private DnsSeedCandidateProvider dnsProvider() {
+		Map<String,Object> dns = map(map(map(row.data.get("config")).get("discovery")).get("dns"));
+		List<String> names = new ArrayList<>();
+
+		for (Object name : list(dns.get("names"))) {
+			names.add((String)name);
+		}
+
+		DnsSeedCandidateProvider.Builder builder = DnsSeedCandidateProvider.builder()
+			.names(names)
+			.timeout(intOr(dns.get("timeout_ms"), PROVIDER_TIMEOUT))
+			.servers("127.0.0.1:" + fixtureDnsPort);
+
+		if (dns.get("record_type") != null) {
+			builder.recordType("srv".equals(dns.get("record_type"))?
+				DnsSeedCandidateProvider.RecordType.SRV : DnsSeedCandidateProvider.RecordType.A);
+		}
+
+		if (dns.get("port") != null) {
+			builder.port((Integer)dns.get("port"));
+		}
+
+		if (dns.get("tls_name") != null) {
+			builder.tlsName((String)dns.get("tls_name"));
+		}
+		return builder.build();
+	}
+
+	private AwsEc2TagSeedCandidateProvider awsProvider() {
+		Map<String,Object> aws = map(map(map(row.data.get("config")).get("discovery")).get("aws"));
+		int timeout = intOr(aws.get("timeout_ms"), PROVIDER_TIMEOUT);
+		AwsEc2TagSeedCandidateProvider.Builder builder = AwsEc2TagSeedCandidateProvider.builder()
+			.region((String)aws.get("region"))
+			.timeout(timeout)
+			.initTimeout(intOr(aws.get("init_timeout_ms"), Math.max(timeout, PROVIDER_TIMEOUT)))
+			.endpoint("http://127.0.0.1:" + fixtureHttpPort)
+			.credentials(ACCESS_KEY, SECRET_KEY, SESSION_TOKEN);
+
+		for (Object item : list(aws.get("filters"))) {
+			Map<String,Object> filter = map(item);
+			List<String> values = new ArrayList<>();
+
+			for (Object value : list(filter.get("values"))) {
+				values.add((String)value);
+			}
+			builder.filter((String)filter.get("name"), values);
+		}
+
+		if (aws.get("address_field") != null) {
+			builder.addressField(AwsEc2TagSeedCandidateProvider.AddressField.valueOf(
+				((String)aws.get("address_field")).toUpperCase()));
+		}
+
+		if (aws.get("port") != null) {
+			builder.port((Integer)aws.get("port"));
+		}
+
+		if (aws.get("tls_name") != null) {
+			builder.tlsName((String)aws.get("tls_name"));
+		}
+		return builder.build();
+	}
+
+	private Outcome provider(SeedCandidateProvider provider) {
+		Map<String,Object> config = map(map(row.data.get("config")).get("discovery"));
+		Map<String,Object> aws = map(config.get("aws"));
+		String region = (aws != null)? (String)aws.get("region") : null;
+		List<Object> refreshes = list(map(row.data.get("input")).get("refreshes"));
+		List<Object> expected = list(map(row.data.get("expect")).get("refreshes"));
+
+		List<ConformanceAdapter.Step> steps = ConformanceAdapter.refreshProvider(provider, refreshes.size(),
+			i -> selectRefresh(refreshes.get(i), region));
+
+		for (int i = 0; i < expected.size(); i++) {
+			Map<String,Object> exp = map(expected.get(i));
+			ConformanceAdapter.Step step = steps.get(i);
+			Map<String,Object> error = map(exp.get("error"));
+
+			if (error != null) {
+				if (step.error == null) {
+					return new Outcome(FAIL, "refresh " + i + ": expected " + error.get("category") + ", got " +
+						hostSet(step.hosts));
+				}
+
+				List<String> facts = new ArrayList<>();
+				facts.add(ERROR_MARKERS.get((String)error.get("category")));
+
+				for (Object fact : list(error.get("messageContains"))) {
+					facts.add((String)fact);
+				}
+
+				for (String fact : facts) {
+					if (! step.error.contains(fact)) {
+						return new Outcome(FAIL, "refresh " + i + ": message lacks '" + fact + "': " + step.error);
+					}
+				}
+
+				for (String secret : List.of(SECRET_KEY, SESSION_TOKEN)) {
+					if (step.error.contains(secret)) {
+						return new Outcome(FAIL, "refresh " + i + ": message contains a credential secret");
+					}
+				}
+			}
+			else {
+				if (step.error != null) {
+					return new Outcome(FAIL, "refresh " + i + ": failed: " + step.error);
+				}
+
+				Set<String> expHosts = hostSet(list(exp.get("hosts")));
+				Set<String> got = hostSet(step.hosts);
+
+				if (! expHosts.equals(got)) {
+					return new Outcome(FAIL, "refresh " + i + ": expected hosts " + expHosts + ", got " + got);
+				}
+			}
+
+			Set<String> expSeeds = hostSet(list(exp.get("seeds")));
+			Set<String> gotSeeds = hostSet(Arrays.asList(step.seeds));
+
+			if (! expSeeds.equals(gotSeeds)) {
+				return new Outcome(FAIL, "refresh " + i + ": expected seeds " + expSeeds + ", got " + gotSeeds);
+			}
+		}
+		return new Outcome(PASS, null);
+	}
+
+	private static void selectRefresh(Object refresh, String region) {
+		Map<String,Object> selection = new LinkedHashMap<>();
+		selection.put("refresh", refresh);
+		selection.put("region", region);
+		StringBuilder sb = new StringBuilder();
+		writeJson(sb, selection, "");
+
+		try {
+			HttpRequest request = HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + fixtureHttpPort +
+				"/fixture/select")).POST(HttpRequest.BodyPublishers.ofString(sb.toString())).build();
+			HttpResponse<String> response = http.send(request, HttpResponse.BodyHandlers.ofString());
+
+			if (response.statusCode() != 200) {
+				throw new IllegalStateException("fixture server rejected the refresh: " + response.body());
+			}
+		}
+		catch (IllegalStateException e) {
+			throw e;
+		}
+		catch (Exception e) {
+			throw new IllegalStateException("fixture server unreachable", e);
+		}
+	}
+
+	private static Set<String> hostSet(List<?> hosts) {
+		Set<String> set = new TreeSet<>();
+
+		if (hosts == null) {
+			return set;
+		}
+
+		for (Object item : hosts) {
+			String host;
+			int port;
+			String tlsName;
+
+			if (item instanceof Host) {
+				Host h = (Host)item;
+				host = h.name;
+				port = h.port;
+				tlsName = h.tlsName;
+			}
+			else {
+				Map<String,Object> h = map(item);
+				host = (String)h.get("host");
+				port = (Integer)h.get("port");
+				tlsName = (String)h.get("tlsName");
+			}
+			set.add(canonicalHost(host) + " " + port + ((tlsName != null)? " " + tlsName : ""));
+		}
+		return set;
+	}
+
+	private static String canonicalHost(String host) {
+		if (host.matches("[0-9.]+") || host.contains(":")) {
+			try {
+				return InetAddress.getByName(host).getHostAddress();
+			}
+			catch (Exception e) {
+				return host;
+			}
+		}
+		return host;
+	}
+
+	private static int intOr(Object value, int otherwise) {
+		return (value != null)? (Integer)value : otherwise;
+	}
+
+	private static void startFixtureServer() throws Exception {
+		Path script = dir.resolve(FIXTURE_SERVER);
+
+		if (! Files.isRegularFile(script)) {
+			throw new IllegalStateException("Fixture server not found: " + script);
+		}
+
+		try {
+			Process check = new ProcessBuilder("python3", "--version").redirectErrorStream(true).start();
+			check.getInputStream().readAllBytes();
+
+			if (! check.waitFor(10, TimeUnit.SECONDS) || check.exitValue() != 0) {
+				throw new IllegalStateException("python3 --version failed");
+			}
+		}
+		catch (Exception e) {
+			throw new IllegalStateException("python3 is required to run the dns and aws-tags fixtures", e);
+		}
+
+		Path log = Paths.get("target", "conformance-fixture-server.log");
+		Files.createDirectories(log.getParent());
+		fixtureServer = new ProcessBuilder("python3", script.toString())
+			.redirectError(log.toFile())
+			.start();
+
+		BufferedReader reader = new BufferedReader(new InputStreamReader(fixtureServer.getInputStream(),
+			StandardCharsets.UTF_8));
+		String line = reader.readLine();
+
+		if (line == null) {
+			throw new IllegalStateException("Fixture server exited during startup, see " + log);
+		}
+
+		Matcher httpPort = Pattern.compile("\"http\": (\\d+)").matcher(line);
+		Matcher dnsPort = Pattern.compile("\"dns\": (\\d+)").matcher(line);
+
+		if (! httpPort.find() || ! dnsPort.find()) {
+			throw new IllegalStateException("Unexpected fixture server ports line: " + line);
+		}
+		fixtureHttpPort = Integer.parseInt(httpPort.group(1));
+		fixtureDnsPort = Integer.parseInt(dnsPort.group(1));
+		http = HttpClient.newHttpClient();
 	}
 
 	private static TranslationMissMode onMiss(String value) {

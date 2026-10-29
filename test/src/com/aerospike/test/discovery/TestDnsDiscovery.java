@@ -17,24 +17,17 @@
 package com.aerospike.test.discovery;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import org.junit.After;
 import org.junit.Before;
@@ -51,24 +44,20 @@ import com.aerospike.client.Record;
 import com.aerospike.client.cluster.Node;
 import com.aerospike.client.cluster.Partitions;
 import com.aerospike.client.discovery.DnsSeedCandidateProvider;
-import com.aerospike.client.discovery.DnsSeedCandidateProvider.RecordType;
 import com.aerospike.client.policy.ClientPolicy;
 
 /**
  * {@link DnsSeedCandidateProvider} against the two node cluster and CoreDNS server started by
  * test/discovery/run_dns.sh. The client gets no static seed: every seed comes from DNS. Node A is
  * reachable on 127.0.0.1 and node B on another host address, both on the same port, and each
- * advertises that address as its alternate access address. A standalone node C is published on
- * 127.0.0.1 on another port. The seed list is read from the provider's debug log line, which
+ * advertises that address as its alternate access address. The seed list is read from the provider's debug log line, which
  * lists the hosts each refresh returns. The environment arrives as system properties:
  * <ul>
  * <li>dns.server: DNS server address, ip:port</li>
- * <li>dns.zoneFile: zone file served by the DNS server, rewritten by the record change case</li>
  * <li>dns.container: DNS server container, stopped by the outage case</li>
  * <li>dns.namespace: namespace, replication factor 1</li>
  * <li>dns.port: port node A and node B are reachable on</li>
  * <li>dns.nodeA, dns.hostA, dns.nodeB, dns.hostB: node names and reachable addresses</li>
- * <li>dns.hostC, dns.portC: node C published address and port</li>
  * <li>dns.config: YAML config file selecting provider dns</li>
  * </ul>
  */
@@ -76,17 +65,13 @@ import com.aerospike.client.policy.ClientPolicy;
 public class TestDnsDiscovery {
 	private static final String CONFIG_SYS_PROP = "AEROSPIKE_CLIENT_CONFIG_SYS_PROP";
 	private static final String SEEDS_NAME = "seeds.dns.test";
-	private static final String SRV_NAME = "_aerospike._tcp.dns.test";
-	private static final String CHANGE_NAME = "_change._tcp.dns.test";
 	private static final String RESOLVED = "DNS seed names ";
 	private static final int REFRESH_INTERVAL = 1000;
 	private static final int WAIT_MS = 20000;
 	private static final int KEY_COUNT = 100;
-	private static final Pattern SERIAL = Pattern.compile("(SOA\\s+\\S+\\s+\\S+\\s+)(\\d+)");
 	private static final List<String> messages = new CopyOnWriteArrayList<>();
 
 	private static String server;
-	private static Path zoneFile;
 	private static String container;
 	private static String namespace;
 	private static int port;
@@ -94,8 +79,6 @@ public class TestDnsDiscovery {
 	private static String hostA;
 	private static String nodeB;
 	private static String hostB;
-	private static String hostC;
-	private static int portC;
 	private static String config;
 
 	@BeforeClass
@@ -104,7 +87,6 @@ public class TestDnsDiscovery {
 			throw new IllegalStateException("AEROSPIKE_CLIENT_CONFIG_URL is set and would override the test config");
 		}
 		server = required("dns.server");
-		zoneFile = Paths.get(required("dns.zoneFile"));
 		container = required("dns.container");
 		namespace = required("dns.namespace");
 		port = Integer.parseInt(required("dns.port"));
@@ -112,8 +94,6 @@ public class TestDnsDiscovery {
 		hostA = required("dns.hostA");
 		nodeB = required("dns.nodeB");
 		hostB = required("dns.hostB");
-		hostC = required("dns.hostC");
-		portC = Integer.parseInt(required("dns.portC"));
 		config = required("dns.config");
 
 		Log.setLevel(Log.Level.DEBUG);
@@ -142,44 +122,6 @@ public class TestDnsDiscovery {
 		try (AerospikeClient client = new AerospikeClient(policy)) {
 			String seeds = assertJoins("a-record", client);
 			assertEquals(aSeedLine(), seeds);
-		}
-	}
-
-	@Test
-	public void case2SrvRecordsJoinBothNodesWithIpLiteralSeeds() throws Exception {
-		ClientPolicy policy = policy(DnsSeedCandidateProvider.builder().names(SRV_NAME).recordType(RecordType.SRV)
-			.servers(server).build());
-
-		try (AerospikeClient client = new AerospikeClient(policy)) {
-			String seeds = assertJoins("srv", client);
-			assertEquals(seedLine(SRV_NAME, hostA, port, hostB, port), seeds);
-			assertFalse(seeds, seeds.contains("dns.test ") || seeds.contains("dns.test. "));
-		}
-	}
-
-	@Test
-	public void case3RecordChangeReachesSeedList() throws Exception {
-		ClientPolicy policy = policy(DnsSeedCandidateProvider.builder().names(CHANGE_NAME).recordType(RecordType.SRV)
-			.servers(server).build());
-		String original = new String(Files.readAllBytes(zoneFile), StandardCharsets.UTF_8);
-
-		try (AerospikeClient client = new AerospikeClient(policy)) {
-			String before = assertJoins("change-before", client);
-			assertEquals(seedLine(CHANGE_NAME, hostA, port, hostB, port), before);
-
-			messages.clear();
-			writeZone(changeRecord(original));
-			long begin = System.nanoTime();
-			String expected = seedLine(CHANGE_NAME, hostC, portC);
-			String after = await(() -> messages.stream().filter(expected::equals).findFirst().orElse(null));
-			long elapsed = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - begin);
-
-			System.out.println("DNS-DISCOVERY-RESULT change seedsAfter='" + after + "' elapsedMs=" + elapsed +
-				" refreshIntervalMs=" + REFRESH_INTERVAL + " nodes=" + nodeNames(client));
-			assertEquals(List.of(nodeA, nodeB), nodeNames(client));
-		}
-		finally {
-			writeZone(original);
 		}
 	}
 
@@ -312,36 +254,6 @@ public class TestDnsDiscovery {
 			hosts.add(hostPorts[i] + " " + hostPorts[i + 1]);
 		}
 		return RESOLVED + List.of(name) + " resolved to " + hosts;
-	}
-
-	private static String changeRecord(String zone) {
-		StringBuilder sb = new StringBuilder();
-		boolean replaced = false;
-
-		for (String line : zone.split("\n", -1)) {
-			if (line.startsWith("_change._tcp ")) {
-				if (! replaced) {
-					sb.append("_change._tcp 1 IN SRV 10 10 ").append(portC).append(" node-c\n");
-					replaced = true;
-				}
-				continue;
-			}
-			sb.append(line).append('\n');
-		}
-		sb.setLength(sb.length() - 1);
-		assertTrue("no _change._tcp record in " + zoneFile, replaced);
-		return sb.toString();
-	}
-
-	private static void writeZone(String zone) throws Exception {
-		String current = new String(Files.readAllBytes(zoneFile), StandardCharsets.UTF_8);
-		Matcher m = SERIAL.matcher(current);
-		assertTrue("no SOA serial in " + zoneFile, m.find());
-		long serial = Long.parseLong(m.group(2)) + 1;
-		String content = SERIAL.matcher(zone).replaceFirst("$1" + serial);
-		Path tmp = zoneFile.resolveSibling(zoneFile.getFileName() + ".tmp");
-		Files.write(tmp, content.getBytes(StandardCharsets.UTF_8));
-		Files.move(tmp, zoneFile, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
 	}
 
 	private static void docker(String... args) throws Exception {

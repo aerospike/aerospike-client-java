@@ -1,11 +1,8 @@
 name: Discovery conformance
 
 # L1: run the aerospike-client-conformance fixture set through ConformanceTest.
-# The fixture set comes from JFrog, so the job fails without the OIDC secrets
-# (fork pull requests) instead of skipping.
 
 permissions:
-  id-token: write
   contents: read
 
 on:
@@ -36,25 +33,12 @@ jobs:
         with:
           ref: ${{ github.ref }}
 
-      - name: Require JFrog OIDC
-        env:
-          OIDC_PROVIDER: ${{ secrets.JFROG_OIDC_PROVIDER }}
-          OIDC_AUDIENCE: ${{ secrets.JFROG_OIDC_AUDIENCE }}
-        run: |
-          set -euo pipefail
-          if [[ -z "${OIDC_PROVIDER}" || -z "${OIDC_AUDIENCE}" ]]; then
-            echo "::error::JFROG_OIDC_PROVIDER and JFROG_OIDC_AUDIENCE are required to fetch the conformance fixtures."
-            exit 1
-          fi
-
-      - name: Fetch conformance fixtures
-        id: fixtures
-        # CLIENT-5546 head (PR #363); repin to main once merged
-        uses: aerospike/shared-workflows/.github/actions/fetch-conformance-fixtures@5ce5d6efd81116f2f55716d55480b75e3d6bb09a
+      - name: Checkout conformance fixtures
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
-          version: 1.0.0
-          oidc-provider-name: ${{ secrets.JFROG_OIDC_PROVIDER }}
-          oidc-audience: ${{ secrets.JFROG_OIDC_AUDIENCE }}
+          repository: aerospike/aerospike-client-conformance
+          ref: f66304f36d1cded608e4d6c199622266e2db1dc3 # main, fixture set 1.1.0
+          path: conformance-fixtures
 
       - name: Setup Java
         uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4.9.1
@@ -72,7 +56,7 @@ jobs:
 
       - name: Run conformance fixtures
         env:
-          FIXTURES_DIRECTORY: ${{ steps.fixtures.outputs.fixtures-directory }}
+          FIXTURES_DIRECTORY: ${{ github.workspace }}/conformance-fixtures
         run: mvn -B -pl client -am test -Dtest=ConformanceTest "-Dconformance.dir=${FIXTURES_DIRECTORY}"
 
       - name: Upload conformance report
@@ -90,9 +74,8 @@ jobs:
 
       - name: Collect conformance report
         if: ${{ always() }}
-        # CLIENT-5546 head (PR #363); repin to main once merged
-        uses: aerospike/shared-workflows/.github/actions/collect-conformance-report@5ce5d6efd81116f2f55716d55480b75e3d6bb09a
+        uses: aerospike/aerospike-client-conformance/.github/actions/collect-conformance-report@f66304f36d1cded608e4d6c199622266e2db1dc3 # main
         with:
           reports-directory: client/target
-          fixtures-directory: ${{ steps.fixtures.outputs.fixtures-directory }}
+          fixtures-directory: ${{ github.workspace }}/conformance-fixtures
           declarations-directory: client/src/test/resources/conformance

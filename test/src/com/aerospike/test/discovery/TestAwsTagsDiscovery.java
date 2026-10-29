@@ -28,7 +28,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -179,47 +178,6 @@ public class TestAwsTagsDiscovery {
 				assertEquals(expected, r.params);
 				assertTrue(r.authorization, r.authorizationValid);
 			}
-		}
-	}
-
-	@Test
-	public void case2PaginationFollowsNextToken() throws Exception {
-		stub.pageSize(1);
-
-		try (AerospikeClient client = new AerospikeClient(policy(provider(80)))) {
-			String seeds = assertJoins("pagination", client);
-			String line = messages.stream().filter(m -> SEEDS.matcher(m).matches()).findFirst().orElse(null);
-			List<String> tokens = new ArrayList<>();
-
-			for (StubEc2Server.Request r : stub.requests().subList(0, 2)) {
-				tokens.add(r.params.get("NextToken"));
-			}
-			System.out.println("AWS-TAGS-RESULT pagination firstRefresh='" + line + "' nextTokens=" + tokens);
-
-			assertEquals(seedList(hostA, hostB), seeds);
-			assertTrue(line, line.endsWith("from 2 instances in 2 pages"));
-			assertEquals(null, tokens.get(0));
-			assertEquals("page-1", tokens.get(1));
-		}
-	}
-
-	@Test
-	public void case3AddedInstanceReachesSeedList() throws Exception {
-		try (AerospikeClient client = new AerospikeClient(policy(provider(80)))) {
-			String before = assertJoins("added-before", client);
-			messages.clear();
-			String added = "192.0.2.10";
-			stub.instance("i-0a1b2c3d4e5f60003", added);
-			long begin = System.nanoTime();
-			String expected = seedList(hostA, hostB, added);
-			String after = await(() -> messages.stream().map(TestAwsTagsDiscovery::seeds).filter(expected::equals)
-				.findFirst().orElse(null));
-			long elapsed = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - begin);
-
-			System.out.println("AWS-TAGS-RESULT added seedsBefore=" + before + " seedsAfter=" + after + " elapsedMs=" +
-				elapsed + " refreshIntervalMs=" + REFRESH_INTERVAL + " nodes=" + nodeNames(client));
-			assertTrue(elapsed + "ms", elapsed <= 2 * REFRESH_INTERVAL + MARGIN);
-			assertEquals(List.of(nodeA, nodeB), nodeNames(client));
 		}
 	}
 
