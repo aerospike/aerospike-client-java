@@ -70,8 +70,7 @@ jobs:
 
       - name: Setup L2 topology
         id: l2
-        # Moves to a release tag of aerospike-client-conformance once discovery-l2-topology is published.
-        uses: aerospike/aerospike-client-conformance/.github/actions/discovery-l2-topology@discovery-node-server
+        uses: aerospike/aerospike-client-conformance/.github/actions/discovery-l2-topology@faa1474b97c83beb7c353bdca62733e6ad8ff1d4 # main
         with:
           profile: ${{ inputs.profile }}
           subset: ${{ inputs.subset }}
