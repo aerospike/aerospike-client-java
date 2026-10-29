@@ -37,8 +37,7 @@ jobs:
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: aerospike/aerospike-client-conformance
-          # Moves to the v1.1.0 tag once the provider fixtures are released.
-          ref: provider-fixtures
+          ref: f66304f36d1cded608e4d6c199622266e2db1dc3 # main, fixture set 1.1.0
           path: conformance-fixtures
 
       - name: Setup Java
@@ -75,8 +74,7 @@ jobs:
 
       - name: Collect conformance report
         if: ${{ always() }}
-        # CLIENT-5546 head (PR #363); repin to main once merged
-        uses: aerospike/shared-workflows/.github/actions/collect-conformance-report@5ce5d6efd81116f2f55716d55480b75e3d6bb09a
+        uses: aerospike/aerospike-client-conformance/.github/actions/collect-conformance-report@f66304f36d1cded608e4d6c199622266e2db1dc3 # main
         with:
           reports-directory: client/target
           fixtures-directory: ${{ github.workspace }}/conformance-fixtures
