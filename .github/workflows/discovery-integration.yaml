@@ -44,6 +44,40 @@ on:
   workflow_dispatch:
 
 jobs:
+  # The only place the enterprise gate is decided, so a skip and its report cannot drift apart.
+  gate:
+    name: Skipped layers
+    runs-on: ${{ vars.BUILD_CONTAINER_DISTRO_VERSION }}
+    outputs:
+      enterprise: ${{ steps.gate.outputs.enterprise }}
+    steps:
+      - name: Decide the enterprise gate
+        id: gate
+        env:
+          ENTERPRISE: >-
+            ${{
+              github.event_name == 'push'
+              || github.event_name == 'workflow_dispatch'
+              || github.event.pull_request.head.repo.full_name == github.repository
+            }}
+        run: |
+          set -euo pipefail
+          layers='[]'
+          if [[ "${ENTERPRISE}" != true ]]; then
+            reason='fork pull requests get no FEATURES_CONF'
+            layers=$(jq -cn --arg reason "${reason}" '[
+              {layer: "L2 EE", tests: "ee and ee cn-only profiles", reason: $reason},
+              {layer: "TLS certificate matching", tests: "certificate name matching against Enterprise servers", reason: $reason}
+            ]')
+          fi
+          echo "enterprise=${ENTERPRISE}" >> "${GITHUB_OUTPUT}"
+          echo "layers=${layers}" >> "${GITHUB_OUTPUT}"
+
+      - name: Report skipped layers
+        uses: aerospike/aerospike-client-conformance/.github/actions/report-skipped-layers@f66304f36d1cded608e4d6c199622266e2db1dc3 # main
+        with:
+          layers: ${{ steps.gate.outputs.layers }}
+
   # A job if is evaluated before the matrix, so the fork gate cannot live on a
   # matrix cell. Community and enterprise stay two jobs.
   l2-ce:
@@ -70,10 +104,8 @@ jobs:
 
   l2-ee:
     name: L2 discovery (ee${{ matrix.profile != 'default' && format(', {0}', matrix.profile) || '' }})
-    if: >-
-      github.event_name == 'push'
-      || github.event_name == 'workflow_dispatch'
-      || github.event.pull_request.head.repo.full_name == github.repository
+    needs: gate
+    if: needs.gate.outputs.enterprise == 'true'
     strategy:
       fail-fast: false
       matrix:
@@ -91,10 +123,8 @@ jobs:
 
   tls-matching:
     name: TLS certificate matching
-    if: >-
-      github.event_name == 'push'
-      || github.event_name == 'workflow_dispatch'
-      || github.event.pull_request.head.repo.full_name == github.repository
+    needs: gate
+    if: needs.gate.outputs.enterprise == 'true'
     uses: ./.github/workflows/tls-matching.yaml
     with:
       server-container-repo: database-docker-dev-local/aerospike-server-enterprise
