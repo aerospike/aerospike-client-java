@@ -69,6 +69,8 @@ public final class Connection implements Closeable {
 	private final OutputStream out;
 	protected final Pool pool;
 	private volatile long lastUsed;
+	boolean pooled;
+	boolean received;
 
 	public Connection(InetSocketAddress address, int timeoutMillis) throws AerospikeException.Connection {
 		this(address, timeoutMillis, null, null);
@@ -505,6 +507,7 @@ public final class Connection implements Closeable {
 			if (count < 0)
 				throw new EOFException();
 
+			received = true;
 			pos += count;
 		}
 	}
@@ -524,6 +527,7 @@ public final class Connection implements Closeable {
 			if (count < 0) {
 				throw new EOFException();
 			}
+			received = true;
 			offset += count;
 		}
 	}
