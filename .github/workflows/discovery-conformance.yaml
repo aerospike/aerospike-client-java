@@ -1,6 +1,6 @@
 name: Discovery conformance
 
-# L1: run the aerospike-client-conformance fixture set through ConformanceTest.
+# L0: run the client unit tests. L1: run the aerospike-client-conformance fixture set through ConformanceTest.
 
 permissions:
   contents: read
@@ -24,6 +24,32 @@ on:
   workflow_dispatch:
 
 jobs:
+  l0:
+    name: L0 client unit tests
+    runs-on: ${{ vars.BUILD_CONTAINER_DISTRO_VERSION }}
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          ref: ${{ github.ref }}
+
+      - name: Setup Java
+        uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4.9.1
+        with:
+          distribution: ${{ vars.JAVA_PROVIDER }}
+          java-version: "21"
+
+      - name: Cache Maven repository
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: ~/.m2/repository
+          key: m2-unit-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            m2-unit-
+
+      - name: Run client unit tests
+        run: mvn -B -pl client -am test
+
   l1:
     name: L1 conformance
     runs-on: ${{ vars.BUILD_CONTAINER_DISTRO_VERSION }}
