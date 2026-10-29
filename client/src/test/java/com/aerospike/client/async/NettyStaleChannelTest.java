@@ -348,7 +348,9 @@ public class NettyStaleChannelTest {
 			assertEquals("Requests", 1, server.dataRequests() - requests);
 			assertEquals("Retries", retries, client.getClusterStats().retryCount);
 			assertEquals("Node errors", errors, node.getErrorCount());
-			assertEquals("Error rate", errorRate, errorRate());
+			// Epoll sees the idle close, so checkout drops the inactive channel and counts an error.
+			int dropped = type == EventLoopType.NETTY_EPOLL ? 1 : 0;
+			assertEquals("Error rate", errorRate + dropped, errorRate());
 			assertEquals(1, pooled());
 		}
 	}
