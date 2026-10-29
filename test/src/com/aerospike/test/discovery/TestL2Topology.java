@@ -457,7 +457,7 @@ public class TestL2Topology extends TestBase {
 			disabledProxy = null;
 
 			assertTrue("Writes to " + victim.name + " did not recover",
-				L2Topology.waitFor(() -> writes(client, wp, victimKeys.get(0))));
+				L2Topology.waitFor(() -> victimKeys.stream().allMatch(key -> writes(client, wp, key))));
 			L2Topology.waitNodes(client, L2Topology.nodeNames());
 			L2Topology.assertAllPartitionsOwned("N-7-after", client);
 
