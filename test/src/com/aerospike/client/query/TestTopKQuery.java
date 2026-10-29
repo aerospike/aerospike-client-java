@@ -9,6 +9,7 @@ package com.aerospike.client.query;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThrows;
@@ -106,14 +107,15 @@ public class TestTopKQuery extends TestSync {
 		cluster.hasQueryOrderBy = false;
 
 		try {
-			AerospikeException ae = assertThrows(AerospikeException.class,
+			String message = "orderBy/topK is not supported by all nodes in the cluster";
+			AerospikeException ae = assertThrows(AerospikeException.InvalidArgument.class,
 				() -> client.query(null, serverSide(Order.DESC, 3)));
 			assertEquals(ResultCode.PARAMETER_ERROR, ae.getResultCode());
-			assertTrue(ae.getMessage().contains("not supported by all nodes"));
+			assertEquals(message, ae.getBaseMessage());
 
-			ae = assertThrows(AerospikeException.class,
+			ae = assertThrows(AerospikeException.InvalidArgument.class,
 				() -> client.query(null, orderKeyOnly()));
-			assertTrue(ae.getMessage().contains("not supported by all nodes"));
+			assertEquals(message, ae.getBaseMessage());
 
 			assertArrayEquals(new long[] {100, 99, 98}, values(clientSide(Order.DESC, 3), BIN));
 		}
@@ -154,6 +156,7 @@ public class TestTopKQuery extends TestSync {
 		AerospikeException ae = assertThrows(AerospikeException.class,
 			() -> values(client.query(policy, orderKeyOnly()), BIN));
 		assertEquals(ResultCode.PARAMETER_ERROR, ae.getResultCode());
+		assertFalse(ae instanceof AerospikeException.InvalidArgument);
 		// The subcode is not asserted because its number is not final.
 		assertTrue("Expected the server's reason, got: " + ae.getBaseMessage(),
 			ae.getBaseMessage().contains("top-k needs both order-by and top-k fields"));

@@ -364,8 +364,8 @@ public final class Statement {
 	 * replaces k. Like {@code setReduce}, replaces any previously set reduce.
 	 * <p>
 	 * The Top-K specification is validated when the query runs; an invalid one, or a cluster where
-	 * any node doesn't support Top-K, fails with {@link ResultCode#PARAMETER_ERROR} before
-	 * anything is sent.
+	 * any node doesn't support Top-K, fails with {@link AerospikeException.InvalidArgument}
+	 * ({@link ResultCode#PARAMETER_ERROR}) before anything is sent.
 	 *
 	 * @param k	maximum number of records to return, in {@code [1, 1000]}
 	 */
@@ -407,13 +407,13 @@ public final class Statement {
 	/**
 	 * Validate the Top-K specification. Does nothing unless k is set.
 	 *
-	 * @throws AerospikeException	with {@link ResultCode#PARAMETER_ERROR} if Top-K has no order
-	 *								key or more than two, k is outside {@code [1, 1000]}, maxRecords
-	 *								is set, a UDF or aggregation function is set, an order key is
-	 *								incomplete, its bin name is not 1-15 UTF-8 bytes without NUL, it
-	 *								has flags on a non-STRING type, its bin is missing from the bin or
-	 *								operations projection or produced more than once by the
-	 *								operations projection, or both order keys use the same bin
+	 * @throws AerospikeException.InvalidArgument	if Top-K has no order key or more than two, k
+	 *								is outside {@code [1, 1000]}, maxRecords is set, an aggregate
+	 *								UDF is set, an order key's bin name is not 1-15 UTF-8 bytes
+	 *								without NUL, it has no type or direction, it has flags on a
+	 *								non-STRING type, its bin is missing from the bin or operations
+	 *								projection or produced more than once by the operations
+	 *								projection, or both order keys use the same bin
 	 */
 	public void validateTopK() {
 		if (! topKSet) {
@@ -421,23 +421,24 @@ public final class Statement {
 		}
 
 		if (orderBy.isEmpty()) {
-			throw parameterError(NO_ORDER_KEY);
+			throw new AerospikeException.InvalidArgument(NO_ORDER_KEY);
 		}
 
 		if (orderBy.size() > MAX_ORDER_KEYS) {
-			throw parameterError("Top-K takes at most " + MAX_ORDER_KEYS + " order keys");
+			throw new AerospikeException.InvalidArgument("orderBy supports at most two keys");
 		}
 
 		if (topK < 1 || topK > 1000) {
-			throw parameterError("Top-K limit must be in [1, 1000]");
+			throw new AerospikeException.InvalidArgument("topK must be in [1, 1000]; got " + topK);
 		}
 
 		if (maxRecords != 0) {
-			throw parameterError("Top-K is incompatible with maxRecords");
+			throw new AerospikeException.InvalidArgument("Top-K is incompatible with maxRecords");
 		}
 
 		if (functionName != null) {
-			throw parameterError("Top-K is only valid for foreground queries");
+			throw new AerospikeException.InvalidArgument(
+				"orderBy is incompatible with aggregate UDFs; use the UDF's own reduce stage");
 		}
 
 		for (OrderBy key : orderBy) {
@@ -445,23 +446,34 @@ public final class Statement {
 		}
 
 		if (orderBy.size() > 1 && orderBy.get(0).binName.equals(orderBy.get(1).binName)) {
-			throw parameterError("Top-K order keys must use different bins");
+			throw new AerospikeException.InvalidArgument("orderBy keys must use different bins");
 		}
 	}
 
 	private void validateOrderBy(OrderBy key) {
-		if (key.binName == null || key.type == null || key.order == null || key.flags == null) {
-			throw parameterError("Top-K order-by specification is incomplete");
-		}
-
-		int length = Buffer.estimateSizeUtf8(key.binName);
+		int length = (key.binName == null) ? 0 : Buffer.estimateSizeUtf8(key.binName);
 
 		if (length == 0 || length > 15 || key.binName.indexOf('\0') >= 0) {
-			throw parameterError("Top-K order-by bin name must be 1-15 UTF-8 bytes without NUL");
+			throw new AerospikeException.InvalidArgument(
+				"Top-K order-by bin name must be 1-15 UTF-8 bytes without NUL");
+		}
+
+		if (key.type == null) {
+			throw new AerospikeException.InvalidArgument(
+				"orderBy requires a type declaration (INTEGER or DOUBLE); Aerospike has no schema");
+		}
+
+		if (key.order == null) {
+			throw new AerospikeException.InvalidArgument("orderBy direction must be ASC or DESC");
+		}
+
+		if (key.flags == null) {
+			throw new AerospikeException.InvalidArgument(
+				"orderBy flags must not be null; use OrderByFlags.NONE");
 		}
 
 		if (key.flags != OrderByFlags.NONE && key.type != BinDataType.STRING) {
-			throw parameterError("Top-K order-by flags are only valid for STRING");
+			throw new AerospikeException.InvalidArgument("orderBy flags are only valid with type STRING");
 		}
 
 		if (operations != null) {
@@ -474,11 +486,12 @@ public final class Statement {
 			}
 
 			if (count == 0) {
-				throw parameterError("Top-K order-by bin must be included in the operations projection");
+				throw notInProjection(key.binName);
 			}
 
 			if (count > 1) {
-				throw parameterError("Top-K order-by bin must be produced by only one projection operation");
+				throw new AerospikeException.InvalidArgument(
+					"orderBy bin '" + key.binName + "' is produced by more than one operation");
 			}
 			return;
 		}
@@ -489,8 +502,13 @@ public final class Statement {
 					return;
 				}
 			}
-			throw parameterError("Top-K order-by bin must be included in the bin projection");
+			throw notInProjection(key.binName);
 		}
+	}
+
+	private static AerospikeException notInProjection(String binName) {
+		return new AerospikeException.InvalidArgument("orderBy bin '" + binName +
+			"' is not in projection; add it to the projection or remove the projection");
 	}
 
 	/**
@@ -500,15 +518,15 @@ public final class Statement {
 	 * combiner. A Top-K combiner is returned empty on every call, so a statement that runs again
 	 * does not rank the records of an earlier run.
 	 *
-	 * @throws AerospikeException	with {@link ResultCode#PARAMETER_ERROR} if Top-K has no order key,
-	 *								or the reduce specs are not a single reducer or a valid
-	 *								orderBy/limit pair on the same bin
+	 * @throws AerospikeException.InvalidArgument	if Top-K has no order key, or the reduce specs
+	 *								are not a single reducer or a valid orderBy/limit pair on the
+	 *								same bin
 	 */
 	@SuppressWarnings("unchecked")
 	<I, O> ReduceSpec<I, O> resolveReduce() {
 		if (topKSet) {
 			if (orderBy.isEmpty()) {
-				throw parameterError(NO_ORDER_KEY);
+				throw new AerospikeException.InvalidArgument(NO_ORDER_KEY);
 			}
 			return (ReduceSpec<I, O>)new TopKReduceSpec(orderBy.toArray(new OrderBy[0]), topK);
 		}
@@ -534,29 +552,27 @@ public final class Statement {
 		for (ReduceSpec<?, ?> spec : reduceSpecs) {
 			if (spec instanceof OrderByReduceSpec) {
 				if (orderBySpec != null) {
-					throw parameterError("topK requires exactly one orderBy spec");
+					throw new AerospikeException.InvalidArgument("topK requires exactly one orderBy spec");
 				}
 				orderBySpec = (ReduceSpec<Record, Record>)spec;
 			}
 			else if (spec instanceof LimitReduceSpec) {
 				if (limit != null) {
-					throw parameterError("topK requires exactly one limit spec");
+					throw new AerospikeException.InvalidArgument("topK requires exactly one limit spec");
 				}
 				limit = (ReduceSpec<Record, Record>)spec;
 			}
 			else {
-				throw parameterError("Cannot mix topK parts (orderBy/limit) with other reducers");
+				throw new AerospikeException.InvalidArgument(
+					"Cannot mix topK parts (orderBy/limit) with other reducers");
 			}
 		}
 
 		if (orderBySpec == null || limit == null) {
-			throw parameterError("topK requires both an orderBy spec and a limit spec");
+			throw new AerospikeException.InvalidArgument(
+				"topK requires both an orderBy spec and a limit spec");
 		}
 		return (ReduceSpec<I, O>)TopKReduceSpec.compose(orderBySpec, limit);
-	}
-
-	private static AerospikeException parameterError(String message) {
-		return new AerospikeException(ResultCode.PARAMETER_ERROR, message);
 	}
 
 	/**

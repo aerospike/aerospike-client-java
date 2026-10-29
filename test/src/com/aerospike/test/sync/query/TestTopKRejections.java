@@ -18,7 +18,6 @@ package com.aerospike.test.sync.query;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThrows;
-import static org.junit.Assert.assertTrue;
 
 import org.junit.Assume;
 import org.junit.Test;
@@ -42,8 +41,12 @@ import com.aerospike.test.sync.TestSync;
 public class TestTopKRejections extends TestSync {
 	private static final String SET = "topKRejections";
 	private static final String BIN = "rank";
-	private static final String UNSUPPORTED_CALL = "only supported by synchronous partition queries";
-	private static final String MAX_RECORDS = "incompatible with maxRecords";
+	private static final String UNSUPPORTED_CALL = "Top-K is only supported by synchronous partition queries";
+	private static final String MAX_RECORDS = "Top-K is incompatible with maxRecords";
+	private static final String BACKGROUND = "orderBy/topK is only valid on foreground (SELECT-style) " +
+		"queries; background (UPDATE-style) queries do not produce a result stream";
+	private static final String AGGREGATE =
+		"orderBy is incompatible with aggregate UDFs; use the UDF's own reduce stage";
 
 	@Test
 	public void includeBinDataFalseIsRejected() {
@@ -52,7 +55,7 @@ public class TestTopKRejections extends TestSync {
 		QueryPolicy policy = new QueryPolicy();
 		policy.includeBinData = false;
 
-		assertRejected("incompatible with includeBinData=false", () -> client.query(policy, topK()));
+		assertRejected("Top-K is incompatible with includeBinData=false", () -> client.query(policy, topK()));
 	}
 
 	@Test
@@ -75,17 +78,17 @@ public class TestTopKRejections extends TestSync {
 
 	@Test
 	public void backgroundExecuteIsRejected() {
-		assertRejected(UNSUPPORTED_CALL,
+		assertRejected(BACKGROUND,
 			() -> client.execute(null, topK(), Operation.put(new Bin(BIN, 1))));
-		assertRejected(UNSUPPORTED_CALL,
+		assertRejected(BACKGROUND,
 			() -> client.execute(null, topK(), "record_example", "processRecord"));
 	}
 
 	@Test
 	public void aggregationIsRejected() {
-		assertRejected(UNSUPPORTED_CALL,
+		assertRejected(AGGREGATE,
 			() -> client.queryAggregate(null, topK(), "sum_example", "sum_single_bin"));
-		assertRejected(UNSUPPORTED_CALL,
+		assertRejected(AGGREGATE,
 			() -> client.queryAggregateNode(null, topK(), client.getNodes()[0]));
 	}
 
@@ -111,8 +114,8 @@ public class TestTopKRejections extends TestSync {
 	}
 
 	private static void assertRejected(String message, ThrowingRunnable call) {
-		AerospikeException ae = assertThrows(AerospikeException.class, call);
+		AerospikeException ae = assertThrows(AerospikeException.InvalidArgument.class, call);
 		assertEquals(ResultCode.PARAMETER_ERROR, ae.getResultCode());
-		assertTrue(ae.getMessage(), ae.getMessage().contains(message));
+		assertEquals(message, ae.getBaseMessage());
 	}
 }
