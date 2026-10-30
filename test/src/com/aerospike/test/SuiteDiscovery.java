@@ -23,6 +23,7 @@ import org.junit.runners.Suite;
 import com.aerospike.client.Log;
 import com.aerospike.client.policy.ClientPolicy;
 import com.aerospike.test.discovery.TestDiscoveryConfig;
+import com.aerospike.test.discovery.TestL2AsyncIdleReset;
 import com.aerospike.test.discovery.TestL2CnOnlyCertificate;
 import com.aerospike.test.discovery.TestL2FaultInjection;
 import com.aerospike.test.discovery.TestL2IdleReset;
@@ -39,9 +40,9 @@ import com.aerospike.test.util.Args;
  * .github/workflows/discovery-l2.yaml or test/discovery/run_l2.sh, as does
  * {@link TestL2FaultInjection}. {@link TestL2ReachableNode}, {@link TestL2PassThrough},
  * {@link TestL2PortMapRange}, {@link TestL2CnOnlyCertificate}, {@link TestL2LowMtu},
- * {@link TestL2SourcePortRange} and {@link TestL2IdleReset} need the reachable, pass-through-names or
- * pass-through-ports, port-map-range, cn-only, low-mtu, port-range and idle-reset profiles of
- * run_l2.sh and are skipped without them.
+ * {@link TestL2SourcePortRange}, {@link TestL2IdleReset} and {@link TestL2AsyncIdleReset} need the
+ * reachable, pass-through-names or pass-through-ports, port-map-range, cn-only, low-mtu, port-range
+ * and idle-reset profiles of run_l2.sh and are skipped without them.
  *
  * <p>The suite builds no shared client: the seed is reachable only through the endpoint and its
  * peers only through a translator, so each test class builds its own {@link ClientPolicy}. The
@@ -59,7 +60,8 @@ import com.aerospike.test.util.Args;
 	TestL2FaultInjection.class,
 	TestL2LowMtu.class,
 	TestL2SourcePortRange.class,
-	TestL2IdleReset.class
+	TestL2IdleReset.class,
+	TestL2AsyncIdleReset.class
 })
 public class SuiteDiscovery {
 	public static ClientPolicy clientPolicy = null;

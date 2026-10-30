@@ -19,15 +19,19 @@ package com.aerospike.test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Suite;
 
-import com.aerospike.test.discovery.TestAwsTagsReal;
+import com.aerospike.test.discovery.TestK8sPassThrough;
 
 /**
- * AWS EC2 tag seed discovery against real AWS. Run on an EC2 instance by
- * test/discovery/run_aws_tags_real.sh, which supplies the system properties and the environment.
+ * Runs the discovery tests against a kind cluster running the Aerospike Kubernetes Operator, built
+ * by .github/workflows/discovery-k8s.yaml or test/discovery/run_l3.sh. Without that cluster
+ * (DISCOVERY_KUBECONFIG unset) every test is skipped.
+ *
+ * <p>The suite builds no shared client: the seed is reachable only through the endpoint and its
+ * peers only through what the server advertises, so each test builds its own client.
  */
 @RunWith(Suite.class)
 @Suite.SuiteClasses({
-	TestAwsTagsReal.class
+	TestK8sPassThrough.class
 })
-public class SuiteAwsTagsReal {
+public class SuiteDiscoveryK8s {
 }

@@ -165,12 +165,18 @@ public class TestL2IdleReset extends TestBase {
 			}
 
 			Map<String,long[]> end = L2Topology.connectionStats(client);
+			List<String> undetected = new ArrayList<>();
 			long closed = 0;
 			long errors = 0;
 
 			for (Map.Entry<String,long[]> entry : end.entrySet()) {
 				long[] s = start.get(entry.getKey());
-				closed += entry.getValue()[L2Topology.CLOSED] - s[L2Topology.CLOSED];
+				long nodeClosed = entry.getValue()[L2Topology.CLOSED] - s[L2Topology.CLOSED];
+
+				if (nodeClosed == 0) {
+					undetected.add(entry.getKey());
+				}
+				closed += nodeClosed;
 				errors += entry.getValue()[L2Topology.ERRORS] - s[L2Topology.ERRORS];
 			}
 
@@ -183,8 +189,7 @@ public class TestL2IdleReset extends TestBase {
 			for (String failure : failures) {
 				System.out.println("L2-F1-FAILED " + failure);
 			}
-			assertTrue("F-1: " + pooled + " reset pooled connections but only " + closed + " closed by the client",
-				closed >= pooled);
+			assertTrue("No reset pooled connection was detected on " + undetected, undetected.isEmpty());
 			assertEquals("F-1: commands failed to the caller after idle RST: " + failures, 0, failures.size());
 		}
 	}
@@ -198,7 +203,7 @@ public class TestL2IdleReset extends TestBase {
 	 * Open a connection through a listener and complete one info request on it, so Toxiproxy has
 	 * linked it to the node.
 	 */
-	private static Socket probe(L2Node node) throws IOException {
+	static Socket probe(L2Node node) throws IOException {
 		Socket socket = new Socket();
 		socket.connect(new InetSocketAddress(L2Topology.host, node.port), PROBE_TIMEOUT);
 		socket.setSoTimeout(PROBE_TIMEOUT);
@@ -219,7 +224,7 @@ public class TestL2IdleReset extends TestBase {
 	/**
 	 * Read the next byte of a probe connection: RST when the peer reset it, FIN when it closed it.
 	 */
-	private static String probeResult(Socket socket) {
+	static String probeResult(Socket socket) {
 		try {
 			int b = socket.getInputStream().read();
 			return b < 0 ? "FIN" : "DATA " + b;

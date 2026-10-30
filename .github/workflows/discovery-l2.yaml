@@ -60,7 +60,7 @@ jobs:
             port-map-range) suite='**/TestL2PortMapRange.class' ;;
             cn-only) suite='**/TestL2CnOnlyCertificate.class' ;;
             low-mtu) suite='**/TestL2LowMtu.class' ;;
-            idle-reset) suite='**/TestL2IdleReset.class' ;;
+            idle-reset) suite='**/TestL2IdleReset.class,**/TestL2AsyncIdleReset.class' ;;
             *)
               echo "::error::Unknown profile ${PROFILE}"
               exit 1

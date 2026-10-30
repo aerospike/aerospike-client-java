@@ -80,7 +80,7 @@ public class AwsEc2TagSeedCandidateProviderTest {
 
 	private AwsEc2TagSeedCandidateProvider.Builder builder() {
 		return AwsEc2TagSeedCandidateProvider.builder().region("us-east-1").tagFilter("aerospike-cluster", "prod-a")
-			.environment(env);
+			.environment(env).timeout(5000);
 	}
 
 	private static String all() {
