@@ -83,6 +83,39 @@ jobs:
           oidc-provider: ${{ secrets.JFROG_OIDC_PROVIDER }}
           oidc-audience: ${{ secrets.JFROG_OIDC_AUDIENCE }}
 
+      - name: Build DNS zone
+        id: zone
+        if: ${{ inputs.profile == 'default' }}
+        env:
+          CLIENT_NETWORK: ${{ steps.l2.outputs.client-network }}
+          ENV_FILE: ${{ steps.l2.outputs.env-file }}
+        run: |
+          set -euo pipefail
+          setting() { sed -n "s/^$1=//p" "${ENV_FILE}"; }
+          host="$(setting DISCOVERY_ENDPOINT_HOSTNAME)"
+          proxy_ip="$(docker inspect -f "{{(index .NetworkSettings.Networks \"${CLIENT_NETWORK}\").IPAddress}}" "$(setting TOXIPROXY_HOST)")"
+          {
+            echo "zone-name=${host}"
+            echo "zone-content<<EOF"
+            echo "\$ORIGIN ${host}."
+            echo "@ 3600 IN SOA ns.${host}. admin.${host}. 1 60 60 60 1"
+            echo "@ 1 IN A ${proxy_ip}"
+            IFS=',' read -r -a ports <<< "$(setting DISCOVERY_ENDPOINT_PORTS)"
+            for port in "${ports[@]}"; do
+              echo "_aerospike._tcp 1 IN SRV 10 10 ${port} ${host}."
+            done
+            echo "EOF"
+          } >> "${GITHUB_OUTPUT}"
+
+      - name: Setup DNS server
+        id: dns
+        if: ${{ inputs.profile == 'default' }}
+        uses: aerospike/shared-workflows/.github/actions/setup-dns-server@308f37e0cd5c7a6386a99ea7afc379d5a4ea9256 # v5.1.0
+        with:
+          network-name: ${{ steps.l2.outputs.client-network }}
+          zone-name: ${{ steps.zone.outputs.zone-name }}
+          zone-content: ${{ steps.zone.outputs.zone-content }}
+
       - name: Setup L2 Java client runner
         id: runner
         uses: ./.github/actions/setup-l2-client-runner
@@ -101,6 +134,7 @@ jobs:
           CLIENT_HOSTS: ${{ steps.l2.outputs.client-hosts }}
           TLS_CERT_DIR: ${{ steps.l2.outputs.tls-cert-dir }}
           DISCOVERY_SUBSET: ${{ inputs.subset }}
+          DISCOVERY_DNS_SERVER: ${{ steps.dns.outputs.server-address }}
           L2_SUITE: ${{ steps.suite.outputs.suite }}
         run: |
           set -euo pipefail
@@ -110,6 +144,7 @@ jobs:
             --workdir "${CLIENT_WORKDIR}"
             --env-file "${ENV_FILE}"
             -e L2_SUITE
+            -e DISCOVERY_DNS_SERVER
           )
           remainder="${CLIENT_VOLUMES}"
           while [[ -n "${remainder}" ]]; do
