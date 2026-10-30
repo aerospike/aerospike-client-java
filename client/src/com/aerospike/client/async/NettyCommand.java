@@ -81,6 +81,7 @@ public final class NettyCommand implements Runnable, TimerTask {
 	boolean usingSocketTimeout;
 	boolean eventReceived;
 	boolean connectInProgress;
+	boolean pooled;
 
 	public NettyCommand(NettyEventLoop loop, Cluster cluster, AsyncCommand command) {
 		this.eventLoop = loop;
@@ -250,26 +251,38 @@ public final class NettyCommand implements Runnable, TimerTask {
 	}
 
 	private void executeCommand(long deadline, int tstate) {
+		iteration++;
+		executeCommand(deadline, tstate, true);
+	}
+
+	private void executeCommand(long deadline, int tstate, boolean usePool) {
 		state = AsyncCommand.CHANNEL_INIT;
 		bytesIn = 0;
-		iteration++;
+		pooled = false;
 
 		try {
-			node = command.getNode(cluster);
-			node.validateErrorCount();
+			if (usePool) {
+				node = command.getNode(cluster);
+				node.validateErrorCount();
 
-			if (metricsEnabled) {
-				begin = System.nanoTime();
+				if (metricsEnabled) {
+					begin = System.nanoTime();
+				}
+
+				conn = (NettyConnection)node.getAsyncConnection(eventState.index, null);
+
+				if (conn != null) {
+					pooled = true;
+					setTimeoutTask(deadline, tstate);
+					InboundHandler handler = (InboundHandler)conn.channel.pipeline().last();
+					handler.setCommand(this);
+					writeCommand();
+					return;
+				}
 			}
-
-			conn = (NettyConnection)node.getAsyncConnection(eventState.index, null);
-
-			if (conn != null) {
-				setTimeoutTask(deadline, tstate);
-				InboundHandler handler = (InboundHandler)conn.channel.pipeline().last();
-				handler.setCommand(this);
-				writeCommand();
-				return;
+			else if (! node.reserveAsyncConnectionSlot(eventState.index)) {
+				throw new AerospikeException.Connection(ResultCode.NO_MORE_CONNECTIONS,
+					"Max async conns reached: " + node + ',' + eventState.index);
 			}
 
 			connectInProgress = true;
@@ -481,6 +494,15 @@ public final class NettyCommand implements Runnable, TimerTask {
 		cf.addListener(new ChannelFutureListener() {
 			@Override
 			public void operationComplete(ChannelFuture future) {
+				if (! future.isSuccess()) {
+					if ((state == AsyncCommand.COMMAND_WRITE || state == AsyncCommand.AUTH_WRITE) &&
+						conn != null && conn.channel == future.channel()) {
+						onNetworkError(new AerospikeException.Connection("Send failed: " +
+							Util.getErrorMessage(future.cause()), future.cause()));
+					}
+					return;
+				}
+
 				switch (state) {
 				case AsyncCommand.COMMAND_WRITE:
 					state = AsyncCommand.COMMAND_READ_HEADER;
@@ -927,6 +949,10 @@ public final class NettyCommand implements Runnable, TimerTask {
 		}
 
 		try {
+			if (retryNewConnection()) {
+				return;
+			}
+
 			addError();
 			closeConnection();
 			retry(ae, true);
@@ -934,6 +960,35 @@ public final class NettyCommand implements Runnable, TimerTask {
 		catch (Throwable e) {
 			logError(e);
 		}
+	}
+
+	private boolean retryNewConnection() {
+		// A channel taken from the pool may have been closed or reset by the peer while idle.
+		// Run the same attempt once on a new connection when the command cannot have executed.
+		if (! pooled || conn == null) {
+			return false;
+		}
+
+		boolean sent = state != AsyncCommand.COMMAND_WRITE;
+
+		if (sent && (command.isWrite() || bytesIn > 0)) {
+			return false;
+		}
+
+		long currentTime = 0;
+
+		if (hasTotalTimeout) {
+			currentTime = System.nanoTime();
+
+			if (currentTime >= totalDeadline) {
+				return false;
+			}
+		}
+
+		node.closeAsyncIdleConnection(conn, eventState.index);
+		conn = null;
+		executeCommand(retryDeadline(currentTime), TimeoutState.RETRY, false);
+		return true;
 	}
 
 	private void onBackoffError(AerospikeException.Backoff ab) {
@@ -1002,29 +1057,7 @@ public final class NettyCommand implements Runnable, TimerTask {
 			}
 		}
 
-		long deadline = totalDeadline;
-
-		// Attempt retry.
-		if (usingSocketTimeout) {
-			// Socket timeout in effect.
-			timeoutTask.cancel();
-			long timeout = TimeUnit.MILLISECONDS.toNanos(command.socketTimeout);
-
-			if (hasTotalTimeout) {
-				long remaining = totalDeadline - currentTime;
-
-				if (remaining <= timeout) {
-					// Transition to total timeout.
-					timeout = remaining;
-					usingSocketTimeout = false;
-				}
-			}
-			else {
-				currentTime = System.nanoTime();
-			}
-
-			deadline = currentTime + timeout;
-		}
+		long deadline = retryDeadline(currentTime);
 
 		if (queueCommand) {
 			// Retry command at the end of the queue so other commands have a
@@ -1050,6 +1083,33 @@ public final class NettyCommand implements Runnable, TimerTask {
 			// Retry command immediately.
 			retry(ae, deadline);
 		}
+	}
+
+	private long retryDeadline(long currentTime) {
+		long deadline = totalDeadline;
+
+		// Attempt retry.
+		if (usingSocketTimeout) {
+			// Socket timeout in effect.
+			timeoutTask.cancel();
+			long timeout = TimeUnit.MILLISECONDS.toNanos(command.socketTimeout);
+
+			if (hasTotalTimeout) {
+				long remaining = totalDeadline - currentTime;
+
+				if (remaining <= timeout) {
+					// Transition to total timeout.
+					timeout = remaining;
+					usingSocketTimeout = false;
+				}
+			}
+			else {
+				currentTime = System.nanoTime();
+			}
+
+			deadline = currentTime + timeout;
+		}
+		return deadline;
 	}
 
 	private void retry(AerospikeException ae, long deadline) {
@@ -1219,6 +1279,15 @@ public final class NettyCommand implements Runnable, TimerTask {
 			if (command.state == AsyncCommand.CONNECT) {
 				command.channelActive();
 			}
+		}
+
+		@Override
+		public void channelInactive(ChannelHandlerContext ctx) {
+			if (command == null || command.state == AsyncCommand.COMPLETE || command.conn == null ||
+				command.conn.channel != ctx.channel()) {
+				return;
+			}
+			command.onNetworkError(new AerospikeException.Connection("Connection closed by peer"));
 		}
 
 		@Override

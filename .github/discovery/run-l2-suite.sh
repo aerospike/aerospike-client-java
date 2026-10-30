@@ -64,7 +64,7 @@ if [[ -n "${AEROSPIKE_CA_CERT:-}" ]]; then
 fi
 
 suite="${L2_SUITE:-**/SuiteDiscovery.class}"
-[[ "$suite" =~ ^[A-Za-z0-9*/._-]+$ ]] || {
+[[ "$suite" =~ ^[A-Za-z0-9*/.,_-]+$ ]] || {
   echo "Refusing unexpected suite: ${suite}" >&2
   exit 1
 }
