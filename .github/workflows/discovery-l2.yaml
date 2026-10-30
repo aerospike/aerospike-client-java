@@ -60,7 +60,7 @@ jobs:
             port-map-range) suite='**/TestL2PortMapRange.class' ;;
             cn-only) suite='**/TestL2CnOnlyCertificate.class' ;;
             low-mtu) suite='**/TestL2LowMtu.class' ;;
-            idle-reset) suite='**/TestL2IdleReset.class' ;;
+            idle-reset) suite='**/TestL2IdleReset.class,**/TestL2AsyncIdleReset.class' ;;
             *)
               echo "::error::Unknown profile ${PROFILE}"
               exit 1
@@ -90,8 +90,8 @@ jobs:
           crypto-type: gnu
 
       - name: Run L2 discovery suite
-        # N-17 (CN fallback) and F-1 (unchecked pooled sockets) are red on Java; their checks report without blocking.
-        continue-on-error: ${{ inputs.profile == 'cn-only' || inputs.profile == 'idle-reset' }}
+        # Java keeps the legacy CN fallback until the next major, so cn-only cannot pass yet.
+        continue-on-error: ${{ inputs.profile == 'cn-only' }}
         env:
           CLIENT_IMAGE: ${{ steps.runner.outputs.client-image }}
           CLIENT_VOLUMES: ${{ steps.runner.outputs.client-volumes }}
@@ -153,5 +153,4 @@ jobs:
         with:
           files: test/target/surefire-reports/*.xml
           check_name: "L2 discovery (${{ inputs.subset }}${{ inputs.profile != 'default' && format(', {0}', inputs.profile) || '' }})"
-          # N-17 and F-1 stay red in the report. Their check must not fail the pull request.
-          fail_on: ${{ (inputs.profile == 'cn-only' || inputs.profile == 'idle-reset') && 'nothing' || 'test failures' }}
+          fail_on: ${{ inputs.profile == 'cn-only' && 'nothing' || 'test failures' }}

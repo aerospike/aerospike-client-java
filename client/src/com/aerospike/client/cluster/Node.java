@@ -876,6 +876,19 @@ public class Node implements Closeable {
 	 * Get a socket connection from connection pool to the server node.
 	 */
 	public final Connection getConnection(SyncCommand cmd, int connectTimeout, int socketTimeout, int timeoutDelay) {
+		return getConnection(cmd, connectTimeout, socketTimeout, timeoutDelay, true);
+	}
+
+	/**
+	 * Create a new socket connection to the server node without taking one from the connection pool.
+	 * The connection is counted in the pool and is returned to it by {@link #putConnection(Connection)}.
+	 * For internal use only.
+	 */
+	public final Connection getNewConnection(SyncCommand cmd, int connectTimeout, int socketTimeout, int timeoutDelay) {
+		return getConnection(cmd, connectTimeout, socketTimeout, timeoutDelay, false);
+	}
+
+	private Connection getConnection(SyncCommand cmd, int connectTimeout, int socketTimeout, int timeoutDelay, boolean usePool) {
 		int max = cluster.connPoolsPerNode;
 		int initialIndex;
 		boolean backward;
@@ -898,7 +911,7 @@ public class Node implements Closeable {
 		Connection conn;
 
 		while (true) {
-			conn = pool.poll();
+			conn = usePool ? pool.poll() : null;
 
 			if (conn != null) {
 				// Found socket.
@@ -906,6 +919,8 @@ public class Node implements Closeable {
 				if (cluster.isConnCurrentTran(conn.getLastUsed())) {
 					try {
 						conn.setTimeout(socketTimeout);
+						conn.pooled = true;
+						conn.received = false;
 						return conn;
 					}
 					catch (Throwable e) {
@@ -1046,6 +1061,20 @@ public class Node implements Closeable {
 	public final void closeConnection(Connection conn) {
 		conn.pool.total.getAndDecrement();
 		closeConnectionOnError(conn);
+	}
+
+	/**
+	 * Close a connection taken from the connection pool that failed before any response data was
+	 * read, without counting an error. Return false and leave the connection open if it was newly
+	 * created or has read response data. For internal use only.
+	 */
+	public final boolean closeStaleConnection(Connection conn) {
+		if (! conn.pooled || conn.received) {
+			return false;
+		}
+		conn.pool.total.getAndDecrement();
+		closeIdleConnection(conn);
+		return true;
 	}
 
 	/**

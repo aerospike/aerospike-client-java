@@ -68,6 +68,7 @@
 #                             DISCOVERY_PROXY_PORT_RANGE and runs TestL2SourcePortRange (F-3)
 #                             idle-reset: the default topology. Sets DISCOVERY_IDLE_RESET=1 and runs TestL2IdleReset
 #                             (F-1), which fails on Java until pooled sockets are checked on checkout
+#                             It also runs TestL2AsyncIdleReset, the async counterpart on Netty event loops
 #                             On ee every other profile uses a certificate with aerospike-tls as a dNSName SAN
 #                             and a CN that does not match it (DISCOVERY_TLS_CERT_SHAPE=san-only)
 #   L2_SUBNET                 first three octets of the port-map-range server network (default 10.213.66)
@@ -106,7 +107,7 @@ run_client() {
 		cn-only) suite='**/TestL2CnOnlyCertificate.class' ;;
 		low-mtu) suite='**/TestL2LowMtu.class' ;;
 		port-range) suite='**/TestL2SourcePortRange.class' ;;
-		idle-reset) suite='**/TestL2IdleReset.class' ;;
+		idle-reset) suite='**/TestL2IdleReset.class,**/TestL2AsyncIdleReset.class' ;;
 	esac
 
 	if [ "$subset" = "ee" ]; then
