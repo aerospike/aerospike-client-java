@@ -20,18 +20,21 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Suite;
 
 import com.aerospike.test.discovery.TestK8sPassThrough;
+import com.aerospike.test.discovery.TestK8sScale;
 
 /**
  * Runs the discovery tests against a kind cluster running the Aerospike Kubernetes Operator, built
  * by .github/workflows/discovery-k8s.yaml or test/discovery/run_l3.sh. Without that cluster
- * (DISCOVERY_KUBECONFIG unset) every test is skipped.
+ * (DISCOVERY_KUBECONFIG unset) the pass-through tests are skipped and the scale tests fail. The TLS
+ * test runs on its own on the TLS cluster (L3_SUITE in .github/discovery/run-l3-suite.sh).
  *
  * <p>The suite builds no shared client: the seed is reachable only through the endpoint and its
  * peers only through what the server advertises, so each test builds its own client.
  */
 @RunWith(Suite.class)
 @Suite.SuiteClasses({
-	TestK8sPassThrough.class
+	TestK8sPassThrough.class,
+	TestK8sScale.class
 })
 public class SuiteDiscoveryK8s {
 }

@@ -26,10 +26,13 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BooleanSupplier;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Kind cluster running the Aerospike Kubernetes Operator, built by
@@ -40,6 +43,9 @@ import java.util.function.BooleanSupplier;
  * <li>DISCOVERY_ENDPOINT_HOSTNAME: hostname the client and the server both resolve</li>
  * <li>DISCOVERY_INGRESS_PORTS: ingress-nginx tcp-services host ports</li>
  * <li>DISCOVERY_SERVICE_NODE_PORTS: NodePorts of the per-pod Services at setup, in pod order</li>
+ * <li>DISCOVERY_TLS_CA_FILE: CA file of the server certificate, set once
+ * .github/discovery/enable-l3-tls.sh serves TLS on the AerospikeCluster</li>
+ * <li>DISCOVERY_TLS_NAME: tls-name that script configures</li>
  * </ul>
  * The AerospikeCluster, its pods, their Services and the Kubernetes nodes are read from the API
  * server at runtime through kubectl, every call bounded by {@link #KUBECTL_TIMEOUT_MS}.
@@ -55,6 +61,8 @@ final class K8sCluster {
 	static final String endpointHostname = optional("DISCOVERY_ENDPOINT_HOSTNAME");
 	static final List<Integer> ingressPorts = ports(optional("DISCOVERY_INGRESS_PORTS"));
 	static final List<Integer> serviceNodePorts = ports(optional("DISCOVERY_SERVICE_NODE_PORTS"));
+	static final String tlsCaFile = optional("DISCOVERY_TLS_CA_FILE");
+	static final String tlsName = optional("DISCOVERY_TLS_NAME");
 
 	final String namespace;
 	final String name;
@@ -143,6 +151,105 @@ final class K8sCluster {
 		return value.isEmpty() ? 0 : Integer.parseInt(value.split(" ")[0]);
 	}
 
+	/**
+	 * Return the UID of the object, or an empty string when it does not exist.
+	 */
+	String uid(String kind, String object) {
+		return kubectl("-n", namespace, "get", kind, object, "--ignore-not-found", "-o",
+			"jsonpath={.metadata.uid}").trim();
+	}
+
+	String podReadyAt(String pod) {
+		return kubectl("-n", namespace, "get", "pod", pod, "-o",
+			"jsonpath={.status.conditions[?(@.type==\"Ready\")].lastTransitionTime}").trim();
+	}
+
+	String readinessProbe(String pod) {
+		return kubectl("-n", namespace, "get", "pod", pod, "-o",
+			"jsonpath={.spec.containers[?(@.name==\"aerospike-server\")].readinessProbe}").trim();
+	}
+
+	String publishNotReadyAddresses(String service) {
+		return kubectl("-n", namespace, "get", "service", service, "-o",
+			"jsonpath={.spec.publishNotReadyAddresses}").trim();
+	}
+
+	/**
+	 * Return the number of ready endpoints in the Service's EndpointSlices.
+	 */
+	int readyEndpoints(String service) {
+		String ready = kubectl("-n", namespace, "get", "endpointslices", "-l", "kubernetes.io/service-name=" + service,
+			"-o", "jsonpath={range .items[*].endpoints[*]}{.conditions.ready} {end}");
+		int count = 0;
+
+		for (String value : ready.trim().split(" ")) {
+			if ("true".equals(value)) {
+				count++;
+			}
+		}
+		return count;
+	}
+
+	void deletePod(String pod) {
+		kubectl("-n", namespace, "delete", "pod", pod, "--wait=true");
+	}
+
+	/**
+	 * Create a NodePort Service that sends {@code port} on {@code nodePort} to {@code pod} alone.
+	 */
+	void createPodNodePortService(String service, String pod, int port, int nodePort) {
+		kubectl("-n", namespace, "create", "service", "nodeport", service, "--tcp=" + port + ':' + port,
+			"--node-port=" + nodePort);
+		kubectl("-n", namespace, "set", "selector", "service", service, "statefulset.kubernetes.io/pod-name=" + pod);
+	}
+
+	void deleteService(String service) {
+		kubectl("-n", namespace, "delete", "service", service, "--ignore-not-found", "--wait=true");
+	}
+
+	/**
+	 * Return the first and last port of the API server's NodePort range, read from the error the
+	 * API server returns when asked to create a Service whose NodePort is outside it.
+	 */
+	int[] nodePortRange() {
+		String probe = name + "-node-port-range";
+		assertTrue("Service " + probe + " exists", uid("service", probe).isEmpty());
+
+		try {
+			String error = kubectlError("-n", namespace, "create", "service", "nodeport", probe, "--tcp=1:1",
+				"--node-port=1");
+			Matcher m = Pattern.compile("range of valid ports is (\\d+)-(\\d+)").matcher(error);
+			assertTrue("No NodePort range in: " + error, m.find());
+			return new int[] {Integer.parseInt(m.group(1)), Integer.parseInt(m.group(2))};
+		}
+		finally {
+			deleteService(probe);
+		}
+	}
+
+	/**
+	 * Return the NodePorts every Service in the kind cluster holds.
+	 */
+	static List<Integer> allocatedNodePorts() {
+		return ports(kubectl("get", "service", "--all-namespaces", "-o",
+			"jsonpath={range .items[*].spec.ports[*]}{.nodePort},{end}"));
+	}
+
+	/**
+	 * Return the StatefulSet ordinal at the end of the pod's name.
+	 */
+	static int ordinal(String pod) {
+		return Integer.parseInt(pod.substring(pod.lastIndexOf('-') + 1));
+	}
+
+	/**
+	 * Return the decoded value of {@code key} in the secret {@code secret}.
+	 */
+	byte[] secretData(String secret, String key) {
+		return Base64.getDecoder().decode(kubectl("-n", namespace, "get", "secret", secret, "-o",
+			"jsonpath={.data." + key.replace(".", "\\.") + "}").trim());
+	}
+
 	static String nodeLabel(String node) {
 		return kubectl("get", "node", node, "-o",
 			"jsonpath={.metadata.labels." + ALTERNATE_ACCESS_LABEL.replace(".", "\\.") + "}").trim();
@@ -150,6 +257,14 @@ final class K8sCluster {
 
 	static String nodeAddress(String node) {
 		return kubectl("get", "node", node, "-o", "jsonpath={.status.addresses[?(@.type==\"InternalIP\")].address}").trim();
+	}
+
+	/**
+	 * Set the AerospikeCluster size without waiting for the operator.
+	 */
+	void resize(int size) {
+		kubectl("-n", namespace, "patch", "aerospikecluster", name, "--type", "merge",
+			"-p", "{\"spec\":{\"size\":" + size + "}}");
 	}
 
 	/**
@@ -250,6 +365,52 @@ final class K8sCluster {
 			}
 			if (out != null) {
 				out.delete();
+			}
+			if (err != null) {
+				err.delete();
+			}
+		}
+	}
+
+	/**
+	 * Run kubectl against DISCOVERY_KUBECONFIG, expecting it to fail, and return its standard
+	 * error. Fails the test when kubectl exits zero or does not finish within
+	 * {@link #KUBECTL_TIMEOUT_MS}.
+	 */
+	static String kubectlError(String... args) {
+		List<String> command = new ArrayList<>();
+		command.add("kubectl");
+		command.add("--request-timeout=30s");
+		Collections.addAll(command, args);
+
+		File err = null;
+		Process process = null;
+
+		try {
+			err = File.createTempFile("kubectl", ".err");
+			ProcessBuilder pb = new ProcessBuilder(command);
+			pb.environment().put("KUBECONFIG", kubeconfig);
+			pb.redirectInput(ProcessBuilder.Redirect.from(new File("/dev/null")));
+			pb.redirectOutput(ProcessBuilder.Redirect.DISCARD);
+			pb.redirectError(err);
+			process = pb.start();
+
+			if (! process.waitFor(KUBECTL_TIMEOUT_MS, TimeUnit.MILLISECONDS)) {
+				fail(String.join(" ", command) + " did not finish within " + KUBECTL_TIMEOUT_MS + "ms");
+			}
+			assertFalse(String.join(" ", command) + " succeeded", process.exitValue() == 0);
+			return Files.readString(err.toPath(), StandardCharsets.UTF_8).trim();
+		}
+		catch (IOException e) {
+			throw new IllegalStateException(String.join(" ", command) + " failed to run", e);
+		}
+		catch (InterruptedException e) {
+			Thread.currentThread().interrupt();
+			throw new IllegalStateException(String.join(" ", command) + " interrupted", e);
+		}
+		finally {
+			if (process != null && process.isAlive()) {
+				process.destroyForcibly();
 			}
 			if (err != null) {
 				err.delete();
