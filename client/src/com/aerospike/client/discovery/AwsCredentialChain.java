@@ -168,8 +168,7 @@ final class AwsCredentialChain {
 		source = found;
 
 		if (Log.infoEnabled()) {
-			Log.info("AWS EC2 seed provider credentials from " + found.label + ": access key " +
-				credentials.getAccessKeyId());
+			Log.info("AWS EC2 seed provider credentials from " + found.label);
 		}
 		return credentials;
 	}
