@@ -98,6 +98,9 @@ import com.aerospike.test.util.Args;
  * the low-mtu profile</li>
  * <li>DISCOVERY_PROXY_PORT_RANGE: optional {@code first last} local port range of the Toxiproxy
  * container; set only by the port-range profile</li>
+ * <li>DISCOVERY_DNS_SERVER: optional address of a DNS server on the client network serving SRV
+ * records for the endpoint, one per clear listener; set only by the default profile of the
+ * discovery-l2 workflow</li>
  * </ul>
  * Each node's name and advertised addresses are read through its listener at runtime.
  */
@@ -128,6 +131,7 @@ final class L2Topology {
 	static final String clientNetworkMtu = optional("DISCOVERY_CLIENT_NETWORK_MTU");
 	static final String proxyPortRange = optional("DISCOVERY_PROXY_PORT_RANGE");
 	static final String idleReset = optional("DISCOVERY_IDLE_RESET");
+	static final String dnsServer = optional("DISCOVERY_DNS_SERVER");
 	static final String namespace = Args.Instance.namespace;
 
 	/**

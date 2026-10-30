@@ -83,8 +83,8 @@ public class TestL2Topology extends TestBase {
 	private static final String SET = "l2";
 	private static final int KEY_COUNT = 300;
 	private static final int MISS_RETRIES = 3;
-	private static final String DNS_BLOCKER = "N-4 needs a DNS server on the L2 client network serving SRV " +
-		"records for the endpoint; the L2 topology has none yet (E4 gap)";
+	private static final String DNS_BLOCKER = "N-4 needs DISCOVERY_DNS_SERVER, a DNS server on the L2 client " +
+		"network serving SRV records for the endpoint (the discovery-l2 workflow's default profile)";
 	private static final String NODE_CONTROL_BLOCKER = "N-11 needs DISCOVERY_CONTROL_DIR so the host can start a " +
 		"fourth node (run_l2.sh L2_NODE_CONTROL=1, or the discovery-l2 workflow)";
 	private static final int REFRESH_INTERVAL = 600000;
@@ -234,12 +234,13 @@ public class TestL2Topology extends TestBase {
 	 */
 	@Test
 	public void n4DnsProviderSeedsThroughEndpoint() throws Exception {
-		skipUnless(false, DNS_BLOCKER);
+		skipUnless(! L2Topology.dnsServer.isEmpty(), DNS_BLOCKER);
 
 		ClientPolicy policy = L2Topology.policy();
 		policy.seedCandidateProvider = DnsSeedCandidateProvider.builder()
 			.names("_aerospike._tcp." + L2Topology.host)
 			.recordType(RecordType.SRV)
+			.servers(L2Topology.dnsServer)
 			.build();
 		policy.addressTranslator = new PortMapAddressTranslator(L2Topology.portMapByEndpoint(L2Topology.nodes()));
 
