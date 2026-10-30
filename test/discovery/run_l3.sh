@@ -16,6 +16,12 @@
 # worker. The operator, the AerospikeCluster and the secrets come from the same setup-kind-ako
 # functions.
 #
+# The tls profile builds the default profile's cluster at two pods, then runs
+# .github/discovery/enable-l3-tls.sh, as the l3-tls job of discovery-k8s.yaml does: the
+# AerospikeCluster serves TLS from a secret holding a server certificate whose only dNSName SAN is
+# the cluster tls-name. The suite reads the CA file and the tls-name from DISCOVERY_TLS_CA_FILE and
+# DISCOVERY_TLS_NAME.
+#
 # The client dials each kind node's address, as the workflow's client does on a Linux runner. That
 # address is not reachable from a macOS host, so the client runs in a container on the kind network,
 # where each labelled hostname resolves to its node. The action writes the endpoint hostname into
@@ -30,10 +36,10 @@
 #   FEATURES_CONF_PATH        Enterprise feature-key file
 #
 # Optional environment:
-#   L3_PROFILE                default or per-node (default: default)
+#   L3_PROFILE                default, per-node or tls (default: default)
 #   L3_KIND_CLUSTER           kind cluster name (default: discovery-l3)
-#   L3_CLUSTER_SIZE           initial AerospikeCluster size on the default profile, 1-8 (default: the
-#                             action's default, 1)
+#   L3_CLUSTER_SIZE           initial AerospikeCluster size on the default and tls profiles, 1-8
+#                             (default: the action's default, 1, on the default profile; 2 on tls)
 #   L3_PER_NODE_WORKERS       kind workers, and Aerospike pods, on the per-node profile, 2-8 (default: 2)
 #   L3_PER_NODE_DOMAIN        domain of the per-node hostnames (default: as-endpoint.test)
 #   KIND_EXPERIMENTAL_PROVIDER passed to kind; podman also makes this script use the podman CLI
@@ -63,7 +69,7 @@ run_suite() {
 	export KUBECONFIG="${DISCOVERY_KUBECONFIG:?DISCOVERY_KUBECONFIG is required}"
 	[ "${L3_MAVEN_OFFLINE:-1}" = "1" ] && mvn+=(-o)
 	"${mvn[@]}" -pl test -DskipTests=false \
-		'-DrunSuite=**/SuiteDiscoveryK8s.class' \
+		"-DrunSuite=${L3_SUITE:?L3_SUITE is required}" \
 		"-Dargs=-h ${seed} -p ${seed##*:} -U admin -P ${password}" \
 		test
 }
@@ -88,8 +94,8 @@ KIND_NETWORK=kind
 CLIENT="$CLUSTER-client"
 
 case "$PROFILE" in
-	default|per-node) ;;
-	*) die "L3_PROFILE must be default or per-node (got: $PROFILE)" ;;
+	default|per-node|tls) ;;
+	*) die "L3_PROFILE must be default, per-node or tls (got: $PROFILE)" ;;
 esac
 [[ "$CLUSTER" =~ ^[a-z0-9][a-z0-9-]*$ ]] || die "L3_KIND_CLUSTER must be lower-case letters, digits and dashes (got: $CLUSTER)"
 [[ "$WORKERS" =~ ^[2-8]$ ]] || die "L3_PER_NODE_WORKERS must be 2-8 (got: $WORKERS)"
@@ -143,6 +149,7 @@ SERVER_IMAGE="$(sed -n '/^  server-image:/,/default:/s/^ *default: *//p' "$ACTIO
 [ -n "$KIND_IMAGE" ] || die "no kind node image in action.yaml"
 [ -n "$SERVER_IMAGE" ] || die "no server-image default in action.yaml"
 DEFAULT_SIZE="$(sed -n '/^  cluster-size:/,/default:/s/^ *default: *"\{0,1\}\([0-9]*\)"\{0,1\}$/\1/p' "$ACTION_DIR/action.yaml")"
+[ "$PROFILE" = "tls" ] && DEFAULT_SIZE=2
 CLUSTER_SIZE="${L3_CLUSTER_SIZE:-$DEFAULT_SIZE}"
 
 per_node_names=()
@@ -208,7 +215,7 @@ CREATED=1
 kind create cluster --name "$CLUSTER" --image "$KIND_IMAGE" "${kind_args[@]}" --wait 180s \
 	--kubeconfig "$KUBECONFIG" || die "kind create cluster failed"
 
-if [ "$PROFILE" = "default" ]; then
+if [ "$PROFILE" != "per-node" ]; then
 	ADMIN_PASSWORD="$PASSWORD" CLUSTER_SIZE="$CLUSTER_SIZE" FEATURES_CONTENT="$FEATURES_CONTENT" \
 		SERVER_IMAGE="$SERVER_IMAGE" GITHUB_OUTPUT="$WORK_DIR/setup.out" \
 		bash "$ACTION_DIR/entrypoint-local.sh" setup 2>&1 | sed '/::add-mask::/d' | tee "$WORK_DIR/setup.log" ||
@@ -284,6 +291,14 @@ else
 	L3_SEED="${per_node_names[0]}:$(kubectl get aerospikecluster -A -o jsonpath='{.items[0].spec.aerospikeConfig.network.service.port}')"
 fi
 
+if [ "$PROFILE" = "tls" ]; then
+	L3_TLS_DIR="$WORK_DIR/tls" GITHUB_OUTPUT="$WORK_DIR/tls.out" \
+		bash "$ROOT_DIR/.github/discovery/enable-l3-tls.sh" 2>&1 | tee "$WORK_DIR/tls.log" ||
+		die "enable-l3-tls.sh failed (log: $WORK_DIR/tls.log)"
+	export DISCOVERY_TLS_CA_FILE="$(output ca-file "$WORK_DIR/tls.out")"
+	export DISCOVERY_TLS_NAME="$(output tls-name "$WORK_DIR/tls.out")"
+fi
+
 echo "Cluster:"
 kubectl get nodes -o wide
 kubectl get nodes -L "aerospike.com/configured-alternate-access-address"
@@ -295,8 +310,14 @@ for pod in $(kubectl -n aerospike get pods -l aerospike.com/cr -o jsonpath='{.it
 done
 
 log="$WORK_DIR/mvn.log"
-echo "Running SuiteDiscoveryK8s, $PROFILE profile, seed $L3_SEED"
 export L3_SEED
+case "$PROFILE" in
+	default) L3_SUITE='**/SuiteDiscoveryK8s.class' ;;
+	per-node) L3_SUITE='**/TestK8sPassThrough.class' ;;
+	tls) L3_SUITE='**/TestK8sTlsName.class' ;;
+esac
+export L3_SUITE
+echo "Running $L3_SUITE, $PROFILE profile, seed $L3_SEED"
 export L3_MAVEN_OFFLINE="${L3_MAVEN_OFFLINE:-1}"
 set +e
 "$DOCKER" cp "$CLUSTER-control-plane:/usr/bin/kubectl" "$WORK_DIR/bin/kubectl" &&
@@ -319,7 +340,10 @@ if [ $rc -eq 0 ]; then
 		-e DISCOVERY_SERVICE_NODE_PORTS \
 		-e DISCOVERY_KUBECONFIG \
 		-e AEROSPIKE_ADMIN_PASSWORD \
+		-e DISCOVERY_TLS_CA_FILE \
+		-e DISCOVERY_TLS_NAME \
 		-e L3_SEED \
+		-e L3_SUITE \
 		-e L3_MAVEN_OFFLINE \
 		"$CLIENT_IMAGE" \
 		bash test/discovery/run_l3.sh --client > "$log" 2>&1
