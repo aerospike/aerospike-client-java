@@ -19,7 +19,7 @@ permissions:
 jobs:
   tls-matching:
     name: cases
-    runs-on: ${{ vars.BUILD_CONTAINER_DISTRO_VERSION }}
+    runs-on: ${{ vars.BUILD_CONTAINER_DISTRO_VERSION || 'ubuntu-24.04' }}
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -36,7 +36,7 @@ jobs:
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
-          distribution: ${{ vars.JAVA_PROVIDER }}
+          distribution: ${{ vars.JAVA_PROVIDER || 'semeru' }}
           java-version: ${{ steps.java.outputs.java-version }}
           cache: maven
 

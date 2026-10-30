@@ -47,7 +47,7 @@ jobs:
   # The only place the enterprise gate is decided, so a skip and its report cannot drift apart.
   gate:
     name: Skipped layers
-    runs-on: ${{ vars.BUILD_CONTAINER_DISTRO_VERSION }}
+    runs-on: ${{ vars.BUILD_CONTAINER_DISTRO_VERSION || 'ubuntu-24.04' }}
     outputs:
       enterprise: ${{ steps.gate.outputs.enterprise }}
     steps:
