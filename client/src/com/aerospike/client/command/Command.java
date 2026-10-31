@@ -1993,8 +1993,8 @@ public class Command {
 		Node node
 	) {
 		byte[] functionArgBuffer = null;
-		byte[] orderByField = getOrderByField(statement);
-		byte[] topKField = statement.hasTopK() ? getTopKField(statement.getTopKLimit()) : null;
+		OrderBy[] orderBy = statement.getOrderBy();
+		int orderBySize = 0;
 		int fieldCount = 0;
 		int filterSize = 0;
 		int binNameSize = 0;
@@ -2107,13 +2107,14 @@ public class Command {
 			fieldCount++;
 		}
 
-		if (orderByField != null) {
-			dataOffset += FIELD_HEADER_SIZE + orderByField.length;
+		if (orderBy != null) {
+			orderBySize = estimateOrderBySize(orderBy);
+			dataOffset += FIELD_HEADER_SIZE + orderBySize;
 			fieldCount++;
 		}
 
-		if (topKField != null) {
-			dataOffset += FIELD_HEADER_SIZE + topKField.length;
+		if (statement.hasTopK()) {
+			dataOffset += FIELD_HEADER_SIZE + 4;
 			fieldCount++;
 		}
 
@@ -2246,12 +2247,12 @@ public class Command {
 		// Write taskId field
 		writeField(taskId, FieldType.QUERY_ID);
 
-		if (orderByField != null) {
-			writeField(orderByField, FieldType.ORDER_BY);
+		if (orderBy != null) {
+			writeOrderBy(orderBy, orderBySize);
 		}
 
-		if (topKField != null) {
-			writeField(topKField, FieldType.TOP_K);
+		if (statement.hasTopK()) {
+			writeField(statement.getTopKLimit(), FieldType.TOP_K);
 		}
 
 		if (filter != null) {
@@ -2369,42 +2370,29 @@ public class Command {
 		return false;
 	}
 
-	// The server reads one self-delimiting spec per order key, concatenated in significance order.
-	// An order key without k is sent as is, so the server rejects it with the reason.
-	private static byte[] getOrderByField(Statement statement) {
-		OrderBy[] keys = statement.getOrderBy();
-
-		if (keys == null) {
-			return null;
-		}
-
-		byte[][] bins = new byte[keys.length][];
+	private static int estimateOrderBySize(OrderBy[] keys) {
 		int size = 0;
 
-		for (int i = 0; i < keys.length; i++) {
-			bins[i] = Buffer.stringToUtf8(keys[i].binName);
-			size += 4 + bins[i].length;
+		for (OrderBy key : keys) {
+			size += 4 + Buffer.estimateSizeUtf8(key.binName);
 		}
-
-		byte[] field = new byte[size];
-		int offset = 0;
-
-		for (int i = 0; i < keys.length; i++) {
-			byte[] bin = bins[i];
-			field[offset] = (byte)getOrderByType(keys[i].type);
-			field[offset + 1] = (byte)getOrderByDirection(keys[i].order);
-			field[offset + 2] = 0; // Flags: none apply to the supported order-by types.
-			field[offset + 3] = (byte)bin.length;
-			System.arraycopy(bin, 0, field, offset + 4, bin.length);
-			offset += 4 + bin.length;
-		}
-		return field;
+		return size;
 	}
 
-	private static byte[] getTopKField(int limit) {
-		byte[] field = new byte[4];
-		Buffer.intToBytes(limit, field, 0);
-		return field;
+	// The server reads one self-delimiting spec per order key, concatenated in significance order.
+	// An order key without k is sent as is, so the server rejects it with the reason.
+	private void writeOrderBy(OrderBy[] keys, int size) {
+		writeFieldHeader(size, FieldType.ORDER_BY);
+
+		for (OrderBy key : keys) {
+			dataBuffer[dataOffset++] = (byte)getOrderByType(key.type);
+			dataBuffer[dataOffset++] = (byte)getOrderByDirection(key.order);
+			dataBuffer[dataOffset++] = 0; // Flags: none apply to the supported order-by types.
+
+			int len = Buffer.stringToUtf8(key.binName, dataBuffer, dataOffset + 1);
+			dataBuffer[dataOffset] = (byte)len;
+			dataOffset += 1 + len;
+		}
 	}
 
 	private static int getOrderByType(BinDataType type) {
@@ -2485,13 +2473,11 @@ public class Command {
 	private final void estimateOperationSize(Bin bin) {
 		dataOffset += Buffer.estimateSizeUtf8(bin.name) + OPERATION_HEADER_SIZE;
 		dataOffset += bin.value.estimateSize();
-		checkVectorSupport(bin.value.hasVector());
 	}
 
 	private final void estimateOperationSize(Operation operation) {
 		dataOffset += Buffer.estimateSizeUtf8(operation.binName) + OPERATION_HEADER_SIZE;
 		dataOffset += operation.value.estimateSize();
-		checkVectorSupport(operation.value.hasVector());
 	}
 
 	private void estimateReadOperationSize(Operation operation) {
@@ -2500,7 +2486,14 @@ public class Command {
 		}
 		dataOffset += Buffer.estimateSizeUtf8(operation.binName) + OPERATION_HEADER_SIZE;
 		dataOffset += operation.value.estimateSize();
-		checkVectorSupport(operation.value.hasVector());
+	}
+
+	// A collection value may walk its elements to answer hasVector(), so ask only when a node
+	// lacks vector support.
+	private void checkVectorSupport(Value value) {
+		if (! vectorSupported) {
+			checkVectorSupport(value.hasVector(), false);
+		}
 	}
 
 	/**
@@ -2515,7 +2508,7 @@ public class Command {
 	 */
 	public static void checkVectorSupport(boolean vectorPresent, boolean vectorSupported) {
 		if (vectorPresent && ! vectorSupported) {
-			throw new AerospikeException(ResultCode.PARAMETER_ERROR,
+			throw new AerospikeException.InvalidArgument(
 				"Vector is not supported by all nodes in the cluster");
 		}
 	}
@@ -2893,7 +2886,7 @@ public class Command {
 	}
 
 	private final void writeOperation(Bin bin, Operation.Type operation) {
-		checkVectorSupport(bin.value.hasVector());
+		checkVectorSupport(bin.value);
 		int nameLength = Buffer.stringToUtf8(bin.name, dataBuffer, dataOffset + OPERATION_HEADER_SIZE);
 		int valueLength = bin.value.write(dataBuffer, dataOffset + OPERATION_HEADER_SIZE + nameLength);
 
@@ -2907,7 +2900,7 @@ public class Command {
 	}
 
 	private final void writeOperation(Operation operation) {
-		checkVectorSupport(operation.value.hasVector());
+		checkVectorSupport(operation.value);
 		int nameLength = Buffer.stringToUtf8(operation.binName, dataBuffer, dataOffset + OPERATION_HEADER_SIZE);
 		int valueLength = operation.value.write(dataBuffer, dataOffset + OPERATION_HEADER_SIZE + nameLength);
 

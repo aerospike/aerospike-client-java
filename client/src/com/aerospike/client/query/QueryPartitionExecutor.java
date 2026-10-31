@@ -24,7 +24,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import com.aerospike.client.AerospikeException;
-import com.aerospike.client.Record;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.command.MultiCommand;
 import com.aerospike.client.policy.QueryPolicy;
@@ -38,7 +37,7 @@ public final class QueryPartitionExecutor implements IQueryExecutor, Runnable {
 	private final Statement statement;
 	private final PartitionTracker tracker;
 	private final RecordSet recordSet;
-	private final ReduceSpec<Record, ?> reducer;
+	private final TopKReduceSpec topK;
 	private final List<QueryThread> threads;
 	private final AtomicInteger completedCount;
 	private final AtomicBoolean done;
@@ -57,7 +56,7 @@ public final class QueryPartitionExecutor implements IQueryExecutor, Runnable {
 		this.statement = statement;
 		this.tracker = tracker;
 		this.recordSet = new RecordSet(this, policy.recordQueueSize);
-		this.reducer = statement.resolveReduce();
+		this.topK = statement.createTopK();
 		this.threads = new ArrayList<QueryThread>(nodeCapacity);
 		this.completedCount = new AtomicInteger();
 		this.done = new AtomicBoolean();
@@ -103,7 +102,7 @@ public final class QueryPartitionExecutor implements IQueryExecutor, Runnable {
 
 					for (NodePartitions nodePartitions : list) {
 						MultiCommand command = new QueryPartitionCommand(
-							cluster, policy, statement, taskId, recordSet, reducer, tracker, nodePartitions);
+							cluster, policy, statement, taskId, recordSet, topK, tracker, nodePartitions);
 						threads.add(new QueryThread(command));
 					}
 
@@ -120,7 +119,7 @@ public final class QueryPartitionExecutor implements IQueryExecutor, Runnable {
 			else {
 				for (NodePartitions nodePartitions : list) {
 					MultiCommand command = new QueryPartitionCommand(
-						cluster, policy, statement, taskId, recordSet, reducer, tracker, nodePartitions);
+						cluster, policy, statement, taskId, recordSet, topK, tracker, nodePartitions);
 					command.execute();
 				}
 			}
@@ -133,8 +132,9 @@ public final class QueryPartitionExecutor implements IQueryExecutor, Runnable {
 			done.set(false);
 
 			if (tracker.isComplete(cluster, policy)) {
-				if (reducer instanceof TopKReduceSpec) {
-					for (KeyRecord keyRecord : ((TopKReduceSpec)reducer).getResultKeyRecords()) {
+				// All partitions received.
+				if (topK != null) {
+					for (KeyRecord keyRecord : topK.getResultKeyRecords()) {
 						recordSet.put(keyRecord);
 					}
 				}

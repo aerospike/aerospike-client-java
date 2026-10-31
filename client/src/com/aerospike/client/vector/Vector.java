@@ -82,7 +82,7 @@ public final class Vector {
 		private final byte code;
 		private final int byteSize;
 
-		ElementType(final byte code, final int byteSize) {
+		ElementType(byte code, int byteSize) {
 			this.code = code;
 			this.byteSize = byteSize;
 		}
@@ -104,8 +104,8 @@ public final class Vector {
 		/**
 		 * Lookup element type from its wire protocol code.
 		 */
-		public static ElementType fromCode(final byte code) {
-			for (final ElementType type : values()) {
+		public static ElementType fromCode(byte code) {
+			for (ElementType type : values()) {
 				if (type.code == code) {
 					return type;
 				}
@@ -134,7 +134,7 @@ public final class Vector {
 	// 0 means not yet computed. A vector whose hash really is 0 just recomputes it.
 	private int hash;
 
-	private Vector(final byte version, final ElementType elementType, final int dimensions, final Object data) {
+	private Vector(byte version, ElementType elementType, int dimensions, Object data) {
 		this.version = version;
 		this.elementType = elementType;
 		this.dimensions = dimensions;
@@ -156,7 +156,7 @@ public final class Vector {
 	 *
 	 * @return number of bytes written, equal to {@link #getWireSize()}
 	 */
-	public int writeTo(final byte[] buffer, final int offset) {
+	public int writeTo(byte[] buffer, int offset) {
 		int pos = offset;
 
 		// Vector wire format is little-endian to match the server.
@@ -165,31 +165,7 @@ public final class Vector {
 		Buffer.intToLittleBytes(dimensions, buffer, pos);
 		pos += DIMENSIONS_SIZE;
 
-		final int dataSize = dimensions * elementType.getByteSize();
-		final ByteBuffer view = ByteBuffer.wrap(buffer, pos, dataSize).order(ByteOrder.LITTLE_ENDIAN);
-
-		switch (elementType) {
-			case FLOAT16:
-				view.asShortBuffer().put((short[])data);
-				break;
-
-			case INT32:
-				view.asIntBuffer().put((int[])data);
-				break;
-
-			case FLOAT32:
-				view.asFloatBuffer().put((float[])data);
-				break;
-
-			case FLOAT64:
-				view.asDoubleBuffer().put((double[])data);
-				break;
-
-			default:
-				throw new IllegalStateException("Unsupported vector element type: " + elementType);
-		}
-		pos += dataSize;
-
+		pos += writeElements(buffer, pos);
 		return pos - offset;
 	}
 
@@ -197,7 +173,7 @@ public final class Vector {
 	 * Return the complete vector wire value, including the {@link #HEADER_SIZE}-byte header.
 	 */
 	public byte[] getWireBytes() {
-		final byte[] bytes = new byte[getWireSize()];
+		byte[] bytes = new byte[getWireSize()];
 		writeTo(bytes, 0);
 		return bytes;
 	}
@@ -206,9 +182,14 @@ public final class Vector {
 	 * Return the raw element array in little-endian wire byte order, without the header.
 	 */
 	public byte[] getElementBytes() {
-		final int dataSize = dimensions * elementType.getByteSize();
-		final byte[] bytes = new byte[dataSize];
-		final ByteBuffer view = ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN);
+		byte[] bytes = new byte[dimensions * elementType.getByteSize()];
+		writeElements(bytes, 0);
+		return bytes;
+	}
+
+	private int writeElements(byte[] buffer, int offset) {
+		int dataSize = dimensions * elementType.getByteSize();
+		ByteBuffer view = ByteBuffer.wrap(buffer, offset, dataSize).order(ByteOrder.LITTLE_ENDIAN);
 
 		switch (elementType) {
 			case FLOAT16:
@@ -230,8 +211,7 @@ public final class Vector {
 			default:
 				throw new IllegalStateException("Unsupported vector element type: " + elementType);
 		}
-
-		return bytes;
+		return dataSize;
 	}
 
 	/**
@@ -245,7 +225,7 @@ public final class Vector {
 	 *                                  header has no dimensions, the header or length is
 	 *                                  invalid, or offset and length run past the buffer
 	 */
-	public static Vector from(final byte[] buffer, final int offset, final int length) {
+	public static Vector from(byte[] buffer, int offset, int length) {
 		if (length < HEADER_SIZE) {
 			throw new IllegalArgumentException("Invalid vector length: " + length);
 		}
@@ -258,20 +238,20 @@ public final class Vector {
 
 		int pos = offset;
 
-		final byte version = buffer[pos++];
+		byte version = buffer[pos++];
 
 		if (version != VERSION) {
 			throw new IllegalArgumentException("Unsupported vector format version " + version +
 				" (expected " + VERSION + ")");
 		}
 
-		final ElementType elementType = ElementType.fromCode(buffer[pos++]);
-		final int dimensions = checkDimensions(Buffer.littleBytesToInt(buffer, pos));
+		ElementType elementType = ElementType.fromCode(buffer[pos++]);
+		int dimensions = checkDimensions(Buffer.littleBytesToInt(buffer, pos));
 		pos += DIMENSIONS_SIZE;
 
 		// Use long math so a large dimensions count cannot overflow the int size computation
 		// (which could otherwise bypass the bounds check and trigger a huge allocation).
-		final long dataSizeLong = (long)dimensions * elementType.getByteSize();
+		long dataSizeLong = (long)dimensions * elementType.getByteSize();
 
 		// Exact, as on the server, so each vector has exactly one valid encoding.
 		if (length != HEADER_SIZE + dataSizeLong) {
@@ -280,34 +260,34 @@ public final class Vector {
 		}
 
 		// Safe to narrow: dataSizeLong == length - HEADER_SIZE, and length is an int.
-		final int dataSize = (int)dataSizeLong;
-		final ByteBuffer view = ByteBuffer.wrap(buffer, pos, dataSize).order(ByteOrder.LITTLE_ENDIAN);
-		final Object data;
+		int dataSize = (int)dataSizeLong;
+		ByteBuffer view = ByteBuffer.wrap(buffer, pos, dataSize).order(ByteOrder.LITTLE_ENDIAN);
+		Object data;
 
 		switch (elementType) {
 			case FLOAT16: {
-				final short[] arr = new short[dimensions];
+				short[] arr = new short[dimensions];
 				view.asShortBuffer().get(arr);
 				data = arr;
 				break;
 			}
 
 			case INT32: {
-				final int[] arr = new int[dimensions];
+				int[] arr = new int[dimensions];
 				view.asIntBuffer().get(arr);
 				data = arr;
 				break;
 			}
 
 			case FLOAT32: {
-				final float[] arr = new float[dimensions];
+				float[] arr = new float[dimensions];
 				view.asFloatBuffer().get(arr);
 				data = arr;
 				break;
 			}
 
 			case FLOAT64: {
-				final double[] arr = new double[dimensions];
+				double[] arr = new double[dimensions];
 				view.asDoubleBuffer().get(arr);
 				data = arr;
 				break;
@@ -327,7 +307,7 @@ public final class Vector {
 	 *
 	 * @throws IllegalArgumentException if {@code data} is empty or has a NaN or infinite element
 	 */
-	public static Vector ofFloat16(final short[] data) {
+	public static Vector ofFloat16(short[] data) {
 		return new Vector(VERSION, ElementType.FLOAT16, checkDimensions(data.length), checkFinite(data.clone()));
 	}
 
@@ -336,7 +316,7 @@ public final class Vector {
 	 *
 	 * @throws IllegalArgumentException if {@code data} is empty
 	 */
-	public static Vector ofInt32(final int[] data) {
+	public static Vector ofInt32(int[] data) {
 		return new Vector(VERSION, ElementType.INT32, checkDimensions(data.length), data.clone());
 	}
 
@@ -345,7 +325,7 @@ public final class Vector {
 	 *
 	 * @throws IllegalArgumentException if {@code data} is empty or has a NaN or infinite element
 	 */
-	public static Vector ofFloat32(final float[] data) {
+	public static Vector ofFloat32(float[] data) {
 		return new Vector(VERSION, ElementType.FLOAT32, checkDimensions(data.length), checkFinite(data.clone()));
 	}
 
@@ -354,11 +334,11 @@ public final class Vector {
 	 *
 	 * @throws IllegalArgumentException if {@code data} is empty or has a NaN or infinite element
 	 */
-	public static Vector ofFloat64(final double[] data) {
+	public static Vector ofFloat64(double[] data) {
 		return new Vector(VERSION, ElementType.FLOAT64, checkDimensions(data.length), checkFinite(data.clone()));
 	}
 
-	private static int checkDimensions(final int dimensions) {
+	private static int checkDimensions(int dimensions) {
 		if (dimensions < 1) {
 			throw new IllegalArgumentException("Vector must have at least 1 dimension: " + dimensions);
 		}
@@ -367,7 +347,7 @@ public final class Vector {
 
 	// The finite checks run on the factory's private copy, so a caller mutating its array
 	// concurrently cannot slip a non-finite element past them.
-	private static short[] checkFinite(final short[] data) {
+	private static short[] checkFinite(short[] data) {
 		for (int i = 0; i < data.length; i++) {
 			// An all-ones exponent is infinity (zero mantissa) or NaN (nonzero mantissa).
 			if ((data[i] & FLOAT16_EXPONENT_MASK) == FLOAT16_EXPONENT_MASK) {
@@ -377,7 +357,7 @@ public final class Vector {
 		return data;
 	}
 
-	private static float[] checkFinite(final float[] data) {
+	private static float[] checkFinite(float[] data) {
 		for (int i = 0; i < data.length; i++) {
 			if (!Float.isFinite(data[i])) {
 				throw notFinite(i, Float.toString(data[i]));
@@ -386,7 +366,7 @@ public final class Vector {
 		return data;
 	}
 
-	private static double[] checkFinite(final double[] data) {
+	private static double[] checkFinite(double[] data) {
 		for (int i = 0; i < data.length; i++) {
 			if (!Double.isFinite(data[i])) {
 				throw notFinite(i, Double.toString(data[i]));
@@ -395,7 +375,7 @@ public final class Vector {
 		return data;
 	}
 
-	private static IllegalArgumentException notFinite(final int index, final String value) {
+	private static IllegalArgumentException notFinite(int index, String value) {
 		return new IllegalArgumentException(
 			"Vector elements must be finite (no NaN or infinity): element " + index + " is " + value);
 	}
@@ -485,7 +465,7 @@ public final class Vector {
 		return DoubleBuffer.wrap((double[])data).asReadOnlyBuffer();
 	}
 
-	private void validateType(final ElementType expected) {
+	private void validateType(ElementType expected) {
 		if (elementType != expected) {
 			throw new IllegalStateException(
 				"Vector element type is " + elementType + ", not " + expected);
@@ -509,7 +489,7 @@ public final class Vector {
 	}
 
 	@Override
-	public boolean equals(final Object obj) {
+	public boolean equals(Object obj) {
 		if (this == obj) {
 			return true;
 		}
@@ -518,7 +498,7 @@ public final class Vector {
 			return false;
 		}
 
-		final Vector other = (Vector)obj;
+		Vector other = (Vector)obj;
 
 		if (version != other.version || elementType != other.elementType || dimensions != other.dimensions) {
 			return false;

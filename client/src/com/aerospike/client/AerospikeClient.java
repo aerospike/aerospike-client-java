@@ -4621,11 +4621,6 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		}
 
 		statement.validateTopK();
-
-		if (! cluster.hasPartitionQuery) {
-			throw new AerospikeException.InvalidArgument("Top-K requires partition query support");
-		}
-
 		checkOrderBySupport(statement);
 
 		if (! policy.includeBinData) {

@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2025 Aerospike, Inc.
+ * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -21,20 +21,18 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.PriorityQueue;
 
-import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
 
 /**
- * Ordered LIMIT k reduce combiner backing {@link Reduce#topK(String, BinDataType, Order, int)}
- * and the composed split form {@code setReduce(Reduce.orderBy(...), Reduce.limit(...))}.
+ * Client-side merge of a Top-K query's per-node results into the global top k, created by
+ * {@link Statement#createTopK()} for each run.
  * <p>
  * Maintains a size-k heap keyed by the order keys, deduplicated by record digest (a record may
  * reach the client from two nodes while its partition migrates, keeping the copy with the later
- * last-update time) with ties broken by digest ascending for stable, deterministic results. Not
- * part of the public API surface beyond the {@link Reduce#topK} factory method.
+ * last-update time) with ties broken by digest ascending for stable, deterministic results.
  */
-final class TopKReduceSpec implements ReduceSpec<Record, Record> {
+final class TopKReduceSpec {
 	private final OrderBy[] keys;
 	private final int limit;
 
@@ -56,100 +54,56 @@ final class TopKReduceSpec implements ReduceSpec<Record, Record> {
 	}
 
 	/**
-	 * Create an empty combiner with the same order keys and limit.
-	 */
-	TopKReduceSpec emptyCopy() {
-		return new TopKReduceSpec(keys, limit);
-	}
-
-	/**
-	 * Compose an {@link OrderByReduceSpec} and a {@link LimitReduceSpec} on the same bin into a
-	 * single {@link TopKReduceSpec} combiner. Used by {@link Reduce#topK} and by
-	 * {@link Statement#resolveReduce()} when the two specs are set separately.
+	 * Merge one record from a node into the ranking. Called concurrently by the node threads.
 	 *
-	 * @throws AerospikeException.InvalidArgument	if the specs are not exactly one orderBy + one
-	 *								limit, or their bins do not match
+	 * @param record			record as received
+	 * @param key				record key; used for digest-based deduplication and tie-breaking
+	 * @param lastUpdateTime	record's last-update time as sent by the server, or zero when
+	 *							the server did not send one; decides which of two copies of a
+	 *							record is kept
 	 */
-	static TopKReduceSpec compose(ReduceSpec<Record, Record> orderBy, ReduceSpec<Record, Record> limit) {
-		if (!(orderBy instanceof OrderByReduceSpec) || !(limit instanceof LimitReduceSpec)) {
-			throw new AerospikeException.InvalidArgument("topK requires one orderBy spec and one limit spec");
-		}
-		OrderByReduceSpec ob = (OrderByReduceSpec)orderBy;
-		LimitReduceSpec lim = (LimitReduceSpec)limit;
-
-		if (!ob.key.binName.equals(lim.bin)) {
-			throw new AerospikeException.InvalidArgument(
-				"orderBy bin (" + ob.key.binName + ") must match limit bin (" + lim.bin + ")");
-		}
-		return new TopKReduceSpec(new OrderBy[] {ob.key}, lim.limit);
-	}
-
-	@Override
-	public synchronized void acceptPartial(Record record, Key key, long lastUpdateTime) {
+	void acceptPartial(Record record, Key key, long lastUpdateTime) {
+		// Read the order-key values before taking the lock, so node threads contend only for
+		// the heap update.
 		OrderKey candidate = new OrderKey(record, keys, key, lastUpdateTime);
 
-		// Dedup: at most one row per digest (partition migration may re-scan a record).
-		OrderKey existing = byKey.get(key);
+		synchronized (this) {
+			// Dedup: at most one row per digest (partition migration may re-scan a record).
+			OrderKey existing = byKey.get(key);
 
-		if (existing != null) {
-			if (! replaces(candidate, existing)) {
-				return;
+			if (existing != null) {
+				if (! replaces(candidate, existing)) {
+					return;
+				}
+				heap.remove(existing);
 			}
-			heap.remove(existing);
+			else if (heap.size() == limit && candidate.compareTo(heap.peek()) >= 0) {
+				return; // would be evicted at once.
+			}
+
+			heap.offer(candidate);
+			byKey.put(key, candidate);
+
+			if (heap.size() > limit) {
+				byKey.remove(heap.poll().key);
+			}
 		}
-		else if (heap.size() == limit && candidate.compareTo(heap.peek()) >= 0) {
-			return; // would be evicted at once.
-		}
-
-		heap.offer(candidate);
-		byKey.put(key, candidate);
-
-		if (heap.size() > limit) {
-			byKey.remove(heap.poll().key);
-		}
-	}
-
-	@Override
-	public synchronized Record getScalarResult() {
-		Record[] all = getResult();
-
-		if (all.length == 0) {
-			throw new IllegalStateException(
-				"getScalarResult() called before any records were accepted via acceptPartial()");
-		}
-		return all[0];
-	}
-
-	@Override
-	public synchronized Record[] getResult() {
-		OrderKey[] sorted = sorted();
-		Record[] out = new Record[sorted.length];
-
-		for (int i = 0; i < sorted.length; i++) {
-			out[i] = sorted[i].record;
-		}
-		return out;
 	}
 
 	/**
-	 * Return the key/record pairs of {@link #getResult()}, in the same order. Used by the query
-	 * executor to fill the {@link RecordSet}.
+	 * Return the kept key/record pairs, best first. Used by the query executor to fill the
+	 * {@link RecordSet}.
 	 */
 	synchronized KeyRecord[] getResultKeyRecords() {
-		OrderKey[] sorted = sorted();
+		OrderKey[] sorted = heap.toArray(new OrderKey[0]);
+		Arrays.sort(sorted);
+
 		KeyRecord[] out = new KeyRecord[sorted.length];
 
 		for (int i = 0; i < sorted.length; i++) {
 			out[i] = new KeyRecord(sorted[i].key, sorted[i].record);
 		}
 		return out;
-	}
-
-	/** Return the kept candidates, best first. */
-	private OrderKey[] sorted() {
-		OrderKey[] sorted = heap.toArray(new OrderKey[0]);
-		Arrays.sort(sorted);
-		return sorted;
 	}
 
 	/**

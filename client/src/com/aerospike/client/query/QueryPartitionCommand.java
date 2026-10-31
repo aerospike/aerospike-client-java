@@ -32,7 +32,7 @@ public final class QueryPartitionCommand extends MultiCommand {
 	private final Statement statement;
 	private final long taskId;
 	private final RecordSet recordSet;
-	private final ReduceSpec<Record, ?> reducer;
+	private final TopKReduceSpec topK;
 	private final PartitionTracker tracker;
 	private final NodePartitions nodePartitions;
 
@@ -42,7 +42,7 @@ public final class QueryPartitionCommand extends MultiCommand {
 		Statement statement,
 		long taskId,
 		RecordSet recordSet,
-		ReduceSpec<Record, ?> reducer,
+		TopKReduceSpec topK,
 		PartitionTracker tracker,
 		NodePartitions nodePartitions
 	) {
@@ -50,7 +50,7 @@ public final class QueryPartitionCommand extends MultiCommand {
 		this.statement = statement;
 		this.taskId = taskId;
 		this.recordSet = recordSet;
-		this.reducer = reducer;
+		this.topK = topK;
 		this.tracker = tracker;
 		this.nodePartitions = nodePartitions;
 	}
@@ -103,24 +103,20 @@ public final class QueryPartitionCommand extends MultiCommand {
 		}
 
 		if (tracker.allowRecord(nodePartitions)) {
-			if (reducer != null) {
-				// Feed the client-side global reduce combiner instead of streaming this
-				// partial result directly to the caller. The executor emits the merged
-				// result (if any) once all partitions have been received.
-				reducer.acceptPartial(record, key, lastUpdateTime);
-			}
-			else if (! recordSet.put(new KeyRecord(key, record))) {
-				stop();
-				throw new AerospikeException.QueryTerminated();
-			}
+			if (topK != null) {
+				// The executor streams the merged top k once all partitions are received.
+				topK.acceptPartial(record, key, lastUpdateTime);
 
-			if (statement.hasTopK()) {
 				// The server streams Top-K in rank order, not digest order, so resuming after
-				// this digest would skip ranked candidates not yet streamed. The reducer drops
+				// this digest would skip ranked candidates not yet streamed. The merge drops
 				// the duplicates a full re-query returns.
 				tracker.countRecord(nodePartitions);
 			}
 			else {
+				if (! recordSet.put(new KeyRecord(key, record))) {
+					stop();
+					throw new AerospikeException.QueryTerminated();
+				}
 				tracker.setLast(nodePartitions, key, bval.val);
 			}
 		}

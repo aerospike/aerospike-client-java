@@ -5,7 +5,7 @@
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
  * You may obtain a copy of the License at http://www.apache.org/licenses/LICENSE-2.0
  */
-package com.aerospike.client.query;
+package com.aerospike.test.sync.query;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
@@ -16,6 +16,7 @@ import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
@@ -36,17 +37,23 @@ import com.aerospike.client.exp.Exp;
 import com.aerospike.client.exp.ExpOperation;
 import com.aerospike.client.exp.ExpReadFlags;
 import com.aerospike.client.policy.QueryPolicy;
+import com.aerospike.client.query.BinDataType;
+import com.aerospike.client.query.Filter;
+import com.aerospike.client.query.IndexType;
+import com.aerospike.client.query.Order;
+import com.aerospike.client.query.PartitionFilter;
+import com.aerospike.client.query.PartitionStatus;
+import com.aerospike.client.query.RecordSet;
+import com.aerospike.client.query.Statement;
 import com.aerospike.client.task.IndexTask;
 import com.aerospike.test.sync.TestSync;
 
 /**
- * Verifies Top-K results against a live cluster in both modes: client-side ranking of the full
- * query stream ({@link Statement#setReduce}) and server-side ranking on each node plus a client
- * merge ({@link Statement#setOrderBy} + {@link Statement#setTopK}). Both must produce the same
- * global Top-K. Server-side Top-K is also checked with each order-key type, filters, k bounds,
- * node concurrency, the record queue, timeouts, partition ranges, and single-node queries. The
- * wire encoding of the server-side request is covered separately by
- * {@code TestTopKRequestEncoding}.
+ * Verifies Top-K results against a live cluster: server-side ranking on each node plus a client
+ * merge ({@link Statement#setOrderBy} + {@link Statement#setTopK}) must produce the global Top-K.
+ * Also checked with each order-key type, filters, k bounds, node concurrency, the record queue,
+ * timeouts, partition ranges, and single-node queries. The wire encoding of the request is
+ * covered separately by {@code TestTopKRequestEncoding}.
  */
 public class TestTopKQuery extends TestSync {
 	private static final String SET = "topKQuery";
@@ -106,15 +113,13 @@ public class TestTopKQuery extends TestSync {
 		try {
 			String message = "orderBy/topK is not supported by all nodes in the cluster";
 			AerospikeException ae = assertThrows(AerospikeException.InvalidArgument.class,
-				() -> client.query(null, serverSide(Order.DESC, 3)));
+				() -> client.query(null, ranked(Order.DESC, 3)));
 			assertEquals(ResultCode.PARAMETER_ERROR, ae.getResultCode());
 			assertEquals(message, ae.getBaseMessage());
 
 			ae = assertThrows(AerospikeException.InvalidArgument.class,
 				() -> client.query(null, orderKeyOnly()));
 			assertEquals(message, ae.getBaseMessage());
-
-			assertArrayEquals(new long[] {100, 99, 98}, values(clientSide(Order.DESC, 3), BIN));
 		}
 		finally {
 			cluster.hasQueryOrderBy = saved;
@@ -122,22 +127,22 @@ public class TestTopKQuery extends TestSync {
 	}
 
 	@Test
-	public void serverSideLeavesNoResumeCursor() {
+	public void topKLeavesNoResumeCursor() {
 		requireCapableCluster();
 
-		PartitionFilter serverSideFilter = PartitionFilter.all();
-		drain(client.queryPartitions(null, serverSide(Order.DESC, 3), serverSideFilter));
+		PartitionFilter topKFilter = PartitionFilter.all();
+		drain(client.queryPartitions(null, ranked(Order.DESC, 3), topKFilter));
 
-		for (PartitionStatus ps : serverSideFilter.getPartitions()) {
+		for (PartitionStatus ps : topKFilter.getPartitions()) {
 			assertNull(ps.digest);
 		}
 
-		PartitionFilter clientSideFilter = PartitionFilter.all();
-		drain(client.queryPartitions(null, clientSide(Order.DESC, 3), clientSideFilter));
+		PartitionFilter plainFilter = PartitionFilter.all();
+		drain(client.queryPartitions(null, base(BIN), plainFilter));
 
 		boolean anyCursor = false;
 
-		for (PartitionStatus ps : clientSideFilter.getPartitions()) {
+		for (PartitionStatus ps : plainFilter.getPartitions()) {
 			anyCursor |= ps.digest != null;
 		}
 		assertTrue(anyCursor);
@@ -160,38 +165,17 @@ public class TestTopKQuery extends TestSync {
 	}
 
 	@Test
-	public void clientSideReturnsGlobalTopK() {
+	public void returnsGlobalTopK() {
 		requireCapableCluster();
 
-		assertArrayEquals(new long[] {100, 99, 98}, values(clientSide(Order.DESC, 3), BIN));
-		assertArrayEquals(new long[] {1, 2, 3}, values(clientSide(Order.ASC, 3), BIN));
-	}
-
-	@Test
-	public void serverSideReturnsGlobalTopK() {
-		requireCapableCluster();
-
-		assertArrayEquals(new long[] {100, 99, 98}, values(serverSide(Order.DESC, 3), BIN));
-		assertArrayEquals(new long[] {1, 2, 3}, values(serverSide(Order.ASC, 3), BIN));
-	}
-
-	@Test
-	public void bothModesAreEquivalent() {
-		requireCapableCluster();
-
-		for (Order order : new Order[] {Order.ASC, Order.DESC}) {
-			for (int k : new int[] {1, 5, 25}) {
-				long[] clientSide = values(clientSide(order, k), BIN);
-				long[] serverSide = values(serverSide(order, k), BIN);
-
-				assertEquals(k, serverSide.length);
-				assertArrayEquals("Mismatch for order=" + order + " k=" + k, clientSide, serverSide);
-			}
+		for (int k : new int[] {1, 3, 5, 25}) {
+			assertArrayEquals("ASC k=" + k, ascending(1, k), values(ranked(Order.ASC, k), BIN));
+			assertArrayEquals("DESC k=" + k, descending(COUNT, k), values(ranked(Order.DESC, k), BIN));
 		}
 	}
 
 	@Test
-	public void expressionProjectedKeyIsEquivalent() {
+	public void expressionProjectedKeyRanks() {
 		requireCapableCluster();
 
 		int k = 5;
@@ -201,8 +185,7 @@ public class TestTopKQuery extends TestSync {
 			expected[i] = (i + 1) * 10L;
 		}
 
-		assertArrayEquals(expected, values(clientSideDerived(Order.ASC, k), DERIVED));
-		assertArrayEquals(expected, values(serverSideDerived(Order.ASC, k), DERIVED));
+		assertArrayEquals(expected, values(rankedDerived(Order.ASC, k), DERIVED));
 	}
 
 	@Test
@@ -237,8 +220,8 @@ public class TestTopKQuery extends TestSync {
 			int k = COUNT + missing.length;
 
 			for (Order order : new Order[] {Order.ASC, Order.DESC}) {
-				Statement byBinName = serverSide(order, k);
-				Statement byOperation = serverSide(order, k);
+				Statement byBinName = ranked(order, k);
+				Statement byOperation = ranked(order, k);
 				byOperation.setBinNames((String[])null);
 				byOperation.setOperations(new Operation[] {Operation.get(BIN)});
 
@@ -434,14 +417,17 @@ public class TestTopKQuery extends TestSync {
 		int k = 5;
 
 		for (Node node : client.getNodes()) {
-			Statement clientSide = statement();
-			clientSide.setReduce(Reduce.topK(BIN, BinDataType.INTEGER, Order.DESC, k));
+			long[] all = values(client.queryNode(null, base(BIN), node), BIN);
+			Arrays.sort(all);
 
-			long[] expected = values(client.queryNode(null, clientSide, node), BIN);
-			long[] serverSide = values(client.queryNode(null, topK(BIN, BinDataType.INTEGER, Order.DESC, k), node), BIN);
+			long[] expected = new long[k];
 
-			assertEquals(node.getName(), k, serverSide.length);
-			assertArrayEquals(node.getName(), expected, serverSide);
+			for (int i = 0; i < k; i++) {
+				expected[i] = all[all.length - 1 - i];
+			}
+
+			long[] ranked = values(client.queryNode(null, topK(BIN, BinDataType.INTEGER, Order.DESC, k), node), BIN);
+			assertArrayEquals(node.getName(), expected, ranked);
 		}
 	}
 
@@ -449,26 +435,14 @@ public class TestTopKQuery extends TestSync {
 		return new Key(args.namespace, SET, "key" + rank);
 	}
 
-	private Statement clientSide(Order order, int k) {
-		Statement statement = base(BIN);
-		statement.setReduce(Reduce.topK(BIN, BinDataType.INTEGER, order, k));
-		return statement;
-	}
-
-	private Statement serverSide(Order order, int k) {
+	private Statement ranked(Order order, int k) {
 		Statement statement = base(BIN);
 		statement.setOrderBy(BIN, BinDataType.INTEGER, order);
 		statement.setTopK(k);
 		return statement;
 	}
 
-	private Statement clientSideDerived(Order order, int k) {
-		Statement statement = derived();
-		statement.setReduce(Reduce.topK(DERIVED, BinDataType.INTEGER, order, k));
-		return statement;
-	}
-
-	private Statement serverSideDerived(Order order, int k) {
+	private Statement rankedDerived(Order order, int k) {
 		Statement statement = derived();
 		statement.setOrderBy(DERIVED, BinDataType.INTEGER, order);
 		statement.setTopK(k);

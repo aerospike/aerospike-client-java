@@ -212,10 +212,10 @@ public class Cluster implements Runnable, Closeable {
 	public boolean hasPartitionQuery;
 
 	// Does cluster support vectors.
-	public volatile boolean hasVector;
+	public boolean hasVector;
 
 	// Does cluster support Top-K queries.
-	public volatile boolean hasQueryOrderBy;
+	public boolean hasQueryOrderBy;
 
 	private boolean asyncComplete;
 

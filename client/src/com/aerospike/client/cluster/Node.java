@@ -1353,6 +1353,9 @@ public class Node implements Closeable {
 		return (features & HAS_QUERY_OPS_PROJECTION_EXT) != 0;
 	}
 
+	/**
+	 * Does server support Top-K queries?
+	 */
 	public final boolean hasQueryOrderBy() {
 		return (features & HAS_QUERY_ORDER_BY) != 0;
 	}

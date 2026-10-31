@@ -1498,7 +1498,7 @@ public abstract class Value {
 	public static final class VectorValue extends Value {
 		private final Vector vector;
 
-		public VectorValue(final Vector vector) {
+		public VectorValue(Vector vector) {
 			this.vector = vector;
 		}
 
@@ -1508,12 +1508,12 @@ public abstract class Value {
 		}
 
 		@Override
-		public int write(final byte[] buffer, final int offset) {
+		public int write(byte[] buffer, int offset) {
 			return vector.writeTo(buffer, offset);
 		}
 
 		@Override
-		public void pack(final Packer packer) {
+		public void pack(Packer packer) {
 			packer.packVector(vector);
 		}
 
@@ -1542,7 +1542,7 @@ public abstract class Value {
 		}
 
 		@Override
-		public LuaValue getLuaValue(final LuaInstance instance) {
+		public LuaValue getLuaValue(LuaInstance instance) {
 			return new LuaBytes(instance, vector.getWireBytes(), ParticleType.VECTOR);
 		}
 
@@ -1552,7 +1552,7 @@ public abstract class Value {
 		}
 
 		@Override
-		public boolean equals(final Object other) {
+		public boolean equals(Object other) {
 			return (other != null &&
 				this.getClass().equals(other.getClass()) &&
 				this.vector.equals(((VectorValue)other).vector));
@@ -1579,18 +1579,7 @@ public abstract class Value {
 
 		@Override
 		public int estimateSize() throws AerospikeException {
-			Packer packer = new Packer();
-			try {
-				packer.packValueArray(array);
-				packer.createBuffer();
-				packer.packValueArray(array);
-			}
-			catch (Throwable e) {
-				throw new AerospikeException.Serialize(e);
-			}
-			bytes = packer.getBuffer();
-			hasVector = packer.hasVector();
-			hasVectorComputed = true;
+			bytes = Packer.pack(array);
 			return bytes.length;
 		}
 
@@ -1677,18 +1666,7 @@ public abstract class Value {
 
 		@Override
 		public int estimateSize() throws AerospikeException {
-			Packer packer = new Packer();
-			try {
-				packer.packList(list);
-				packer.createBuffer();
-				packer.packList(list);
-			}
-			catch (Throwable e) {
-				throw new AerospikeException.Serialize(e);
-			}
-			bytes = packer.getBuffer();
-			hasVector = packer.hasVector();
-			hasVectorComputed = true;
+			bytes = Packer.pack(list);
 			return bytes.length;
 		}
 
@@ -1781,18 +1759,7 @@ public abstract class Value {
 
 		@Override
 		public int estimateSize() throws AerospikeException {
-			Packer packer = new Packer();
-			try {
-				packer.packMap(map, order);
-				packer.createBuffer();
-				packer.packMap(map, order);
-			}
-			catch (Throwable e) {
-				throw new AerospikeException.Serialize(e);
-			}
-			bytes = packer.getBuffer();
-			hasVector = packer.hasVector();
-			hasVectorComputed = true;
+			bytes = Packer.pack(map, order);
 			return bytes.length;
 		}
 
@@ -1880,18 +1847,7 @@ public abstract class Value {
 
 		@Override
 		public int estimateSize() throws AerospikeException {
-			Packer packer = new Packer();
-			try {
-				packer.packMap(list, order);
-				packer.createBuffer();
-				packer.packMap(list, order);
-			}
-			catch (Throwable e) {
-				throw new AerospikeException.Serialize(e);
-			}
-			bytes = packer.getBuffer();
-			hasVector = packer.hasVector();
-			hasVectorComputed = true;
+			bytes = Packer.pack(list, order);
 			return bytes.length;
 		}
 

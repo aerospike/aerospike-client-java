@@ -16,12 +16,10 @@
  */
 package com.aerospike.client.query;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.Arrays;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Operation;
-import com.aerospike.client.Record;
 import com.aerospike.client.ResultCode;
 import com.aerospike.client.Value;
 import com.aerospike.client.command.Buffer;
@@ -45,8 +43,8 @@ public final class Statement {
 	String functionName;
 	Value[] functionArgs;
 	Operation[] operations;
-	ReduceSpec<?, ?>[] reduceSpecs;
-	private final List<OrderBy> orderBy = new ArrayList<>(MAX_ORDER_KEYS);
+	// Replaced, never modified, so a running query's combiner can hold it.
+	private OrderBy[] orderBy;
 	private int topK;
 	private boolean topKSet;
 	long taskId;
@@ -275,35 +273,6 @@ public final class Statement {
 	}
 
 	/**
-	 * Set reduce spec(s) for this query. Accepts:
-	 * <ul>
-	 *   <li>zero args — clear any reduce (stream all matching records; default behavior)</li>
-	 *   <li>one Top-K spec — e.g.
-	 *       {@code setReduce(Reduce.topK("d", BinDataType.DOUBLE, Order.ASC, 10))}</li>
-	 *   <li>exactly one {@link Reduce#orderBy} + one {@link Reduce#limit} on the same bin —
-	 *       split Top-K, equivalent to {@link Reduce#topK}</li>
-	 * </ul>
-	 * Mutually exclusive with {@link #setAggregateFunction}. Replaces any previously set reduce
-	 * (this setter does not accumulate across calls, consistent with {@link #setOperations(Operation[])}
-	 * and {@link #setBinNames(String...)}).
-	 * <p>
-	 * Not public for now — {@link #setOrderBy} + {@link #setTopK} are the only supported public
-	 * entry points into the reduce framework while the API is still settling.
-	 */
-	void setReduce(ReduceSpec<?, ?>... reduceSpecs) {
-		this.reduceSpecs = reduceSpecs;
-		this.orderBy.clear();
-		this.topKSet = false;
-	}
-
-	/**
-	 * Return reduce spec(s) set by {@code setReduce}.
-	 */
-	ReduceSpec<?, ?>[] getReduce() {
-		return reduceSpecs;
-	}
-
-	/**
 	 * Sort order for a Top-K query; see {@link #setTopK(int)}. May be called before or after
 	 * {@code setTopK}. Calling it again replaces every order key, including one added by
 	 * {@link #thenOrderBy}, and keeps k.
@@ -313,8 +282,7 @@ public final class Statement {
 	 * @param order		sort direction
 	 */
 	public void setOrderBy(String binName, BinDataType type, Order order) {
-		orderBy.clear();
-		orderBy.add(new OrderBy(binName, type, order));
+		orderBy = new OrderBy[] {new OrderBy(binName, type, order)};
 	}
 
 	/**
@@ -327,13 +295,22 @@ public final class Statement {
 	 * @param order		sort direction
 	 */
 	public void thenOrderBy(String binName, BinDataType type, Order order) {
-		orderBy.add(new OrderBy(binName, type, order));
+		OrderBy key = new OrderBy(binName, type, order);
+
+		if (orderBy == null) {
+			orderBy = new OrderBy[] {key};
+			return;
+		}
+
+		OrderBy[] keys = Arrays.copyOf(orderBy, orderBy.length + 1);
+		keys[orderBy.length] = key;
+		orderBy = keys;
 	}
 
 	/**
 	 * Ordered LIMIT k query, ranked by the order keys from {@link #setOrderBy} and
 	 * {@link #thenOrderBy}. The calls may come in any order; calling {@code setTopK} again
-	 * replaces k. Like {@code setReduce}, replaces any previously set reduce.
+	 * replaces k.
 	 * <p>
 	 * The Top-K specification is validated when the query runs; an invalid one, or a cluster where
 	 * any node doesn't support Top-K, fails with {@link AerospikeException.InvalidArgument}
@@ -342,7 +319,6 @@ public final class Statement {
 	 * @param k	maximum number of records to return, in {@code [1, 1000]}
 	 */
 	public void setTopK(int k) {
-		this.reduceSpecs = null;
 		this.topK = k;
 		this.topKSet = true;
 	}
@@ -358,7 +334,7 @@ public final class Statement {
 	 * Return whether this statement has an order key, with or without k.
 	 */
 	public boolean hasOrderBy() {
-		return ! orderBy.isEmpty();
+		return orderBy != null;
 	}
 
 	/**
@@ -366,7 +342,7 @@ public final class Statement {
 	 * key without k is still sent, and the server rejects the query.
 	 */
 	public OrderBy[] getOrderBy() {
-		return orderBy.isEmpty() ? null : orderBy.toArray(new OrderBy[0]);
+		return orderBy;
 	}
 
 	/**
@@ -392,11 +368,11 @@ public final class Statement {
 			return;
 		}
 
-		if (orderBy.isEmpty()) {
+		if (orderBy == null) {
 			throw new AerospikeException.InvalidArgument(NO_ORDER_KEY);
 		}
 
-		if (orderBy.size() > MAX_ORDER_KEYS) {
+		if (orderBy.length > MAX_ORDER_KEYS) {
 			throw new AerospikeException.InvalidArgument("orderBy supports at most two keys");
 		}
 
@@ -417,7 +393,7 @@ public final class Statement {
 			validateOrderBy(key);
 		}
 
-		if (orderBy.size() > 1 && orderBy.get(0).binName.equals(orderBy.get(1).binName)) {
+		if (orderBy.length > 1 && orderBy[0].binName.equals(orderBy[1].binName)) {
 			throw new AerospikeException.InvalidArgument("orderBy keys must use different bins");
 		}
 	}
@@ -432,7 +408,7 @@ public final class Statement {
 
 		if (key.type == null) {
 			throw new AerospikeException.InvalidArgument(
-				"orderBy requires a type declaration (INTEGER or DOUBLE); Aerospike has no schema");
+				"orderBy requires a type declaration (INTEGER, DOUBLE or BYTES); Aerospike has no schema");
 		}
 
 		if (key.order == null) {
@@ -475,67 +451,21 @@ public final class Statement {
 	}
 
 	/**
-	 * Resolve the Top-K specification, or the reduce spec(s) set by {@code setReduce}, into a
-	 * single combiner usable by a query executor. Returns {@code null} if neither was set.
-	 * Composes a split {@link Reduce#orderBy} + {@link Reduce#limit} pair into a single Top-K
-	 * combiner. A Top-K combiner is returned empty on every call, so a statement that runs again
-	 * does not rank the records of an earlier run.
+	 * Return an empty combiner for one run of this Top-K query, or {@code null} when k is not
+	 * set. Each run gets its own, so a statement that runs again does not rank the records of an
+	 * earlier run.
 	 *
-	 * @throws AerospikeException.InvalidArgument	if Top-K has no order key, or the reduce specs
-	 *								are not a single reducer or a valid orderBy/limit pair on the
-	 *								same bin
+	 * @throws AerospikeException.InvalidArgument	if k is set without an order key
 	 */
-	@SuppressWarnings("unchecked")
-	<I, O> ReduceSpec<I, O> resolveReduce() {
-		if (topKSet) {
-			if (orderBy.isEmpty()) {
-				throw new AerospikeException.InvalidArgument(NO_ORDER_KEY);
-			}
-			return (ReduceSpec<I, O>)new TopKReduceSpec(orderBy.toArray(new OrderBy[0]), topK);
-		}
-
-		if (reduceSpecs == null || reduceSpecs.length == 0) {
+	TopKReduceSpec createTopK() {
+		if (! topKSet) {
 			return null;
 		}
 
-		boolean isSplit = reduceSpecs[0] instanceof OrderByReduceSpec || reduceSpecs[0] instanceof LimitReduceSpec;
-
-		if (reduceSpecs.length == 1 && !isSplit) {
-			ReduceSpec<?, ?> spec = reduceSpecs[0];
-
-			if (spec instanceof TopKReduceSpec) {
-				return (ReduceSpec<I, O>)((TopKReduceSpec)spec).emptyCopy();
-			}
-			return (ReduceSpec<I, O>)spec;
+		if (orderBy == null) {
+			throw new AerospikeException.InvalidArgument(NO_ORDER_KEY);
 		}
-
-		ReduceSpec<Record, Record> orderBySpec = null;
-		ReduceSpec<Record, Record> limit = null;
-
-		for (ReduceSpec<?, ?> spec : reduceSpecs) {
-			if (spec instanceof OrderByReduceSpec) {
-				if (orderBySpec != null) {
-					throw new AerospikeException.InvalidArgument("topK requires exactly one orderBy spec");
-				}
-				orderBySpec = (ReduceSpec<Record, Record>)spec;
-			}
-			else if (spec instanceof LimitReduceSpec) {
-				if (limit != null) {
-					throw new AerospikeException.InvalidArgument("topK requires exactly one limit spec");
-				}
-				limit = (ReduceSpec<Record, Record>)spec;
-			}
-			else {
-				throw new AerospikeException.InvalidArgument(
-					"Cannot mix topK parts (orderBy/limit) with other reducers");
-			}
-		}
-
-		if (orderBySpec == null || limit == null) {
-			throw new AerospikeException.InvalidArgument(
-				"topK requires both an orderBy spec and a limit spec");
-		}
-		return (ReduceSpec<I, O>)TopKReduceSpec.compose(orderBySpec, limit);
+		return new TopKReduceSpec(orderBy, topK);
 	}
 
 	/**

@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2025 Aerospike, Inc.
+ * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -15,9 +15,6 @@
  * the License.
  */
 package com.aerospike.client.query;
-
-import java.util.List;
-import java.util.Map;
 
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
@@ -60,7 +57,7 @@ final class OrderKey implements Comparable<OrderKey> {
 			return cmp;
 		}
 		// Tie-break: digest ascending (stable, deterministic ordering).
-		return compareDigest(key.digest, other.key.digest);
+		return compareBytes(key.digest, other.key.digest);
 	}
 
 	private static int compareKey(OrderBy key, Object a, Object b) {
@@ -81,10 +78,6 @@ final class OrderKey implements Comparable<OrderKey> {
 	 */
 	static Object readValue(Record record, String bin, BinDataType type) {
 		Object value = record.getValue(bin);
-
-		if (value == null || value instanceof List || value instanceof Map) {
-			return null;
-		}
 
 		switch (type) {
 			case INTEGER:
@@ -113,19 +106,6 @@ final class OrderKey implements Comparable<OrderKey> {
 	}
 
 	private static int compareBytes(byte[] a, byte[] b) {
-		int len = Math.min(a.length, b.length);
-
-		for (int i = 0; i < len; i++) {
-			int cmp = (a[i] & 0xff) - (b[i] & 0xff);
-
-			if (cmp != 0) {
-				return cmp;
-			}
-		}
-		return a.length - b.length;
-	}
-
-	private static int compareDigest(byte[] a, byte[] b) {
 		int len = Math.min(a.length, b.length);
 
 		for (int i = 0; i < len; i++) {

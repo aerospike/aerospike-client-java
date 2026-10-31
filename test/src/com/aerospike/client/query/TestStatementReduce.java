@@ -37,11 +37,9 @@ import com.aerospike.client.cluster.Node;
 import com.aerospike.client.policy.QueryPolicy;
 
 /**
- * White-box unit tests for the package-private {@code Statement.setReduce} / {@code getReduce} /
- * {@code resolveReduce} internals that back the public {@link Statement#setOrderBy} /
- * {@link Statement#setTopK} sugar. These are not reachable from outside
- * {@code com.aerospike.client.query} since {@code setReduce} is intentionally not part of the
- * public API for now. Pure client-side (no cluster required); registered in {@code SuiteUnit}.
+ * White-box unit tests for the public {@link Statement#setOrderBy} / {@link Statement#setTopK}
+ * setters, checked through the package-private {@code Statement.createTopK} merge they produce.
+ * Pure client-side (no cluster required); registered in {@code SuiteUnit}.
  */
 public class TestStatementReduce {
 	private static final String NS = "test";
@@ -67,20 +65,9 @@ public class TestStatementReduce {
 	}
 
 	@Test
-	public void statementDefaultsToNoReduce() {
+	public void statementDefaultsToNoTopK() {
 		Statement stmt = new Statement();
-		assertEquals(null, stmt.resolveReduce());
-	}
-
-	@Test
-	public void statementResolvesSingleTopK() {
-		Statement stmt = new Statement();
-		stmt.setReduce(Reduce.topK(BIN, BinDataType.INTEGER, Order.DESC, 2));
-
-		ReduceSpec<Record, Record> resolved = stmt.resolveReduce();
-		resolved.acceptPartial(record(BIN, 1L), key("k1"), 0);
-		resolved.acceptPartial(record(BIN, 2L), key("k2"), 0);
-		assertEquals(2, resolved.getResult().length);
+		assertNull(stmt.createTopK());
 	}
 
 	@Test
@@ -117,118 +104,21 @@ public class TestStatementReduce {
 	}
 
 	@Test
-	public void statementComposesSplitOrderByAndLimit() {
+	public void createTopKReturnsEmptyCombinerEachRun() {
 		Statement stmt = new Statement();
-		stmt.setReduce(
-			Reduce.orderBy(BIN, BinDataType.INTEGER, Order.DESC),
-			Reduce.limit(BIN, 2));
+		stmt.setOrderBy(BIN, BinDataType.INTEGER, Order.DESC);
+		stmt.setTopK(2);
 
-		ReduceSpec<Record, Record> resolved = stmt.resolveReduce();
+		TopKReduceSpec first = stmt.createTopK();
+		first.acceptPartial(record(BIN, 1L), key("k1"), 0);
 
-		resolved.acceptPartial(record(BIN, 1L), key("k1"), 0);
-		resolved.acceptPartial(record(BIN, 5L), key("k2"), 0);
-		resolved.acceptPartial(record(BIN, 3L), key("k3"), 0);
-
-		Record[] result = resolved.getResult();
-		assertEquals(2, result.length);
-		assertEquals(5L, result[0].getLong(BIN));
-		assertEquals(3L, result[1].getLong(BIN));
-	}
-
-	@Test
-	public void statementSplitOrderIndependent() {
-		Statement stmt = new Statement();
-		// limit passed before orderBy; order within setReduce should not matter.
-		stmt.setReduce(
-			Reduce.limit(BIN, 2),
-			Reduce.orderBy(BIN, BinDataType.INTEGER, Order.ASC));
-
-		ReduceSpec<Record, Record> resolved = stmt.resolveReduce();
-		resolved.acceptPartial(record(BIN, 3L), key("k1"), 0);
-		resolved.acceptPartial(record(BIN, 1L), key("k2"), 0);
-
-		Record[] result = resolved.getResult();
-		assertEquals(2, result.length);
-		assertEquals(1L, result[0].getLong(BIN));
-	}
-
-	@Test
-	public void resolveReduceReturnsEmptyCombinerEachRun() {
-		Statement serverSide = new Statement();
-		serverSide.setOrderBy(BIN, BinDataType.INTEGER, Order.DESC);
-		serverSide.setTopK(2);
-
-		Statement clientSide = new Statement();
-		clientSide.setReduce(Reduce.topK(BIN, BinDataType.INTEGER, Order.DESC, 2));
-
-		Statement split = new Statement();
-		split.setReduce(
-			Reduce.orderBy(BIN, BinDataType.INTEGER, Order.DESC),
-			Reduce.limit(BIN, 2));
-
-		for (Statement stmt : new Statement[] {serverSide, clientSide, split}) {
-			ReduceSpec<Record, Record> first = stmt.resolveReduce();
-			first.acceptPartial(record(BIN, 1L), key("k1"), 0);
-
-			// A statement that runs again must not rank the records of an earlier run.
-			assertEquals(0, stmt.<Record, Record>resolveReduce().getResult().length);
-			assertEquals(1, first.getResult().length);
-		}
-	}
-
-	@Test
-	public void statementResolveReduceOrderByWithoutLimitThrows() {
-		Statement stmt = new Statement();
-		stmt.setReduce(Reduce.orderBy(BIN, BinDataType.INTEGER, Order.DESC));
-
-		assertInvalidArgument(stmt::resolveReduce);
-	}
-
-	@Test
-	public void statementResolveReduceComposeBinMismatchThrows() {
-		Statement stmt = new Statement();
-		stmt.setReduce(
-			Reduce.orderBy("binA", BinDataType.INTEGER, Order.DESC),
-			Reduce.limit("binB", 2));
-
-		assertInvalidArgument(stmt::resolveReduce);
-	}
-
-	@Test
-	public void statementResolveReduceDuplicateOrderByThrows() {
-		Statement stmt = new Statement();
-		stmt.setReduce(
-			Reduce.orderBy(BIN, BinDataType.INTEGER, Order.DESC),
-			Reduce.orderBy(BIN, BinDataType.INTEGER, Order.ASC),
-			Reduce.limit(BIN, 2));
-
-		assertInvalidArgument(stmt::resolveReduce);
-	}
-
-	@Test
-	public void statementResolveReduceDuplicateLimitThrows() {
-		Statement stmt = new Statement();
-		stmt.setReduce(
-			Reduce.orderBy(BIN, BinDataType.INTEGER, Order.DESC),
-			Reduce.limit(BIN, 2),
-			Reduce.limit(BIN, 3));
-
-		assertInvalidArgument(stmt::resolveReduce);
-	}
-
-	@Test
-	public void setReduceEmptyClearsReduce() {
-		Statement stmt = new Statement();
-		stmt.setReduce(Reduce.topK(BIN, BinDataType.INTEGER, Order.DESC, 2));
-		assertTrue(stmt.resolveReduce() != null);
-
-		stmt.setReduce(); // empty varargs
-		assertNull(stmt.resolveReduce());
+		// A statement that runs again must not rank the records of an earlier run.
+		assertEquals(0, stmt.createTopK().getResultKeyRecords().length);
+		assertEquals(1, first.getResultKeyRecords().length);
 	}
 
 	//-------------------------------------------------------
-	// Statement.setOrderBy / setTopK sugar (public API), verified via the
-	// package-private resolveReduce()
+	// Statement.setOrderBy / setTopK (public API), verified via the package-private createTopK()
 	//-------------------------------------------------------
 
 	@Test
@@ -237,34 +127,15 @@ public class TestStatementReduce {
 		stmt.setOrderBy(BIN, BinDataType.DOUBLE, Order.ASC);
 		stmt.setTopK(2);
 
-		ReduceSpec<Record, Record> resolved = stmt.resolveReduce();
+		TopKReduceSpec resolved = stmt.createTopK();
 		resolved.acceptPartial(record(BIN, 3.0), key("k1"), 0);
 		resolved.acceptPartial(record(BIN, 1.0), key("k2"), 0);
 		resolved.acceptPartial(record(BIN, 2.0), key("k3"), 0);
 
-		Record[] result = resolved.getResult();
+		Record[] result = records(resolved);
 		assertEquals(2, result.length);
 		assertEquals(1.0, result[0].getDouble(BIN), 0.0001);
 		assertEquals(2.0, result[1].getDouble(BIN), 0.0001);
-	}
-
-	@Test
-	public void setTopKOverridesPriorReduce() {
-		Statement stmt = new Statement();
-		stmt.setReduce(Reduce.topK(BIN, BinDataType.INTEGER, Order.ASC, 5));
-		stmt.setOrderBy(BIN, BinDataType.INTEGER, Order.DESC);
-		stmt.setTopK(3);
-
-		// setTopK() replaces any previously set reduce, same as setReduce().
-		ReduceSpec<Record, Record> resolved = stmt.resolveReduce();
-
-		for (int i = 1; i <= 5; i++) {
-			resolved.acceptPartial(record(BIN, (long)i), key("k" + i), 0);
-		}
-
-		Record[] result = resolved.getResult();
-		assertEquals(3, result.length);
-		assertEquals(5L, result[0].getLong(BIN));
 	}
 
 	@Test
@@ -294,10 +165,13 @@ public class TestStatementReduce {
 		limit.setTopK(1001);
 		assertInvalidTopK(limit, "topK must be in [1, 1000]; got 1001");
 
+		limit.setTopK(1000);
+		limit.validateTopK();
+
 		Statement noOrderKey = new Statement();
 		noOrderKey.setTopK(5);
 		assertInvalidTopK(noOrderKey, "Top-K requires an order key; call setOrderBy()");
-		assertInvalidArgument(noOrderKey::resolveReduce);
+		assertInvalidArgument(noOrderKey::createTopK);
 	}
 
 	@Test
@@ -306,7 +180,7 @@ public class TestStatementReduce {
 		type.setOrderBy(BIN, null, Order.ASC);
 		type.setTopK(1);
 		assertInvalidTopK(type,
-			"orderBy requires a type declaration (INTEGER or DOUBLE); Aerospike has no schema");
+			"orderBy requires a type declaration (INTEGER, DOUBLE or BYTES); Aerospike has no schema");
 
 		Statement direction = new Statement();
 		direction.setOrderBy(BIN, BinDataType.INTEGER, null);
@@ -331,12 +205,12 @@ public class TestStatementReduce {
 		stmt.setOrderBy(BIN, BinDataType.INTEGER, Order.ASC);
 		stmt.validateTopK();
 
-		ReduceSpec<Record, Record> resolved = stmt.resolveReduce();
+		TopKReduceSpec resolved = stmt.createTopK();
 		resolved.acceptPartial(record(BIN, 3L), key("k1"), 0);
 		resolved.acceptPartial(record(BIN, 1L), key("k2"), 0);
 		resolved.acceptPartial(record(BIN, 2L), key("k3"), 0);
 
-		Record[] result = resolved.getResult();
+		Record[] result = records(resolved);
 		assertEquals(2, result.length);
 		assertEquals(1L, result[0].getLong(BIN));
 		assertEquals(2L, result[1].getLong(BIN));
@@ -353,23 +227,11 @@ public class TestStatementReduce {
 	}
 
 	@Test
-	public void clientSideReduceClearsOrderKeys() {
-		Statement stmt = new Statement();
-		stmt.setOrderBy(BIN, BinDataType.INTEGER, Order.DESC);
-		stmt.setTopK(2);
-		stmt.setReduce(Reduce.topK(BIN, BinDataType.INTEGER, Order.DESC, 2));
-
-		assertFalse(stmt.hasTopK());
-		assertFalse(stmt.hasOrderBy());
-		assertNull(stmt.getOrderBy());
-	}
-
-	@Test
 	public void repeatedSettersReplaceTopKParts() {
 		Statement stmt = new Statement();
 		stmt.setOrderBy(BIN, BinDataType.INTEGER, Order.ASC);
 		stmt.setTopK(5);
-		stmt.resolveReduce();
+		stmt.createTopK();
 
 		stmt.setTopK(3);
 		stmt.setOrderBy(BIN, BinDataType.INTEGER, Order.DESC);
@@ -377,13 +239,13 @@ public class TestStatementReduce {
 		assertEquals(3, stmt.getTopKLimit());
 		assertEquals(Order.DESC, stmt.getOrderBy()[0].order);
 
-		ReduceSpec<Record, Record> resolved = stmt.resolveReduce();
+		TopKReduceSpec resolved = stmt.createTopK();
 
 		for (int i = 1; i <= 5; i++) {
 			resolved.acceptPartial(record(BIN, (long)i), key("k" + i), 0);
 		}
 
-		Record[] result = resolved.getResult();
+		Record[] result = records(resolved);
 		assertEquals(3, result.length);
 		assertEquals(5L, result[0].getLong(BIN));
 	}
@@ -542,12 +404,22 @@ public class TestStatementReduce {
 	}
 
 	private static Record[] rank(Statement stmt, Record... records) {
-		ReduceSpec<Record, Record> resolved = stmt.resolveReduce();
+		TopKReduceSpec resolved = stmt.createTopK();
 
 		for (int i = 0; i < records.length; i++) {
 			resolved.acceptPartial(records[i], key("k" + i), 0);
 		}
-		return resolved.getResult();
+		return records(resolved);
+	}
+
+	private static Record[] records(TopKReduceSpec topK) {
+		KeyRecord[] keyRecords = topK.getResultKeyRecords();
+		Record[] records = new Record[keyRecords.length];
+
+		for (int i = 0; i < keyRecords.length; i++) {
+			records[i] = keyRecords[i].record;
+		}
+		return records;
 	}
 
 	private static void assertInvalidTopK(Statement statement, String message) {
