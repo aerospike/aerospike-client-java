@@ -50,6 +50,7 @@ public abstract class SyncCommand extends Command {
 		this.cluster = cluster;
 		this.policy = policy;
 		this.namespace = namespace;
+		this.vectorSupported = cluster.hasVector;
 	}
 
 	/**
@@ -60,6 +61,7 @@ public abstract class SyncCommand extends Command {
 		this.cluster = cluster;
 		this.policy = policy;
 		this.namespace = namespace;
+		this.vectorSupported = cluster.hasVector;
 	}
 
 	public void execute() {

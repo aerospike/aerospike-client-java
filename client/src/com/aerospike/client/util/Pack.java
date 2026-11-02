@@ -24,6 +24,32 @@ import com.aerospike.client.exp.Exp;
 import com.aerospike.client.exp.Expression;
 
 public final class Pack {
+	/**
+	 * Pack command arguments and retain vector presence. For internal use only.
+	 */
+	public static Value packValue(int command, CTX[] ctx, Object... values) {
+		Packer packer = new Packer();
+
+		init(packer, ctx);
+		packer.packArrayBegin(values.length + 1);
+		packer.packInt(command);
+
+		for (Object value : values) {
+			packer.packObject(value);
+		}
+
+		packer.createBuffer();
+
+		init(packer, ctx);
+		packer.packArrayBegin(values.length + 1);
+		packer.packInt(command);
+
+		for (Object value : values) {
+			packer.packObject(value);
+		}
+		return Value.get(packer.getBuffer(), packer.hasVector());
+	}
+
 	public static byte[] pack(int command, CTX... ctx) {
 		Packer packer = new Packer();
 

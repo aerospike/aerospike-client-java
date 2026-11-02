@@ -67,6 +67,10 @@ import com.aerospike.test.sync.basic.TestTlsName;
 import com.aerospike.test.sync.basic.TestTouch;
 import com.aerospike.test.sync.basic.TestTxn;
 import com.aerospike.test.sync.basic.TestUDF;
+import com.aerospike.test.sync.basic.TestVector;
+import com.aerospike.test.sync.basic.TestVectorEdgeCases;
+import com.aerospike.test.sync.basic.TestVectorIO;
+import com.aerospike.test.sync.basic.TestVectorUdfClusterSupport;
 import com.aerospike.test.sync.query.TestIndex;
 import com.aerospike.test.sync.query.TestExpSecondaryIndex;
 import com.aerospike.test.sync.query.TestQueryAverage;
@@ -82,8 +86,13 @@ import com.aerospike.test.sync.query.TestQueryInteger;
 import com.aerospike.test.sync.query.TestQueryKey;
 import com.aerospike.test.sync.query.TestQueryOperations;
 import com.aerospike.test.sync.query.TestQueryRPS;
+import com.aerospike.test.sync.query.TestQueryReduce;
 import com.aerospike.test.sync.query.TestQueryString;
 import com.aerospike.test.sync.query.TestQuerySum;
+import com.aerospike.test.sync.query.TestTopKQuery;
+import com.aerospike.test.sync.query.TestTopKRejections;
+import com.aerospike.test.sync.query.TestTopKRequestEncoding;
+import com.aerospike.test.sync.query.TestVectorExp;
 import com.aerospike.test.util.Args;
 import com.aerospike.client.AerospikeClientIndexTypeTest;
 
@@ -130,6 +139,10 @@ import com.aerospike.client.AerospikeClientIndexTypeTest;
 	TxnTest.class,
 	TestTxn.class,
 	TestUDF.class,
+	TestVector.class,
+	TestVectorEdgeCases.class,
+	TestVectorIO.class,
+	TestVectorUdfClusterSupport.class,
 	TestIndex.class,
 	TestExpSecondaryIndex.class,
 	TestQueryAverage.class,
@@ -145,8 +158,13 @@ import com.aerospike.client.AerospikeClientIndexTypeTest;
 	TestQueryKey.class,
 	TestQueryOperations.class,
 	TestQueryRPS.class,
+	TestQueryReduce.class,
 	TestQueryString.class,
 	TestQuerySum.class,
+	TestTopKRejections.class,
+	TestTopKRequestEncoding.class,
+	TestVectorExp.class,
+	TestTopKQuery.class,
 	AerospikeClientIndexTypeTest.class
 })
 public class SuiteSync {

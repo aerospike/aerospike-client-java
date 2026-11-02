@@ -45,6 +45,8 @@ public class TestSync extends TestBase {
 	public static void destroy() {
 		if (DestroyClient) {
 			SuiteSync.destroy();
+			client = null;
+			DestroyClient = false;
 		}
 	}
 

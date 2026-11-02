@@ -209,7 +209,8 @@ public class MapOperation {
 				bytes = Pack.pack(policy.itemCommand, key, value, policy.attributes, ctx);
 			}
 		}
-		return new Operation(Operation.Type.MAP_MODIFY, binName, Value.get(bytes));
+		return new Operation(Operation.Type.MAP_MODIFY, binName,
+			Value.get(bytes, key.hasVector() || value.hasVector()));
 	}
 
 	/**
@@ -221,40 +222,18 @@ public class MapOperation {
 	 * See policy {@link com.aerospike.client.cdt.MapPolicy}.
 	 */
 	public static Operation putItems(MapPolicy policy, String binName, Map<Value,Value> map, CTX... ctx) {
-		Packer packer = new Packer();
+		Value packed;
 
-		// First pass calculates buffer size.
-		// Second pass writes to buffer.
-		for (int i = 0; i < 2; i++) {
-			if (policy.flags != 0) {
-				Pack.init(packer, ctx);
-				packer.packArrayBegin(4);
-				packer.packInt(MapOperation.PUT_ITEMS);
-				packer.packValueMap(map);
-				packer.packInt(policy.attributes);
-				packer.packInt(policy.flags);
-			}
-			else {
-				if (policy.itemsCommand == REPLACE_ITEMS) {
-					// Replace doesn't allow map attributes because it does not create on non-existing key.
-					Pack.init(packer, ctx);
-					packer.packArrayBegin(2);
-					packer.packInt(policy.itemsCommand);
-					packer.packValueMap(map);
-				} else {
-					Pack.init(packer, ctx);
-					packer.packArrayBegin(3);
-					packer.packInt(policy.itemsCommand);
-					packer.packValueMap(map);
-					packer.packInt(policy.attributes);
-				}
-			}
-
-			if (i == 0) {
-				packer.createBuffer();
-			}
+		if (policy.flags != 0) {
+			packed = Pack.packValue(MapOperation.PUT_ITEMS, ctx, map, policy.attributes, policy.flags);
 		}
-		return new Operation(Operation.Type.MAP_MODIFY, binName, Value.get(packer.getBuffer()));
+		else if (policy.itemsCommand == REPLACE_ITEMS) {
+			packed = Pack.packValue(policy.itemsCommand, ctx, map);
+		}
+		else {
+			packed = Pack.packValue(policy.itemsCommand, ctx, map, policy.attributes);
+		}
+		return new Operation(Operation.Type.MAP_MODIFY, binName, packed);
 	}
 
 	/**
@@ -269,7 +248,8 @@ public class MapOperation {
 	 */
 	public static Operation increment(MapPolicy policy, String binName, Value key, Value incr, CTX... ctx) {
 		byte[] bytes = Pack.pack(MapOperation.INCREMENT, key, incr, policy.attributes, ctx);
-		return new Operation(Operation.Type.MAP_MODIFY, binName, Value.get(bytes));
+		return new Operation(Operation.Type.MAP_MODIFY, binName,
+			Value.get(bytes, key.hasVector() || incr.hasVector()));
 	}
 
 	/**
@@ -288,7 +268,8 @@ public class MapOperation {
 	@Deprecated
 	public static Operation decrement(MapPolicy policy, String binName, Value key, Value decr, CTX... ctx) {
 		byte[] bytes = Pack.pack(MapOperation.DECREMENT, key, decr, policy.attributes, ctx);
-		return new Operation(Operation.Type.MAP_MODIFY, binName, Value.get(bytes));
+		return new Operation(Operation.Type.MAP_MODIFY, binName,
+			Value.get(bytes, key.hasVector() || decr.hasVector()));
 	}
 
 	/**
