@@ -24,6 +24,7 @@ import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Value;
 import com.aerospike.client.util.Unpacker;
 import com.aerospike.client.util.Utf8;
+import com.aerospike.client.vector.Vector;
 
 public final class Buffer {
 
@@ -89,6 +90,9 @@ public final class Buffer {
 
 		case ParticleType.MAP:
 			return Unpacker.unpackObjectMap(buf, offset, len);
+
+		case ParticleType.VECTOR:
+			return Buffer.bytesToVector(buf, offset, len);
 
 		default:
 			return null;
@@ -324,6 +328,15 @@ public final class Buffer {
 	public static Object bytesToHLL(byte[] buf, int offset, int len) {
 		byte[] bytes = Arrays.copyOfRange(buf, offset, offset+len);
 		return Value.getAsHLL(bytes);
+	}
+
+	public static Object bytesToVector(byte[] buf, int offset, int len) {
+		try {
+			return Vector.from(buf, offset, len);
+		}
+		catch (IllegalArgumentException e) {
+			throw new AerospikeException.Parse(e.getMessage());
+		}
 	}
 
 	public static Object bytesToNumber(byte[] buf, int offset, int len) {

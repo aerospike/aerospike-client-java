@@ -55,8 +55,11 @@ import com.aerospike.client.policy.ReadModeAP;
 import com.aerospike.client.policy.ScanPolicy;
 import com.aerospike.client.policy.WritePolicy;
 import com.aerospike.client.query.BVal;
+import com.aerospike.client.query.BinDataType;
 import com.aerospike.client.query.Filter;
 import com.aerospike.client.query.IndexCollectionType;
+import com.aerospike.client.query.Order;
+import com.aerospike.client.query.OrderBy;
 import com.aerospike.client.query.PartitionStatus;
 import com.aerospike.client.query.PartitionTracker.NodePartitions;
 import com.aerospike.client.query.Statement;
@@ -146,11 +149,18 @@ public class Command {
 	protected int serverSubcode = SubCode.NONE;
 	protected ExpressionTrace expTrace;
 
+	// Last-update time from the current query row's LUT field (field 14), or zero when the row
+	// has none. Only Top-K rows ranked by the server carry it. Reset by parseKey.
+	protected long lastUpdateTime;
+
 	public final int maxRetries;
 	public final int serverTimeout;
 	public int socketTimeout;
 	public int totalTimeout;
 	public Long version;
+
+	// True if the cluster supports vectors.
+	public boolean vectorSupported = true;
 
 	public Command(int socketTimeout, int totalTimeout, int maxRetries) {
 		this.maxRetries = maxRetries;
@@ -782,7 +792,7 @@ public class Command {
 			fieldCount++;
 		}
 
-		byte[] argBytes = Packer.pack(args);
+		byte[] argBytes = Packer.pack(args, vectorSupported);
 		fieldCount += estimateUdfSize(packageName, functionName, argBytes);
 
 		sizeBuffer();
@@ -801,7 +811,7 @@ public class Command {
 	}
 
 	public final void setUdf(Policy policy, BatchAttr attr, Key key, String packageName, String functionName, Value[] args) {
-		byte[] argBytes = Packer.pack(args);
+		byte[] argBytes = Packer.pack(args, vectorSupported);
 		setUdf(policy, attr, key, packageName, functionName, argBytes);
 	}
 
@@ -1245,6 +1255,7 @@ public class Command {
 							}
 						}
 
+						checkVectorSupport(bu.argsHaveVector);
 						attr.setUDF(bup, sendKey, durableDelete);
 						writeBatchWrite(key, txn, ver, attr, attr.filterExp, 3, 0);
 						writeField(bu.packageName, FieldType.UDF_PACKAGE_NAME);
@@ -1983,6 +1994,8 @@ public class Command {
 		Node node
 	) {
 		byte[] functionArgBuffer = null;
+		OrderBy[] orderBy = statement.getOrderBy();
+		int orderBySize = 0;
 		int fieldCount = 0;
 		int filterSize = 0;
 		int binNameSize = 0;
@@ -2081,7 +2094,7 @@ public class Command {
 			dataOffset += Buffer.estimateSizeUtf8(statement.getFunctionName()) + FIELD_HEADER_SIZE;
 
 			if (statement.getFunctionArgs().length > 0) {
-				functionArgBuffer = Packer.pack(statement.getFunctionArgs());
+				functionArgBuffer = Packer.pack(statement.getFunctionArgs(), vectorSupported);
 			}
 			else {
 				functionArgBuffer = new byte[0];
@@ -2092,6 +2105,17 @@ public class Command {
 
 		if (policy.filterExp != null) {
 			dataOffset += policy.filterExp.size();
+			fieldCount++;
+		}
+
+		if (orderBy != null) {
+			orderBySize = estimateOrderBySize(orderBy);
+			dataOffset += FIELD_HEADER_SIZE + orderBySize;
+			fieldCount++;
+		}
+
+		if (statement.hasTopK()) {
+			dataOffset += FIELD_HEADER_SIZE + 4;
 			fieldCount++;
 		}
 
@@ -2194,6 +2218,12 @@ public class Command {
 				writeAttr |= Command.INFO2_RELAX_AP_LONG_QUERY;
 			}
 
+			// The server sends a record only when a projected read has a value. A Top-K record
+			// whose order key is empty must still arrive, ranked last as nil.
+			if (statement.hasTopK() && operationCount > 0 && ! readsAllBins(operations)) {
+				writeAttr |= Command.INFO2_RESPOND_ALL_OPS;
+			}
+
 			int infoAttr = (isNew || filter == null)? Command.INFO3_PARTITION_DONE : 0;
 
 			writeHeaderRead(policy, totalTimeout, readAttr, writeAttr, infoAttr, fieldCount, operationCount);
@@ -2217,6 +2247,14 @@ public class Command {
 
 		// Write taskId field
 		writeField(taskId, FieldType.QUERY_ID);
+
+		if (orderBy != null) {
+			writeOrderBy(orderBy, orderBySize);
+		}
+
+		if (statement.hasTopK()) {
+			writeField(statement.getTopKLimit(), FieldType.TOP_K);
+		}
 
 		if (filter != null) {
 			IndexCollectionType type = filter.getCollectionType();
@@ -2319,6 +2357,62 @@ public class Command {
 		end();
 	}
 
+	// RESPOND_ALL_OPS must be off when an operation reads all bins.
+	private static boolean readsAllBins(Operation[] operations) {
+		if (operations == null) {
+			return false;
+		}
+
+		for (Operation operation : operations) {
+			if (operation.type == Operation.Type.READ && operation.binName == null) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	private static int estimateOrderBySize(OrderBy[] keys) {
+		int size = 0;
+
+		for (OrderBy key : keys) {
+			size += 4 + Buffer.estimateSizeUtf8(key.binName);
+		}
+		return size;
+	}
+
+	// The server reads one self-delimiting spec per order key, concatenated in significance order.
+	// An order key without k is sent as is, so the server rejects it with the reason.
+	private void writeOrderBy(OrderBy[] keys, int size) {
+		writeFieldHeader(size, FieldType.ORDER_BY);
+
+		for (OrderBy key : keys) {
+			dataBuffer[dataOffset++] = (byte)getOrderByType(key.type);
+			dataBuffer[dataOffset++] = (byte)getOrderByDirection(key.order);
+			dataBuffer[dataOffset++] = 0; // Flags: none apply to the supported order-by types.
+
+			int len = Buffer.stringToUtf8(key.binName, dataBuffer, dataOffset + 1);
+			dataBuffer[dataOffset] = (byte)len;
+			dataOffset += 1 + len;
+		}
+	}
+
+	private static int getOrderByType(BinDataType type) {
+		switch (type) {
+			case INTEGER:
+				return 1;
+			case DOUBLE:
+				return 2;
+			case BYTES:
+				return 4;
+			default:
+				throw new IllegalArgumentException("Unsupported Top-K order-by type: " + type);
+		}
+	}
+
+	private static int getOrderByDirection(Order order) {
+		return order == Order.ASC ? 0 : 1;
+	}
+
 	//--------------------------------------------------
 	// Command Sizing
 	//--------------------------------------------------
@@ -2393,6 +2487,31 @@ public class Command {
 		}
 		dataOffset += Buffer.estimateSizeUtf8(operation.binName) + OPERATION_HEADER_SIZE;
 		dataOffset += operation.value.estimateSize();
+	}
+
+	// A collection value may walk its elements to answer hasVector(), so ask only when a node
+	// lacks vector support.
+	private void checkVectorSupport(Value value) {
+		if (! vectorSupported) {
+			checkVectorSupport(value.hasVector(), false);
+		}
+	}
+
+	/**
+	 * Verify vector support. For internal use only.
+	 */
+	public final void checkVectorSupport(boolean vectorPresent) {
+		checkVectorSupport(vectorPresent, vectorSupported);
+	}
+
+	/**
+	 * Verify vector support for a cluster. For internal use only.
+	 */
+	public static void checkVectorSupport(boolean vectorPresent, boolean vectorSupported) {
+		if (vectorPresent && ! vectorSupported) {
+			throw new AerospikeException.InvalidArgument(
+				"Vector is not supported by all nodes in the cluster");
+		}
 	}
 
 	private final void estimateOperationSize(String binName) {
@@ -2768,6 +2887,7 @@ public class Command {
 	}
 
 	private final void writeOperation(Bin bin, Operation.Type operation) {
+		checkVectorSupport(bin.value);
 		int nameLength = Buffer.stringToUtf8(bin.name, dataBuffer, dataOffset + OPERATION_HEADER_SIZE);
 		int valueLength = bin.value.write(dataBuffer, dataOffset + OPERATION_HEADER_SIZE + nameLength);
 
@@ -2781,6 +2901,7 @@ public class Command {
 	}
 
 	private final void writeOperation(Operation operation) {
+		checkVectorSupport(operation.value);
 		int nameLength = Buffer.stringToUtf8(operation.binName, dataBuffer, dataOffset + OPERATION_HEADER_SIZE);
 		int valueLength = operation.value.write(dataBuffer, dataOffset + OPERATION_HEADER_SIZE + nameLength);
 
@@ -3017,6 +3138,7 @@ public class Command {
 		// Reset first so a row without a field-45 detail does not inherit the
 		// previous row's.
 		resetServerErrorDetail();
+		lastUpdateTime = 0;
 
 		for (int i = 0; i < fieldCount; i++) {
 			int fieldlen = Buffer.bytesToInt(dataBuffer, dataOffset);
@@ -3047,6 +3169,10 @@ public class Command {
 
 			case FieldType.BVAL_ARRAY:
 				bval.val = Buffer.littleBytesToLong(dataBuffer, dataOffset);
+				break;
+
+			case FieldType.LUT:
+				lastUpdateTime = Buffer.bytesToLong(dataBuffer, dataOffset);
 				break;
 
 			case FieldType.ERROR_MESSAGE:

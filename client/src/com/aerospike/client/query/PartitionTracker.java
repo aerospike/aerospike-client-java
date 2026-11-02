@@ -119,12 +119,40 @@ public final class PartitionTracker {
 	}
 
 	public PartitionTracker(QueryPolicy policy, Statement stmt, Node[] nodes, PartitionFilter filter) {
-		this((Policy)policy, nodes, filter, (stmt.maxRecords > 0) ? stmt.maxRecords : policy.maxRecords);
+		this((Policy)policy, nodes, validateTopKFilter(stmt, filter),
+			(stmt.maxRecords > 0) ? stmt.maxRecords : policy.maxRecords);
 	}
 
 	public PartitionTracker(QueryPolicy policy, Statement stmt, int nodeCapacity, PartitionFilter filter) {
-		this((Policy)policy, nodeCapacity, filter, (stmt.maxRecords > 0) ?
+		this((Policy)policy, nodeCapacity, validateTopKFilter(stmt, filter), (stmt.maxRecords > 0) ?
 			stmt.maxRecords : policy.maxRecords);
+	}
+
+	/**
+	 * Reject Top-K on a partition filter that resumes an earlier query. Evaluated in the
+	 * constructor arguments so it runs before the tracker mutates the filter.
+	 */
+	private static PartitionFilter validateTopKFilter(Statement stmt, PartitionFilter filter) {
+		if (! stmt.hasTopK()) {
+			return filter;
+		}
+
+		boolean resumed = filter.digest != null;
+
+		if (! resumed && filter.partitions != null) {
+			for (PartitionStatus part : filter.partitions) {
+				if (part.digest != null) {
+					resumed = true;
+					break;
+				}
+			}
+		}
+
+		if (resumed) {
+			throw new AerospikeException.InvalidArgument(
+				"Top-K can't resume a partition filter from an earlier query");
+		}
+		return filter;
 	}
 
 	private PartitionTracker(Policy policy, Node[] nodes, PartitionFilter filter, long maxRecords) {
@@ -372,6 +400,14 @@ public final class PartitionTracker {
 		PartitionStatus ps = partitions[partitionId - partitionBegin];
 		ps.digest = key.digest;
 		ps.bval = bval;
+		nodePartitions.recordCount++;
+	}
+
+	/**
+	 * Count a record without moving its partition's resume cursor, so a retry re-queries the
+	 * partition from the start.
+	 */
+	public void countRecord(NodePartitions nodePartitions) {
 		nodePartitions.recordCount++;
 	}
 

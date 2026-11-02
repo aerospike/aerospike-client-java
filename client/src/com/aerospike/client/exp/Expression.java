@@ -30,6 +30,7 @@ public final class Expression implements Serializable {
 	private static final long serialVersionUID = 1L;
 
 	private final byte[] bytes;
+	private final transient boolean hasVector;
 
 	/**
 	 * Expression constructor used by {@link Exp#build(Exp)}
@@ -38,6 +39,7 @@ public final class Expression implements Serializable {
 		Packer packer = new Packer();
 		exp.pack(packer);
 		bytes = packer.toByteArray();
+		hasVector = packer.hasVector();
 		/*
 		for (int i = 0; i < bytes.length; i++) {
 			int b = bytes[i] & 0xff;
@@ -51,10 +53,16 @@ public final class Expression implements Serializable {
 	 */
 	Expression(byte[] bytes) {
 		this.bytes = bytes;
+		this.hasVector = false;
 	}
 
 	/**
 	 * Return a new expression from packed expression instructions in bytes.
+	 * <p>
+	 * Packed bytes are opaque to the client, so an expression rebuilt this way skips the check
+	 * that rejects a vector expression when not all nodes in the cluster support vectors. A node
+	 * without vector support then rejects the expression itself, as it does any expression it
+	 * can't parse.
 	 */
 	public static Expression fromBytes(byte[] bytes) {
 		return new Expression(bytes);
@@ -62,6 +70,7 @@ public final class Expression implements Serializable {
 
 	/**
 	 * Return a new expression from packed expression instructions in base64 encoded bytes.
+	 * Like {@link #fromBytes(byte[])}, this skips the client's vector support check.
 	 */
 	public static Expression fromBase64(byte[] bytes) {
 		return Expression.fromBytes(Crypto.decodeBase64(bytes, 0, bytes.length));
@@ -69,6 +78,7 @@ public final class Expression implements Serializable {
 
 	/**
 	 * Return a new expression from packed expression instructions in base64 encoded string.
+	 * Like {@link #fromBytes(byte[])}, this skips the client's vector support check.
 	 */
 	public static Expression fromBase64(String s) {
 		return Expression.fromBase64(s.getBytes());
@@ -79,6 +89,13 @@ public final class Expression implements Serializable {
 	 */
 	public byte[] getBytes() {
 		return bytes;
+	}
+
+	/**
+	 * Does this expression contain a vector? For internal use only.
+	 */
+	public boolean hasVector() {
+		return hasVector;
 	}
 
 	/**
@@ -101,6 +118,7 @@ public final class Expression implements Serializable {
 	 * For internal use only.
 	 */
 	public void write(Command cmd) {
+		cmd.checkVectorSupport(hasVector);
 		cmd.writeExpHeader(bytes.length);
 		System.arraycopy(bytes, 0, cmd.dataBuffer, cmd.dataOffset, bytes.length);
 		cmd.dataOffset += bytes.length;

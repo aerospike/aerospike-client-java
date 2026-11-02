@@ -213,7 +213,7 @@ public class MapOperation {
 			}
 		}
 		byte[] bytes = packer.toByteArray();
-		return new Operation(Operation.Type.MAP_MODIFY, binName, Value.get(bytes));
+		return new Operation(Operation.Type.MAP_MODIFY, binName, Value.get(bytes, packer.hasVector()));
 	}
 
 	/**
@@ -225,34 +225,18 @@ public class MapOperation {
 	 * See policy {@link com.aerospike.client.cdt.MapPolicy}.
 	 */
 	public static Operation putItems(MapPolicy policy, String binName, Map<Value,Value> map, CTX... ctx) {
-		Packer packer = new Packer();
+		Value packed;
 
 		if (policy.flags != 0) {
-			Pack.init(packer, ctx);
-			packer.packArrayBegin(4);
-			packer.packInt(MapOperation.PUT_ITEMS);
-			packer.packValueMap(map);
-			packer.packInt(policy.attributes);
-			packer.packInt(policy.flags);
+			packed = Pack.packValue(MapOperation.PUT_ITEMS, ctx, map, policy.attributes, policy.flags);
+		}
+		else if (policy.itemsCommand == REPLACE_ITEMS) {
+			packed = Pack.packValue(policy.itemsCommand, ctx, map);
 		}
 		else {
-			if (policy.itemsCommand == REPLACE_ITEMS) {
-				// Replace doesn't allow map attributes because it does not create on non-existing key.
-				Pack.init(packer, ctx);
-				packer.packArrayBegin(2);
-				packer.packInt(policy.itemsCommand);
-				packer.packValueMap(map);
-			}
-			else {
-				Pack.init(packer, ctx);
-				packer.packArrayBegin(3);
-				packer.packInt(policy.itemsCommand);
-				packer.packValueMap(map);
-				packer.packInt(policy.attributes);
-			}
+			packed = Pack.packValue(policy.itemsCommand, ctx, map, policy.attributes);
 		}
-		byte[] bytes = packer.toByteArray();
-		return new Operation(Operation.Type.MAP_MODIFY, binName, Value.get(bytes));
+		return new Operation(Operation.Type.MAP_MODIFY, binName, packed);
 	}
 
 	/**
@@ -267,7 +251,8 @@ public class MapOperation {
 	 */
 	public static Operation increment(MapPolicy policy, String binName, Value key, Value incr, CTX... ctx) {
 		byte[] bytes = Pack.pack(MapOperation.INCREMENT, key, incr, policy.attributes, ctx);
-		return new Operation(Operation.Type.MAP_MODIFY, binName, Value.get(bytes));
+		return new Operation(Operation.Type.MAP_MODIFY, binName,
+			Value.get(bytes, key.hasVector() || incr.hasVector()));
 	}
 
 	/**
@@ -286,7 +271,8 @@ public class MapOperation {
 	@Deprecated
 	public static Operation decrement(MapPolicy policy, String binName, Value key, Value decr, CTX... ctx) {
 		byte[] bytes = Pack.pack(MapOperation.DECREMENT, key, decr, policy.attributes, ctx);
-		return new Operation(Operation.Type.MAP_MODIFY, binName, Value.get(bytes));
+		return new Operation(Operation.Type.MAP_MODIFY, binName,
+			Value.get(bytes, key.hasVector() || decr.hasVector()));
 	}
 
 	/**

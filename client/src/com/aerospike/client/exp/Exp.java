@@ -21,6 +21,7 @@ import java.util.List;
 import java.util.Map;
 
 import com.aerospike.client.util.Packer;
+import com.aerospike.client.vector.VectorDistanceMetric;
 
 /**
  * Expression generator.
@@ -39,7 +40,8 @@ public abstract class Exp {
 		BLOB(6),
 		FLOAT(7),
 		GEO(8),
-		HLL(9);
+		HLL(9),
+		VECTOR(10);
 
 		public final int code;
 
@@ -269,6 +271,20 @@ public abstract class Exp {
 	 */
 	public static Exp hllBin(String name) {
 		return new Bin(name, Type.HLL);
+	}
+
+	/**
+	 * Create vector bin expression for use with {@link VectorExp}.
+	 *
+	 * <pre>{@code
+	 * // Cosine similarity between vector bin "v" and a query vector > 0.8
+	 * Exp.gt(
+	 *     VectorExp.distance(VectorDistanceMetric.COSINE_SIMILARITY, query, Exp.vectorBin("v")),
+	 *     Exp.val(0.8))
+	 * }</pre>
+	 */
+	public static Exp vectorBin(String name) {
+		return new Bin(name, Type.VECTOR);
 	}
 
 	/**
@@ -1437,6 +1453,9 @@ public abstract class Exp {
 	private static final int INT_RSCAN = 41;
 	private static final int MIN = 50;
 	private static final int MAX = 51;
+	private static final int VECTOR_EUCLIDEAN_SQUARED = 52;
+	private static final int VECTOR_DOT_PRODUCT = 53;
+	private static final int VECTOR_COSINE_SIM = 54;
 	private static final int DIGEST_MODULO = 64;
 	private static final int DEVICE_SIZE = 65;
 	private static final int LAST_UPDATE = 66;
@@ -1540,6 +1559,43 @@ public abstract class Exp {
 			packer.packInt(flags);
 			packer.packString(regex);
 			bin.pack(packer);
+		}
+	}
+
+	/**
+	 * Internal vector distance expression.
+	 */
+	static final class VectorDist extends Exp {
+		private final int opcode;
+		private final byte[] query;
+		private final Exp bin;
+
+		VectorDist(int opcode, byte[] query, Exp bin) {
+			this.opcode = opcode;
+			this.query = query;
+			this.bin = bin;
+		}
+
+		@Override
+		public void pack(Packer packer) {
+			packer.markVector();
+			packer.packArrayBegin(3);
+			packer.packInt(opcode);
+			bin.pack(packer);
+			packer.packParticleBytes(query);
+		}
+	}
+
+	static int vectorDistOpcode(VectorDistanceMetric metric) {
+		switch (metric) {
+			case EUCLIDEAN_SQUARED:
+				return VECTOR_EUCLIDEAN_SQUARED;
+			case DOT_PRODUCT:
+				return VECTOR_DOT_PRODUCT;
+			case COSINE_SIMILARITY:
+				return VECTOR_COSINE_SIM;
+			default:
+				throw new IllegalArgumentException("Unsupported vector distance metric: " + metric);
 		}
 	}
 
