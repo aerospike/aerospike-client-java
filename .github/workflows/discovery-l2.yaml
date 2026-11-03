@@ -23,11 +23,33 @@ on:
       profile:
         description: >-
           A discovery-l2-topology profile: default, reachable, pass-through-names,
-          pass-through-ports, port-map-range, cn-only, low-mtu, port-range or
-          idle-reset
+          pass-through-ports, port-map-range, cn-only, low-mtu, port-range,
+          idle-reset or unresolved-access
         type: string
         required: false
         default: default
+      unresolvable-hostnames:
+        description: >-
+          Map no advertised hostname in the servers on reachable and the pass-through profiles.
+          Needs a server that does not resolve its access addresses.
+        type: boolean
+        required: false
+        default: false
+      verbatim-access-address:
+        description: Whether the server advertises access-address hostnames verbatim, for unresolved-access
+        type: boolean
+        required: false
+        default: false
+      fail-on-skip:
+        description: Fail when a test of the suite skips, except those in expected-skips
+        type: boolean
+        required: false
+        default: false
+      expected-skips:
+        description: Comma-separated class.method names of the tests expected to skip, for fail-on-skip
+        type: string
+        required: false
+        default: ""
 
 permissions:
   id-token: write
@@ -61,6 +83,7 @@ jobs:
             cn-only) suite='**/TestL2CnOnlyCertificate.class' ;;
             low-mtu) suite='**/TestL2LowMtu.class' ;;
             idle-reset) suite='**/TestL2IdleReset.class,**/TestL2AsyncIdleReset.class' ;;
+            unresolved-access) suite='**/TestL2UnresolvedAccessAddress.class,**/TestL2PortMapNoAccessAddress.class' ;;
             *)
               echo "::error::Unknown profile ${PROFILE}"
               exit 1
@@ -70,7 +93,7 @@ jobs:
 
       - name: Setup L2 topology
         id: l2
-        uses: aerospike/aerospike-client-conformance/.github/actions/discovery-l2-topology@faa1474b97c83beb7c353bdca62733e6ad8ff1d4 # main
+        uses: aerospike/aerospike-client-conformance/.github/actions/discovery-l2-topology@83959d02eb6bca719d71ba70e72648c528847b69 # main
         with:
           profile: ${{ inputs.profile }}
           subset: ${{ inputs.subset }}
@@ -82,6 +105,8 @@ jobs:
           features-content: ${{ inputs.subset == 'ee' && secrets.FEATURES_CONF || '' }}
           oidc-provider: ${{ secrets.JFROG_OIDC_PROVIDER }}
           oidc-audience: ${{ secrets.JFROG_OIDC_AUDIENCE }}
+          unresolvable-hostnames: ${{ inputs.unresolvable-hostnames }}
+          verbatim-access-address: ${{ inputs.verbatim-access-address }}
 
       - name: Build DNS zone
         id: zone
@@ -187,5 +212,11 @@ jobs:
         uses: EnricoMi/publish-unit-test-result-action@d0a4676d0e0b938bc201470d88276b7c74c712b3 # v2.24.0
         with:
           files: test/target/surefire-reports/*.xml
-          check_name: "L2 discovery (${{ inputs.subset }}${{ inputs.profile != 'default' && format(', {0}', inputs.profile) || '' }})"
+          check_name: "L2 discovery (${{ inputs.subset }}${{ inputs.profile != 'default' && format(', {0}', inputs.profile) || '' }}${{ inputs.unresolvable-hostnames && ', unresolvable hostnames' || '' }}${{ inputs.verbatim-access-address && ', verbatim access address' || '' }})"
           fail_on: ${{ inputs.profile == 'cn-only' && 'nothing' || 'test failures' }}
+
+      - name: Fail on skipped tests
+        if: ${{ inputs.fail-on-skip }}
+        env:
+          EXPECTED_SKIPS: ${{ inputs.expected-skips }}
+        run: bash .github/discovery/check-skips.sh test/target/surefire-reports
