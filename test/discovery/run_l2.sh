@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC2155 # export VAR="$(output ...)" keeps a missing output from stopping the script
 #
 # L2 discovery topology (TestL2Topology) built locally.
 #
@@ -32,9 +33,21 @@
 #                             seeds and acknowledges its container and address, "stop <container>"
 #                             removes that node. "start" takes optional arguments: alternate-port=<port>
 #                             renders the node's config with the pass-through-ports hostname and that
-#                             alternate-access-port, address=<ip> starts the node on that address
+#                             alternate-access-port, address=<ip> starts the node on that address. On the
+#                             unresolved-access profile alternate-port=<port> renders the config with that profile's
+#                             hostname instead. "status <container>" acknowledges whether the container runs, its exit
+#                             code, a file under the control directory holding its log, and what the access hostname
+#                             resolves to in the container, or in a new container from the same image and network once
+#                             it has exited
+#   L2_UNRESOLVED_HOSTNAME    set to 1 on pass-through-ports to start the nodes with no extra host for the shared
+#                             hostname, so it does not resolve in the server containers; the client keeps its own.
+#                             Before the tests run, the script looks the hostname up in each server container and
+#                             fails the run if it resolves. A server that resolves access addresses at startup
+#                             does not start
+#   L2_VERBATIM_ACCESS_ADDRESS set to 1 when the server under test advertises access-address hostnames verbatim
+#                             without resolving them (default 0). Read only by the unresolved-access profile
 #   L2_PROFILE                default, reachable, pass-through-names, pass-through-ports, port-map-range,
-#                             cn-only, low-mtu, port-range or idle-reset (default: default). reachable, the
+#                             cn-only, low-mtu, port-range, idle-reset or unresolved-access (default: default). reachable, the
 #                             pass-through profiles and port-map-range recreate the nodes with one rendered config
 #                             per node, or start them on fixed addresses. Every profile but default runs only the
 #                             test class of its rows:
@@ -69,6 +82,11 @@
 #                             idle-reset: the default topology. Sets DISCOVERY_IDLE_RESET=1 and runs TestL2IdleReset
 #                             (F-1), which fails on Java until pooled sockets are checked on checkout
 #                             It also runs TestL2AsyncIdleReset, the async counterpart on Netty event loops
+#                             unresolved-access: the default topology, the nodes configuring no access address. Before
+#                             the tests run, the script looks as-unresolved.test up in each server container and fails
+#                             the run if it resolves. Sets DISCOVERY_UNRESOLVED_HOSTNAME to it and
+#                             DISCOVERY_VERBATIM_ACCESS_ADDRESS from L2_VERBATIM_ACCESS_ADDRESS, turns on
+#                             L2_NODE_CONTROL and runs TestL2UnresolvedAccessAddress and TestL2PortMapNoAccessAddress
 #                             On ee every other profile uses a certificate with aerospike-tls as a dNSName SAN
 #                             and a CN that does not match it (DISCOVERY_TLS_CERT_SHAPE=san-only)
 #   L2_SUBNET                 first three octets of the port-map-range server network (default 10.213.66)
@@ -108,6 +126,7 @@ run_client() {
 		low-mtu) suite='**/TestL2LowMtu.class' ;;
 		port-range) suite='**/TestL2SourcePortRange.class' ;;
 		idle-reset) suite='**/TestL2IdleReset.class,**/TestL2AsyncIdleReset.class' ;;
+		unresolved-access) suite='**/TestL2UnresolvedAccessAddress.class,**/TestL2PortMapNoAccessAddress.class' ;;
 	esac
 
 	if [ "$subset" = "ee" ]; then
@@ -156,6 +175,10 @@ PROFILE="${L2_PROFILE:-default}"
 REACHABLE_HOSTNAME=as-reachable.test
 PASS_THROUGH_HOSTNAME=as-pass-through.test
 PASS_THROUGH_DOMAIN=pass-through.test
+UNRESOLVED_HOSTNAME=as-unresolved.test
+ACCESS_HOSTNAME=""
+UNRESOLVED="${L2_UNRESOLVED_HOSTNAME:-0}"
+VERBATIM="${L2_VERBATIM_ACCESS_ADDRESS:-0}"
 SUBNET="${L2_SUBNET:-10.213.66}"
 RANGE_FIRST=11
 RANGE_LAST=26
@@ -195,7 +218,15 @@ esac
 case "$PROFILE" in
 	default|reachable|pass-through-names) ;;
 	idle-reset) IDLE_RESET=1 ;;
-	pass-through-ports|port-map-range) NODE_CONTROL=1 ;;
+	pass-through-ports)
+		NODE_CONTROL=1
+		ACCESS_HOSTNAME="$PASS_THROUGH_HOSTNAME"
+		;;
+	port-map-range) NODE_CONTROL=1 ;;
+	unresolved-access)
+		NODE_CONTROL=1
+		ACCESS_HOSTNAME="$UNRESOLVED_HOSTNAME"
+		;;
 	cn-only) [ "$SUBSET" = "ee" ] || die "L2_PROFILE=cn-only needs DISCOVERY_SUBSET=ee" ;;
 	low-mtu)
 		CLIENT_NETWORK_MTU="${L2_CLIENT_NETWORK_MTU:-1200}"
@@ -207,8 +238,11 @@ case "$PROFILE" in
 		[[ "$PROXY_PORT_RANGE" =~ ^[0-9]+\ [0-9]+$ ]] || die "L2_PROXY_PORT_RANGE must be '<first> <last>' (got: $PROXY_PORT_RANGE)"
 		PROXY_SYSCTLS="net.ipv4.ip_local_port_range=$PROXY_PORT_RANGE"
 		;;
-	*) die "L2_PROFILE must be default, reachable, pass-through-names, pass-through-ports, port-map-range, cn-only, low-mtu, port-range or idle-reset (got: $PROFILE)" ;;
+	*) die "L2_PROFILE must be default, reachable, pass-through-names, pass-through-ports, port-map-range, cn-only, low-mtu, port-range, idle-reset or unresolved-access (got: $PROFILE)" ;;
 esac
+[[ "$UNRESOLVED" =~ ^[01]$ ]] || die "L2_UNRESOLVED_HOSTNAME must be 0 or 1 (got: $UNRESOLVED)"
+[ "$UNRESOLVED" = "0" ] || [ "$PROFILE" = "pass-through-ports" ] || die "L2_UNRESOLVED_HOSTNAME=1 needs L2_PROFILE=pass-through-ports"
+[[ "$VERBATIM" =~ ^[01]$ ]] || die "L2_VERBATIM_ACCESS_ADDRESS must be 0 or 1 (got: $VERBATIM)"
 [[ "$SUBNET" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || die "L2_SUBNET must be three octets (got: $SUBNET)"
 [[ "$PORT_MAP_PORT_BASE" =~ ^[0-9]+$ ]] || die "L2_PORT_MAP_PORT_BASE must be a port (got: $PORT_MAP_PORT_BASE)"
 
@@ -414,9 +448,18 @@ alternate_access() {
 	printf '        alternate-access-address %s\n        alternate-access-port %s\n' "$1" "$2"
 }
 
+# Fail the run unless getent finds no ACCESS_HOSTNAME in the server container.
+assert_unresolved() {
+	local rc=0
+
+	docker exec "$1" getent hosts "$ACCESS_HOSTNAME" > "$WORK_DIR/getent.out" 2>&1 || rc=$?
+	[ "$rc" = "2" ] || die "$ACCESS_HOSTNAME resolves in $1 or the lookup failed (getent exit $rc): $(cat "$WORK_DIR/getent.out")"
+	echo "Node $1: getent hosts $ACCESS_HOSTNAME exit $rc, not found"
+}
+
 # Serve the requests the tests write to CONTROL_DIR until killed.
 control_loop() {
-	local extra="$NODES" request id action arg name ack conf option error
+	local extra="$NODES" request id action arg name ack conf option error state lookup lookup_rc where
 	local options=()
 
 	while true; do
@@ -439,11 +482,11 @@ control_loop() {
 					for option in $arg; do
 						case "$option" in
 							alternate-port=*)
-								if [ "$PROFILE" = "pass-through-ports" ] && [[ "${option#*=}" =~ ^[0-9]+$ ]]; then
+								if [ -n "$ACCESS_HOSTNAME" ] && [[ "${option#*=}" =~ ^[0-9]+$ ]]; then
 									conf="$name.conf"
-									render_conf "$conf" "$(alternate_access "$PASS_THROUGH_HOSTNAME" "${option#*=}")"$'\n'
+									render_conf "$conf" "$(alternate_access "$ACCESS_HOSTNAME" "${option#*=}")"$'\n'
 								else
-									error="$option needs a port and L2_PROFILE=pass-through-ports"
+									error="$option needs a port and L2_PROFILE=pass-through-ports or unresolved-access"
 								fi
 								;;
 							address=*)
@@ -474,6 +517,32 @@ control_loop() {
 						echo "Control: removed $arg"
 					else
 						printf 'error=cannot remove %s %s\n' "$arg" "$(tr '\n' ' ' < "$WORK_DIR/control.err" 2>/dev/null)" > "$ack"
+					fi
+					;;
+				status)
+					if [[ "$arg" == "$PREFIX"-* ]] &&
+						state="$(docker inspect -f '{{.State.Running}} {{.State.ExitCode}}' "$arg" 2> "$WORK_DIR/control.err")"; then
+						docker logs "$arg" > "$CONTROL_DIR/$arg.log" 2>&1 || true
+						lookup=""
+						lookup_rc=""
+						where=""
+						if [ -n "$ACCESS_HOSTNAME" ]; then
+							lookup_rc=0
+							if [ "${state% *}" = "true" ]; then
+								where=container
+								lookup="$(docker exec "$arg" getent hosts "$ACCESS_HOSTNAME" 2>&1)" || lookup_rc=$?
+							else
+								where=image
+								lookup="$(docker run --rm --name "$PREFIX-lookup-$id" --network "$AS_NETWORK" \
+									"${node_hosts[@]+"${node_hosts[@]}"}" --entrypoint getent "$IMAGE" \
+									hosts "$ACCESS_HOSTNAME" 2>&1)" || lookup_rc=$?
+							fi
+						fi
+						printf 'running=%s\nexit-code=%s\nlog=%s\nlookup-in=%s\nlookup-exit=%s\nlookup=%s\n' \
+							"${state% *}" "${state#* }" "$CONTROL_DIR/$arg.log" "$where" "$lookup_rc" \
+							"$(tr '\n' ' ' <<< "$lookup")" > "$ack"
+					else
+						printf 'error=cannot inspect %s %s\n' "$arg" "$(tr '\n' ' ' < "$WORK_DIR/control.err" 2>/dev/null)" > "$ack"
 					fi
 					;;
 				*)
@@ -547,6 +616,8 @@ export DISCOVERY_TLS_CERT_SHAPE="$CERT_SHAPE"
 export DISCOVERY_CLIENT_NETWORK_MTU="$CLIENT_NETWORK_MTU"
 export DISCOVERY_IDLE_RESET="$IDLE_RESET"
 export DISCOVERY_PROXY_PORT_RANGE="$PROXY_PORT_RANGE"
+export DISCOVERY_UNRESOLVED_HOSTNAME=""
+export DISCOVERY_VERBATIM_ACCESS_ADDRESS=""
 
 client_args=(--rm --name "$CLIENT" --network "$CLIENT_NETWORK" --workdir "$ROOT_DIR"
 	-v "$ROOT_DIR:$ROOT_DIR" -v "$HOME/.m2:/root/.m2")
@@ -606,11 +677,15 @@ case "$PROFILE" in
 
 		# The server resolves access addresses at startup; any address will do.
 		for hostname in "${hostnames[@]}"; do
-			node_hosts+=(--add-host "$hostname:$proxy_server_address")
+			[ "$UNRESOLVED" = "1" ] || node_hosts+=(--add-host "$hostname:$proxy_server_address")
 			client_args+=(--add-host "$hostname:$proxy_client_address")
 		done
 
-		echo "Recreating the nodes with ${hostnames[*]} -> $proxy_server_address"
+		if [ "$UNRESOLVED" = "1" ]; then
+			echo "Recreating the nodes with no extra host for ${hostnames[*]}"
+		else
+			echo "Recreating the nodes with ${hostnames[*]} -> $proxy_server_address"
+		fi
 		for container in "${containers[@]}"; do
 			docker rm -f "$container" >/dev/null
 		done
@@ -620,6 +695,11 @@ case "$PROFILE" in
 		for container in "${containers[@]}"; do
 			wait_cluster_size "$container" "$NODES"
 		done
+		if [ "$UNRESOLVED" = "1" ]; then
+			for container in "${containers[@]}"; do
+				assert_unresolved "$container"
+			done
+		fi
 		;;
 	port-map-range)
 		DISCOVERY_PORT_MAP_RANGE="$SUBNET.$RANGE_FIRST-$SUBNET.$RANGE_LAST"
@@ -640,6 +720,14 @@ case "$PROFILE" in
 	port-range)
 		echo "Toxiproxy net.ipv4.ip_local_port_range: $(docker run --rm --network "container:$PROXY" "$CURL_IMAGE" \
 			cat /proc/sys/net/ipv4/ip_local_port_range)"
+		;;
+	unresolved-access)
+		DISCOVERY_UNRESOLVED_HOSTNAME="$UNRESOLVED_HOSTNAME"
+		DISCOVERY_VERBATIM_ACCESS_ADDRESS="$VERBATIM"
+		echo "Server under test advertises access addresses verbatim: $VERBATIM ($IMAGE)"
+		for container in "${containers[@]}"; do
+			assert_unresolved "$container"
+		done
 		;;
 esac
 
@@ -690,6 +778,8 @@ docker run "${client_args[@]}" \
 	-e DISCOVERY_CLIENT_NETWORK_MTU \
 	-e DISCOVERY_IDLE_RESET \
 	-e DISCOVERY_PROXY_PORT_RANGE \
+	-e DISCOVERY_UNRESOLVED_HOSTNAME \
+	-e DISCOVERY_VERBATIM_ACCESS_ADDRESS \
 	"$CLIENT_IMAGE" \
 	bash test/discovery/run_l2.sh --client > "$log" 2>&1
 rc=$?

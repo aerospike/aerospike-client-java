@@ -101,6 +101,12 @@ import com.aerospike.test.util.Args;
  * <li>DISCOVERY_DNS_SERVER: optional address of a DNS server on the client network serving SRV
  * records for the endpoint, one per clear listener; set only by the default profile of the
  * discovery-l2 workflow</li>
+ * <li>DISCOVERY_UNRESOLVED_HOSTNAME: optional hostname that does not resolve in the server containers,
+ * which a node started on request advertises as its alternate-access-address; set only by the
+ * unresolved-access profile of run_l2.sh</li>
+ * <li>DISCOVERY_VERBATIM_ACCESS_ADDRESS: 1 when the server under test advertises access-address
+ * hostnames verbatim without resolving them, 0 when it resolves them at startup; set only by the
+ * unresolved-access profile</li>
  * </ul>
  * Each node's name and advertised addresses are read through its listener at runtime.
  */
@@ -132,6 +138,8 @@ final class L2Topology {
 	static final String proxyPortRange = optional("DISCOVERY_PROXY_PORT_RANGE");
 	static final String idleReset = optional("DISCOVERY_IDLE_RESET");
 	static final String dnsServer = optional("DISCOVERY_DNS_SERVER");
+	static final String unresolvedHostname = optional("DISCOVERY_UNRESOLVED_HOSTNAME");
+	static final String verbatimAccessAddress = optional("DISCOVERY_VERBATIM_ACCESS_ADDRESS");
 	static final String namespace = Args.Instance.namespace;
 
 	/**
