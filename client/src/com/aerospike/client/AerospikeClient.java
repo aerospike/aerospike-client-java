@@ -4059,7 +4059,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			TxnMonitor.addKeys(cluster, batchPolicy, keys);
 		}
 
-		byte[] argBytes = Packer.pack(functionArgs);
+		byte[] argBytes = Packer.pack(functionArgs, cluster.hasVector);
 		BatchRecord[] records = new BatchRecord[keys.length];
 
 		for (int i = 0; i < keys.length; i++) {
@@ -4146,7 +4146,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		BatchAttr attr = new BatchAttr();
 		attr.setUDF(batchPolicy, udfPolicy);
 
-		byte[] argBytes = Packer.pack(functionArgs);
+		byte[] argBytes = Packer.pack(functionArgs, cluster.hasVector);
 		BatchRecord[] records = new BatchRecord[keys.length];
 
 		for (int i = 0; i < keys.length; i++) {
@@ -4227,7 +4227,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		BatchAttr attr = new BatchAttr();
 		attr.setUDF(batchPolicy, udfPolicy);
 
-		byte[] argBytes = Packer.pack(functionArgs);
+		byte[] argBytes = Packer.pack(functionArgs, cluster.hasVector);
 		boolean[] sent = new boolean[keys.length];
 		AsyncBatchExecutor.BatchRecordSequence executor = new AsyncBatchExecutor.BatchRecordSequence(
 			eventLoop, cluster, listener, sent);
@@ -4281,6 +4281,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		}
 
 		statement.setAggregateFunction(packageName, functionName, functionArgs);
+		rejectTopK(statement, TOP_K_BACKGROUND);
 
 		cluster.addCommandCount();
 
@@ -4322,6 +4323,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		if (operations.length > 0) {
 			statement.setOperations(operations);
 		}
+		rejectTopK(statement, TOP_K_BACKGROUND);
 
 		cluster.addCommandCount();
 
@@ -4364,6 +4366,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		} else if (configProvider != null) {
 			policy = new QueryPolicy(policy, configProvider);
 		}
+		validateTopK(policy, statement);
 
 		Node[] nodes = cluster.validateNodes();
 
@@ -4404,6 +4407,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		} else if (configProvider != null) {
 			policy = new QueryPolicy(policy, configProvider);
 		}
+		rejectTopK(statement, TOP_K_SYNC_ONLY);
 
 		Node[] nodes = cluster.validateNodes();
 
@@ -4441,6 +4445,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		} else if (configProvider != null) {
 			policy = new QueryPolicy(policy, configProvider);
 		}
+		rejectTopK(statement, TOP_K_SYNC_ONLY);
 
 		Node[] nodes = cluster.validateNodes();
 
@@ -4485,6 +4490,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		} else if (configProvider != null) {
 			policy = new QueryPolicy(policy, configProvider);
 		}
+		rejectTopK(statement, TOP_K_SYNC_ONLY);
 
 		Node[] nodes = cluster.validateNodes();
 
@@ -4515,6 +4521,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		} else if (configProvider != null) {
 			policy = new QueryPolicy(policy, configProvider);
 		}
+		validateTopK(policy, statement);
 
 		if (cluster.hasPartitionQuery || statement.getFilter() == null) {
 			PartitionTracker tracker = new PartitionTracker(policy, statement, node);
@@ -4550,6 +4557,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		} else if (configProvider != null) {
 			policy = new QueryPolicy(policy, configProvider);
 		}
+		validateTopK(policy, statement);
 
 		Node[] nodes = cluster.validateNodes();
 
@@ -4596,6 +4604,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		} else if (configProvider != null) {
 			policy = new QueryPolicy(policy, configProvider);
 		}
+		rejectTopK(statement, TOP_K_SYNC_ONLY);
 
 		Node[] nodes = cluster.validateNodes();
 
@@ -4605,6 +4614,48 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		}
 		else {
 			throw new AerospikeException(ResultCode.PARAMETER_ERROR, "queryPartitions() not supported");
+		}
+	}
+
+	private static final String TOP_K_SYNC_ONLY =
+		"Top-K is only supported by synchronous partition queries";
+	private static final String TOP_K_BACKGROUND =
+		"orderBy/topK is only valid on foreground (SELECT-style) queries; " +
+		"background (UPDATE-style) queries do not produce a result stream";
+	private static final String TOP_K_AGGREGATE =
+		"orderBy is incompatible with aggregate UDFs; use the UDF's own reduce stage";
+
+	private void validateTopK(QueryPolicy policy, Statement statement) {
+		if (! statement.hasTopK()) {
+			checkOrderBySupport(statement);
+			return;
+		}
+
+		statement.validateTopK();
+		checkOrderBySupport(statement);
+
+		if (! policy.includeBinData) {
+			throw new AerospikeException.InvalidArgument("Top-K is incompatible with includeBinData=false");
+		}
+
+		if (policy.maxRecords != 0) {
+			throw new AerospikeException.InvalidArgument("Top-K is incompatible with maxRecords");
+		}
+	}
+
+	private void rejectTopK(Statement statement, String message) {
+		if (statement.hasTopK()) {
+			throw new AerospikeException.InvalidArgument(message);
+		}
+		checkOrderBySupport(statement);
+	}
+
+	// An order key without k is left for the server to reject, but a node that predates Top-K
+	// skips the field and runs a plain query, so a cluster with such a node fails up front.
+	private void checkOrderBySupport(Statement statement) {
+		if (statement.hasOrderBy() && ! cluster.hasQueryOrderBy) {
+			throw new AerospikeException.InvalidArgument(
+				"orderBy/topK is not supported by all nodes in the cluster");
 		}
 	}
 
@@ -4659,6 +4710,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		} else if (configProvider != null) {
 			policy = new QueryPolicy(policy, configProvider);
 		}
+		rejectTopK(statement, TOP_K_AGGREGATE);
 
 		Node[] nodes = cluster.validateNodes();
 		QueryAggregateExecutor executor = new QueryAggregateExecutor(cluster, policy, statement, nodes);
@@ -4688,6 +4740,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		} else if (configProvider != null) {
 			policy = new QueryPolicy(policy, configProvider);
 		}
+		rejectTopK(statement, TOP_K_AGGREGATE);
 
 		QueryAggregateExecutor executor = new QueryAggregateExecutor(cluster, policy, statement, new Node[] {node});
 		return executor.getResultSet();

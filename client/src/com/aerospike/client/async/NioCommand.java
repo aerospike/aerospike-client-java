@@ -59,6 +59,7 @@ public final class NioCommand implements INioCommand, Runnable, TimerTask {
 		this.command = command;
 		this.eventState = cluster.eventState[eventLoop.index];
 		this.timeoutTask = new HashedWheelTimeout(this);
+		command.vectorSupported = cluster.hasVector;
 		command.bufferQueue = eventLoop.bufferQueue;
 		this.metricsEnabled = cluster.metricsEnabled;
 		this.hasTotalTimeout = command.totalTimeout > 0;
@@ -86,6 +87,7 @@ public final class NioCommand implements INioCommand, Runnable, TimerTask {
 		this.timeoutTask = new HashedWheelTimeout(this);
 		this.totalDeadline = other.totalDeadline;
 		this.iteration = other.iteration;
+		command.vectorSupported = cluster.hasVector;
 		this.metricsEnabled = cluster.metricsEnabled;
 		this.hasTotalTimeout = other.hasTotalTimeout;
 		this.usingSocketTimeout = other.usingSocketTimeout;

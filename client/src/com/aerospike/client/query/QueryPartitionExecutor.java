@@ -38,6 +38,7 @@ public final class QueryPartitionExecutor implements IQueryExecutor, Runnable {
 	private final PartitionTracker tracker;
 	private final RecordSet recordSet;
 	private final ExecutorService threadPool;
+	private final TopKReduceSpec topK;
 	private final List<QueryThread> threads;
 	private final AtomicInteger completedCount;
 	private final AtomicBoolean done;
@@ -58,6 +59,7 @@ public final class QueryPartitionExecutor implements IQueryExecutor, Runnable {
 		this.tracker = tracker;
 		this.recordSet = new RecordSet(this, policy.recordQueueSize);
 		this.threadPool = cluster.getThreadPool();
+		this.topK = statement.createTopK();
 		this.threads = new ArrayList<QueryThread>(nodeCapacity);
 		this.completedCount = new AtomicInteger();
 		this.done = new AtomicBoolean();
@@ -99,7 +101,8 @@ public final class QueryPartitionExecutor implements IQueryExecutor, Runnable {
 
 				if (parallel) {
 					for (NodePartitions nodePartitions : list) {
-						MultiCommand command = new QueryPartitionCommand(cluster, policy, statement, taskId, recordSet, tracker, nodePartitions);
+						MultiCommand command = new QueryPartitionCommand(
+							cluster, policy, statement, taskId, recordSet, topK, tracker, nodePartitions);
 						threads.add(new QueryThread(command));
 					}
 
@@ -114,7 +117,8 @@ public final class QueryPartitionExecutor implements IQueryExecutor, Runnable {
 			}
 			else {
 				for (NodePartitions nodePartitions : list) {
-					MultiCommand command = new QueryPartitionCommand(cluster, policy, statement, taskId, recordSet, tracker, nodePartitions);
+					MultiCommand command = new QueryPartitionCommand(
+						cluster, policy, statement, taskId, recordSet, topK, tracker, nodePartitions);
 					command.execute();
 				}
 			}
@@ -128,6 +132,11 @@ public final class QueryPartitionExecutor implements IQueryExecutor, Runnable {
 
 			if (tracker.isComplete(cluster, policy)) {
 				// All partitions received.
+				if (topK != null) {
+					for (KeyRecord keyRecord : topK.getResultKeyRecords()) {
+						recordSet.put(keyRecord);
+					}
+				}
 				recordSet.put(RecordSet.END);
 				break;
 			}

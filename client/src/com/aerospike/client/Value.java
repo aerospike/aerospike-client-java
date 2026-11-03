@@ -37,6 +37,7 @@ import com.aerospike.client.command.ParticleType;
 import com.aerospike.client.lua.LuaBytes;
 import com.aerospike.client.lua.LuaInstance;
 import com.aerospike.client.util.Packer;
+import com.aerospike.client.vector.Vector;
 
 /**
  * Polymorphic value classes used to efficiently serialize objects into the wire protocol.
@@ -95,6 +96,18 @@ public abstract class Value {
 	 */
 	public static Value get(byte[] value, int type) {
 		return (value == null)? NullValue.INSTANCE : new BytesValue(value, type);
+	}
+
+	/**
+	 * Get byte array with vector flag. For internal use only.
+	 */
+	public static Value get(byte[] value, boolean hasVector) {
+		if (value == null) {
+			return NullValue.INSTANCE;
+		}
+		BytesValue bv = new BytesValue(value);
+		bv.hasVector = hasVector;
+		return bv;
 	}
 
 	/**
@@ -227,6 +240,13 @@ public abstract class Value {
 	}
 
 	/**
+	 * Get vector or null value instance.
+	 */
+	public static Value get(Vector value) {
+		return (value == null)? NullValue.INSTANCE : new VectorValue(value);
+	}
+
+	/**
 	 * Get GeoJSON or null value instance.
 	 */
 	public static Value getAsGeoJSON(String value) {
@@ -283,6 +303,10 @@ public abstract class Value {
 
 		if (value instanceof Map<?,?>) {
 			return new MapValue((Map<?,?>)value);
+		}
+
+		if (value instanceof Vector) {
+			return new VectorValue((Vector)value);
 		}
 
 		if (value instanceof Double) {
@@ -360,6 +384,43 @@ public abstract class Value {
 	 * @throws AerospikeException	if type can't be used as a key.
 	 */
 	public void validateKeyType() throws AerospikeException {
+	}
+
+	/**
+	 * Does this value contain a vector? For internal use only.
+	 */
+	public boolean hasVector() {
+		return false;
+	}
+
+	static boolean objectHasVector(Object obj) {
+		if (obj instanceof Vector) {
+			return true;
+		}
+
+		if (obj instanceof Value) {
+			return ((Value)obj).hasVector();
+		}
+
+		if (obj instanceof List<?>) {
+			for (Object item : (List<?>)obj) {
+				if (objectHasVector(item)) {
+					return true;
+				}
+			}
+			return false;
+		}
+
+		if (obj instanceof Map<?,?>) {
+			for (Map.Entry<?,?> entry : ((Map<?,?>)obj).entrySet()) {
+				if (objectHasVector(entry.getKey()) || objectHasVector(entry.getValue())) {
+					return true;
+				}
+			}
+			return false;
+		}
+
+		return false;
 	}
 
 	/**
@@ -457,6 +518,7 @@ public abstract class Value {
 	public static final class BytesValue extends Value {
 		private final byte[] bytes;
 		private final int type;
+		private boolean hasVector;
 
 		public BytesValue(byte[] bytes) {
 			this.bytes = bytes;
@@ -487,6 +549,11 @@ public abstract class Value {
 		@Override
 		public int getType() {
 			return type;
+		}
+
+		@Override
+		public boolean hasVector() {
+			return hasVector;
 		}
 
 		@Override
@@ -1373,11 +1440,85 @@ public abstract class Value {
 	}
 
 	/**
+	 * Vector value.
+	 */
+	public static final class VectorValue extends Value {
+		private final Vector vector;
+
+		public VectorValue(Vector vector) {
+			this.vector = vector;
+		}
+
+		@Override
+		public int estimateSize() {
+			return vector.getWireSize();
+		}
+
+		@Override
+		public int write(byte[] buffer, int offset) {
+			return vector.writeTo(buffer, offset);
+		}
+
+		@Override
+		public void pack(Packer packer) {
+			packer.packVector(vector);
+		}
+
+		@Override
+		public void validateKeyType() {
+			throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid key type: Vector");
+		}
+
+		@Override
+		public int getType() {
+			return ParticleType.VECTOR;
+		}
+
+		@Override
+		public boolean hasVector() {
+			return true;
+		}
+
+		@Override
+		public Object getObject() {
+			return vector;
+		}
+
+		public Vector getVector() {
+			return vector;
+		}
+
+		@Override
+		public LuaValue getLuaValue(LuaInstance instance) {
+			return new LuaBytes(instance, vector.getWireBytes(), ParticleType.VECTOR);
+		}
+
+		@Override
+		public String toString() {
+			return vector.toString();
+		}
+
+		@Override
+		public boolean equals(Object other) {
+			return (other != null &&
+				this.getClass().equals(other.getClass()) &&
+				this.vector.equals(((VectorValue)other).vector));
+		}
+
+		@Override
+		public int hashCode() {
+			return vector.hashCode();
+		}
+	}
+
+	/**
 	 * Value array.
 	 */
 	public static final class ValueArray extends Value {
 		private final Value[] array;
 		private byte[] bytes;
+		private boolean hasVector;
+		private boolean hasVectorComputed;
 
 		public ValueArray(Value[] array) {
 			this.array = array;
@@ -1397,7 +1538,26 @@ public abstract class Value {
 
 		@Override
 		public void pack(Packer packer) {
+			boolean vectorPresent = packer.hasVector();
 			packer.packValueArray(array);
+
+			if (! vectorPresent) {
+				hasVector = packer.hasVector();
+				hasVectorComputed = true;
+			}
+		}
+
+		@Override
+		public boolean hasVector() {
+			if (! hasVectorComputed && ! hasVector) {
+				for (Value v : array) {
+					if (v != null && v.hasVector()) {
+						hasVector = true;
+						break;
+					}
+				}
+			}
+			return hasVector;
 		}
 
 		@Override
@@ -1444,6 +1604,8 @@ public abstract class Value {
 	public static final class ListValue extends Value {
 		private final List<?> list;
 		private byte[] bytes;
+		private boolean hasVector;
+		private boolean hasVectorComputed;
 
 		public ListValue(List<?> list) {
 			this.list = list;
@@ -1463,7 +1625,21 @@ public abstract class Value {
 
 		@Override
 		public void pack(Packer packer) {
+			boolean vectorPresent = packer.hasVector();
 			packer.packList(list);
+
+			if (! vectorPresent) {
+				hasVector = packer.hasVector();
+				hasVectorComputed = true;
+			}
+		}
+
+		@Override
+		public boolean hasVector() {
+			if (! hasVectorComputed && ! hasVector) {
+				hasVector = objectHasVector(list);
+			}
+			return hasVector;
 		}
 
 		@Override
@@ -1511,6 +1687,8 @@ public abstract class Value {
 		private final Map<?,?> map;
 		private final MapOrder order;
 		private byte[] bytes;
+		private boolean hasVector;
+		private boolean hasVectorComputed;
 
 		public MapValue(Map<?,?> map)  {
 			this.map = map;
@@ -1540,7 +1718,21 @@ public abstract class Value {
 
 		@Override
 		public void pack(Packer packer) {
+			boolean vectorPresent = packer.hasVector();
 			packer.packMap(map, order);
+
+			if (! vectorPresent) {
+				hasVector = packer.hasVector();
+				hasVectorComputed = true;
+			}
+		}
+
+		@Override
+		public boolean hasVector() {
+			if (! hasVectorComputed && ! hasVector) {
+				hasVector = objectHasVector(map);
+			}
+			return hasVector;
 		}
 
 		@Override
@@ -1592,6 +1784,8 @@ public abstract class Value {
 		private final List<? extends Entry<?,?>> list;
 		private byte[] bytes;
 		private final MapOrder order;
+		private boolean hasVector;
+		private boolean hasVectorComputed;
 
 		public SortedMapValue(List<? extends Entry<?,?>> list, MapOrder order)  {
 			this.list = list;
@@ -1612,7 +1806,26 @@ public abstract class Value {
 
 		@Override
 		public void pack(Packer packer) {
+			boolean vectorPresent = packer.hasVector();
 			packer.packMap(list, order);
+
+			if (! vectorPresent) {
+				hasVector = packer.hasVector();
+				hasVectorComputed = true;
+			}
+		}
+
+		@Override
+		public boolean hasVector() {
+			if (! hasVectorComputed && ! hasVector) {
+				for (Entry<?,?> entry : list) {
+					if (objectHasVector(entry.getKey()) || objectHasVector(entry.getValue())) {
+						hasVector = true;
+						break;
+					}
+				}
+			}
+			return hasVector;
 		}
 
 		@Override

@@ -31,7 +31,9 @@ import com.aerospike.client.ResultCode;
 import com.aerospike.client.Value;
 import com.aerospike.client.cdt.MapOrder;
 import com.aerospike.client.command.Buffer;
+import com.aerospike.client.command.Command;
 import com.aerospike.client.command.ParticleType;
+import com.aerospike.client.vector.Vector;
 
 /**
  * Serialize collection objects using MessagePack format specification:
@@ -41,10 +43,29 @@ import com.aerospike.client.command.ParticleType;
 public final class Packer {
 
 	public static byte[] pack(Value[] val) {
+		return packArray(val).toByteArray();
+	}
+
+	/**
+	 * Pack UDF arguments, failing when they hold a vector and the cluster lacks vector
+	 * support. For internal use only.
+	 */
+	public static byte[] pack(Value[] val, boolean vectorSupported) {
+		Packer packer = packArray(val);
+		Command.checkVectorSupport(packer.hasVector(), vectorSupported);
+		return packer.toByteArray();
+	}
+
+	/**
+	 * Pack values into a msgpack array and return the packer, for its bytes and vector flag.
+	 * The packer writes into the thread's shared buffer, so call {@link #toByteArray()} before
+	 * packing anything else on this thread. For internal use only.
+	 */
+	public static Packer packArray(Value[] val) {
 		try {
 			Packer packer = new Packer();
 			packer.packValueArray(val);
-			return packer.toByteArray();
+			return packer;
 		}
 		catch (Throwable e) {
 			throw new AerospikeException.Serialize(e);
@@ -88,6 +109,7 @@ public final class Packer {
 	private int offset;
 	private ArrayList<BufferItem> bufferList;
 	private boolean sortMaps;
+	private boolean hasVector;
 
 	public Packer() {
 		this.buffer = ThreadLocalData.getBuffer();
@@ -97,6 +119,20 @@ public final class Packer {
 	// which the outer packer is already writing into.
 	private Packer(int capacity) {
 		this.buffer = new byte[capacity];
+	}
+
+	/**
+	 * Was a vector packed? For internal use only.
+	 */
+	public boolean hasVector() {
+		return hasVector;
+	}
+
+	/**
+	 * Record a packed vector. For internal use only.
+	 */
+	public void markVector() {
+		hasVector = true;
 	}
 
 	/**
@@ -670,6 +706,18 @@ public final class Packer {
 		packByteArray(buffer, 0, buffer.length);
 	}
 
+	public void packVector(Vector val) {
+		hasVector = true;
+		int size = val.getWireSize();
+		packByteArrayBegin(size + 1);
+		packByte(ParticleType.VECTOR);
+
+		if (offset + size > buffer.length) {
+			resize(size);
+		}
+		offset += val.writeTo(buffer, offset);
+	}
+
 	private void packByteArrayBegin(int size) {
 		// Use string header codes for byte arrays.
 		packStringBegin(size);
@@ -725,6 +773,11 @@ public final class Packer {
 
 		if (obj instanceof Map<?,?>) {
 			packMap((Map<?,?>)obj);
+			return;
+		}
+
+		if (obj instanceof Vector) {
+			packVector((Vector)obj);
 			return;
 		}
 

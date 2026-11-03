@@ -49,6 +49,7 @@ import com.aerospike.client.Value;
 import com.aerospike.client.command.Buffer;
 import com.aerospike.client.command.ParticleType;
 import com.aerospike.client.query.Statement;
+import com.aerospike.client.vector.Vector;
 
 public final class LuaInstance {
 
@@ -179,6 +180,12 @@ public final class LuaInstance {
 			return new LuaBytes(this, blob);
 		}
 
+		case ParticleType.VECTOR: {
+			byte[] blob = new byte[len];
+			System.arraycopy(buf, offset, blob, 0, len);
+			return new LuaBytes(this, blob, ParticleType.VECTOR);
+		}
+
 		case ParticleType.LIST: {
 			LuaUnpacker unpacker = new LuaUnpacker(this, buf, offset, len);
 			return unpacker.unpackList();
@@ -245,6 +252,10 @@ public final class LuaInstance {
 
 		if (obj instanceof byte[]) {
 			return new LuaBytes(this, (byte[]) obj);
+		}
+
+		if (obj instanceof Vector) {
+			return new LuaBytes(this, ((Vector) obj).getWireBytes(), ParticleType.VECTOR);
 		}
 
 		if (obj instanceof String) {
