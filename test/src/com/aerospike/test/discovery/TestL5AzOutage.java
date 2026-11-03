@@ -17,12 +17,14 @@
 package com.aerospike.test.discovery;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 import java.net.UnknownHostException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
 import java.util.concurrent.TimeUnit;
 
 import org.junit.After;
@@ -39,8 +41,9 @@ import com.aerospike.test.discovery.L5Environment.Result;
 import com.aerospike.test.util.TestBase;
 
 /**
- * Five minutes without any traffic in or out of one rack's zone, the runner's zone excepted, with
- * one pass-through client under a steady load. During the outage no partition goes without an
+ * Five minutes without any traffic in or out of the zone of the endpoint address the client holds
+ * its nodes on, which also takes out that zone's rack, with one pass-through client under a steady
+ * load. During the outage no partition goes without an
  * answering owner for longer than {@link #OWNERSHIP_GAP_MS} and every command succeeds within
  * {@link #COMMAND_BOUND_MS} of its first attempt; after it the cluster and the client are back to
  * every node with every partition owned.
@@ -93,10 +96,6 @@ public class TestL5AzOutage extends TestBase {
 
 	@Test
 	public void zoneOutageKeepsEveryPartitionOnReachableNodes() throws Exception {
-		String zone = outageZone();
-		System.out.println("L5-OUTAGE-ZONE zone=" + zone + " runnerAz=" + env.runnerAz + " rackZones=" + cluster.rackZones());
-		assertNotNull("No rack outside the runner's zone " + env.runnerAz + ": " + cluster.rackZones(), zone);
-
 		ClientPolicy policy = env.policy();
 		policy.useServicesAlternate = true;
 		policy.addressTranslator = PassThroughAddressTranslator.INSTANCE;
@@ -105,7 +104,11 @@ public class TestL5AzOutage extends TestBase {
 		try (AerospikeClient client = new AerospikeClient(policy, env.seed())) {
 			L5Client.awaitRouting("start", client, foundSize, L5Client.ROUTING_WAIT_MS);
 			System.out.println("L5-RESOLVED when=before name=" + env.endpointName + " addresses=" +
-				resolved(env.endpointName));
+				resolved(env.endpointName) + " clientHosts=" + hosts(client));
+
+			String zone = outageZone(client);
+			System.out.println("L5-OUTAGE-ZONE zone=" + zone + " runnerAz=" + env.runnerAz + " rackZones=" + cluster.rackZones());
+			assertTrue("Endpoint zone " + zone + " has no rack: " + cluster.rackZones(), cluster.rackZones().contains(zone));
 
 			try (Load load = new Load(client, SET)) {
 				long failedBefore = load.failed.get();
@@ -193,15 +196,20 @@ public class TestL5AzOutage extends TestBase {
 	}
 
 	/**
-	 * Return the zone of the first rack outside the runner's zone, or null when there is none.
+	 * Return the zone of the endpoint address that most of the client's nodes are on.
 	 */
-	private String outageZone() {
-		for (String rack : cluster.rackZones()) {
-			if (! rack.equals(env.runnerAz)) {
-				return rack;
-			}
+	private String outageZone(AerospikeClient client) {
+		Map<String,Integer> nodesByZone = new TreeMap<>();
+
+		for (Node node : client.getNodes()) {
+			String address = node.getAddress().getAddress().getHostAddress();
+			String zone = env.ctl(L5Environment.CTL_TIMEOUT_MS, "endpoint-zone", address).assertSucceeded()
+				.first("L5-ENDPOINT-ZONE").get("zone");
+			System.out.println("L5-CLIENT-ENDPOINT node=" + node.getName() + " address=" + address + " zone=" + zone);
+			nodesByZone.merge(zone, 1, Integer::sum);
 		}
-		return null;
+		assertTrue("Client has no nodes", ! nodesByZone.isEmpty());
+		return Collections.max(nodesByZone.entrySet(), Map.Entry.comparingByValue()).getKey();
 	}
 
 	private String status() {
