@@ -125,7 +125,7 @@ jobs:
       matrix:
         include:
           - server-container-repo: database-docker-virtual/aerospike-server
-            server-tag: latest
+            server-tag: 8.2.0.1
             verbatim: false
           - server-container-repo: database-docker-dev-local/aerospike-server
             server-tag: 8.2.1.0-35_20261103T045846Z
