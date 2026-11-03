@@ -31,8 +31,11 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Queue;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReferenceArray;
 
 import org.junit.After;
@@ -191,10 +194,14 @@ public class TestL2PassThrough extends TestBase {
 		List<String> names = L2Topology.nodeNames();
 		String hostname = hostOf(alternate(first));
 		ClientPolicy policy = passThroughPolicy();
+		Queue<String> clientLog = new ConcurrentLinkedQueue<>();
+		Log.setLevel(Log.Level.WARN);
+		Log.setCallback((level, message) -> clientLog.add(System.nanoTime() + " " + level + ' ' + message));
 
 		try (AerospikeClient client = new AerospikeClient(policy, seed(first))) {
 			L2Topology.waitNodes(client, names);
 			L2Topology.assertAllPartitionsOwned("N-16-before", client);
+			clientLog.clear();
 
 			long generation = L2Topology.peersGeneration(first);
 			int port = L2Topology.nextListenerPort();
@@ -204,9 +211,19 @@ public class TestL2PassThrough extends TestBase {
 			assertEquals("peers-generation bumped before " + container + " had a listener", generation,
 				L2Topology.peersGeneration(first));
 
-			Joined joined = L2Topology.waitJoined(client, first, generation, names);
+			Joined joined = L2Topology.waitJoinedTimeline(client, first, generation, names, port);
 			Node node = joined.node;
 			long budget = 2L * policy.tendInterval;
+			System.out.println("L2-N16-TIMELINE node=" + node.getName() + " bumpToAnswerMs=" +
+				TimeUnit.NANOSECONDS.toMillis(joined.answerNanos - joined.bumpNanos) + " bumpToActiveMs=" +
+				joined.bumpToActiveMs + " answerToActiveMs=" + TimeUnit.NANOSECONDS.toMillis(joined.activeNanos - joined.answerNanos) +
+				" generations=" + joined.generations);
+
+			for (String line : clientLog) {
+				int space = line.indexOf(' ');
+				System.out.println("L2-N16-CLIENT-LOG " + TimeUnit.NANOSECONDS.toMillis(Long.parseLong(line.substring(0, space)) -
+					joined.bumpNanos) + "ms " + line.substring(space + 1));
+			}
 			Map<String,String> info = Info.request(L2Topology.host, port, "node", "service-clear-alt");
 			System.out.println("L2-N16-TIMING node=" + node.getName() + " host=" + node.getHost() + " container=" + container +
 				" advertised=" + info.get("service-clear-alt") + " generation=" + generation + "->" + joined.generation +
