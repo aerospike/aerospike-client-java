@@ -101,6 +101,12 @@ import com.aerospike.test.util.Args;
  * <li>DISCOVERY_DNS_SERVER: optional address of a DNS server on the client network serving SRV
  * records for the endpoint, one per clear listener; set only by the default profile of the
  * discovery-l2 workflow</li>
+ * <li>DISCOVERY_UNRESOLVED_HOSTNAME: optional hostname that does not resolve in the server containers,
+ * which a node started on request advertises as its alternate-access-address; set only by the
+ * unresolved-access profile of run_l2.sh</li>
+ * <li>DISCOVERY_VERBATIM_ACCESS_ADDRESS: 1 when the server under test advertises access-address
+ * hostnames verbatim without resolving them, 0 when it resolves them at startup; set only by the
+ * unresolved-access profile</li>
  * </ul>
  * Each node's name and advertised addresses are read through its listener at runtime.
  */
@@ -132,6 +138,8 @@ final class L2Topology {
 	static final String proxyPortRange = optional("DISCOVERY_PROXY_PORT_RANGE");
 	static final String idleReset = optional("DISCOVERY_IDLE_RESET");
 	static final String dnsServer = optional("DISCOVERY_DNS_SERVER");
+	static final String unresolvedHostname = optional("DISCOVERY_UNRESOLVED_HOSTNAME");
+	static final String verbatimAccessAddress = optional("DISCOVERY_VERBATIM_ACCESS_ADDRESS");
 	static final String namespace = Args.Instance.namespace;
 
 	/**
@@ -729,10 +737,93 @@ final class L2Topology {
 		final long bumpToActiveMs;
 		final long generation;
 
+		final long bumpNanos;
+		final long activeNanos;
+		final long answerNanos;
+		final List<String> generations;
+
 		Joined(Node node, long bumpToActiveMs, long generation) {
+			this(node, bumpToActiveMs, generation, 0, 0, 0, Collections.emptyList());
+		}
+
+		Joined(Node node, long bumpToActiveMs, long generation, long bumpNanos, long activeNanos, long answerNanos,
+			List<String> generations) {
 			this.node = node;
 			this.bumpToActiveMs = bumpToActiveMs;
 			this.generation = generation;
+			this.bumpNanos = bumpNanos;
+			this.activeNanos = activeNanos;
+			this.answerNanos = answerNanos;
+			this.generations = generations;
+		}
+	}
+
+	/**
+	 * As {@link #waitJoined(AerospikeClient, L2Node, long, List)}, also recording when the new node
+	 * first answers an info request on {@code port} and every peers-generation the observer reports.
+	 */
+	static Joined waitJoinedTimeline(AerospikeClient client, L2Node observer, long generation, List<String> names, int port)
+		throws InterruptedException {
+		long[] bump = {0};
+		long[] active = {0};
+		long[] answer = {0};
+		long[] last = {generation};
+		Node[] added = {null};
+		List<String> generations = new ArrayList<>();
+		long start = System.nanoTime();
+
+		assertTrue("No peers-generation bump or no active node after generation " + generation, waitFor(() -> {
+			long now = System.nanoTime();
+			long current = peersGeneration(observer);
+
+			if (current != last[0]) {
+				generations.add(TimeUnit.NANOSECONDS.toMillis(now - start) + "ms:" + current);
+				last[0] = current;
+			}
+
+			if (bump[0] == 0 && current != generation) {
+				bump[0] = now;
+			}
+
+			if (answer[0] == 0 && answers(host, port, 50)) {
+				answer[0] = System.nanoTime();
+			}
+
+			if (active[0] == 0) {
+				for (Node node : client.getNodes()) {
+					if (node.isActive() && ! names.contains(node.getName())) {
+						active[0] = now;
+						added[0] = node;
+					}
+				}
+			}
+			return bump[0] != 0 && active[0] != 0 && answer[0] != 0;
+		}, 5));
+		return new Joined(added[0], TimeUnit.NANOSECONDS.toMillis(active[0] - bump[0]), peersGeneration(observer),
+			bump[0], active[0], answer[0], generations);
+	}
+
+	/**
+	 * Return whether {@code host:port} answers an info request for its node name within
+	 * {@code timeoutMs}.
+	 */
+	static boolean answers(String host, int port, int timeoutMs) {
+		try (Socket socket = new Socket()) {
+			socket.connect(new InetSocketAddress(host, port), timeoutMs);
+			socket.setSoTimeout(timeoutMs);
+			byte[] body = "node\n".getBytes(StandardCharsets.UTF_8);
+			long header = (2L << 56) | (1L << 48) | body.length;
+			byte[] request = new byte[8 + body.length];
+
+			for (int i = 0; i < 8; i++) {
+				request[i] = (byte)(header >>> (56 - 8 * i));
+			}
+			System.arraycopy(body, 0, request, 8, body.length);
+			socket.getOutputStream().write(request);
+			return socket.getInputStream().read() >= 0;
+		}
+		catch (IOException e) {
+			return false;
 		}
 	}
 
