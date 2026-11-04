@@ -34,7 +34,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.BooleanSupplier;
 
 import org.junit.After;
 import org.junit.Before;
@@ -154,6 +156,7 @@ public class TranslationCollisionTest {
 		Node liveNode = node(live);
 		Cluster cluster = client.getCluster();
 		cluster.nodesMap.put(liveNode.getName(), liveNode);
+		await(() -> live.accepted.get() == 1);
 
 		try {
 			Peers peers = new Peers(16);
@@ -424,6 +427,15 @@ public class TranslationCollisionTest {
 		}
 		assertEquals(warnings(), list);
 		return list;
+	}
+
+	private static void await(BooleanSupplier condition) throws InterruptedException {
+		long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(10);
+
+		while (! condition.getAsBoolean()) {
+			assertTrue("condition not met in time", System.nanoTime() < deadline);
+			Thread.sleep(5);
+		}
 	}
 
 	private static final class FakeNode implements AutoCloseable {
