@@ -260,6 +260,41 @@ final class K8sCluster {
 	}
 
 	/**
+	 * Return the Aerospike node ID the operator reports for the pod, or an empty string when it
+	 * reports none.
+	 */
+	String nodeId(String pod) {
+		return get(".status.pods['" + pod + "'].aerospike.nodeID");
+	}
+
+	/**
+	 * Return the zone of each rack, in rack order.
+	 */
+	List<String> rackZones() {
+		return lines(kubectl("-n", namespace, "get", "aerospikecluster", name, "-o",
+			"jsonpath={range .spec.rackConfig.racks[*]}{.zone}{\"\\n\"}{end}"));
+	}
+
+	/**
+	 * Return the UID of the pod and the node it is scheduled on, or empty strings when the pod does
+	 * not exist.
+	 */
+	String[] podPlacement(String pod) {
+		String[] parts = kubectl("-n", namespace, "get", "pod", pod, "--ignore-not-found", "-o",
+			"jsonpath={.metadata.uid} {.spec.nodeName}").trim().split(" ", -1);
+		return new String[] {parts[0], parts.length > 1 ? parts[1] : ""};
+	}
+
+	/**
+	 * Return the cloud instance ID at the end of the node's providerID, or the providerID when it
+	 * has no path.
+	 */
+	static String instance(String node) {
+		String provider = kubectl("get", "node", node, "--ignore-not-found", "-o", "jsonpath={.spec.providerID}").trim();
+		return provider.substring(provider.lastIndexOf('/') + 1);
+	}
+
+	/**
 	 * Set the AerospikeCluster size without waiting for the operator.
 	 */
 	void resize(int size) {
