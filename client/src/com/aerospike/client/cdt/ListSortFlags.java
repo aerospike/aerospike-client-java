@@ -26,6 +26,11 @@ public final class ListSortFlags {
 	public static final int DEFAULT = 0;
 
 	/**
+	 * Sort in descending order.
+	 */
+	public static final int DESCENDING = 1;
+
+	/**
 	 * Drop duplicate values when sorting list.
 	 */
 	public static final int DROP_DUPLICATES = 2;
