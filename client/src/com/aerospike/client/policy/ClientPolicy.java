@@ -415,7 +415,9 @@ public class ClientPolicy {
 	 * YAML key: {@code static.client.translation.on_miss}.
 	 * <ul>
 	 * <li>{@link TranslationMissMode#PASS_THROUGH} ({@code pass_through}): connect to the advertised
-	 * endpoint unchanged, as {@link #ipMap} does for an unmapped address.</li>
+	 * endpoint unchanged, as {@link #ipMap} does for an unmapped address. When
+	 * {@link #addressTranslator} is set, the miss is logged at warning level once per node and
+	 * advertised endpoint.</li>
 	 * <li>{@link TranslationMissMode#STRICT} ({@code strict}): do not connect to the advertised
 	 * endpoint and do not create a node for it. The miss fails with
 	 * {@link com.aerospike.client.AerospikeException.TranslationMiss}, which names the node, the

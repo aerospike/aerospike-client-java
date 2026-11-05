@@ -130,6 +130,60 @@ public class EndpointSourceListTest {
 		}
 	}
 
+	@Test
+	public void passThroughMissOnWrongSourceListWarnsOncePerNode() throws Exception {
+		ClientPolicy alternate = policy(true, new PortMapAddressTranslator(STD_PORT_MAP));
+
+		try (AerospikeClient client = new AerospikeClient(alternate, new Host("127.0.0.1", 1))) {
+			List<String> warnings = new ArrayList<>();
+			List<Peer> peers = parse(client, STD + ALT, warnings);
+
+			assertEquals(List.of(new Host("203.0.113.1", 30001)), peers.get(0).hosts);
+			assertEquals(List.of(new Host("203.0.113.2", 30002)), peers.get(1).hosts);
+			assertEquals(2, warnings.size());
+			assertNames(warnings.get(0), "port-map", "BB9A", "203.0.113.1:30001", "in the alternate list", "pass_through");
+			assertNames(warnings.get(1), "port-map", "BB9B", "203.0.113.2:30002", "in the alternate list", "pass_through");
+
+			List<String> again = new ArrayList<>();
+			parse(client, STD + ALT, again);
+			assertEquals(List.of(), again);
+
+			List<String> moved = new ArrayList<>();
+			parse(client, STD + ALT.replace("203.0.113.2:30002", "203.0.113.2:30003"), moved);
+			assertEquals(1, moved.size());
+			assertNames(moved.get(0), "BB9B", "203.0.113.2:30003");
+		}
+	}
+
+	@Test
+	public void defaultTranslatorMissDoesNotWarn() throws Exception {
+		try (AerospikeClient client = new AerospikeClient(policy(true, null), new Host("127.0.0.1", 1))) {
+			List<String> warnings = new ArrayList<>();
+			List<Peer> peers = parse(client, STD + ALT, warnings);
+
+			assertEquals(List.of(new Host("203.0.113.1", 30001)), peers.get(0).hosts);
+			assertEquals(List.of(), warnings);
+		}
+	}
+
+	private static List<Peer> parse(AerospikeClient client, String reply, List<String> warnings) throws Exception {
+		Thread testThread = Thread.currentThread();
+		Log.setLevel(Log.Level.WARN);
+		Log.setCallback((level, message) -> {
+			if (level == Log.Level.WARN && Thread.currentThread() == testThread) {
+				warnings.add(message);
+			}
+		});
+
+		try {
+			return PeerReply.parse(client.getCluster(), reply);
+		}
+		finally {
+			Log.setCallback(null);
+			Log.setLevel(Log.Level.INFO);
+		}
+	}
+
 	private static void assertNames(String message, String... parts) {
 		for (String part : parts) {
 			assertTrue(message, message.contains(part));

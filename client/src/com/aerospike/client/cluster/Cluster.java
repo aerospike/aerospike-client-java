@@ -26,6 +26,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
@@ -113,6 +114,7 @@ public class Cluster implements Runnable, Closeable {
 
 	// Action when the address translator has no mapping.
 	protected final TranslationMissMode translationOnMiss;
+	private final Map<String,String> translationMisses;
 
 	// TLS connection policy.
 	public final TlsPolicy tlsPolicy;
@@ -265,6 +267,8 @@ public class Cluster implements Runnable, Closeable {
 		this.notifyViewChange = overridesViewChange(addressTranslator);
 		this.translationOnMiss = (policy.translationOnMiss != null)?
 			policy.translationOnMiss : TranslationMissMode.PASS_THROUGH;
+		// The default translator is the legacy ipMap, which misses unmapped hosts by design.
+		this.translationMisses = (policy.addressTranslator != null)? new ConcurrentHashMap<>() : null;
 
 		Host[] discovered;
 		Throwable discoveryError = null;
@@ -522,7 +526,8 @@ public class Cluster implements Runnable, Closeable {
 		Endpoint.SourceList sourceList = useServicesAlternate?
 			Endpoint.SourceList.ALTERNATE : Endpoint.SourceList.STANDARD;
 
-		return translate(addressTranslator, translationOnMiss, new Endpoint(nodeName, tlsName, host, port, sourceList));
+		return translate(addressTranslator, translationOnMiss, new Endpoint(nodeName, tlsName, host, port, sourceList),
+			translationMisses);
 	}
 
 	static Host translate(AddressTranslator translator, Endpoint advertised) {
@@ -530,6 +535,15 @@ public class Cluster implements Runnable, Closeable {
 	}
 
 	static Host translate(AddressTranslator translator, TranslationMissMode onMiss, Endpoint advertised) {
+		return translate(translator, onMiss, advertised, null);
+	}
+
+	/**
+	 * Translate an advertised address. On a pass-through miss, warn once per node and advertised
+	 * address when {@code misses} is not null.
+	 */
+	private static Host translate(AddressTranslator translator, TranslationMissMode onMiss, Endpoint advertised,
+		Map<String,String> misses) {
 		Optional<Host> result = translator.translate(advertised);
 
 		if (result == null) {
@@ -540,6 +554,17 @@ public class Cluster implements Runnable, Closeable {
 		if (! result.isPresent()) {
 			if (onMiss == TranslationMissMode.STRICT) {
 				throw new AerospikeException.TranslationMiss(advertised, translatorName(translator));
+			}
+
+			if (misses != null) {
+				String address = advertised.host + ':' + advertised.port;
+
+				if (! address.equals(misses.put(String.valueOf(advertised.nodeName), address)) && Log.warnEnabled()) {
+					Log.warn("Address translator " + translatorName(translator) + " has no mapping for node " +
+						advertised.nodeName + " advertised address " + address + " in the " +
+						(advertised.sourceList == Endpoint.SourceList.ALTERNATE ? "alternate" : "standard") +
+						" list. Connecting to the advertised address because translation.on_miss is pass_through");
+				}
 			}
 			return new Host(advertised.host, advertised.tlsName, advertised.port);
 		}
