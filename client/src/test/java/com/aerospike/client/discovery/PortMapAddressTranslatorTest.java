@@ -222,8 +222,9 @@ public class PortMapAddressTranslatorTest {
 	}
 
 	@Test
-	public void constructAndTranslateDoNoNameLookup() {
+	public void constructAndTranslateDoNoNameLookupOrConnect() {
 		GuardedResolverProvider.arm();
+		GuardedProxySelector.arm();
 
 		try {
 			PortMapAddressTranslator translator = new PortMapAddressTranslator(
@@ -236,7 +237,17 @@ public class PortMapAddressTranslatorTest {
 			assertFalse(translator.translate(new Endpoint(NODE_A, null, "node3.internal", 3000, SourceList.STANDARD)).isPresent());
 		}
 		finally {
+			GuardedProxySelector.disarm();
 			GuardedResolverProvider.disarm();
+		}
+	}
+
+	@Test
+	public void translatorReferencesNoIoTypes() throws Exception {
+		for (String name : new ClassConstants(PortMapAddressTranslator.class).classReferences) {
+			assertFalse(name, name.startsWith("java/net/"));
+			assertFalse(name, name.startsWith("java/nio/"));
+			assertFalse(name, name.startsWith("java/io/"));
 		}
 	}
 
