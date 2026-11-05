@@ -13,7 +13,3 @@ tls/name-matching.yaml:
   ci-server-certificate-shape:
     result: fail
     reason: "legacy CN fallback kept until the next major (decided 2026-10-06)"
-discovery/translate/collision.yaml:
-  three-peers-one-endpoint:
-    result: fail
-    reason: "Java reports each colliding peer once, paired with the first other peer on its address, so the second and third peers are never named together"
