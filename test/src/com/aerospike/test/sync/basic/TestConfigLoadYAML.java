@@ -17,11 +17,15 @@
 package com.aerospike.test.sync.basic;
 
 import static org.junit.Assert.*;
+import java.time.Duration;
 import org.junit.Test;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.configuration.serializers.Configuration;
 import com.aerospike.client.configuration.YamlConfigProvider;
+import com.aerospike.client.metrics.LatencyUnit;
+import com.aerospike.client.metrics.MetricsExporterType;
+import com.aerospike.client.metrics.MetricsPolicy;
 import com.aerospike.test.sync.TestSync;
 
 public class TestConfigLoadYAML extends TestSync {
@@ -30,6 +34,8 @@ public class TestConfigLoadYAML extends TestSync {
 	public static final String BOGUS_YAML_IF_CONF_RELATIVE_PATH = "/src/resources/bogus_invalid_format.yaml";
 	public static final String BOGUS_YAML_MVer_CONF_RELATIVE_PATH = "/src/resources/bogus_missing_version.yaml";
 	public static final String BOGUS_YAML_IV_CONF_RELATIVE_PATH = "/src/resources/bogus_invalid_version.yaml";
+	public static final String V3_METRICS_YAML_CONF_RELATIVE_PATH =
+		"/src/resources/aerospikeconfig_v3_metrics.yaml";
 	public static final String YAML_URL_BASE = "file://" + System.getProperty("user.dir");
 
 	@Test
@@ -115,5 +121,25 @@ public class TestConfigLoadYAML extends TestSync {
 		assertNull(yamlConf.staticConfiguration);
 		assertNotNull(yamlConf.dynamicConfiguration);
 		assert yamlConf.dynamicConfiguration.dynamicClientConfig.tendInterval.value == 500;
+	}
+
+	@Test
+	public void loadV3MetricsYaml() {
+		String yamlURL = YAML_URL_BASE + V3_METRICS_YAML_CONF_RELATIVE_PATH;
+		YamlConfigProvider yamlLoader = new YamlConfigProvider(yamlURL);
+		Configuration yamlConf = yamlLoader.fetchConfiguration();
+		MetricsPolicy policy = new MetricsPolicy(new MetricsPolicy(), yamlConf);
+
+		assertEquals(Duration.ofSeconds(45), policy.exportInterval);
+		assertEquals(MetricsExporterType.CUSTOM, policy.exporter);
+		assertEquals("metrics", policy.reportDir);
+		assertEquals(2L * 1024L * 1024L, policy.reportSizeLimit);
+		assertEquals(LatencyUnit.MICROSECONDS, policy.latencyUnit);
+		assertEquals(8, policy.latencyColumns);
+		assertEquals(2, policy.latencyShift);
+		assertEquals(10, policy.samplerRange);
+		assertEquals(3, policy.samplerThreshold);
+		assertTrue(policy.enableOperationalMetrics);
+		assertTrue(policy.enableUsageMetrics);
 	}
 }
