@@ -81,7 +81,7 @@
 #                             DISCOVERY_PROXY_PORT_RANGE and runs TestL2SourcePortRange (F-3)
 #                             idle-reset: the default topology. Sets DISCOVERY_IDLE_RESET=1 and runs TestL2IdleReset
 #                             (F-1), which fails on Java until pooled sockets are checked on checkout
-#                             It also runs TestL2AsyncIdleReset, the async counterpart on Netty event loops
+#                             It also runs TestL2AsyncIdleReset, the async counterpart on direct NIO and Netty event loops
 #                             unresolved-access: the default topology, the nodes configuring no access address. Before
 #                             the tests run, the script looks as-unresolved.test up in each server container and fails
 #                             the run if it resolves. Sets DISCOVERY_UNRESOLVED_HOSTNAME to it and
