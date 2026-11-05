@@ -571,6 +571,37 @@ public class TestOperateList extends TestSync {
 	}
 
 	@Test
+	public void operateListSortDesc() {
+		Key key = new Key(args.namespace, args.set, "oplkey10d");
+
+		client.delete(null, key);
+
+		List<Value> itemList = new ArrayList<Value>();
+		itemList.add(Value.get(1));
+		itemList.add(Value.get(-11));
+		itemList.add(Value.get(12));
+		itemList.add(Value.get(11));
+
+		Record record = client.operate(null, key,
+				ListOperation.appendItems(ListPolicy.Default, binName, itemList),
+				ListOperation.sort(binName, ListSortFlags.DESCENDING),
+				ListOperation.get(binName, 0)
+				);
+
+		assertRecordFound(key, record);
+		//System.out.println("Record: " + record);
+
+		List<?> results = record.getList(binName);
+		int i = 0;
+
+		long size = (Long)results.get(i++);
+		assertEquals(4L, size);
+
+		long val = (Long)results.get(i++);
+		assertEquals(12L, val);
+	}
+
+	@Test
 	public void operateListRemove() {
 		Key key = new Key(args.namespace, args.set, "oplkey11");
 
