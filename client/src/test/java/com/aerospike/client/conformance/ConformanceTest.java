@@ -19,9 +19,14 @@ package com.aerospike.client.conformance;
 import static org.junit.Assert.assertEquals;
 
 import java.io.BufferedReader;
+import java.io.DataInputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.OutputStream;
 import java.net.InetAddress;
+import java.net.ServerSocket;
+import java.net.Socket;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -59,8 +64,15 @@ import org.yaml.snakeyaml.constructor.SafeConstructor;
 import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Host;
+import com.aerospike.client.Log;
+import com.aerospike.client.ResultCode;
+import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.ConformanceAdapter;
 import com.aerospike.client.cluster.Connection;
+import com.aerospike.client.cluster.Node;
+import com.aerospike.client.cluster.NodeValidator;
+import com.aerospike.client.cluster.Peers;
+import com.aerospike.client.command.Buffer;
 import com.aerospike.client.discovery.AwsEc2TagSeedCandidateProvider;
 import com.aerospike.client.discovery.DnsSeedCandidateProvider;
 import com.aerospike.client.discovery.Endpoint;
@@ -100,6 +112,9 @@ public class ConformanceTest {
 		"discovery-failed", "DNS seed discovery failed for every name",
 		"aws-error", "DescribeInstances failed",
 		"timeout", "timed out");
+	private static final String COLLISION = "translation-collision";
+	private static final Map<Integer,String> RESULT_CATEGORIES = Map.of(ResultCode.TRANSLATION_COLLISION, COLLISION);
+	private static final String SEED_NODE = "BB9000000000000";
 
 	private static final List<Map<String,Object>> reportRows = Collections.synchronizedList(new ArrayList<>());
 	private static Path dir;
@@ -251,6 +266,9 @@ public class ConformanceTest {
 		case "translate":
 			return translate();
 
+		case "collision":
+			return collision();
+
 		case "merge":
 			return merge();
 
@@ -272,41 +290,14 @@ public class ConformanceTest {
 		Map<String,Object> config = map(row.data.get("config"));
 		Map<String,Object> input = map(row.data.get("input"));
 		Map<String,Object> expect = map(row.data.get("expect"));
-		Map<String,Object> translation = map(config.get("translation"));
 		ClientPolicy policy = new ClientPolicy();
+		String unsupported = translation(policy, config);
 
-		if (translation == null) {
-			policy.ipMap = stringMap(config.get("ip_map"));
-		}
-		else {
-			String provider = (String)translation.get("provider");
-
-			if (translation.containsKey("on_miss")) {
-				policy.translationOnMiss = onMiss((String)translation.get("on_miss"));
-			}
-
-			switch (provider) {
-			case "static-map":
-				policy.addressTranslator = new StaticMapAddressTranslator(stringMap(translation.get("static_map")));
-				break;
-
-			case "pass-through":
-				policy.addressTranslator = PassThroughAddressTranslator.INSTANCE;
-				break;
-
-			case "port-map":
-				policy.addressTranslator = new PortMapAddressTranslator(stringMap(translation.get("port_map")));
-				break;
-
-			default:
-				return new Outcome(UNSUPPORTED, "translator " + provider + " is not implemented");
-			}
+		if (unsupported != null) {
+			return new Outcome(UNSUPPORTED, "translator " + unsupported + " is not implemented");
 		}
 
-		Endpoint.SourceList sourceList = input.get("sourceList").equals("alternate")?
-			Endpoint.SourceList.ALTERNATE : Endpoint.SourceList.STANDARD;
-		Endpoint advertised = new Endpoint((String)input.get("nodeName"), (String)input.get("tlsName"),
-			(String)input.get("host"), (Integer)input.get("port"), sourceList);
+		Endpoint advertised = advertised(input);
 		Map<String,Object> error = map(expect.get("error"));
 		Host actual;
 
@@ -341,6 +332,184 @@ public class ConformanceTest {
 			return new Outcome(FAIL, "expected " + expected + ", got " + got);
 		}
 		return new Outcome(PASS, null);
+	}
+
+	private Outcome collision() throws Exception {
+		Map<String,Object> config = map(row.data.get("config"));
+		Map<String,Object> expect = map(row.data.get("expect"));
+		ClientPolicy policy = new ClientPolicy();
+		String unsupported = translation(policy, config);
+
+		if (unsupported != null) {
+			return new Outcome(UNSUPPORTED, "translator " + unsupported + " is not implemented");
+		}
+
+		List<Endpoint> input = new ArrayList<>();
+
+		for (Object item : list(row.data.get("input"))) {
+			input.add(advertised(map(item)));
+		}
+
+		if (input.stream().map(e -> e.sourceList).distinct().count() > 1) {
+			return new Outcome(FAIL, "one peers reply cannot mix standard and alternate peers");
+		}
+
+		policy.useServicesAlternate = input.get(0).sourceList == Endpoint.SourceList.ALTERNATE;
+		policy.failIfNotConnected = false;
+
+		String reply = input.stream()
+			.map(p -> "[" + p.nodeName + "," + p.tlsName + ",[" + (p.host.contains(":")? "[" + p.host + "]" : p.host) +
+				":" + p.port + "]]")
+			.collect(Collectors.joining(",", "1,3000,[", "]"));
+		List<String> logs = new ArrayList<>();
+
+		try (PeersServer server = new PeersServer(reply);
+			AerospikeClient client = new AerospikeClient(policy, new Host("127.0.0.1", 1))) {
+			NodeValidator nv = new NodeValidator();
+
+			try {
+				nv.validateNode(client.getCluster(), new Host("127.0.0.1", server.port()));
+			}
+			catch (Throwable e) {
+				throw new IllegalStateException("peers server not validated as a node", e);
+			}
+
+			PeersNode seed = new PeersNode(client.getCluster(), nv);
+			Peers peers = new Peers(input.size());
+
+			for (Endpoint peer : input) {
+				try {
+					peers.fail(ConformanceAdapter.translate(policy, peer));
+				}
+				catch (AerospikeException.TranslationMiss tm) {
+				}
+			}
+
+			Thread thread = Thread.currentThread();
+			Log.setLevel(Log.Level.WARN);
+			Log.setCallback((level, message) -> {
+				if (Thread.currentThread() == thread) {
+					logs.add(message);
+				}
+			});
+
+			try {
+				seed.tend(peers);
+			}
+			finally {
+				Log.setCallback(null);
+				Log.setLevel(Log.Level.INFO);
+				seed.close();
+			}
+
+			if (! peers.nodes.isEmpty()) {
+				return new Outcome(FAIL, "connected to translated peers " + peers.nodes.keySet());
+			}
+		}
+
+		List<String> collisions = new ArrayList<>();
+
+		for (String message : logs) {
+			if (! COLLISION.equals(category(message))) {
+				return new Outcome(FAIL, "unexpected log: " + message);
+			}
+			collisions.add(message);
+		}
+
+		List<Object> errors = list(expect.get("errors"));
+
+		for (Object error : errors) {
+			if (collisions.stream().noneMatch(message -> reports(message, map(error)))) {
+				return new Outcome(FAIL, "no " + map(error).get("category") + " reported naming " +
+					map(error).get("messageContains") + ", got " + collisions);
+			}
+		}
+
+		for (String message : collisions) {
+			if (errors.stream().noneMatch(error -> reports(message, map(error)))) {
+				return new Outcome(FAIL, "unexpected collision: " + message);
+			}
+		}
+
+		Set<String> nodes = new TreeSet<>();
+
+		for (Endpoint peer : input) {
+			if (collisions.stream().noneMatch(message -> message.contains(peer.nodeName))) {
+				nodes.add(peer.nodeName);
+			}
+		}
+
+		Set<String> expNodes = new TreeSet<>();
+
+		for (Object name : list(expect.get("nodes"))) {
+			expNodes.add((String)name);
+		}
+
+		if (! expNodes.equals(nodes)) {
+			return new Outcome(FAIL, "expected nodes " + expNodes + ", got " + nodes);
+		}
+		return new Outcome(PASS, null);
+	}
+
+	private static String category(String message) {
+		Matcher m = Pattern.compile("^Error (-?\\d+),").matcher(message);
+		return m.find()? RESULT_CATEGORIES.get(Integer.parseInt(m.group(1))) : null;
+	}
+
+	private static boolean reports(String message, Map<String,Object> error) {
+		if (! error.get("category").equals(category(message))) {
+			return false;
+		}
+
+		for (Object fact : map(error.get("messageContains")).values()) {
+			List<?> values = (fact instanceof List)? (List<?>)fact : List.of(fact);
+
+			for (Object value : values) {
+				if (! message.contains(String.valueOf(value))) {
+					return false;
+				}
+			}
+		}
+		return true;
+	}
+
+	private static String translation(ClientPolicy policy, Map<String,Object> config) {
+		Map<String,Object> translation = map(config.get("translation"));
+
+		if (translation == null) {
+			policy.ipMap = stringMap(config.get("ip_map"));
+			return null;
+		}
+
+		String provider = (String)translation.get("provider");
+
+		if (translation.containsKey("on_miss")) {
+			policy.translationOnMiss = onMiss((String)translation.get("on_miss"));
+		}
+
+		switch (provider) {
+		case "static-map":
+			policy.addressTranslator = new StaticMapAddressTranslator(stringMap(translation.get("static_map")));
+			return null;
+
+		case "pass-through":
+			policy.addressTranslator = PassThroughAddressTranslator.INSTANCE;
+			return null;
+
+		case "port-map":
+			policy.addressTranslator = new PortMapAddressTranslator(stringMap(translation.get("port_map")));
+			return null;
+
+		default:
+			return provider;
+		}
+	}
+
+	private static Endpoint advertised(Map<String,Object> input) {
+		Endpoint.SourceList sourceList = input.get("sourceList").equals("alternate")?
+			Endpoint.SourceList.ALTERNATE : Endpoint.SourceList.STANDARD;
+		return new Endpoint((String)input.get("nodeName"), (String)input.get("tlsName"),
+			(String)input.get("host"), (Integer)input.get("port"), sourceList);
 	}
 
 	private Outcome merge() {
@@ -954,6 +1123,116 @@ public class ConformanceTest {
 		Outcome(String result, String reason) {
 			this.result = result;
 			this.reason = reason;
+		}
+	}
+
+	private static final class PeersNode extends Node {
+		PeersNode(Cluster cluster, NodeValidator nv) {
+			super(cluster, nv);
+		}
+
+		void tend(Peers peers) {
+			refreshPeers(peers);
+		}
+	}
+
+	/**
+	 * Loopback node that answers every peers command with one reply.
+	 */
+	private static final class PeersServer implements AutoCloseable {
+		private final String peers;
+		private final ServerSocket server;
+		private final List<Socket> sockets = Collections.synchronizedList(new ArrayList<>());
+
+		PeersServer(String peers) throws IOException {
+			this.peers = peers;
+			this.server = new ServerSocket(0, 16, InetAddress.getLoopbackAddress());
+
+			Thread thread = new Thread(this::accept);
+			thread.setDaemon(true);
+			thread.start();
+		}
+
+		int port() {
+			return server.getLocalPort();
+		}
+
+		private void accept() {
+			while (true) {
+				try {
+					Socket socket = server.accept();
+					sockets.add(socket);
+
+					Thread thread = new Thread(() -> serve(socket));
+					thread.setDaemon(true);
+					thread.start();
+				}
+				catch (IOException ioe) {
+					return;
+				}
+			}
+		}
+
+		private void serve(Socket socket) {
+			try {
+				DataInputStream in = new DataInputStream(socket.getInputStream());
+				OutputStream out = socket.getOutputStream();
+				byte[] header = new byte[8];
+
+				while (true) {
+					in.readFully(header);
+					byte[] request = new byte[(int)(Buffer.bytesToLong(header, 0) & 0xFFFFFFFFFFFFL)];
+					in.readFully(request);
+
+					StringBuilder sb = new StringBuilder();
+
+					for (String command : new String(request, StandardCharsets.UTF_8).split("\n")) {
+						if (! command.isEmpty()) {
+							sb.append(command).append('\t').append(value(command)).append('\n');
+						}
+					}
+
+					byte[] body = sb.toString().getBytes(StandardCharsets.UTF_8);
+					byte[] response = new byte[8 + body.length];
+					Buffer.longToBytes(body.length | (2L << 56) | (1L << 48), response, 0);
+					System.arraycopy(body, 0, response, 8, body.length);
+					out.write(response);
+					out.flush();
+				}
+			}
+			catch (IOException ioe) {
+			}
+		}
+
+		private String value(String command) {
+			if (command.startsWith("peers-")) {
+				return peers;
+			}
+
+			switch (command) {
+			case "node":
+				return SEED_NODE;
+
+			case "partition-generation":
+				return "1";
+
+			case "build":
+				return "8.1.0.0";
+
+			default:
+				return "ok";
+			}
+		}
+
+		@Override
+		public void close() throws IOException {
+			server.close();
+
+			synchronized (sockets) {
+				for (Socket socket : sockets) {
+					socket.close();
+				}
+			}
 		}
 	}
 }
