@@ -40,6 +40,7 @@ import com.aerospike.client.async.EventLoopType;
 import com.aerospike.client.async.EventLoops;
 import com.aerospike.client.async.EventPolicy;
 import com.aerospike.client.async.NettyEventLoops;
+import com.aerospike.client.async.NioEventLoops;
 import com.aerospike.client.cluster.ClusterStats;
 import com.aerospike.client.cluster.NodeStats;
 import com.aerospike.client.discovery.PortMapAddressTranslator;
@@ -58,9 +59,9 @@ import io.netty.channel.epoll.EpollIoHandler;
 import io.netty.channel.nio.NioIoHandler;
 
 /**
- * Async counterpart of {@link TestL2IdleReset} on Netty event loops, against the default
- * {@link L2Topology} in the idle-reset profile of run_l2.sh. Every toxic the case adds is removed
- * in {@link #restore()}.
+ * Async counterpart of {@link TestL2IdleReset} on direct NIO and Netty event loops, against the
+ * default {@link L2Topology} in the idle-reset profile of run_l2.sh. Every toxic the case adds is
+ * removed in {@link #restore()}.
  */
 public class TestL2AsyncIdleReset extends TestBase {
 	private static final String BLOCKER = "Async idle reset needs DISCOVERY_IDLE_RESET (run_l2.sh L2_PROFILE=idle-reset)";
@@ -79,6 +80,11 @@ public class TestL2AsyncIdleReset extends TestBase {
 			L2Topology.removeToxic(toxic[0], toxic[1]);
 		}
 		toxics.clear();
+	}
+
+	@Test
+	public void idleResetAbsorbedByPoolDirectNio() throws Exception {
+		idleResetAbsorbedByPool(EventLoopType.DIRECT_NIO);
 	}
 
 	@Test
@@ -107,9 +113,17 @@ public class TestL2AsyncIdleReset extends TestBase {
 		policy.addressTranslator = new PortMapAddressTranslator(L2Topology.portMapByEndpoint(nodes));
 		assertEquals(new ClientPolicy().maxSocketIdle, policy.maxSocketIdle);
 
-		EventLoopGroup group = new MultiThreadIoEventLoopGroup(EVENT_LOOPS, (type == EventLoopType.NETTY_EPOLL) ?
-			EpollIoHandler.newFactory() : NioIoHandler.newFactory());
-		EventLoops eventLoops = new NettyEventLoops(new EventPolicy(), group, type);
+		EventLoopGroup group = null;
+		EventLoops eventLoops;
+
+		if (type == EventLoopType.DIRECT_NIO) {
+			eventLoops = new NioEventLoops(new EventPolicy(), EVENT_LOOPS);
+		}
+		else {
+			group = new MultiThreadIoEventLoopGroup(EVENT_LOOPS, (type == EventLoopType.NETTY_EPOLL) ?
+				EpollIoHandler.newFactory() : NioIoHandler.newFactory());
+			eventLoops = new NettyEventLoops(new EventPolicy(), group, type);
+		}
 		policy.eventLoops = eventLoops;
 
 		for (L2Node node : nodes) {
@@ -232,7 +246,12 @@ public class TestL2AsyncIdleReset extends TestBase {
 			assertEquals(type + ": commands failed to the caller after idle RST: " + failures, 0, failures.size());
 		}
 		finally {
-			group.shutdownGracefully(0, 0, TimeUnit.SECONDS).await();
+			if (group != null) {
+				group.shutdownGracefully(0, 0, TimeUnit.SECONDS).await();
+			}
+			else {
+				eventLoops.close();
+			}
 		}
 	}
 
