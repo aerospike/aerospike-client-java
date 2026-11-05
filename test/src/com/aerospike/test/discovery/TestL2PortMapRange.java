@@ -127,8 +127,9 @@ public class TestL2PortMapRange extends TestBase {
 	/**
 	 * N-19 outside the range: a node started on an address the pre-filled port-map does not cover
 	 * is decided by on_miss. With strict the UX-2 error names the node, its advertised endpoint and
-	 * the translator on every tend and no {@link Node} is created. With the default the unchanged
-	 * address, which the client cannot reach, is tried on every tend and no {@link Node} is created.
+	 * the translator on every tend and no {@link Node} is created. With the default the miss is
+	 * logged once, and the unchanged address, which the client cannot reach, is tried on every tend
+	 * and no {@link Node} is created.
 	 */
 	@Test
 	public void n19NodeOutsideRangeDecidedByOnMiss() throws Exception {
@@ -192,7 +193,10 @@ public class TestL2PortMapRange extends TestBase {
 				attempts.size() >= MISS_RETRIES);
 			System.out.println("L2-N19-PASS-THROUGH-LOG " + attempts.get(0));
 			assertEquals(names, L2Topology.nodeNames(client));
-			assertEquals(List.of(), misses(name));
+			List<String> misses = misses(name);
+			assertEquals("One miss warning for " + name + " across " + attempts.size() + " tends: " + misses, 1,
+				misses.size());
+			assertTrue(misses.get(0), misses.get(0).contains("pass_through"));
 		}
 	}
 
