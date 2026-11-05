@@ -82,6 +82,7 @@ public class TestK8sScale extends TestBase {
 	private K8sCluster cluster;
 	private int foundSize;
 	private String pinnedService;
+	private String heldService;
 
 	@Before
 	public void requireCluster() {
@@ -106,6 +107,11 @@ public class TestK8sScale extends TestBase {
 		cluster = null;
 
 		try {
+			if (heldService != null) {
+				c.deleteService(heldService);
+				heldService = null;
+			}
+
 			if (pinnedService != null) {
 				c.deleteService(pinnedService);
 				System.out.println("L3-PINNED-DELETED service=" + pinnedService);
@@ -365,16 +371,25 @@ public class TestK8sScale extends TestBase {
 		String lastUid = cluster.uid("service", last.name);
 		int lastNodePort = cluster.nodePort(last.name, port);
 		cluster.scale(size - 1);
-		String removedUid = cluster.uid("service", last.name);
+		String lastName = last.name;
+		assertTrue(lastName + " Service not deleted within " + K8sCluster.SCALE_TIMEOUT_MS + "ms",
+			K8sCluster.waitFor(() -> cluster.uid("service", lastName).isEmpty(), K8sCluster.SCALE_TIMEOUT_MS, 1000));
+
+		// Hold the old NodePort so the allocator cannot hand it back to the recreated Service by chance.
+		String held = cluster.name + "-held-node-port";
+		heldService = held;
+		cluster.createPodNodePortService(held, last.name, port, lastNodePort);
 		cluster.scale(size);
 		String recreatedUid = cluster.uid("service", last.name);
 		int recreatedNodePort = cluster.nodePort(last.name, port);
-		System.out.println("L3-POD-RECREATED pod=" + last.name + " serviceUid=" + lastUid + "->" +
-			(removedUid.isEmpty() ? "(deleted)" : removedUid) + "->" + recreatedUid + " oldNodePort=" + lastNodePort +
-			" newNodePort=" + recreatedNodePort);
+		cluster.deleteService(held);
+		heldService = null;
+		System.out.println("L3-POD-RECREATED pod=" + last.name + " serviceUid=" + lastUid + "->(deleted)->" +
+			recreatedUid + " oldNodePort=" + lastNodePort + " newNodePort=" + recreatedNodePort);
 		assertTrue(last.name + " has no Service after it was recreated", ! recreatedUid.isEmpty());
 		assertNotEquals(last.name + " Service not recreated", lastUid, recreatedUid);
 		assertTrue(last.name + " has no Service NodePort for " + port, recreatedNodePort > 0);
+		assertNotEquals(last.name + " recreated Service kept NodePort " + lastNodePort, lastNodePort, recreatedNodePort);
 		assertEquals(pinned, cluster.nodePort(service, port));
 		assertPinnedSeed("recreated", service, port, pinned, size);
 	}
