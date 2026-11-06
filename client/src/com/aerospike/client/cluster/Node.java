@@ -110,6 +110,7 @@ public class Node implements Closeable {
 	public Node(Cluster cluster, NodeValidator nv) {
 		this.cluster = cluster;
 		this.name = nv.name;
+		this.hostname = nv.hostname;
 		this.host = nv.primaryHost;
 		this.address = nv.primaryAddress;
 		this.tendConnection = nv.primaryConn;
@@ -504,7 +505,10 @@ public class Node implements Closeable {
 						nodeValidated = true;
 
 						if (peer.replaceNode != null) {
-							if (Log.infoEnabled()) {
+							if (host.name.equals(peer.replaceNode.hostname) && peer.replaceNode.name.equals(nv.name)) {
+								peer.replaceNode.logMove(node);
+							}
+							else if (Log.infoEnabled()) {
 								Log.info("Replace node: " + peer.replaceNode);
 							}
 							peers.removeNodes.add(peer.replaceNode);
@@ -670,8 +674,8 @@ public class Node implements Closeable {
 			// Match peer hosts with the node host.
 			for (Host h : peer.hosts) {
 				if (h.port == node.host.port) {
-					// Check for IP address (node.host.name is an IP address) or hostname if it exists.
-					if (h.name.equals(node.host.name) || (node.hostname != null && h.name.equals(node.hostname))) {
+					// Check for IP address (node.host.name is an IP address).
+					if (h.name.equals(node.host.name)) {
 						// Main node host is also the same as one of the peer hosts.
 						// Peer should not be added.
 						node.referenceCount++;
@@ -679,12 +683,14 @@ public class Node implements Closeable {
 					}
 
 					// Peer name might be a hostname. Get peer IP addresses and check with node IP address.
+					// When the hostname has several addresses, the node's address may be the one that
+					// failed, so let the peer be validated on the other addresses.
 					try {
 						InetAddress[] addresses = InetAddress.getAllByName(h.name);
 
 						for (InetAddress address : addresses) {
-							if (address.equals(node.address.getAddress()) ||
-								address.isLoopbackAddress()) {
+							if (address.isLoopbackAddress() || (addresses.length == 1 &&
+								(address.equals(node.address.getAddress()) || h.name.equals(node.hostname)))) {
 								// Set peer hostname for faster future lookups.
 								node.hostname = h.name;
 								node.referenceCount++;
@@ -693,6 +699,11 @@ public class Node implements Closeable {
 						}
 					}
 					catch (Throwable t) {
+						if (h.name.equals(node.hostname)) {
+							node.referenceCount++;
+							return true;
+						}
+
 						// Peer name is invalid. replaceNode may be set, but that node will
 						// not be replaced because NodeValidator will reject it.
 						Log.error("Invalid peer received by cluster tend: " + h.name);
@@ -711,6 +722,69 @@ public class Node implements Closeable {
 			return true;
 		}
 		return false;
+	}
+
+	/**
+	 * Replace a node whose refresh failed with the same node on another address of its hostname.
+	 */
+	protected final void refreshAddress(Peers peers) {
+		if (failures <= 0 || ! active || hostname == null) {
+			return;
+		}
+
+		InetAddress[] addresses;
+
+		try {
+			addresses = InetAddress.getAllByName(hostname);
+		}
+		catch (Throwable e) {
+			return;
+		}
+
+		if (addresses.length <= 1) {
+			return;
+		}
+
+		Host alias = new Host(hostname, host.tlsName, host.port);
+
+		for (InetAddress ia : addresses) {
+			if (ia.equals(address.getAddress())) {
+				continue;
+			}
+
+			try {
+				NodeValidator nv = new NodeValidator();
+				nv.validateAlias(cluster, alias, ia);
+
+				if (! name.equals(nv.name) || findValidatedNode(cluster.nodesMap, name, nv) != null ||
+					findValidatedNode(peers.nodes, name, nv) != null) {
+					if (Log.debugEnabled()) {
+						Log.debug("Address " + nv.primaryHost + " of " + hostname + " is node " + nv.name +
+							", not node " + name);
+					}
+					nv.primaryConn.close();
+					continue;
+				}
+
+				Node node = cluster.createNode(nv);
+				node.advertisedHosts = advertisedHosts;
+				peers.nodes.put(name, node);
+				peers.removeNodes.add(this);
+				logMove(node);
+				return;
+			}
+			catch (Throwable e) {
+				if (Log.debugEnabled()) {
+					Log.debug("Address " + ia + ' ' + host.port + " failed: " + Util.getErrorMessage(e));
+				}
+			}
+		}
+	}
+
+	private void logMove(Node node) {
+		if (Log.infoEnabled()) {
+			Log.info("Move node " + name + ' ' + hostname + " from " + host + " to " + node.host);
+		}
 	}
 
 	protected final void refreshPartitions(Peers peers) {

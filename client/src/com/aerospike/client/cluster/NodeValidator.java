@@ -38,6 +38,7 @@ import com.aerospike.client.util.Version;
 public final class NodeValidator {
 	Node fallback;
 	String name;
+	String hostname;
 	Host primaryHost;
 	InetSocketAddress primaryAddress;
 	Connection primaryConn;
@@ -53,6 +54,7 @@ public final class NodeValidator {
 	 */
 	public Node seedNode(Cluster cluster, Host host, Peers peers) throws Throwable {
 		name = null;
+		hostname = null;
 		primaryHost = null;
 		primaryAddress = null;
 		primaryConn = null;
@@ -66,6 +68,7 @@ public final class NodeValidator {
 		for (InetAddress address : addresses) {
 			try {
 				validateAddress(cluster, address, host.tlsName, host.port, true);
+				setHostname(host, address);
 
 				Node node = new Node(cluster, this);
 
@@ -142,6 +145,7 @@ public final class NodeValidator {
 		for (InetAddress address : addresses) {
 			try {
 				validateAddress(cluster, address, host.tlsName, host.port, false);
+				setHostname(host, address);
 				return;
 			}
 			catch (Throwable e) {
@@ -158,6 +162,33 @@ public final class NodeValidator {
 		// Exception can't be null here because getAddresses() will throw exception
 		// if aliases length is zero.
 		throw exception;
+	}
+
+	/**
+	 * Verify that one address of a host references a valid node.
+	 */
+	void validateAlias(Cluster cluster, Host host, InetAddress address) throws Exception {
+		validateAddress(cluster, address, host.tlsName, host.port, false);
+		setHostname(host, address);
+	}
+
+	private void setHostname(Host host, InetAddress address) {
+		hostname = (isHostname(host.name) && address.equals(primaryAddress.getAddress())) ? host.name : null;
+	}
+
+	private static boolean isHostname(String name) {
+		if (name.indexOf(':') >= 0) {
+			return false;
+		}
+
+		for (int i = 0; i < name.length(); i++) {
+			char c = name.charAt(i);
+
+			if (c != '.' && ! Character.isDigit(c)) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 	private static InetAddress[] getAddresses(Host host) {

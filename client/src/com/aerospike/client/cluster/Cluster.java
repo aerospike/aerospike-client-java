@@ -779,6 +779,10 @@ public class Cluster implements Runnable, Closeable {
 				node.refresh(peers);
 			}
 
+			for (Node node : nodes) {
+				node.refreshAddress(peers);
+			}
+
 			// Refresh peers when necessary.
 			if (peers.genChanged) {
 				// Refresh peers for all nodes that responded the first time even if only one node's peers changed.
@@ -790,16 +794,21 @@ public class Cluster implements Runnable, Closeable {
 
 				// Handle nodes changes determined from refreshes.
 				findNodesToRemove(peers);
-
-				// Remove nodes in a batch.
-				if (peers.removeNodes.size() > 0) {
-					removeNodes(peers.removeNodes);
-				}
 			}
 
-			// Add peer nodes to cluster.
-			if (peers.nodes.size() > 0) {
+			// Add peer nodes to cluster before removing the nodes they replace.
+			boolean added = peers.nodes.size() > 0;
+
+			if (added) {
 				addNodes(peers.nodes);
+			}
+
+			// Remove nodes in a batch.
+			if (peers.removeNodes.size() > 0) {
+				removeNodes(peers.removeNodes);
+			}
+
+			if (added) {
 				refreshPeers(peers);
 			}
 		}
@@ -1162,8 +1171,10 @@ public class Cluster implements Runnable, Closeable {
 
 		// Cleanup node resources.
 		for (Node node : nodesToRemove) {
-			// Remove node from map.
-			nodesMap.remove(node.getName());
+			// Remove node from map unless a replacement node already took its name.
+			if (nodesMap.get(node.getName()) == node) {
+				nodesMap.remove(node.getName());
+			}
 
 			synchronized(metricsLock) {
 				if (metricsEnabled) {
@@ -1196,7 +1207,7 @@ public class Cluster implements Runnable, Closeable {
 
 		// Add nodes that are not in remove list.
 		for (Node node : nodes) {
-			if (nodesToRemove.contains(node)) {
+			if (isRemoved(nodesToRemove, node)) {
 				if (Log.infoEnabled()) {
 					Log.info("Remove node " + node);
 				}
@@ -1220,6 +1231,16 @@ public class Cluster implements Runnable, Closeable {
 
 		// Replace nodes with copy.
 		nodes = nodeArray;
+	}
+
+	private static boolean isRemoved(HashSet<Node> nodesToRemove, Node node) {
+		// Nodes are equal by name, so match by reference to keep a replacement node.
+		for (Node remove : nodesToRemove) {
+			if (remove == node) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 	public final boolean isConnected() {
