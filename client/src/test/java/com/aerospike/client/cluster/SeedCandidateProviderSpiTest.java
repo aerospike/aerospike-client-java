@@ -38,6 +38,7 @@ import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Host;
 import com.aerospike.client.Log;
 import com.aerospike.client.ResultCode;
+import com.aerospike.client.discovery.DiscoveryExecutionMode;
 import com.aerospike.client.discovery.SeedCandidateContext;
 import com.aerospike.client.discovery.SeedCandidateProvider;
 import com.aerospike.client.discovery.SeedMergePolicy;
@@ -110,6 +111,7 @@ public class SeedCandidateProviderSpiTest {
 
 	private static ClientPolicy policy(SeedCandidateProvider provider) {
 		ClientPolicy policy = new ClientPolicy();
+		policy.discoveryExecutionMode = DiscoveryExecutionMode.TEND;
 		policy.failIfNotConnected = false;
 		policy.timeout = 100;
 		policy.tendInterval = 250;

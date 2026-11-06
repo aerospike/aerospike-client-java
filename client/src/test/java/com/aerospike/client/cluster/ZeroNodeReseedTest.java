@@ -34,6 +34,7 @@ import org.junit.Test;
 import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.Host;
 import com.aerospike.client.Log;
+import com.aerospike.client.discovery.DiscoveryExecutionMode;
 import com.aerospike.client.policy.ClientPolicy;
 
 public class ZeroNodeReseedTest {
@@ -73,6 +74,7 @@ public class ZeroNodeReseedTest {
 
 	private static ClientPolicy policy(TestSeedProvider provider, int refreshInterval) {
 		ClientPolicy policy = new ClientPolicy();
+		policy.discoveryExecutionMode = DiscoveryExecutionMode.TEND;
 		policy.failIfNotConnected = false;
 		policy.timeout = 100;
 		policy.tendInterval = 250;

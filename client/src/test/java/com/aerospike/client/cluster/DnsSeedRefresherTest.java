@@ -37,6 +37,7 @@ import com.aerospike.client.Host;
 import com.aerospike.client.Log;
 import com.aerospike.client.ResultCode;
 import com.aerospike.client.configuration.serializers.staticconfig.StaticDiscoveryConfig;
+import com.aerospike.client.discovery.DiscoveryExecutionMode;
 import com.aerospike.client.discovery.DnsSeedCandidateProvider;
 import com.aerospike.client.discovery.StubDnsServer;
 import com.aerospike.client.policy.ClientPolicy;
@@ -74,6 +75,7 @@ public class DnsSeedRefresherTest {
 
 	private static ClientPolicy offline() {
 		ClientPolicy policy = new ClientPolicy();
+		policy.discoveryExecutionMode = DiscoveryExecutionMode.TEND;
 		policy.failIfNotConnected = false;
 		policy.timeout = 100;
 		return policy;
@@ -83,6 +85,7 @@ public class DnsSeedRefresherTest {
 	public void nxdomainOnEveryNameKeepsPreviousSeedList() throws Exception {
 		dns.a("a.example.com", "10.0.0.2").a("b.example.com", "10.0.0.3");
 		ClientPolicy policy = new ClientPolicy();
+		policy.discoveryExecutionMode = DiscoveryExecutionMode.TEND;
 		policy.discoveryRefreshInterval = 1000;
 		SeedRefresher r = new SeedRefresher(provider(80), policy, snapshot::set);
 		r.validate(1000);
@@ -112,6 +115,7 @@ public class DnsSeedRefresherTest {
 	@Test
 	public void validateRejectsTimeoutAboveTendDeadline() {
 		ClientPolicy policy = new ClientPolicy();
+		policy.discoveryExecutionMode = DiscoveryExecutionMode.TEND;
 		SeedRefresher r = new SeedRefresher(provider(150), policy, snapshot::set);
 
 		AerospikeException ae = assertThrows(AerospikeException.class, () -> r.validate(1000));

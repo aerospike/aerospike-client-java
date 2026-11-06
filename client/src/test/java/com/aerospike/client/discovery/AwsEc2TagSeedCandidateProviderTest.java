@@ -394,11 +394,11 @@ public class AwsEc2TagSeedCandidateProviderTest {
 		assertEquals(AddressField.PRIVATE_IP, provider.getAddressField());
 		assertEquals(3000, provider.getPort());
 		assertNull(provider.getTlsName());
-		assertEquals(80, provider.getTimeout());
+		assertEquals(2000, provider.getTimeout());
 		assertEquals(10000, provider.getInitTimeout());
 		assertNull(provider.getEndpoint());
 		assertTrue(provider.needsPeriodicRefresh());
-		assertTrue(provider.supportsDeadline());
+		assertFalse(provider.supportsDeadline());
 		assertEquals("aws-tags eu-west-1 {tag:aerospike-cluster=[prod-a]}", provider.toString());
 		assertThrows(UnsupportedOperationException.class, () -> provider.getFilters().put("x", null));
 		assertFalse(new AwsEc2TagSeedCandidateProvider.Credentials(KEY, SECRET, TOKEN).toString().contains(SECRET));

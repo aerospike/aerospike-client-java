@@ -1,0 +1,6 @@
+version: 1.2.0
+static:
+  client:
+    discovery:
+      execution_mode: tend
+      refresh_timeout_ms: 500

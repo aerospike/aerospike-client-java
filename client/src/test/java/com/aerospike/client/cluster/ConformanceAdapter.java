@@ -24,6 +24,7 @@ import java.util.function.IntConsumer;
 
 import com.aerospike.client.Host;
 import com.aerospike.client.discovery.AddressTranslator;
+import com.aerospike.client.discovery.DiscoveryExecutionMode;
 import com.aerospike.client.discovery.Endpoint;
 import com.aerospike.client.discovery.SeedCandidateContext;
 import com.aerospike.client.discovery.SeedCandidateProvider;
@@ -57,6 +58,7 @@ public final class ConformanceAdapter {
 	 * refresh, and return the published seed snapshot after each.
 	 */
 	public static List<Host[]> refreshSeeds(ClientPolicy policy, Host[] staticSeeds, List<Host[]> results) {
+		policy.discoveryExecutionMode = DiscoveryExecutionMode.TEND;
 		policy.discoveryRefreshInterval = TEND_INTERVAL;
 		policy.discoveryTendRefreshDeadline = Integer.MAX_VALUE;
 
@@ -102,6 +104,7 @@ public final class ConformanceAdapter {
 	 */
 	public static List<Step> refreshProvider(SeedCandidateProvider provider, int refreshes, IntConsumer select) {
 		ClientPolicy policy = new ClientPolicy();
+		policy.discoveryExecutionMode = DiscoveryExecutionMode.TEND;
 		policy.discoveryMergePolicy = SeedMergePolicy.DISCOVERY_ONLY;
 		policy.discoveryRefreshInterval = TEND_INTERVAL;
 		policy.discoveryTendRefreshDeadline = Integer.MAX_VALUE;

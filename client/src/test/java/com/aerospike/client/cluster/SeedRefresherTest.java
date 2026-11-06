@@ -33,6 +33,7 @@ import org.junit.Test;
 
 import com.aerospike.client.Host;
 import com.aerospike.client.Log;
+import com.aerospike.client.discovery.DiscoveryExecutionMode;
 import com.aerospike.client.policy.ClientPolicy;
 
 public class SeedRefresherTest {
@@ -68,6 +69,7 @@ public class SeedRefresherTest {
 
 	private SeedRefresher create(TestSeedProvider provider, int refreshInterval) {
 		ClientPolicy policy = new ClientPolicy();
+		policy.discoveryExecutionMode = DiscoveryExecutionMode.TEND;
 		policy.discoveryRefreshInterval = refreshInterval;
 		policy.discoveryTendRefreshDeadline = 20;
 		SeedRefresher refresher = new SeedRefresher(provider, policy, snapshot::set);
@@ -178,7 +180,9 @@ public class SeedRefresherTest {
 		assertEquals(calls, provider.calls.get());
 		assertSame(INIT, snapshot.get());
 
-		SeedRefresher fresh = new SeedRefresher(provider, new ClientPolicy(), snapshot::set);
+		ClientPolicy freshPolicy = new ClientPolicy();
+		freshPolicy.discoveryExecutionMode = DiscoveryExecutionMode.TEND;
+		SeedRefresher fresh = new SeedRefresher(provider, freshPolicy, snapshot::set);
 		fresh.start(INIT);
 		assertFalse(fresh.isTripped());
 		assertEquals(0, fresh.getOverrunCount());
