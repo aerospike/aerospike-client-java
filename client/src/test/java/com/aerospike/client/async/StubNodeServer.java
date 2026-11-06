@@ -52,14 +52,25 @@ public final class StubNodeServer implements AutoCloseable {
 	private final AtomicInteger dataConnections = new AtomicInteger();
 	private final AtomicInteger dataRequests = new AtomicInteger();
 	private final String replicas;
+	private final String nodeName;
+	private volatile String peers = "1,3000,[]";
 	private volatile Close closeOnRequest;
 	private volatile boolean resetOnHeader;
 
 	public StubNodeServer() throws IOException {
+		this(InetAddress.getLoopbackAddress(), 0, "BB9000000000001");
+	}
+
+	/**
+	 * Node with the given name on the given local address and port. Port 0 picks a free port.
+	 */
+	public StubNodeServer(InetAddress address, int port, String nodeName) throws IOException {
+		this.nodeName = nodeName;
+
 		byte[] bitmap = new byte[4096 / 8];
 		Arrays.fill(bitmap, (byte)0xFF);
 		this.replicas = NAMESPACE + ":0,1," + Base64.getEncoder().encodeToString(bitmap) + ';';
-		this.server = new ServerSocket(0, 64, InetAddress.getLoopbackAddress());
+		this.server = new ServerSocket(port, 64, address);
 
 		Thread thread = new Thread(this::accept, "stub-node-accept");
 		thread.setDaemon(true);
@@ -68,6 +79,13 @@ public final class StubNodeServer implements AutoCloseable {
 
 	public int port() {
 		return server.getLocalPort();
+	}
+
+	/**
+	 * Set the peers-clear-std reply.
+	 */
+	public void setPeers(String peers) {
+		this.peers = peers;
 	}
 
 	/**
@@ -195,7 +213,7 @@ public final class StubNodeServer implements AutoCloseable {
 	private String value(String command) {
 		switch (command) {
 		case "node":
-			return "BB9000000000001";
+			return nodeName;
 		case "partition-generation":
 		case "peers-generation":
 			return "1";
@@ -204,7 +222,7 @@ public final class StubNodeServer implements AutoCloseable {
 		case "replicas":
 			return replicas;
 		case "peers-clear-std":
-			return "1,3000,[]";
+			return peers;
 		default:
 			return "ok";
 		}
