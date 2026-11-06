@@ -314,9 +314,8 @@ public final class Vector {
 
 	/**
 	 * Create a vector of float16 (IEEE 754 half precision) elements from float (fp32)
-	 * elements. Each element is converted with {@link Float#floatToFloat16(float)}, which
-	 * rounds to the nearest float16, ties to even. Read the elements back as floats with
-	 * {@link #getFloat16DataAsFloat()}.
+	 * elements. Each element is rounded to the nearest float16, ties to even. Read the
+	 * elements back as floats with {@link #getFloat16DataAsFloat()}.
 	 * <p>
 	 * An element whose conversion is NaN or infinite is rejected. This includes NaN and
 	 * infinite inputs, and finite inputs with a magnitude of 65520 or more, which round to
@@ -331,7 +330,7 @@ public final class Vector {
 		for (int i = 0; i < bits.length; i++) {
 			// Read each element once so the value checked is the value stored.
 			float f = data[i];
-			short h = Float.floatToFloat16(f);
+			short h = Float16.fromFloat(f);
 
 			if ((h & FLOAT16_EXPONENT_MASK) == FLOAT16_EXPONENT_MASK) {
 				throw notFinite(i, Float.toString(f));
@@ -422,9 +421,8 @@ public final class Vector {
 	}
 
 	/**
-	 * Return a copy of the float16 data converted to float (fp32) with
-	 * {@link Float#float16ToFloat(short)}. The conversion is exact: every float16 value
-	 * has a float equivalent.
+	 * Return a copy of the float16 data converted to float (fp32). The conversion is
+	 * exact: every float16 value has a float equivalent.
 	 *
 	 * @throws IllegalStateException if this vector's element type is not {@link ElementType#FLOAT16}
 	 */
@@ -435,7 +433,7 @@ public final class Vector {
 		float[] arr = new float[bits.length];
 
 		for (int i = 0; i < bits.length; i++) {
-			arr[i] = Float.float16ToFloat(bits[i]);
+			arr[i] = Float16.toFloat(bits[i]);
 		}
 		return arr;
 	}
