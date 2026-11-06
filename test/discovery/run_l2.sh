@@ -94,6 +94,8 @@
 #   L2_CLIENT_NETWORK_MTU     low-mtu client network MTU (default 1200)
 #   L2_PROXY_PORT_RANGE       port-range Toxiproxy local port range, "<first> <last>" (default "40000 40009")
 #   L2_SKIP_BUILD             set to 1 to skip installing the client module first
+#   L2_SUITE                  surefire include to run instead of the profile's suite, e.g.
+#                             '**/TestL2Topology.class'
 #   L2_MAVEN_OFFLINE          set to 0 to let Maven resolve dependencies online (default 1)
 #
 # Usage: test/discovery/run_l2.sh
@@ -128,6 +130,7 @@ run_client() {
 		idle-reset) suite='**/TestL2IdleReset.class,**/TestL2AsyncIdleReset.class' ;;
 		unresolved-access) suite='**/TestL2UnresolvedAccessAddress.class,**/TestL2PortMapNoAccessAddress.class' ;;
 	esac
+	suite="${L2_SUITE:-$suite}"
 
 	if [ "$subset" = "ee" ]; then
 		local tls_ports="${DISCOVERY_TLS_ENDPOINT_PORTS:?DISCOVERY_TLS_ENDPOINT_PORTS is required}"
@@ -769,6 +772,7 @@ docker run "${client_args[@]}" \
 	-e L2_DISABLE_LISTENERS \
 	-e L2_MAVEN_OFFLINE \
 	-e L2_PROFILE \
+	-e L2_SUITE \
 	-e DISCOVERY_CONTROL_DIR \
 	-e DISCOVERY_REACHABLE_NODE \
 	-e DISCOVERY_PASS_THROUGH_BRANCH \

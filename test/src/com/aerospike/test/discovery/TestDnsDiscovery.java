@@ -17,17 +17,25 @@
 package com.aerospike.test.discovery;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
+import java.util.regex.Pattern;
 
 import org.junit.After;
 import org.junit.Before;
@@ -37,13 +45,18 @@ import org.junit.Test;
 import org.junit.runners.MethodSorters;
 
 import com.aerospike.client.AerospikeClient;
+import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Bin;
+import com.aerospike.client.Host;
 import com.aerospike.client.Key;
 import com.aerospike.client.Log;
 import com.aerospike.client.Record;
 import com.aerospike.client.cluster.Node;
 import com.aerospike.client.cluster.Partitions;
+import com.aerospike.client.discovery.DiscoveryExecutionMode;
 import com.aerospike.client.discovery.DnsSeedCandidateProvider;
+import com.aerospike.client.discovery.DnsSeedCandidateProvider.RecordType;
+import com.aerospike.client.discovery.SeedCandidateContext;
 import com.aerospike.client.policy.ClientPolicy;
 
 /**
@@ -51,13 +64,16 @@ import com.aerospike.client.policy.ClientPolicy;
  * test/discovery/run_dns.sh. The client gets no static seed: every seed comes from DNS. Node A is
  * reachable on 127.0.0.1 and node B on another host address, both on the same port, and each
  * advertises that address as its alternate access address. The seed list is read from the provider's debug log line, which
- * lists the hosts each refresh returns. The environment arrives as system properties:
+ * lists the hosts each refresh returns. Every case states its execution mode. The environment arrives
+ * as system properties:
  * <ul>
  * <li>dns.server: DNS server address, ip:port</li>
  * <li>dns.container: DNS server container, stopped by the outage case</li>
  * <li>dns.namespace: namespace, replication factor 1</li>
  * <li>dns.port: port node A and node B are reachable on</li>
  * <li>dns.nodeA, dns.hostA, dns.nodeB, dns.hostB: node names and reachable addresses</li>
+ * <li>dns.hostC, dns.portC: address and port of the standalone node C</li>
+ * <li>dns.zoneFile: zone file of the DNS server, rewritten by the changed record case</li>
  * <li>dns.config: YAML config file selecting provider dns</li>
  * </ul>
  */
@@ -65,11 +81,15 @@ import com.aerospike.client.policy.ClientPolicy;
 public class TestDnsDiscovery {
 	private static final String CONFIG_SYS_PROP = "AEROSPIKE_CLIENT_CONFIG_SYS_PROP";
 	private static final String SEEDS_NAME = "seeds.dns.test";
+	private static final String CHANGE_NAME = "_change._tcp.dns.test";
+	private static final String SOA = "@ 3600 IN SOA ns.dns.test. admin.dns.test. ";
 	private static final String RESOLVED = "DNS seed names ";
 	private static final int REFRESH_INTERVAL = 1000;
 	private static final int WAIT_MS = 20000;
 	private static final int KEY_COUNT = 100;
 	private static final List<String> messages = new CopyOnWriteArrayList<>();
+	private static final List<String> resolvedThreads = new CopyOnWriteArrayList<>();
+	private static int serial = 1;
 
 	private static String server;
 	private static String container;
@@ -79,6 +99,9 @@ public class TestDnsDiscovery {
 	private static String hostA;
 	private static String nodeB;
 	private static String hostB;
+	private static String hostC;
+	private static int portC;
+	private static Path zoneFile;
 	private static String config;
 
 	@BeforeClass
@@ -94,11 +117,17 @@ public class TestDnsDiscovery {
 		hostA = required("dns.hostA");
 		nodeB = required("dns.nodeB");
 		hostB = required("dns.hostB");
+		hostC = required("dns.hostC");
+		portC = Integer.parseInt(required("dns.portC"));
+		zoneFile = Paths.get(required("dns.zoneFile"));
 		config = required("dns.config");
 
 		Log.setLevel(Log.Level.DEBUG);
 		Log.setCallback((level, message) -> {
 			if (level == Log.Level.WARN || level == Log.Level.ERROR || message.startsWith(RESOLVED)) {
+				if (message.startsWith(RESOLVED)) {
+					resolvedThreads.add(Thread.currentThread().getName());
+				}
 				messages.add(message);
 				System.out.println("CLIENT-LOG " + level + ' ' + message);
 			}
@@ -108,6 +137,7 @@ public class TestDnsDiscovery {
 	@Before
 	public void clearMessages() {
 		messages.clear();
+		resolvedThreads.clear();
 	}
 
 	@After
@@ -179,8 +209,76 @@ public class TestDnsDiscovery {
 		}
 	}
 
+	@Test
+	public void case6ThreadRefreshPicksUpChangedRecord() throws Exception {
+		assertRefreshPicksUpChangedRecord(DiscoveryExecutionMode.THREAD, "discovery");
+	}
+
+	@Test
+	public void case7TimeoutAboveRefreshTimeoutFailsConstruction() {
+		ClientPolicy policy = policy(DnsSeedCandidateProvider.builder().names(SEEDS_NAME).port(port).servers(server)
+			.timeout(300).build());
+		policy.discoveryRefreshTimeout = 200;
+
+		AerospikeException ae = assertThrows(AerospikeException.class, () -> new AerospikeClient(policy).close());
+		System.out.println("DNS-DISCOVERY-RESULT timeout " + ae.getMessage() + " resolved=" + resolvedThreads.size());
+		assertTrue(ae.getMessage(), ae.getMessage().contains(
+			"DNS seed provider timeout 300 must be less or equal to the discovery refresh timeout 200"));
+		assertEquals(0, resolvedThreads.size());
+	}
+
+	@Test
+	public void case8TendRefreshPicksUpChangedRecord() throws Exception {
+		assertRefreshPicksUpChangedRecord(DiscoveryExecutionMode.TEND, "tend");
+	}
+
+	private static void assertRefreshPicksUpChangedRecord(DiscoveryExecutionMode mode, String thread) throws Exception {
+		ClientPolicy policy = policy(DnsSeedCandidateProvider.builder().names(CHANGE_NAME).recordType(RecordType.SRV)
+			.servers(server).build());
+		policy.discoveryExecutionMode = mode;
+		Host nodeC = new Host(hostC, portC);
+		String zone = new String(Files.readAllBytes(zoneFile), StandardCharsets.UTF_8);
+
+		try (AerospikeClient client = new AerospikeClient(policy)) {
+			assertJoins("change-before", client);
+			assertFalse(List.of(ClusterInternals.seeds(client)).contains(nodeC));
+			int from = resolvedThreads.size();
+			writeZone(zone.replaceAll("(?m)^_change\\._tcp 1 IN SRV 10 10 \\d+ node-[ab]\n", "") +
+				"_change._tcp 1 IN SRV 10 10 " + portC + " node-c\n");
+
+			try {
+				String changed = await(() -> messages.stream().filter(m -> m.startsWith(RESOLVED) &&
+					m.contains(hostC + " " + portC)).findFirst().orElse(null));
+				await(() -> List.of(ClusterInternals.seeds(client)).contains(nodeC)? Boolean.TRUE : null);
+				Set<String> threads = new HashSet<>(resolvedThreads.subList(from, resolvedThreads.size()));
+				List<String> names = nodeNames(client);
+				System.out.println("DNS-DISCOVERY-RESULT change mode=" + mode + " '" + changed + "' seeds=" +
+					List.of(ClusterInternals.seeds(client)) + " resolvedOn=" + threads + " nodes=" + names);
+				assertEquals(Set.of(thread), threads);
+				assertEquals(List.of(nodeA, nodeB), names);
+				assertKeysWork("change", client);
+			}
+			finally {
+				writeZone(zone);
+				DnsSeedCandidateProvider check = DnsSeedCandidateProvider.builder().names(CHANGE_NAME)
+					.recordType(RecordType.SRV).servers(server).build();
+				List<Host> restored = List.of(new Host(hostA, port), new Host(hostB, port));
+				await(() -> new HashSet<>(check.refreshSeedCandidates(new SeedCandidateContext(null, new Host[0], 0)))
+					.equals(new HashSet<>(restored))? Boolean.TRUE : null);
+			}
+		}
+	}
+
+	private static void writeZone(String zone) throws Exception {
+		serial++;
+		String text = zone.replaceFirst("(?m)^" + Pattern.quote(SOA) + "\\d+ ", SOA + serial + " ");
+		Files.write(zoneFile, text.getBytes(StandardCharsets.UTF_8));
+		System.out.println("DNS-DISCOVERY-ZONE serial=" + serial);
+	}
+
 	private static ClientPolicy policy(DnsSeedCandidateProvider provider) {
 		ClientPolicy policy = new ClientPolicy();
+		policy.discoveryExecutionMode = DiscoveryExecutionMode.THREAD;
 		policy.useServicesAlternate = true;
 		policy.discoveryRefreshInterval = REFRESH_INTERVAL;
 		policy.seedCandidateProvider = provider;

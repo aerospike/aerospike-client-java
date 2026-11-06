@@ -28,6 +28,7 @@ import com.aerospike.client.Log;
 import com.aerospike.client.cluster.Node;
 import com.aerospike.client.cluster.Partitions;
 import com.aerospike.client.discovery.AwsEc2TagSeedCandidateProvider;
+import com.aerospike.client.discovery.DiscoveryExecutionMode;
 import com.aerospike.client.discovery.SeedCandidateContext;
 import com.aerospike.client.policy.ClientPolicy;
 
@@ -153,6 +154,7 @@ public final class AwsTagsRealProbe {
 	private static String join(String region, String tagKey, String tagValue, int expectedNodes, String namespace,
 		int refreshes) throws InterruptedException {
 		ClientPolicy policy = new ClientPolicy();
+		policy.discoveryExecutionMode = DiscoveryExecutionMode.THREAD;
 		policy.discoveryRefreshInterval = policy.tendInterval;
 		policy.seedCandidateProvider = provider(region, tagKey, tagValue);
 		Json json = new Json().field("mode", "join");

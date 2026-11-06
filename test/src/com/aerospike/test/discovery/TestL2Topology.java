@@ -37,7 +37,9 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.atomic.AtomicReferenceArray;
 
@@ -53,11 +55,13 @@ import com.aerospike.client.Info;
 import com.aerospike.client.Key;
 import com.aerospike.client.Log;
 import com.aerospike.client.Record;
+import com.aerospike.client.ResultCode;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.Node;
 import com.aerospike.client.cluster.Partition;
 import com.aerospike.client.cluster.Partitions;
 import com.aerospike.client.discovery.AddressTranslator;
+import com.aerospike.client.discovery.DiscoveryExecutionMode;
 import com.aerospike.client.discovery.DnsSeedCandidateProvider;
 import com.aerospike.client.discovery.DnsSeedCandidateProvider.RecordType;
 import com.aerospike.client.discovery.Endpoint;
@@ -88,6 +92,9 @@ public class TestL2Topology extends TestBase {
 	private static final String NODE_CONTROL_BLOCKER = "N-11 needs DISCOVERY_CONTROL_DIR so the host can start a " +
 		"fourth node (run_l2.sh L2_NODE_CONTROL=1, or the discovery-l2 workflow)";
 	private static final int REFRESH_INTERVAL = 600000;
+	private static final int STARTUP_TIMEOUT = 500;
+	private static final int SLOW_FIRST_MS = 3000;
+	private static final int CLOSE_REFRESH_MS = 1500;
 	private static final int MISS_KEY_COUNT = 200;
 	static final List<String> warnings = new CopyOnWriteArrayList<>();
 	static final List<String> errors = new CopyOnWriteArrayList<>();
@@ -96,6 +103,7 @@ public class TestL2Topology extends TestBase {
 	private final List<String> disabledProxies = new ArrayList<>();
 	private String addedProxy;
 	private String addedNode;
+	private final List<BlockingSeedProvider> blockingProviders = new ArrayList<>();
 
 	public static final class EmptyTranslator implements AddressTranslator {
 		@Override
@@ -136,9 +144,83 @@ public class TestL2Topology extends TestBase {
 		}
 	}
 
+	/**
+	 * Seed provider that returns fixed seeds and records the time and thread of every call. From call
+	 * {@code slowFrom} on, a call sleeps {@code sleepMillis}, or with 0 blocks until released or 60 s pass.
+	 */
+	static final class BlockingSeedProvider implements SeedCandidateProvider {
+		final List<Long> calls = new CopyOnWriteArrayList<>();
+		final List<String> threads = new CopyOnWriteArrayList<>();
+		final AtomicInteger returned = new AtomicInteger();
+		final CountDownLatch release = new CountDownLatch(1);
+		private final List<Host> seeds;
+		private final int slowFrom;
+		private final long sleepMillis;
+
+		BlockingSeedProvider(int slowFrom, long sleepMillis, Host... seeds) {
+			this.seeds = List.of(seeds);
+			this.slowFrom = slowFrom;
+			this.sleepMillis = sleepMillis;
+		}
+
+		@Override
+		public List<Host> refreshSeedCandidates(SeedCandidateContext ctx) {
+			calls.add(System.nanoTime());
+			threads.add(Thread.currentThread().getName());
+
+			try {
+				if (calls.size() >= slowFrom) {
+					if (sleepMillis > 0) {
+						Thread.sleep(sleepMillis);
+					}
+					else {
+						release.await(60, TimeUnit.SECONDS);
+					}
+				}
+				return seeds;
+			}
+			catch (InterruptedException e) {
+				throw new IllegalStateException(e);
+			}
+			finally {
+				returned.incrementAndGet();
+			}
+		}
+
+		@Override
+		public boolean needsPeriodicRefresh() {
+			return true;
+		}
+
+		@Override
+		public boolean supportsDeadline() {
+			return true;
+		}
+	}
+
+	private BlockingSeedProvider blocking(int slowFrom, long sleepMillis, Host... seeds) {
+		BlockingSeedProvider provider = new BlockingSeedProvider(slowFrom, sleepMillis, seeds);
+		blockingProviders.add(provider);
+		return provider;
+	}
+
+	private static ClientPolicy threadPolicy(SeedCandidateProvider provider, int refreshInterval) {
+		ClientPolicy policy = L2Topology.policy();
+		policy.discoveryExecutionMode = DiscoveryExecutionMode.THREAD;
+		policy.discoveryRefreshInterval = refreshInterval;
+		policy.seedCandidateProvider = provider;
+		policy.addressTranslator = new PortMapAddressTranslator(L2Topology.portMapByEndpoint(L2Topology.nodes()));
+		return policy;
+	}
+
 	@After
 	public void restore() throws Exception {
 		Log.setCallback(null);
+
+		for (BlockingSeedProvider provider : blockingProviders) {
+			provider.release.countDown();
+		}
+		blockingProviders.clear();
 
 		if (disabledProxy != null) {
 			L2Topology.setListener(disabledProxy, true);
@@ -237,6 +319,7 @@ public class TestL2Topology extends TestBase {
 		skipUnless(! L2Topology.dnsServer.isEmpty(), DNS_BLOCKER);
 
 		ClientPolicy policy = L2Topology.policy();
+		policy.discoveryExecutionMode = DiscoveryExecutionMode.THREAD;
 		policy.seedCandidateProvider = DnsSeedCandidateProvider.builder()
 			.names("_aerospike._tcp." + L2Topology.host)
 			.recordType(RecordType.SRV)
@@ -624,16 +707,17 @@ public class TestL2Topology extends TestBase {
 	}
 
 	/**
-	 * N-12: re-seed on zero active nodes. With every listener disabled the client drops to zero
-	 * nodes; once they are enabled again it re-seeds from the seeds it holds within 2 x
+	 * N-12, execution mode tend: re-seed on zero active nodes. With every listener disabled the client
+	 * drops to zero nodes; once they are enabled again it re-seeds from the seeds it holds within 2 x
 	 * tend_interval plus the connect timeout, without a seed provider refresh, and the partition
 	 * map is complete again.
 	 */
 	@Test
-	public void n12ReseedOnZeroActiveNodes() throws Exception {
+	public void n12ReseedOnZeroActiveNodesTend() throws Exception {
 		List<L2Node> nodes = L2Topology.nodes();
 		CountingSeedProvider provider = new CountingSeedProvider(L2Topology.seed());
 		ClientPolicy policy = L2Topology.policy();
+		policy.discoveryExecutionMode = DiscoveryExecutionMode.TEND;
 		policy.seedCandidateProvider = provider;
 		policy.discoveryRefreshInterval = REFRESH_INTERVAL;
 		policy.addressTranslator = new PortMapAddressTranslator(L2Topology.portMapByEndpoint(nodes));
@@ -674,6 +758,266 @@ public class TestL2Topology extends TestBase {
 			L2Topology.waitNodes(client, L2Topology.nodeNames());
 			L2Topology.assertAllPartitionsOwned("N-12-after", client);
 		}
+	}
+
+	/**
+	 * N-12, execution mode thread: the zero-node outage makes exactly one urgent refresh on the
+	 * discovery thread, and the re-seed from the seeds the client holds still lands within 2 x
+	 * tend_interval plus the connect timeout. The partition map is complete again.
+	 */
+	@Test
+	public void n12ReseedOnZeroActiveNodesThread() throws Exception {
+		CountingSeedProvider provider = new CountingSeedProvider(L2Topology.seed());
+		ClientPolicy policy = threadPolicy(provider, REFRESH_INTERVAL);
+
+		try (AerospikeClient client = new AerospikeClient(policy)) {
+			L2Topology.waitNodes(client, L2Topology.nodeNames());
+			L2Topology.assertAllPartitionsOwned("N-12-thread-before", client);
+			assertEquals(1, provider.calls.size());
+			long disable = System.nanoTime();
+
+			for (String proxy : L2Topology.proxyPorts.keySet()) {
+				disabledProxies.add(proxy);
+				L2Topology.setListener(proxy, false);
+			}
+			assertTrue("Client kept nodes " + L2Topology.nodeNames(client) + " with every listener disabled",
+				L2Topology.waitFor(() -> client.getNodes().length == 0));
+			assertTrue("No urgent refresh while the client had zero nodes",
+				L2Topology.waitFor(() -> provider.calls.size() >= 2));
+
+			long reenable = System.nanoTime();
+
+			for (String proxy : L2Topology.proxyPorts.keySet()) {
+				L2Topology.setListener(proxy, true);
+			}
+			disabledProxies.clear();
+
+			assertTrue("Client did not re-seed", L2Topology.waitFor(() -> client.getNodes().length > 0, 5));
+			long reseeded = System.nanoTime();
+			long elapsed = TimeUnit.NANOSECONDS.toMillis(reseeded - reenable);
+			long budget = 2L * policy.tendInterval + policy.timeout;
+			long urgent = provider.callsBetween(disable, reseeded);
+
+			System.out.println("L2-N12-THREAD-RESEED reenableToFirstNodeMs=" + elapsed + " tendInterval=" +
+				policy.tendInterval + " connectTimeout=" + policy.timeout + " budgetMs=" + budget +
+				" urgentRefreshesInOutage=" + urgent + " refreshCalls=" + provider.calls.size() + " nodes=" +
+				L2Topology.nodeNames(client));
+			assertEquals(1, urgent);
+			assertTrue("Re-seeded " + elapsed + "ms after re-enable, budget " + budget + "ms", elapsed <= budget);
+
+			L2Topology.waitNodes(client, L2Topology.nodeNames());
+			L2Topology.assertAllPartitionsOwned("N-12-thread-after", client);
+			assertEquals(2, provider.calls.size());
+		}
+	}
+
+	/**
+	 * Execution mode thread never blocks tend: with the next refresh blocked for up to 60 s on the
+	 * discovery thread, commands keep succeeding, and tend keeps refreshing nodes, so a node whose
+	 * listener is disabled reaches the 5 consecutive tend failures that drop a node within the
+	 * bound the node-loss rows wait. Its peers still list it, so the client keeps it in the node list
+	 * while other nodes answer, in either mode.
+	 */
+	@Test
+	public void threadModeBlockedProviderNeverBlocksTend() throws Exception {
+		List<L2Node> nodes = L2Topology.nodes();
+		L2Node victim = nodes.get(nodes.size() - 1);
+		BlockingSeedProvider provider = blocking(2, 0, L2Topology.seed());
+		ClientPolicy policy = threadPolicy(provider, L2Topology.TEND_INTERVAL);
+
+		try (AerospikeClient client = new AerospikeClient(policy)) {
+			L2Topology.waitNodes(client, L2Topology.nodeNames());
+			Node[] masters = L2Topology.assertAllPartitionsOwned("thread-blocked-before", client);
+			assertTrue("Refresh not in flight", L2Topology.waitFor(() -> provider.calls.size() == 2));
+
+			WritePolicy wp = client.copyWritePolicyDefault();
+			wp.maxRetries = 0;
+			wp.totalTimeout = 2000;
+			List<Key> victimKeys = new ArrayList<>();
+			List<Key> otherKeys = new ArrayList<>();
+
+			for (int i = 0; i < KEY_COUNT; i++) {
+				Key key = new Key(L2Topology.namespace, SET, "blocked-" + i);
+				Node owner = masters[Partition.getPartitionId(key.digest)];
+				(owner.getName().equals(victim.name) ? victimKeys : otherKeys).add(key);
+				client.put(wp, key, new Bin("v", i));
+				assertEquals(i, client.get(null, key).getInt("v"));
+			}
+			assertFalse(victimKeys.isEmpty());
+
+			Node victimNode = client.getCluster().getNode(victim.name);
+			disabledProxy = victim.proxy;
+			L2Topology.setListener(victim.proxy, false);
+			long disabled = System.nanoTime();
+
+			assertTrue("Tend did not fail " + victim.name + " 5 times while the refresh was blocked",
+				L2Topology.waitFor(() -> ClusterInternals.failures(victimNode) >= 5));
+			long failedMs = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - disabled);
+			assertTrue("Writes to " + victim.name + " still succeed with its listener disabled",
+				L2Topology.waitFor(() -> ! writes(client, wp, victimKeys.get(0))));
+
+			for (Key key : otherKeys) {
+				client.put(wp, key, new Bin("v", 1));
+				assertEquals(1, client.get(null, key).getInt("v"));
+			}
+
+			System.out.println("L2-THREAD-BLOCKED victim=" + victim.name + " fiveTendFailuresMs=" + failedMs +
+				" failures=" + ClusterInternals.failures(victimNode) + " otherKeysServed=" + otherKeys.size() +
+				" refreshCalls=" + provider.calls.size() + " refreshesReturned=" + provider.returned.get() +
+				" providerThreads=" + new HashSet<>(provider.threads));
+			assertEquals(2, provider.calls.size());
+			assertEquals(1, provider.returned.get());
+			assertEquals(Set.of("discovery"), new HashSet<>(provider.threads));
+
+			L2Topology.setListener(victim.proxy, true);
+			disabledProxy = null;
+			assertTrue("Writes to " + victim.name + " did not recover",
+				L2Topology.waitFor(() -> victimKeys.stream().allMatch(key -> writes(client, wp, key))));
+			L2Topology.assertAllPartitionsOwned("thread-blocked-after", client);
+			assertEquals(1, provider.returned.get());
+		}
+	}
+
+	/**
+	 * Execution mode thread, re-seed during a refresh in flight: with the next refresh blocked on
+	 * the discovery thread and every listener disabled until the client has zero nodes, the client
+	 * re-seeds within the N-12 budget once they are enabled again, while the refresh is still blocked.
+	 */
+	@Test
+	public void threadModeReseedDuringRefreshInFlight() throws Exception {
+		BlockingSeedProvider provider = blocking(2, 0, L2Topology.seed());
+		ClientPolicy policy = threadPolicy(provider, L2Topology.TEND_INTERVAL);
+
+		try (AerospikeClient client = new AerospikeClient(policy)) {
+			L2Topology.waitNodes(client, L2Topology.nodeNames());
+			assertTrue("Refresh not in flight", L2Topology.waitFor(() -> provider.calls.size() == 2));
+
+			for (String proxy : L2Topology.proxyPorts.keySet()) {
+				disabledProxies.add(proxy);
+				L2Topology.setListener(proxy, false);
+			}
+			assertTrue("Client kept nodes " + L2Topology.nodeNames(client) + " with every listener disabled",
+				L2Topology.waitFor(() -> client.getNodes().length == 0));
+
+			long reenable = System.nanoTime();
+
+			for (String proxy : L2Topology.proxyPorts.keySet()) {
+				L2Topology.setListener(proxy, true);
+			}
+			disabledProxies.clear();
+
+			assertTrue("Client did not re-seed", L2Topology.waitFor(() -> client.getNodes().length > 0, 5));
+			long elapsed = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - reenable);
+			long budget = 2L * policy.tendInterval + policy.timeout;
+
+			System.out.println("L2-THREAD-RESEED-IN-FLIGHT reenableToFirstNodeMs=" + elapsed + " budgetMs=" + budget +
+				" refreshCalls=" + provider.calls.size() + " refreshesReturned=" + provider.returned.get());
+			assertEquals(1, provider.returned.get());
+			assertTrue("Re-seeded " + elapsed + "ms after re-enable, budget " + budget + "ms", elapsed <= budget);
+
+			L2Topology.waitNodes(client, L2Topology.nodeNames());
+			L2Topology.assertAllPartitionsOwned("thread-reseed-in-flight", client);
+			assertEquals(1, provider.returned.get());
+		}
+	}
+
+	/**
+	 * Execution mode thread, startup wait: a first refresh slower than refresh_timeout_ms with a
+	 * usable fallback seed connects within refresh_timeout_ms plus the connect timeout, and the late
+	 * first result is published to the seed list.
+	 */
+	@Test
+	public void threadModeSlowFirstRefreshUsesFallbackSeed() throws Exception {
+		Host late = new Host(L2Topology.host, L2Topology.ports.get(1));
+		BlockingSeedProvider provider = blocking(1, SLOW_FIRST_MS, late);
+		ClientPolicy policy = threadPolicy(provider, REFRESH_INTERVAL);
+		policy.discoveryRefreshTimeout = STARTUP_TIMEOUT;
+		Host seed = L2Topology.seed();
+
+		long begin = System.nanoTime();
+
+		try (AerospikeClient client = new AerospikeClient(policy, seed)) {
+			long elapsed = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - begin);
+			long budget = (long)STARTUP_TIMEOUT + policy.timeout;
+			Host[] fallback = ClusterInternals.seeds(client);
+			int nodes = client.getNodes().length;
+			int returned = provider.returned.get();
+			assertTrue("Constructed in " + elapsed + "ms, budget " + budget + "ms", elapsed <= budget);
+
+			assertTrue("Late first result not published",
+				L2Topology.waitFor(() -> List.of(seed, late).equals(List.of(ClusterInternals.seeds(client)))));
+			System.out.println("L2-THREAD-STARTUP constructedMs=" + elapsed + " budgetMs=" + budget + " nodes=" + nodes +
+				" seedsAtConstruction=" + List.of(fallback) + " seedsAfterLateRefresh=" + List.of(ClusterInternals.seeds(client)));
+			assertTrue(nodes > 0);
+			assertEquals(0, returned);
+			assertEquals(seed, fallback[0]);
+			assertFalse(List.of(fallback).contains(late));
+
+			L2Topology.waitNodes(client, L2Topology.nodeNames());
+			L2Topology.assertAllPartitionsOwned("thread-startup", client);
+		}
+	}
+
+	/**
+	 * Execution mode thread, startup wait without a fallback seed: construction fails with
+	 * SEED_DISCOVERY_FAILED within refresh_timeout_ms plus the connect timeout.
+	 */
+	@Test
+	public void threadModeSlowFirstRefreshWithoutFallbackFails() throws Exception {
+		BlockingSeedProvider provider = blocking(1, SLOW_FIRST_MS, L2Topology.seed());
+		ClientPolicy policy = threadPolicy(provider, REFRESH_INTERVAL);
+		policy.discoveryRefreshTimeout = STARTUP_TIMEOUT;
+
+		long begin = System.nanoTime();
+		AerospikeException ae = assertThrows(AerospikeException.class, () -> new AerospikeClient(policy).close());
+		long elapsed = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - begin);
+		long budget = (long)STARTUP_TIMEOUT + policy.timeout;
+
+		System.out.println("L2-THREAD-STARTUP-FAILED failedMs=" + elapsed + " budgetMs=" + budget + ' ' + ae.getMessage());
+		assertEquals(ResultCode.SEED_DISCOVERY_FAILED, ae.getResultCode());
+		assertTrue("Failed after " + elapsed + "ms, budget " + budget + "ms", elapsed <= budget);
+		assertTrue(L2Topology.waitFor(() -> provider.returned.get() == 1));
+	}
+
+	/**
+	 * Execution mode thread, close during a refresh in flight: once the refresh returns, no
+	 * discovery thread is left.
+	 */
+	@Test
+	public void threadModeCloseDuringRefreshInFlight() throws Exception {
+		BlockingSeedProvider provider = blocking(2, CLOSE_REFRESH_MS, L2Topology.seed());
+		ClientPolicy policy = threadPolicy(provider, L2Topology.TEND_INTERVAL);
+		policy.discoveryRefreshTimeout = STARTUP_TIMEOUT;
+
+		Set<Thread> before = Thread.getAllStackTraces().keySet();
+		AerospikeClient client = new AerospikeClient(policy);
+		L2Topology.waitNodes(client, L2Topology.nodeNames());
+		assertTrue("Refresh not in flight", L2Topology.waitFor(() -> provider.calls.size() == 2));
+
+		long begin = System.nanoTime();
+		client.close();
+		long closeMs = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - begin);
+		int returnedAtClose = provider.returned.get();
+
+		assertTrue("Refresh did not return", L2Topology.waitFor(() -> provider.returned.get() == 2));
+		assertTrue("Discovery thread left after close: " + discoveryThreads(before),
+			L2Topology.waitFor(() -> discoveryThreads(before).isEmpty()));
+		System.out.println("L2-THREAD-CLOSE closeMs=" + closeMs + " refreshTimeout=" + STARTUP_TIMEOUT +
+			" refreshMs=" + CLOSE_REFRESH_MS + " refreshesReturnedAtClose=" + returnedAtClose + " refreshCalls=" +
+			provider.calls.size());
+		assertEquals(1, returnedAtClose);
+		assertEquals(2, provider.calls.size());
+	}
+
+	private static List<Thread> discoveryThreads(Set<Thread> before) {
+		List<Thread> list = new ArrayList<>();
+
+		for (Thread thread : Thread.getAllStackTraces().keySet()) {
+			if (! before.contains(thread) && thread.isAlive() && thread.getName().equals("discovery")) {
+				list.add(thread);
+			}
+		}
+		return list;
 	}
 
 	/**

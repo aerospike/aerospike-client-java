@@ -217,8 +217,9 @@ static:
       "$PRIVATE_B": "$HOST_B"
     discovery:
       provider: aws-tags
+      execution_mode: thread
       refresh_interval_ms: 1000
-      tend_refresh_deadline_ms: 50
+      refresh_timeout_ms: 50
       aws:
         region: $REGION
         filters:
