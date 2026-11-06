@@ -22,6 +22,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -154,8 +155,10 @@ public class TestL2PortMapRange extends TestBase {
 		strict.addressTranslator = new PortMapAddressTranslator(portMap);
 		strict.translationOnMiss = TranslationMissMode.STRICT;
 		TestL2Topology.captureWarnings();
+		Set<Thread> strictTend = tendThreads();
 
 		try (AerospikeClient client = new AerospikeClient(strict, L2Topology.seed())) {
+			strictTend = difference(tendThreads(), strictTend);
 			L2Topology.waitFor(() -> {
 				assertEquals(names, L2Topology.nodeNames(client));
 				return misses(name).size() >= MISS_RETRIES;
@@ -171,6 +174,12 @@ public class TestL2PortMapRange extends TestBase {
 			System.out.println("L2-N19-STRICT-LOG " + message);
 			Endpoint endpoint = new Endpoint(name, null, address, servicePort(nodes), Endpoint.SourceList.STANDARD);
 			assertEquals(new AerospikeException.TranslationMiss(endpoint, "port-map").getMessage(), message);
+		}
+
+		// Close does not wait for tend, which can still log a strict miss into the next capture.
+		for (Thread thread : strictTend) {
+			thread.join(10000);
+			assertFalse("Strict client tend thread still running after close", thread.isAlive());
 		}
 
 		ClientPolicy passThrough = L2Topology.policy();
@@ -262,6 +271,23 @@ public class TestL2PortMapRange extends TestBase {
 			}
 		}
 		return list;
+	}
+
+	private static Set<Thread> tendThreads() {
+		Set<Thread> set = new HashSet<>();
+
+		for (Thread thread : Thread.getAllStackTraces().keySet()) {
+			if (thread.getName().equals("tend")) {
+				set.add(thread);
+			}
+		}
+		return set;
+	}
+
+	private static Set<Thread> difference(Set<Thread> after, Set<Thread> before) {
+		Set<Thread> set = new HashSet<>(after);
+		set.removeAll(before);
+		return set;
 	}
 
 	private static List<String> attempts(String tried) {
