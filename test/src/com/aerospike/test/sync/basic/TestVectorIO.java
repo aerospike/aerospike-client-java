@@ -77,6 +77,21 @@ public class TestVectorIO extends TestSync {
 	}
 
 	@Test
+	public void putGetFloat16FromFloat() {
+		Key key = new Key(args.namespace, args.set, "veckey16f");
+		client.delete(null, key);
+		client.put(null, key, new Bin(binName, Vector.ofFloat16(new float[] {0.1f, -3.75f, 65504.0f})));
+
+		Record record = client.get(null, key);
+		assertRecordFound(key, record);
+
+		Vector stored = record.getVector(binName);
+		assertArrayEquals(new short[] {0x2e66, (short)0xc380, 0x7bff}, stored.getFloat16Data());
+		assertArrayEquals(new float[] {0.0999755859375f, -3.75f, 65504.0f},
+			stored.getFloat16DataAsFloat(), 0.0f);
+	}
+
+	@Test
 	public void putGetInt32() {
 		putGetRoundTrip("veckey32i", Vector.ofInt32(new int[] {-5, 0, 7, 12345}));
 	}
