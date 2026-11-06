@@ -68,10 +68,13 @@ import com.aerospike.client.Log;
  * {@code jdk.naming.dns}). All I/O of one refresh is bounded by {@link Builder#timeout}, and the
  * provider starts no thread.
  * <p>
- * The provider needs periodic refresh and runs on the cluster tend thread, so {@link Builder#timeout}
- * must not exceed {@link com.aerospike.client.policy.ClientPolicy#discoveryTendRefreshDeadline};
- * client construction fails otherwise. With the default deadline of 100ms, only a local resolver
- * answers reliably in time.
+ * The provider needs periodic refresh and runs in either
+ * {@link com.aerospike.client.policy.ClientPolicy#discoveryExecutionMode}. {@link Builder#timeout}
+ * must not exceed {@link com.aerospike.client.policy.ClientPolicy#discoveryRefreshTimeout} in
+ * {@link DiscoveryExecutionMode#THREAD} mode, or
+ * {@link com.aerospike.client.policy.ClientPolicy#discoveryTendRefreshDeadline} in
+ * {@link DiscoveryExecutionMode#TEND} mode; client construction fails otherwise. With the default
+ * tend deadline of 100ms, only a local resolver answers reliably in time.
  * <p>
  * Failure: when some names resolve, their hosts are returned and each failed name is logged at
  * warning level. When every name fails (NXDOMAIN, SERVFAIL, timeout or an empty answer), the refresh
@@ -678,8 +681,9 @@ public final class DnsSeedCandidateProvider implements SeedCandidateProvider {
 		/**
 		 * Total time in milliseconds for one refresh, across every name, record type, SRV target
 		 * and resolver. Must be greater than zero, and must not exceed
-		 * {@link com.aerospike.client.policy.ClientPolicy#discoveryTendRefreshDeadline}; the
-		 * latter is checked at client construction.
+		 * {@link com.aerospike.client.policy.ClientPolicy#discoveryRefreshTimeout} in thread mode or
+		 * {@link com.aerospike.client.policy.ClientPolicy#discoveryTendRefreshDeadline} in tend
+		 * mode; the latter is checked at client construction.
 		 * <p>
 		 * Default: {@link DnsSeedCandidateProvider#DEFAULT_TIMEOUT}
 		 */

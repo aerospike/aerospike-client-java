@@ -17,6 +17,7 @@
 
 package com.aerospike.client.configuration.serializers.staticconfig;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -25,6 +26,7 @@ import com.aerospike.client.AerospikeException;
 import com.aerospike.client.configuration.primitiveprops.IntProperty;
 import com.aerospike.client.configuration.primitiveprops.StringProperty;
 import com.aerospike.client.discovery.AwsEc2TagSeedCandidateProvider;
+import com.aerospike.client.discovery.DiscoveryExecutionMode;
 import com.aerospike.client.discovery.DnsSeedCandidateProvider;
 import com.aerospike.client.discovery.SeedMergePolicy;
 
@@ -49,6 +51,7 @@ public class StaticDiscoveryConfig {
 
     private static final String AWS = "aws";
     private static final List<String> MERGE_POLICIES = List.of("merge", "replace", "discovery_only");
+    private static final List<String> EXECUTION_MODES = Arrays.asList("thread", "tend");
     private static final List<String> RECORD_TYPES = List.of("a", "srv");
     private static final List<String> ADDRESS_FIELDS = List.of("private_ip", "public_ip", "private_dns", "public_dns");
 
@@ -84,9 +87,19 @@ public class StaticDiscoveryConfig {
     public SeedMergePolicy mergePolicy;
 
     /**
+     * {@code execution_mode}: {@code thread} or {@code tend}.
+     */
+    public DiscoveryExecutionMode executionMode;
+
+    /**
      * {@code refresh_interval_ms}.
      */
     public IntProperty refreshIntervalMs;
+
+    /**
+     * {@code refresh_timeout_ms}.
+     */
+    public IntProperty refreshTimeoutMs;
 
     /**
      * {@code tend_refresh_deadline_ms}.
@@ -100,14 +113,6 @@ public class StaticDiscoveryConfig {
      */
     StaticDiscoveryConfig(Object block) {
         Map<?,?> map = YamlValues.block(PATH, block);
-
-        for (String key : List.of("execution_mode", "refresh_timeout_ms")) {
-            if (map.containsKey(key)) {
-                throw new AerospikeException(PATH + '.' + key + " is not supported: the Java client runs " +
-                    "discovery on the tend thread only");
-            }
-        }
-
         Object value = map.get("provider");
 
         if (value != null) {
@@ -151,10 +156,23 @@ public class StaticDiscoveryConfig {
             mergePolicy = SeedMergePolicy.valueOf(name.toUpperCase(Locale.ROOT));
         }
 
+        value = map.get("execution_mode");
+
+        if (value != null) {
+            String name = YamlValues.enumValue(PATH + ".execution_mode", value, EXECUTION_MODES);
+            executionMode = DiscoveryExecutionMode.valueOf(name.toUpperCase(Locale.ROOT));
+        }
+
         value = map.get("refresh_interval_ms");
 
         if (value != null) {
             refreshIntervalMs = new IntProperty(YamlValues.intValue(PATH + ".refresh_interval_ms", value));
+        }
+
+        value = map.get("refresh_timeout_ms");
+
+        if (value != null) {
+            refreshTimeoutMs = new IntProperty(YamlValues.intValue(PATH + ".refresh_timeout_ms", value));
         }
 
         value = map.get("tend_refresh_deadline_ms");
@@ -289,7 +307,9 @@ public class StaticDiscoveryConfig {
     public String toString() {
         return "{ provider=" + ((provider != null)? provider.value : null) +
             ", merge_policy=" + mergePolicy +
+            ", execution_mode=" + executionMode +
             ", refresh_interval_ms=" + ((refreshIntervalMs != null)? refreshIntervalMs.value : null) +
+            ", refresh_timeout_ms=" + ((refreshTimeoutMs != null)? refreshTimeoutMs.value : null) +
             ", tend_refresh_deadline_ms=" + ((tendRefreshDeadlineMs != null)? tendRefreshDeadlineMs.value : null) + " }";
     }
 }

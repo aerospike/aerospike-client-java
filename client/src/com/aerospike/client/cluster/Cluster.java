@@ -60,7 +60,6 @@ import com.aerospike.client.discovery.AddressTranslator;
 import com.aerospike.client.discovery.Endpoint;
 import com.aerospike.client.discovery.PassThroughAddressTranslator;
 import com.aerospike.client.discovery.PortMapAddressTranslator;
-import com.aerospike.client.discovery.SeedCandidateContext;
 import com.aerospike.client.discovery.SeedCandidateProvider;
 import com.aerospike.client.discovery.StaticMapAddressTranslator;
 import com.aerospike.client.discovery.StaticSeedCandidateProvider;
@@ -270,44 +269,11 @@ public class Cluster implements Runnable, Closeable {
 		// The default translator is the legacy ipMap, which misses unmapped hosts by design.
 		this.translationMisses = (policy.addressTranslator != null)? new ConcurrentHashMap<>() : null;
 
-		Host[] discovered;
-		Throwable discoveryError = null;
-
-		try {
-			SeedCandidateContext ctx = new SeedCandidateContext(clusterName, hosts, 0);
-			discovered = seedCandidateProvider.refreshSeedCandidates(ctx).toArray(new Host[0]);
-		}
-		catch (Throwable e) {
-			discoveryError = e;
-			discovered = new Host[0];
-
-			if (Log.warnEnabled()) {
-				Log.warn("Seed candidate provider " + SeedRefresher.providerName(seedCandidateProvider) +
-					" failed: " + Util.getErrorMessage(e));
-			}
-		}
-
 		this.seedRefresher = new SeedRefresher(seedCandidateProvider, policy, hosts, this::setSeeds);
-		hosts = seedRefresher.merge(discovered, true);
 
-		if (discoveryError != null && hosts.length == 0) {
-			throw new AerospikeException(ResultCode.SEED_DISCOVERY_FAILED, "Seed candidate provider " +
-				SeedRefresher.providerName(seedCandidateProvider) + " failed and no seed host is left: " +
-				discoveryError, discoveryError);
+		if (tlsPolicy == null && (authMode == AuthMode.EXTERNAL || authMode == AuthMode.PKI)) {
+			throw new AerospikeException("TLS is required for authentication mode: " + authMode);
 		}
-
-		// Default TLS names when TLS enabled.
-		if (tlsPolicy != null) {
-			defaultTlsNames(hosts);
-		}
-		else {
-			if (authMode == AuthMode.EXTERNAL || authMode == AuthMode.PKI) {
-				throw new AerospikeException("TLS is required for authentication mode: " + authMode);
-			}
-		}
-
-		this.seeds = hosts;
-		seedRefresher.start(hosts);
 
 		if (policy.authMode == AuthMode.PKI) {
 			if (policy.password != null) {
@@ -425,19 +391,35 @@ public class Cluster implements Runnable, Closeable {
 			nettyTlsContext = null;
 		}
 
-		if (policy.forceSingleNode) {
-			// Communicate with the first seed node only.
-			// Do not run cluster tend thread.
-			try {
-				forceSingleNode();
+		try {
+			hosts = seedRefresher.discover();
+
+			// Default TLS names when TLS enabled.
+			if (tlsPolicy != null) {
+				defaultTlsNames(hosts);
 			}
-			catch (Throwable e) {
-				close();
-				throw e;
+
+			this.seeds = hosts;
+			seedRefresher.start(hosts);
+
+			if (policy.forceSingleNode) {
+				// Communicate with the first seed node only.
+				// Do not run cluster tend thread.
+				try {
+					forceSingleNode();
+				}
+				catch (Throwable e) {
+					close();
+					throw e;
+				}
+			}
+			else {
+				initTendThread(policy.failIfNotConnected);
 			}
 		}
-		else {
-			initTendThread(policy.failIfNotConnected);
+		catch (Throwable e) {
+			seedRefresher.abort();
+			throw e;
 		}
 	}
 
@@ -781,6 +763,9 @@ public class Cluster implements Runnable, Closeable {
 
 		// If active nodes don't exist, seed cluster.
 		if (nodes.length == 0) {
+			if (! isInit) {
+				seedRefresher.requestRefresh();
+			}
 			seedNode(peers, failIfNotConnected);
 
 			// Abort cluster init if all peers of the seed are not reachable and failIfNotConnected is true.
@@ -1852,13 +1837,14 @@ public class Cluster implements Runnable, Closeable {
 		}
 
 		// The tend thread closes the seed provider on exit, so close it here only if it never ran.
+		// A discovery thread is stopped here, so close waits for its refresh in flight.
 		boolean tendRunning = tendThread != null && tendThread.isAlive();
 
 		// Stop cluster tend thread.
 		tendValid = false;
 		tendThread.interrupt();
 
-		if (! tendRunning) {
+		if (! tendRunning || seedRefresher.isThreaded()) {
 			seedRefresher.close();
 		}
 

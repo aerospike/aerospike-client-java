@@ -36,6 +36,7 @@ import org.junit.Test;
 import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.Host;
 import com.aerospike.client.Log;
+import com.aerospike.client.discovery.DiscoveryExecutionMode;
 import com.aerospike.client.discovery.SeedMergePolicy;
 import com.aerospike.client.policy.ClientPolicy;
 import com.aerospike.client.policy.TlsPolicy;
@@ -64,6 +65,7 @@ public class SeedMergePolicyTest {
 
 	private SeedRefresher create(SeedMergePolicy mergePolicy, TestSeedProvider provider, Host[] staticSeeds) {
 		ClientPolicy policy = new ClientPolicy();
+		policy.discoveryExecutionMode = DiscoveryExecutionMode.TEND;
 		policy.discoveryMergePolicy = mergePolicy;
 		policy.discoveryRefreshInterval = 1000;
 		policy.discoveryTendRefreshDeadline = 20;
@@ -83,6 +85,7 @@ public class SeedMergePolicyTest {
 	@Test
 	public void policyDefaultSetterAndCopy() {
 		ClientPolicy policy = new ClientPolicy();
+		policy.discoveryExecutionMode = DiscoveryExecutionMode.TEND;
 		assertEquals(SeedMergePolicy.MERGE, policy.discoveryMergePolicy);
 
 		policy.setDiscoveryMergePolicy(SeedMergePolicy.DISCOVERY_ONLY);
@@ -234,6 +237,7 @@ public class SeedMergePolicyTest {
 	public void mergeRunsOnlyWhenSnapshotPublished() {
 		TestSeedProvider provider = new TestSeedProvider(true, true, D1);
 		ClientPolicy policy = new ClientPolicy();
+		policy.discoveryExecutionMode = DiscoveryExecutionMode.TEND;
 		policy.discoveryRefreshInterval = 10000;
 		SeedRefresher r = new SeedRefresher(provider, policy, STATIC, hosts -> {
 			publishCount.incrementAndGet();
@@ -259,6 +263,7 @@ public class SeedMergePolicyTest {
 		for (SeedMergePolicy mergePolicy : SeedMergePolicy.values()) {
 			for (boolean tls : new boolean[] {false, true}) {
 				ClientPolicy policy = new ClientPolicy();
+				policy.discoveryExecutionMode = DiscoveryExecutionMode.TEND;
 				policy.failIfNotConnected = false;
 				policy.timeout = 100;
 				policy.discoveryMergePolicy = mergePolicy;
@@ -293,6 +298,7 @@ public class SeedMergePolicyTest {
 		TestSeedProvider provider = new TestSeedProvider(true, true);
 		provider.result = call -> (call == 1)? List.of(initDiscovered) : List.of(refreshed);
 		ClientPolicy policy = new ClientPolicy();
+		policy.discoveryExecutionMode = DiscoveryExecutionMode.TEND;
 		policy.failIfNotConnected = false;
 		policy.timeout = 100;
 		policy.tendInterval = 250;

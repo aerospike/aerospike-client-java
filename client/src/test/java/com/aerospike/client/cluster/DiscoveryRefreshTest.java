@@ -40,6 +40,7 @@ import org.junit.Test;
 import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Host;
+import com.aerospike.client.discovery.DiscoveryExecutionMode;
 import com.aerospike.client.discovery.SeedCandidateProvider;
 import com.aerospike.client.discovery.StaticSeedCandidateProvider;
 import com.aerospike.client.policy.ClientPolicy;
@@ -51,6 +52,7 @@ public class DiscoveryRefreshTest {
 
 	private static ClientPolicy policy(SeedCandidateProvider provider) {
 		ClientPolicy policy = new ClientPolicy();
+		policy.discoveryExecutionMode = DiscoveryExecutionMode.TEND;
 		policy.failIfNotConnected = false;
 		policy.timeout = 100;
 		policy.tendInterval = 250;
@@ -264,6 +266,7 @@ public class DiscoveryRefreshTest {
 		};
 
 		ClientPolicy refreshPolicy = new ClientPolicy();
+		refreshPolicy.discoveryExecutionMode = DiscoveryExecutionMode.TEND;
 		refreshPolicy.discoveryRefreshInterval = 1000;
 		refreshPolicy.discoveryTendRefreshDeadline = 60000;
 		SeedRefresher refresher = new SeedRefresher(provider, refreshPolicy, cluster::setSeeds);

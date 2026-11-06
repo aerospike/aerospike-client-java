@@ -84,17 +84,17 @@ import com.aerospike.client.configuration.serializers.staticconfig.StaticDiscove
  * are cached with their expiry and reloaded on the refreshing thread when they are within five
  * minutes of expiry, never on a timer.
  * <p>
- * Threads and deadlines: the Java client runs discovery on the cluster tend thread only. The
- * provider needs periodic refresh, so {@link Builder#timeout} must not exceed
- * {@link com.aerospike.client.policy.ClientPolicy#discoveryTendRefreshDeadline}; client
- * construction fails otherwise. Every connect and read of one tend refresh, credentials included,
- * is bounded by the time left of {@link Builder#timeout}, and the first refresh, which runs in the
- * client constructor, by {@link Builder#initTimeout}. Endpoint host names are resolved by the system
- * resolver, which the provider cannot bound. The provider starts no thread and uses no HTTP proxy.
- * For an in-region endpoint, the defaults ({@code timeout} 80ms, {@code discoveryTendRefreshDeadline}
- * 100ms) leave room for one call. An out-of-region endpoint, or a slow credential reload on tend,
- * overruns the deadline; after three consecutive overruns the client disables the provider and
- * restores the initial seeds.
+ * Threads and timeouts: a cold EC2 call takes several hundred milliseconds, more than the tend
+ * thread can give, so the provider runs only in
+ * {@link com.aerospike.client.policy.ClientPolicy#discoveryExecutionMode}
+ * {@link DiscoveryExecutionMode#THREAD}, on the client's discovery thread; client construction fails
+ * in {@link DiscoveryExecutionMode#TEND}. {@link Builder#timeout} must not exceed
+ * {@link com.aerospike.client.policy.ClientPolicy#discoveryRefreshTimeout}; client construction fails
+ * otherwise. Every connect and read of one refresh, credentials included, is bounded by the time left
+ * of {@link Builder#timeout}, and the first refresh, which also resolves the credential chain, by
+ * {@link Builder#initTimeout}. Client construction waits for the first refresh at most
+ * {@code discoveryRefreshTimeout}. Endpoint host names are resolved by the system resolver, which the
+ * provider cannot bound. The provider starts no thread and uses no HTTP proxy.
  * <p>
  * The provider sees only the instances of the credentials' own account, so it serves self-managed
  * clusters on EC2, not Aerospike Cloud.
@@ -223,10 +223,9 @@ public final class AwsEc2TagSeedCandidateProvider implements SeedCandidateProvid
 	/**
 	 * Source of credentials that replaces the built-in credential chain.
 	 * <p>
-	 * Called on the thread that refreshes the provider: the application thread that constructs the
-	 * client for the first refresh, then the cluster tend thread. It must return quickly, well within
-	 * {@link Builder#timeout}; an implementation that does I/O should cache. It may wrap the
-	 * application's own AWS SDK credentials provider, which caches and refreshes its credentials.
+	 * Called on the client's discovery thread, which refreshes the provider. It must return quickly,
+	 * well within {@link Builder#timeout}; an implementation that does I/O should cache. It may wrap
+	 * the application's own AWS SDK credentials provider, which caches and refreshes its credentials.
 	 * Credentials returned with an expiry are cached until five minutes before it; credentials without
 	 * one are used for the life of the provider.
 	 */
@@ -244,9 +243,9 @@ public final class AwsEc2TagSeedCandidateProvider implements SeedCandidateProvid
 	public static final int DEFAULT_PORT = 3000;
 
 	/**
-	 * Default tend refresh timeout in milliseconds.
+	 * Default refresh timeout in milliseconds.
 	 */
-	public static final int DEFAULT_TIMEOUT = 80;
+	public static final int DEFAULT_TIMEOUT = 2000;
 
 	/**
 	 * Default first refresh timeout in milliseconds.
@@ -541,7 +540,7 @@ public final class AwsEc2TagSeedCandidateProvider implements SeedCandidateProvid
 	}
 
 	/**
-	 * Return the total timeout in milliseconds for one tend refresh, credentials included.
+	 * Return the total timeout in milliseconds for one refresh, credentials included.
 	 */
 	public int getTimeout() {
 		return timeout;
@@ -570,12 +569,13 @@ public final class AwsEc2TagSeedCandidateProvider implements SeedCandidateProvid
 	}
 
 	/**
-	 * Return true. All I/O of one refresh is bounded by {@link #getTimeout()}, or
-	 * {@link #getInitTimeout()} for the first.
+	 * Return false. A cold EC2 call does not fit a tend refresh deadline, so the provider is not
+	 * eligible for {@link DiscoveryExecutionMode#TEND}. All I/O of one refresh is still bounded by
+	 * {@link #getTimeout()}, or {@link #getInitTimeout()} for the first.
 	 */
 	@Override
 	public boolean supportsDeadline() {
-		return true;
+		return false;
 	}
 
 	@Override
@@ -681,9 +681,9 @@ public final class AwsEc2TagSeedCandidateProvider implements SeedCandidateProvid
 		}
 
 		/**
-		 * Total time in milliseconds for one tend refresh, credentials and every page included. Must
-		 * be greater than zero, and must not exceed
-		 * {@link com.aerospike.client.policy.ClientPolicy#discoveryTendRefreshDeadline}; the latter is
+		 * Total time in milliseconds for one refresh, credentials and every page included. Must be
+		 * greater than zero, and must not exceed
+		 * {@link com.aerospike.client.policy.ClientPolicy#discoveryRefreshTimeout}; the latter is
 		 * checked at client construction.
 		 * <p>
 		 * Default: {@link AwsEc2TagSeedCandidateProvider#DEFAULT_TIMEOUT}
@@ -694,8 +694,10 @@ public final class AwsEc2TagSeedCandidateProvider implements SeedCandidateProvid
 		}
 
 		/**
-		 * Total time in milliseconds for the first refresh, which runs in the client constructor and
-		 * resolves the credential chain. Must be greater than zero.
+		 * Total time in milliseconds for the first refresh, which resolves the credential chain. Must
+		 * be greater than zero. Client construction waits for the first refresh at most
+		 * {@link com.aerospike.client.policy.ClientPolicy#discoveryRefreshTimeout}; a first refresh
+		 * that completes later still supplies the seeds for later re-seeds.
 		 * <p>
 		 * Default: {@link AwsEc2TagSeedCandidateProvider#DEFAULT_INIT_TIMEOUT}
 		 */

@@ -24,6 +24,7 @@ import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 import java.net.ServerSocket;
+import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicReference;
@@ -38,6 +39,7 @@ import com.aerospike.client.Host;
 import com.aerospike.client.Log;
 import com.aerospike.client.configuration.serializers.staticconfig.StaticDiscoveryConfig;
 import com.aerospike.client.discovery.AwsEc2TagSeedCandidateProvider;
+import com.aerospike.client.discovery.DiscoveryExecutionMode;
 import com.aerospike.client.discovery.StubAwsServer;
 import com.aerospike.client.discovery.StubAwsServer.Reply;
 import com.aerospike.client.policy.ClientPolicy;
@@ -83,19 +85,19 @@ public class AwsTagsSeedRefresherTest {
 	}
 
 	@Test
-	public void validateRejectsTimeoutAboveTendDeadline() {
+	public void validateRejectsTimeoutAboveRefreshTimeout() {
 		ClientPolicy policy = new ClientPolicy();
-		SeedRefresher r = new SeedRefresher(provider(150, stub.url()), policy, snapshot::set);
+		SeedRefresher r = new SeedRefresher(provider(2500, stub.url()), policy, snapshot::set);
 
 		AerospikeException ae = assertThrows(AerospikeException.class, () -> r.validate(1000));
 		System.out.println("AWS-TAGS-VALIDATE " + ae.getBaseMessage());
-		assertEquals("AWS EC2 seed provider timeout 150 must be less or equal to the discovery tend refresh deadline 100",
+		assertEquals("AWS EC2 seed provider timeout 2500 must be less or equal to the discovery refresh timeout 2000",
 			ae.getBaseMessage());
 
-		new SeedRefresher(provider(100, stub.url()), policy, snapshot::set).validate(1000);
+		new SeedRefresher(provider(2000, stub.url()), policy, snapshot::set).validate(1000);
 
-		policy.discoveryTendRefreshDeadline = 200;
-		new SeedRefresher(provider(150, stub.url()), policy, snapshot::set).validate(1000);
+		policy.discoveryRefreshTimeout = 3000;
+		new SeedRefresher(provider(2500, stub.url()), policy, snapshot::set).validate(1000);
 	}
 
 	@Test
@@ -104,41 +106,67 @@ public class AwsTagsSeedRefresherTest {
 	}
 
 	@Test
-	public void timeoutAboveTendDeadlineFailsClientConstruction() {
+	public void timeoutAboveRefreshTimeoutFailsClientConstruction() {
 		ClientPolicy policy = offline();
-		policy.seedCandidateProvider = provider(150, stub.url());
+		policy.seedCandidateProvider = provider(2500, stub.url());
 
 		AerospikeException ae = assertThrows(AerospikeException.class,
 			() -> new AerospikeClient(policy, new Host("127.0.0.1", 1)).close());
-		assertEquals("AWS EC2 seed provider timeout 150 must be less or equal to the discovery tend refresh deadline 100",
+		assertEquals("AWS EC2 seed provider timeout 2500 must be less or equal to the discovery refresh timeout 2000",
 			ae.getBaseMessage());
 	}
 
 	@Test
-	public void runsOnTendAndPublishesInstances() {
+	public void tendModeFailsClientConstruction() {
 		stub.ec2Default(new Reply(200, StubAwsServer.describe(null,
-			StubAwsServer.instance("i-1", "10.0.0.2", null, null, null),
-			StubAwsServer.instance("i-2", "10.0.0.3", null, null, null))));
+			StubAwsServer.instance("i-1", "127.0.0.1", null, null, null))));
+		ClientPolicy policy = offline();
+		policy.discoveryExecutionMode = DiscoveryExecutionMode.TEND;
+		policy.seedCandidateProvider = provider(80, stub.url());
+
+		AerospikeException ae = assertThrows(AerospikeException.class,
+			() -> new AerospikeClient(policy, new Host("127.0.0.1", 1)).close());
+		System.out.println("AWS-TAGS-TEND " + ae.getBaseMessage());
+		assertEquals("A seed candidate provider that needs periodic refresh must support a deadline in " +
+			"discovery execution mode tend", ae.getBaseMessage());
+		assertEquals(0, stub.requests().size());
+	}
+
+	@Test
+	public void runsOnDiscoveryThreadAndPublishesInstances() throws Exception {
+		stub.ec2Default(new Reply(200, StubAwsServer.describe(null,
+			StubAwsServer.instance("i-1", "10.0.0.2", null, null, null))));
 		ClientPolicy policy = new ClientPolicy();
-		SeedRefresher r = new SeedRefresher(provider(80, stub.url()), policy, snapshot::set);
-		r.validate(1000);
-		r.start(INIT);
+		policy.discoveryRefreshInterval = 100;
+		SeedRefresher r = new SeedRefresher(provider(2000, stub.url()), policy, snapshot::set);
+		r.validate(100);
 
-		r.tend(30, 1000);
-		assertArrayEquals(new Host[] {new Host("10.0.0.2", 3000), new Host("10.0.0.3", 3000)}, snapshot.get());
+		try {
+			assertArrayEquals(new Host[] {new Host("10.0.0.2", 3000)}, r.discover());
+			r.start(INIT);
 
-		Host[] lastGood = snapshot.get();
-		stub.ec2Default(new Reply(403, StubAwsServer.error("UnauthorizedOperation",
-			"You are not authorized to perform this operation.", "ea966190-f9aa-478e-9ede-example")));
-		r.tend(60, 1000);
-		System.out.println("AWS-TAGS-REFRESHER-ERROR snapshot=" + List.of(snapshot.get()) + " warnings=" + warnings);
+			stub.ec2Default(new Reply(200, StubAwsServer.describe(null,
+				StubAwsServer.instance("i-1", "10.0.0.2", null, null, null),
+				StubAwsServer.instance("i-2", "10.0.0.3", null, null, null))));
+			Host[] expected = new Host[] {new Host("10.0.0.2", 3000), new Host("10.0.0.3", 3000)};
+			ThreadModeTest.await(() -> Arrays.equals(expected, snapshot.get()));
 
-		assertSame(lastGood, snapshot.get());
-		assertEquals(warnings.toString(), 1, warnings.size());
-		assertTrue(warnings.get(0), warnings.get(0).startsWith("Seed candidate refresh failed: "));
-		assertTrue(warnings.get(0), warnings.get(0).contains("UnauthorizedOperation") &&
-			warnings.get(0).contains("ea966190-f9aa-478e-9ede-example"));
-		assertFalse(r.isTripped());
+			Host[] lastGood = snapshot.get();
+			stub.ec2Default(new Reply(403, StubAwsServer.error("UnauthorizedOperation",
+				"You are not authorized to perform this operation.", "ea966190-f9aa-478e-9ede-example")));
+			ThreadModeTest.await(() -> warnings.stream().anyMatch(w -> w.contains("UnauthorizedOperation")));
+			System.out.println("AWS-TAGS-REFRESHER-ERROR snapshot=" + List.of(snapshot.get()) + " warnings=" + warnings);
+			String warning = warnings.stream().filter(w -> w.contains("UnauthorizedOperation")).findFirst().get();
+
+			assertSame(lastGood, snapshot.get());
+			assertTrue(warning, warning.startsWith("Seed candidate refresh failed: "));
+			assertTrue(warning, warning.contains("ea966190-f9aa-478e-9ede-example"));
+			assertEquals(0, r.getOverrunCount());
+		}
+		finally {
+			r.close();
+		}
+		ThreadModeTest.await(() -> ! r.getThread().isAlive());
 	}
 
 	@Test
@@ -153,30 +181,40 @@ public class AwsTagsSeedRefresherTest {
 		try (AerospikeClient client = new AerospikeClient(policy)) {
 			System.out.println("AWS-TAGS-INIT seeds=" + List.of(client.getCluster().getSeeds()));
 			assertArrayEquals(new Host[] {new Host("127.0.0.1", 1)}, client.getCluster().getSeeds());
+			assertTrue(client.getCluster().seedRefresher.getThread().isAlive());
 		}
 	}
 
 	@Test
-	public void unansweredStubAtTendDeadline() throws Exception {
+	public void unansweredStubBoundedByProviderTimeout() throws Exception {
 		try (ServerSocket silent = StubAwsServer.silent()) {
 			ClientPolicy policy = new ClientPolicy();
-			policy.discoveryTendRefreshDeadline = 50;
-			SeedRefresher r = new SeedRefresher(provider(50, "http://127.0.0.1:" + silent.getLocalPort()), policy,
-				snapshot::set);
-			r.validate(1000);
-			r.start(INIT);
-			int calls = SeedRefresher.MAX_OVERRUNS - 1;
+			policy.discoveryRefreshInterval = 100;
+			policy.discoveryRefreshTimeout = 200;
+			AwsEc2TagSeedCandidateProvider provider = AwsEc2TagSeedCandidateProvider.builder().region("us-east-1")
+				.tagFilter("aerospike-cluster", "prod-a").credentials("AKIDEXAMPLE", "secret", null)
+				.endpoint("http://127.0.0.1:" + silent.getLocalPort()).timeout(50).initTimeout(50).build();
+			SeedRefresher r = new SeedRefresher(provider, policy, INIT, snapshot::set);
+			r.validate(100);
 
-			for (int i = 1; i <= calls; i++) {
+			try {
 				long begin = System.nanoTime();
-				r.tend(30 * i, 1000);
+				Host[] seeds = r.discover();
 				long elapsed = (System.nanoTime() - begin) / 1000000;
-				System.out.println("AWS-TAGS-REFRESHER-BOUNDED call=" + i + " elapsed=" + elapsed + "ms deadline=50ms");
+				System.out.println("AWS-TAGS-REFRESHER-BOUNDED init elapsed=" + elapsed + "ms timeout=50ms");
 				assertTrue(elapsed + "ms", elapsed <= 50 + MARGIN);
+				assertArrayEquals(INIT, seeds);
+
+				snapshot.set(seeds);
+				r.start(seeds);
+				ThreadModeTest.await(() -> warnings.stream().filter(w ->
+					w.startsWith("Seed candidate refresh failed: ") && w.contains("timed out after 50ms")).count() >= 2);
+				assertSame(seeds, snapshot.get());
+				assertEquals(0, r.getOverrunCount());
 			}
-			assertSame(INIT, snapshot.get());
-			assertEquals(warnings.toString(), calls, warnings.stream().filter(w ->
-				w.startsWith("Seed candidate refresh failed: ") && w.contains("timed out after 50ms")).count());
+			finally {
+				r.close();
+			}
 		}
 	}
 }

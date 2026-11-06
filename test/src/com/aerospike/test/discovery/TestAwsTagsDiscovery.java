@@ -19,6 +19,8 @@ package com.aerospike.test.discovery;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -31,6 +33,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import org.junit.After;
 import org.junit.AfterClass;
@@ -41,13 +44,16 @@ import org.junit.Test;
 import org.junit.runners.MethodSorters;
 
 import com.aerospike.client.AerospikeClient;
+import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Bin;
+import com.aerospike.client.Host;
 import com.aerospike.client.Key;
 import com.aerospike.client.Log;
 import com.aerospike.client.Record;
 import com.aerospike.client.cluster.Node;
 import com.aerospike.client.cluster.Partitions;
 import com.aerospike.client.discovery.AwsEc2TagSeedCandidateProvider;
+import com.aerospike.client.discovery.DiscoveryExecutionMode;
 import com.aerospike.client.policy.ClientPolicy;
 import com.aerospike.test.discovery.StubEc2Server.Mode;
 
@@ -60,7 +66,8 @@ import com.aerospike.test.discovery.StubEc2Server.Mode;
  * published address, reachable from this host: node A on 127.0.0.1 and node B on another host
  * address, both on the same port. Each node advertises a private address as its alternate access
  * address, which {@link ClientPolicy#ipMap} maps to its published address. The seed list is read
- * from the provider's debug log line. The environment arrives as system properties:
+ * from the provider's debug log line. aws-tags runs only in execution mode thread; every case states
+ * its mode. The environment arrives as system properties:
  * <ul>
  * <li>aws.stubPort: port of the stub EC2 endpoint, on 127.0.0.1</li>
  * <li>aws.region: region the provider signs for</li>
@@ -80,8 +87,11 @@ public class TestAwsTagsDiscovery {
 	private static final Pattern SEEDS = Pattern.compile("AWS EC2 seed provider \\S+ returned (\\[.*\\]) from (\\d+) " +
 		"instances in (\\d+) pages");
 	private static final Pattern TOOK = Pattern.compile("Seed candidate refresh took (\\d+)ms");
+	private static final String FAILED = "Seed candidate refresh failed: ";
 	private static final int REFRESH_INTERVAL = 1000;
-	private static final int DEADLINE = 50;
+	private static final int TIMEOUT = 50;
+	private static final int COLD_CALL_MS = 700;
+	private static final int TRIP_OVERRUNS = 3;
 	private static final int MARGIN = 50;
 	private static final int WAIT_MS = 30000;
 	private static final int KEY_COUNT = 100;
@@ -207,17 +217,17 @@ public class TestAwsTagsDiscovery {
 	}
 
 	@Test
-	public void case5UnansweredStubTripsProvider() throws Exception {
-		ClientPolicy policy = policy(provider(DEADLINE));
-		policy.discoveryTendRefreshDeadline = DEADLINE;
+	public void case5UnansweredStubOverrunsWithoutTrip() throws Exception {
+		ClientPolicy policy = policy(provider(TIMEOUT));
+		policy.discoveryRefreshTimeout = TIMEOUT;
 
 		try (AerospikeClient client = new AerospikeClient(policy)) {
-			assertHangTrips("hang", client);
+			assertHangOverruns("hang", client);
 		}
 	}
 
 	@Test
-	public void case6YamlUnansweredStubTripsProvider() throws Exception {
+	public void case6YamlUnansweredStubOverrunsWithoutTrip() throws Exception {
 		System.setProperty(CONFIG_SYS_PROP, config);
 
 		try (AerospikeClient client = new AerospikeClient(new ClientPolicy())) {
@@ -226,30 +236,77 @@ public class TestAwsTagsDiscovery {
 			AwsEc2TagSeedCandidateProvider provider = (AwsEc2TagSeedCandidateProvider)merged.seedCandidateProvider;
 			System.out.println("AWS-TAGS-RESULT yaml provider region=" + provider.getRegion() + " filters=" +
 				provider.getFilters() + " port=" + provider.getPort() + " timeout=" + provider.getTimeout() + " endpoint=" +
-				provider.getEndpoint() + " deadline=" + merged.discoveryTendRefreshDeadline + " ipMap=" + merged.ipMap);
+				provider.getEndpoint() + " executionMode=" + merged.discoveryExecutionMode + " refreshTimeout=" +
+				merged.discoveryRefreshTimeout + " ipMap=" + merged.ipMap);
 			assertEquals(endpoint, provider.getEndpoint());
-			assertEquals(DEADLINE, provider.getTimeout());
-			assertEquals(DEADLINE, merged.discoveryTendRefreshDeadline);
-			assertHangTrips("yaml-hang", client);
+			assertEquals(TIMEOUT, provider.getTimeout());
+			assertEquals(DiscoveryExecutionMode.THREAD, merged.discoveryExecutionMode);
+			assertEquals(TIMEOUT, merged.discoveryRefreshTimeout);
+			assertHangOverruns("yaml-hang", client);
 		}
 	}
 
-	private static void assertHangTrips(String name, AerospikeClient client) throws Exception {
+	@Test
+	public void case7ColdCallsWorkWithDefaultTimeouts() throws Exception {
+		stub.delay(COLD_CALL_MS);
+		AwsEc2TagSeedCandidateProvider provider = AwsEc2TagSeedCandidateProvider.builder()
+			.region(region)
+			.tagFilter(TAG_KEY, TAG_VALUE)
+			.port(port)
+			.endpoint(endpoint)
+			.build();
+		ClientPolicy policy = policy(provider);
+		long begin = System.currentTimeMillis();
+
+		try (AerospikeClient client = new AerospikeClient(policy)) {
+			long constructed = System.currentTimeMillis() - begin;
+			assertJoins("cold", client);
+			await(() -> (messages.stream().filter(m -> seeds(m) != null).count() >= 3)? Boolean.TRUE : null);
+
+			long returned = messages.stream().filter(m -> seeds(m) != null).count();
+			List<String> refreshWarnings = messages.stream().filter(m -> m.startsWith("Seed candidate "))
+				.collect(Collectors.toList());
+			System.out.println("AWS-TAGS-RESULT cold delayMs=" + COLD_CALL_MS + " constructedMs=" + constructed +
+				" timeout=" + provider.getTimeout() + " refreshTimeout=" + policy.discoveryRefreshTimeout +
+				" refreshesReturned=" + returned + " refreshWarnings=" + refreshWarnings);
+			assertEquals(AwsEc2TagSeedCandidateProvider.DEFAULT_TIMEOUT, provider.getTimeout());
+			assertEquals(new ClientPolicy().discoveryRefreshTimeout, policy.discoveryRefreshTimeout);
+			assertTrue(constructed + "ms", constructed >= COLD_CALL_MS);
+			assertEquals(List.of(), refreshWarnings);
+			assertKeysWork("cold", client);
+		}
+	}
+
+	@Test
+	public void case8TendModeFailsConstruction() {
+		ClientPolicy policy = policy(provider(80));
+		policy.discoveryExecutionMode = DiscoveryExecutionMode.TEND;
+
+		AerospikeException ae = assertThrows(AerospikeException.class, () -> new AerospikeClient(policy).close());
+		System.out.println("AWS-TAGS-RESULT tend " + ae.getMessage() + " requests=" + stub.requests().size());
+		assertTrue(ae.getMessage(), ae.getMessage().contains("must support a deadline in discovery execution mode tend"));
+		assertEquals(0, stub.requests().size());
+	}
+
+	private static void assertHangOverruns(String name, AerospikeClient client) throws Exception {
 		assertJoins(name + "-before", client);
 		messages.clear();
 		stub.mode(Mode.HANG);
 
-		String trip = await(() -> messages.stream().filter(m -> m.startsWith("Seed candidate provider exceeded tend deadline"))
-			.findFirst().orElse(null));
+		await(() -> messages.stream().anyMatch(m -> m.startsWith(FAILED))? Boolean.TRUE : null);
+		Host[] lastGood = ClusterInternals.seeds(client);
+
+		await(() -> (messages.stream().filter(m -> m.startsWith(FAILED)).count() > TRIP_OVERRUNS &&
+			messages.stream().anyMatch(m -> TOOK.matcher(m).find()))? Boolean.TRUE : null);
 		int failures = 0;
 		int overruns = 0;
 
 		for (String m : messages) {
 			System.out.println("AWS-TAGS-WARN " + m.trim());
 
-			if (m.startsWith("Seed candidate refresh failed: ")) {
+			if (m.startsWith(FAILED)) {
 				failures++;
-				assertTrue(m, m.contains("AWS EC2 seed provider: DescribeInstances timed out after " + DEADLINE + "ms"));
+				assertTrue(m, m.contains("AWS EC2 seed provider: DescribeInstances timed out after " + TIMEOUT + "ms"));
 			}
 
 			Matcher matcher = TOOK.matcher(m);
@@ -257,15 +314,21 @@ public class TestAwsTagsDiscovery {
 			if (matcher.find()) {
 				overruns++;
 				int took = Integer.parseInt(matcher.group(1));
-				assertTrue(m, took > DEADLINE && took <= DEADLINE + MARGIN);
+				assertTrue(m, took > TIMEOUT && took <= TIMEOUT + MARGIN);
+				assertTrue(m, m.contains("exceeding refresh timeout " + TIMEOUT + "ms"));
 			}
 		}
 
+		Host[] seeds = ClusterInternals.seeds(client);
 		List<String> names = nodeNames(client);
 		System.out.println("AWS-TAGS-RESULT " + name + " refreshFailures=" + failures + " overrunWarnings=" + overruns +
-			" trip='" + trip + "' nodes=" + names.size() + ' ' + names + " connected=" + client.isConnected());
-		assertTrue(trip, trip.startsWith("Seed candidate provider exceeded tend deadline 3 consecutive times"));
-		assertTrue(overruns >= 3);
+			" seeds=" + List.of(seeds) + " lastGoodKept=" + (seeds == lastGood) + " nodes=" + names.size() + ' ' + names +
+			" connected=" + client.isConnected());
+		assertTrue(messages.stream().noneMatch(m -> m.startsWith("Seed candidate provider exceeded tend deadline")));
+		assertTrue(failures > TRIP_OVERRUNS);
+		assertTrue(overruns >= 1);
+		assertSame(lastGood, seeds);
+		assertEquals(seedList(hostA, hostB), List.of(seeds).toString());
 		assertEquals(List.of(nodeA, nodeB), names);
 		assertKeysWork(name, client);
 	}
@@ -286,6 +349,7 @@ public class TestAwsTagsDiscovery {
 		policy.ipMap = new HashMap<>();
 		policy.ipMap.put(privateA, hostA);
 		policy.ipMap.put(privateB, hostB);
+		policy.discoveryExecutionMode = DiscoveryExecutionMode.THREAD;
 		policy.discoveryRefreshInterval = REFRESH_INTERVAL;
 		policy.seedCandidateProvider = provider;
 		return policy;

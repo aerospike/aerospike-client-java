@@ -80,6 +80,7 @@ public final class StubEc2Server implements AutoCloseable {
 	private volatile CountDownLatch release = new CountDownLatch(1);
 	private volatile Mode mode = Mode.ANSWER;
 	private volatile int pageSize = 1000;
+	private volatile int delayMillis;
 
 	public StubEc2Server(int port, String accessKey, String region) throws IOException {
 		this.authorization = Pattern.compile("AWS4-HMAC-SHA256 Credential=" + Pattern.quote(accessKey) + "/\\d{8}/" +
@@ -96,6 +97,7 @@ public final class StubEc2Server implements AutoCloseable {
 		instances.clear();
 		requests.clear();
 		pageSize = 1000;
+		delayMillis = 0;
 	}
 
 	public void instance(String id, String privateIp) {
@@ -104,6 +106,10 @@ public final class StubEc2Server implements AutoCloseable {
 
 	public void pageSize(int pageSize) {
 		this.pageSize = pageSize;
+	}
+
+	public void delay(int delayMillis) {
+		this.delayMillis = delayMillis;
 	}
 
 	public void mode(Mode mode) {
@@ -134,6 +140,15 @@ public final class StubEc2Server implements AutoCloseable {
 			}
 			exchange.close();
 			return;
+		}
+
+		if (delayMillis > 0) {
+			try {
+				Thread.sleep(delayMillis);
+			}
+			catch (InterruptedException e) {
+				Thread.currentThread().interrupt();
+			}
 		}
 
 		if (! valid) {

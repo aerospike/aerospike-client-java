@@ -45,6 +45,7 @@ import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.Host;
 import com.aerospike.client.Log;
 import com.aerospike.client.command.Buffer;
+import com.aerospike.client.discovery.DiscoveryExecutionMode;
 import com.aerospike.client.discovery.SeedCandidateContext;
 import com.aerospike.client.discovery.SeedCandidateProvider;
 import com.aerospike.client.policy.ClientPolicy;
@@ -126,6 +127,7 @@ public class DiscoveryRefreshThrowTest {
 		ThrowingProvider provider = new ThrowingProvider(seed);
 
 		ClientPolicy policy = new ClientPolicy();
+		policy.discoveryExecutionMode = DiscoveryExecutionMode.TEND;
 		policy.timeout = 1000;
 		policy.tendInterval = 250;
 		policy.discoveryRefreshInterval = 1000;

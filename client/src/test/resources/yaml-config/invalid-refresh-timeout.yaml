@@ -3,4 +3,4 @@ static:
   client:
     max_connections_per_node: 99
     discovery:
-      refresh_timeout_ms: 500
+      refresh_timeout_ms: ten

@@ -13,6 +13,9 @@ name: Discovery integration
 # driver starts one Enterprise container per certificate, so it uses the
 # same FEATURES_CONF gate and does not run on fork pull requests.
 #
+# The aws-tags and dns provider suites (discovery-providers.yaml) start a two
+# node Enterprise cluster each, behind the same gate.
+#
 # setup-aerospike-server and setup-discovery-topology are pinned in
 # discovery-l2.yaml to shared-workflows commits that generate the TLS
 # multi-node config (#335), so this workflow does not supply aerospike.conf.
@@ -67,7 +70,8 @@ jobs:
             reason='fork pull requests get no FEATURES_CONF'
             layers=$(jq -cn --arg reason "${reason}" '[
               {layer: "L2 EE", tests: "ee and ee cn-only profiles", reason: $reason},
-              {layer: "TLS certificate matching", tests: "certificate name matching against Enterprise servers", reason: $reason}
+              {layer: "TLS certificate matching", tests: "certificate name matching against Enterprise servers", reason: $reason},
+              {layer: "Discovery providers", tests: "SuiteAwsTags and SuiteDnsDiscovery", reason: $reason}
             ]')
           fi
           echo "enterprise=${ENTERPRISE}" >> "${GITHUB_OUTPUT}"
@@ -164,6 +168,16 @@ jobs:
     needs: gate
     if: needs.gate.outputs.enterprise == 'true'
     uses: ./.github/workflows/tls-matching.yaml
+    with:
+      server-container-repo: database-docker-dev-local/aerospike-server-enterprise
+      server-tag: 8.2.0.0
+    secrets: inherit
+
+  providers:
+    name: Discovery providers
+    needs: gate
+    if: needs.gate.outputs.enterprise == 'true'
+    uses: ./.github/workflows/discovery-providers.yaml
     with:
       server-container-repo: database-docker-dev-local/aerospike-server-enterprise
       server-tag: 8.2.0.0

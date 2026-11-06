@@ -37,6 +37,7 @@ import com.aerospike.client.configuration.serializers.staticconfig.StaticDiscove
 import com.aerospike.client.configuration.serializers.staticconfig.StaticTranslationConfig;
 import com.aerospike.client.discovery.AddressTranslator;
 import com.aerospike.client.discovery.AwsEc2TagSeedCandidateProvider;
+import com.aerospike.client.discovery.DiscoveryExecutionMode;
 import com.aerospike.client.discovery.DnsSeedCandidateProvider;
 import com.aerospike.client.discovery.PassThroughAddressTranslator;
 import com.aerospike.client.discovery.PortMapAddressTranslator;
@@ -431,14 +432,37 @@ public class ClientPolicy {
 	public TranslationMissMode translationOnMiss = TranslationMissMode.PASS_THROUGH;
 
 	/**
-	 * Interval in milliseconds between periodic {@link #seedCandidateProvider} refreshes. The
-	 * client starts no thread for discovery: when the provider's
-	 * {@link SeedCandidateProvider#needsPeriodicRefresh()} returns true, the provider is called on
-	 * the cluster tend thread every discoveryRefreshInterval / {@link #tendInterval} tend
-	 * iterations. Such a provider must return true from
-	 * {@link SeedCandidateProvider#supportsDeadline()}, and this value must be greater or equal to
-	 * {@link #tendInterval}; otherwise client construction fails. No periodic refresh is scheduled
-	 * when the provider does not need it.
+	 * Where periodic {@link #seedCandidateProvider} refreshes run when the provider's
+	 * {@link SeedCandidateProvider#needsPeriodicRefresh()} returns true. When it returns false, the
+	 * provider is called once, on the thread that constructs the client, and no thread is started
+	 * in either mode.
+	 * <ul>
+	 * <li>{@link DiscoveryExecutionMode#THREAD}: the client starts one daemon thread, named
+	 * {@code discovery}, that makes every refresh, the first one included, and publishes the seed
+	 * list. The cluster tend thread only reads the published list and never calls the provider, so a
+	 * slow provider never delays tend. Each call is measured against
+	 * {@link #discoveryRefreshTimeout}. The thread stops when the client is closed.</li>
+	 * <li>{@link DiscoveryExecutionMode#TEND}: the client starts no thread for discovery. The
+	 * provider is called at client construction on the constructing thread, then on the cluster
+	 * tend thread every {@link #discoveryRefreshInterval} / {@link #tendInterval} tend iterations,
+	 * bounded by {@link #discoveryTendRefreshDeadline}. The provider must return true from
+	 * {@link SeedCandidateProvider#supportsDeadline()}; otherwise client construction fails, as it
+	 * does for {@link com.aerospike.client.discovery.AwsEc2TagSeedCandidateProvider}.</li>
+	 * </ul>
+	 * A null value is treated as {@link DiscoveryExecutionMode#THREAD}.
+	 * <p>
+	 * Default: {@link DiscoveryExecutionMode#THREAD}
+	 * <p>
+	 * YAML key: {@code static.client.discovery.execution_mode} ({@code thread} or {@code tend})
+	 */
+	public DiscoveryExecutionMode discoveryExecutionMode = DiscoveryExecutionMode.THREAD;
+
+	/**
+	 * Interval in milliseconds between periodic {@link #seedCandidateProvider} refreshes, made on
+	 * the thread selected by {@link #discoveryExecutionMode}. When the provider's
+	 * {@link SeedCandidateProvider#needsPeriodicRefresh()} returns true, this value must be greater
+	 * or equal to {@link #tendInterval}; otherwise client construction fails. No periodic refresh is
+	 * scheduled when the provider does not need it.
 	 * <p>
 	 * Default: 30000
 	 * <p>
@@ -447,15 +471,41 @@ public class ClientPolicy {
 	public int discoveryRefreshInterval = 30000;
 
 	/**
+	 * Time limit in milliseconds for each {@link #seedCandidateProvider} call in
+	 * {@link DiscoveryExecutionMode#THREAD} mode. The limit is measured, not enforced: a call is
+	 * never interrupted. Closing the client waits at most this long for a call in flight. A call that returns later logs a warning and increments an overrun count;
+	 * its result is still published when the call succeeds, including an empty result, which the
+	 * {@link #discoveryMergePolicy} then applies. The last good seed list is kept only when the call
+	 * throws. There is no limit on the number of overruns.
+	 * <p>
+	 * Client construction waits at most this long for the first refresh. If it has not completed by
+	 * then, the client continues with the seeds left by {@link #discoveryMergePolicy}, or fails with
+	 * {@link com.aerospike.client.ResultCode#SEED_DISCOVERY_FAILED} when none are left; a first
+	 * refresh that completes later is published for later re-seeds.
+	 * <p>
+	 * When the provider needs periodic refresh in thread mode, this value must be greater than zero,
+	 * and the DNS and AWS EC2 seed provider timeouts must not exceed it; otherwise client
+	 * construction fails. Ignored in {@link DiscoveryExecutionMode#TEND} mode. The default covers a
+	 * cold {@code aws-tags} EC2 call, which takes several hundred milliseconds.
+	 * <p>
+	 * Default: 2000
+	 * <p>
+	 * YAML key: {@code static.client.discovery.refresh_timeout_ms}
+	 */
+	public int discoveryRefreshTimeout = 2000;
+
+	/**
 	 * Deadline in milliseconds for one periodic {@link #seedCandidateProvider} refresh on the
-	 * tend thread. The deadline is measured, not enforced: an overrunning call is never
-	 * interrupted and blocks tend for its full duration. On overrun, a warning is logged, the call's result is discarded and the last good seed list is kept.
+	 * tend thread in {@link DiscoveryExecutionMode#TEND} mode. The deadline is measured, not
+	 * enforced: an overrunning call is never interrupted and blocks tend for its full duration. On
+	 * overrun, a warning is logged, the call's result is discarded and the last good seed list is kept.
 	 * After three consecutive overruns, the provider is no longer called from tend for the life
 	 * of the client instance and the seed list reverts to the one established at client
 	 * initialization. A new client instance starts with no overruns.
 	 * <p>
-	 * When the provider needs periodic refresh, this value must be greater than zero and less or
-	 * equal to {@link #tendInterval} / 2; otherwise client construction fails.
+	 * When the provider needs periodic refresh in tend mode, this value must be greater than zero
+	 * and less or equal to {@link #tendInterval} / 2; otherwise client construction fails. Ignored
+	 * in {@link DiscoveryExecutionMode#THREAD} mode.
 	 * <p>
 	 * Default: 100
 	 * <p>
@@ -474,8 +524,9 @@ public class ClientPolicy {
 	 * endpoint while discovery catches up.</li>
 	 * <li>{@link SeedMergePolicy#REPLACE}: as MERGE at initialization; afterwards each successful
 	 * refresh's discovered seeds replace the list and static seeds are no longer tried. An empty
-	 * refresh result keeps the previous list. Use for greenfield cloud-native deployments where
-	 * static seeds are legacy.</li>
+	 * refresh result keeps the previous list in {@link DiscoveryExecutionMode#TEND} mode and
+	 * empties it in {@link DiscoveryExecutionMode#THREAD} mode. Use for greenfield cloud-native
+	 * deployments where static seeds are legacy.</li>
 	 * <li>{@link SeedMergePolicy#DISCOVERY_ONLY}: discovered seeds only; static seeds are used only
 	 * when discovery returns an empty result. Use when the static seeds are an emergency fallback
 	 * only.</li>
@@ -647,7 +698,9 @@ public class ClientPolicy {
 		this.seedCandidateProvider = other.seedCandidateProvider;
 		this.addressTranslator = other.addressTranslator;
 		this.translationOnMiss = other.translationOnMiss;
+		this.discoveryExecutionMode = other.discoveryExecutionMode;
 		this.discoveryRefreshInterval = other.discoveryRefreshInterval;
+		this.discoveryRefreshTimeout = other.discoveryRefreshTimeout;
 		this.discoveryTendRefreshDeadline = other.discoveryTendRefreshDeadline;
 		this.discoveryMergePolicy = other.discoveryMergePolicy;
 		this.threadPool = other.threadPool;
@@ -959,10 +1012,22 @@ public class ClientPolicy {
 					Log.info("Set ClientPolicy.discoveryMergePolicy = " + this.discoveryMergePolicy);
 				}
 			}
+			if (discovery.executionMode != null && this.discoveryExecutionMode != discovery.executionMode) {
+				this.discoveryExecutionMode = discovery.executionMode;
+				if (logUpdate) {
+					Log.info("Set ClientPolicy.discoveryExecutionMode = " + this.discoveryExecutionMode);
+				}
+			}
 			if (discovery.refreshIntervalMs != null && this.discoveryRefreshInterval != discovery.refreshIntervalMs.value) {
 				this.discoveryRefreshInterval = discovery.refreshIntervalMs.value;
 				if (logUpdate) {
 					Log.info("Set ClientPolicy.discoveryRefreshInterval = " + this.discoveryRefreshInterval);
+				}
+			}
+			if (discovery.refreshTimeoutMs != null && this.discoveryRefreshTimeout != discovery.refreshTimeoutMs.value) {
+				this.discoveryRefreshTimeout = discovery.refreshTimeoutMs.value;
+				if (logUpdate) {
+					Log.info("Set ClientPolicy.discoveryRefreshTimeout = " + this.discoveryRefreshTimeout);
 				}
 			}
 			if (discovery.tendRefreshDeadlineMs != null && this.discoveryTendRefreshDeadline != discovery.tendRefreshDeadlineMs.value) {
@@ -1245,8 +1310,16 @@ public class ClientPolicy {
 		this.translationOnMiss = translationOnMiss;
 	}
 
+	public void setDiscoveryExecutionMode(DiscoveryExecutionMode discoveryExecutionMode) {
+		this.discoveryExecutionMode = discoveryExecutionMode;
+	}
+
 	public void setDiscoveryRefreshInterval(int discoveryRefreshInterval) {
 		this.discoveryRefreshInterval = discoveryRefreshInterval;
+	}
+
+	public void setDiscoveryRefreshTimeout(int discoveryRefreshTimeout) {
+		this.discoveryRefreshTimeout = discoveryRefreshTimeout;
 	}
 
 	public void setDiscoveryTendRefreshDeadline(int discoveryTendRefreshDeadline) {

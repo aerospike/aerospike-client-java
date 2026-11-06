@@ -259,6 +259,7 @@ static:
     use_services_alternate: true
     discovery:
       provider: dns
+      execution_mode: thread
       refresh_interval_ms: 1000
       dns:
         names:

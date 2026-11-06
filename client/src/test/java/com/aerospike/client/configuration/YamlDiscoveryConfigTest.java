@@ -43,6 +43,7 @@ import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Host;
 import com.aerospike.client.Log;
+import com.aerospike.client.discovery.DiscoveryExecutionMode;
 import com.aerospike.client.discovery.Endpoint;
 import com.aerospike.client.discovery.Endpoint.SourceList;
 import com.aerospike.client.discovery.PassThroughAddressTranslator;
@@ -294,8 +295,8 @@ public class YamlDiscoveryConfigTest {
 				String warning = await(() -> warnings.stream()
 					.filter(m -> m.startsWith("Dynamic configuration failed") && m.contains("execution_mode")).findFirst().orElse(null));
 				System.out.println("YAML-RELOAD-WARN " + warning);
-				assertTrue(warning.contains("static.client.discovery.execution_mode is not supported: " +
-					"the Java client runs discovery on the tend thread only"));
+				assertTrue(warning.contains("Invalid static.client.discovery.execution_mode value 'background': " +
+					"valid values: thread, tend"));
 				assertEquals(TranslationMissMode.STRICT, client.getClientPolicy().translationOnMiss);
 				assertEquals(99, client.getClientPolicy().maxConnsPerNode);
 				assertEquals(2002, client.getClientPolicy().timeout);
@@ -312,15 +313,32 @@ public class YamlDiscoveryConfigTest {
 	}
 
 	@Test
+	public void executionModeAndRefreshTimeout() throws Exception {
+		ClientPolicy policy = load("all");
+		assertEquals(DiscoveryExecutionMode.THREAD, policy.discoveryExecutionMode);
+		assertEquals(2000, policy.discoveryRefreshTimeout);
+
+		policy = load("discovery-tend");
+		assertEquals(DiscoveryExecutionMode.TEND, policy.discoveryExecutionMode);
+		assertEquals(500, policy.discoveryRefreshTimeout);
+
+		ClientPolicy code = new ClientPolicy();
+		code.discoveryExecutionMode = DiscoveryExecutionMode.TEND;
+		policy = load(code, "discovery-thread");
+		assertEquals(DiscoveryExecutionMode.THREAD, policy.discoveryExecutionMode);
+		assertEquals(1500, policy.discoveryRefreshTimeout);
+	}
+
+	@Test
 	public void invalidExecutionMode() throws Exception {
 		assertInvalid("invalid-execution-mode",
-			"static.client.discovery.execution_mode is not supported: the Java client runs discovery on the tend thread only");
+			"Invalid static.client.discovery.execution_mode value 'background': valid values: thread, tend");
 	}
 
 	@Test
 	public void invalidRefreshTimeout() throws Exception {
 		assertInvalid("invalid-refresh-timeout",
-			"static.client.discovery.refresh_timeout_ms is not supported: the Java client runs discovery on the tend thread only");
+			"Invalid static.client.discovery.refresh_timeout_ms value 'ten': expected an integer");
 	}
 
 	@Test
