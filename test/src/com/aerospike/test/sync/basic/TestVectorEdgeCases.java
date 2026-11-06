@@ -67,6 +67,7 @@ public class TestVectorEdgeCases {
 	@Test
 	public void emptyVectorRejectedAllTypes() {
 		assertThrows(IllegalArgumentException.class, () -> Vector.ofFloat16(new short[0]));
+		assertThrows(IllegalArgumentException.class, () -> Vector.ofFloat16(new float[0]));
 		assertThrows(IllegalArgumentException.class, () -> Vector.ofInt32(new int[0]));
 		assertThrows(IllegalArgumentException.class, () -> Vector.ofFloat32(new float[0]));
 		assertThrows(IllegalArgumentException.class, () -> Vector.ofFloat64(new double[0]));
@@ -133,6 +134,25 @@ public class TestVectorEdgeCases {
 		IllegalArgumentException e = assertThrows(IllegalArgumentException.class,
 			() -> Vector.ofFloat32(new float[] {1.0f, 2.0f, Float.NaN}));
 		assertTrue(e.getMessage(), e.getMessage().contains("element 2 is NaN"));
+	}
+
+	@Test
+	public void float16FromFloatRejectsNonFinite() {
+		float[] invalid = new float[] {
+			Float.NaN,
+			Float.POSITIVE_INFINITY,
+			Float.NEGATIVE_INFINITY,
+			65520.0f,               // rounds up to +infinity
+			-65520.0f,              // rounds down to -infinity
+			1.0e6f,
+			Float.MAX_VALUE
+		};
+
+		for (float value : invalid) {
+			IllegalArgumentException e = assertThrows(IllegalArgumentException.class,
+				() -> Vector.ofFloat16(new float[] {1.0f, value}));
+			assertTrue(e.getMessage(), e.getMessage().contains("element 1 is " + value));
+		}
 	}
 
 	@Test
