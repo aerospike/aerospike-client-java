@@ -303,12 +303,41 @@ public final class Vector {
 	/**
 	 * Create a vector of raw float16 (IEEE 754 half precision) elements.
 	 * Since Java has no native float16 type, each element is passed as its
-	 * raw 16-bit bit pattern.
+	 * raw 16-bit bit pattern, which is stored unchanged. To convert from
+	 * float (fp32) elements, use {@link #ofFloat16(float[])}.
 	 *
 	 * @throws IllegalArgumentException if {@code data} is empty or has a NaN or infinite element
 	 */
 	public static Vector ofFloat16(short[] data) {
 		return new Vector(VERSION, ElementType.FLOAT16, checkDimensions(data.length), checkFinite(data.clone()));
+	}
+
+	/**
+	 * Create a vector of float16 (IEEE 754 half precision) elements from float (fp32)
+	 * elements. Each element is rounded to the nearest float16, ties to even. Read the
+	 * elements back as floats with {@link #getFloat16DataAsFloat()}.
+	 * <p>
+	 * An element whose conversion is NaN or infinite is rejected. This includes NaN and
+	 * infinite inputs, and finite inputs with a magnitude of 65520 or more, which round to
+	 * infinity. The largest float16 value is 65504.
+	 *
+	 * @throws IllegalArgumentException if {@code data} is empty or has an element that does
+	 *         not convert to a finite float16
+	 */
+	public static Vector ofFloat16(float[] data) {
+		short[] bits = new short[checkDimensions(data.length)];
+
+		for (int i = 0; i < bits.length; i++) {
+			// Read each element once so the value checked is the value stored.
+			float f = data[i];
+			short h = Float16.fromFloat(f);
+
+			if ((h & FLOAT16_EXPONENT_MASK) == FLOAT16_EXPONENT_MASK) {
+				throw notFinite(i, Float.toString(f));
+			}
+			bits[i] = h;
+		}
+		return new Vector(VERSION, ElementType.FLOAT16, bits.length, bits);
 	}
 
 	/**
@@ -389,6 +418,24 @@ public final class Vector {
 	public short[] getFloat16Data() {
 		validateType(ElementType.FLOAT16);
 		return ((short[])data).clone();
+	}
+
+	/**
+	 * Return a copy of the float16 data converted to float (fp32). The conversion is
+	 * exact: every float16 value has a float equivalent.
+	 *
+	 * @throws IllegalStateException if this vector's element type is not {@link ElementType#FLOAT16}
+	 */
+	public float[] getFloat16DataAsFloat() {
+		validateType(ElementType.FLOAT16);
+
+		short[] bits = (short[])data;
+		float[] arr = new float[bits.length];
+
+		for (int i = 0; i < bits.length; i++) {
+			arr[i] = Float16.toFloat(bits[i]);
+		}
+		return arr;
 	}
 
 	/**
