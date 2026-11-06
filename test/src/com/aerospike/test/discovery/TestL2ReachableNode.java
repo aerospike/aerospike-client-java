@@ -64,8 +64,8 @@ public class TestL2ReachableNode extends TestBase {
 
 	/**
 	 * N-10: on_miss unset (pass_through). port-map covers every node but the reachable one, whose
-	 * advertised address is used unchanged for its {@link Node}. All nodes join, no translation
-	 * miss is logged and the partition map is complete.
+	 * advertised address is used unchanged for its {@link Node}. All nodes join, the miss is logged
+	 * once and the partition map is complete.
 	 */
 	@Test
 	public void n10UnmappedPeerPassesThroughUnchanged() throws Exception {
@@ -101,7 +101,12 @@ public class TestL2ReachableNode extends TestBase {
 
 			Map<String,Integer> owners = L2Topology.owners(L2Topology.assertAllPartitionsOwned("N-10", client));
 			assertEquals(L2Topology.nodeNames(), new ArrayList<>(owners.keySet()));
-			assertEquals(List.of(), translationMisses());
+			List<String> misses = translationMisses();
+			assertEquals("One miss warning for " + reachable.name + ": " + misses, 1, misses.size());
+
+			for (String part : new String[] {reachable.name, advertised, "port-map", "pass_through"}) {
+				assertTrue(part + " not in: " + misses.get(0), misses.get(0).contains(part));
+			}
 		}
 	}
 
@@ -113,7 +118,7 @@ public class TestL2ReachableNode extends TestBase {
 	@Test
 	public void alternateDefaultJoinsNodesWithAlternate() throws Exception {
 		requireAlternates();
-		assertAlternateJoins("alternate-default", alternatePolicy());
+		assertAlternateJoins("alternate-default", alternatePolicy(), false);
 	}
 
 	/**
@@ -128,7 +133,7 @@ public class TestL2ReachableNode extends TestBase {
 		ClientPolicy policy = alternatePolicy();
 		policy.ipMap = Map.of(hostname, hostname);
 		policy.translationOnMiss = TranslationMissMode.STRICT;
-		assertAlternateJoins("alternate-ipmap-identity-strict", policy);
+		assertAlternateJoins("alternate-ipmap-identity-strict", policy, false);
 	}
 
 	/**
@@ -142,7 +147,7 @@ public class TestL2ReachableNode extends TestBase {
 		ClientPolicy policy = alternatePolicy();
 		policy.addressTranslator = new EmptyTranslator();
 		policy.translationOnMiss = TranslationMissMode.PASS_THROUGH;
-		assertAlternateJoins("alternate-custom-empty-pass-through", policy);
+		assertAlternateJoins("alternate-custom-empty-pass-through", policy, true);
 	}
 
 	/**
@@ -190,7 +195,7 @@ public class TestL2ReachableNode extends TestBase {
 		assertTrue(e.getMessage(), e.getMessage().contains("useServicesAlternate"));
 	}
 
-	private static void assertAlternateJoins(String row, ClientPolicy policy) throws Exception {
+	private static void assertAlternateJoins(String row, ClientPolicy policy, boolean warnsOnMiss) throws Exception {
 		List<L2Node> nodes = L2Topology.nodes();
 		L2Node reachable = reachable(nodes);
 		List<L2Node> withAlternate = withAlternate(nodes);
@@ -219,7 +224,19 @@ public class TestL2ReachableNode extends TestBase {
 			assertTrue("Node " + reachable.name + " without alternate not reported every tend: " + TestL2Topology.errors,
 				missing.size() >= MISS_RETRIES);
 			System.out.println("L2-ALT-LOG " + row + ' ' + missing.get(0));
-			assertEquals(List.of(), translationMisses());
+			List<String> misses = translationMisses();
+
+			if (! warnsOnMiss) {
+				assertEquals(List.of(), misses);
+				return;
+			}
+
+			assertEquals("One miss warning per node: " + misses, withAlternate.size(), misses.size());
+
+			for (L2Node expected : withAlternate) {
+				assertEquals(expected.name + " miss warnings: " + misses, 1,
+					misses.stream().filter(m -> m.contains(expected.name) && m.contains("pass_through")).count());
+			}
 		}
 	}
 
