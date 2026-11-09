@@ -17,14 +17,18 @@
 package com.aerospike.client.discovery;
 
 import java.io.ByteArrayOutputStream;
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.ServerSocket;
+import java.net.Socket;
 import java.net.SocketException;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
@@ -34,10 +38,19 @@ import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
  * In-process DNS server on a loopback UDP port, for tests. Answers A, AAAA and SRV queries from
- * in-memory records, with an optional additional section; unknown names get NXDOMAIN.
+ * in-memory records, with an optional additional section; unknown names get NXDOMAIN. Optionally
+ * answers over TCP on the same port, truncates UDP answers, or returns raw responses.
  */
 public final class StubDnsServer implements AutoCloseable {
+	/**
+	 * Build a raw response to a query.
+	 */
+	public interface Responder {
+		byte[] respond(byte[] query);
+	}
+
 	public static final int A = 1;
+	public static final int CNAME = 5;
 	public static final int AAAA = 28;
 	public static final int SRV = 33;
 	public static final int NOERROR = 0;
@@ -50,10 +63,13 @@ public final class StubDnsServer implements AutoCloseable {
 	private final Map<String,List<byte[]>> answers = new ConcurrentHashMap<>();
 	private final Map<String,List<byte[]>> additional = new ConcurrentHashMap<>();
 	private final Map<String,Integer> rcodes = new ConcurrentHashMap<>();
+	private final Map<String,Responder> responders = new ConcurrentHashMap<>();
 	private final List<String> queries = new CopyOnWriteArrayList<>();
+	private final List<String> tcpQueries = new CopyOnWriteArrayList<>();
 	private volatile boolean silent;
 	private volatile boolean truncated;
 	private ServerSocket tcp;
+	private Thread tcpThread;
 
 	public StubDnsServer() throws SocketException {
 		this(false);
@@ -92,6 +108,37 @@ public final class StubDnsServer implements AutoCloseable {
 	public StubDnsServer hangTcp() throws Exception {
 		tcp = new ServerSocket(socket.getLocalPort(), 50, InetAddress.getLoopbackAddress());
 		return this;
+	}
+
+	/**
+	 * Answer over TCP on the same port, with the records and without truncation.
+	 */
+	public StubDnsServer serveTcp() throws Exception {
+		tcp = new ServerSocket(socket.getLocalPort(), 50, InetAddress.getLoopbackAddress());
+		tcpThread = new Thread(this::runTcp, "stub-dns-tcp");
+		tcpThread.setDaemon(true);
+		tcpThread.start();
+		return this;
+	}
+
+	/**
+	 * Answer queries for name and type with the bytes built by responder, over UDP and TCP.
+	 */
+	public StubDnsServer raw(String name, int type, Responder responder) {
+		responders.put(key(name, type), responder);
+		return this;
+	}
+
+	/**
+	 * Add a record with any owner and type to the answer section for name and type.
+	 */
+	public StubDnsServer answerRecord(String name, int type, String owner, int rrType, byte[] rdata) {
+		answers.computeIfAbsent(key(name, type), k -> new CopyOnWriteArrayList<>()).add(record(owner, rrType, rdata));
+		return this;
+	}
+
+	public StubDnsServer cname(String name, int type, String target) {
+		return answerRecord(name, type, name, CNAME, encodeName(target));
 	}
 
 	public StubDnsServer a(String name, String... addresses) throws Exception {
@@ -148,6 +195,17 @@ public final class StubDnsServer implements AutoCloseable {
 		return queries;
 	}
 
+	/**
+	 * Return the queries received over TCP, each as {@code name/type}.
+	 */
+	public List<String> tcpQueries() {
+		return tcpQueries;
+	}
+
+	public int port() {
+		return socket.getLocalPort();
+	}
+
 	private void answer(String name, int type, byte[] rdata) {
 		answers.computeIfAbsent(key(name, type), k -> new CopyOnWriteArrayList<>()).add(record(name, type, rdata));
 	}
@@ -164,59 +222,11 @@ public final class StubDnsServer implements AutoCloseable {
 			try {
 				DatagramPacket packet = new DatagramPacket(buf, buf.length);
 				socket.receive(packet);
-				ByteBuffer in = ByteBuffer.wrap(packet.getData(), 0, packet.getLength());
-				short id = in.getShort();
-				short flags = in.getShort();
-				in.getShort();
-				in.getShort();
-				in.getShort();
-				in.getShort();
-				int qstart = in.position();
-				String qname = decodeName(in);
-				int qtype = in.getShort() & 0xFFFF;
-				in.getShort();
-				int qend = in.position();
-				String key = key(qname, qtype);
-				queries.add(key);
+				byte[] response = respond(Arrays.copyOf(packet.getData(), packet.getLength()), queries, truncated);
 
-				if (silent) {
-					continue;
+				if (response != null) {
+					socket.send(new DatagramPacket(response, response.length, packet.getSocketAddress()));
 				}
-
-				List<byte[]> an = answers.getOrDefault(key, Collections.emptyList());
-				List<byte[]> ar = additional.getOrDefault(key, Collections.emptyList());
-				Integer rcode = rcodes.get(key);
-
-				if (rcode == null) {
-					rcode = (an.isEmpty() && ! hasName(qname))? NXDOMAIN : NOERROR;
-				}
-
-				if (rcode == NO_ANSWER) {
-					continue;
-				}
-
-				if (rcode != NOERROR || truncated) {
-					an = Collections.emptyList();
-					ar = Collections.emptyList();
-				}
-
-				ByteArrayOutputStream out = new ByteArrayOutputStream();
-				ByteBuffer hdr = ByteBuffer.allocate(12);
-				hdr.putShort(id);
-				hdr.putShort((short)(0x8000 | 0x0400 | (truncated? 0x0200 : 0) | (flags & 0x0100) | 0x0080 | rcode));
-				hdr.putShort((short)1).putShort((short)an.size()).putShort((short)0).putShort((short)ar.size());
-				writeBytes(out, hdr.array());
-				out.write(packet.getData(), qstart, qend - qstart);
-
-				for (byte[] rr : an) {
-					writeBytes(out, rr);
-				}
-				for (byte[] rr : ar) {
-					writeBytes(out, rr);
-				}
-
-				byte[] response = out.toByteArray();
-				socket.send(new DatagramPacket(response, response.length, packet.getSocketAddress()));
 			}
 			catch (Exception e) {
 				if (socket.isClosed()) {
@@ -224,6 +234,89 @@ public final class StubDnsServer implements AutoCloseable {
 				}
 			}
 		}
+	}
+
+	private void runTcp() {
+		while (! tcp.isClosed()) {
+			try (Socket client = tcp.accept()) {
+				DataInputStream in = new DataInputStream(client.getInputStream());
+				byte[] query = new byte[in.readUnsignedShort()];
+				in.readFully(query);
+				byte[] response = respond(query, tcpQueries, false);
+
+				if (response != null) {
+					DataOutputStream out = new DataOutputStream(client.getOutputStream());
+					out.writeShort(response.length);
+					out.write(response);
+					out.flush();
+				}
+			}
+			catch (Exception e) {
+				if (tcp.isClosed()) {
+					return;
+				}
+			}
+		}
+	}
+
+	private byte[] respond(byte[] query, List<String> received, boolean truncate) {
+		ByteBuffer in = ByteBuffer.wrap(query);
+		short id = in.getShort();
+		short flags = in.getShort();
+		in.getShort();
+		in.getShort();
+		in.getShort();
+		in.getShort();
+		int qstart = in.position();
+		String qname = decodeName(in);
+		int qtype = in.getShort() & 0xFFFF;
+		in.getShort();
+		int qend = in.position();
+		String key = key(qname, qtype);
+		received.add(key);
+
+		if (silent) {
+			return null;
+		}
+
+		Responder responder = responders.get(key);
+
+		if (responder != null) {
+			return responder.respond(query);
+		}
+
+		List<byte[]> an = answers.getOrDefault(key, Collections.emptyList());
+		List<byte[]> ar = additional.getOrDefault(key, Collections.emptyList());
+		Integer rcode = rcodes.get(key);
+
+		if (rcode == null) {
+			rcode = (an.isEmpty() && ! hasName(qname))? NXDOMAIN : NOERROR;
+		}
+
+		if (rcode == NO_ANSWER) {
+			return null;
+		}
+
+		if (rcode != NOERROR || truncate) {
+			an = Collections.emptyList();
+			ar = Collections.emptyList();
+		}
+
+		ByteArrayOutputStream out = new ByteArrayOutputStream();
+		ByteBuffer hdr = ByteBuffer.allocate(12);
+		hdr.putShort(id);
+		hdr.putShort((short)(0x8000 | 0x0400 | (truncate? 0x0200 : 0) | (flags & 0x0100) | 0x0080 | rcode));
+		hdr.putShort((short)1).putShort((short)an.size()).putShort((short)0).putShort((short)ar.size());
+		writeBytes(out, hdr.array());
+		out.write(query, qstart, qend - qstart);
+
+		for (byte[] rr : an) {
+			writeBytes(out, rr);
+		}
+		for (byte[] rr : ar) {
+			writeBytes(out, rr);
+		}
+		return out.toByteArray();
 	}
 
 	private boolean hasName(String name) {
@@ -238,7 +331,7 @@ public final class StubDnsServer implements AutoCloseable {
 		return false;
 	}
 
-	private static byte[] record(String name, int type, byte[] rdata) {
+	static byte[] record(String name, int type, byte[] rdata) {
 		ByteArrayOutputStream out = new ByteArrayOutputStream();
 		writeBytes(out, encodeName(name));
 		ByteBuffer bb = ByteBuffer.allocate(10);
@@ -252,7 +345,7 @@ public final class StubDnsServer implements AutoCloseable {
 		out.write(bytes, 0, bytes.length);
 	}
 
-	private static byte[] encodeName(String name) {
+	static byte[] encodeName(String name) {
 		ByteArrayOutputStream out = new ByteArrayOutputStream();
 
 		for (String label : name.split("\\.")) {
@@ -286,5 +379,9 @@ public final class StubDnsServer implements AutoCloseable {
 		}
 		socket.close();
 		thread.join(1000);
+
+		if (tcpThread != null) {
+			tcpThread.join(1000);
+		}
 	}
 }

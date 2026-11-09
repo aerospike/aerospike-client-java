@@ -112,14 +112,13 @@ Results:
 | `record_type` | Returned hosts |
 | --- | --- |
 | `a` | One host per A and AAAA address, as an IP address, with `port`. |
-| `srv` | One host per SRV record, with the record's port, ordered by priority (lowest first), then weight (highest first). Each target is resolved within the same refresh by an A query, then an AAAA query when it has no A record, and returned as an IP address. A target that does not resolve in time is dropped and logged at warning level. Addresses in the additional section of the SRV answer are not used: the JDK DNS provider exposes only the answer section. |
+| `srv` | One host per SRV record, with the record's port, ordered by priority (lowest first), then weight (highest first). Each target is resolved within the same refresh by an A query, then an AAAA query when it has no A record, and returned as an IP address. A target that does not resolve in time is dropped and logged at warning level. Addresses in the additional section of the SRV answer are not used. |
 
 Every returned host is an IP address, never a hostname, so the client does no further name
 resolution when it seeds from the result. Hosts are deduplicated and returned in the same
-order for the same DNS answers. Queries go through the JDK DNS provider
-(`com.sun.jndi.dns.DnsContextFactory`, module `jdk.naming.dns`). The Java 8 DNS provider sets
-no read timeout on its TCP retry of a truncated answer, so the queries run on one daemon thread per
-provider, which ends after 60 seconds idle.
+order for the same DNS answers. Queries go over UDP, with a TCP retry of a truncated answer, to
+`servers` or to the system resolvers, read once from the configuration of the JDK DNS provider
+(`com.sun.jndi.dns.DnsContextFactory`, module `jdk.naming.dns`); the provider starts no thread.
 
 Deadline: the provider needs periodic refresh and runs on the tend thread, so `timeout_ms`
 must not exceed `tend_refresh_deadline_ms` (`ClientPolicy.discoveryTendRefreshDeadline`).

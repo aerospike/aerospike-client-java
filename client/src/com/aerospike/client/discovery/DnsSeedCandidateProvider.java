@@ -28,30 +28,19 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.concurrent.Callable;
-import java.util.concurrent.CancellationException;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Future;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 
 import javax.naming.CommunicationException;
 import javax.naming.Context;
-import javax.naming.InterruptedNamingException;
 import javax.naming.NameNotFoundException;
-import javax.naming.NamingEnumeration;
 import javax.naming.NamingException;
 import javax.naming.ServiceUnavailableException;
-import javax.naming.directory.Attribute;
 import javax.naming.directory.DirContext;
 import javax.naming.directory.InitialDirContext;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Host;
 import com.aerospike.client.Log;
-import com.aerospike.client.cluster.ThreadDaemonFactory;
 
 /**
  * Seed candidate provider that resolves one or more DNS names to seed hosts on every refresh.
@@ -65,19 +54,17 @@ import com.aerospike.client.cluster.ThreadDaemonFactory;
  * priority (lowest first), then weight (highest first). Each record's target is resolved within
  * the same refresh by an A query, then an AAAA query when the target has no A record, and returned
  * as an IP address; a target that does not resolve in time is dropped and logged at warning level.
- * Addresses in the additional section of the SRV answer are not used: the JDK DNS provider exposes
- * only the answer section.</li>
+ * Addresses in the additional section of the SRV answer are not used.</li>
  * </ul>
  * Every returned host is an IP address literal, never a hostname, so the client does no further
  * name resolution when it seeds from the result. Hosts are deduplicated and returned in the same
  * order for the same DNS answers. {@link Builder#tlsName} is set on every host.
  * <p>
- * Queries go to {@link Builder#servers}, or to the system resolvers read once when the provider
- * is built, through the JDK DNS provider ({@code com.sun.jndi.dns.DnsContextFactory}, module
- * {@code jdk.naming.dns}). All I/O of one refresh is bounded by {@link Builder#timeout}. The Java 8
- * DNS provider sets no read timeout on its TCP retry of a truncated answer, so queries run on one
- * daemon thread per provider, which ends after 60 seconds idle and is replaced when a query is still
- * running at the deadline.
+ * Queries go over UDP, with a TCP retry of a truncated answer, to {@link Builder#servers}, or to
+ * the system resolvers read once when the provider is built from the configuration of the JDK DNS
+ * provider ({@code com.sun.jndi.dns.DnsContextFactory}, module
+ * {@code jdk.naming.dns}). All I/O of one refresh is bounded by {@link Builder#timeout}, and the
+ * provider starts no thread.
  * <p>
  * The provider needs periodic refresh and runs in either
  * {@link com.aerospike.client.policy.ClientPolicy#discoveryExecutionMode}. {@link Builder#timeout}
@@ -135,7 +122,7 @@ public final class DnsSeedCandidateProvider implements SeedCandidateProvider {
 	private static final String FACTORY = "com.sun.jndi.dns.DnsContextFactory";
 	private static final String TIMEOUT_PROPERTY = "com.sun.jndi.dns.timeout.initial";
 	private static final String RETRIES_PROPERTY = "com.sun.jndi.dns.timeout.retries";
-	private static final String[] A_TYPES = new String[] {"A", "AAAA"};
+	private static final int[] A_TYPES = new int[] {DnsResolver.A, DnsResolver.AAAA};
 
 	private final List<String> names;
 	private final RecordType recordType;
@@ -143,12 +130,7 @@ public final class DnsSeedCandidateProvider implements SeedCandidateProvider {
 	private final String tlsName;
 	private final int timeout;
 	private final List<String> servers;
-	private final String providerUrl;
-	private final int serverCount;
-
-	// The JDK 8 DNS provider sets no read timeout on its TCP retry of a truncated answer, so queries
-	// run on a daemon thread, which is abandoned when a query is still running at the deadline.
-	private ThreadPoolExecutor queryExecutor;
+	private final DnsResolver resolver;
 
 	/**
 	 * Return a builder.
@@ -195,6 +177,8 @@ public final class DnsSeedCandidateProvider implements SeedCandidateProvider {
 		this.tlsName = builder.tlsName;
 		this.timeout = builder.timeout;
 
+		String providerUrl;
+
 		if (builder.servers != null && ! builder.servers.isEmpty()) {
 			StringBuilder sb = new StringBuilder();
 
@@ -205,21 +189,19 @@ public final class DnsSeedCandidateProvider implements SeedCandidateProvider {
 				sb.append(serverUrl(server));
 			}
 			this.servers = Collections.unmodifiableList(new ArrayList<>(builder.servers));
-			this.providerUrl = sb.toString();
-
-			try {
-				context(providerUrl, 1).close();
-			}
-			catch (NamingException e) {
-				throw new AerospikeException("DNS seed provider: JDK DNS provider " + FACTORY +
-					" is unavailable (module jdk.naming.dns): " + e, e);
-			}
+			providerUrl = sb.toString();
 		}
 		else {
 			this.servers = Collections.emptyList();
-			this.providerUrl = systemProviderUrl();
+			providerUrl = systemProviderUrl();
 		}
-		this.serverCount = providerUrl.split(" ").length;
+
+		try {
+			this.resolver = new DnsResolver(providerUrl);
+		}
+		catch (NamingException e) {
+			throw new AerospikeException("DNS seed provider: invalid DNS server: " + e, e);
+		}
 	}
 
 	/**
@@ -282,7 +264,7 @@ public final class DnsSeedCandidateProvider implements SeedCandidateProvider {
 	private List<Host> resolveSrv(String name, long deadline) throws NamingException {
 		List<Srv> records = new ArrayList<>();
 
-		for (String value : query(name, "SRV", deadline)) {
+		for (String value : query(name, DnsResolver.SRV, deadline)) {
 			Srv srv = Srv.parse(value);
 
 			if (srv == null) {
@@ -341,7 +323,7 @@ public final class DnsSeedCandidateProvider implements SeedCandidateProvider {
 		List<String> addresses = new ArrayList<>();
 		NamingException error = null;
 
-		for (String type : A_TYPES) {
+		for (int type : A_TYPES) {
 			if (first && ! addresses.isEmpty()) {
 				break;
 			}
@@ -365,7 +347,7 @@ public final class DnsSeedCandidateProvider implements SeedCandidateProvider {
 		return addresses;
 	}
 
-	private List<String> query(String name, String type, long deadline) throws NamingException {
+	private List<String> query(String name, int type, long deadline) throws NamingException {
 		long remaining = TimeUnit.NANOSECONDS.toMillis(deadline - System.nanoTime());
 
 		if (remaining <= 0) {
@@ -373,73 +355,7 @@ public final class DnsSeedCandidateProvider implements SeedCandidateProvider {
 		}
 
 		// A truncated UDP answer is retried over TCP to every server with the same timeout again.
-		long timeout = Math.max(1, remaining / (2 * serverCount));
-
-		Future<List<String>> future = submit(() -> lookup(name, type, timeout));
-
-		try {
-			return future.get(remaining, TimeUnit.MILLISECONDS);
-		}
-		catch (TimeoutException | CancellationException e) {
-			abandon(future);
-			throw new DeadlineException();
-		}
-		catch (InterruptedException e) {
-			Thread.currentThread().interrupt();
-			throw new InterruptedNamingException("interrupted");
-		}
-		catch (ExecutionException e) {
-			Throwable cause = e.getCause();
-
-			if (cause instanceof NamingException) {
-				throw (NamingException)cause;
-			}
-			if (cause instanceof RuntimeException) {
-				throw (RuntimeException)cause;
-			}
-			throw (Error)cause;
-		}
-	}
-
-	private synchronized Future<List<String>> submit(Callable<List<String>> query) {
-		if (queryExecutor == null) {
-			ThreadPoolExecutor executor = new ThreadPoolExecutor(1, 1, 60, TimeUnit.SECONDS,
-				new LinkedBlockingQueue<Runnable>(), new ThreadDaemonFactory());
-			executor.allowCoreThreadTimeOut(true);
-			queryExecutor = executor;
-		}
-		return queryExecutor.submit(query);
-	}
-
-	private synchronized void abandon(Future<?> future) {
-		future.cancel(true);
-
-		if (queryExecutor != null) {
-			// The query thread may be blocked in a socket read, so queries queued behind it go to a new one.
-			queryExecutor.shutdownNow();
-			queryExecutor = null;
-		}
-	}
-
-	private List<String> lookup(String name, String type, long timeout) throws NamingException {
-		DirContext dir = context(providerUrl, timeout);
-
-		try {
-			Attribute attr = dir.getAttributes(absolute(name), new String[] {type}).get(type);
-			List<String> values = new ArrayList<>();
-
-			if (attr != null) {
-				NamingEnumeration<?> e = attr.getAll();
-
-				while (e.hasMore()) {
-					values.add(e.next().toString());
-				}
-			}
-			return values;
-		}
-		finally {
-			dir.close();
-		}
+		return resolver.query(absolute(name), type, Math.max(1, remaining / (2 * resolver.serverCount())), deadline);
 	}
 
 	private static DirContext context(String url, long timeout) throws NamingException {

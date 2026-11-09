@@ -45,6 +45,7 @@ public class DnsSeedCandidateProviderTest {
 	private static final SeedCandidateContext CTX = new SeedCandidateContext(null, new Host[0], 0);
 	private static final Pattern IP_LITERAL = Pattern.compile("^(\\d{1,3}(\\.\\d{1,3}){3}|[0-9a-fA-F:]*:[0-9a-fA-F:.]*)$");
 	private static final long MARGIN = 50;
+	private static final long HANG = 10000;
 
 	private final List<String> warnings = new CopyOnWriteArrayList<>();
 	private StubDnsServer dns;
@@ -255,7 +256,7 @@ public class DnsSeedCandidateProviderTest {
 		}
 	}
 
-	@Test
+	@Test(timeout = HANG)
 	public void truncatedAnswerWithUnansweredTcpReturnsWithinTimeout() throws Exception {
 		try (StubDnsServer silent = new StubDnsServer(true).hangTcp();
 			StubDnsServer truncated = new StubDnsServer().a("a.example.com", "10.0.0.1").truncate().hangTcp()) {
@@ -274,6 +275,47 @@ public class DnsSeedCandidateProviderTest {
 
 			assertTrue("elapsed " + elapsed + "ms", elapsed <= timeout + MARGIN);
 			assertFalse(truncated.queries().toString(), truncated.queries().isEmpty());
+		}
+	}
+
+	@Test(timeout = HANG)
+	public void truncatedAnswerWithUnconnectableTcpReturnsWithinTimeout() throws Exception {
+		// The TCP retry of a truncated answer goes to every server; 192.0.2.1 (TEST-NET-1) never completes a connect.
+		try (StubDnsServer truncated = new StubDnsServer().a("a.example.com", "10.0.0.1").truncate()) {
+			int timeout = 200;
+			DnsSeedCandidateProvider provider = DnsSeedCandidateProvider.builder()
+				.names("a.example.com")
+				.timeout(timeout)
+				.servers(truncated.address(), "192.0.2.1")
+				.build();
+
+			long begin = System.nanoTime();
+			AerospikeException ae = assertThrows(AerospikeException.class, () -> provider.refreshSeedCandidates(CTX));
+			long elapsed = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - begin);
+			System.out.println("DNS-TCP-CONNECT elapsed=" + elapsed + "ms timeout=" + timeout + "ms margin=" + MARGIN +
+				"ms udp=" + truncated.queries() + " message=" + ae.getBaseMessage());
+
+			assertTrue("elapsed " + elapsed + "ms", elapsed <= timeout + MARGIN);
+			assertFalse(truncated.queries().toString(), truncated.queries().isEmpty());
+		}
+	}
+
+	@Test
+	public void truncatedAnswerRetriedOverTcp() throws Exception {
+		try (StubDnsServer truncated = new StubDnsServer().truncate().serveTcp()) {
+			truncated.a("a.example.com", "10.0.0.2", "10.0.0.1").aaaa("a.example.com", "2001:db8::1");
+			DnsSeedCandidateProvider provider = DnsSeedCandidateProvider.builder()
+				.names("a.example.com")
+				.servers(truncated.address())
+				.build();
+
+			List<Host> hosts = provider.refreshSeedCandidates(CTX);
+			System.out.println("DNS-TCP " + hosts + " udp=" + truncated.queries() + " tcp=" + truncated.tcpQueries());
+
+			assertEquals(Arrays.asList(new Host("10.0.0.1", 3000), new Host("10.0.0.2", 3000), new Host("2001:db8::1", 3000)),
+				hosts);
+			assertEquals(Arrays.asList("a.example.com./" + StubDnsServer.A, "a.example.com./" + StubDnsServer.AAAA),
+				truncated.tcpQueries());
 		}
 	}
 
@@ -305,17 +347,27 @@ public class DnsSeedCandidateProviderTest {
 
 	@Test
 	public void startsNoThread() throws Exception {
-		dns.a("seeds.example.com", "10.0.0.1");
-		DnsSeedCandidateProvider provider = builder("seeds.example.com").build();
-		provider.refreshSeedCandidates(CTX);
+		try (StubDnsServer truncated = new StubDnsServer().truncate().serveTcp();
+			StubDnsServer silent = new StubDnsServer(true)) {
+			dns.a("seeds.example.com", "10.0.0.1");
+			truncated.a("seeds.example.com", "10.0.0.2");
 
-		ThreadMXBean bean = ManagementFactory.getThreadMXBean();
-		long started = bean.getTotalStartedThreadCount();
+			ThreadMXBean bean = ManagementFactory.getThreadMXBean();
+			long started = bean.getTotalStartedThreadCount();
 
-		for (int i = 0; i < 5; i++) {
-			provider.refreshSeedCandidates(CTX);
+			DnsSeedCandidateProvider provider = builder("seeds.example.com").build();
+			DnsSeedCandidateProvider tcp = DnsSeedCandidateProvider.builder().names("seeds.example.com")
+				.servers(truncated.address()).build();
+			DnsSeedCandidateProvider unanswered = DnsSeedCandidateProvider.builder().names("seeds.example.com")
+				.timeout(20).servers(silent.address()).build();
+
+			for (int i = 0; i < 5; i++) {
+				provider.refreshSeedCandidates(CTX);
+				tcp.refreshSeedCandidates(CTX);
+				assertThrows(AerospikeException.class, () -> unanswered.refreshSeedCandidates(CTX));
+			}
+			assertEquals(started, bean.getTotalStartedThreadCount());
 		}
-		assertEquals(started, bean.getTotalStartedThreadCount());
 	}
 
 	@Test
