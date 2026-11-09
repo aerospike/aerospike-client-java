@@ -17,6 +17,7 @@
 package com.aerospike.client.cluster;
 
 import java.io.Closeable;
+import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -202,7 +203,10 @@ public class Cluster implements Runnable, Closeable {
 	private volatile int invalidNodeCount;
 
 	// Interval in milliseconds between cluster tends.
-	private int tendInterval;
+	int tendInterval;
+
+	// Address that last passed peer validation, by host name and port.
+	final Map<String,InetAddress> validAddresses = new ConcurrentHashMap<>();
 
 	// Cluster tend counter
 	private int tendCount;
@@ -1927,6 +1931,7 @@ public class Cluster implements Runnable, Closeable {
 		if (! tendRunning || seedRefresher.isThreaded()) {
 			seedRefresher.close();
 		}
+		validAddresses.clear();
 
 		if (! sharedThreadPool) {
 			// Shutdown synchronous thread pool.

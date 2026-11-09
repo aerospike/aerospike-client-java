@@ -25,7 +25,10 @@ import java.io.PrintStream;
 import java.io.UnsupportedEncodingException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
-import java.net.Socket;
+import java.net.UnknownHostException;
+import java.nio.channels.SelectionKey;
+import java.nio.channels.Selector;
+import java.nio.channels.SocketChannel;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -67,17 +70,18 @@ import com.aerospike.client.policy.WritePolicy;
 
 /**
  * Driver for the l5-aws harness in aerospike-client-conformance (l5-aws/DRIVER.md there, contract
- * version 1): builds a client from the flags, runs a retrying load, and writes what the client sees
+ * version 2): builds a client from the flags, runs a retrying load, and writes what the client sees
  * to stdout as JSON lines while it answers the commands it reads from stdin.
  */
 public final class L5Driver {
-	static final int CONTRACT = 1;
+	static final int CONTRACT = 2;
 	static final long POLL_MS = 10;
 	static final long HEARTBEAT_MS = 100;
 	static final long REACH_INTERVAL_MS = 500;
 	static final int REACH_TIMEOUT_MS = 1000;
 	static final long PROBE_INTERVAL_MS = 10;
 	static final int PROBE_CONNECT_MS = 50;
+	static final int SERVING_ROUNDS = 3;
 	static final long WATCH_BOUND_MS = 60000;
 	static final long QUIT_MS = 30000;
 	static final int KEY_SEARCH_LIMIT = 1000000;
@@ -529,25 +533,25 @@ public final class L5Driver {
 	}
 
 	/**
-	 * Probes {@code HOST:PORT} every {@link #PROBE_INTERVAL_MS} until it accepts a connection, then
-	 * checks every {@link #PROBE_INTERVAL_MS} whether the node is usable, and replies.
+	 * Probes every address of {@code HOST:PORT} every {@link #PROBE_INTERVAL_MS} until all accept a
+	 * connection in {@link #SERVING_ROUNDS} consecutive rounds, then checks every
+	 * {@link #PROBE_INTERVAL_MS} whether the node is usable, and replies.
 	 */
 	private final class Watch {
 		private final String address;
-		private final Host host;
 		private final String node;
+		private final Probe probe;
 		private final ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor(daemon("l5-watch"));
-		private Long servingAt;
-		private Long lastClosedAt;
+		private volatile boolean done;
 
 		Watch(String address, Host host, String node) {
 			this.address = address;
-			this.host = host;
 			this.node = node;
+			this.probe = new Probe(host.name, host.port, InetAddress::getAllByName);
 		}
 
 		void start() {
-			executor.scheduleAtFixedRate(this::tick, 0, PROBE_INTERVAL_MS, TimeUnit.MILLISECONDS);
+			executor.execute(this::tick);
 		}
 
 		void stop(long deadline) throws InterruptedException {
@@ -556,38 +560,32 @@ public final class L5Driver {
 		}
 
 		private void tick() {
+			long begin = System.nanoTime();
+
 			try {
-				if (servingAt == null) {
+				if (probe.servingAt == null) {
+					probe.round(now());
+				}
+
+				if (probe.servingAt != null) {
 					long t = now();
 
-					if (! connects()) {
-						lastClosedAt = t;
-						return;
+					if (usable()) {
+						reply(t);
 					}
-					servingAt = t;
-				}
-				long t = now();
-
-				if (usable()) {
-					reply(t);
-				}
-				else if (t - servingAt >= WATCH_BOUND_MS) {
-					reply(null);
+					else if (t - probe.servingAt >= WATCH_BOUND_MS) {
+						reply(null);
+					}
 				}
 			}
 			catch (RuntimeException e) {
 				error("watch " + address + ' ' + node + ": " + message(e));
 				finish();
 			}
-		}
 
-		private boolean connects() {
-			try (Socket socket = new Socket()) {
-				socket.connect(new InetSocketAddress(host.name, host.port), PROBE_CONNECT_MS);
-				return true;
-			}
-			catch (IOException e) {
-				return false;
+			if (! done) {
+				long delay = TimeUnit.MILLISECONDS.toNanos(PROBE_INTERVAL_MS) - (System.nanoTime() - begin);
+				executor.schedule(this::tick, Math.max(0, delay), TimeUnit.NANOSECONDS);
 			}
 		}
 
@@ -598,15 +596,154 @@ public final class L5Driver {
 		}
 
 		private void reply(Long usableAt) {
-			out.write(new Json("watch", now()).put("address", address).put("node", node).put("servingAt", servingAt)
-				.put("lastClosedAt", lastClosedAt).put("usableAt", usableAt)
-				.put("usableMs", usableAt == null ? null : usableAt - servingAt).put("ownershipChecked", true).toString());
+			out.write(new Json("watch", now()).put("address", address).put("node", node).put("servingAt", probe.servingAt)
+				.put("lastClosedAt", probe.lastClosedAt).raw("addresses", probe.addresses()).put("usableAt", usableAt)
+				.put("usableMs", usableAt == null ? null : usableAt - probe.servingAt).put("ownershipChecked", true).toString());
 			finish();
 		}
 
 		private void finish() {
+			done = true;
 			executor.shutdown();
 			watch.compareAndSet(this, null);
+		}
+	}
+
+	/**
+	 * The watch probe. Each round resolves the host and opens a connection to every address it
+	 * resolves to, all at once, each within {@link #PROBE_CONNECT_MS}, and closes them.
+	 */
+	static final class Probe {
+		interface Resolver {
+			InetAddress[] resolve(String host) throws UnknownHostException;
+		}
+
+		private final String host;
+		private final int port;
+		private final Resolver resolver;
+		private final Map<InetAddress,Long> firstConnectedAt = new LinkedHashMap<>();
+		private int servingRounds;
+		private long servingStart;
+		volatile Long servingAt;
+		volatile Long lastClosedAt;
+
+		Probe(String host, int port, Resolver resolver) {
+			this.host = host;
+			this.port = port;
+			this.resolver = resolver;
+		}
+
+		/**
+		 * Run the round that starts at {@code t}.
+		 */
+		void round(long t) {
+			if (connectAll(t)) {
+				if (servingRounds++ == 0) {
+					servingStart = t;
+				}
+
+				if (servingRounds == SERVING_ROUNDS) {
+					servingAt = servingStart;
+				}
+			}
+			else {
+				servingRounds = 0;
+				lastClosedAt = t;
+			}
+		}
+
+		synchronized String addresses() {
+			StringBuilder sb = new StringBuilder("[");
+
+			for (Map.Entry<InetAddress,Long> entry : firstConnectedAt.entrySet()) {
+				if (sb.length() > 1) {
+					sb.append(',');
+				}
+				sb.append(new Json().put("address", entry.getKey().getHostAddress()).put("firstConnectedAt", entry.getValue()));
+			}
+			return sb.append(']').toString();
+		}
+
+		private boolean connectAll(long t) {
+			InetAddress[] addresses;
+
+			try {
+				addresses = resolver.resolve(host);
+			}
+			catch (UnknownHostException e) {
+				return false;
+			}
+
+			synchronized (this) {
+				for (InetAddress address : addresses) {
+					firstConnectedAt.putIfAbsent(address, null);
+				}
+			}
+
+			int connected = 0;
+
+			try (Selector selector = Selector.open()) {
+				int pending = 0;
+
+				for (InetAddress address : addresses) {
+					SocketChannel channel = SocketChannel.open();
+
+					try {
+						channel.configureBlocking(false);
+
+						if (channel.connect(new InetSocketAddress(address, port))) {
+							connected(address, t);
+							connected++;
+							channel.close();
+						}
+						else {
+							channel.register(selector, SelectionKey.OP_CONNECT, address);
+							pending++;
+						}
+					}
+					catch (IOException e) {
+						channel.close();
+					}
+				}
+
+				long deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(PROBE_CONNECT_MS);
+				long remaining;
+
+				while (pending > 0 && (remaining = deadline - System.nanoTime()) > 0) {
+					selector.select(TimeUnit.NANOSECONDS.toMillis(remaining + 999999));
+
+					for (SelectionKey key : selector.selectedKeys()) {
+						SocketChannel channel = (SocketChannel)key.channel();
+
+						try {
+							if (! channel.finishConnect()) {
+								continue;
+							}
+							connected((InetAddress)key.attachment(), t);
+							connected++;
+						}
+						catch (IOException e) {
+						}
+						channel.close();
+						pending--;
+					}
+					selector.selectedKeys().clear();
+				}
+
+				for (SelectionKey key : selector.keys()) {
+					key.channel().close();
+				}
+			}
+			catch (IOException e) {
+				return false;
+			}
+			return addresses.length > 0 && connected == addresses.length;
+		}
+
+		private synchronized void connected(InetAddress address, long t) {
+			if (firstConnectedAt.get(address) == null) {
+				firstConnectedAt.put(address, t);
+			}
 		}
 	}
 
