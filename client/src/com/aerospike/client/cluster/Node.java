@@ -24,6 +24,7 @@ import java.net.SocketTimeoutException;
 import java.nio.ByteBuffer;
 import java.util.ArrayDeque;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -92,6 +93,7 @@ public class Node implements Closeable {
 	int partitionGeneration;
 	private int rebalanceGeneration;
 	protected int peersCount;
+	private List<Host> advertisedHosts;
 	protected int referenceCount;
 	protected int failures;
 	private final int features;
@@ -110,6 +112,7 @@ public class Node implements Closeable {
 	public Node(Cluster cluster, NodeValidator nv) {
 		this.cluster = cluster;
 		this.name = nv.name;
+		this.hostname = nv.hostname;
 		this.host = nv.primaryHost;
 		this.address = nv.primaryAddress;
 		this.tendConnection = nv.primaryConn;
@@ -441,12 +444,35 @@ public class Node implements Closeable {
 			boolean peersValidated = true;
 
 			for (Peer peer : peers.peers) {
+				if (cluster.notifyViewChange) {
+					compareAdvertised(peers, peer);
+				}
+
 				if (findPeerNode(cluster, peers, peer)) {
 					// Node already exists. Do not even try to connect to hosts.
 					continue;
 				}
 
+				if (peer.alternateMissing) {
+					if (Log.errorEnabled()) {
+						Log.error(new AerospikeException.AlternateAddressMissing(peer.nodeName, null).getMessage());
+					}
+					peersValidated = false;
+					continue;
+				}
+
+				AerospikeException.TranslationCollision collision = findCollision(peers, peer);
+
+				if (collision != null) {
+					if (Log.warnEnabled()) {
+						Log.warn(collision.getMessage());
+					}
+					peersValidated = false;
+					continue;
+				}
+
 				boolean nodeValidated = false;
+				collision = null;
 
 				// Find first host that connects.
 				for (Host host : peer.hosts) {
@@ -460,6 +486,13 @@ public class Node implements Closeable {
 						NodeValidator nv = new NodeValidator();
 						nv.validateNode(cluster, host);
 
+						collision = findCollision(peers, peer, host, nv);
+
+						if (collision != null) {
+							nv.primaryConn.close();
+							break;
+						}
+
 						if (! peer.nodeName.equals(nv.name)) {
 							// Must look for new node name in the unlikely event that node names do not agree.
 							if (Log.warnEnabled()) {
@@ -469,11 +502,15 @@ public class Node implements Closeable {
 
 						// Create new node.
 						Node node = cluster.createNode(nv);
+						node.advertisedHosts = peer.advertised;
 						peers.nodes.put(nv.name, node);
 						nodeValidated = true;
 
 						if (peer.replaceNode != null) {
-							if (Log.infoEnabled()) {
+							if (host.name.equals(peer.replaceNode.hostname) && peer.replaceNode.name.equals(nv.name)) {
+								peer.replaceNode.logMove(node);
+							}
+							else if (Log.infoEnabled()) {
 								Log.info("Replace node: " + peer.replaceNode);
 							}
 							peers.removeNodes.add(peer.replaceNode);
@@ -483,9 +520,20 @@ public class Node implements Closeable {
 					catch (Throwable e) {
 						peers.fail(host);
 
-						if (Log.warnEnabled()) {
+						if (e instanceof AerospikeException.AlternateAddressMissing) {
+							if (Log.errorEnabled()) {
+								Log.error("Add node " + host + " failed: " + e.getMessage());
+							}
+						}
+						else if (Log.warnEnabled()) {
 							Log.warn("Add node " + host + " failed: " + Util.getErrorMessage(e));
 						}
+					}
+				}
+
+				if (collision != null) {
+					if (Log.warnEnabled()) {
+						Log.warn(collision.getMessage());
 					}
 				}
 
@@ -505,6 +553,113 @@ public class Node implements Closeable {
 		}
 	}
 
+	private void compareAdvertised(Peers peers, Peer peer) {
+		Node node = cluster.nodesMap.get(peer.nodeName);
+
+		if (node == null || peer.advertised == null) {
+			return;
+		}
+
+		if (node.advertisedHosts != null && ! node.advertisedHosts.equals(peer.advertised)) {
+			peers.addressChanged = true;
+		}
+		node.advertisedHosts = peer.advertised;
+	}
+
+	private AerospikeException.TranslationCollision findCollision(Peers peers, Peer peer) {
+		for (Host host : peer.hosts) {
+			if (! name.equals(peer.nodeName) && this.host.equals(host)) {
+				return new AerospikeException.TranslationCollision(peer.nodeName, name, host, cluster.translatorName());
+			}
+
+			for (Peer other : peers.peers) {
+				if (! other.nodeName.equals(peer.nodeName) && other.hosts.contains(host)) {
+					return new AerospikeException.TranslationCollision(peer.nodeName, other.nodeName, host, cluster.translatorName());
+				}
+			}
+
+			Node node = findNodeByHost(cluster.nodesMap, peer.nodeName, host);
+
+			if (node == null) {
+				node = findNodeByHost(peers.nodes, peer.nodeName, host);
+			}
+
+			if (node != null) {
+				return new AerospikeException.TranslationCollision(peer.nodeName, node.name, host, cluster.translatorName());
+			}
+		}
+		return null;
+	}
+
+	private AerospikeException.TranslationCollision findCollision(Peers peers, Peer peer, Host host, NodeValidator nv) {
+		String other;
+
+		if (name.equals(nv.name) || address.equals(nv.primaryAddress)) {
+			other = name;
+		}
+		else {
+			Node node = findValidatedNode(cluster.nodesMap, peer.nodeName, nv);
+
+			if (node == null) {
+				node = findValidatedNode(peers.nodes, peer.nodeName, nv);
+
+				if (node != null) {
+					// Neither peer becomes a node when both validate as the same node in this tend.
+					peers.nodes.remove(node.name);
+					node.close();
+				}
+			}
+
+			if (node != null) {
+				other = node.name;
+			}
+			else if (! peer.nodeName.equals(nv.name) && findPeer(peers, nv.name)) {
+				other = nv.name;
+			}
+			else {
+				other = peers.collided.get(nv.name);
+			}
+		}
+
+		if (other == null) {
+			return null;
+		}
+		peers.collided.put(nv.name, peer.nodeName);
+		return new AerospikeException.TranslationCollision(peer.nodeName, other, host, cluster.translatorName());
+	}
+
+	private static Node findValidatedNode(HashMap<String,Node> nodes, String nodeName, NodeValidator nv) {
+		for (Node node : nodes.values()) {
+			if (node.name.equals(nodeName)) {
+				continue;
+			}
+
+			if (node.name.equals(nv.name) ||
+				(node.active && node.failures == 0 && node.address.equals(nv.primaryAddress))) {
+				return node;
+			}
+		}
+		return null;
+	}
+
+	private static boolean findPeer(Peers peers, String nodeName) {
+		for (Peer peer : peers.peers) {
+			if (peer.nodeName.equals(nodeName)) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	private static Node findNodeByHost(HashMap<String,Node> nodes, String nodeName, Host host) {
+		for (Node node : nodes.values()) {
+			if (node.active && node.failures == 0 && ! node.name.equals(nodeName) && node.host.equals(host)) {
+				return node;
+			}
+		}
+		return null;
+	}
+
 	private static boolean findPeerNode(Cluster cluster, Peers peers, Peer peer) {
 		// Check global node map for existing cluster.
 		Node node = cluster.nodesMap.get(peer.nodeName);
@@ -521,8 +676,8 @@ public class Node implements Closeable {
 			// Match peer hosts with the node host.
 			for (Host h : peer.hosts) {
 				if (h.port == node.host.port) {
-					// Check for IP address (node.host.name is an IP address) or hostname if it exists.
-					if (h.name.equals(node.host.name) || (node.hostname != null && h.name.equals(node.hostname))) {
+					// Check for IP address (node.host.name is an IP address).
+					if (h.name.equals(node.host.name)) {
 						// Main node host is also the same as one of the peer hosts.
 						// Peer should not be added.
 						node.referenceCount++;
@@ -530,12 +685,14 @@ public class Node implements Closeable {
 					}
 
 					// Peer name might be a hostname. Get peer IP addresses and check with node IP address.
+					// When the hostname has several addresses, the node's address may be the one that
+					// failed, so let the peer be validated on the other addresses.
 					try {
 						InetAddress[] addresses = InetAddress.getAllByName(h.name);
 
 						for (InetAddress address : addresses) {
-							if (address.equals(node.address.getAddress()) ||
-								address.isLoopbackAddress()) {
+							if (address.isLoopbackAddress() || (addresses.length == 1 &&
+								(address.equals(node.address.getAddress()) || h.name.equals(node.hostname)))) {
 								// Set peer hostname for faster future lookups.
 								node.hostname = h.name;
 								node.referenceCount++;
@@ -544,6 +701,11 @@ public class Node implements Closeable {
 						}
 					}
 					catch (Throwable t) {
+						if (h.name.equals(node.hostname)) {
+							node.referenceCount++;
+							return true;
+						}
+
 						// Peer name is invalid. replaceNode may be set, but that node will
 						// not be replaced because NodeValidator will reject it.
 						Log.error("Invalid peer received by cluster tend: " + h.name);
@@ -562,6 +724,69 @@ public class Node implements Closeable {
 			return true;
 		}
 		return false;
+	}
+
+	/**
+	 * Replace a node whose refresh failed with the same node on another address of its hostname.
+	 */
+	protected final void refreshAddress(Peers peers) {
+		if (failures <= 0 || ! active || hostname == null) {
+			return;
+		}
+
+		InetAddress[] addresses;
+
+		try {
+			addresses = InetAddress.getAllByName(hostname);
+		}
+		catch (Throwable e) {
+			return;
+		}
+
+		if (addresses.length <= 1) {
+			return;
+		}
+
+		Host alias = new Host(hostname, host.tlsName, host.port);
+
+		for (InetAddress ia : addresses) {
+			if (ia.equals(address.getAddress())) {
+				continue;
+			}
+
+			try {
+				NodeValidator nv = new NodeValidator();
+				nv.validateAlias(cluster, alias, ia);
+
+				if (! name.equals(nv.name) || findValidatedNode(cluster.nodesMap, name, nv) != null ||
+					findValidatedNode(peers.nodes, name, nv) != null) {
+					if (Log.debugEnabled()) {
+						Log.debug("Address " + nv.primaryHost + " of " + hostname + " is node " + nv.name +
+							", not node " + name);
+					}
+					nv.primaryConn.close();
+					continue;
+				}
+
+				Node node = cluster.createNode(nv);
+				node.advertisedHosts = advertisedHosts;
+				peers.nodes.put(name, node);
+				peers.removeNodes.add(this);
+				logMove(node);
+				return;
+			}
+			catch (Throwable e) {
+				if (Log.debugEnabled()) {
+					Log.debug("Address " + ia + ' ' + host.port + " failed: " + Util.getErrorMessage(e));
+				}
+			}
+		}
+	}
+
+	private void logMove(Node node) {
+		if (Log.infoEnabled()) {
+			Log.info("Move node " + name + ' ' + hostname + " from " + host + " to " + node.host);
+		}
 	}
 
 	protected final void refreshPartitions(Peers peers) {
@@ -727,6 +952,19 @@ public class Node implements Closeable {
 	 * Get a socket connection from connection pool to the server node.
 	 */
 	public final Connection getConnection(SyncCommand cmd, int connectTimeout, int socketTimeout, int timeoutDelay) {
+		return getConnection(cmd, connectTimeout, socketTimeout, timeoutDelay, true);
+	}
+
+	/**
+	 * Create a new socket connection to the server node without taking one from the connection pool.
+	 * The connection is counted in the pool and is returned to it by {@link #putConnection(Connection)}.
+	 * For internal use only.
+	 */
+	public final Connection getNewConnection(SyncCommand cmd, int connectTimeout, int socketTimeout, int timeoutDelay) {
+		return getConnection(cmd, connectTimeout, socketTimeout, timeoutDelay, false);
+	}
+
+	private Connection getConnection(SyncCommand cmd, int connectTimeout, int socketTimeout, int timeoutDelay, boolean usePool) {
 		int max = cluster.connPoolsPerNode;
 		int initialIndex;
 		boolean backward;
@@ -749,7 +987,7 @@ public class Node implements Closeable {
 		Connection conn;
 
 		while (true) {
-			conn = pool.poll();
+			conn = usePool ? pool.poll() : null;
 
 			if (conn != null) {
 				// Found socket.
@@ -757,6 +995,8 @@ public class Node implements Closeable {
 				if (cluster.isConnCurrentTran(conn.getLastUsed())) {
 					try {
 						conn.setTimeout(socketTimeout);
+						conn.pooled = true;
+						conn.received = false;
 						return conn;
 					}
 					catch (Throwable e) {
@@ -897,6 +1137,20 @@ public class Node implements Closeable {
 	public final void closeConnection(Connection conn) {
 		conn.pool.total.getAndDecrement();
 		closeConnectionOnError(conn);
+	}
+
+	/**
+	 * Close a connection taken from the connection pool that failed before any response data was
+	 * read, without counting an error. Return false and leave the connection open if it was newly
+	 * created or has read response data. For internal use only.
+	 */
+	public final boolean closeStaleConnection(Connection conn) {
+		if (! conn.pooled || conn.received) {
+			return false;
+		}
+		conn.pool.total.getAndDecrement();
+		closeIdleConnection(conn);
+		return true;
 	}
 
 	/**

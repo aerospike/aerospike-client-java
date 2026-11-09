@@ -1,0 +1,52 @@
+name: Discovery translate latency
+
+# Run TranslateLatencyTest: translate() p99 under 1 ms for the built-in translators.
+
+permissions:
+  contents: read
+
+on:
+  pull_request:
+    types:
+      - opened
+      - reopened
+      - synchronize
+    paths:
+      - client/src/com/aerospike/client/discovery/**
+      - client/src/com/aerospike/client/cluster/**
+      - client/src/test/java/com/aerospike/client/discovery/TranslateLatencyTest.java
+  workflow_dispatch:
+
+jobs:
+  translate-latency:
+    name: Translate latency
+    runs-on: ${{ vars.BUILD_CONTAINER_DISTRO_VERSION }}
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          ref: ${{ github.ref }}
+
+      - name: Get Java version
+        id: java
+        run: |
+          set -euo pipefail
+          version="$(grep '<java.version>' pom.xml | sed -e 's/<[^>]*>//g' | awk '{$1=$1};1' | sed 's/^1\.8$/8/')"
+          echo "java-version=${version}" >> "$GITHUB_OUTPUT"
+
+      - name: Setup Java
+        uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4.9.1
+        with:
+          distribution: ${{ vars.JAVA_PROVIDER }}
+          java-version: ${{ steps.java.outputs.java-version }}
+
+      - name: Cache Maven repository
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: ~/.m2/repository
+          key: m2-translate-latency-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            m2-translate-latency-
+
+      - name: Run translate latency test
+        run: mvn -B -pl client -am test -Dtest=TranslateLatencyTest

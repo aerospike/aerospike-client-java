@@ -47,3 +47,28 @@ TLS Examples:
     ./run_tests -Djavax.net.ssl.trustStore=TrustStorePath -Djavax.net.ssl.trustStorePassword=TrustStorePassword -DrunSuite="**/SuiteSync.class" -h hostname:tlsname:tlsport -tls
 
     ./run_tests -Djavax.net.ssl.trustStore=TrustStorePath -Djavax.net.ssl.trustStorePassword=TrustStorePassword -DrunSuite="**/SuiteAsync.class" -h hostname:tlsname:tlsport -tls -netty
+
+TLS name validation:
+
+`TestTlsName` (in `SuiteSync`) checks server certificate validation against the tlsName on the
+sync and netty paths: the configured tlsName is accepted and a wrong tlsName is rejected without
+retry. It runs only when `-tls` is set and `-h` includes a tlsName, and is skipped otherwise.
+
+    ./run_tests -Djavax.net.ssl.trustStore=TrustStorePath -Djavax.net.ssl.trustStorePassword=TrustStorePassword -Dtest=TestTlsName -h hostname:tlsname:tlsport -tls
+
+Certificate matching cases (DNS and IP subject alternative names, wildcards, legacy CN fallback,
+revoked serials) need a different server certificate per case, so they do not run against a
+shared server. `tls/run_tls_matching.sh` generates each certificate, starts a single node
+Aerospike Enterprise container with it, runs `SuiteTlsMatching` and removes the container.
+It requires docker, openssl, an Enterprise image and a feature-key file:
+
+    AEROSPIKE_IMAGE=aerospike/aerospike-server-enterprise:8.1 \
+    AEROSPIKE_FEATURES_FILE=/path/to/features.conf \
+    tls/run_tls_matching.sh [case ...]
+
+Case `n6_proxy` (testing-strategy N-6) starts a two node cluster instead and runs `TestTlsProxy`:
+each node is reached through a TCP pass-through listener, and the second node and its tls-name
+are learned from peers-*. It uses `TLS_MATCHING_PORT` and the port after it.
+
+With no case names every case runs. Case names and the optional environment variables are listed
+at the top of the script. Per case output is written to `target/tls-matching/<case>/mvn.log`.

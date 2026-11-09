@@ -1,0 +1,78 @@
+/*
+ * Copyright 2012-2026 Aerospike, Inc.
+ *
+ * Portions may be licensed to Aerospike, Inc. under one or more contributor
+ * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
+ */
+package com.aerospike.client.discovery;
+
+import java.util.List;
+
+import com.aerospike.client.Host;
+
+/**
+ * Source of seed hosts used to discover the cluster. The client consults the provider when
+ * the cluster is initialized and when it must re-seed because no nodes are reachable.
+ * <p>
+ * When no provider is configured, {@link StaticSeedCandidateProvider} is used with the hosts
+ * passed to the client constructor.
+ */
+public interface SeedCandidateProvider {
+	/**
+	 * Return the current seed candidates. Returned hosts are used as seeds, so they must carry the
+	 * TLS name when TLS is enabled; a null TLS name is defaulted the same way as for configured seeds.
+	 * <p>
+	 * Called once at client initialization, with {@link SeedCandidateContext#tendIteration} 0, then on
+	 * each periodic refresh. With {@link com.aerospike.client.policy.ClientPolicy#discoveryExecutionMode}
+	 * {@link DiscoveryExecutionMode#THREAD} and a provider that needs periodic refresh, every call runs
+	 * on the client's discovery thread; otherwise the first call runs on the application thread that
+	 * constructs the client and periodic refreshes on the cluster tend thread. Calls are never made
+	 * concurrently. An exception at initialization is logged at warning level and the client continues
+	 * with the seeds left by {@link com.aerospike.client.policy.ClientPolicy#discoveryMergePolicy};
+	 * when none are left, client construction fails with
+	 * {@link com.aerospike.client.ResultCode#SEED_DISCOVERY_FAILED}. An exception on a periodic
+	 * refresh is logged at warning level and the previous seed list is kept.
+	 *
+	 * @param ctx	cluster name, configured seeds and tend count for this call
+	 */
+	List<Host> refreshSeedCandidates(SeedCandidateContext ctx);
+
+	/**
+	 * Return true if the provider's candidates can change and must be refreshed periodically.
+	 * Return false if the candidates are fixed, in which case the client schedules no periodic
+	 * work for this provider. Called once on the application thread that constructs the client.
+	 */
+	boolean needsPeriodicRefresh();
+
+	/**
+	 * Return true if {@link #refreshSeedCandidates(SeedCandidateContext)} honors a deadline: it either
+	 * does no I/O or bounds all of its I/O so that it can return within a caller-supplied time limit.
+	 * Only providers that return true are eligible to run on the cluster tend thread, in
+	 * {@link DiscoveryExecutionMode#TEND}. Called once on the application thread that constructs
+	 * the client.
+	 */
+	boolean supportsDeadline();
+
+	/**
+	 * Release resources held by the provider. The default does nothing.
+	 * <p>
+	 * Called once after {@link com.aerospike.client.AerospikeClient#close()}, when the last refresh
+	 * has returned: on the discovery thread as it exits, when one runs; otherwise on the cluster tend
+	 * thread as it exits, or on the thread that closes the client when no tend thread runs.
+	 * {@code AerospikeClient.close()} does not wait for it. An exception is
+	 * logged at warning level and not thrown. A provider instance shared by several clients is closed
+	 * by each of them.
+	 */
+	default void close() {
+	}
+}

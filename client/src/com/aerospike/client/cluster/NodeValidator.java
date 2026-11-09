@@ -38,6 +38,7 @@ import com.aerospike.client.util.Version;
 public final class NodeValidator {
 	Node fallback;
 	String name;
+	String hostname;
 	Host primaryHost;
 	InetSocketAddress primaryAddress;
 	Connection primaryConn;
@@ -53,6 +54,7 @@ public final class NodeValidator {
 	 */
 	public Node seedNode(Cluster cluster, Host host, Peers peers) throws Throwable {
 		name = null;
+		hostname = null;
 		primaryHost = null;
 		primaryAddress = null;
 		primaryConn = null;
@@ -66,6 +68,7 @@ public final class NodeValidator {
 		for (InetAddress address : addresses) {
 			try {
 				validateAddress(cluster, address, host.tlsName, host.port, true);
+				setHostname(host, address);
 
 				Node node = new Node(cluster, this);
 
@@ -142,6 +145,7 @@ public final class NodeValidator {
 		for (InetAddress address : addresses) {
 			try {
 				validateAddress(cluster, address, host.tlsName, host.port, false);
+				setHostname(host, address);
 				return;
 			}
 			catch (Throwable e) {
@@ -158,6 +162,33 @@ public final class NodeValidator {
 		// Exception can't be null here because getAddresses() will throw exception
 		// if aliases length is zero.
 		throw exception;
+	}
+
+	/**
+	 * Verify that one address of a host references a valid node.
+	 */
+	void validateAlias(Cluster cluster, Host host, InetAddress address) throws Exception {
+		validateAddress(cluster, address, host.tlsName, host.port, false);
+		setHostname(host, address);
+	}
+
+	private void setHostname(Host host, InetAddress address) {
+		hostname = (isHostname(host.name) && address.equals(primaryAddress.getAddress())) ? host.name : null;
+	}
+
+	private static boolean isHostname(String name) {
+		if (name.indexOf(':') >= 0) {
+			return false;
+		}
+
+		for (int i = 0; i < name.length(); i++) {
+			char c = name.charAt(i);
+
+			if (c != '.' && ! Character.isDigit(c)) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 	private static InetAddress[] getAddresses(Host host) {
@@ -210,7 +241,7 @@ public final class NodeValidator {
 
 				if (cluster.tlsPolicy != null && cluster.tlsPolicy.forLoginOnly) {
 					// Switch to using non-TLS socket.
-					SwitchClear sc = new SwitchClear(cluster, conn, sessionToken);
+					SwitchClear sc = new SwitchClear(cluster, conn, tlsName, sessionToken);
 					conn.close();
 					address = sc.clearAddress;
 					socketAddress = sc.clearSocketAddress;
@@ -234,19 +265,19 @@ public final class NodeValidator {
 
 			String addressCommand = null;
 
-			if (detectLoadBalancer) {
-				if (address.isLoopbackAddress()) {
-					// Disable load balancer detection for localhost.
-					detectLoadBalancer = false;
-				}
-				else {
-					// Seed may be load balancer with changing address. Determine real address.
-					addressCommand = (cluster.tlsPolicy != null)?
-						cluster.useServicesAlternate ? "service-tls-alt" : "service-tls-std" :
-						cluster.useServicesAlternate ? "service-clear-alt" : "service-clear-std";
+			if (detectLoadBalancer && address.isLoopbackAddress()) {
+				// Disable load balancer detection for localhost.
+				detectLoadBalancer = false;
+			}
 
-					commands.add(addressCommand);
-				}
+			if (detectLoadBalancer || cluster.useServicesAlternate) {
+				// Seed may be load balancer with changing address. Determine real address.
+				// The alternate address list must also contain the node itself.
+				addressCommand = (cluster.tlsPolicy != null)?
+					cluster.useServicesAlternate ? "service-tls-alt" : "service-tls-std" :
+					cluster.useServicesAlternate ? "service-clear-alt" : "service-clear-std";
+
+				commands.add(addressCommand);
 			}
 
 			// Issue commands.
@@ -271,7 +302,11 @@ public final class NodeValidator {
 				validateClusterName(cluster, map);
 			}
 
-			if (addressCommand != null) {
+			if (cluster.useServicesAlternate) {
+				validateAlternateAddress(map, addressCommand);
+			}
+
+			if (detectLoadBalancer) {
 				setAddress(cluster, map, addressCommand, tlsName);
 			}
 		}
@@ -351,6 +386,14 @@ public final class NodeValidator {
 		}
 	}
 
+	private void validateAlternateAddress(HashMap<String,String> map, String addressCommand) {
+		String result = map.get(addressCommand);
+
+		if (result == null || result.length() == 0) {
+			throw new AerospikeException.AlternateAddressMissing(this.name, this.primaryHost);
+		}
+	}
+
 	private void setAddress(Cluster cluster, HashMap<String,String> map, String addressCommand, String tlsName) {
 		String result = map.get(addressCommand);
 
@@ -365,14 +408,11 @@ public final class NodeValidator {
 
 		// Search real hosts for seed.
 		for (Host host : hosts) {
-			h = host;
-
-			if (cluster.ipMap != null) {
-				String alt = cluster.ipMap.get(h.name);
-
-				if (alt != null) {
-					h = new Host(alt, h.port);
-				}
+			try {
+				h = cluster.translateAddress(this.name, tlsName, host.name, host.port);
+			}
+			catch (AerospikeException.TranslationMiss tm) {
+				continue;
 			}
 
 			if (h.equals(this.primaryHost)) {
@@ -385,15 +425,7 @@ public final class NodeValidator {
 		// Find first valid real host.
 		for (Host host : hosts) {
 			try {
-				h = host;
-
-				if (cluster.ipMap != null) {
-					String alt = cluster.ipMap.get(h.name);
-
-					if (alt != null) {
-						h = new Host(alt, h.port);
-					}
-				}
+				h = cluster.translateAddress(this.name, tlsName, host.name, host.port);
 
 				InetAddress[] addresses = InetAddress.getAllByName(h.name);
 
@@ -446,25 +478,19 @@ public final class NodeValidator {
 		private Connection clearConn;
 
 		// Switch from TLS connection to non-TLS connection.
-		private SwitchClear(Cluster cluster, Connection conn, byte[] sessionToken) throws Exception {
+		private SwitchClear(Cluster cluster, Connection conn, String tlsName, byte[] sessionToken) throws Exception {
 			// Obtain non-TLS addresses.
 			String command = cluster.useServicesAlternate ? "service-clear-alt" : "service-clear-std";
-			String result = Info.request(conn, command);
+			HashMap<String,String> map = Info.request(conn, command, "node");
+			String result = map.get(command);
+			String nodeName = map.get("node");
 			List<Host> hosts = Host.parseServiceHosts(result);
 			Host clearHost;
 
 			// Find first valid non-TLS host.
 			for (Host host : hosts) {
 				try {
-					clearHost = host;
-
-					if (cluster.ipMap != null) {
-						String alternativeHost = cluster.ipMap.get(clearHost.name);
-
-						if (alternativeHost != null) {
-							clearHost = new Host(alternativeHost, clearHost.port);
-						}
-					}
+					clearHost = cluster.translateAddress(nodeName, tlsName, host.name, host.port);
 
 					InetAddress[] addresses = InetAddress.getAllByName(clearHost.name);
 

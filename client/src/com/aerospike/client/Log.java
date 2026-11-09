@@ -105,6 +105,13 @@ public final class Log {
 	}
 
 	/**
+	 * Determine if error log level is enabled.
+	 */
+	public static boolean errorEnabled() {
+		return gCallback != null;
+	}
+
+	/**
 	 * Determine if warning log level is enabled.
 	 */
 	public static boolean warnEnabled() {

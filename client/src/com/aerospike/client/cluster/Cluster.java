@@ -24,6 +24,9 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -54,6 +57,15 @@ import com.aerospike.client.configuration.YamlConfigProvider;
 import com.aerospike.client.configuration.serializers.Configuration;
 import com.aerospike.client.configuration.serializers.StaticConfiguration;
 import com.aerospike.client.configuration.serializers.staticconfig.StaticClientConfig;
+import com.aerospike.client.configuration.serializers.staticconfig.StaticTranslationConfig;
+import com.aerospike.client.discovery.AddressTranslator;
+import com.aerospike.client.discovery.Endpoint;
+import com.aerospike.client.discovery.PassThroughAddressTranslator;
+import com.aerospike.client.discovery.PortMapAddressTranslator;
+import com.aerospike.client.discovery.SeedCandidateProvider;
+import com.aerospike.client.discovery.StaticMapAddressTranslator;
+import com.aerospike.client.discovery.StaticSeedCandidateProvider;
+import com.aerospike.client.discovery.TranslationMissMode;
 import com.aerospike.client.listener.ClusterStatsListener;
 import com.aerospike.client.metrics.MetricsListener;
 import com.aerospike.client.metrics.MetricsPolicy;
@@ -94,6 +106,16 @@ public class Cluster implements Runnable, Closeable {
 
 	// IP translations.
 	protected final Map<String,String> ipMap;
+
+	// Source of seed hosts.
+	protected final SeedCandidateProvider seedCandidateProvider;
+
+	// Advertised address translation.
+	protected final AddressTranslator addressTranslator;
+
+	// Action when the address translator has no mapping.
+	protected final TranslationMissMode translationOnMiss;
+	private final Map<String,String> translationMisses;
 
 	// TLS connection policy.
 	public final TlsPolicy tlsPolicy;
@@ -185,6 +207,12 @@ public class Cluster implements Runnable, Closeable {
 	// Cluster tend counter
 	private int tendCount;
 
+	// Cluster view change counter passed to the address translator.
+	private int viewChange;
+
+	// True when the address translator overrides onClusterViewChanged.
+	final boolean notifyViewChange;
+
 	// Milliseconds between dynamic configuration check for file modifications.
 	public final int configInterval;
 
@@ -200,6 +228,9 @@ public class Cluster implements Runnable, Closeable {
 
 	// Is threadPool shared with other client instances?
 	private final boolean sharedThreadPool;
+
+	// Periodic seed candidate refresh scheduler.
+	final SeedRefresher seedRefresher;
 
 	// Should use "services-alternate" instead of "services" in info request?
 	protected boolean useServicesAlternate;
@@ -239,27 +270,21 @@ public class Cluster implements Runnable, Closeable {
 		this.validateClusterName = policy.validateClusterName;
 		this.tlsPolicy = policy.tlsPolicy;
 		this.authMode = policy.authMode;
+		this.seedCandidateProvider = (policy.seedCandidateProvider != null)?
+			policy.seedCandidateProvider : new StaticSeedCandidateProvider(hosts);
+		this.addressTranslator = (policy.addressTranslator != null)?
+			policy.addressTranslator : new StaticMapAddressTranslator(policy.ipMap);
+		this.notifyViewChange = overridesViewChange(addressTranslator);
+		this.translationOnMiss = (policy.translationOnMiss != null)?
+			policy.translationOnMiss : TranslationMissMode.PASS_THROUGH;
+		// The default translator is the legacy ipMap, which misses unmapped hosts by design.
+		this.translationMisses = (policy.addressTranslator != null)? new ConcurrentHashMap<>() : null;
 
-		// Default TLS names when TLS enabled.
-		if (tlsPolicy != null) {
-			boolean useClusterName = clusterName != null && clusterName.length() > 0;
+		this.seedRefresher = new SeedRefresher(seedCandidateProvider, policy, hosts, this::setSeeds);
 
-			for (int i = 0; i < hosts.length; i++) {
-				Host host = hosts[i];
-
-				if (host.tlsName == null) {
-					String tlsName = useClusterName ? clusterName : host.name;
-					hosts[i] = new Host(host.name, tlsName, host.port);
-				}
-			}
+		if (tlsPolicy == null && (authMode == AuthMode.EXTERNAL || authMode == AuthMode.PKI)) {
+			throw new AerospikeException("TLS is required for authentication mode: " + authMode);
 		}
-		else {
-			if (authMode == AuthMode.EXTERNAL || authMode == AuthMode.PKI) {
-				throw new AerospikeException("TLS is required for authentication mode: " + authMode);
-			}
-		}
-
-		this.seeds = hosts;
 
 		if (policy.authMode == AuthMode.PKI) {
 			if (policy.password != null) {
@@ -384,19 +409,35 @@ public class Cluster implements Runnable, Closeable {
 			nettyTlsContext = null;
 		}
 
-		if (policy.forceSingleNode) {
-			// Communicate with the first seed node only.
-			// Do not run cluster tend thread.
-			try {
-				forceSingleNode();
+		try {
+			hosts = seedRefresher.discover();
+
+			// Default TLS names when TLS enabled.
+			if (tlsPolicy != null) {
+				defaultTlsNames(hosts);
 			}
-			catch (Throwable e) {
-				close();
-				throw e;
+
+			this.seeds = hosts;
+			seedRefresher.start(hosts);
+
+			if (policy.forceSingleNode) {
+				// Communicate with the first seed node only.
+				// Do not run cluster tend thread.
+				try {
+					forceSingleNode();
+				}
+				catch (Throwable e) {
+					close();
+					throw e;
+				}
+			}
+			else {
+				initTendThread(policy.failIfNotConnected);
 			}
 		}
-		else {
-			initTendThread(policy.failIfNotConnected);
+		catch (Throwable e) {
+			seedRefresher.abort();
+			throw e;
 		}
 	}
 
@@ -414,6 +455,8 @@ public class Cluster implements Runnable, Closeable {
 			throw new AerospikeException("Dynamic config interval " + configInterval +
 				" must be greater or equal to the tend interval " + clientPolicy.tendInterval);
 		}
+
+		seedRefresher.validate(clientPolicy.tendInterval);
 
 		tendInterval = clientPolicy.tendInterval;
 		connectTimeout = clientPolicy.timeout;
@@ -473,6 +516,103 @@ public class Cluster implements Runnable, Closeable {
 				}
 			}
 		}
+	}
+
+	/**
+	 * Translate a server advertised address. The advertised TLS name is always kept.
+	 * Throw {@link AerospikeException.TranslationMiss} on a strict miss.
+	 */
+	final Host translateAddress(String nodeName, String tlsName, String host, int port) {
+		Endpoint.SourceList sourceList = useServicesAlternate?
+			Endpoint.SourceList.ALTERNATE : Endpoint.SourceList.STANDARD;
+
+		return translate(addressTranslator, translationOnMiss, new Endpoint(nodeName, tlsName, host, port, sourceList),
+			translationMisses);
+	}
+
+	static Host translate(AddressTranslator translator, Endpoint advertised) {
+		return translate(translator, TranslationMissMode.PASS_THROUGH, advertised);
+	}
+
+	static Host translate(AddressTranslator translator, TranslationMissMode onMiss, Endpoint advertised) {
+		return translate(translator, onMiss, advertised, null);
+	}
+
+	/**
+	 * Translate an advertised address. On a pass-through miss, warn once per node and advertised
+	 * address when {@code misses} is not null.
+	 */
+	private static Host translate(AddressTranslator translator, TranslationMissMode onMiss, Endpoint advertised,
+		Map<String,String> misses) {
+		Optional<Host> result = translator.translate(advertised);
+
+		if (result == null) {
+			throw new AerospikeException("Address translator " + translatorName(translator) +
+				" returned null for " + advertised);
+		}
+
+		if (! result.isPresent()) {
+			if (onMiss == TranslationMissMode.STRICT) {
+				throw new AerospikeException.TranslationMiss(advertised, translatorName(translator));
+			}
+
+			if (misses != null) {
+				String address = advertised.host + ':' + advertised.port;
+
+				if (! address.equals(misses.put(String.valueOf(advertised.nodeName), address)) && Log.warnEnabled()) {
+					Log.warn("Address translator " + translatorName(translator) + " has no mapping for node " +
+						advertised.nodeName + " advertised address " + address + " in the " +
+						(advertised.sourceList == Endpoint.SourceList.ALTERNATE ? "alternate" : "standard") +
+						" list. Connecting to the advertised address because translation.on_miss is pass_through");
+				}
+			}
+			return new Host(advertised.host, advertised.tlsName, advertised.port);
+		}
+
+		Host host = result.get();
+
+		if (! Objects.equals(host.tlsName, advertised.tlsName)) {
+			host = new Host(host.name, advertised.tlsName, host.port);
+		}
+		return host;
+	}
+
+	final String translatorName() {
+		return translatorName(addressTranslator);
+	}
+
+	private static String translatorName(AddressTranslator translator) {
+		if (translator instanceof PassThroughAddressTranslator) {
+			return StaticTranslationConfig.PASS_THROUGH;
+		}
+		if (translator instanceof PortMapAddressTranslator) {
+			return StaticTranslationConfig.PORT_MAP;
+		}
+		return (translator instanceof StaticMapAddressTranslator)? StaticTranslationConfig.STATIC_MAP : translator.getClass().getName();
+	}
+
+	private void defaultTlsNames(Host[] hosts) {
+		boolean useClusterName = clusterName != null && clusterName.length() > 0;
+
+		for (int i = 0; i < hosts.length; i++) {
+			Host host = hosts[i];
+
+			if (host.tlsName == null) {
+				String tlsName = useClusterName ? clusterName : host.name;
+				hosts[i] = new Host(host.name, tlsName, host.port);
+			}
+		}
+	}
+
+	final void setSeeds(Host[] hosts) {
+		if (tlsPolicy != null) {
+			defaultTlsNames(hosts);
+		}
+		seeds = hosts;
+	}
+
+	final Host[] getSeeds() {
+		return seeds;
 	}
 
 	public void forceSingleNode() {
@@ -620,6 +760,7 @@ public class Cluster implements Runnable, Closeable {
 			// Sleep between polling intervals.
 			Util.sleep(tendInterval);
 		}
+		seedRefresher.close();
 	}
 
 	/**
@@ -628,6 +769,7 @@ public class Cluster implements Runnable, Closeable {
 	private final void tend(boolean failIfNotConnected, boolean isInit) {
 		// All node additions/deletions are performed in tend thread.
 		// Initialize tend iteration node statistics.
+		Node[] nodesBefore = nodes;
 		Peers peers = new Peers(nodes.length + 16);
 
 		// Clear node reference counts.
@@ -639,6 +781,9 @@ public class Cluster implements Runnable, Closeable {
 
 		// If active nodes don't exist, seed cluster.
 		if (nodes.length == 0) {
+			if (! isInit) {
+				seedRefresher.requestRefresh();
+			}
 			seedNode(peers, failIfNotConnected);
 
 			// Abort cluster init if all peers of the seed are not reachable and failIfNotConnected is true.
@@ -652,6 +797,10 @@ public class Cluster implements Runnable, Closeable {
 				node.refresh(peers);
 			}
 
+			for (Node node : nodes) {
+				node.refreshAddress(peers);
+			}
+
 			// Refresh peers when necessary.
 			if (peers.genChanged) {
 				// Refresh peers for all nodes that responded the first time even if only one node's peers changed.
@@ -663,18 +812,27 @@ public class Cluster implements Runnable, Closeable {
 
 				// Handle nodes changes determined from refreshes.
 				findNodesToRemove(peers);
-
-				// Remove nodes in a batch.
-				if (peers.removeNodes.size() > 0) {
-					removeNodes(peers.removeNodes);
-				}
 			}
 
-			// Add peer nodes to cluster.
-			if (peers.nodes.size() > 0) {
+			// Add peer nodes to cluster before removing the nodes they replace.
+			boolean added = peers.nodes.size() > 0;
+
+			if (added) {
 				addNodes(peers.nodes);
+			}
+
+			// Remove nodes in a batch.
+			if (peers.removeNodes.size() > 0) {
+				removeNodes(peers.removeNodes);
+			}
+
+			if (added) {
 				refreshPeers(peers);
 			}
+		}
+
+		if (notifyViewChange && ! isInit && (nodes != nodesBefore || peers.addressChanged)) {
+			clusterViewChanged();
 		}
 
 		invalidNodeCount += peers.getInvalidCount();
@@ -752,7 +910,35 @@ public class Cluster implements Runnable, Closeable {
 			}
 		}
 
+		if (! isInit) {
+			seedRefresher.tend(tendCount, tendInterval);
+		}
+
 		processRecoverQueue();
+	}
+
+	private static boolean overridesViewChange(AddressTranslator translator) {
+		try {
+			return translator.getClass().getMethod("onClusterViewChanged", int.class).getDeclaringClass() !=
+				AddressTranslator.class;
+		}
+		catch (NoSuchMethodException e) {
+			return false;
+		}
+	}
+
+	private void clusterViewChanged() {
+		viewChange++;
+
+		try {
+			addressTranslator.onClusterViewChanged(viewChange);
+		}
+		catch (Throwable e) {
+			if (Log.warnEnabled()) {
+				Log.warn("Address translator " + translatorName() + " onClusterViewChanged failed: " +
+					Util.getErrorMessage(e));
+			}
+		}
 	}
 
 	private final boolean seedNode(Peers peers, boolean failIfNotConnected) {
@@ -788,6 +974,11 @@ public class Cluster implements Runnable, Closeable {
 					}
 					exceptions[i] = e;
 				}
+				else if (e instanceof AerospikeException.AlternateAddressMissing) {
+					if (Log.errorEnabled()) {
+						Log.error("Seed " + seed + " failed: " + e.getMessage());
+					}
+				}
 				else {
 					if (Log.warnEnabled()) {
 						Log.warn("Seed " + seed + " failed: " + Util.getErrorMessage(e));
@@ -806,6 +997,14 @@ public class Cluster implements Runnable, Closeable {
 		}
 
 		if (failIfNotConnected) {
+			if (exceptions != null) {
+				for (Throwable ex : exceptions) {
+					if (ex instanceof AerospikeException.AlternateAddressMissing) {
+						throw (AerospikeException.AlternateAddressMissing)ex;
+					}
+				}
+			}
+
 			StringBuilder sb = new StringBuilder(500);
 			sb.append("Failed to connect to ["+ seedArray.length +"] host(s): ");
 			sb.append(System.lineSeparator());
@@ -994,8 +1193,10 @@ public class Cluster implements Runnable, Closeable {
 
 		// Cleanup node resources.
 		for (Node node : nodesToRemove) {
-			// Remove node from map.
-			nodesMap.remove(node.getName());
+			// Remove node from map unless a replacement node already took its name.
+			if (nodesMap.get(node.getName()) == node) {
+				nodesMap.remove(node.getName());
+			}
 
 			synchronized(metricsLock) {
 				if (metricsEnabled) {
@@ -1028,7 +1229,7 @@ public class Cluster implements Runnable, Closeable {
 
 		// Add nodes that are not in remove list.
 		for (Node node : nodes) {
-			if (nodesToRemove.contains(node)) {
+			if (isRemoved(nodesToRemove, node)) {
 				if (Log.infoEnabled()) {
 					Log.info("Remove node " + node);
 				}
@@ -1054,6 +1255,16 @@ public class Cluster implements Runnable, Closeable {
 
 		// Replace nodes with copy.
 		nodes = nodeArray;
+	}
+
+	private static boolean isRemoved(HashSet<Node> nodesToRemove, Node node) {
+		// Nodes are equal by name, so match by reference to keep a replacement node.
+		for (Node remove : nodesToRemove) {
+			if (remove == node) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 	public final boolean isConnected() {
@@ -1182,23 +1393,34 @@ public class Cluster implements Runnable, Closeable {
 		ConfigurationProvider provider = client.getConfigProvider();
 
 		if (provider == null) {
-			provider = YamlConfigProvider.getConfigProvider(configPath);
-
-			if (provider == null) {
-				// Failed to read configuration file. Warning was already logged.
+			try {
+				provider = new YamlConfigProvider(configPath);
+			}
+			catch (Exception e) {
+				if (Log.warnEnabled()) {
+					Log.warn(e.getMessage());
+				}
 				return;
 			}
 
 			client.setConfigProvider(provider);
+
+			try {
+				client.mergePoliciesWithConfig();
+			}
+			catch (AerospikeException ae) {
+				client.setConfigProvider(null);
+				throw ae;
+			}
 		}
 		else {
 			if (!provider.loadConfiguration()) {
 				return;
 			}
+			client.mergePoliciesWithConfig();
 		}
 
 		config = provider.fetchConfiguration();
-		client.mergePoliciesWithConfig();
 		applyCommonClientPolicyParameters(client.getClientPolicy(), false);
 
 		synchronized(metricsLock) {
@@ -1694,9 +1916,17 @@ public class Cluster implements Runnable, Closeable {
 			return;
 		}
 
+		// The tend thread closes the seed provider on exit, so close it here only if it never ran.
+		// A discovery thread is stopped here, so close waits for its refresh in flight.
+		boolean tendRunning = tendThread != null && tendThread.isAlive();
+
 		// Stop cluster tend thread.
 		tendValid = false;
 		tendThread.interrupt();
+
+		if (! tendRunning || seedRefresher.isThreaded()) {
+			seedRefresher.close();
+		}
 
 		if (! sharedThreadPool) {
 			// Shutdown synchronous thread pool.

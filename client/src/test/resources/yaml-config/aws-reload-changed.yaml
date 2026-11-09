@@ -1,0 +1,21 @@
+version: 1.2.0
+static:
+  client:
+    config_interval: 250
+    max_connections_per_node: 97
+    discovery:
+      provider: aws-tags
+      aws:
+        region: eu-west-1
+        filters:
+          - name: tag:aerospike-cluster
+            values:
+              - prod-b
+        address_field: public_ip
+        port: 3200
+        timeout_ms: 60
+        endpoint: http://127.0.0.1:2
+dynamic:
+  client:
+    tend_interval: 250
+    timeout: 4004

@@ -1,0 +1,11 @@
+version: 1.2.0
+static:
+  client:
+    discovery:
+      merge_policy: merge
+    translation:
+      provider: port-map
+      port_map:
+        "10.0.0.1:3000": "lb.example.com:30001"
+        "[2001:db8::1]:3000": "lb.example.com:30002"
+        BB9020011AC4202: "lb.example.com:30003"

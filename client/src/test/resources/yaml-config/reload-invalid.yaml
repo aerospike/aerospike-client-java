@@ -1,0 +1,13 @@
+version: 1.2.0
+static:
+  client:
+    config_interval: 250
+    max_connections_per_node: 98
+    discovery:
+      execution_mode: background
+    translation:
+      on_miss: pass_through
+dynamic:
+  client:
+    tend_interval: 250
+    timeout: 3003

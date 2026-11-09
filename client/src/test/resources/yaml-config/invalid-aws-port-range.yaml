@@ -1,0 +1,13 @@
+version: 1.2.0
+static:
+  client:
+    max_connections_per_node: 99
+    discovery:
+      provider: aws-tags
+      aws:
+        region: us-east-1
+        filters:
+          - name: tag:aerospike-cluster
+            values:
+              - prod-a
+        port: 70000

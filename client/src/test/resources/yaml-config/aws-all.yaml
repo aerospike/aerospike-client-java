@@ -1,0 +1,25 @@
+version: 1.2.0
+static:
+  client:
+    max_connections_per_node: 99
+    discovery:
+      provider: aws-tags
+      merge_policy: merge
+      tend_refresh_deadline_ms: 100
+      aws:
+        region: eu-west-1
+        filters:
+          - name: tag:aerospike-cluster
+            values:
+              - prod-a
+              - prod-b
+          - name: subnet-id
+            values:
+              - subnet-0123
+        address_field: public_dns
+        port: 3100
+        tls_name: tls-seed
+        timeout_ms: 60
+        init_timeout_ms: 5000
+        endpoint: https://vpce-0123.ec2.eu-west-1.vpce.amazonaws.com
+        access_key_id: ignored-unknown-key

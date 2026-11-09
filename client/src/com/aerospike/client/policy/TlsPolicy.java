@@ -25,6 +25,23 @@ import com.aerospike.client.async.NettyTlsContext;
 /**
  * TLS connection policy.  Secure TLS connections are supported for
  * synchronous commands and netty backed asynchronous commands.
+ * <p>
+ * The server certificate is matched against the node's tlsName (the reference identifier)
+ * per RFC 9525:
+ * <ul>
+ * <li>An IPv4 or IPv6 literal tlsName (IP-ID) matches only an iPAddress subject alternative
+ * name holding the same address. It never matches a dNSName, a wildcard or the subject CN.</li>
+ * <li>Any other tlsName (DNS-ID) matches only a dNSName subject alternative name. Matching is
+ * ASCII case-insensitive.</li>
+ * <li>The only wildcard is a left-most label of exactly "*" matching one non-empty label:
+ * "*.example.com" matches "a.example.com", but not "example.com" or "a.b.example.com".</li>
+ * <li>The subject CN is not an identifier.</li>
+ * </ul>
+ * Deprecated legacy fallback: when those rules find no match, the certificate is still accepted
+ * if tlsName exactly equals (case-sensitive) a subject CN or a dNSName, as in earlier releases,
+ * and a warning is logged once per tlsName. This fallback is not RFC 9525 conformant and will be
+ * removed in the next major release, when such certificates (for example, CN-only certificates
+ * or an IP address present only as a dNSName) will be rejected.
  */
 public final class TlsPolicy {
 	/**
