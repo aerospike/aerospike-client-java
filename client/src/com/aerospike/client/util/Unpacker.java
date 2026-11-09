@@ -74,6 +74,9 @@ public abstract class Unpacker<T> {
 			}
 			return unpackList(count);
 		}
+		catch (AerospikeException ae) {
+			throw ae;
+		}
 		catch (Throwable e) {
 			throw new AerospikeException.Serialize(e);
 		}
@@ -135,6 +138,9 @@ public abstract class Unpacker<T> {
 				return getMap(new HashMap<T,T>(0));
 			}
 			return unpackMap(count);
+		}
+		catch (AerospikeException ae) {
+			throw ae;
 		}
 		catch (Throwable e) {
 			throw new AerospikeException.Serialize(e);
@@ -238,6 +244,10 @@ public abstract class Unpacker<T> {
 
 		case ParticleType.HLL:
 			val = getHLL(Arrays.copyOfRange(buffer, offset, offset + count));
+			break;
+
+		case ParticleType.VECTOR:
+			val = getVector(Arrays.copyOfRange(buffer, offset, offset + count));
 			break;
 
 		case ParticleType.JBLOB:
@@ -454,6 +464,10 @@ public abstract class Unpacker<T> {
 		return getBlob(value);
 	}
 
+	protected T getVector(byte[] value) {
+		return getBlob(value);
+	}
+
 	public static Object unpackObjectList(byte[] buffer, int offset, int length) throws AerospikeException {
 		ObjectUnpacker unpacker = new ObjectUnpacker(buffer, offset, length);
 		return unpacker.unpackList();
@@ -471,6 +485,9 @@ public abstract class Unpacker<T> {
 			}
 			ObjectUnpacker unpacker = new ObjectUnpacker(buffer, offset, length);
 			return unpacker.unpackObject();
+		}
+		catch (AerospikeException ae) {
+			throw ae;
 		}
 		catch (Throwable e) {
 			throw new AerospikeException.Serialize(e);
@@ -526,6 +543,11 @@ public abstract class Unpacker<T> {
 		@Override
 		protected Object getHLL(byte[] value) {
 			return Value.getAsHLL(value);
+		}
+
+		@Override
+		protected Object getVector(byte[] value) {
+			return Buffer.bytesToVector(value, 0, value.length);
 		}
 	}
 }

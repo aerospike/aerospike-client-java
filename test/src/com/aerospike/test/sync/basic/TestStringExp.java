@@ -107,8 +107,9 @@ public class TestStringExp extends TestSync {
 	/**
 	 * Evaluate at error-detail verbosity 2. The expression runtime collapses every
 	 * sub-op failure into one generic fault (exp_rt.c eval_call -> EXP_ERR_CALL_ARG),
-	 * so OP_NOT_APPLICABLE is all the result code ever says on this path; the sub-code
-	 * and staged message are what identify the actual rejection.
+	 * so OP_NOT_APPLICABLE is all the result code ever says on this path, and the server
+	 * drops the PARAMETER_ERROR sub-codes under it; the staged message is what
+	 * identifies the actual rejection.
 	 */
 	private static Record evalDetailed(Exp e) {
 		WritePolicy wp = new WritePolicy();
@@ -542,7 +543,7 @@ public class TestStringExp extends TestSync {
 	}
 
 	private static void assertStringParamError(Exp e, String message) {
-		assertEvalFails(e, SubCode.PARAM_STRING_OP_PARAMS_INVALID, message);
+		assertEvalFails(e, SubCode.NONE, message);
 	}
 
 	@Test
@@ -564,8 +565,7 @@ public class TestStringExp extends TestSync {
 	@Test
 	public void createOnlyOnLiveSourceIsRejected() {
 		// The source expression yielded a live value, so CREATE_ONLY has nothing
-		// to create. Reported with no sub-code: the server raises this one inside
-		// string_modify, past the argument parser that stages the param sub-code.
+		// to create.
 		put("hello");
 		assertEvalFails(
 			StringExp.append(CREATE_ONLY, Exp.val("!"), Exp.stringBin(BIN)),
@@ -628,7 +628,7 @@ public class TestStringExp extends TestSync {
 		assertEvalFails(
 			StringExp.regexReplace(POLICY, Exp.val("("), Exp.val("X"),
 				StringRegexFlags.DEFAULT, Exp.stringBin(BIN)),
-			SubCode.PARAM_STRING_REGEX_INVALID,
+			SubCode.NONE,
 			"string_regex_replace: regex pattern is invalid or could not be compiled");
 	}
 

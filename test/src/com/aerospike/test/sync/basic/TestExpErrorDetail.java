@@ -18,7 +18,6 @@ package com.aerospike.test.sync.basic;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
@@ -70,11 +69,11 @@ import com.aerospike.test.sync.TestSync;
  * <p>Four areas:
  * <ol>
  * <li>Eval-phase (PHASE_EVAL) expression traces for filter runtime faults:
- *     div/mod by zero, INT64_MIN overflow, CDT out-of-bounds (with sub-code),
+ *     div/mod by zero, INT64_MIN overflow, CDT out-of-bounds,
  *     preserve-order map compare.</li>
- * <li>Verbosity tier-1 suppression semantics: an AS_SUB_NONE error at
- *     verbosity 1 stages no error details at all, while a real sub-code CDT
- *     fault ships sub-code only (no message, no trace).</li>
+ * <li>Verbosity tier-1 suppression semantics: a filter fault reaches the
+ *     client with no sub-code, so verbosity 1 stages no error details at
+ *     all.</li>
  * <li>Verb parity: build / fault / FALSE / absent / metadata-FALSE / tier-2 /
  *     clean-pass filter scenarios across put, delete and operate, including
  *     the verb-specific metadata-filter messages.</li>
@@ -305,12 +304,12 @@ public class TestExpErrorDetail extends TestSync {
 
 	@Test
 	public void testFilterFaultCdtOutOfBoundsSubcodeAndTrace() {
-		// A CDT sub-op fault carries a real sub-code through the FILTERED_OUT
-		// status (the CDT layer's out-of-bounds subcode = 1).
+		// The CDT out-of-bounds sub-code is bound to OP_NOT_APPLICABLE, so the
+		// server drops it under FILTERED_OUT; message and trace still ship.
 		Expression exp = Exp.build(Exp.eq(cdtOobExp(), Exp.val(1)));
 
 		AerospikeException ae = expectFilteredGet(3, exp, ResultCode.FILTERED_OUT);
-		assertEquals(SubCode.OPNOT_CDT_INDEX_OUT_OF_BOUNDS, ae.getSubCode());
+		assertEquals(SubCode.NONE, ae.getSubCode());
 		assertMessageContains(ae, "out of bounds");
 
 		assertEvalTrace(ae, "call", 2, new String[] {"eq", "call"});
@@ -320,9 +319,9 @@ public class TestExpErrorDetail extends TestSync {
 	// 2. Verbosity tier-1 suppression semantics.
 	//
 	// Python: CASES_FILTER_VERBOSITY / CASES_MP_VERBOSITY. Build failures and
-	// div-by-zero faults carry AS_SUB_NONE, so at tier 1 (sub-code only) they
-	// have nothing to send and field 45 is suppressed entirely; a real sub-code
-	// CDT fault ships sub-code only (no message, no trace).
+	// div-by-zero faults carry AS_SUB_NONE, and a CDT fault's sub-code is
+	// dropped under FILTERED_OUT, so at tier 1 (sub-code only) they have
+	// nothing to send and field 45 is suppressed entirely.
 	// ---------------------------------------------------------------------
 
 	@Test
@@ -338,17 +337,11 @@ public class TestExpErrorDetail extends TestSync {
 	}
 
 	@Test
-	public void testVerbosity1CdtFaultSubcodeOnly() {
+	public void testVerbosity1CdtFaultUnderFilterHasNoDetails() {
 		Expression exp = Exp.build(Exp.eq(cdtOobExp(), Exp.val(1)));
 
 		AerospikeException ae = expectFilteredGet(1, exp, ResultCode.FILTERED_OUT);
-		assertEquals(SubCode.OPNOT_CDT_INDEX_OUT_OF_BOUNDS, ae.getSubCode());
-		assertNull("Tier 1 must surface no trace", ae.getExpressionTrace());
-
-		String msg = ae.getMessage();
-		assertTrue("Expected rendered subcode in: " + msg,
-			msg.startsWith("Error " + ResultCode.FILTERED_OUT + ",1"));
-		assertFalse("Tier 1 must surface no message text in: " + msg, msg.contains("out of bounds"));
+		assertNoDetails(ae, ResultCode.FILTERED_OUT);
 	}
 
 	@Test
