@@ -162,7 +162,7 @@ public class DuplicateNodeTest {
 		assertSame(current, cluster.getNodes()[0]);
 		assertFalse(stale.isActive());
 		assertTrue(current.isActive());
-		assertEquals(List.of(), moves());
+		assertEquals(Collections.emptyList(), moves());
 	}
 
 	@Test

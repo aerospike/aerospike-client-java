@@ -48,17 +48,18 @@ public class TestL5DriverFailure {
 	}
 
 	@Test
-	public void failureOnlyAfterReady() {
+	public void failureOnlyAfterReady() throws Exception {
+		String utf8 = StandardCharsets.UTF_8.name();
 		ByteArrayOutputStream bytes = new ByteArrayOutputStream();
-		L5Driver.Output out = new L5Driver.Output(new PrintStream(bytes, true, StandardCharsets.UTF_8));
+		L5Driver.Output out = new L5Driver.Output(new PrintStream(bytes, true, utf8));
 		String ready = L5Driver.ready(5, 1700000000000L, "10.4.0", "port-map");
 
 		out.writeIfOpen(L5Driver.failure(3, 1, "before"));
-		assertEquals("", bytes.toString(StandardCharsets.UTF_8));
+		assertEquals("", bytes.toString(utf8));
 
 		out.open(ready);
 		out.writeIfOpen(L5Driver.failure(9, 6, "after"));
-		assertEquals(ready + "\n" + L5Driver.failure(9, 6, "after") + "\n", bytes.toString(StandardCharsets.UTF_8));
+		assertEquals(ready + "\n" + L5Driver.failure(9, 6, "after") + "\n", bytes.toString(utf8));
 	}
 
 	@Test
