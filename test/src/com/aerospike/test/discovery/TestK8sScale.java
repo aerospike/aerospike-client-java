@@ -127,8 +127,9 @@ public class TestK8sScale extends TestBase {
 
 	/**
 	 * One client seeded once holds the pod the operator adds within 2 x tend interval of the
-	 * peers-generation bump that announces it, at the endpoint hostname and the new pod's own
-	 * Service NodePort, without being rebuilt or reseeded, and every partition is owned afterwards.
+	 * later of the peers-generation bump that announces it and the pod turning Ready (its Service
+	 * NodePort only routes to a Ready pod), at the endpoint hostname and the new pod's own Service
+	 * NodePort, without being rebuilt or reseeded, and every partition is owned afterwards.
 	 */
 	@Test
 	public void scaleUpNewNodeActiveWithinTwoTendIntervals() throws Exception {
@@ -153,6 +154,7 @@ public class TestK8sScale extends TestBase {
 			long generation = peersGeneration(observer);
 			long[] bump = {0};
 			long[] bumpAt = {0};
+			long[] ready = {0};
 			long[] active = {0};
 			Node[] added = {null};
 
@@ -165,6 +167,10 @@ public class TestK8sScale extends TestBase {
 					bumpAt[0] = System.currentTimeMillis();
 				}
 
+				if (ready[0] == 0 && ! before.containsAll(cluster.readyPods())) {
+					ready[0] = now;
+				}
+
 				if (active[0] == 0) {
 					for (Node node : client.getNodes()) {
 						if (node.isActive() && ! existing.containsKey(node.getName())) {
@@ -173,11 +179,13 @@ public class TestK8sScale extends TestBase {
 						}
 					}
 				}
-				return bump[0] != 0 && active[0] != 0;
+				return bump[0] != 0 && ready[0] != 0 && active[0] != 0;
 			}, K8sCluster.SCALE_TIMEOUT_MS, 5);
-			assertTrue("No peers-generation bump on " + observer.getName() + " or no new active node", seen);
+			assertTrue("No peers-generation bump on " + observer.getName() + ", no new Ready pod or no new active node",
+				seen);
 
-			long elapsed = TimeUnit.NANOSECONDS.toMillis(active[0] - bump[0]);
+			long bumpToReady = TimeUnit.NANOSECONDS.toMillis(ready[0] - bump[0]);
+			long elapsed = Math.max(0, TimeUnit.NANOSECONDS.toMillis(active[0] - Math.max(bump[0], ready[0])));
 			long budget = 2L * policy.tendInterval;
 			cluster.scale(size + 1);
 
@@ -197,8 +205,9 @@ public class TestK8sScale extends TestBase {
 			System.out.println("L3-SCALE-UP node=" + node.getName() + " pod=" + pod.name + " access=" +
 				info.get("service-clear-std") + " alternate=" + info.get("service-clear-alt") + " serviceNodePort=" +
 				nodePort + " clientHost=" + h.name + ':' + h.port + " generation=" + generation + "->" +
-				peersGeneration(observer) + " bumpToActiveMs=" + elapsed + " tendInterval=" + policy.tendInterval +
-				" budgetMs=" + budget + " bumpAt=" + Instant.ofEpochMilli(bumpAt[0]) + " podReadyAt=" +
+				peersGeneration(observer) + " bumpToReadyMs=" + bumpToReady + " readyToActiveMs=" + elapsed +
+				" bumpToActiveMs=" + TimeUnit.NANOSECONDS.toMillis(active[0] - bump[0]) + " tendInterval=" +
+				policy.tendInterval + " budgetMs=" + budget + " bumpAt=" + Instant.ofEpochMilli(bumpAt[0]) + " podReadyAt=" +
 				cluster.podReadyAt(pod.name) + " readinessProbe=" + cluster.readinessProbe(pod.name) +
 				" publishNotReadyAddresses=" + cluster.publishNotReadyAddresses(pod.name));
 			assertTrue(pod.name + " has no Service NodePort for " + port, nodePort > 0);
@@ -207,7 +216,8 @@ public class TestK8sScale extends TestBase {
 			assertEquals(node.getName() + " (" + pod.name + ") advertised alternate address",
 				K8sCluster.endpointHostname + ':' + nodePort, info.get("service-clear-alt"));
 			assertEquals(nodePort, h.port);
-			assertTrue(node.getName() + " active " + elapsed + "ms after the bump, budget " + budget + "ms",
+			assertTrue(node.getName() + " active " + elapsed + "ms after the bump and " + pod.name + " Ready, budget " +
+				budget + "ms",
 				elapsed <= budget);
 
 			awaitRouting("scale-up-after", client, size + 1);
