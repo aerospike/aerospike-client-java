@@ -1,0 +1,82 @@
+name: TLS certificate matching
+
+on:
+  workflow_call:
+    inputs:
+      server-container-repo:
+        description: Aerospike Enterprise image repository path
+        type: string
+        required: true
+      server-tag:
+        description: Aerospike Enterprise image tag
+        type: string
+        required: true
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  tls-matching:
+    name: cases
+    runs-on: ${{ vars.BUILD_CONTAINER_DISTRO_VERSION }}
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          ref: ${{ github.ref }}
+
+      - name: Get Java version
+        id: java
+        run: |
+          set -euo pipefail
+          version="$(grep '<java.version>' pom.xml | sed -e 's/<[^>]*>//g' | awk '{$1=$1};1' | sed 's/^1\.8$/8/')"
+          echo "java-version=${version}" >> "$GITHUB_OUTPUT"
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: ${{ vars.JAVA_PROVIDER }}
+          java-version: ${{ steps.java.outputs.java-version }}
+          cache: maven
+
+      - name: Require JFrog OIDC
+        env:
+          OIDC_PROVIDER: ${{ secrets.JFROG_OIDC_PROVIDER }}
+          OIDC_AUDIENCE: ${{ secrets.JFROG_OIDC_AUDIENCE }}
+        run: |
+          set -euo pipefail
+          if [[ -z "${OIDC_PROVIDER}" || -z "${OIDC_AUDIENCE}" ]]; then
+            echo "::error::JFROG_OIDC_PROVIDER and JFROG_OIDC_AUDIENCE are required to pull the Aerospike image."
+            exit 1
+          fi
+
+      - name: Set up JFrog CLI
+        id: jf
+        uses: step-security/setup-jfrog-cli@a6b41f8338bea0983ddff6bd4ede7d2dcd81e1fa # v4.8.1
+        env:
+          JF_URL: https://aerospike.jfrog.io
+        with:
+          oidc-provider-name: ${{ secrets.JFROG_OIDC_PROVIDER }}
+          oidc-audience: ${{ secrets.JFROG_OIDC_AUDIENCE }}
+
+      - name: Docker login
+        uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0
+        with:
+          registry: aerospike.jfrog.io
+          username: ${{ steps.jf.outputs.oidc-user }}
+          password: ${{ steps.jf.outputs.oidc-token }}
+
+      - name: Run TLS certificate matching
+        env:
+          AEROSPIKE_IMAGE: aerospike.jfrog.io/${{ inputs.server-container-repo }}:${{ inputs.server-tag }}
+          AEROSPIKE_FEATURES_CONTENT: ${{ secrets.FEATURES_CONF }}
+          TLS_MATCHING_MAVEN_OFFLINE: "0"
+        run: |
+          set -euo pipefail
+          if [[ -z "${AEROSPIKE_FEATURES_CONTENT}" ]]; then
+            echo "::error::FEATURES_CONF is required to run TLS certificate matching."
+            exit 1
+          fi
+          docker pull "${AEROSPIKE_IMAGE}"
+          bash test/tls/run_tls_matching.sh

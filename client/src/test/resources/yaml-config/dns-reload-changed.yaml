@@ -1,0 +1,19 @@
+version: 1.2.0
+static:
+  client:
+    config_interval: 250
+    max_connections_per_node: 97
+    discovery:
+      provider: dns
+      dns:
+        names:
+          - other.example.com
+        record_type: srv
+        port: 3200
+        timeout_ms: 60
+        servers:
+          - 127.0.0.1:2
+dynamic:
+  client:
+    tend_interval: 250
+    timeout: 4004

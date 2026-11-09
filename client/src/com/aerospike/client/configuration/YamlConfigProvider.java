@@ -31,18 +31,20 @@ import org.yaml.snakeyaml.LoaderOptions;
 import org.yaml.snakeyaml.TypeDescription;
 import org.yaml.snakeyaml.Yaml;
 import org.yaml.snakeyaml.constructor.Constructor;
+import org.yaml.snakeyaml.error.YAMLException;
 import org.yaml.snakeyaml.representer.Representer;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Log;
 import com.aerospike.client.configuration.serializers.Configuration;
+import com.aerospike.client.policy.ClientPolicy;
 
 public class YamlConfigProvider implements ConfigurationProvider {
 	private static final String CONFIG_PATH_ENV = "AEROSPIKE_CLIENT_CONFIG_URL";
 	private static final String CONFIG_PATH_SYS_PROP = "AEROSPIKE_CLIENT_CONFIG_SYS_PROP";
 	private static final String YAML_SERIALIZERS_PATH = "com.aerospike.client.configuration.serializers.";
 	private static final String DEFAULT_CONFIG_URL_PREFIX = "file://";
-	private static final List<String> SUPPORTED_SCHEMA_VERSIONS = Collections.unmodifiableList(Arrays.asList("1.0.0", "1.1.0"));
+	private static final List<String> SUPPORTED_SCHEMA_VERSIONS = Collections.unmodifiableList(Arrays.asList("1.0.0", "1.1.0", "1.2.0"));
 
 	public static List<String> getSupportedVersions() {
 		return SUPPORTED_SCHEMA_VERSIONS;
@@ -60,7 +62,16 @@ public class YamlConfigProvider implements ConfigurationProvider {
 
 	public static YamlConfigProvider getConfigProvider(String configPath) {
 		try {
-			return new YamlConfigProvider(configPath);
+			YamlConfigProvider provider = new YamlConfigProvider(configPath);
+
+			try {
+				// Without a client policy, no provider or translator name is registered.
+				new ClientPolicy(new ClientPolicy(), provider);
+			}
+			catch (AerospikeException ae) {
+				throw new AerospikeException("Failed to parse " + DEFAULT_CONFIG_URL_PREFIX + provider.path + ": " + ae);
+			}
+			return provider;
 		}
 		catch (Exception e) {
 			if (Log.warnEnabled()) {
@@ -139,7 +150,17 @@ public class YamlConfigProvider implements ConfigurationProvider {
 		}
 
 		try {
-			configuration = yaml.load(fileInputStream);
+			try {
+				configuration = yaml.load(fileInputStream);
+			}
+			catch (YAMLException e) {
+				for (Throwable cause = e.getCause(); cause != null; cause = cause.getCause()) {
+					if (cause instanceof AerospikeException) {
+						throw (AerospikeException)cause;
+					}
+				}
+				throw e;
+			}
 			lastModified = newLastModified;
 
 			if ( configuration.getVersion() == null ) {

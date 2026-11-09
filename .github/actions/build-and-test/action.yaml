@@ -51,7 +51,7 @@ runs:
     - name: Run Aerospike
       if: ${{ inputs.run-tests == 'true' || inputs.run-examples == 'true' }}
       id: setup-aerospike-server
-      uses: aerospike/shared-workflows/.github/actions/setup-aerospike-server@334ad55b790658d549747b0d154407dfc730acca # latest main
+      uses: aerospike/shared-workflows/.github/actions/setup-aerospike-server@b4b1e9dc89314a2d542f9d6fe0ee150ad06f9860 # v5.0.0
       with:
         server-tag: ${{ inputs.server-tag }}
         server-container-repo: ${{ inputs.server-container-repo }}

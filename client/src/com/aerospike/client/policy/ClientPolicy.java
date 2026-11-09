@@ -17,11 +17,14 @@
 package com.aerospike.client.policy;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ExecutorService;
+import java.util.function.Function;
 
+import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Log;
 import com.aerospike.client.async.EventLoops;
 import com.aerospike.client.configuration.ConfigurationProvider;
@@ -30,6 +33,18 @@ import com.aerospike.client.configuration.serializers.DynamicConfiguration;
 import com.aerospike.client.configuration.serializers.StaticConfiguration;
 import com.aerospike.client.configuration.serializers.dynamicconfig.DynamicClientConfig;
 import com.aerospike.client.configuration.serializers.staticconfig.StaticClientConfig;
+import com.aerospike.client.configuration.serializers.staticconfig.StaticDiscoveryConfig;
+import com.aerospike.client.configuration.serializers.staticconfig.StaticTranslationConfig;
+import com.aerospike.client.discovery.AddressTranslator;
+import com.aerospike.client.discovery.AwsEc2TagSeedCandidateProvider;
+import com.aerospike.client.discovery.DiscoveryExecutionMode;
+import com.aerospike.client.discovery.DnsSeedCandidateProvider;
+import com.aerospike.client.discovery.PassThroughAddressTranslator;
+import com.aerospike.client.discovery.PortMapAddressTranslator;
+import com.aerospike.client.discovery.SeedCandidateProvider;
+import com.aerospike.client.discovery.SeedMergePolicy;
+import com.aerospike.client.discovery.StaticMapAddressTranslator;
+import com.aerospike.client.discovery.TranslationMissMode;
 import com.aerospike.client.util.Util;
 
 /**
@@ -348,8 +363,184 @@ public class ClientPolicy {
 	 * value is the real IP address used to connect to the server.
 	 * <p>
 	 * Default: null (no IP address translation)
+	 * <p>
+	 * YAML key: {@code static.client.ip_map}
 	 */
 	public Map<String,String> ipMap;
+
+	/**
+	 * Source of the seed hosts used to discover the cluster. When set, its hosts are combined with
+	 * the seed hosts passed to the client constructor according to {@link #discoveryMergePolicy}.
+	 * <p>
+	 * Default: null (use {@link com.aerospike.client.discovery.StaticSeedCandidateProvider} with
+	 * the seed hosts passed to the client constructor)
+	 * <p>
+	 * YAML key: {@code static.client.discovery.provider}: {@code static}, this default; {@code dns},
+	 * {@link com.aerospike.client.discovery.DnsSeedCandidateProvider} built from the
+	 * {@code static.client.discovery.dns} block; {@code aws-tags},
+	 * {@link com.aerospike.client.discovery.AwsEc2TagSeedCandidateProvider} built from the
+	 * {@code static.client.discovery.aws} block; or a name registered with
+	 * {@link #registerSeedCandidateProvider}. Other providers are set in code. A provider built from
+	 * YAML is built once, at client construction, and kept when the file is reloaded.
+	 * <p>
+	 * {@link SeedCandidateProvider#close()} is called on the provider once after
+	 * {@link com.aerospike.client.AerospikeClient#close()}.
+	 */
+	public SeedCandidateProvider seedCandidateProvider;
+
+	/**
+	 * Translator applied to every server advertised address before the client connects to it.
+	 * When set, {@link #ipMap} is ignored. Built-in translators:
+	 * <ul>
+	 * <li>{@code static-map}: {@link com.aerospike.client.discovery.StaticMapAddressTranslator},
+	 * advertised host to host, port kept.</li>
+	 * <li>{@code port-map}: {@link com.aerospike.client.discovery.PortMapAddressTranslator},
+	 * advertised {@code host:port} or node name to {@code host:port}.</li>
+	 * <li>{@code pass-through}: {@link com.aerospike.client.discovery.PassThroughAddressTranslator},
+	 * every advertised address unchanged, for servers that advertise a client-reachable address and
+	 * port per node.</li>
+	 * </ul>
+	 * <p>
+	 * Default: null (use {@link com.aerospike.client.discovery.StaticMapAddressTranslator} with
+	 * {@link #ipMap})
+	 * <p>
+	 * YAML keys: {@code static.client.translation.provider} ({@code static-map}, {@code port-map},
+	 * {@code pass-through} or a name registered with {@link #registerAddressTranslator}) with
+	 * {@code static.client.translation.static_map} or {@code static.client.translation.port_map}.
+	 */
+	public AddressTranslator addressTranslator;
+
+	/**
+	 * Action taken when the address translator has no mapping for a server advertised endpoint.
+	 * Applies to every translator, including the default
+	 * {@link com.aerospike.client.discovery.StaticMapAddressTranslator} built from {@link #ipMap}.
+	 * YAML key: {@code static.client.translation.on_miss}.
+	 * <ul>
+	 * <li>{@link TranslationMissMode#PASS_THROUGH} ({@code pass_through}): connect to the advertised
+	 * endpoint unchanged, as {@link #ipMap} does for an unmapped address. When
+	 * {@link #addressTranslator} is set, the miss is logged at warning level once per node and
+	 * advertised endpoint.</li>
+	 * <li>{@link TranslationMissMode#STRICT} ({@code strict}): do not connect to the advertised
+	 * endpoint and do not create a node for it. The miss fails with
+	 * {@link com.aerospike.client.AerospikeException.TranslationMiss}, which names the node, the
+	 * advertised endpoint and the translator. A missed peer is logged at warning level and
+	 * retried on the next cluster tend.</li>
+	 * </ul>
+	 * A null value is treated as {@link TranslationMissMode#PASS_THROUGH}.
+	 * <p>
+	 * Default: {@link TranslationMissMode#PASS_THROUGH}
+	 */
+	public TranslationMissMode translationOnMiss = TranslationMissMode.PASS_THROUGH;
+
+	/**
+	 * Where periodic {@link #seedCandidateProvider} refreshes run when the provider's
+	 * {@link SeedCandidateProvider#needsPeriodicRefresh()} returns true. When it returns false, the
+	 * provider is called once, on the thread that constructs the client, and no thread is started
+	 * in either mode.
+	 * <ul>
+	 * <li>{@link DiscoveryExecutionMode#THREAD}: the client starts one daemon thread, named
+	 * {@code discovery}, that makes every refresh, the first one included, and publishes the seed
+	 * list. The cluster tend thread only reads the published list and never calls the provider, so a
+	 * slow provider never delays tend. Each call is measured against
+	 * {@link #discoveryRefreshTimeout}. The thread stops when the client is closed.</li>
+	 * <li>{@link DiscoveryExecutionMode#TEND}: the client starts no thread for discovery. The
+	 * provider is called at client construction on the constructing thread, then on the cluster
+	 * tend thread every {@link #discoveryRefreshInterval} / {@link #tendInterval} tend iterations,
+	 * bounded by {@link #discoveryTendRefreshDeadline}. The provider must return true from
+	 * {@link SeedCandidateProvider#supportsDeadline()}; otherwise client construction fails, as it
+	 * does for {@link com.aerospike.client.discovery.AwsEc2TagSeedCandidateProvider}.</li>
+	 * </ul>
+	 * A null value is treated as {@link DiscoveryExecutionMode#THREAD}.
+	 * <p>
+	 * Default: {@link DiscoveryExecutionMode#THREAD}
+	 * <p>
+	 * YAML key: {@code static.client.discovery.execution_mode} ({@code thread} or {@code tend})
+	 */
+	public DiscoveryExecutionMode discoveryExecutionMode = DiscoveryExecutionMode.THREAD;
+
+	/**
+	 * Interval in milliseconds between periodic {@link #seedCandidateProvider} refreshes, made on
+	 * the thread selected by {@link #discoveryExecutionMode}. When the provider's
+	 * {@link SeedCandidateProvider#needsPeriodicRefresh()} returns true, this value must be greater
+	 * or equal to {@link #tendInterval}; otherwise client construction fails. No periodic refresh is
+	 * scheduled when the provider does not need it.
+	 * <p>
+	 * Default: 30000
+	 * <p>
+	 * YAML key: {@code static.client.discovery.refresh_interval_ms}
+	 */
+	public int discoveryRefreshInterval = 30000;
+
+	/**
+	 * Time limit in milliseconds for each {@link #seedCandidateProvider} call in
+	 * {@link DiscoveryExecutionMode#THREAD} mode. The limit is measured, not enforced: a call is
+	 * never interrupted. Closing the client waits at most this long for a call in flight. A call that returns later logs a warning and increments an overrun count;
+	 * its result is still published when the call succeeds, including an empty result, which the
+	 * {@link #discoveryMergePolicy} then applies. The last good seed list is kept only when the call
+	 * throws. There is no limit on the number of overruns.
+	 * <p>
+	 * Client construction waits at most this long for the first refresh. If it has not completed by
+	 * then, the client continues with the seeds left by {@link #discoveryMergePolicy}, or fails with
+	 * {@link com.aerospike.client.ResultCode#SEED_DISCOVERY_FAILED} when none are left; a first
+	 * refresh that completes later is published for later re-seeds.
+	 * <p>
+	 * When the provider needs periodic refresh in thread mode, this value must be greater than zero,
+	 * and the DNS and AWS EC2 seed provider timeouts must not exceed it; otherwise client
+	 * construction fails. Ignored in {@link DiscoveryExecutionMode#TEND} mode. The default covers a
+	 * cold {@code aws-tags} EC2 call, which takes several hundred milliseconds.
+	 * <p>
+	 * Default: 2000
+	 * <p>
+	 * YAML key: {@code static.client.discovery.refresh_timeout_ms}
+	 */
+	public int discoveryRefreshTimeout = 2000;
+
+	/**
+	 * Deadline in milliseconds for one periodic {@link #seedCandidateProvider} refresh on the
+	 * tend thread in {@link DiscoveryExecutionMode#TEND} mode. The deadline is measured, not
+	 * enforced: an overrunning call is never interrupted and blocks tend for its full duration. On
+	 * overrun, a warning is logged, the call's result is discarded and the last good seed list is kept.
+	 * After three consecutive overruns, the provider is no longer called from tend for the life
+	 * of the client instance and the seed list reverts to the one established at client
+	 * initialization. A new client instance starts with no overruns.
+	 * <p>
+	 * When the provider needs periodic refresh in tend mode, this value must be greater than zero
+	 * and less or equal to {@link #tendInterval} / 2; otherwise client construction fails. Ignored
+	 * in {@link DiscoveryExecutionMode#THREAD} mode.
+	 * <p>
+	 * Default: 100
+	 * <p>
+	 * YAML key: {@code static.client.discovery.tend_refresh_deadline_ms}
+	 */
+	public int discoveryTendRefreshDeadline = 100;
+
+	/**
+	 * How the seed hosts passed to the client constructor (static seeds) and the hosts returned by
+	 * {@link #seedCandidateProvider} (discovered seeds) are combined into the seed list. The seed
+	 * list is used at cluster initialization and whenever the client re-seeds because no nodes
+	 * are active; it is rebuilt only when the provider is called.
+	 * <ul>
+	 * <li>{@link SeedMergePolicy#MERGE}: static seeds first, then discovered seeds. An empty
+	 * discovery result leaves the static seeds. Use for migration, resilience and a known-good
+	 * endpoint while discovery catches up.</li>
+	 * <li>{@link SeedMergePolicy#REPLACE}: as MERGE at initialization; afterwards each successful
+	 * refresh's discovered seeds replace the list and static seeds are no longer tried. An empty
+	 * refresh result keeps the previous list in {@link DiscoveryExecutionMode#TEND} mode and
+	 * empties it in {@link DiscoveryExecutionMode#THREAD} mode. Use for greenfield cloud-native
+	 * deployments where static seeds are legacy.</li>
+	 * <li>{@link SeedMergePolicy#DISCOVERY_ONLY}: discovered seeds only; static seeds are used only
+	 * when discovery returns an empty result. Use when the static seeds are an emergency fallback
+	 * only.</li>
+	 * </ul>
+	 * Duplicate hosts (same name and port) are removed, keeping the first occurrence. When no
+	 * provider is configured, every value yields the seed hosts passed to the client constructor.
+	 * <p>
+	 * Default: {@link SeedMergePolicy#MERGE}
+	 * <p>
+	 * YAML key: {@code static.client.discovery.merge_policy} ({@code merge}, {@code replace} or
+	 * {@code discovery_only})
+	 */
+	public SeedMergePolicy discoveryMergePolicy = SeedMergePolicy.MERGE;
 
 	/**
 	 * Underlying thread pool used in synchronous batch, scan, and query commands. These commands
@@ -400,6 +591,9 @@ public class ClientPolicy {
 	 * 	Peers TLS addresses: peers-tls-alt
 	 * 	<p>
 	 * Default: false (use original "services" info request)
+	 * <p>
+	 * YAML keys: {@code static.client.use_services_alternate} and
+	 * {@code dynamic.client.use_service_alternative}
 	 */
 	public boolean useServicesAlternate;
 
@@ -452,6 +646,16 @@ public class ClientPolicy {
 	 * Application ID. Metrics are loosely tied to this. Changing the appId will not reset the metric counters.
 	 */
 	public String appId;
+
+	private static final String DISCOVERY_PROVIDER = "static.client.discovery.provider";
+	private static final String DISCOVERY_DNS = "static.client.discovery.dns";
+	private static final String DISCOVERY_AWS = "static.client.discovery.aws";
+	private static final String TRANSLATION_PROVIDER = "static.client.translation.provider";
+
+	private Map<String,Function<Map<String,Object>,SeedCandidateProvider>> seedCandidateProviderFactories;
+	private Map<String,Function<Map<String,Object>,AddressTranslator>> addressTranslatorFactories;
+	private Registered<SeedCandidateProvider> registeredSeedCandidateProvider;
+	private Registered<AddressTranslator> registeredAddressTranslator;
 
 	/**
 	 * Copy client policy from another client policy AND override certain policy attributes if they exist in the
@@ -509,6 +713,14 @@ public class ClientPolicy {
 		this.tlsPolicy = (other.tlsPolicy != null)? new TlsPolicy(other.tlsPolicy) : null;
 		this.keepAlive = (other.keepAlive != null)? new TCPKeepAlive(other.keepAlive) : null;
 		this.ipMap = other.ipMap;
+		this.seedCandidateProvider = other.seedCandidateProvider;
+		this.addressTranslator = other.addressTranslator;
+		this.translationOnMiss = other.translationOnMiss;
+		this.discoveryExecutionMode = other.discoveryExecutionMode;
+		this.discoveryRefreshInterval = other.discoveryRefreshInterval;
+		this.discoveryRefreshTimeout = other.discoveryRefreshTimeout;
+		this.discoveryTendRefreshDeadline = other.discoveryTendRefreshDeadline;
+		this.discoveryMergePolicy = other.discoveryMergePolicy;
 		this.threadPool = other.threadPool;
 		this.sharedThreadPool = (other.threadPool != null);
 		this.useServicesAlternate = other.useServicesAlternate;
@@ -517,12 +729,183 @@ public class ClientPolicy {
 		this.rackId = other.rackId;
 		this.rackIds = (other.rackIds != null)? new ArrayList<Integer>(other.rackIds) : null;
 		this.appId = other.appId;
+		this.seedCandidateProviderFactories = (other.seedCandidateProviderFactories != null)?
+			new LinkedHashMap<>(other.seedCandidateProviderFactories) : null;
+		this.addressTranslatorFactories = (other.addressTranslatorFactories != null)?
+			new LinkedHashMap<>(other.addressTranslatorFactories) : null;
+		this.registeredSeedCandidateProvider = other.registeredSeedCandidateProvider;
+		this.registeredAddressTranslator = other.registeredAddressTranslator;
 	}
 
 	/**
 	 * Default constructor.
 	 */
 	public ClientPolicy() {
+	}
+
+	/**
+	 * Register a seed candidate provider factory under a name. When
+	 * {@code static.client.discovery.provider} in the YAML config file names it, the client calls
+	 * the factory with the other keys of the {@code static.client.discovery} block as the options
+	 * map and sets {@link #seedCandidateProvider} to the result. A name that is neither built-in nor
+	 * registered is an invalid setting.
+	 * <p>
+	 * The factory is called once, on the application thread that constructs the client. A reloaded
+	 * config file that changes the name or options does not call it again; the client keeps the
+	 * provider it was constructed with. The factory must not return null; an exception or a null
+	 * result makes the config file invalid.
+	 * <p>
+	 * The {@link #ClientPolicy(ClientPolicy)} copy constructor copies registrations.
+	 *
+	 * @param name		provider name; must not be a built-in name ({@code static}, {@code dns},
+	 * 					{@code aws-tags}) or a name already registered on this policy
+	 * @param factory	builds the provider from the options map
+	 * @throws AerospikeException	if the name is null, empty, built-in or already registered, or
+	 * 								the factory is null
+	 */
+	public void registerSeedCandidateProvider(String name, Function<Map<String,Object>,SeedCandidateProvider> factory) {
+		seedCandidateProviderFactories = register("seed candidate provider", name, factory,
+			StaticDiscoveryConfig.PROVIDERS, seedCandidateProviderFactories);
+	}
+
+	/**
+	 * Register an address translator factory under a name. When
+	 * {@code static.client.translation.provider} in the YAML config file names it, the client calls
+	 * the factory with the other keys of the {@code static.client.translation} block as the options
+	 * map and sets {@link #addressTranslator} to the result. A name that is neither built-in nor
+	 * registered is an invalid setting.
+	 * <p>
+	 * The factory is called once, on the application thread that constructs the client. A reloaded
+	 * config file that changes the name or options does not call it again; the client keeps the
+	 * translator it was constructed with. The factory must not return null; an exception or a null
+	 * result makes the config file invalid.
+	 * <p>
+	 * The {@link #ClientPolicy(ClientPolicy)} copy constructor copies registrations.
+	 *
+	 * @param name		translator name; must not be a built-in name ({@code static-map},
+	 * 					{@code port-map}, {@code pass-through}) or a name already registered on this
+	 * 					policy
+	 * @param factory	builds the translator from the options map
+	 * @throws AerospikeException	if the name is null, empty, built-in or already registered, or
+	 * 								the factory is null
+	 */
+	public void registerAddressTranslator(String name, Function<Map<String,Object>,AddressTranslator> factory) {
+		addressTranslatorFactories = register("address translator", name, factory,
+			StaticTranslationConfig.PROVIDERS, addressTranslatorFactories);
+	}
+
+	private static <T> Map<String,Function<Map<String,Object>,T>> register(
+		String type,
+		String name,
+		Function<Map<String,Object>,T> factory,
+		List<String> builtIn,
+		Map<String,Function<Map<String,Object>,T>> factories
+	) {
+		if (name == null || name.isEmpty()) {
+			throw new AerospikeException("Invalid " + type + " name: " + name);
+		}
+
+		if (builtIn.contains(name)) {
+			throw new AerospikeException("Invalid " + type + " name '" + name + "': built-in name");
+		}
+
+		if (factories != null && factories.containsKey(name)) {
+			throw new AerospikeException("Invalid " + type + " name '" + name + "': already registered");
+		}
+
+		if (factory == null) {
+			throw new AerospikeException("Invalid " + type + " factory for '" + name + "': null");
+		}
+
+		if (factories == null) {
+			factories = new LinkedHashMap<>();
+		}
+		factories.put(name, factory);
+		return factories;
+	}
+
+	private static final class Registered<T> {
+		final T instance;
+
+		Registered(T instance) {
+			this.instance = instance;
+		}
+	}
+
+	private static <T> Registered<T> build(
+		String path,
+		String name,
+		Map<String,Object> options,
+		Map<String,Function<Map<String,Object>,T>> factories,
+		Registered<T> previous
+	) {
+		if (previous != null) {
+			return previous;
+		}
+
+		T instance;
+
+		try {
+			instance = factories.get(name).apply(options);
+		}
+		catch (Throwable e) {
+			throw new AerospikeException("Invalid " + path + " value '" + name + "': factory failed: " + e, e);
+		}
+
+		if (instance == null) {
+			throw new AerospikeException("Invalid " + path + " value '" + name + "': factory returned null");
+		}
+		return new Registered<>(instance);
+	}
+
+	private static Registered<SeedCandidateProvider> buildDns(
+		DnsSeedCandidateProvider.Builder builder,
+		Registered<SeedCandidateProvider> previous
+	) {
+		if (previous != null) {
+			return previous;
+		}
+
+		try {
+			return new Registered<>(builder.build());
+		}
+		catch (AerospikeException ae) {
+			throw new AerospikeException("Invalid " + DISCOVERY_DNS + ": " + ae.getBaseMessage(), ae);
+		}
+	}
+
+	private static Registered<SeedCandidateProvider> buildAwsTags(
+		AwsEc2TagSeedCandidateProvider.Builder builder,
+		Registered<SeedCandidateProvider> previous
+	) {
+		if (previous != null) {
+			return previous;
+		}
+
+		try {
+			return new Registered<>(builder.build());
+		}
+		catch (AerospikeException ae) {
+			throw new AerospikeException("Invalid " + DISCOVERY_AWS + ": " + ae.getBaseMessage(), ae);
+		}
+	}
+
+	private static void checkRegistered(
+		String path,
+		String name,
+		Map<String,Object> options,
+		List<String> yamlNames,
+		Map<String,?> factories
+	) {
+		if (options != null && (factories == null || ! factories.containsKey(name))) {
+			List<String> names = new ArrayList<>(yamlNames);
+
+			if (factories != null) {
+				names.addAll(factories.keySet());
+			}
+			throw new AerospikeException("Invalid " + path + " value '" + name + "': valid values: " +
+				String.join(", ", names));
+		}
 	}
 
 	private void validateErrorRateConfig() {
@@ -560,6 +943,16 @@ public class ClientPolicy {
 			return;
 		}
 
+		if (staCC.discovery != null && staCC.discovery.provider != null) {
+			checkRegistered(DISCOVERY_PROVIDER, staCC.discovery.provider.value, staCC.discovery.options,
+				StaticDiscoveryConfig.YAML_PROVIDERS, seedCandidateProviderFactories);
+		}
+
+		if (staCC.translation != null && staCC.translation.provider != null) {
+			checkRegistered(TRANSLATION_PROVIDER, staCC.translation.provider.value, staCC.translation.options,
+				StaticTranslationConfig.PROVIDERS, addressTranslatorFactories);
+		}
+
 		if (log && Log.infoEnabled()) {
 			logUpdate = true;
 		}
@@ -585,6 +978,117 @@ public class ClientPolicy {
 			this.asyncMinConnsPerNode = staCC.asyncMinConnectionsPerNode.value;
 			if (logUpdate) {
 				Log.info("Set ClientPolicy.asyncMinConnsPerNode = " + this.asyncMinConnsPerNode);
+			}
+		}
+		if (staCC.ipMap != null && !staCC.ipMap.equals(this.ipMap)) {
+			this.ipMap = staCC.ipMap;
+			if (logUpdate) {
+				Log.info("Set ClientPolicy.ipMap = " + this.ipMap);
+			}
+		}
+		if (staCC.useServicesAlternate != null && this.useServicesAlternate != staCC.useServicesAlternate.value) {
+			this.useServicesAlternate = staCC.useServicesAlternate.value;
+			if (logUpdate) {
+				Log.info("Set ClientPolicy.useServicesAlternate = " + this.useServicesAlternate);
+			}
+		}
+
+		StaticDiscoveryConfig discovery = staCC.discovery;
+
+		if (discovery != null) {
+			if (discovery.options != null || discovery.dns != null || discovery.aws != null) {
+				Registered<SeedCandidateProvider> registered;
+
+				if (discovery.dns != null) {
+					registered = buildDns(discovery.dns, registeredSeedCandidateProvider);
+				}
+				else if (discovery.aws != null) {
+					registered = buildAwsTags(discovery.aws, registeredSeedCandidateProvider);
+				}
+				else {
+					registered = build(DISCOVERY_PROVIDER, discovery.provider.value, discovery.options,
+						seedCandidateProviderFactories, registeredSeedCandidateProvider);
+				}
+
+				if (registered != registeredSeedCandidateProvider) {
+					this.registeredSeedCandidateProvider = registered;
+					this.seedCandidateProvider = registered.instance;
+					if (logUpdate) {
+						Log.info("Set ClientPolicy.seedCandidateProvider = " + discovery.provider.value);
+					}
+				}
+			}
+			else if (discovery.provider != null && this.seedCandidateProvider != null) {
+				this.seedCandidateProvider = null;
+				if (logUpdate) {
+					Log.info("Set ClientPolicy.seedCandidateProvider = " + discovery.provider.value);
+				}
+			}
+			if (discovery.mergePolicy != null && this.discoveryMergePolicy != discovery.mergePolicy) {
+				this.discoveryMergePolicy = discovery.mergePolicy;
+				if (logUpdate) {
+					Log.info("Set ClientPolicy.discoveryMergePolicy = " + this.discoveryMergePolicy);
+				}
+			}
+			if (discovery.executionMode != null && this.discoveryExecutionMode != discovery.executionMode) {
+				this.discoveryExecutionMode = discovery.executionMode;
+				if (logUpdate) {
+					Log.info("Set ClientPolicy.discoveryExecutionMode = " + this.discoveryExecutionMode);
+				}
+			}
+			if (discovery.refreshIntervalMs != null && this.discoveryRefreshInterval != discovery.refreshIntervalMs.value) {
+				this.discoveryRefreshInterval = discovery.refreshIntervalMs.value;
+				if (logUpdate) {
+					Log.info("Set ClientPolicy.discoveryRefreshInterval = " + this.discoveryRefreshInterval);
+				}
+			}
+			if (discovery.refreshTimeoutMs != null && this.discoveryRefreshTimeout != discovery.refreshTimeoutMs.value) {
+				this.discoveryRefreshTimeout = discovery.refreshTimeoutMs.value;
+				if (logUpdate) {
+					Log.info("Set ClientPolicy.discoveryRefreshTimeout = " + this.discoveryRefreshTimeout);
+				}
+			}
+			if (discovery.tendRefreshDeadlineMs != null && this.discoveryTendRefreshDeadline != discovery.tendRefreshDeadlineMs.value) {
+				this.discoveryTendRefreshDeadline = discovery.tendRefreshDeadlineMs.value;
+				if (logUpdate) {
+					Log.info("Set ClientPolicy.discoveryTendRefreshDeadline = " + this.discoveryTendRefreshDeadline);
+				}
+			}
+		}
+
+		StaticTranslationConfig translation = staCC.translation;
+
+		if (translation != null) {
+			if (translation.provider != null) {
+				switch (translation.provider.value) {
+				case StaticTranslationConfig.PORT_MAP:
+					this.addressTranslator = new PortMapAddressTranslator(translation.portMap);
+					break;
+
+				case StaticTranslationConfig.PASS_THROUGH:
+					this.addressTranslator = PassThroughAddressTranslator.INSTANCE;
+					break;
+
+				case StaticTranslationConfig.STATIC_MAP:
+					this.addressTranslator = (translation.staticMap != null)?
+						new StaticMapAddressTranslator(translation.staticMap) : null;
+					break;
+
+				default:
+					this.registeredAddressTranslator = build(TRANSLATION_PROVIDER, translation.provider.value,
+						translation.options, addressTranslatorFactories, registeredAddressTranslator);
+					this.addressTranslator = registeredAddressTranslator.instance;
+					break;
+				}
+				if (logUpdate) {
+					Log.info("Set ClientPolicy.addressTranslator = " + translation.provider.value);
+				}
+			}
+			if (translation.onMiss != null && this.translationOnMiss != translation.onMiss) {
+				this.translationOnMiss = translation.onMiss;
+				if (logUpdate) {
+					Log.info("Set ClientPolicy.translationOnMiss = " + this.translationOnMiss);
+				}
 			}
 		}
 
@@ -809,6 +1313,38 @@ public class ClientPolicy {
 
 	public void setIpMap(Map<String, String> ipMap) {
 		this.ipMap = ipMap;
+	}
+
+	public void setSeedCandidateProvider(SeedCandidateProvider seedCandidateProvider) {
+		this.seedCandidateProvider = seedCandidateProvider;
+	}
+
+	public void setAddressTranslator(AddressTranslator addressTranslator) {
+		this.addressTranslator = addressTranslator;
+	}
+
+	public void setTranslationOnMiss(TranslationMissMode translationOnMiss) {
+		this.translationOnMiss = translationOnMiss;
+	}
+
+	public void setDiscoveryExecutionMode(DiscoveryExecutionMode discoveryExecutionMode) {
+		this.discoveryExecutionMode = discoveryExecutionMode;
+	}
+
+	public void setDiscoveryRefreshInterval(int discoveryRefreshInterval) {
+		this.discoveryRefreshInterval = discoveryRefreshInterval;
+	}
+
+	public void setDiscoveryRefreshTimeout(int discoveryRefreshTimeout) {
+		this.discoveryRefreshTimeout = discoveryRefreshTimeout;
+	}
+
+	public void setDiscoveryTendRefreshDeadline(int discoveryTendRefreshDeadline) {
+		this.discoveryTendRefreshDeadline = discoveryTendRefreshDeadline;
+	}
+
+	public void setDiscoveryMergePolicy(SeedMergePolicy discoveryMergePolicy) {
+		this.discoveryMergePolicy = discoveryMergePolicy;
 	}
 
 	public void setThreadPool(ExecutorService threadPool) {

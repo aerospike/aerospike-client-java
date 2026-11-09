@@ -1,0 +1,6 @@
+version: 1.2.0
+static:
+  client:
+    max_connections_per_node: 99
+    translation:
+      on_miss: drop

@@ -1,0 +1,8 @@
+# Manifest for the l5-aws harness in aerospike-client-conformance (l5-aws/README.md).
+# Each command runs with bash on the runner (Amazon Linux 2023) from the repository root.
+L5_SETUP='sudo dnf install -y -q java-21-amazon-corretto-devel java-1.8.0-amazon-corretto-devel && { sudo dnf install -y -q maven-amazon-corretto21 || sudo dnf install -y -q maven; }'
+# L5_BUILD uses the runner's JDK 21 when it is installed, and JAVA_HOME otherwise.
+L5_BUILD='if [ -d /usr/lib/jvm/java-21-amazon-corretto ]; then export JAVA_HOME=/usr/lib/jvm/java-21-amazon-corretto; fi && mvn -B -q -pl client -am install -DskipTests && mvn -B -q -pl test test -DskipTests org.apache.maven.plugins:maven-dependency-plugin:3.7.0:build-classpath -Dmdep.outputFile=target/l5-driver.classpath'
+L5_RUN='export JAVA_HOME=/usr/lib/jvm/java-21-amazon-corretto && test/discovery/run_l5.sh'
+# L5_DRIVER runs on Corretto 8, the runtime this branch targets.
+L5_DRIVER='test/discovery/l5_driver.sh'

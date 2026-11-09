@@ -1,0 +1,5 @@
+# Manifest for the aws-tags real AWS harness in aerospike-client-conformance (aws-real/README.md).
+# Each command runs with bash on the runner (Amazon Linux 2023) from the repository root.
+AWS_REAL_SETUP='sudo dnf install -y -q java-21-amazon-corretto-devel && { sudo dnf install -y -q maven-amazon-corretto21 || sudo dnf install -y -q maven; }'
+AWS_REAL_BUILD='export JAVA_HOME=/usr/lib/jvm/java-21-amazon-corretto && mvn -B -q -pl client -am install -DskipTests && mvn -B -q -pl test test-compile dependency:build-classpath -Dmdep.includeScope=test -Dmdep.outputFile=target/aws-real.classpath'
+AWS_REAL_PROBE='/usr/lib/jvm/java-21-amazon-corretto/bin/java -cp "test/target/test-classes:$(cat test/target/aws-real.classpath)" com.aerospike.test.discovery.AwsTagsRealProbe'

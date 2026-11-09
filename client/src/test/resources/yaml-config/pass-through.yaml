@@ -1,0 +1,9 @@
+version: 1.2.0
+static:
+  client:
+    use_services_alternate: true
+    discovery:
+      merge_policy: discovery_only
+    translation:
+      provider: pass-through
+      on_miss: pass_through

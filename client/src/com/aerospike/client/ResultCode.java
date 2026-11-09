@@ -22,6 +22,21 @@ package com.aerospike.client;
  */
 public final class ResultCode {
 	/**
+	 * Seed candidate provider failed at client initialization and no seed host is left to try.
+	 */
+	public static final int SEED_DISCOVERY_FAILED = -27;
+
+	/**
+	 * Address translator translated two nodes to the same host and port.
+	 */
+	public static final int TRANSLATION_COLLISION = -26;
+
+	/**
+	 * Address translator has no mapping for a server advertised address and the miss mode is strict.
+	 */
+	public static final int TRANSLATION_MISS = -25;
+
+	/**
 	 * Transaction commit called, but the transaction was already aborted.
 	 */
 	public static final int TXN_ALREADY_ABORTED = -19;
@@ -524,6 +539,15 @@ public final class ResultCode {
 	 */
 	public static String getResultString(int resultCode) {
 		switch (resultCode) {
+		case SEED_DISCOVERY_FAILED:
+			return "Seed discovery failed";
+
+		case TRANSLATION_COLLISION:
+			return "Address translation collision";
+
+		case TRANSLATION_MISS:
+			return "Address translation miss";
+
 		case TXN_ALREADY_ABORTED:
 			return "Transaction already aborted";
 

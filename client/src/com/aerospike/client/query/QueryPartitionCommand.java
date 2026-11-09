@@ -32,6 +32,7 @@ public final class QueryPartitionCommand extends MultiCommand {
 	private final Statement statement;
 	private final long taskId;
 	private final RecordSet recordSet;
+	private final TopKReduceSpec topK;
 	private final PartitionTracker tracker;
 	private final NodePartitions nodePartitions;
 
@@ -41,6 +42,7 @@ public final class QueryPartitionCommand extends MultiCommand {
 		Statement statement,
 		long taskId,
 		RecordSet recordSet,
+		TopKReduceSpec topK,
 		PartitionTracker tracker,
 		NodePartitions nodePartitions
 	) {
@@ -48,6 +50,7 @@ public final class QueryPartitionCommand extends MultiCommand {
 		this.statement = statement;
 		this.taskId = taskId;
 		this.recordSet = recordSet;
+		this.topK = topK;
 		this.tracker = tracker;
 		this.nodePartitions = nodePartitions;
 	}
@@ -100,12 +103,22 @@ public final class QueryPartitionCommand extends MultiCommand {
 		}
 
 		if (tracker.allowRecord(nodePartitions)) {
-			if (! recordSet.put(new KeyRecord(key, record))) {
-				stop();
-				throw new AerospikeException.QueryTerminated();
-			}
+			if (topK != null) {
+				// The executor streams the merged top k once all partitions are received.
+				topK.acceptPartial(record, key, lastUpdateTime);
 
-			tracker.setLast(nodePartitions, key, bval.val);
+				// The server streams Top-K in rank order, not digest order, so resuming after
+				// this digest would skip ranked candidates not yet streamed. The merge drops
+				// the duplicates a full re-query returns.
+				tracker.countRecord(nodePartitions);
+			}
+			else {
+				if (! recordSet.put(new KeyRecord(key, record))) {
+					stop();
+					throw new AerospikeException.QueryTerminated();
+				}
+				tracker.setLast(nodePartitions, key, bval.val);
+			}
 		}
 		return true;
 	}
