@@ -84,6 +84,7 @@ public final class L5Driver {
 	static final long WATCH_BOUND_MS = 60000;
 	static final long QUIT_MS = 30000;
 	static final int KEY_SEARCH_LIMIT = 1000000;
+	static final String[] NODE_EVENTS = {"Add node", "Remove node", "Replace node", "Move node"};
 
 	private static final long START = System.nanoTime();
 	private static final String USAGE = "usage: L5Driver --seed HOST:PORT --shape pass-through|port-map " +
@@ -104,9 +105,12 @@ public final class L5Driver {
 		}
 
 		Output out = new Output();
-		Log.setLevel(Log.Level.WARN);
-		Log.setCallback((level, message) ->
-			out.write(new Json("log", now()).put("level", level.toString()).put("message", message).toString()));
+		Log.setLevel(Log.Level.INFO);
+		Log.setCallback((level, message) -> {
+			if (forward(level, message)) {
+				out.write(new Json("log", now()).put("level", level.toString()).put("message", message).toString());
+			}
+		});
 
 		AerospikeClient client;
 
@@ -128,6 +132,26 @@ public final class L5Driver {
 
 	static String message(Throwable e) {
 		return e.getMessage() != null ? e.getMessage() : e.toString();
+	}
+
+	/**
+	 * Forward WARN and above, and the INFO lines that add, remove, replace or move a node.
+	 */
+	static boolean forward(Log.Level level, String message) {
+		if (level.compareTo(Log.Level.WARN) <= 0) {
+			return true;
+		}
+
+		if (level != Log.Level.INFO) {
+			return false;
+		}
+
+		for (String event : NODE_EVENTS) {
+			if (message.startsWith(event)) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 	private final Options options;

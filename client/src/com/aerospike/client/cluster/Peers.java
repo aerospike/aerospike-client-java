@@ -17,8 +17,11 @@
 package com.aerospike.client.cluster;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.IdentityHashMap;
+import java.util.Set;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Host;
@@ -27,6 +30,7 @@ public final class Peers {
 	public final ArrayList<Peer> peers;
 	public final HashMap<String,Node> nodes;
 	public final HashSet<Node> removeNodes;
+	final Set<Node> nodesToRemove;
 	private final HashSet<Host> invalidHosts;
 	final HashMap<String,String> collided;
 	public int refreshCount;
@@ -37,8 +41,17 @@ public final class Peers {
 		peers = new ArrayList<Peer>(peerCapacity);
 		nodes = new HashMap<String,Node>(16);
 		removeNodes = new HashSet<Node>(8);
+		nodesToRemove = Collections.newSetFromMap(new IdentityHashMap<Node,Boolean>(8));
 		invalidHosts = new HashSet<Host>(8);
 		collided = new HashMap<String,String>(8);
+	}
+
+	/**
+	 * Mark node for removal. Nodes are equal by name, so the node is also kept by reference.
+	 */
+	void removeNode(Node node) {
+		removeNodes.add(node);
+		nodesToRemove.add(node);
 	}
 
 	public boolean hasFailed(Host host) {
