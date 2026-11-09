@@ -54,7 +54,7 @@ public final class ExpOperation {
 
 	private static Operation createOperation(Operation.Type type, String name, Expression exp, int flags) {
 		byte[] packedBytes = packOperation(type, name, exp.getBytes(), flags);
-		return new Operation(type, name, Value.get(packedBytes));
+		return new Operation(type, name, Value.get(packedBytes, exp.hasVector()));
 	}
 
 	private static Operation createOperation(Operation.Type type, String name, byte[] b, int flags) {

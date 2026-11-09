@@ -23,6 +23,7 @@ import java.util.Objects;
 
 import com.aerospike.client.Value.GeoJSONValue;
 import com.aerospike.client.Value.HLLValue;
+import com.aerospike.client.vector.Vector;
 
 /**
  * Container object for records.  Records are equivalent to rows.
@@ -206,6 +207,13 @@ public final class Record {
 	 */
 	public HLLValue getHLLValue(String name) {
 		return (HLLValue)getValue(name);
+	}
+
+	/**
+	 * Get bin value as Vector.
+	 */
+	public Vector getVector(String name) {
+		return (Vector)getValue(name);
 	}
 
 	/**

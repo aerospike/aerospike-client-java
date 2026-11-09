@@ -30,7 +30,9 @@ import com.aerospike.client.ResultCode;
 import com.aerospike.client.Value;
 import com.aerospike.client.cdt.MapOrder;
 import com.aerospike.client.command.Buffer;
+import com.aerospike.client.command.Command;
 import com.aerospike.client.command.ParticleType;
+import com.aerospike.client.vector.Vector;
 
 /**
  * Serialize collection objects using MessagePack format specification:
@@ -40,12 +42,30 @@ import com.aerospike.client.command.ParticleType;
 public final class Packer {
 
 	public static byte[] pack(Value[] val) {
+		return packArray(val).getBuffer();
+	}
+
+	/**
+	 * Pack UDF arguments, failing when they hold a vector and the cluster lacks vector
+	 * support. For internal use only.
+	 */
+	public static byte[] pack(Value[] val, boolean vectorSupported) {
+		Packer packer = packArray(val);
+		Command.checkVectorSupport(packer.hasVector(), vectorSupported);
+		return packer.getBuffer();
+	}
+
+	/**
+	 * Pack values into a msgpack array and return the packer, whose buffer and vector flag
+	 * are both set. For internal use only.
+	 */
+	public static Packer packArray(Value[] val) {
 		try {
 			Packer packer = new Packer();
 			packer.packValueArray(val);
 			packer.createBuffer();
 			packer.packValueArray(val);
-			return packer.getBuffer();
+			return packer;
 		}
 		catch (Throwable e) {
 			throw new AerospikeException.Serialize(e);
@@ -94,9 +114,24 @@ public final class Packer {
 	private byte[] buffer;
 	private int offset;
 	private boolean sortMaps;
+	private boolean hasVector;
 
 	public Packer() {
 		// Default to null buffer in estimate buffer size mode.
+	}
+
+	/**
+	 * Was a vector packed? For internal use only.
+	 */
+	public boolean hasVector() {
+		return hasVector;
+	}
+
+	/**
+	 * Record a packed vector. For internal use only.
+	 */
+	public void markVector() {
+		hasVector = true;
 	}
 
 	/**
@@ -673,6 +708,19 @@ public final class Packer {
 		packByteArray(buffer, 0, buffer.length);
 	}
 
+	public void packVector(Vector val) {
+		hasVector = true;
+		int size = val.getWireSize();
+		packByteArrayBegin(size + 1);
+		packByte(ParticleType.VECTOR);
+
+		if (buffer == null) {
+			offset += size;
+			return;
+		}
+		offset += val.writeTo(buffer, offset);
+	}
+
 	private void packByteArrayBegin(int size) {
 		// Use string header codes for byte arrays.
 		packStringBegin(size);
@@ -728,6 +776,11 @@ public final class Packer {
 
 		if (obj instanceof Map<?,?>) {
 			packMap((Map<?,?>)obj);
+			return;
+		}
+
+		if (obj instanceof Vector) {
+			packVector((Vector)obj);
 			return;
 		}
 

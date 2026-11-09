@@ -16,14 +16,22 @@
  */
 package com.aerospike.client.query;
 
+import java.util.Arrays;
+
+import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Operation;
+import com.aerospike.client.ResultCode;
 import com.aerospike.client.Value;
+import com.aerospike.client.command.Buffer;
 import com.aerospike.client.util.RandomShift;
 
 /**
  * Query statement parameters.
  */
 public final class Statement {
+	private static final String NO_ORDER_KEY = "Top-K requires an order key; call setOrderBy()";
+	private static final int MAX_ORDER_KEYS = 2;
+
 	String namespace;
 	String setName;
 	String indexName;
@@ -35,6 +43,10 @@ public final class Statement {
 	String functionName;
 	Value[] functionArgs;
 	Operation[] operations;
+	// Replaced, never modified, so a running query's combiner can hold it.
+	private OrderBy[] orderBy;
+	private int topK;
+	private boolean topKSet;
 	long taskId;
 	long maxRecords;
 	int recordsPerSecond;
@@ -258,6 +270,202 @@ public final class Statement {
 	 */
 	public Operation[] getOperations() {
 		return this.operations;
+	}
+
+	/**
+	 * Sort order for a Top-K query; see {@link #setTopK(int)}. May be called before or after
+	 * {@code setTopK}. Calling it again replaces every order key, including one added by
+	 * {@link #thenOrderBy}, and keeps k.
+	 *
+	 * @param binName	bin name to order by
+	 * @param type		scalar type of {@code binName}
+	 * @param order		sort direction
+	 */
+	public void setOrderBy(String binName, BinDataType type, Order order) {
+		orderBy = new OrderBy[] {new OrderBy(binName, type, order)};
+	}
+
+	/**
+	 * Add an order key for a Top-K query after the ones already set. A later key decides only
+	 * where the keys before it tie; called before {@link #setOrderBy}, it adds the first key.
+	 * A Top-K query takes at most two order keys, on different bins.
+	 *
+	 * @param binName	bin name to order by
+	 * @param type		scalar type of {@code binName}
+	 * @param order		sort direction
+	 */
+	public void thenOrderBy(String binName, BinDataType type, Order order) {
+		OrderBy key = new OrderBy(binName, type, order);
+
+		if (orderBy == null) {
+			orderBy = new OrderBy[] {key};
+			return;
+		}
+
+		OrderBy[] keys = Arrays.copyOf(orderBy, orderBy.length + 1);
+		keys[orderBy.length] = key;
+		orderBy = keys;
+	}
+
+	/**
+	 * Ordered LIMIT k query, ranked by the order keys from {@link #setOrderBy} and
+	 * {@link #thenOrderBy}. The calls may come in any order; calling {@code setTopK} again
+	 * replaces k.
+	 * <p>
+	 * The Top-K specification is validated when the query runs; an invalid one, or a cluster where
+	 * any node doesn't support Top-K, fails with {@link AerospikeException.InvalidArgument}
+	 * ({@link ResultCode#PARAMETER_ERROR}) before anything is sent.
+	 *
+	 * @param k	maximum number of records to return, in {@code [1, 1000]}
+	 */
+	public void setTopK(int k) {
+		this.topK = k;
+		this.topKSet = true;
+	}
+
+	/**
+	 * Return whether this statement has a Top-K specification.
+	 */
+	public boolean hasTopK() {
+		return topKSet;
+	}
+
+	/**
+	 * Return whether this statement has an order key, with or without k.
+	 */
+	public boolean hasOrderBy() {
+		return orderBy != null;
+	}
+
+	/**
+	 * Return the order keys, most significant first, or {@code null} when none is set. An order
+	 * key without k is still sent, and the server rejects the query.
+	 */
+	public OrderBy[] getOrderBy() {
+		return orderBy;
+	}
+
+	/**
+	 * Return the Top-K limit, or zero when Top-K is not set.
+	 */
+	public int getTopKLimit() {
+		return topKSet ? topK : 0;
+	}
+
+	/**
+	 * Validate the Top-K specification. Does nothing unless k is set.
+	 *
+	 * @throws AerospikeException.InvalidArgument	if Top-K has no order key or more than two, k
+	 *								is outside {@code [1, 1000]}, maxRecords is set, an aggregate
+	 *								UDF is set, an order key's bin name is not 1-15 UTF-8 bytes
+	 *								without NUL, it has no type or direction, its bin is missing
+	 *								from the bin or operations projection or produced more than
+	 *								once by the operations projection, or both order keys use the
+	 *								same bin
+	 */
+	public void validateTopK() {
+		if (! topKSet) {
+			return;
+		}
+
+		if (orderBy == null) {
+			throw new AerospikeException.InvalidArgument(NO_ORDER_KEY);
+		}
+
+		if (orderBy.length > MAX_ORDER_KEYS) {
+			throw new AerospikeException.InvalidArgument("orderBy supports at most two keys");
+		}
+
+		if (topK < 1 || topK > 1000) {
+			throw new AerospikeException.InvalidArgument("topK must be in [1, 1000]; got " + topK);
+		}
+
+		if (maxRecords != 0) {
+			throw new AerospikeException.InvalidArgument("Top-K is incompatible with maxRecords");
+		}
+
+		if (functionName != null) {
+			throw new AerospikeException.InvalidArgument(
+				"orderBy is incompatible with aggregate UDFs; use the UDF's own reduce stage");
+		}
+
+		for (OrderBy key : orderBy) {
+			validateOrderBy(key);
+		}
+
+		if (orderBy.length > 1 && orderBy[0].binName.equals(orderBy[1].binName)) {
+			throw new AerospikeException.InvalidArgument("orderBy keys must use different bins");
+		}
+	}
+
+	private void validateOrderBy(OrderBy key) {
+		int length = (key.binName == null) ? 0 : Buffer.estimateSizeUtf8(key.binName);
+
+		if (length == 0 || length > 15 || key.binName.indexOf('\0') >= 0) {
+			throw new AerospikeException.InvalidArgument(
+				"Top-K order-by bin name must be 1-15 UTF-8 bytes without NUL");
+		}
+
+		if (key.type == null) {
+			throw new AerospikeException.InvalidArgument(
+				"orderBy requires a type declaration (INTEGER, DOUBLE or BYTES); Aerospike has no schema");
+		}
+
+		if (key.order == null) {
+			throw new AerospikeException.InvalidArgument("orderBy direction must be ASC or DESC");
+		}
+
+		if (operations != null) {
+			int count = 0;
+
+			for (Operation operation : operations) {
+				if (key.binName.equals(operation.binName)) {
+					count++;
+				}
+			}
+
+			if (count == 0) {
+				throw notInProjection(key.binName);
+			}
+
+			if (count > 1) {
+				throw new AerospikeException.InvalidArgument(
+					"orderBy bin '" + key.binName + "' is produced by more than one operation");
+			}
+			return;
+		}
+
+		if (binNames != null) {
+			for (String binName : binNames) {
+				if (key.binName.equals(binName)) {
+					return;
+				}
+			}
+			throw notInProjection(key.binName);
+		}
+	}
+
+	private static AerospikeException notInProjection(String binName) {
+		return new AerospikeException.InvalidArgument("orderBy bin '" + binName +
+			"' is not in projection; add it to the projection or remove the projection");
+	}
+
+	/**
+	 * Return an empty combiner for one run of this Top-K query, or {@code null} when k is not
+	 * set. Each run gets its own, so a statement that runs again does not rank the records of an
+	 * earlier run.
+	 *
+	 * @throws AerospikeException.InvalidArgument	if k is set without an order key
+	 */
+	TopKReduceSpec createTopK() {
+		if (! topKSet) {
+			return null;
+		}
+
+		if (orderBy == null) {
+			throw new AerospikeException.InvalidArgument(NO_ORDER_KEY);
+		}
+		return new TopKReduceSpec(orderBy, topK);
 	}
 
 	/**
