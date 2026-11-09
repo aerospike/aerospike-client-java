@@ -2,8 +2,8 @@
 #
 # The L5 driver for the l5-aws harness in aerospike-client-conformance (l5-aws/DRIVER.md there),
 # run by test/discovery/l5-aws.manifest as L5_DRIVER once L5_BUILD has compiled the test module and
-# written its classpath. Runs L5Driver with this script's arguments, on the runner's Corretto 8 when
-# it is installed and on JAVA_HOME or PATH otherwise, and prints the Java version to stderr.
+# written its classpath. Runs L5Driver with this script's arguments on the runner's Corretto 8, fails
+# when it is not installed, and prints the Java version to stderr.
 #
 # Usage: test/discovery/l5_driver.sh --seed HOST:PORT --shape pass-through|port-map ...
 
@@ -11,17 +11,25 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 TEST_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
-CORRETTO=/usr/lib/jvm/java-1.8.0-amazon-corretto
 CLASSPATH_FILE="$TEST_DIR/target/l5-driver.classpath"
+JAVA_HOME=
 
-if [ -d "$CORRETTO" ]; then
-	JAVA_HOME="$CORRETTO"
+for dir in /usr/lib/jvm/java-1.8.0-amazon-corretto*; do
+	if [ -x "$dir/bin/java" ]; then
+		JAVA_HOME="$dir"
+		break
+	fi
+done
+
+if [ -z "$JAVA_HOME" ]; then
+	echo "ERROR: Corretto 8 not found under /usr/lib/jvm" >&2
+	exit 1
 fi
 
 if [ ! -f "$CLASSPATH_FILE" ]; then
 	echo "ERROR: $CLASSPATH_FILE not found; run L5_BUILD first" >&2
 	exit 1
 fi
-"${JAVA_HOME:+$JAVA_HOME/bin/}java" -version
-exec "${JAVA_HOME:+$JAVA_HOME/bin/}java" -cp "$TEST_DIR/target/test-classes:$(cat "$CLASSPATH_FILE")" \
+"$JAVA_HOME/bin/java" -version
+exec "$JAVA_HOME/bin/java" -cp "$TEST_DIR/target/test-classes:$(cat "$CLASSPATH_FILE")" \
 	com.aerospike.test.discovery.L5Driver "$@"
