@@ -101,6 +101,95 @@ public class TestVector extends TestBase {
 	}
 
 	@Test
+	public void constructFloat16FromFloat() {
+		Vector v = Vector.ofFloat16(new float[] {1.0f, -1.0f, 2.0f, 0.0f});
+
+		assertEquals(Vector.VERSION, v.version);
+		assertSame(ElementType.FLOAT16, v.elementType);
+		assertEquals(4, v.dimensions);
+		assertArrayEquals(new short[] {0x3c00, (short)0xbc00, 0x4000, 0x0000}, v.getFloat16Data());
+		assertArrayEquals(new float[] {1.0f, -1.0f, 2.0f, 0.0f}, v.getFloat16DataAsFloat(), 0.0f);
+	}
+
+	@Test
+	public void float16FromFloatMatchesBitPatternVector() {
+		// Both factories must produce the same vector, so the float[] form interchanges
+		// with clients that send bit patterns.
+		Vector fromFloat = Vector.ofFloat16(new float[] {0.1f, -3.75f, 1000.5f, 65504.0f});
+		Vector fromBits = Vector.ofFloat16(new short[] {0x2e66, (short)0xc380, 0x63d1, 0x7bff});
+
+		assertEquals(fromBits, fromFloat);
+		assertEquals(fromBits.hashCode(), fromFloat.hashCode());
+		assertArrayEquals(fromBits.getWireBytes(), fromFloat.getWireBytes());
+	}
+
+	@Test
+	public void float16FromFloatRoundsTiesToEven() {
+		// float16 has 10 fraction bits, so near 1.0 its spacing is 2^-10. Each input below
+		// lies exactly halfway between two float16 values.
+		float tieDown = 1.0f + 0x1p-11f;      // between 1.0 (even) and 1 + 2^-10 (odd)
+		float tieUp = 1.0f + 3 * 0x1p-11f;    // between 1 + 2^-10 (odd) and 1 + 2^-9 (even)
+
+		Vector v = Vector.ofFloat16(new float[] {tieDown, tieUp});
+
+		assertArrayEquals(new short[] {0x3c00, 0x3c02}, v.getFloat16Data());
+		assertArrayEquals(new float[] {1.0f, 1.0f + 0x1p-9f}, v.getFloat16DataAsFloat(), 0.0f);
+	}
+
+	@Test
+	public void float16FromFloatRoundsToNearest() {
+		// 0.1 is not representable. The nearest float16 is 0x2e66 (0.0999755859375).
+		Vector v = Vector.ofFloat16(new float[] {0.1f});
+
+		assertArrayEquals(new short[] {0x2e66}, v.getFloat16Data());
+		assertEquals(0.0999755859375f, v.getFloat16DataAsFloat()[0], 0.0f);
+	}
+
+	@Test
+	public void float16FromFloatAcceptsLimits() {
+		// 65504 is the largest float16. Anything below 65520 still rounds to it.
+		float belowOverflow = Math.nextDown(65520.0f);
+		float minSubnormal = 0x1p-24f;
+
+		Vector v = Vector.ofFloat16(
+			new float[] {65504.0f, -65504.0f, belowOverflow, -belowOverflow, minSubnormal, -0.0f});
+
+		assertArrayEquals(
+			new short[] {0x7bff, (short)0xfbff, 0x7bff, (short)0xfbff, 0x0001, (short)0x8000},
+			v.getFloat16Data());
+	}
+
+	@Test
+	public void float16AsFloatConvertsStoredBitsExactly() {
+		// Bit patterns from another client convert to their exact float values, including
+		// the subnormal and limit values the float[] factory produces only by rounding.
+		Vector v = Vector.ofFloat16(
+			new short[] {0x3555, 0x0001, 0x0400, 0x7bff, (short)0xfbff, (short)0x8000});
+
+		assertArrayEquals(
+			new float[] {0.333251953125f, 0x1p-24f, 0x1p-14f, 65504.0f, -65504.0f, -0.0f},
+			v.getFloat16DataAsFloat(), 0.0f);
+	}
+
+	@Test
+	public void float16FromFloatCopiesInputAndGetterReturnsCopy() {
+		float[] data = new float[] {1.0f, 2.0f};
+		Vector v = Vector.ofFloat16(data);
+
+		data[0] = 99.0f;
+		assertEquals(1.0f, v.getFloat16DataAsFloat()[0], 0.0f);
+
+		v.getFloat16DataAsFloat()[1] = 99.0f;
+		assertEquals(2.0f, v.getFloat16DataAsFloat()[1], 0.0f);
+	}
+
+	@Test
+	public void float16AsFloatWrongTypeThrows() {
+		Vector v = Vector.ofFloat32(new float[] {1.0f});
+		assertThrows(IllegalStateException.class, v::getFloat16DataAsFloat);
+	}
+
+	@Test
 	public void constructInt32() {
 		int[] data = new int[] {-1, 0, 1, Integer.MAX_VALUE};
 		Vector v = Vector.ofInt32(data);
