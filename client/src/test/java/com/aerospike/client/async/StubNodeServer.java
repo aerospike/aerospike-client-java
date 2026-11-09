@@ -112,6 +112,17 @@ public final class StubNodeServer implements AutoCloseable {
 	}
 
 	/**
+	 * Close every open connection now, info and data, and keep accepting new ones.
+	 */
+	public void closeConnections() throws IOException {
+		for (Socket socket : sockets) {
+			sockets.remove(socket);
+			dataSockets.remove(socket);
+			socket.close();
+		}
+	}
+
+	/**
 	 * Close the connection of the next data command after reading it, without a response.
 	 */
 	public void closeOnNextRequest(Close close) {
