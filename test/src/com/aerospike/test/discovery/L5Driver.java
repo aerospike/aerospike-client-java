@@ -109,7 +109,14 @@ public final class L5Driver {
 		Log.setLevel(Log.Level.INFO);
 		Log.setCallback((level, message) -> {
 			if (forward(level, message)) {
-				out.write(new Json("log", now()).put("level", level.toString()).put("message", message).toString());
+				String line = new Json("log", now()).put("level", level.toString()).put("message", message).toString();
+
+				if (level == Log.Level.INFO) {
+					out.writeIfOpen(line);
+				}
+				else {
+					out.write(line);
+				}
 			}
 		});
 
@@ -1110,6 +1117,16 @@ public final class L5Driver {
 				held.add(line);
 			}
 			else {
+				print(line);
+			}
+		}
+
+		/**
+		 * Print the line once {@code ready} is out, otherwise drop it: a held line would precede
+		 * {@code ready}'s {@code t}.
+		 */
+		synchronized void writeIfOpen(String line) {
+			if (held == null) {
 				print(line);
 			}
 		}
