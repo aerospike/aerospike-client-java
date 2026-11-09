@@ -69,11 +69,11 @@ import com.aerospike.client.policy.WritePolicy;
 
 /**
  * Driver for the l5-aws harness in aerospike-client-conformance (l5-aws/DRIVER.md there, contract
- * version 2): builds a client from the flags, runs a retrying load, and writes what the client sees
+ * version 3): builds a client from the flags, runs a retrying load, and writes what the client sees
  * to stdout as JSON lines while it answers the commands it reads from stdin.
  */
 public final class L5Driver {
-	static final int CONTRACT = 2;
+	static final int CONTRACT = 3;
 	static final long POLL_MS = 10;
 	static final long HEARTBEAT_MS = 100;
 	static final long REACH_INTERVAL_MS = 500;
@@ -161,6 +161,15 @@ public final class L5Driver {
 		return false;
 	}
 
+	static String ready(long t, long epochMs, String clientVersion, String shape) {
+		return new Json("ready", t).put("contract", CONTRACT).put("epochMs", epochMs).put("client", "java")
+			.put("clientVersion", clientVersion).put("shape", shape).toString();
+	}
+
+	static String failure(long t, long startedAt, String message) {
+		return new Json("failure", t).put("startedAt", startedAt).put("message", message).toString();
+	}
+
 	private final Options options;
 	private final Output out;
 	private final AerospikeClient client;
@@ -200,8 +209,7 @@ public final class L5Driver {
 	}
 
 	private void ready() {
-		out.open(new Json("ready", now()).put("contract", CONTRACT).put("epochMs", System.currentTimeMillis())
-			.put("client", "java").put("clientVersion", client.getVersion()).put("shape", options.shape).toString());
+		out.open(ready(now(), System.currentTimeMillis(), client.getVersion(), options.shape));
 		routingPoll.scheduleAtFixedRate(routing::poll, 0, POLL_MS, TimeUnit.MILLISECONDS);
 	}
 
@@ -815,6 +823,8 @@ public final class L5Driver {
 				long first = System.nanoTime();
 
 				while (true) {
+					long startedAt = now();
+
 					try {
 						if (i % 2 == 0) {
 							client.put(wp, key, new Bin("v", i));
@@ -825,8 +835,10 @@ public final class L5Driver {
 						break;
 					}
 					catch (RuntimeException e) {
+						String message = message(e);
 						failed.incrementAndGet();
-						lastError.set(message(e));
+						lastError.set(message);
+						out.writeIfOpen(failure(now(), startedAt, message));
 					}
 
 					if (stop) {
@@ -1095,12 +1107,16 @@ public final class L5Driver {
 	 * and follow it. Anything else printing to {@code System.out} goes to stderr.
 	 */
 	static final class Output {
-		private final PrintStream stdout = new PrintStream(new FileOutputStream(FileDescriptor.out), false,
-			StandardCharsets.UTF_8);
+		private final PrintStream stdout;
 		private List<String> held = new ArrayList<>();
 
 		Output() {
+			this(new PrintStream(new FileOutputStream(FileDescriptor.out), false, StandardCharsets.UTF_8));
 			System.setOut(System.err);
+		}
+
+		Output(PrintStream stdout) {
+			this.stdout = stdout;
 		}
 
 		synchronized void write(String line) {
