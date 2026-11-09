@@ -513,7 +513,7 @@ public class Node implements Closeable {
 							else if (Log.infoEnabled()) {
 								Log.info("Replace node: " + peer.replaceNode);
 							}
-							peers.removeNodes.add(peer.replaceNode);
+							peers.removeNode(peer.replaceNode);
 						}
 						break;
 					}
@@ -730,6 +730,12 @@ public class Node implements Closeable {
 	 * Replace a node whose refresh failed with the same node on another address of its hostname.
 	 */
 	protected final void refreshAddress(Peers peers) {
+		if (cluster.nodesMap.get(name) != this) {
+			// Another node with the same name replaced this node.
+			peers.removeNode(this);
+			return;
+		}
+
 		if (failures <= 0 || ! active || hostname == null) {
 			return;
 		}
@@ -771,7 +777,7 @@ public class Node implements Closeable {
 				Node node = cluster.createNode(nv);
 				node.advertisedHosts = advertisedHosts;
 				peers.nodes.put(name, node);
-				peers.removeNodes.add(this);
+				peers.removeNode(this);
 				logMove(node);
 				return;
 			}
