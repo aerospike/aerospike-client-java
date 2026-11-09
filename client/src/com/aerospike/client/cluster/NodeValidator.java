@@ -16,12 +16,19 @@
  */
 package com.aerospike.client.cluster;
 
+import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
+import java.nio.channels.SelectionKey;
+import java.nio.channels.Selector;
+import java.nio.channels.SocketChannel;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Host;
@@ -140,12 +147,17 @@ public final class NodeValidator {
 	 */
 	public void validateNode(Cluster cluster, Host host) throws Throwable {
 		InetAddress[] addresses = getAddresses(host);
+
+		if (addresses.length > 1) {
+			addresses = connectAll(cluster, host, addresses);
+		}
 		Throwable exception = null;
 
 		for (InetAddress address : addresses) {
 			try {
 				validateAddress(cluster, address, host.tlsName, host.port, false);
 				setHostname(host, address);
+				cluster.validAddresses.put(host.name + ':' + host.port, address);
 				return;
 			}
 			catch (Throwable e) {
@@ -162,6 +174,135 @@ public final class NodeValidator {
 		// Exception can't be null here because getAddresses() will throw exception
 		// if aliases length is zero.
 		throw exception;
+	}
+
+	/**
+	 * Start a connect to every address at once and wait until one completes or
+	 * min(connectTimeout, tendInterval) passes. Return the addresses that completed by then, the last
+	 * validated address first, then in DNS order.
+	 */
+	private static InetAddress[] connectAll(Cluster cluster, Host host, InetAddress[] addresses) throws IOException {
+		InetAddress preferred = cluster.validAddresses.get(host.name + ':' + host.port);
+		int bound = (cluster.connectTimeout > 0) ? Math.min(cluster.connectTimeout, cluster.tendInterval) : cluster.tendInterval;
+		long deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(bound);
+		List<InetAddress> connected = new ArrayList<InetAddress>(addresses.length);
+		int pending = 0;
+
+		try (Selector selector = Selector.open()) {
+			try {
+				if (preferred != null) {
+					for (InetAddress address : addresses) {
+						if (address.equals(preferred)) {
+							pending += startConnect(selector, address, host.port, connected);
+							break;
+						}
+					}
+				}
+
+				for (InetAddress address : addresses) {
+					if (! address.equals(preferred)) {
+						pending += startConnect(selector, address, host.port, connected);
+					}
+				}
+
+				while (connected.isEmpty() && pending > 0) {
+					long remaining = deadline - System.nanoTime();
+
+					if (remaining <= 0) {
+						break;
+					}
+					selector.select(TimeUnit.NANOSECONDS.toMillis(remaining + 999999));
+					pending -= finishConnects(selector, host.port, connected);
+				}
+
+				if (! connected.isEmpty() && pending > 0) {
+					selector.selectNow();
+					finishConnects(selector, host.port, connected);
+				}
+			}
+			finally {
+				for (SelectionKey key : selector.keys()) {
+					if (key.isValid()) {
+						if (Log.debugEnabled()) {
+							Log.debug("Address " + key.attachment() + ' ' + host.port + " failed: connect did not complete within " + bound + "ms");
+						}
+						key.channel().close();
+					}
+				}
+			}
+		}
+
+		if (connected.isEmpty()) {
+			throw new AerospikeException.Connection("No connection to " + host + " completed for " + addresses.length +
+				" addresses within " + bound + "ms");
+		}
+		connected.sort(Comparator.comparingInt(address -> rank(addresses, preferred, address)));
+		return connected.toArray(new InetAddress[connected.size()]);
+	}
+
+	private static int startConnect(Selector selector, InetAddress address, int port, List<InetAddress> connected)
+		throws IOException {
+
+		SocketChannel channel = SocketChannel.open();
+
+		try {
+			channel.configureBlocking(false);
+
+			if (channel.connect(new InetSocketAddress(address, port))) {
+				connected.add(address);
+				channel.close();
+				return 0;
+			}
+			channel.register(selector, SelectionKey.OP_CONNECT, address);
+			return 1;
+		}
+		catch (IOException e) {
+			channel.close();
+
+			if (Log.debugEnabled()) {
+				Log.debug("Address " + address + ' ' + port + " failed: " + Util.getErrorMessage(e));
+			}
+			return 0;
+		}
+	}
+
+	private static int finishConnects(Selector selector, int port, List<InetAddress> connected) throws IOException {
+		Set<SelectionKey> keys = selector.selectedKeys();
+		int done = 0;
+
+		for (SelectionKey key : keys) {
+			SocketChannel channel = (SocketChannel)key.channel();
+			InetAddress address = (InetAddress)key.attachment();
+
+			try {
+				if (! channel.finishConnect()) {
+					continue;
+				}
+				connected.add(address);
+			}
+			catch (IOException e) {
+				if (Log.debugEnabled()) {
+					Log.debug("Address " + address + ' ' + port + " failed: " + Util.getErrorMessage(e));
+				}
+			}
+			channel.close();
+			done++;
+		}
+		keys.clear();
+		return done;
+	}
+
+	private static int rank(InetAddress[] addresses, InetAddress preferred, InetAddress address) {
+		if (address.equals(preferred)) {
+			return -1;
+		}
+
+		for (int i = 0; i < addresses.length; i++) {
+			if (addresses[i].equals(address)) {
+				return i;
+			}
+		}
+		return addresses.length;
 	}
 
 	/**
