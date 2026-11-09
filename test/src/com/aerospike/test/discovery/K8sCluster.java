@@ -28,7 +28,9 @@ import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BooleanSupplier;
 import java.util.regex.Matcher;
@@ -131,6 +133,23 @@ final class K8sCluster {
 		}
 		pods.sort((a, b) -> a.name.compareTo(b.name));
 		return pods;
+	}
+
+	/**
+	 * Return the names of the cluster's pods whose Ready condition is True.
+	 */
+	Set<String> readyPods() {
+		Set<String> ready = new HashSet<>();
+
+		for (String line : lines(kubectl("-n", namespace, "get", "pods", "-l", "aerospike.com/cr=" + name, "-o",
+			"jsonpath={range .items[*]}{.metadata.name} {.status.conditions[?(@.type==\"Ready\")].status}{\"\\n\"}{end}"))) {
+			String[] parts = line.split(" ", -1);
+
+			if (parts.length > 1 && "True".equals(parts[1])) {
+				ready.add(parts[0]);
+			}
+		}
+		return ready;
 	}
 
 	/**
