@@ -66,10 +66,12 @@ public class TestK8sPassThrough extends TestBase {
 	private static final int MIN_PODS = 2;
 	private static final long ROUTING_WAIT_MS = 120000;
 	private static final int KEY_SEARCH_LIMIT = 100000;
-	private static final String SHARED_ENDPOINT_PROFILE = " needs multiPodPerHost: true with every node labelled with " +
-		"one endpoint hostname, the cluster setup-kind-ako builds (run_l3.sh default profile, or the discovery-k8s workflow)";
-	private static final String PER_NODE_PROFILE = " needs multiPodPerHost: false with each kind worker labelled with " +
-		"its own endpoint hostname (run_l3.sh L3_PROFILE=per-node)";
+	private static final String SHARED_ENDPOINT_PROFILE = " needs multiPodPerHost: true with every pod advertising one " +
+		"endpoint hostname, the cluster setup-kind-ako builds (run_l3.sh default or nlb profile, or the discovery-k8s workflow)";
+	private static final String PER_NODE_PROFILE = " needs configuredIP and multiPodPerHost: false with each kind worker " +
+		"labelled with its own endpoint hostname (run_l3.sh L3_PROFILE=per-node)";
+	private static final String NLB_PER_POD_PROFILE = " needs networkLoadBalancer and multiPodPerHost: false " +
+		"(run_l3.sh L3_PROFILE=nlb-per-pod, or the l3-nlb-per-pod job of the discovery-k8s workflow)";
 
 	private K8sCluster scaled;
 	private int scaledFrom;
@@ -91,9 +93,10 @@ public class TestK8sPassThrough extends TestBase {
 	}
 
 	/**
-	 * Every node carries the same endpoint hostname as its configured-alternate-access-address
-	 * label, so the operator advertises that hostname with each pod's own Service NodePort as
-	 * alternate-access-port. Scaled to at least two pods, the client seeded through the ingress
+	 * Under configuredIP every node carries the same endpoint hostname as its
+	 * configured-alternate-access-address label; under networkLoadBalancer the AerospikeCluster
+	 * names it as loadBalancerAlternateAccessAddress. Either way the operator advertises that
+	 * hostname with each pod's own Service NodePort as alternate-access-port. Scaled to at least two pods, the client seeded through the ingress
 	 * port holds one node per pod, each but the seeded one at the hostname and NodePort its pod
 	 * advertises, and every partition's master is one of those nodes and serves a write and a read.
 	 * The seeded node is reached a second time at its own hostname and NodePort.
@@ -105,7 +108,14 @@ public class TestK8sPassThrough extends TestBase {
 		K8sCluster cluster = K8sCluster.find();
 		skipUnless(cluster.multiPodPerHost(), "Shared endpoint pass-through" + SHARED_ENDPOINT_PROFILE);
 		assertFalse("DISCOVERY_ENDPOINT_HOSTNAME is not set", K8sCluster.endpointHostname.isEmpty());
-		assertEquals("configuredIP", cluster.get(".spec.aerospikeNetworkPolicy.alternateAccess"));
+
+		String alternateAccess = cluster.alternateAccess();
+		boolean configuredIp = K8sCluster.CONFIGURED_IP.equals(alternateAccess);
+		assertTrue("alternateAccess " + alternateAccess, configuredIp || cluster.networkLoadBalancer());
+
+		if (! configuredIp) {
+			assertEquals("loadBalancerAlternateAccessAddress", K8sCluster.endpointHostname, cluster.loadBalancerAddress());
+		}
 
 		int size = cluster.size();
 
@@ -123,8 +133,12 @@ public class TestK8sPassThrough extends TestBase {
 		for (Pod pod : pods) {
 			String label = K8sCluster.nodeLabel(pod.node);
 			int nodePort = cluster.nodePort(pod.name, port);
-			System.out.println("L3-POD " + pod + " label=" + label + " serviceNodePort=" + nodePort);
-			assertEquals(pod.node + " label", K8sCluster.endpointHostname, label);
+			System.out.println("L3-POD " + pod + " alternateAccess=" + alternateAccess + " label=" + label +
+				" serviceNodePort=" + nodePort);
+
+			if (configuredIp) {
+				assertEquals(pod.node + " label", K8sCluster.endpointHostname, label);
+			}
 			assertTrue(pod.name + " has no Service NodePort for " + port, nodePort > 0);
 			nodePorts.add(nodePort);
 			expected.put(pod.name, K8sCluster.endpointHostname + ':' + nodePort);
@@ -144,8 +158,8 @@ public class TestK8sPassThrough extends TestBase {
 	@Test
 	public void perNodeEndpointsAdvertiseEachWorkerHostnameAndRouteEveryPartition() throws Exception {
 		K8sCluster cluster = K8sCluster.find();
-		skipUnless(! cluster.multiPodPerHost(), "Per-node pass-through" + PER_NODE_PROFILE);
-		assertEquals("configuredIP", cluster.get(".spec.aerospikeNetworkPolicy.alternateAccess"));
+		skipUnless(! cluster.multiPodPerHost() && K8sCluster.CONFIGURED_IP.equals(cluster.alternateAccess()),
+			"Per-node pass-through" + PER_NODE_PROFILE);
 
 		int port = cluster.servicePort();
 		List<Pod> pods = cluster.pods();
@@ -168,6 +182,53 @@ public class TestK8sPassThrough extends TestBase {
 		assertEquals("Workers " + workers, pods.size(), workers.size());
 		assertEquals("Labels " + labels, pods.size(), labels.size());
 		assertRoutesEveryPartition("per-node", pods, expected);
+	}
+
+	/**
+	 * Under networkLoadBalancer with one pod per kind worker, no node carries a label and no
+	 * container publishes a hostPort: each pod advertises the AerospikeCluster's
+	 * loadBalancerAlternateAccessAddress with its own Service NodePort. The client holds one node
+	 * per pod, each but the seeded one at that address and NodePort, and every partition's master
+	 * is one of those nodes and serves a write and a read.
+	 */
+	@Test
+	public void networkLoadBalancerPerPodAdvertisesEachServiceNodePortAndRoutesEveryPartition() throws Exception {
+		K8sCluster cluster = K8sCluster.find();
+		skipUnless(cluster.networkLoadBalancer() && ! cluster.multiPodPerHost(),
+			"Network load balancer pass-through, one pod per node" + NLB_PER_POD_PROFILE);
+
+		String address = cluster.loadBalancerAddress();
+		assertEquals("loadBalancerAlternateAccessAddress", K8sCluster.endpointHostname, address);
+
+		int size = cluster.size();
+
+		if (size < MIN_PODS) {
+			scaled = cluster;
+			scaledFrom = size;
+			cluster.scale(MIN_PODS);
+		}
+
+		int port = cluster.servicePort();
+		List<Pod> pods = cluster.pods();
+		Map<String,String> expected = new LinkedHashMap<>();
+		Set<String> workers = new HashSet<>();
+		Set<Integer> nodePorts = new HashSet<>();
+
+		for (Pod pod : pods) {
+			int nodePort = cluster.nodePort(pod.name, port);
+			int hostPort = cluster.hostPort(pod.name, port);
+			System.out.println("L3-POD " + pod + " alternateAccess=" + cluster.alternateAccess() + " address=" + address +
+				" nodeAddress=" + K8sCluster.nodeAddress(pod.node) + " hostPort=" + hostPort + " serviceNodePort=" +
+				nodePort);
+			assertTrue(pod.name + " has no Service NodePort for " + port, nodePort > 0);
+			assertEquals(pod.name + " hostPort for " + port, 0, hostPort);
+			workers.add(pod.node);
+			nodePorts.add(nodePort);
+			expected.put(pod.name, address + ':' + nodePort);
+		}
+		assertEquals("Workers " + workers, pods.size(), workers.size());
+		assertEquals("Distinct NodePorts " + nodePorts, pods.size(), nodePorts.size());
+		assertRoutesEveryPartition("nlb-per-pod", pods, expected);
 	}
 
 	/**
