@@ -260,6 +260,13 @@ final class K8sCluster {
 	}
 
 	/**
+	 * Delete a pod whose Node is gone, so no kubelet will confirm a graceful delete.
+	 */
+	void forceDeletePod(String pod) {
+		kubectl("-n", namespace, "delete", "pod", pod, "--force", "--grace-period=0", "--ignore-not-found");
+	}
+
+	/**
 	 * Create a NodePort Service that sends {@code port} on {@code nodePort} to {@code pod} alone.
 	 */
 	void createPodNodePortService(String service, String pod, int port, int nodePort) {
@@ -337,6 +344,19 @@ final class K8sCluster {
 
 	static void deleteNode(String node) {
 		kubectl("delete", "node", node, "--wait=true");
+	}
+
+	static List<String> nodeNames() {
+		return lines(kubectl("get", "nodes", "-o", "jsonpath={range .items[*]}{.metadata.name}{\"\\n\"}{end}"));
+	}
+
+	static boolean controlPlane(String node) {
+		return lines(kubectl("get", "nodes", "-l", "node-role.kubernetes.io/control-plane", "-o", "name"))
+			.contains("node/" + node);
+	}
+
+	static void cordon(String node, boolean on) {
+		kubectl(on ? "cordon" : "uncordon", node);
 	}
 
 	static String nodeAddress(String node) {

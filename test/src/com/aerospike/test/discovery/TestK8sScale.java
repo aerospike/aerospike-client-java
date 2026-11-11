@@ -503,11 +503,23 @@ public class TestK8sScale extends TestBase {
 		assertEquals(worker + " " + NODE_MARK, "set-through-api", K8sCluster.nodeLabel(worker, NODE_MARK));
 		Host[] seeds = Host.parseHosts(args.host, args.port);
 
+		List<String> cordoned = new ArrayList<>();
+
 		try (AerospikeClient client = new AerospikeClient(policy(), seeds)) {
 			awaitRouting("node-before", client, size);
 
+			// Otherwise the replacement pod schedules onto another node before this one registers again.
+			for (String other : K8sCluster.nodeNames()) {
+				if (! other.equals(worker)) {
+					K8sCluster.cordon(other, true);
+					cordoned.add(other);
+				}
+			}
+
 			long deleted = System.nanoTime();
 			K8sCluster.deleteNode(worker);
+			// Pod garbage collection races the kubelet restart that registers the Node again.
+			cluster.forceDeletePod(victim.name);
 			String[] uid = {""};
 			boolean registered = K8sCluster.waitFor(() -> {
 				uid[0] = K8sCluster.nodeUid(worker);
@@ -516,7 +528,8 @@ public class TestK8sScale extends TestBase {
 			long registeredMs = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - deleted);
 			assertTrue(worker + " not registered again within " + NODE_REGISTER_TIMEOUT_MS + "ms", registered);
 
-			Pod pod = awaitReady(victim.name, "");
+			Pod pod = awaitReady(victim.name, podUid);
+			assertEquals(pod.name + " node", worker, pod.node);
 			assertTrue("Not every pod Ready within " + K8sCluster.SCALE_TIMEOUT_MS + "ms: " + cluster.pods(),
 				K8sCluster.waitFor(() -> cluster.readyPods().size() == size, K8sCluster.SCALE_TIMEOUT_MS, 2000));
 
@@ -538,10 +551,15 @@ public class TestK8sScale extends TestBase {
 				advertised);
 			assertServedByEveryNode("node-recreated", client);
 		}
+		finally {
+			for (String other : cordoned) {
+				K8sCluster.cordon(other, false);
+			}
+		}
 	}
 
 	/**
-	 * Return the highest-ordinal pod on a node the endpoint hostname does not resolve to, so
+	 * Return the highest-ordinal pod on a worker the endpoint hostname does not resolve to, so
 	 * deleting that node leaves the seed and the other pods running, or null when there is none.
 	 */
 	private static Pod awayFromEndpoint(List<Pod> pods) throws Exception {
@@ -554,7 +572,7 @@ public class TestK8sScale extends TestBase {
 		List<Pod> away = new ArrayList<>();
 
 		for (Pod pod : pods) {
-			if (! endpoint.contains(K8sCluster.nodeAddress(pod.node))) {
+			if (! endpoint.contains(K8sCluster.nodeAddress(pod.node)) && ! K8sCluster.controlPlane(pod.node)) {
 				away.add(pod);
 			}
 		}
