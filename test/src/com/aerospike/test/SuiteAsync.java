@@ -45,7 +45,8 @@ import org.junit.runners.Suite;
 	TestAsyncQuery.class,
 	TestAsyncTxn.class,
 	TestAsyncUDF.class,
-	TestAsyncErrorDetailVerbosity.class
+	TestAsyncErrorDetailVerbosity.class,
+	TestAsyncTlsConnectTimeout.class
 })
 public class SuiteAsync {
 	public static IAerospikeClient client = null;

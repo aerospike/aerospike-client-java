@@ -1234,6 +1234,14 @@ public final class NettyCommand implements Runnable, TimerTask {
 				return;
 			}
 
+			if (isStale(ctx)) {
+				if (Log.debugEnabled()) {
+					Log.debug("Ignore handshake event from abandoned channel: " +
+						((SslHandshakeCompletionEvent)evt).cause());
+				}
+				return;
+			}
+
 			Throwable cause = ((SslHandshakeCompletionEvent)evt).cause();
 
 			if (cause != null) {
@@ -1252,8 +1260,25 @@ public final class NettyCommand implements Runnable, TimerTask {
 			}
 		}
 
+		/**
+		 * Return true if the event belongs to a channel the command has already abandoned.
+		 * A connect timeout closes the channel and retries on a new one, but the closed
+		 * channel still delivers its handshake failure later. Acting on it would close the
+		 * new channel and consume a retry.
+		 */
+		private boolean isStale(ChannelHandlerContext ctx) {
+			return command != null && (command.conn == null || command.conn.channel != ctx.channel());
+		}
+
 		@Override
 		public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
+			if (isStale(ctx)) {
+				if (Log.debugEnabled()) {
+					Log.debug("Ignore exception from abandoned channel: " + cause);
+				}
+				return;
+			}
+
 			if (command == null) {
 				if (pool != null) {
 					// Connection failed while in pool. TCP keep-alive likely invalidated connection.
