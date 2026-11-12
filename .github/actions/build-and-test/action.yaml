@@ -70,6 +70,17 @@ runs:
           -file ${{ steps.setup-aerospike-server.outputs.tls-cert-dir }}/ca.crt
 
     # Running tests
+    - name: Add connect latency for the TLS connect-timeout test
+      # Delays only packets to the test's proxy port, so the rest of the suite
+      # keeps loopback speed. Port must match -DtlsProxyPort in
+      # TestAsyncTlsConnectTimeout; the test skips without this delay.
+      if: ${{ inputs.run-tests == 'true' && inputs.enable-tls == 'true' }}
+      shell: bash
+      run: |
+        sudo tc qdisc add dev lo root handle 1: prio bands 4 priomap 1 2 2 2 1 2 0 0 1 1 1 1 1 1 1 1
+        sudo tc qdisc add dev lo parent 1:4 handle 40: netem delay 20ms
+        sudo tc filter add dev lo parent 1: protocol ip prio 1 u32 match ip dport 3443 0xffff flowid 1:4
+
     - name: Run tests
       shell: bash
       if: ${{ inputs.run-tests == 'true' }}
@@ -100,3 +111,8 @@ runs:
             --report target/example-reports/TEST-examples.xml \
             all
         fi
+
+    - name: Remove connect latency
+      if: ${{ always() && inputs.run-tests == 'true' && inputs.enable-tls == 'true' }}
+      shell: bash
+      run: sudo tc qdisc del dev lo root || true
