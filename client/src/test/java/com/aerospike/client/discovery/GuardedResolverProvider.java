@@ -22,7 +22,9 @@ import java.net.spi.InetAddressResolver;
 import java.net.spi.InetAddressResolverProvider;
 import java.security.Security;
 import java.util.Arrays;
+import java.util.LinkedHashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Stream;
@@ -37,6 +39,8 @@ public final class GuardedResolverProvider extends InetAddressResolverProvider {
 	private static final ThreadLocal<Boolean> ARMED = ThreadLocal.withInitial(() -> false);
 	private static final Map<String,InetAddress[]> HOSTS = new ConcurrentHashMap<>();
 	private static final Map<String,AtomicInteger> LOOKUPS = new ConcurrentHashMap<>();
+	private static final Map<String,Long> DELAYS = new ConcurrentHashMap<>();
+	private static final Map<String,Set<String>> DELAY_THREADS = new ConcurrentHashMap<>();
 	private static final AtomicInteger TOTAL = new AtomicInteger();
 
 	public static void arm() {
@@ -62,6 +66,23 @@ public final class GuardedResolverProvider extends InetAddressResolverProvider {
 
 	public static void unregister(String host) {
 		HOSTS.remove(host);
+		DELAYS.remove(host);
+		DELAY_THREADS.remove(host);
+	}
+
+	/**
+	 * Block every later lookup of a registered host for the given time before it answers.
+	 */
+	public static void delay(String host, long millis) {
+		DELAYS.put(host, millis);
+	}
+
+	/**
+	 * Names of the live threads at the end of the last delayed lookup of a host, the looking-up
+	 * thread first, or null if none was delayed.
+	 */
+	public static Set<String> delayThreads(String host) {
+		return DELAY_THREADS.get(host);
 	}
 
 	/**
@@ -97,6 +118,7 @@ public final class GuardedResolverProvider extends InetAddressResolverProvider {
 
 				if (addresses != null) {
 					LOOKUPS.get(host).incrementAndGet();
+					delayLookup(host);
 					return Arrays.stream(addresses);
 				}
 				return builtin.lookupByName(host, policy);
@@ -108,6 +130,29 @@ public final class GuardedResolverProvider extends InetAddressResolverProvider {
 				return builtin.lookupByAddress(addr);
 			}
 		};
+	}
+
+	private static void delayLookup(String host) {
+		Long millis = DELAYS.get(host);
+
+		if (millis == null) {
+			return;
+		}
+
+		try {
+			Thread.sleep(millis);
+		}
+		catch (InterruptedException ie) {
+			Thread.currentThread().interrupt();
+		}
+
+		Set<String> names = new LinkedHashSet<>();
+		names.add(Thread.currentThread().getName());
+
+		for (Thread thread : Thread.getAllStackTraces().keySet()) {
+			names.add(thread.getName());
+		}
+		DELAY_THREADS.put(host, names);
 	}
 
 	private static void check(String host) {

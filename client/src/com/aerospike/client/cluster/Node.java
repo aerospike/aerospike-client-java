@@ -68,6 +68,7 @@ public class Node implements Closeable {
 
 	private static final String[] INFO_PERIODIC = new String[] {"node", "peers-generation", "partition-generation"};
 	private static final String[] INFO_PERIODIC_REB = new String[] {"node", "peers-generation", "partition-generation", "rebalance-generation"};
+	private static final int MOVE_FAILED_TENDS = 3;
 
 	protected final Cluster cluster;
 	private final String name;
@@ -96,6 +97,8 @@ public class Node implements Closeable {
 	private List<Host> advertisedHosts;
 	protected int referenceCount;
 	protected int failures;
+	private int failedTends;
+	private InetAddress moveAddress;
 	private final int features;
 	protected boolean partitionChanged;
 	protected boolean rebalanceChanged;
@@ -276,9 +279,12 @@ public class Node implements Closeable {
 				rebalanceChanged = cluster.rackAware;
 			}
 			failures = 0;
+			failedTends = 0;
+			moveAddress = null;
 		}
 		catch (Throwable e) {
 			peers.genChanged = true;
+			failedTends++;
 			refreshFailed(e);
 		}
 	}
@@ -507,10 +513,7 @@ public class Node implements Closeable {
 						nodeValidated = true;
 
 						if (peer.replaceNode != null) {
-							if (host.name.equals(peer.replaceNode.hostname) && peer.replaceNode.name.equals(nv.name)) {
-								peer.replaceNode.logMove(node);
-							}
-							else if (Log.infoEnabled()) {
+							if (Log.infoEnabled()) {
 								Log.info("Replace node: " + peer.replaceNode);
 							}
 							peers.removeNode(peer.replaceNode);
@@ -598,27 +601,7 @@ public class Node implements Closeable {
 			other = name;
 		}
 		else {
-			Node node = findValidatedNode(cluster.nodesMap, peer.nodeName, nv);
-
-			if (node == null) {
-				node = findValidatedNode(peers.nodes, peer.nodeName, nv);
-
-				if (node != null) {
-					// Neither peer becomes a node when both validate as the same node in this tend.
-					peers.nodes.remove(node.name);
-					node.close();
-				}
-			}
-
-			if (node != null) {
-				other = node.name;
-			}
-			else if (! peer.nodeName.equals(nv.name) && findPeer(peers, nv.name)) {
-				other = nv.name;
-			}
-			else {
-				other = peers.collided.get(nv.name);
-			}
+			other = findCollidingName(cluster, peers, peer.nodeName, nv);
 		}
 
 		if (other == null) {
@@ -626,6 +609,32 @@ public class Node implements Closeable {
 		}
 		peers.collided.put(nv.name, peer.nodeName);
 		return new AerospikeException.TranslationCollision(peer.nodeName, other, host, cluster.translatorName());
+	}
+
+	/**
+	 * Return the name of another node that the validated host collides with, or null.
+	 */
+	private static String findCollidingName(Cluster cluster, Peers peers, String nodeName, NodeValidator nv) {
+		Node node = findValidatedNode(cluster.nodesMap, nodeName, nv);
+
+		if (node == null) {
+			node = findValidatedNode(peers.nodes, nodeName, nv);
+
+			if (node != null) {
+				// Neither peer becomes a node when both validate as the same node in this tend.
+				peers.nodes.remove(node.name);
+				node.close();
+			}
+		}
+
+		if (node != null) {
+			return node.name;
+		}
+
+		if (! nodeName.equals(nv.name) && findPeer(peers, nv.name)) {
+			return nv.name;
+		}
+		return peers.collided.get(nv.name);
 	}
 
 	private static Node findValidatedNode(HashMap<String,Node> nodes, String nodeName, NodeValidator nv) {
@@ -676,8 +685,9 @@ public class Node implements Closeable {
 			// Match peer hosts with the node host.
 			for (Host h : peer.hosts) {
 				if (h.port == node.host.port) {
-					// Check for IP address (node.host.name is an IP address).
-					if (h.name.equals(node.host.name)) {
+					// Check for IP address (node.host.name is an IP address) or hostname if it exists.
+					// A node on a hostname with several addresses is moved by refreshAddress only.
+					if (h.name.equals(node.host.name) || h.name.equals(node.hostname)) {
 						// Main node host is also the same as one of the peer hosts.
 						// Peer should not be added.
 						node.referenceCount++;
@@ -685,14 +695,12 @@ public class Node implements Closeable {
 					}
 
 					// Peer name might be a hostname. Get peer IP addresses and check with node IP address.
-					// When the hostname has several addresses, the node's address may be the one that
-					// failed, so let the peer be validated on the other addresses.
 					try {
 						InetAddress[] addresses = InetAddress.getAllByName(h.name);
 
 						for (InetAddress address : addresses) {
-							if (address.isLoopbackAddress() || (addresses.length == 1 &&
-								(address.equals(node.address.getAddress()) || h.name.equals(node.hostname)))) {
+							if (address.equals(node.address.getAddress()) ||
+								address.isLoopbackAddress()) {
 								// Set peer hostname for faster future lookups.
 								node.hostname = h.name;
 								node.referenceCount++;
@@ -701,11 +709,6 @@ public class Node implements Closeable {
 						}
 					}
 					catch (Throwable t) {
-						if (h.name.equals(node.hostname)) {
-							node.referenceCount++;
-							return true;
-						}
-
 						// Peer name is invalid. replaceNode may be set, but that node will
 						// not be replaced because NodeValidator will reject it.
 						Log.error("Invalid peer received by cluster tend: " + h.name);
@@ -727,7 +730,8 @@ public class Node implements Closeable {
 	}
 
 	/**
-	 * Replace a node whose refresh failed with the same node on another address of its hostname.
+	 * Replace a node whose refresh failed in consecutive tends with the same node on another address
+	 * of its hostname. One address is tried per tend, within half the tend interval.
 	 */
 	protected final void refreshAddress(Peers peers) {
 		if (cluster.nodesMap.get(name) != this) {
@@ -736,7 +740,7 @@ public class Node implements Closeable {
 			return;
 		}
 
-		if (failures <= 0 || ! active || hostname == null) {
+		if (failedTends < MOVE_FAILED_TENDS || ! active || hostname == null) {
 			return;
 		}
 
@@ -749,44 +753,83 @@ public class Node implements Closeable {
 			return;
 		}
 
-		if (addresses.length <= 1) {
+		InetAddress ia = nextAddress(addresses);
+
+		if (ia == null) {
 			return;
 		}
+		moveAddress = ia;
 
-		Host alias = new Host(hostname, host.tlsName, host.port);
+		int timeout = cluster.tendInterval / 2;
 
-		for (InetAddress ia : addresses) {
-			if (ia.equals(address.getAddress())) {
-				continue;
-			}
+		if (cluster.connectTimeout > 0 && cluster.connectTimeout < timeout) {
+			timeout = cluster.connectTimeout;
+		}
 
-			try {
-				NodeValidator nv = new NodeValidator();
-				nv.validateAlias(cluster, alias, ia);
+		try {
+			NodeValidator nv = new NodeValidator();
+			nv.validateAlias(cluster, new Host(hostname, host.tlsName, host.port), ia, timeout);
 
-				if (! name.equals(nv.name) || findValidatedNode(cluster.nodesMap, name, nv) != null ||
-					findValidatedNode(peers.nodes, name, nv) != null) {
-					if (Log.debugEnabled()) {
-						Log.debug("Address " + nv.primaryHost + " of " + hostname + " is node " + nv.name +
-							", not node " + name);
-					}
-					nv.primaryConn.close();
-					continue;
+			if (! name.equals(nv.name)) {
+				if (Log.debugEnabled()) {
+					Log.debug("Address " + nv.primaryHost + " of " + hostname + " is node " + nv.name +
+						", not node " + name);
 				}
-
-				Node node = cluster.createNode(nv);
-				node.advertisedHosts = advertisedHosts;
-				peers.nodes.put(name, node);
-				peers.removeNode(this);
-				logMove(node);
+				nv.primaryConn.close();
 				return;
 			}
-			catch (Throwable e) {
-				if (Log.debugEnabled()) {
-					Log.debug("Address " + ia + ' ' + host.port + " failed: " + Util.getErrorMessage(e));
+
+			String other = findCollidingName(cluster, peers, name, nv);
+
+			if (other != null) {
+				if (Log.warnEnabled()) {
+					Log.warn(new AerospikeException.TranslationCollision(name, other, nv.primaryHost,
+						cluster.translatorName()).getMessage());
+				}
+				nv.primaryConn.close();
+				return;
+			}
+
+			Node node = cluster.createNode(nv);
+			node.advertisedHosts = advertisedHosts;
+			peers.nodes.put(name, node);
+			peers.removeNode(this);
+			logMove(node);
+		}
+		catch (Throwable e) {
+			if (Log.debugEnabled()) {
+				Log.debug("Address " + ia + ' ' + host.port + " failed: " + Util.getErrorMessage(e));
+			}
+		}
+	}
+
+	/**
+	 * Return the address after the one tried last, skipping the node's address.
+	 */
+	private InetAddress nextAddress(InetAddress[] addresses) {
+		if (addresses.length <= 1) {
+			return null;
+		}
+
+		int start = 0;
+
+		if (moveAddress != null) {
+			for (int i = 0; i < addresses.length; i++) {
+				if (addresses[i].equals(moveAddress)) {
+					start = i + 1;
+					break;
 				}
 			}
 		}
+
+		for (int i = 0; i < addresses.length; i++) {
+			InetAddress ia = addresses[(start + i) % addresses.length];
+
+			if (! ia.equals(address.getAddress())) {
+				return ia;
+			}
+		}
+		return null;
 	}
 
 	private void logMove(Node node) {
