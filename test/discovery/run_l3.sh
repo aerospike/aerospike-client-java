@@ -29,8 +29,8 @@
 # hostname) with its own Service NodePort, and no container publishes a hostPort. nlb keeps every pod on
 # one kind node; nlb-per-pod sets multi-pod-per-host false, which runs one pod per kind worker with a spare
 # worker, at two pods; nlb-tls runs enable-l3-tls.sh on nlb at two pods with as-endpoint-tls.test as
-# loadBalancerTLSAlternateAccessAddress. They need an AKO that offers networkLoadBalancer: set L3_AKO_VERSION
-# and L3_CLUSTER_CHART_VERSION to the values the workflow sets.
+# loadBalancerTLSAlternateAccessAddress. They need an AKO that offers networkLoadBalancer, so they default to the
+# AKO_VERSION_NLB, CLUSTER_CHART_VERSION_NLB and AKO_HELM_REPO_NLB the workflow sets.
 #
 # While the suite runs, .github/discovery/reregister-kind-nodes.sh restarts kubelet in any kind node whose
 # Node object has been deleted for 60 seconds, which kind does not register again on its own.
@@ -51,8 +51,11 @@
 #
 # Optional environment:
 #   L3_PROFILE                default, per-node, tls, nlb, nlb-per-pod or nlb-tls (default: default)
-#   L3_AKO_VERSION            setup-kind-ako ako-version (default: latest)
-#   L3_CLUSTER_CHART_VERSION  setup-kind-ako cluster-chart-version (default: empty, the resolved ako-version)
+#   L3_AKO_VERSION            setup-kind-ako ako-version (default: latest; the workflow's on the nlb profiles)
+#   L3_CLUSTER_CHART_VERSION  setup-kind-ako cluster-chart-version (default: empty, the resolved ako-version;
+#                             the workflow's on the nlb profiles)
+#   L3_AKO_HELM_REPO          setup-kind-ako ako-helm-repo (default: empty, the action's pinned repository;
+#                             the workflow's on the nlb profiles)
 #   L3_KIND_CLUSTER           kind cluster name (default: discovery-l3)
 #   L3_CLUSTER_SIZE           initial AerospikeCluster size on every profile but per-node, 1-8
 #                             (default: the action's default, 1, on default and nlb; 2 on tls, nlb-per-pod
@@ -108,7 +111,7 @@ if [ "${1:-}" = "--client" ]; then
 	exit $?
 fi
 
-SHARED_WORKFLOWS_COMMIT=a2c89aad687949ed5e1936476fa5ec7bc833159d
+SHARED_WORKFLOWS_COMMIT=3ad1bc4b8c4ca7e5b7661aab5cd9151def0e763a
 SHARED_WORKFLOWS_REF="${L3_SHARED_WORKFLOWS_REF:-$SHARED_WORKFLOWS_COMMIT}"
 ACTION_PATH=.github/actions/setup-kind-ako
 CLIENT_IMAGE=maven:3-ibm-semeru-21-noble@sha256:0ad9f1918f4a30f89713a03e39659ef3135a2a08b257a90168a6033335a48bcb
@@ -135,8 +138,20 @@ case "$PROFILE" in
 	nlb-tls) ALTERNATE_ACCESS=networkLoadBalancer TLS=1 ;;
 	*) die "L3_PROFILE must be default, per-node, tls, nlb, nlb-per-pod or nlb-tls (got: $PROFILE)" ;;
 esac
-AKO_VERSION="${L3_AKO_VERSION:-latest}"
-CLUSTER_CHART_VERSION="${L3_CLUSTER_CHART_VERSION:-}"
+workflow_env() {
+	sed -n "s/^  $1: *//p" "$ROOT_DIR/.github/workflows/discovery-k8s.yaml"
+}
+
+if [ "$ALTERNATE_ACCESS" = "networkLoadBalancer" ]; then
+	AKO_VERSION="${L3_AKO_VERSION:-$(workflow_env AKO_VERSION_NLB)}"
+	CLUSTER_CHART_VERSION="${L3_CLUSTER_CHART_VERSION-$(workflow_env CLUSTER_CHART_VERSION_NLB)}"
+	AKO_HELM_REPO="${L3_AKO_HELM_REPO:-$(workflow_env AKO_HELM_REPO_NLB)}"
+	[ -n "$AKO_VERSION" ] && [ -n "$AKO_HELM_REPO" ] || die "no AKO_VERSION_NLB or AKO_HELM_REPO_NLB in discovery-k8s.yaml"
+else
+	AKO_VERSION="${L3_AKO_VERSION:-latest}"
+	CLUSTER_CHART_VERSION="${L3_CLUSTER_CHART_VERSION:-}"
+	AKO_HELM_REPO="${L3_AKO_HELM_REPO:-}"
+fi
 [[ "$CLUSTER" =~ ^[a-z0-9][a-z0-9-]*$ ]] || die "L3_KIND_CLUSTER must be lower-case letters, digits and dashes (got: $CLUSTER)"
 [[ "$WORKERS" =~ ^[2-8]$ ]] || die "L3_PER_NODE_WORKERS must be 2-8 (got: $WORKERS)"
 [[ "$PER_NODE_DOMAIN" =~ ^[a-z0-9.-]+$ ]] || die "L3_PER_NODE_DOMAIN must be a DNS name (got: $PER_NODE_DOMAIN)"
@@ -167,9 +182,9 @@ MVN=(mvn)
 [ "${L3_MAVEN_OFFLINE:-1}" = "1" ] && MVN+=(-o)
 
 rm -rf "$WORK_DIR"
-mkdir -p "$ACTION_DIR/templates" "$WORK_DIR/bin" "$WORK_DIR/helm"
+mkdir -p "$ACTION_DIR/templates" "$ACTION_DIR/deps" "$WORK_DIR/bin" "$WORK_DIR/helm"
 
-for f in entrypoint.sh action.yaml templates/aerospike-cluster-values.yaml templates/aerospike-cluster-tls-values.yaml \
+for f in entrypoint.sh action.yaml deps/Chart.yaml templates/aerospike-cluster-values.yaml templates/aerospike-cluster-tls-values.yaml \
 	templates/ingress-values.yaml templates/rbac.yaml; do
 	if [ -n "${SHARED_WORKFLOWS_DIR:-}" ] && [ "$SHARED_WORKFLOWS_REF" = "worktree" ]; then
 		cp "$SHARED_WORKFLOWS_DIR/$ACTION_PATH/$f" "$ACTION_DIR/$f" || die "$f not found in $SHARED_WORKFLOWS_DIR"
@@ -195,10 +210,8 @@ input_default() {
 
 KIND_IMAGE="$(input_default kind-node-image)"
 SERVER_IMAGE="$(input_default server-image)"
-AKO_HELM_REPO="$(input_default ako-helm-repo)"
 [ -n "$KIND_IMAGE" ] || die "no kind-node-image default in action.yaml"
 [ -n "$SERVER_IMAGE" ] || die "no server-image default in action.yaml"
-[ -n "$AKO_HELM_REPO" ] || die "no ako-helm-repo default in action.yaml at $SHARED_WORKFLOWS_REF"
 if [ -n "${L3_SERVER_IMAGE:-}" ]; then
 	SERVER_IMAGE="$L3_SERVER_IMAGE"
 	"$DOCKER" image inspect "$SERVER_IMAGE" >/dev/null 2>&1 || die "L3_SERVER_IMAGE $SERVER_IMAGE is not in the local image store; pull it first"

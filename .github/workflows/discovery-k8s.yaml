@@ -42,9 +42,11 @@ on:
 env:
   AKO_VERSION_CONFIGURED_IP: 4.5.0
   # networkLoadBalancer alternate access first ships in AKO 4.8.0. Its dev
-  # build ships no aerospike-cluster chart, so 4.7.0 renders the cluster.
+  # build ships no aerospike-cluster chart, so 4.7.0 renders the cluster, and
+  # only the operator chart repository serves it.
   AKO_VERSION_NLB: 4.8.0-dev1
   CLUSTER_CHART_VERSION_NLB: 4.7.0
+  AKO_HELM_REPO_NLB: https://aerospike.github.io/aerospike-kubernetes-operator
 
 jobs:
   l3:
@@ -79,7 +81,7 @@ jobs:
 
       - name: Setup kind and AKO
         id: kind-ako
-        uses: aerospike/shared-workflows/.github/actions/setup-kind-ako@a2c89aad687949ed5e1936476fa5ec7bc833159d
+        uses: aerospike/shared-workflows/.github/actions/setup-kind-ako@3ad1bc4b8c4ca7e5b7661aab5cd9151def0e763a
         with:
           features-content: ${{ secrets.FEATURES_CONF }}
           ako-version: ${{ env.AKO_VERSION_CONFIGURED_IP }}
@@ -132,7 +134,7 @@ jobs:
 
       - name: Setup kind and AKO
         id: kind-ako
-        uses: aerospike/shared-workflows/.github/actions/setup-kind-ako@a2c89aad687949ed5e1936476fa5ec7bc833159d
+        uses: aerospike/shared-workflows/.github/actions/setup-kind-ako@3ad1bc4b8c4ca7e5b7661aab5cd9151def0e763a
         with:
           features-content: ${{ secrets.FEATURES_CONF }}
           ako-version: ${{ env.AKO_VERSION_CONFIGURED_IP }}
@@ -196,10 +198,11 @@ jobs:
 
       - name: Setup kind and AKO
         id: kind-ako
-        uses: aerospike/shared-workflows/.github/actions/setup-kind-ako@a2c89aad687949ed5e1936476fa5ec7bc833159d
+        uses: aerospike/shared-workflows/.github/actions/setup-kind-ako@3ad1bc4b8c4ca7e5b7661aab5cd9151def0e763a
         with:
           features-content: ${{ secrets.FEATURES_CONF }}
           ako-version: ${{ env.AKO_VERSION_NLB }}
+          ako-helm-repo: ${{ env.AKO_HELM_REPO_NLB }}
           cluster-chart-version: ${{ env.CLUSTER_CHART_VERSION_NLB }}
           alternate-access: networkLoadBalancer
           multi-pod-per-host: true
@@ -254,10 +257,11 @@ jobs:
 
       - name: Setup kind and AKO
         id: kind-ako
-        uses: aerospike/shared-workflows/.github/actions/setup-kind-ako@a2c89aad687949ed5e1936476fa5ec7bc833159d
+        uses: aerospike/shared-workflows/.github/actions/setup-kind-ako@3ad1bc4b8c4ca7e5b7661aab5cd9151def0e763a
         with:
           features-content: ${{ secrets.FEATURES_CONF }}
           ako-version: ${{ env.AKO_VERSION_NLB }}
+          ako-helm-repo: ${{ env.AKO_HELM_REPO_NLB }}
           cluster-chart-version: ${{ env.CLUSTER_CHART_VERSION_NLB }}
           alternate-access: networkLoadBalancer
           multi-pod-per-host: false
@@ -313,10 +317,11 @@ jobs:
 
       - name: Setup kind and AKO
         id: kind-ako
-        uses: aerospike/shared-workflows/.github/actions/setup-kind-ako@a2c89aad687949ed5e1936476fa5ec7bc833159d
+        uses: aerospike/shared-workflows/.github/actions/setup-kind-ako@3ad1bc4b8c4ca7e5b7661aab5cd9151def0e763a
         with:
           features-content: ${{ secrets.FEATURES_CONF }}
           ako-version: ${{ env.AKO_VERSION_NLB }}
+          ako-helm-repo: ${{ env.AKO_HELM_REPO_NLB }}
           cluster-chart-version: ${{ env.CLUSTER_CHART_VERSION_NLB }}
           alternate-access: networkLoadBalancer
           multi-pod-per-host: true
