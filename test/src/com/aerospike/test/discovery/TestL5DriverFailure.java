@@ -110,8 +110,8 @@ public class TestL5DriverFailure {
 	}
 
 	@Test
-	public void readyReportsContract3() {
-		assertEquals("{\"type\":\"ready\",\"t\":5,\"contract\":3,\"epochMs\":1700000000000,\"client\":\"java\"," +
+	public void readyReportsContract5() {
+		assertEquals("{\"type\":\"ready\",\"t\":5,\"contract\":5,\"epochMs\":1700000000000,\"client\":\"java\"," +
 			"\"clientVersion\":\"10.4.0\",\"shape\":\"port-map\"}", L5Driver.ready(5, 1700000000000L, "10.4.0", "port-map"));
 	}
 
