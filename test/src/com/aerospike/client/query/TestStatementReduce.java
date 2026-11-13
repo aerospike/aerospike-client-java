@@ -344,15 +344,14 @@ public class TestStatementReduce {
 	}
 
 	@Test
-	public void thenOrderByBeforeSetOrderByAddsFirstKey() {
+	public void thenOrderByBeforeSetOrderByIsRejected() {
 		Statement stmt = new Statement();
-		stmt.thenOrderBy(GROUP, BinDataType.INTEGER, Order.ASC);
 		stmt.setTopK(1);
-		stmt.validateTopK();
-
-		OrderBy[] keys = stmt.getOrderBy();
-		assertEquals(1, keys.length);
-		assertEquals(GROUP, keys[0].binName);
+		AerospikeException ae = assertInvalidArgument(
+			() -> stmt.thenOrderBy(GROUP, BinDataType.INTEGER, Order.ASC));
+		assertEquals("thenOrderBy requires a first order key; call setOrderBy() first",
+			ae.getBaseMessage());
+		assertNull(stmt.getOrderBy());
 	}
 
 	@Test
