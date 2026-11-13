@@ -287,30 +287,29 @@ public final class Statement {
 
 	/**
 	 * Add an order key for a Top-K query after the ones already set. A later key decides only
-	 * where the keys before it tie; called before {@link #setOrderBy}, it adds the first key.
-	 * A Top-K query takes at most two order keys, on different bins.
+	 * where the keys before it tie. The first key comes from {@link #setOrderBy}, so this must
+	 * follow it. A Top-K query takes at most two order keys, on different bins.
 	 *
 	 * @param binName	bin name to order by
 	 * @param type		scalar type of {@code binName}
 	 * @param order		sort direction
+	 * @throws AerospikeException.InvalidArgument	if {@link #setOrderBy} has not been called
 	 */
 	public void thenOrderBy(String binName, BinDataType type, Order order) {
-		OrderBy key = new OrderBy(binName, type, order);
-
 		if (orderBy == null) {
-			orderBy = new OrderBy[] {key};
-			return;
+			throw new AerospikeException.InvalidArgument(
+				"thenOrderBy requires a first order key; call setOrderBy() first");
 		}
 
 		OrderBy[] keys = Arrays.copyOf(orderBy, orderBy.length + 1);
-		keys[orderBy.length] = key;
+		keys[orderBy.length] = new OrderBy(binName, type, order);
 		orderBy = keys;
 	}
 
 	/**
 	 * Ordered LIMIT k query, ranked by the order keys from {@link #setOrderBy} and
-	 * {@link #thenOrderBy}. The calls may come in any order; calling {@code setTopK} again
-	 * replaces k.
+	 * {@link #thenOrderBy}. {@code setTopK} may come before or after the order keys; calling it
+	 * again replaces k.
 	 * <p>
 	 * The Top-K specification is validated when the query runs; an invalid one, or a cluster where
 	 * any node doesn't support Top-K, fails with {@link AerospikeException.InvalidArgument}
