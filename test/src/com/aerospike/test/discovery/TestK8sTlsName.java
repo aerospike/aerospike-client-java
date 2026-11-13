@@ -112,6 +112,10 @@ public class TestK8sTlsName extends TestBase {
 	 * endpoint hostname. A client seeded at the endpoint hostname with the tls-name holds one node
 	 * per pod, and every partition's master is one of those nodes and serves a write and a read.
 	 * The same seed with the endpoint hostname as tls-name fails the TLS handshake.
+	 * Under networkLoadBalancer each pod advertises loadBalancerTLSAlternateAccessAddress as its TLS
+	 * alternate address and loadBalancerAlternateAccessAddress, with its clear Service NodePort, as
+	 * its clear alternate address, and the client is seeded at the TLS address, which may differ
+	 * from the clear one.
 	 */
 	@Test
 	public void sharedCertificateCarriesTlsNameAndClientValidatesAgainstIt() throws Exception {
@@ -122,6 +126,18 @@ public class TestK8sTlsName extends TestBase {
 		assertEquals("AerospikeCluster tls-name", tlsName, cluster.get(".spec.aerospikeConfig.network.service['tls-name']"));
 		assertEquals(cluster.get(".spec.aerospikeNetworkPolicy.alternateAccess"),
 			cluster.get(".spec.aerospikeNetworkPolicy.tlsAlternateAccess"));
+
+		boolean nlb = cluster.networkLoadBalancer();
+		String clearAddress = nlb ? cluster.loadBalancerAddress() : endpoint;
+		String tlsAddress = nlb ? cluster.loadBalancerTlsAddress() : endpoint;
+		System.out.println("L3-TLS-ADDRESSES alternateAccess=" + cluster.alternateAccess() + " clear=" + clearAddress +
+			" tls=" + tlsAddress + " distinct=" + ! clearAddress.equals(tlsAddress));
+
+		if (nlb) {
+			assertEquals("loadBalancerAlternateAccessAddress", endpoint, clearAddress);
+			assertEquals("loadBalancerTLSAlternateAccessAddress",
+				K8sCluster.tlsEndpointHostname.isEmpty() ? endpoint : K8sCluster.tlsEndpointHostname, tlsAddress);
+		}
 
 		int size = cluster.size();
 
@@ -134,16 +150,22 @@ public class TestK8sTlsName extends TestBase {
 		assertCertificate(cluster, tlsName, endpoint);
 
 		int tlsPort = Integer.parseInt(cluster.get(".spec.aerospikeConfig.network.service['tls-port']"));
+		int port = cluster.servicePort();
 		List<Pod> pods = cluster.pods();
 		Map<String,Pod> podsByIp = new HashMap<>();
 		Map<String,String> expected = new TreeMap<>();
+		Map<String,String> expectedClear = new TreeMap<>();
 
 		for (Pod pod : pods) {
 			int nodePort = cluster.nodePort(pod.name, tlsPort);
-			System.out.println("L3-TLS-POD " + pod + " tlsServiceNodePort=" + nodePort);
+			int clearNodePort = cluster.nodePort(pod.name, port);
+			System.out.println("L3-TLS-POD " + pod + " tlsServiceNodePort=" + nodePort + " serviceNodePort=" +
+				clearNodePort);
 			assertTrue(pod.name + " has no Service NodePort for " + tlsPort, nodePort > 0);
+			assertTrue(pod.name + " has no Service NodePort for " + port, clearNodePort > 0);
 			podsByIp.put(pod.ip, pod);
-			expected.put(pod.name, endpoint + ':' + nodePort);
+			expected.put(pod.name, tlsAddress + ':' + nodePort);
+			expectedClear.put(pod.name, clearAddress + ':' + clearNodePort);
 		}
 
 		ClientPolicy policy = new ClientPolicy();
@@ -153,7 +175,7 @@ public class TestK8sTlsName extends TestBase {
 		policy.tlsPolicy = new TlsPolicy();
 		policy.tlsPolicy.context = trust(K8sCluster.tlsCaFile);
 		int seedPort = cluster.nodePort(pods.get(0).name, tlsPort);
-		Host seed = new Host(endpoint, tlsName, seedPort);
+		Host seed = new Host(tlsAddress, tlsName, seedPort);
 		captureLog();
 
 		try (AerospikeClient client = new AerospikeClient(policy, seed)) {
@@ -175,16 +197,23 @@ public class TestK8sTlsName extends TestBase {
 			}
 
 			for (Node node : client.getNodes()) {
-				Map<String,String> info = Info.request(null, node, "service-tls-std", "service-tls-alt", "peers-tls-alt");
+				Map<String,String> info = Info.request(null, node, "service-tls-std", "service-tls-alt", "peers-tls-alt",
+					"service-clear-alt");
 				Pod pod = podOf(podsByIp, info.get("service-tls-std"));
 				assertNotNull(node.getName() + " TLS access " + info.get("service-tls-std") + " is no pod IP in " +
 					podsByIp.keySet(), pod);
 				assertTrue(pod.name + " matched twice", matched.add(pod.name));
 				List<String[]> peers = parsePeers(info.get("peers-tls-alt"));
 				System.out.println("L3-TLS-NAME pod=" + pod.name + " node=" + node.getName() + " tlsAlternate=" +
-					info.get("service-tls-alt") + " expected=" + expected.get(pod.name) + " clientTlsName=" +
+					info.get("service-tls-alt") + " expected=" + expected.get(pod.name) + " clearAlternate=" +
+					info.get("service-clear-alt") + " expectedClear=" + expectedClear.get(pod.name) + " clientTlsName=" +
 					node.getHost().tlsName + " peersTlsAlt=" + info.get("peers-tls-alt"));
 				assertEquals(pod.name + " TLS alternate address", expected.get(pod.name), info.get("service-tls-alt"));
+
+				if (nlb) {
+					assertEquals(pod.name + " clear alternate address", expectedClear.get(pod.name),
+						info.get("service-clear-alt"));
+				}
 				assertEquals(node.getName() + " client tls-name", tlsName, node.getHost().tlsName);
 				assertEquals(pod.name + " peers " + info.get("peers-tls-alt"), pods.size() - 1, peers.size());
 
@@ -200,7 +229,7 @@ public class TestK8sTlsName extends TestBase {
 			assertServedByEveryNode(client, masters);
 		}
 
-		Host fqdn = new Host(endpoint, endpoint, seedPort);
+		Host fqdn = new Host(tlsAddress, tlsAddress, seedPort);
 
 		try (AerospikeClient client = new AerospikeClient(policy, fqdn)) {
 			fail("TLS handshake with " + fqdn + " accepted a certificate that names only " + tlsName + "; nodes=" +
@@ -209,7 +238,7 @@ public class TestK8sTlsName extends TestBase {
 		catch (AerospikeException ae) {
 			String message = messages(ae);
 			System.out.println("L3-TLS-FQDN-REJECTED seed=" + fqdn + " error=" + message.replaceAll("\\s*\n\\s*", " "));
-			assertTrue(message, message.contains("Invalid TLS name: " + endpoint));
+			assertTrue(message, message.contains("Invalid TLS name: " + tlsAddress));
 		}
 	}
 

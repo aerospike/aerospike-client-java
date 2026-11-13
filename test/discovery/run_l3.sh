@@ -23,10 +23,23 @@
 # the cluster tls-name. The suite reads the CA file and the tls-name from DISCOVERY_TLS_CA_FILE and
 # DISCOVERY_TLS_NAME.
 #
+# The nlb, nlb-per-pod and nlb-tls profiles build the cluster the l3-nlb, l3-nlb-per-pod and l3-nlb-tls
+# jobs of discovery-k8s.yaml build: setup-kind-ako with alternate-access networkLoadBalancer, so no node
+# is labelled, every pod advertises the AerospikeCluster's loadBalancerAlternateAccessAddress (the endpoint
+# hostname) with its own Service NodePort, and no container publishes a hostPort. nlb keeps every pod on
+# one kind node; nlb-per-pod sets multi-pod-per-host false, which runs one pod per kind worker with a spare
+# worker, at two pods; nlb-tls runs enable-l3-tls.sh on nlb at two pods with as-endpoint-tls.test as
+# loadBalancerTLSAlternateAccessAddress. They need an AKO that offers networkLoadBalancer, so they default to the
+# AKO_VERSION_NLB, CLUSTER_CHART_VERSION_NLB and AKO_HELM_REPO_NLB the workflow sets.
+#
+# While the suite runs, .github/discovery/reregister-kind-nodes.sh restarts kubelet in any kind node whose
+# Node object has been deleted for 60 seconds, which kind does not register again on its own.
+#
 # The client dials each kind node's address, as the workflow's client does on a Linux runner. That
 # address is not reachable from a macOS host, so the client runs in a container on the kind network,
 # where each labelled hostname resolves to its node. The action writes the endpoint hostname into
-# /etc/hosts; this script never does.
+# /etc/hosts; this script never does. On a cluster with no labelled node, the endpoint hostname, and
+# the TLS endpoint hostname on nlb-tls, resolve to the node address CoreDNS has for them.
 #
 # The script refuses to start when a kind cluster with the same name exists, and deletes the kind
 # cluster, the client container and the kind network (when it created that network) on exit,
@@ -37,10 +50,16 @@
 #   FEATURES_CONF_PATH        Enterprise feature-key file
 #
 # Optional environment:
-#   L3_PROFILE                default, per-node or tls (default: default)
+#   L3_PROFILE                default, per-node, tls, nlb, nlb-per-pod or nlb-tls (default: default)
+#   L3_AKO_VERSION            setup-kind-ako ako-version (default: latest; the workflow's on the nlb profiles)
+#   L3_CLUSTER_CHART_VERSION  setup-kind-ako cluster-chart-version (default: empty, the resolved ako-version;
+#                             the workflow's on the nlb profiles)
+#   L3_AKO_HELM_REPO          setup-kind-ako ako-helm-repo (default: empty, the action's pinned repository;
+#                             the workflow's on the nlb profiles)
 #   L3_KIND_CLUSTER           kind cluster name (default: discovery-l3)
-#   L3_CLUSTER_SIZE           initial AerospikeCluster size on the default and tls profiles, 1-8
-#                             (default: the action's default, 1, on the default profile; 2 on tls)
+#   L3_CLUSTER_SIZE           initial AerospikeCluster size on every profile but per-node, 1-8
+#                             (default: the action's default, 1, on default and nlb; 2 on tls, nlb-per-pod
+#                             and nlb-tls)
 #   L3_PER_NODE_WORKERS       kind workers, and Aerospike pods, on the per-node profile, 2-8 (default: 2)
 #   L3_PER_NODE_DOMAIN        domain of the per-node hostnames (default: as-endpoint.test)
 #   L3_SERVER_IMAGE           server image of the AerospikeCluster, as repository:tag (default: the action's
@@ -55,6 +74,8 @@
 #   KIND_EXPERIMENTAL_PROVIDER passed to kind; podman also makes this script use the podman CLI
 #   SHARED_WORKFLOWS_DIR      local aerospike/shared-workflows clone to read the action from instead
 #                             of downloading it
+#   L3_SHARED_WORKFLOWS_REF   commit to read from SHARED_WORKFLOWS_DIR, or worktree to read its working
+#                             tree (default: SHARED_WORKFLOWS_COMMIT)
 #   L3_SKIP_BUILD             set to 1 to skip installing the client module first
 #   L3_MAVEN_OFFLINE          set to 0 to let Maven resolve dependencies online (default 1)
 #
@@ -90,8 +111,8 @@ if [ "${1:-}" = "--client" ]; then
 	exit $?
 fi
 
-# setup-kind-ako at shared-workflows #336 head, the commit discovery-k8s.yaml pins.
-SHARED_WORKFLOWS_COMMIT=69ad6907d2a2e5ab3e64c5da48723b80ca5b7385
+SHARED_WORKFLOWS_COMMIT=3ad1bc4b8c4ca7e5b7661aab5cd9151def0e763a
+SHARED_WORKFLOWS_REF="${L3_SHARED_WORKFLOWS_REF:-$SHARED_WORKFLOWS_COMMIT}"
 ACTION_PATH=.github/actions/setup-kind-ako
 CLIENT_IMAGE=maven:3-ibm-semeru-21-noble@sha256:0ad9f1918f4a30f89713a03e39659ef3135a2a08b257a90168a6033335a48bcb
 PROFILE="${L3_PROFILE:-default}"
@@ -100,15 +121,37 @@ WORKERS="${L3_PER_NODE_WORKERS:-2}"
 UNRESOLVED="${L3_UNRESOLVED_ENDPOINT:-0}"
 LOOKUP_IMAGE=busybox:1.36.1
 PER_NODE_DOMAIN="${L3_PER_NODE_DOMAIN:-as-endpoint.test}"
+TLS_ENDPOINT_HOSTNAME=as-endpoint-tls.test
 WORK_DIR="$TEST_DIR/target/discovery-l3"
 ACTION_DIR="$WORK_DIR/action"
 KIND_NETWORK=kind
 CLIENT="$CLUSTER-client"
 
+ALTERNATE_ACCESS=configuredIP
+MULTI_POD_PER_HOST=true
+TLS=0
 case "$PROFILE" in
-	default|per-node|tls) ;;
-	*) die "L3_PROFILE must be default, per-node or tls (got: $PROFILE)" ;;
+	default|per-node) ;;
+	tls) TLS=1 ;;
+	nlb) ALTERNATE_ACCESS=networkLoadBalancer ;;
+	nlb-per-pod) ALTERNATE_ACCESS=networkLoadBalancer MULTI_POD_PER_HOST=false ;;
+	nlb-tls) ALTERNATE_ACCESS=networkLoadBalancer TLS=1 ;;
+	*) die "L3_PROFILE must be default, per-node, tls, nlb, nlb-per-pod or nlb-tls (got: $PROFILE)" ;;
 esac
+workflow_env() {
+	sed -n "s/^  $1: *//p" "$ROOT_DIR/.github/workflows/discovery-k8s.yaml"
+}
+
+if [ "$ALTERNATE_ACCESS" = "networkLoadBalancer" ]; then
+	AKO_VERSION="${L3_AKO_VERSION:-$(workflow_env AKO_VERSION_NLB)}"
+	CLUSTER_CHART_VERSION="${L3_CLUSTER_CHART_VERSION-$(workflow_env CLUSTER_CHART_VERSION_NLB)}"
+	AKO_HELM_REPO="${L3_AKO_HELM_REPO:-$(workflow_env AKO_HELM_REPO_NLB)}"
+	[ -n "$AKO_VERSION" ] && [ -n "$AKO_HELM_REPO" ] || die "no AKO_VERSION_NLB or AKO_HELM_REPO_NLB in discovery-k8s.yaml"
+else
+	AKO_VERSION="${L3_AKO_VERSION:-latest}"
+	CLUSTER_CHART_VERSION="${L3_CLUSTER_CHART_VERSION:-}"
+	AKO_HELM_REPO="${L3_AKO_HELM_REPO:-}"
+fi
 [[ "$CLUSTER" =~ ^[a-z0-9][a-z0-9-]*$ ]] || die "L3_KIND_CLUSTER must be lower-case letters, digits and dashes (got: $CLUSTER)"
 [[ "$WORKERS" =~ ^[2-8]$ ]] || die "L3_PER_NODE_WORKERS must be 2-8 (got: $WORKERS)"
 [[ "$PER_NODE_DOMAIN" =~ ^[a-z0-9.-]+$ ]] || die "L3_PER_NODE_DOMAIN must be a DNS name (got: $PER_NODE_DOMAIN)"
@@ -139,12 +182,15 @@ MVN=(mvn)
 [ "${L3_MAVEN_OFFLINE:-1}" = "1" ] && MVN+=(-o)
 
 rm -rf "$WORK_DIR"
-mkdir -p "$ACTION_DIR/templates" "$WORK_DIR/bin" "$WORK_DIR/helm"
+mkdir -p "$ACTION_DIR/templates" "$ACTION_DIR/deps" "$WORK_DIR/bin" "$WORK_DIR/helm"
 
-for f in entrypoint.sh action.yaml templates/aerospike-cluster-values.yaml templates/ingress-values.yaml templates/rbac.yaml; do
-	if [ -n "${SHARED_WORKFLOWS_DIR:-}" ]; then
-		git -C "$SHARED_WORKFLOWS_DIR" show "$SHARED_WORKFLOWS_COMMIT:$ACTION_PATH/$f" > "$ACTION_DIR/$f" ||
-			die "$f not found at $SHARED_WORKFLOWS_COMMIT in $SHARED_WORKFLOWS_DIR"
+for f in entrypoint.sh action.yaml deps/Chart.yaml templates/aerospike-cluster-values.yaml templates/aerospike-cluster-tls-values.yaml \
+	templates/ingress-values.yaml templates/rbac.yaml; do
+	if [ -n "${SHARED_WORKFLOWS_DIR:-}" ] && [ "$SHARED_WORKFLOWS_REF" = "worktree" ]; then
+		cp "$SHARED_WORKFLOWS_DIR/$ACTION_PATH/$f" "$ACTION_DIR/$f" || die "$f not found in $SHARED_WORKFLOWS_DIR"
+	elif [ -n "${SHARED_WORKFLOWS_DIR:-}" ]; then
+		git -C "$SHARED_WORKFLOWS_DIR" show "$SHARED_WORKFLOWS_REF:$ACTION_PATH/$f" > "$ACTION_DIR/$f" ||
+			die "$f not found at $SHARED_WORKFLOWS_REF in $SHARED_WORKFLOWS_DIR"
 	else
 		curl -sfL "https://raw.githubusercontent.com/aerospike/shared-workflows/$SHARED_WORKFLOWS_COMMIT/$ACTION_PATH/$f" \
 			-o "$ACTION_DIR/$f" || die "failed to download $ACTION_PATH/$f at $SHARED_WORKFLOWS_COMMIT"
@@ -153,21 +199,25 @@ done
 
 sed '/| sudo tee -a \/etc\/hosts/d' "$ACTION_DIR/entrypoint.sh" > "$ACTION_DIR/entrypoint-local.sh"
 if grep -nE 'sudo|/etc/hosts' "$ACTION_DIR/entrypoint-local.sh"; then
-	die "entrypoint.sh at $SHARED_WORKFLOWS_COMMIT still writes /etc/hosts after removing its hosts step"
+	die "entrypoint.sh at $SHARED_WORKFLOWS_REF still writes /etc/hosts after removing its hosts step"
 fi
 sed '/^case \${1-} in$/,$d' "$ACTION_DIR/entrypoint-local.sh" > "$ACTION_DIR/functions.sh"
-grep -q '^cmd_setup()' "$ACTION_DIR/functions.sh" || die "entrypoint.sh at $SHARED_WORKFLOWS_COMMIT has no cmd_setup"
+grep -q '^cmd_setup()' "$ACTION_DIR/functions.sh" || die "entrypoint.sh at $SHARED_WORKFLOWS_REF has no cmd_setup"
 
-KIND_IMAGE="$(grep -oE 'kindest/node:[^ "]+' "$ACTION_DIR/action.yaml" | head -1)"
-SERVER_IMAGE="$(sed -n '/^  server-image:/,/default:/s/^ *default: *//p' "$ACTION_DIR/action.yaml")"
-[ -n "$KIND_IMAGE" ] || die "no kind node image in action.yaml"
+input_default() {
+	sed -n "/^  $1:/,/default:/s/^ *default: *//p" "$ACTION_DIR/action.yaml"
+}
+
+KIND_IMAGE="$(input_default kind-node-image)"
+SERVER_IMAGE="$(input_default server-image)"
+[ -n "$KIND_IMAGE" ] || die "no kind-node-image default in action.yaml"
 [ -n "$SERVER_IMAGE" ] || die "no server-image default in action.yaml"
 if [ -n "${L3_SERVER_IMAGE:-}" ]; then
 	SERVER_IMAGE="$L3_SERVER_IMAGE"
 	"$DOCKER" image inspect "$SERVER_IMAGE" >/dev/null 2>&1 || die "L3_SERVER_IMAGE $SERVER_IMAGE is not in the local image store; pull it first"
 fi
 DEFAULT_SIZE="$(sed -n '/^  cluster-size:/,/default:/s/^ *default: *"\{0,1\}\([0-9]*\)"\{0,1\}$/\1/p' "$ACTION_DIR/action.yaml")"
-[ "$PROFILE" = "tls" ] && DEFAULT_SIZE=2
+[ "$TLS" = "1" ] || [ "$MULTI_POD_PER_HOST" = "false" ] && DEFAULT_SIZE=2
 CLUSTER_SIZE="${L3_CLUSTER_SIZE:-$DEFAULT_SIZE}"
 
 per_node_names=()
@@ -182,7 +232,9 @@ KIND_NETWORK_EXISTED=0
 "$DOCKER" network inspect "$KIND_NETWORK" >/dev/null 2>&1 && KIND_NETWORK_EXISTED=1
 CREATED=0
 
+WATCHER=""
 cleanup() {
+	[ -z "$WATCHER" ] || kill "$WATCHER" 2>/dev/null || true
 	"$DOCKER" rm -f "$CLIENT" >/dev/null 2>&1 || true
 	if [ "$CREATED" = "1" ]; then
 		echo "Deleting kind cluster $CLUSTER"
@@ -205,13 +257,17 @@ export RUNNER_TEMP="$WORK_DIR"
 export HELM_CONFIG_HOME="$WORK_DIR/helm/config"
 export HELM_CACHE_HOME="$WORK_DIR/helm/cache"
 export HELM_DATA_HOME="$WORK_DIR/helm/data"
+export AKO_HELM_REPO AKO_VERSION ALTERNATE_ACCESS CLUSTER_CHART_VERSION MULTI_POD_PER_HOST
+export ENABLE_TLS=false KIND_NODE_IMAGE="$KIND_IMAGE"
 FEATURES_CONTENT="$(cat "$FEATURES_CONF_PATH")"
 
 output() {
 	grep -E "^$1=" "$2" | head -1 | cut -d= -f2-
 }
 
-echo "Preparing setup-kind-ako (shared-workflows $SHARED_WORKFLOWS_COMMIT), $PROFILE profile"
+echo "Preparing setup-kind-ako (shared-workflows $SHARED_WORKFLOWS_REF), $PROFILE profile, ako-version $AKO_VERSION," \
+	"cluster-chart-version ${CLUSTER_CHART_VERSION:-(ako-version)}, alternate-access $ALTERNATE_ACCESS," \
+	"multi-pod-per-host $MULTI_POD_PER_HOST"
 ADMIN_PASSWORD="" CLUSTER_SIZE="$CLUSTER_SIZE" FEATURES_CONTENT="$FEATURES_CONTENT" SERVER_IMAGE="$SERVER_IMAGE" \
 	GITHUB_OUTPUT="$WORK_DIR/prepare.out" bash "$ACTION_DIR/entrypoint-local.sh" prepare >/dev/null ||
 	die "setup-kind-ako prepare failed"
@@ -226,6 +282,8 @@ if [ "$PROFILE" = "per-node" ]; then
 		done
 	} > "$WORK_DIR/kind-config-per-node.yaml"
 	kind_args=(--config "$WORK_DIR/kind-config-per-node.yaml")
+elif [ -n "$(output kind-config "$WORK_DIR/prepare.out")" ]; then
+	kind_args=(--config "$(output kind-config "$WORK_DIR/prepare.out")")
 fi
 
 echo "Creating kind cluster $CLUSTER ($KIND_IMAGE)"
@@ -348,18 +406,23 @@ else
 	L3_SEED="${per_node_names[0]}:$(kubectl get aerospikecluster -A -o jsonpath='{.items[0].spec.aerospikeConfig.network.service.port}')"
 fi
 
-if [ "$PROFILE" = "tls" ]; then
+if [ "$TLS" = "1" ]; then
+	if [ "$PROFILE" = "nlb-tls" ]; then
+		export DISCOVERY_TLS_ENDPOINT_HOSTNAME="$TLS_ENDPOINT_HOSTNAME"
+	fi
 	L3_TLS_DIR="$WORK_DIR/tls" GITHUB_OUTPUT="$WORK_DIR/tls.out" \
 		bash "$ROOT_DIR/.github/discovery/enable-l3-tls.sh" 2>&1 | tee "$WORK_DIR/tls.log" ||
 		die "enable-l3-tls.sh failed (log: $WORK_DIR/tls.log)"
 	export DISCOVERY_TLS_CA_FILE="$(output ca-file "$WORK_DIR/tls.out")"
 	export DISCOVERY_TLS_NAME="$(output tls-name "$WORK_DIR/tls.out")"
+	export DISCOVERY_TLS_ENDPOINT_HOSTNAME="$(output tls-endpoint-hostname "$WORK_DIR/tls.out")"
 fi
 
 echo "Cluster:"
 kubectl get nodes -o wide
 kubectl get nodes -L "aerospike.com/configured-alternate-access-address"
 kubectl -n aerospike get aerospikecluster,pods,svc -o wide
+kubectl -n aerospike get aerospikecluster -o jsonpath='{range .items[*]}aerospikeNetworkPolicy {.spec.aerospikeNetworkPolicy}{"\n"}{end}'
 for pod in $(kubectl -n aerospike get pods -l aerospike.com/cr -o jsonpath='{.items[*].metadata.name}'); do
 	echo "Rendered by the operator for $pod:"
 	kubectl --request-timeout=30s -n aerospike exec "$pod" -c aerospike-server -- \
@@ -394,7 +457,7 @@ fi
 log="$WORK_DIR/mvn.log"
 export L3_SEED
 case "$PROFILE" in
-	default)
+	default|nlb|nlb-per-pod)
 		if [ "$UNRESOLVED" = "1" ]; then
 			L3_SUITE='**/TestK8sPassThrough.class'
 		else
@@ -402,7 +465,7 @@ case "$PROFILE" in
 		fi
 		;;
 	per-node) L3_SUITE='**/TestK8sPassThrough.class' ;;
-	tls) L3_SUITE='**/TestK8sTlsName.class' ;;
+	tls|nlb-tls) L3_SUITE='**/TestK8sTlsName.class' ;;
 esac
 export L3_SUITE
 echo "Running $L3_SUITE, $PROFILE profile, seed $L3_SEED"
@@ -415,13 +478,26 @@ client_args=(--rm --name "$CLIENT" --network "$KIND_NETWORK" --workdir "$ROOT_DI
 	-v "$ROOT_DIR:$ROOT_DIR" -v "$HOME/.m2:/root/.m2"
 	-v "$WORK_DIR/bin/kubectl:/usr/local/bin/kubectl:ro" -v "$WORK_DIR/kubeconfig-internal:/kubeconfig:ro"
 	--add-host "$CLUSTER-control-plane:$("$DOCKER" inspect -f "{{(index .NetworkSettings.Networks \"$KIND_NETWORK\").IPAddress}}" "$CLUSTER-control-plane")")
-while read -r name address; do
+mapfile -t endpoints < <(kubectl get nodes -l "aerospike.com/configured-alternate-access-address" -o \
+	jsonpath='{range .items[*]}{.metadata.labels.aerospike\.com/configured-alternate-access-address} {.status.addresses[?(@.type=="InternalIP")].address}{"\n"}{end}')
+if [ ${#endpoints[@]} -eq 0 ]; then
+	corefile="$(kubectl -n kube-system get cm coredns -o jsonpath='{.data.Corefile}')"
+	for name in "$DISCOVERY_ENDPOINT_HOSTNAME" ${DISCOVERY_TLS_ENDPOINT_HOSTNAME:+"$DISCOVERY_TLS_ENDPOINT_HOSTNAME"}; do
+		address="$(awk -v name="$name" 'NF == 2 && $2 == name { print $1; exit }' <<< "$corefile")"
+		[ -n "$address" ] || die "no node labelled and no CoreDNS hosts entry for $name"
+		endpoints+=("$name $address")
+	done
+fi
+for endpoint in "${endpoints[@]}"; do
+	read -r name address <<< "$endpoint"
 	[ -n "$name" ] || continue
 	client_args+=(--add-host "$name:$address")
 	echo "Client resolves $name to $address"
-done < <(kubectl get nodes -l "aerospike.com/configured-alternate-access-address" -o \
-	jsonpath='{range .items[*]}{.metadata.labels.aerospike\.com/configured-alternate-access-address} {.status.addresses[?(@.type=="InternalIP")].address}{"\n"}{end}')
+done
 if [ $rc -eq 0 ]; then
+	KIND_EXPERIMENTAL_PROVIDER="${KIND_EXPERIMENTAL_PROVIDER:-}" \
+		bash "$ROOT_DIR/.github/discovery/reregister-kind-nodes.sh" "$CLUSTER" > "$WORK_DIR/nodes.log" 2>&1 &
+	WATCHER=$!
 	"$DOCKER" run "${client_args[@]}" \
 		-e DISCOVERY_ENDPOINT_HOSTNAME \
 		-e DISCOVERY_INGRESS_PORTS \
@@ -430,12 +506,16 @@ if [ $rc -eq 0 ]; then
 		-e AEROSPIKE_ADMIN_PASSWORD \
 		-e DISCOVERY_TLS_CA_FILE \
 		-e DISCOVERY_TLS_NAME \
+		-e DISCOVERY_TLS_ENDPOINT_HOSTNAME \
 		-e L3_SEED \
 		-e L3_SUITE \
 		-e L3_MAVEN_OFFLINE \
 		"$CLIENT_IMAGE" \
 		bash test/discovery/run_l3.sh --client > "$log" 2>&1
 	rc=$?
+	kill "$WATCHER" 2>/dev/null
+	WATCHER=""
+	cat "$WORK_DIR/nodes.log"
 fi
 set -e
 

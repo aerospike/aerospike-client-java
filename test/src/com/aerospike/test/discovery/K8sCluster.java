@@ -48,12 +48,16 @@ import java.util.regex.Pattern;
  * <li>DISCOVERY_TLS_CA_FILE: CA file of the server certificate, set once
  * .github/discovery/enable-l3-tls.sh serves TLS on the AerospikeCluster</li>
  * <li>DISCOVERY_TLS_NAME: tls-name that script configures</li>
+ * <li>DISCOVERY_TLS_ENDPOINT_HOSTNAME: loadBalancerTLSAlternateAccessAddress that script sets under
+ * networkLoadBalancer, when it differs from the endpoint hostname</li>
  * </ul>
  * The AerospikeCluster, its pods, their Services and the Kubernetes nodes are read from the API
  * server at runtime through kubectl, every call bounded by {@link #KUBECTL_TIMEOUT_MS}.
  */
 final class K8sCluster {
 	static final String ALTERNATE_ACCESS_LABEL = "aerospike.com/configured-alternate-access-address";
+	static final String CONFIGURED_IP = "configuredIP";
+	static final String NETWORK_LOAD_BALANCER = "networkLoadBalancer";
 	static final String SKIP = "needs a kind cluster running the Aerospike Kubernetes Operator: run " +
 		"test/discovery/run_l3.sh or the discovery-k8s workflow (DISCOVERY_KUBECONFIG is not set)";
 	static final long KUBECTL_TIMEOUT_MS = 120000;
@@ -65,6 +69,7 @@ final class K8sCluster {
 	static final List<Integer> serviceNodePorts = ports(optional("DISCOVERY_SERVICE_NODE_PORTS"));
 	static final String tlsCaFile = optional("DISCOVERY_TLS_CA_FILE");
 	static final String tlsName = optional("DISCOVERY_TLS_NAME");
+	static final String tlsEndpointHostname = optional("DISCOVERY_TLS_ENDPOINT_HOSTNAME");
 
 	final String namespace;
 	final String name;
@@ -117,6 +122,30 @@ final class K8sCluster {
 
 	boolean multiPodPerHost() {
 		return Boolean.parseBoolean(get(".spec.podSpec.multiPodPerHost"));
+	}
+
+	String alternateAccess() {
+		return get(".spec.aerospikeNetworkPolicy.alternateAccess");
+	}
+
+	boolean networkLoadBalancer() {
+		return NETWORK_LOAD_BALANCER.equals(alternateAccess());
+	}
+
+	/**
+	 * Return the address every pod advertises as its clear alternate address under
+	 * networkLoadBalancer.
+	 */
+	String loadBalancerAddress() {
+		return get(".spec.aerospikeNetworkPolicy.loadBalancerAlternateAccessAddress");
+	}
+
+	/**
+	 * Return the address every pod advertises as its TLS alternate address under
+	 * networkLoadBalancer.
+	 */
+	String loadBalancerTlsAddress() {
+		return get(".spec.aerospikeNetworkPolicy.loadBalancerTLSAlternateAccessAddress");
 	}
 
 	int servicePort() {
@@ -209,8 +238,32 @@ final class K8sCluster {
 		return count;
 	}
 
+	/**
+	 * Set externalTrafficPolicy Cluster on each pod Service the operator created with Local, so
+	 * its NodePort answers on every node and not only on the pod's. The endpoint hostname resolves
+	 * to one node, as a load balancer address fronts them all; setup-kind-ako does the same for the
+	 * pods it starts with.
+	 */
+	void serveNodePortsOnEveryNode() {
+		for (String service : lines(kubectl("-n", namespace, "get", "service", "-o",
+			"jsonpath={range .items[?(@.spec.externalTrafficPolicy==\"Local\")]}{.metadata.name}{\"\\n\"}{end}"))) {
+			if (service.matches(Pattern.quote(name) + "-\\d+-\\d+")) {
+				kubectl("-n", namespace, "patch", "service", service, "-p",
+					"{\"spec\":{\"externalTrafficPolicy\":\"Cluster\"}}");
+				System.out.println("L3-SERVICE-EVERY-NODE service=" + service);
+			}
+		}
+	}
+
 	void deletePod(String pod) {
 		kubectl("-n", namespace, "delete", "pod", pod, "--wait=true");
+	}
+
+	/**
+	 * Delete a pod whose Node is gone, so no kubelet will confirm a graceful delete.
+	 */
+	void forceDeletePod(String pod) {
+		kubectl("-n", namespace, "delete", "pod", pod, "--force", "--grace-period=0", "--ignore-not-found");
 	}
 
 	/**
@@ -270,8 +323,40 @@ final class K8sCluster {
 	}
 
 	static String nodeLabel(String node) {
+		return nodeLabel(node, ALTERNATE_ACCESS_LABEL);
+	}
+
+	static String nodeLabel(String node, String label) {
 		return kubectl("get", "node", node, "-o",
-			"jsonpath={.metadata.labels." + ALTERNATE_ACCESS_LABEL.replace(".", "\\.") + "}").trim();
+			"jsonpath={.metadata.labels." + label.replace(".", "\\.") + "}").trim();
+	}
+
+	static void labelNode(String node, String label, String value) {
+		kubectl("label", "node", node, label + '=' + value, "--overwrite");
+	}
+
+	/**
+	 * Return the UID of the Node object, or an empty string when it does not exist.
+	 */
+	static String nodeUid(String node) {
+		return kubectl("get", "node", node, "--ignore-not-found", "-o", "jsonpath={.metadata.uid}").trim();
+	}
+
+	static void deleteNode(String node) {
+		kubectl("delete", "node", node, "--wait=true");
+	}
+
+	static List<String> nodeNames() {
+		return lines(kubectl("get", "nodes", "-o", "jsonpath={range .items[*]}{.metadata.name}{\"\\n\"}{end}"));
+	}
+
+	static boolean controlPlane(String node) {
+		return lines(kubectl("get", "nodes", "-l", "node-role.kubernetes.io/control-plane", "-o", "name"))
+			.contains("node/" + node);
+	}
+
+	static void cordon(String node, boolean on) {
+		kubectl(on ? "cordon" : "uncordon", node);
 	}
 
 	static String nodeAddress(String node) {
@@ -326,11 +411,15 @@ final class K8sCluster {
 	 * with that many running pods.
 	 */
 	void scale(int size) throws InterruptedException {
+		boolean spread = ! multiPodPerHost();
 		kubectl("-n", namespace, "patch", "aerospikecluster", name, "--type", "merge",
 			"-p", "{\"spec\":{\"size\":" + size + "}}");
 
 		String[] state = new String[1];
 		boolean done = waitFor(() -> {
+			if (spread) {
+				serveNodePortsOnEveryNode();
+			}
 			state[0] = get(".status.size") + ' ' + get(".status.phase") + ' ' + pods();
 			return isScaled(size);
 		}, SCALE_TIMEOUT_MS, 2000);

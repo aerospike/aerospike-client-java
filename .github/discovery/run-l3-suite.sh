@@ -3,6 +3,8 @@
 # discovery-k8s.yaml injects DISCOVERY_* and AEROSPIKE_ADMIN_PASSWORD, which
 # SuiteDiscoveryK8s reads. L3_SUITE selects the suite (default SuiteDiscoveryK8s).
 # test/discovery/run_l3.sh sets the same variables for a local run.
+# L3_REREGISTER_KIND_CLUSTER names the kind cluster whose deleted Nodes
+# reregister-kind-nodes.sh registers again while the suite runs.
 set -euo pipefail
 
 host="${DISCOVERY_ENDPOINT_HOSTNAME:?DISCOVERY_ENDPOINT_HOSTNAME is required}"
@@ -66,6 +68,11 @@ seed_port="${ingress_ports%%,*}"
 export KUBECONFIG="$kubeconfig"
 
 mvn -B -DskipTests install -pl test -am
+if [[ -n "${L3_REREGISTER_KIND_CLUSTER:-}" ]]; then
+  bash "$(dirname "$0")/reregister-kind-nodes.sh" "$L3_REREGISTER_KIND_CLUSTER" &
+  watcher=$!
+  trap 'kill "$watcher" 2>/dev/null || true' EXIT
+fi
 mvn -B -pl test -DskipTests=false \
   "-DrunSuite=${suite}" \
   "-Dargs=-h ${host}:${seed_port} -p ${seed_port} -U admin -P ${password}" \
