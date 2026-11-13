@@ -47,6 +47,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.LongFunction;
 
 import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.AerospikeException;
@@ -108,14 +109,7 @@ public final class L5Driver {
 		Log.setLevel(Log.Level.INFO);
 		Log.setCallback((level, message) -> {
 			if (forward(level, message)) {
-				String line = new Json("log", now()).put("level", level.toString()).put("message", message).toString();
-
-				if (level == Log.Level.INFO) {
-					out.writeIfOpen(line);
-				}
-				else {
-					out.write(line);
-				}
+				out.write(t -> new Json("log", t).put("level", level.toString()).put("message", message).toString());
 			}
 		});
 
@@ -209,7 +203,7 @@ public final class L5Driver {
 	}
 
 	private void ready() {
-		out.open(ready(now(), System.currentTimeMillis(), client.getVersion(), options.shape));
+		out.open(t -> ready(t, System.currentTimeMillis(), client.getVersion(), options.shape));
 		routingPoll.scheduleAtFixedRate(routing::poll, 0, POLL_MS, TimeUnit.MILLISECONDS);
 	}
 
@@ -234,10 +228,12 @@ public final class L5Driver {
 				error("malformed command: " + line);
 			}
 			else {
-				long t = now();
-				load.reset();
-				routing.reset(t);
-				out.write(new Json("reset", t).toString());
+				synchronized (out) {
+					long t = now();
+					load.reset();
+					routing.reset(t);
+					out.write(new Json("reset", t).toString());
+				}
 			}
 			return true;
 
@@ -273,7 +269,7 @@ public final class L5Driver {
 	}
 
 	private void error(String message) {
-		out.write(new Json("error", now()).put("message", message).toString());
+		out.write(t -> new Json("error", t).put("message", message).toString());
 	}
 
 	/**
@@ -358,9 +354,11 @@ public final class L5Driver {
 				firstFailure = firstFailure != null ? firstFailure : "partition " + partition + " get: " + message(e);
 			}
 		}
-		out.write(new Json("served", now()).put("step", step).put("partitions", Node.PARTITIONS).put("written", written)
-			.put("read", read).put("mismatched", mismatched).put("failures", failures).put("firstFailure", firstFailure)
-			.put("elapsedMs", TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start)).toString());
+		synchronized (out) {
+			out.write(new Json("served", now()).put("step", step).put("partitions", Node.PARTITIONS).put("written", written)
+				.put("read", read).put("mismatched", mismatched).put("failures", failures).put("firstFailure", firstFailure)
+				.put("elapsedMs", TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start)).toString());
+		}
 	}
 
 	private void checkReachable() {
@@ -488,33 +486,35 @@ public final class L5Driver {
 
 		void poll() {
 			try {
-				long t = now();
-				Node[] nodes = client.getNodes();
-				Arrays.sort(nodes, Comparator.comparing(Node::getName));
-				Map<String,Node> byName = nodesByName(nodes);
-				Node[] masters = new Node[Node.PARTITIONS];
-				int unowned = unowned(byName, masters);
-				long longest = longestUnowned(t, unowned);
-				StringBuilder signature = new StringBuilder().append(unowned);
+				synchronized (out) {
+					long t = now();
+					Node[] nodes = client.getNodes();
+					Arrays.sort(nodes, Comparator.comparing(Node::getName));
+					Map<String,Node> byName = nodesByName(nodes);
+					Node[] masters = new Node[Node.PARTITIONS];
+					int unowned = unowned(byName, masters);
+					long longest = longestUnowned(t, unowned);
+					StringBuilder signature = new StringBuilder().append(unowned);
 
-				for (Node node : nodes) {
-					Host h = node.getHost();
-					signature.append('|').append(node.getName()).append(',').append(h.name).append(',').append(h.port)
-						.append(',').append(node.isActive());
-				}
-				String current = signature.toString();
+					for (Node node : nodes) {
+						Host h = node.getHost();
+						signature.append('|').append(node.getName()).append(',').append(h.name).append(',').append(h.port)
+							.append(',').append(node.isActive());
+					}
+					String current = signature.toString();
 
-				if (last == null) {
-					nextHeartbeat = t;
-				}
-				else if (! current.equals(last)) {
-					snapshot("change", t, nodes, masters, unowned, longest);
-				}
-				last = current;
+					if (last == null) {
+						nextHeartbeat = t;
+					}
+					else if (! current.equals(last)) {
+						snapshot("change", t, nodes, masters, unowned, longest);
+					}
+					last = current;
 
-				if (t >= nextHeartbeat) {
-					snapshot("heartbeat", t, nodes, masters, unowned, longest);
-					nextHeartbeat = Math.max(nextHeartbeat + HEARTBEAT_MS, t + 1);
+					if (t >= nextHeartbeat) {
+						snapshot("heartbeat", t, nodes, masters, unowned, longest);
+						nextHeartbeat = Math.max(nextHeartbeat + HEARTBEAT_MS, t + 1);
+					}
 				}
 			}
 			catch (RuntimeException e) {
@@ -634,7 +634,7 @@ public final class L5Driver {
 		}
 
 		private void reply(Long usableAt) {
-			out.write(new Json("watch", now()).put("address", address).put("node", node).put("servingAt", probe.servingAt)
+			out.write(t -> new Json("watch", t).put("address", address).put("node", node).put("servingAt", probe.servingAt)
 				.put("lastClosedAt", probe.lastClosedAt).raw("addresses", probe.addresses()).put("usableAt", usableAt)
 				.put("usableMs", usableAt == null ? null : usableAt - probe.servingAt).put("ownershipChecked", true).toString());
 			finish();
@@ -838,7 +838,7 @@ public final class L5Driver {
 						String message = message(e);
 						failed.incrementAndGet();
 						lastError.set(message);
-						out.writeIfOpen(failure(now(), startedAt, message));
+						out.writeIfOpen(t -> failure(t, startedAt, message));
 					}
 
 					if (stop) {
@@ -1103,38 +1103,46 @@ public final class L5Driver {
 	}
 
 	/**
-	 * Stdout, one JSON object per line, each flushed. Lines written before {@code ready} are held
-	 * and follow it. Anything else printing to {@code System.out} goes to stderr.
+	 * Stdout, one JSON object per line, each flushed, {@code ready} first and {@code t} never going
+	 * back. Methods taking a {@code t -> line} function stamp {@code t} under this object's lock; a
+	 * caller that takes {@code t} itself holds the lock from {@link L5Driver#now()} to the write. Lines
+	 * written before {@code ready} go to stderr. Anything else printing to {@code System.out} goes to
+	 * stderr.
 	 */
 	static final class Output {
 		private final PrintStream stdout;
-		private List<String> held = new ArrayList<>();
+		private final PrintStream stderr;
+		private boolean open;
 
 		Output() {
-			this(new PrintStream(new FileOutputStream(FileDescriptor.out), false, StandardCharsets.UTF_8));
+			this(new PrintStream(new FileOutputStream(FileDescriptor.out), false, StandardCharsets.UTF_8), System.err);
 			System.setOut(System.err);
 		}
 
-		Output(PrintStream stdout) {
+		Output(PrintStream stdout, PrintStream stderr) {
 			this.stdout = stdout;
+			this.stderr = stderr;
+		}
+
+		synchronized void write(LongFunction<String> line) {
+			write(line.apply(now()));
 		}
 
 		synchronized void write(String line) {
-			if (held != null) {
-				held.add(line);
+			if (open) {
+				print(line);
 			}
 			else {
-				print(line);
+				stderr.println(line);
 			}
 		}
 
 		/**
-		 * Print the line once {@code ready} is out, otherwise drop it: a held line would precede
-		 * {@code ready}'s {@code t}.
+		 * Print the line once {@code ready} is out, otherwise drop it.
 		 */
-		synchronized void writeIfOpen(String line) {
-			if (held == null) {
-				print(line);
+		synchronized void writeIfOpen(LongFunction<String> line) {
+			if (open) {
+				print(line.apply(now()));
 			}
 		}
 
@@ -1142,13 +1150,9 @@ public final class L5Driver {
 			print(line);
 		}
 
-		synchronized void open(String ready) {
-			print(ready);
-
-			for (String line : held) {
-				print(line);
-			}
-			held = null;
+		synchronized void open(LongFunction<String> ready) {
+			print(ready.apply(now()));
+			open = true;
 		}
 
 		private void print(String line) {

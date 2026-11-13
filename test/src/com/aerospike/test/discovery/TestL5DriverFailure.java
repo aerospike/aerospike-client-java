@@ -33,6 +33,7 @@ import org.junit.Test;
 public class TestL5DriverFailure {
 	private static final Pattern FAILURE = Pattern.compile(
 		"\\{\"type\":\"failure\",\"t\":(\\d+),\"startedAt\":(\\d+),\"message\":\"(.*)\"\\}");
+	private static final Pattern T = Pattern.compile("\"t\":(\\d+)");
 
 	@Test
 	public void failureHasTypeTimesAndMessage() {
@@ -50,20 +51,71 @@ public class TestL5DriverFailure {
 	@Test
 	public void failureOnlyAfterReady() {
 		ByteArrayOutputStream bytes = new ByteArrayOutputStream();
-		L5Driver.Output out = new L5Driver.Output(new PrintStream(bytes, true, StandardCharsets.UTF_8));
+		L5Driver.Output out = new L5Driver.Output(stream(bytes), stream(new ByteArrayOutputStream()));
 		String ready = L5Driver.ready(5, 1700000000000L, "10.4.0", "port-map");
 
-		out.writeIfOpen(L5Driver.failure(3, 1, "before"));
+		out.writeIfOpen(t -> L5Driver.failure(3, 1, "before"));
 		assertEquals("", bytes.toString(StandardCharsets.UTF_8));
 
-		out.open(ready);
-		out.writeIfOpen(L5Driver.failure(9, 6, "after"));
+		out.open(t -> ready);
+		out.writeIfOpen(t -> L5Driver.failure(9, 6, "after"));
 		assertEquals(ready + "\n" + L5Driver.failure(9, 6, "after") + "\n", bytes.toString(StandardCharsets.UTF_8));
+	}
+
+	@Test
+	public void linesBeforeReadyGoToStderr() {
+		ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+		ByteArrayOutputStream err = new ByteArrayOutputStream();
+		L5Driver.Output out = new L5Driver.Output(stream(bytes), stream(err));
+		String log = "{\"type\":\"log\",\"t\":3,\"level\":\"WARN\",\"message\":\"before\"}";
+		String ready = L5Driver.ready(5, 1700000000000L, "10.4.0", "port-map");
+
+		out.write(t -> log);
+		out.open(t -> ready);
+
+		assertEquals(ready + "\n", bytes.toString(StandardCharsets.UTF_8));
+		assertTrue(err.toString(StandardCharsets.UTF_8).contains(log));
+	}
+
+	@Test
+	public void tNeverGoesBackAcrossWriters() throws InterruptedException {
+		ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+		L5Driver.Output out = new L5Driver.Output(stream(bytes), stream(new ByteArrayOutputStream()));
+		out.open(t -> L5Driver.ready(t, 1700000000000L, "10.4.0", "port-map"));
+		Thread[] writers = new Thread[8];
+
+		for (int i = 0; i < writers.length; i++) {
+			writers[i] = new Thread(() -> {
+				for (int j = 0; j < 2000; j++) {
+					out.writeIfOpen(t -> L5Driver.failure(t, t, "x"));
+				}
+			});
+			writers[i].start();
+		}
+
+		for (Thread writer : writers) {
+			writer.join();
+		}
+		Matcher m = T.matcher(bytes.toString(StandardCharsets.UTF_8));
+		long last = -1;
+		int lines = 0;
+
+		while (m.find()) {
+			long t = Long.parseLong(m.group(1));
+			assertTrue("t went back from " + last + " to " + t, t >= last);
+			last = t;
+			lines++;
+		}
+		assertEquals(1 + writers.length * 2000, lines);
 	}
 
 	@Test
 	public void readyReportsContract3() {
 		assertEquals("{\"type\":\"ready\",\"t\":5,\"contract\":3,\"epochMs\":1700000000000,\"client\":\"java\"," +
 			"\"clientVersion\":\"10.4.0\",\"shape\":\"port-map\"}", L5Driver.ready(5, 1700000000000L, "10.4.0", "port-map"));
+	}
+
+	private static PrintStream stream(ByteArrayOutputStream bytes) {
+		return new PrintStream(bytes, true, StandardCharsets.UTF_8);
 	}
 }
