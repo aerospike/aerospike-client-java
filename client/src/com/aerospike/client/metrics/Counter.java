@@ -19,6 +19,8 @@ package com.aerospike.client.metrics;
 
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.HashSet;
+import java.util.Set;
 
 public class Counter {
 	private final ConcurrentHashMap<String, AtomicLong> counterMap = new ConcurrentHashMap<>();
@@ -90,5 +92,12 @@ public class Counter {
 			return 0;
 		}
 		return counterMap.get(namespace).longValue();
+	}
+
+	/**
+	 * Return a snapshot of namespaces currently represented by this counter.
+	 */
+	public Set<String> getNamespaces() {
+		return new HashSet<>(counterMap.keySet());
 	}
 }

@@ -67,6 +67,8 @@ public final class LatencyBuckets {
 	}
 
 	private int getIndex(long elapsedNanos) {
+		// TODO: Convert elapsed nanoseconds using the configured latency unit when
+		// microsecond histogram collection support is implemented.
 		// Convert nanoseconds to milliseconds.
 		long elapsed = elapsedNanos / NS_TO_MS;
 

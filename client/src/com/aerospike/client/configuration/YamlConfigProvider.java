@@ -35,17 +35,22 @@ import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Log;
 import com.aerospike.client.configuration.serializers.Configuration;
 
+/**
+ * Loads static and dynamic client configuration from a versioned YAML file.
+ */
 public class YamlConfigProvider implements ConfigurationProvider {
 	private static final String CONFIG_PATH_ENV = "AEROSPIKE_CLIENT_CONFIG_URL";
 	private static final String CONFIG_PATH_SYS_PROP = "AEROSPIKE_CLIENT_CONFIG_SYS_PROP";
 	private static final String YAML_SERIALIZERS_PATH = "com.aerospike.client.configuration.serializers.";
 	private static final String DEFAULT_CONFIG_URL_PREFIX = "file://";
-	private static final List<String> SUPPORTED_SCHEMA_VERSIONS = List.of("1.0.0", "1.1.0");
+	private static final List<String> SUPPORTED_SCHEMA_VERSIONS = List.of("1.0.0", "1.1.0", "1.2.0");
 
+	/** Return YAML schema versions supported by this client. */
 	public static List<String> getSupportedVersions() {
 		return SUPPORTED_SCHEMA_VERSIONS;
 	}
 
+	/** Return the configured YAML location from the environment or test property. */
 	public static String getConfigPath() {
 		String configPath = System.getenv(CONFIG_PATH_ENV);
 
@@ -56,6 +61,10 @@ public class YamlConfigProvider implements ConfigurationProvider {
 		return configPath;
 	}
 
+	/**
+	 * Create a provider for the supplied path, returning null when initialization
+	 * fails.
+	 */
 	public static YamlConfigProvider getConfigProvider(String configPath) {
 		try {
 			return new YamlConfigProvider(configPath);
@@ -72,6 +81,7 @@ public class YamlConfigProvider implements ConfigurationProvider {
 	private Configuration configuration;
 	private long lastModified;
 
+	/** Load client configuration from the supplied file path or file URI. */
 	public YamlConfigProvider(String configPath) {
 		if (Log.debugEnabled()) {
 			Log.debug("Supported YAML config schema versions: " +  getSupportedVersions());
@@ -90,10 +100,12 @@ public class YamlConfigProvider implements ConfigurationProvider {
 		}
 	}
 
+	/** Return the complete loaded configuration. */
 	public Configuration fetchConfiguration() {
 		return configuration;
 	}
 
+	/** Return dynamic configuration after discarding static configuration. */
 	public Configuration fetchDynamicConfiguration() {
 		if (configuration.staticConfiguration != null) {
 		   configuration.staticConfiguration = null;
