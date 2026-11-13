@@ -44,10 +44,12 @@ import com.aerospike.client.discovery.GuardedResolverProvider;
 import com.aerospike.client.policy.ClientPolicy;
 
 /**
- * Peer validation of a host name that resolves to several addresses connects to all of them at once.
+ * Peer validation of a host name that resolves to several addresses starts a connect to one address
+ * at a time, 100 ms apart, and validates the first that completes.
  */
-public class ParallelConnectTest {
+public class StaggeredConnectTest {
 	private static final String NODE = "BB9D000000000001";
+	private static final long STAGGER = 100;
 	private static final long MARGIN = 250;
 
 	private InetAddress first;
@@ -83,19 +85,74 @@ public class ParallelConnectTest {
 	}
 
 	@Test
-	public void hungAddressDoesNotDelayServingAddress() throws Throwable {
+	public void firstAddressAnswersWithOneConnect() throws Throwable {
+		Cluster cluster = cluster(1000, 250);
+		int port = freePort();
+		StubNodeServer live = server(first, port, NODE);
+		StubNodeServer other = server(second, port, NODE);
+		String hostname = hostname("first", first, second);
+
+		NodeValidator nv = new NodeValidator();
+		validate(nv, cluster, new Host(hostname, port));
+
+		assertEquals(first, nv.primaryAddress.getAddress());
+		// One connect from the staggered attempt, one for the validation.
+		assertEquals(2, live.connections());
+		assertEquals(0, other.connections());
+	}
+
+	@Test
+	public void hungAddressDelaysNextByStagger() throws Throwable {
 		Cluster cluster = cluster(3000, 250);
 		int port = freePort();
 		InetAddress hung = hung(second, "192.0.2.1", port);
-		server(first, port, NODE);
+		StubNodeServer live = server(first, port, NODE);
 		String hostname = hostname("hung", hung, first);
 
 		NodeValidator nv = new NodeValidator();
+		long begin = System.nanoTime();
 		long elapsed = validate(nv, cluster, new Host(hostname, port));
+		long started = TimeUnit.NANOSECONDS.toMillis(live.firstAccept() - begin);
 
+		assertTrue("second address started at " + started + "ms", started >= STAGGER && started < STAGGER + MARGIN);
 		assertTrue("validateNode took " + elapsed + "ms", elapsed < 250 + MARGIN);
 		assertEquals(NODE, nv.name);
 		assertEquals(first, nv.primaryAddress.getAddress());
+	}
+
+	@Test
+	public void everyAddressStartsWithinBound() throws Throwable {
+		Cluster cluster = cluster(200, 1000);
+		int port = freePort();
+		InetAddress hung1 = hung(second, "192.0.2.1", port);
+		InetAddress hung2 = hung(InetAddress.getByName("127.0.0.3"), "192.0.2.2", port);
+		StubNodeServer live = server(first, port, NODE);
+		String hostname = hostname("three", hung1, hung2, first);
+
+		NodeValidator nv = new NodeValidator();
+		long begin = System.nanoTime();
+		validate(nv, cluster, new Host(hostname, port));
+		long started = TimeUnit.NANOSECONDS.toMillis(live.firstAccept() - begin);
+
+		// The delay is 200 / 3 ms, so the third address starts after two delays and before the bound.
+		assertTrue("third address started at " + started + "ms", started >= 2 * (200 / 3) && started < 200);
+		assertEquals(first, nv.primaryAddress.getAddress());
+	}
+
+	@Test
+	public void refusedAddressStartsNextAtOnce() throws Throwable {
+		Cluster cluster = cluster(1000, 250);
+		int port = freePort();
+		StubNodeServer live = server(second, port, NODE);
+		String hostname = hostname("refused", first, second);
+
+		NodeValidator nv = new NodeValidator();
+		long begin = System.nanoTime();
+		validate(nv, cluster, new Host(hostname, port));
+		long started = TimeUnit.NANOSECONDS.toMillis(live.firstAccept() - begin);
+
+		assertTrue("second address started at " + started + "ms", started < STAGGER / 2);
+		assertEquals(second, nv.primaryAddress.getAddress());
 	}
 
 	@Test
@@ -247,20 +304,31 @@ public class ParallelConnectTest {
 		return hostname;
 	}
 
-	private void server(InetAddress address, int port, String name) throws IOException {
-		closeables.add(new StubNodeServer(address, port, name));
+	private StubNodeServer server(InetAddress address, int port, String name) throws IOException {
+		StubNodeServer server = new StubNodeServer(address, port, name);
+		closeables.add(server);
+		return server;
+	}
+
+	private InetAddress hung(InetAddress loopback, String testNet, int port) throws IOException {
+		return hung(closeables, loopback, testNet, port);
 	}
 
 	/**
 	 * Address whose connect to the port never completes: the loopback address with a listener whose
 	 * accept backlog is full, where the kernel drops further SYNs (Linux), or else the given
-	 * TEST-NET-1 address (RFC 5737), which is routed nowhere (macOS resets connects to a full backlog).
+	 * TEST-NET-1 address (RFC 5737), which is routed nowhere (macOS resets connects to a full backlog,
+	 * and binds only 127.0.0.1 of the loopback range).
 	 */
-	private InetAddress hung(InetAddress loopback, String testNet, int port) throws IOException {
-		ServerSocket listener = new ServerSocket(port, 1, loopback);
-		closeables.add(listener);
+	static InetAddress hung(List<AutoCloseable> closeables, InetAddress loopback, String testNet, int port)
+		throws IOException {
+
+		ServerSocket listener = null;
 
 		try {
+			listener = new ServerSocket(port, 1, loopback);
+			closeables.add(listener);
+
 			for (int i = 0; i < 64; i++) {
 				Socket socket = new Socket();
 				closeables.add(socket);
@@ -272,7 +340,10 @@ public class ParallelConnectTest {
 		}
 		catch (IOException ioe) {
 		}
-		listener.close();
+
+		if (listener != null) {
+			listener.close();
+		}
 
 		InetAddress address = InetAddress.getByName(testNet);
 

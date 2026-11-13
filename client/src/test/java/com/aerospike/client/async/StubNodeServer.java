@@ -51,9 +51,11 @@ public final class StubNodeServer implements AutoCloseable {
 	private final List<Socket> dataSockets = new CopyOnWriteArrayList<>();
 	private final AtomicInteger dataConnections = new AtomicInteger();
 	private final AtomicInteger dataRequests = new AtomicInteger();
-	private final String replicas;
-	private final String nodeName;
+	private final List<Long> accepts = new CopyOnWriteArrayList<>();
+	private volatile String replicas;
+	private volatile String nodeName;
 	private volatile String peers = "1,3000,[]";
+	private volatile int peersGeneration = 1;
 	private volatile Close closeOnRequest;
 	private volatile boolean resetOnHeader;
 
@@ -67,9 +69,7 @@ public final class StubNodeServer implements AutoCloseable {
 	public StubNodeServer(InetAddress address, int port, String nodeName) throws IOException {
 		this.nodeName = nodeName;
 
-		byte[] bitmap = new byte[4096 / 8];
-		Arrays.fill(bitmap, (byte)0xFF);
-		this.replicas = NAMESPACE + ":0,1," + Base64.getEncoder().encodeToString(bitmap) + ';';
+		setOwnsPartitions(true);
 		this.server = new ServerSocket(port, 64, address);
 
 		Thread thread = new Thread(this::accept, "stub-node-accept");
@@ -86,6 +86,46 @@ public final class StubNodeServer implements AutoCloseable {
 	 */
 	public void setPeers(String peers) {
 		this.peers = peers;
+	}
+
+	/**
+	 * Set the node name reply.
+	 */
+	public void setNodeName(String nodeName) {
+		this.nodeName = nodeName;
+	}
+
+	/**
+	 * Own every partition of the namespace, or none.
+	 */
+	public void setOwnsPartitions(boolean owns) {
+		byte[] bitmap = new byte[4096 / 8];
+
+		if (owns) {
+			Arrays.fill(bitmap, (byte)0xFF);
+		}
+		this.replicas = NAMESPACE + ":0,1," + Base64.getEncoder().encodeToString(bitmap) + ';';
+	}
+
+	/**
+	 * Set the peers-generation reply.
+	 */
+	public void setPeersGeneration(int peersGeneration) {
+		this.peersGeneration = peersGeneration;
+	}
+
+	/**
+	 * Number of connections accepted.
+	 */
+	public int connections() {
+		return accepts.size();
+	}
+
+	/**
+	 * System.nanoTime() of the first connection accepted, or 0 if none was.
+	 */
+	public long firstAccept() {
+		return accepts.isEmpty() ? 0 : accepts.get(0);
 	}
 
 	/**
@@ -148,6 +188,7 @@ public final class StubNodeServer implements AutoCloseable {
 				return;
 			}
 
+			accepts.add(System.nanoTime());
 			sockets.add(socket);
 			Thread thread = new Thread(() -> serve(socket), "stub-node-conn");
 			thread.setDaemon(true);
@@ -226,8 +267,9 @@ public final class StubNodeServer implements AutoCloseable {
 		case "node":
 			return nodeName;
 		case "partition-generation":
-		case "peers-generation":
 			return "1";
+		case "peers-generation":
+			return Integer.toString(peersGeneration);
 		case "build":
 			return "8.1.0.0";
 		case "replicas":

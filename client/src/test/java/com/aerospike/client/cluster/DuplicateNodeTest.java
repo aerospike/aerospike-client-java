@@ -16,6 +16,8 @@
  */
 package com.aerospike.client.cluster;
 
+import static com.aerospike.client.cluster.TendDriver.stopTendThread;
+import static com.aerospike.client.cluster.TendDriver.tend;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotSame;
@@ -24,8 +26,6 @@ import static org.junit.Assert.assertTrue;
 
 import java.io.IOException;
 import java.lang.reflect.Field;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.net.BindException;
 import java.net.Inet4Address;
 import java.net.InetAddress;
@@ -38,7 +38,6 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.TimeUnit;
 
 import org.junit.After;
 import org.junit.Assume;
@@ -63,7 +62,6 @@ public class DuplicateNodeTest {
 	private InetAddress first;
 	private InetAddress second;
 	private InetAddress local;
-	private InetAddress unreachable;
 
 	private final List<StubNodeServer> servers = new ArrayList<>();
 	private final List<String> hostnames = new ArrayList<>();
@@ -75,7 +73,6 @@ public class DuplicateNodeTest {
 		first = InetAddress.getByName("127.0.0.1");
 		second = InetAddress.getByName("127.0.0.2");
 		local = localAddress();
-		unreachable = InetAddress.getByName("192.0.2.1");
 
 		if (! canBind(second)) {
 			second = InetAddress.getByName("::1");
@@ -135,8 +132,9 @@ public class DuplicateNodeTest {
 		Node newX = node(cluster, X);
 		assertNotSame(oldX, newX);
 		assertTrue(newX.isActive());
-		assertEquals(local, newX.getAddress().getAddress());
+		assertEquals(first, newX.getAddress().getAddress());
 		assertEquals(second, node(cluster, Y).getAddress().getAddress());
+		assertEquals(1, moves().size());
 	}
 
 	@Test
@@ -177,10 +175,15 @@ public class DuplicateNodeTest {
 		stopTendThread(cluster);
 
 		Node current = node(cluster, X);
-		Node stale = createNode(cluster, hostname, first, port);
-		setNodes(cluster, current, stale);
-
 		dead.close();
+
+		for (int i = 0; i < 2; i++) {
+			tend(cluster);
+			assertSame(current, node(cluster, X));
+		}
+
+		Node stale = createNode(cluster, hostname, second, port);
+		setNodes(cluster, current, stale);
 		tend(cluster);
 
 		assertOneNodePerName(cluster);
@@ -196,35 +199,50 @@ public class DuplicateNodeTest {
 
 	/**
 	 * Node Y on a two-address loopback hostname lists node X under a hostname that resolves to a
-	 * local non-loopback address that reaches X, and an address that reaches nothing. Y's first address
-	 * dies and X drops its connections, so in the next tend Y moves to its second address, X's
-	 * move fails, and the moved Y's peers replace X on its own address.
+	 * local non-loopback address. Y's first address dies, and once Y has failed three tends it moves
+	 * to its second address in the tend where X drops its connections. The moved Y lists X on another
+	 * port of a loopback address, so the moved Y's peers replace X in the same tend. Returns before
+	 * that tend.
 	 */
 	private Cluster secondPhaseReplace() throws Exception {
 		Assume.assumeTrue("No non-loopback IPv4 address can be bound locally", local != null);
 
-		String hostX = hostname("x", local, unreachable);
+		String hostX = hostname("x", local);
 		String hostY = hostname("y", first, second);
 		StubNodeServer x = server(local, 0, X);
+		StubNodeServer x2 = server(first, 0, X);
 		int portX = x.port();
 		int portY = freePort();
 		StubNodeServer y1 = server(first, portY, Y);
 		StubNodeServer y2 = server(second, portY, Y);
 
-		String peersY = "1,3000,[[" + X + ",,[" + hostX + ':' + portX + "]]]";
-		y1.setPeers(peersY);
-		y2.setPeers(peersY);
+		// X owns every partition, so it is kept while the failing Y does not list it.
+		y1.setOwnsPartitions(false);
+		y2.setOwnsPartitions(false);
+		y1.setPeers("1,3000,[[" + X + ",,[" + hostX + ':' + portX + "]]]");
+		y2.setPeers("1,3000,[[" + X + ",,[127.0.0.1:" + x2.port() + "]]]");
 		x.setPeers("1,3000,[[" + Y + ",,[" + hostY + ':' + portY + "]]]");
+		x2.setPeers("1,3000,[[" + Y + ",,[" + hostY + ':' + portY + "]]]");
 
 		client = new AerospikeClient(policy(), new Host(hostY, portY));
 		Cluster cluster = client.getCluster();
 		stopTendThread(cluster);
 
 		assertEquals(2, cluster.getNodes().length);
-		assertEquals(local, node(cluster, X).getAddress().getAddress());
-		assertEquals(first, node(cluster, Y).getAddress().getAddress());
+		Node oldX = node(cluster, X);
+		Node oldY = node(cluster, Y);
+		assertEquals(local, oldX.getAddress().getAddress());
+		assertEquals(first, oldY.getAddress().getAddress());
 
 		y1.close();
+
+		for (int i = 0; i < 2; i++) {
+			tend(cluster);
+			assertSame(oldX, node(cluster, X));
+			assertSame(oldY, node(cluster, Y));
+		}
+		assertEquals(List.of(), moves());
+
 		x.closeConnections();
 		return cluster;
 	}
@@ -282,7 +300,7 @@ public class DuplicateNodeTest {
 
 	private static Node createNode(Cluster cluster, String hostname, InetAddress address, int port) throws Exception {
 		NodeValidator nv = new NodeValidator();
-		nv.validateAlias(cluster, new Host(hostname, port), address);
+		nv.validateAlias(cluster, new Host(hostname, port), address, cluster.connectTimeout);
 		return cluster.createNode(nv);
 	}
 
@@ -290,32 +308,6 @@ public class DuplicateNodeTest {
 		Field field = Cluster.class.getDeclaredField("nodes");
 		field.setAccessible(true);
 		field.set(cluster, nodes);
-	}
-
-	/**
-	 * Stop the tend thread so the test drives every later tend.
-	 */
-	private static void stopTendThread(Cluster cluster) throws Exception {
-		Field field = Cluster.class.getDeclaredField("tendThread");
-		field.setAccessible(true);
-		Thread thread = (Thread)field.get(cluster);
-
-		cluster.tendValid = false;
-		thread.interrupt();
-		thread.join(TimeUnit.SECONDS.toMillis(10));
-		assertFalse("tend thread did not stop", thread.isAlive());
-	}
-
-	private static void tend(Cluster cluster) throws Exception {
-		Method method = Cluster.class.getDeclaredMethod("tend", boolean.class, boolean.class);
-		method.setAccessible(true);
-
-		try {
-			method.invoke(cluster, false, false);
-		}
-		catch (InvocationTargetException ite) {
-			throw (Exception)ite.getCause();
-		}
 	}
 
 	/**

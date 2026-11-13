@@ -177,6 +177,32 @@ For every policy:
   restored and kept for the life of the client.
 - Without a configured provider, every policy yields the static seeds.
 
+## DNS lookups
+
+The client resolves seed, peer and node hostnames with the platform resolver
+(`InetAddress.getAllByName`), so `/etc/hosts` and the `resolv.conf` search list apply. The client
+does not bound a lookup: it starts no thread for one and has no timeout of its own, so a slow
+resolver holds up the tend, or the constructor while it seeds, for as long as the platform waits.
+
+Bound lookups in the resolver configuration:
+
+- On a host, set `options timeout:` (seconds per attempt) and `attempts:` in `/etc/resolv.conf`,
+  for example `options timeout:1 attempts:2`.
+- On Kubernetes, set the same options in the pod's `dnsConfig.options`:
+
+```
+dnsConfig:
+  options:
+    - name: timeout
+      value: "1"
+    - name: attempts
+      value: "2"
+```
+
+The JVM caches successful lookups for `networkaddress.cache.ttl` seconds (a security property), so
+a cached hostname is not looked up again until the entry expires, and a change of address is seen
+only after that.
+
 ## Deployment limits
 
 The following applies to AWS only and comes from the load balancer, not from the client: neither
