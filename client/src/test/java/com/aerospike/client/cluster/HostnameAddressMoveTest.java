@@ -78,6 +78,10 @@ public class HostnameAddressMoveTest {
 		DIFFERENT_NAME, IP_LITERAL, SINGLE_ADDRESS, NO_FAILURES
 	}
 
+	private interface Bind {
+		void bind(int port) throws IOException;
+	}
+
 	@Before
 	public void setUp() throws Exception {
 		first = InetAddress.getByName("127.0.0.1");
@@ -135,9 +139,8 @@ public class HostnameAddressMoveTest {
 	@Test
 	public void failingNodeMovesToOtherAddress() throws Exception {
 		String hostname = hostname("move", first, second);
-		int port = freePort();
-		StubNodeServer live = server(first, port, A);
-		server(second, port, A);
+		StubNodeServer live = pair(A, A)[0];
+		int port = live.port();
 
 		client = new AerospikeClient(policy(), new Host(hostname, port));
 		Cluster cluster = client.getCluster();
@@ -168,9 +171,15 @@ public class HostnameAddressMoveTest {
 		List<StubNodeServer> dead = new ArrayList<>();
 
 		for (int i = 0; i < names.length; i++) {
-			ports[i] = freePort();
-			dead.add(server(first, ports[i], names[i]));
-			server(second, ports[i], names[i]);
+			StubNodeServer[] pair = pair(names[i], names[i]);
+			ports[i] = pair[0].port();
+			dead.add(pair[0]);
+
+			// Only the node closed last owns partitions, so a tend between the closes keeps every node.
+			if (i < names.length - 1) {
+				pair[0].setOwnsPartitions(false);
+				pair[1].setOwnsPartitions(false);
+			}
 		}
 
 		for (int i = 0; i < names.length; i++) {
@@ -215,6 +224,7 @@ public class HostnameAddressMoveTest {
 
 		assertTrue("move took " + elapsed + "ms", elapsed < MOVE_BOUND);
 		await(() -> cluster.getNodes().length == names.length);
+		await(() -> ownsPartitions(cluster, names[names.length - 1], second));
 		assertNotNull(client.get(null, new Key(StubNodeServer.NAMESPACE, "set", 1)));
 		assertEquals(0, sampler.stop());
 		assertEquals(names.length, moves().size());
@@ -247,19 +257,25 @@ public class HostnameAddressMoveTest {
 	private void otherNodeStays(Other other) throws Exception {
 		String hostA = hostname("a", first, second);
 		String hostB = (other == Other.SINGLE_ADDRESS) ? hostname("b", first) : hostname("b", first, second);
-		int portA = freePort();
-		int portB = freePort();
 		String peerB = (other == Other.IP_LITERAL) ? "127.0.0.1" : hostB;
 
-		StubNodeServer a1 = server(first, portA, A);
-		StubNodeServer a2 = server(second, portA, A);
-		StubNodeServer b1 = server(first, portB, B);
-		server(second, portB, other == Other.DIFFERENT_NAME ? "BB9C000000000001" : B);
+		StubNodeServer[] pairA = pair(A, A);
+		StubNodeServer a1 = pairA[0];
+		StubNodeServer a2 = pairA[1];
+		StubNodeServer b1 = pair(B, other == Other.DIFFERENT_NAME ? "BB9C000000000001" : B)[0];
+		int portA = a1.port();
+		int portB = b1.port();
 
 		String peersA = "1,3000,[[" + B + ",,[" + peerB + ':' + portB + "]]]";
 		a1.setPeers(peersA);
 		a2.setPeers(other == Other.NO_FAILURES ? peersA : "1,3000,[]");
 		b1.setPeers("1,3000,[[" + A + ",,[" + hostA + ':' + portA + "]]]");
+
+		if (other == Other.NO_FAILURES) {
+			// B owns every partition, so it is kept while the failing A does not list it.
+			a1.setOwnsPartitions(false);
+			a2.setOwnsPartitions(false);
+		}
 
 		client = new AerospikeClient(policy(), new Host(hostA, portA));
 		Cluster cluster = client.getCluster();
@@ -301,9 +317,8 @@ public class HostnameAddressMoveTest {
 	@Test
 	public void noMoveBeforeThirdFailedTend() throws Exception {
 		String hostname = hostname("third", first, second);
-		int port = freePort();
-		StubNodeServer dead = server(first, port, A);
-		server(second, port, A);
+		StubNodeServer dead = pair(A, A)[0];
+		int port = dead.port();
 
 		Cluster cluster = drivenCluster(policy(), hostname, port);
 		Node node = node(cluster, A);
@@ -327,9 +342,8 @@ public class HostnameAddressMoveTest {
 	@Test
 	public void nodeRecoveringOnSecondTendDoesNotMove() throws Exception {
 		String hostname = hostname("recover", first, second);
-		int port = freePort();
-		StubNodeServer flapping = server(first, port, A);
-		server(second, port, A);
+		StubNodeServer flapping = pair(A, A)[0];
+		int port = flapping.port();
 
 		Cluster cluster = drivenCluster(policy(), hostname, port);
 		Node node = node(cluster, A);
@@ -354,11 +368,12 @@ public class HostnameAddressMoveTest {
 
 	@Test
 	public void oneCandidatePerTend() throws Exception {
-		int port = freePort();
+		StubNodeServer[] pair = pair(A, A);
+		StubNodeServer dead = pair[0];
+		StubNodeServer live = pair[1];
+		int port = dead.port();
 		InetAddress hung = StaggeredConnectTest.hung(closeables, InetAddress.getByName("127.0.0.3"), "192.0.2.1", port);
 		String hostname = hostname("one", first, hung, second);
-		StubNodeServer dead = server(first, port, A);
-		StubNodeServer live = server(second, port, A);
 
 		ClientPolicy policy = policy();
 		policy.timeout = 1000;
@@ -392,11 +407,9 @@ public class HostnameAddressMoveTest {
 
 	@Test
 	public void silentCandidateEndsWithinBound() throws Exception {
-		int port = freePort();
-		ServerSocket silent = new ServerSocket(port, 50, second);
-		closeables.add(silent);
+		StubNodeServer dead = server(A, port -> closeables.add(new ServerSocket(port, 50, second)));
+		int port = dead.port();
 		String hostname = hostname("silent", first, second);
-		StubNodeServer dead = server(first, port, A);
 
 		ClientPolicy policy = policy();
 		policy.timeout = 1000;
@@ -419,9 +432,10 @@ public class HostnameAddressMoveTest {
 	@Test
 	public void candidateWithOtherNameIsSkipped() throws Exception {
 		String hostname = hostname("other", first, second);
-		int port = freePort();
-		StubNodeServer dead = server(first, port, A);
-		StubNodeServer other = server(second, port, B);
+		StubNodeServer[] pair = pair(A, B);
+		StubNodeServer dead = pair[0];
+		StubNodeServer other = pair[1];
+		int port = dead.port();
 
 		Cluster cluster = drivenCluster(policy(), hostname, port);
 		Node node = node(cluster, A);
@@ -441,9 +455,10 @@ public class HostnameAddressMoveTest {
 	@Test
 	public void candidateRejectedByCollisionCheckIsSkipped() throws Exception {
 		String hostname = hostname("collide", first, second);
-		int port = freePort();
-		StubNodeServer dead = server(first, port, A);
-		StubNodeServer candidate = server(second, port, B);
+		StubNodeServer[] pair = pair(A, B);
+		StubNodeServer dead = pair[0];
+		StubNodeServer candidate = pair[1];
+		int port = dead.port();
 
 		Cluster cluster = drivenCluster(policy(), hostname, port);
 		Node node = node(cluster, A);
@@ -474,9 +489,8 @@ public class HostnameAddressMoveTest {
 
 	@Test
 	public void ipLiteralNodeDoesNotMove() throws Exception {
-		int port = freePort();
-		StubNodeServer dead = server(first, port, A);
-		server(second, port, A);
+		StubNodeServer dead = pair(A, A)[0];
+		int port = dead.port();
 
 		Cluster cluster = drivenCluster(policy(), "127.0.0.1", port);
 		Node node = node(cluster, A);
@@ -495,9 +509,10 @@ public class HostnameAddressMoveTest {
 	@Test
 	public void singleAddressNodeDoesNotMove() throws Exception {
 		String hostname = hostname("single", first);
-		int port = freePort();
-		StubNodeServer dead = server(first, port, A);
-		StubNodeServer other = server(second, port, A);
+		StubNodeServer[] pair = pair(A, A);
+		StubNodeServer dead = pair[0];
+		StubNodeServer other = pair[1];
+		int port = dead.port();
 
 		Cluster cluster = drivenCluster(policy(), hostname, port);
 		Node node = node(cluster, A);
@@ -515,9 +530,10 @@ public class HostnameAddressMoveTest {
 	@Test
 	public void peerPathDoesNotMoveSooner() throws Exception {
 		String hostA = hostname("peer-a", first, second);
-		int portA = freePort();
-		StubNodeServer a1 = server(first, portA, A);
-		StubNodeServer a2 = server(second, portA, A);
+		StubNodeServer[] pair = pair(A, A);
+		StubNodeServer a1 = pair[0];
+		StubNodeServer a2 = pair[1];
+		int portA = a1.port();
 		StubNodeServer b = server(first, 0, B);
 
 		String peersA = "1,3000,[[" + B + ",,[127.0.0.1:" + b.port() + "]]]";
@@ -550,9 +566,8 @@ public class HostnameAddressMoveTest {
 	@Test
 	public void slowLookupDelaysMoveOnTendThread() throws Exception {
 		String hostname = hostname("slow", first, second);
-		int port = freePort();
-		StubNodeServer dead = server(first, port, A);
-		server(second, port, A);
+		StubNodeServer dead = pair(A, A)[0];
+		int port = dead.port();
 
 		Cluster cluster = drivenCluster(policy(), hostname, port);
 		Node node = node(cluster, A);
@@ -669,20 +684,29 @@ public class HostnameAddressMoveTest {
 	}
 
 	/**
-	 * Free port on both loopback addresses.
+	 * Servers with the given names on one port of the first and the second address.
 	 */
-	private static int freePort() throws IOException {
+	private StubNodeServer[] pair(String firstName, String secondName) throws IOException {
+		StubNodeServer[] pair = new StubNodeServer[2];
+		pair[0] = server(firstName, port -> pair[1] = server(second, port, secondName));
+		return pair;
+	}
+
+	/**
+	 * Server with the given name on a free port of the first address, once the bind has bound the
+	 * same port of the second address. A port the bind finds taken is replaced by another.
+	 */
+	private StubNodeServer server(String name, Bind bind) throws IOException {
 		for (int i = 0; i < 100; i++) {
-			int port;
+			StubNodeServer server = server(first, 0, name);
 
-			try (ServerSocket socket = new ServerSocket(0, 1, second)) {
-				port = socket.getLocalPort();
-			}
-
-			try (ServerSocket socket = new ServerSocket(port, 1, first)) {
-				return port;
+			try {
+				bind.bind(server.port());
+				return server;
 			}
 			catch (BindException be) {
+				servers.remove(server);
+				server.close();
 			}
 		}
 		throw new IOException("No port free on both " + first + " and " + second);
