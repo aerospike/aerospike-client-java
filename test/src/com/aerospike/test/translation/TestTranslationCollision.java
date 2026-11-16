@@ -43,18 +43,20 @@ import com.aerospike.client.discovery.AddressTranslator;
 import com.aerospike.client.discovery.Endpoint;
 import com.aerospike.client.policy.ClientPolicy;
 import com.aerospike.client.policy.WritePolicy;
+import com.aerospike.test.util.TestEnv;
 
 /**
- * Translated address collisions against the two node clusters started by
- * test/translation/run_collision.sh. In the control cluster each node advertises 127.0.0.1 and its
+ * Translated address collisions against the two node clusters of the aerospike-client-conformance
+ * collision environment. In the control cluster each node advertises 127.0.0.1 and its
  * own published host port in its alternate access address. In the collision cluster node B
- * advertises node A's published port. Every case seeds node A only. The clusters arrive as system
- * properties:
+ * advertises node A's published port. Every case seeds node A only. The clusters arrive as the
+ * environment variables of its values file:
  * <ul>
- * <li>translation.host: host the nodes are published on</li>
- * <li>translation.namespace: namespace, replication factor 1</li>
- * <li>control.nodeA, control.portA, control.nodeB, control.portB: control cluster</li>
- * <li>collision.nodeA, collision.portA, collision.nodeB: collision cluster</li>
+ * <li>ENV_HOST: host the nodes are published on</li>
+ * <li>ENV_NAMESPACE: namespace, replication factor 1</li>
+ * <li>CONTROL_NODE_A_NAME, CONTROL_NODE_A_PORT, CONTROL_NODE_B_NAME, CONTROL_NODE_B_PORT: control
+ * cluster</li>
+ * <li>COLLISION_NODE_A_NAME, COLLISION_NODE_A_PORT, COLLISION_NODE_B_NAME: collision cluster</li>
  * </ul>
  */
 public class TestTranslationCollision {
@@ -89,15 +91,15 @@ public class TestTranslationCollision {
 
 	@BeforeClass
 	public static void init() {
-		host = required("translation.host");
-		namespace = required("translation.namespace");
-		controlA = required("control.nodeA");
-		controlPortA = Integer.parseInt(required("control.portA"));
-		controlB = required("control.nodeB");
-		controlPortB = Integer.parseInt(required("control.portB"));
-		collisionA = required("collision.nodeA");
-		collisionPortA = Integer.parseInt(required("collision.portA"));
-		collisionB = required("collision.nodeB");
+		host = TestEnv.get("ENV_HOST");
+		namespace = TestEnv.get("ENV_NAMESPACE");
+		controlA = TestEnv.get("CONTROL_NODE_A_NAME");
+		controlPortA = TestEnv.getInt("CONTROL_NODE_A_PORT");
+		controlB = TestEnv.get("CONTROL_NODE_B_NAME");
+		controlPortB = TestEnv.getInt("CONTROL_NODE_B_PORT");
+		collisionA = TestEnv.get("COLLISION_NODE_A_NAME");
+		collisionPortA = TestEnv.getInt("COLLISION_NODE_A_PORT");
+		collisionB = TestEnv.get("COLLISION_NODE_B_NAME");
 
 		Log.setLevel(Log.Level.WARN);
 		Log.setCallback((level, message) -> {
@@ -225,14 +227,5 @@ public class TestTranslationCollision {
 			}
 		}
 		return collisions;
-	}
-
-	private static String required(String name) {
-		String value = System.getProperty(name);
-
-		if (value == null || value.isEmpty()) {
-			throw new IllegalStateException("System property " + name + " is not set. Run test/translation/run_collision.sh");
-		}
-		return value;
 	}
 }

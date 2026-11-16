@@ -23,6 +23,7 @@ import static org.junit.Assert.assertTrue;
 
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Future;
 
 import org.junit.Test;
 
@@ -39,7 +40,7 @@ import com.aerospike.client.policy.ClientPolicy;
 public class TestPortMapNodeJoin {
 	@Test
 	public void prefilledEntryJoinsNewNode() throws Exception {
-		assertFalse("Node B container " + containerB + " is already running", containerRunning());
+		assertFalse("Node B " + nodeB + " is already running", nodeBRunning());
 
 		ClientPolicy policy = policy();
 		policy.addressTranslator = new PortMapAddressTranslator(Map.of(
@@ -54,7 +55,7 @@ public class TestPortMapNodeJoin {
 			System.out.println("PORT-MAP-RESULT n19-before nodes=" + client.getNodes().length + ' ' + nodeNames(client) +
 				" peersGeneration=" + generation);
 
-			startContainerB();
+			Future<String> start = startNodeB();
 			long started = System.currentTimeMillis();
 			long peersChanged = 0;
 			long joined = 0;
@@ -85,6 +86,7 @@ public class TestPortMapNodeJoin {
 
 			Map<String,Integer> owners = assertAllPartitionsOwned("n19-after", client);
 			assertEquals(owners.toString(), 2, owners.size());
+			start.get();
 		}
 	}
 }

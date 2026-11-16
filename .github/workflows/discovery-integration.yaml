@@ -9,12 +9,13 @@ name: Discovery integration
 # requests, on push to the target branches (merge), and on workflow_dispatch.
 # Fork pull requests do not receive FEATURES_CONF.
 #
-# TLS certificate matching (CLIENT-5638) is a separate EE-only job. Its
-# driver starts one Enterprise container per certificate, so it uses the
+# TLS certificate matching is a separate EE-only job. Its conformance test
+# environment starts one Enterprise server per certificate, so it uses the
 # same FEATURES_CONF gate and does not run on fork pull requests.
 #
-# The aws-tags and dns provider suites (discovery-providers.yaml) start a two
-# node Enterprise cluster each, behind the same gate.
+# The aws-tags and dns provider suites (discovery-providers.yaml) run against
+# conformance test environments with a two node Enterprise cluster each, behind
+# the same gate.
 #
 # setup-aerospike-server and setup-discovery-topology are pinned in
 # discovery-l2.yaml to shared-workflows commits that generate the TLS

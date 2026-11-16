@@ -22,8 +22,8 @@ import org.junit.runners.Suite;
 import com.aerospike.test.discovery.TestDnsDiscovery;
 
 /**
- * DNS seed discovery. Requires the cluster and DNS server started by test/discovery/run_dns.sh,
- * which also supplies the system properties.
+ * DNS seed discovery. Requires the aerospike-client-conformance dns environment, with its values
+ * file loaded into the environment.
  */
 @RunWith(Suite.class)
 @Suite.SuiteClasses({
