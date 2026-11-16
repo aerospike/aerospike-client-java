@@ -99,6 +99,15 @@ final class PortMapCluster {
 	 * return the number of partitions each node owns.
 	 */
 	static Map<String,Integer> assertAllPartitionsOwned(String name, AerospikeClient client) throws InterruptedException {
+		return assertAllPartitionsOwned(name, client, 1);
+	}
+
+	/**
+	 * Wait until every partition of the namespace has a master in the client's partition map and at
+	 * least ownerCount nodes own partitions, and return the number of partitions each node owns.
+	 */
+	static Map<String,Integer> assertAllPartitionsOwned(String name, AerospikeClient client, int ownerCount)
+		throws InterruptedException {
 		long deadline = System.currentTimeMillis() + JOIN_WAIT_MS;
 		Map<String,Integer> owners;
 		int unowned;
@@ -126,7 +135,7 @@ final class PortMapCluster {
 				}
 			}
 
-			if (unowned == 0) {
+			if (unowned == 0 && owners.size() >= ownerCount) {
 				break;
 			}
 			Thread.sleep(100);
