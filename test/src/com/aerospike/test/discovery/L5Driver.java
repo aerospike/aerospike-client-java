@@ -18,8 +18,10 @@ package com.aerospike.test.discovery;
 
 import java.io.BufferedReader;
 import java.io.FileDescriptor;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.PrintStream;
 import java.net.InetAddress;
@@ -29,6 +31,10 @@ import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
 import java.nio.charset.StandardCharsets;
+import java.security.GeneralSecurityException;
+import java.security.KeyStore;
+import java.security.cert.Certificate;
+import java.security.cert.CertificateFactory;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -49,6 +55,9 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.LongFunction;
 
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.TrustManagerFactory;
+
 import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Bin;
@@ -66,15 +75,16 @@ import com.aerospike.client.discovery.TranslationMissMode;
 import com.aerospike.client.policy.ClientPolicy;
 import com.aerospike.client.policy.InfoPolicy;
 import com.aerospike.client.policy.Policy;
+import com.aerospike.client.policy.TlsPolicy;
 import com.aerospike.client.policy.WritePolicy;
 
 /**
  * Driver for the l5-aws harness in aerospike-client-conformance (l5-aws/DRIVER.md there, contract
- * version 3): builds a client from the flags, runs a retrying load, and writes what the client sees
+ * version 5): builds a client from the flags, runs a retrying load, and writes what the client sees
  * to stdout as JSON lines while it answers the commands it reads from stdin.
  */
 public final class L5Driver {
-	static final int CONTRACT = 3;
+	static final int CONTRACT = 5;
 	static final long POLL_MS = 10;
 	static final long HEARTBEAT_MS = 100;
 	static final long REACH_INTERVAL_MS = 500;
@@ -90,7 +100,7 @@ public final class L5Driver {
 	private static final long START = System.nanoTime();
 	private static final String USAGE = "usage: L5Driver --seed HOST:PORT --shape pass-through|port-map " +
 		"[--port-map NODE=HOST:PORT,...] [--on-miss strict|pass-through] [--user USER] --tend-interval MS " +
-		"--timeout MS --namespace NS --set SET [--workers N] [--keys N]";
+		"--timeout MS --namespace NS --set SET [--workers N] [--keys N] [--tls-name NAME [--tls-ca-file PATH]]";
 
 	public static void main(String[] args) {
 		Options options;
@@ -220,6 +230,32 @@ public final class L5Driver {
 			}
 			else {
 				serve(words[1]);
+			}
+			return true;
+
+		case "large":
+			Large large = words.length == 4 ? Large.of(words[1], words[2], words[3]) : null;
+
+			if (large == null) {
+				error("malformed command: " + line);
+			}
+			else {
+				large.run(options.namespace, options.set, new Large.Store() {
+					@Override
+					public void put(Key key, String value) {
+						client.put(options.writePolicy(), key, new Bin("v", value));
+					}
+
+					@Override
+					public Object get(Key key) {
+						Record record = client.get(options.readPolicy(), key);
+						return record == null ? null : record.getValue("v");
+					}
+				});
+
+				synchronized (out) {
+					out.write(large.reply(now()));
+				}
 			}
 			return true;
 
@@ -786,6 +822,108 @@ public final class L5Driver {
 	}
 
 	/**
+	 * The {@code large} command: writes and reads {@code KEYS} keys, {@code STEP-0} on, each with
+	 * bin {@code v} a string of exactly {@code BYTES} characters that starts with the key's name,
+	 * one attempt each.
+	 */
+	static final class Large {
+		interface Store {
+			void put(Key key, String value);
+			Object get(Key key);
+		}
+
+		private final String step;
+		private final int bytes;
+		private final int keys;
+		private int written;
+		private int read;
+		private int mismatched;
+		private int failures;
+		private String firstFailure;
+		private long maxNanos;
+		private long elapsedNanos;
+
+		private Large(String step, int bytes, int keys) {
+			this.step = step;
+			this.bytes = bytes;
+			this.keys = keys;
+		}
+
+		/**
+		 * Parse the command's arguments, or return null when they are malformed or a key's name
+		 * is longer than {@code BYTES}.
+		 */
+		static Large of(String step, String bytes, String keys) {
+			try {
+				int b = Integer.parseInt(bytes);
+				int k = Integer.parseInt(keys);
+				return b > 0 && k > 0 && (step + '-' + (k - 1)).length() <= b ? new Large(step, b, k) : null;
+			}
+			catch (NumberFormatException e) {
+				return null;
+			}
+		}
+
+		static String value(String name, int bytes) {
+			StringBuilder sb = new StringBuilder(bytes).append(name);
+
+			while (sb.length() < bytes) {
+				sb.append('x');
+			}
+			return sb.toString();
+		}
+
+		void run(String namespace, String set, Store store) {
+			long start = System.nanoTime();
+
+			for (int i = 0; i < keys; i++) {
+				String name = step + '-' + i;
+				Key key = new Key(namespace, set, name);
+				String value = value(name, bytes);
+				long begin = System.nanoTime();
+
+				try {
+					store.put(key, value);
+					written++;
+				}
+				catch (RuntimeException e) {
+					failures++;
+					firstFailure = firstFailure != null ? firstFailure : name + " put: " + message(e);
+					continue;
+				}
+				finally {
+					maxNanos = Math.max(maxNanos, System.nanoTime() - begin);
+				}
+				begin = System.nanoTime();
+
+				try {
+					if (value.equals(store.get(key))) {
+						read++;
+					}
+					else {
+						mismatched++;
+					}
+				}
+				catch (RuntimeException e) {
+					failures++;
+					firstFailure = firstFailure != null ? firstFailure : name + " get: " + message(e);
+				}
+				finally {
+					maxNanos = Math.max(maxNanos, System.nanoTime() - begin);
+				}
+			}
+			elapsedNanos = System.nanoTime() - start;
+		}
+
+		String reply(long t) {
+			return new Json("large", t).put("step", step).put("bytes", bytes).put("keys", keys).put("written", written)
+				.put("read", read).put("mismatched", mismatched).put("failures", failures).put("firstFailure", firstFailure)
+				.put("maxMs", TimeUnit.NANOSECONDS.toMillis(maxNanos))
+				.put("elapsedMs", TimeUnit.NANOSECONDS.toMillis(elapsedNanos)).toString();
+		}
+	}
+
+	/**
 	 * The load: each worker runs one command at a time, and issues a failed command again after
 	 * one tend interval until it succeeds.
 	 */
@@ -918,6 +1056,9 @@ public final class L5Driver {
 		String set;
 		int workers = 4;
 		int keys = 1000;
+		String tlsName;
+		String tlsCaFile;
+		TlsPolicy tlsPolicy;
 
 		Options(String[] args, String password) {
 			Map<String,String> flags = new LinkedHashMap<>();
@@ -1002,6 +1143,14 @@ public final class L5Driver {
 					keys = positive(flag.getKey(), value);
 					break;
 
+				case "--tls-name":
+					tlsName = value;
+					break;
+
+				case "--tls-ca-file":
+					tlsCaFile = value;
+					break;
+
 				default:
 					throw new IllegalArgumentException("unknown flag: " + flag.getKey());
 				}
@@ -1025,6 +1174,48 @@ public final class L5Driver {
 			}
 			else if (portMap != null) {
 				throw new IllegalArgumentException("--port-map only with --shape port-map");
+			}
+
+			if (tlsName != null) {
+				seed = new Host(seed.name, tlsName, seed.port);
+				tlsPolicy = tlsPolicy(tlsCaFile);
+			}
+			else if (tlsCaFile != null) {
+				throw new IllegalArgumentException("--tls-ca-file only with --tls-name");
+			}
+		}
+
+		/**
+		 * A TLS policy that trusts the CAs in the PEM file, or the JDK's default trust store when
+		 * there is no file.
+		 */
+		private static TlsPolicy tlsPolicy(String caFile) {
+			TlsPolicy policy = new TlsPolicy();
+
+			if (caFile == null) {
+				return policy;
+			}
+
+			try (InputStream in = new FileInputStream(caFile)) {
+				KeyStore store = KeyStore.getInstance(KeyStore.getDefaultType());
+				store.load(null, null);
+				int count = 0;
+
+				for (Certificate cert : CertificateFactory.getInstance("X.509").generateCertificates(in)) {
+					store.setCertificateEntry("ca-" + count++, cert);
+				}
+
+				if (count == 0) {
+					throw new IllegalArgumentException("--tls-ca-file has no certificate: " + caFile);
+				}
+				TrustManagerFactory factory = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
+				factory.init(store);
+				policy.context = SSLContext.getInstance("TLS");
+				policy.context.init(null, factory.getTrustManagers(), null);
+				return policy;
+			}
+			catch (IOException | GeneralSecurityException e) {
+				throw new IllegalArgumentException("--tls-ca-file " + caFile + ": " + message(e));
 			}
 		}
 
@@ -1054,7 +1245,7 @@ public final class L5Driver {
 				int eq = entry.indexOf('=');
 
 				if (eq <= 0 || hostPort(entry.substring(eq + 1)) == null) {
-					throw new IllegalArgumentException("--port-map entry must be NODE=HOST:PORT: " + entry);
+					throw new IllegalArgumentException("--port-map entry must be NODE=HOST:PORT or HOST:PORT=HOST:PORT: " + entry);
 				}
 
 				if (map.put(entry.substring(0, eq), entry.substring(eq + 1)) != null) {
@@ -1071,6 +1262,7 @@ public final class L5Driver {
 			policy.user = user;
 			policy.password = password;
 			policy.translationOnMiss = onMiss;
+			policy.tlsPolicy = tlsPolicy;
 
 			if (shape.equals("pass-through")) {
 				policy.useServicesAlternate = true;
