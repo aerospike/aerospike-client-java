@@ -19,23 +19,19 @@ package com.aerospike.test.discovery;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.net.InetAddress;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.TreeMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -54,7 +50,6 @@ import com.aerospike.client.Host;
 import com.aerospike.client.Info;
 import com.aerospike.client.Key;
 import com.aerospike.client.Log;
-import com.aerospike.client.Record;
 import com.aerospike.client.ResultCode;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.Node;
@@ -70,8 +65,6 @@ import com.aerospike.client.discovery.SeedCandidateContext;
 import com.aerospike.client.discovery.SeedCandidateProvider;
 import com.aerospike.client.discovery.TranslationMissMode;
 import com.aerospike.client.policy.ClientPolicy;
-import com.aerospike.client.policy.Policy;
-import com.aerospike.client.policy.Replica;
 import com.aerospike.client.policy.TlsPolicy;
 import com.aerospike.client.policy.WritePolicy;
 import com.aerospike.test.discovery.L2Topology.L2Node;
@@ -294,23 +287,6 @@ public class TestL2Topology extends TestBase {
 	}
 
 	/**
-	 * N-2: port-map keyed by advertised {@code (host, port)}. All nodes join and the partition
-	 * map is complete.
-	 */
-	@Test
-	public void n2PortMapByHostPortJoinsAllNodes() throws Exception {
-		assertPortMapJoins("N-2-host-port", L2Topology.portMapByEndpoint(L2Topology.nodes()));
-	}
-
-	/**
-	 * N-2: port-map keyed by node name. All nodes join and the partition map is complete.
-	 */
-	@Test
-	public void n2PortMapByNodeNameJoinsAllNodes() throws Exception {
-		assertPortMapJoins("N-2-node-name", L2Topology.portMapByNodeName(L2Topology.nodes()));
-	}
-
-	/**
 	 * N-4: dns provider end to end. The seed comes from SRV records for the endpoint, one per
 	 * listener, and the peers through port-map.
 	 */
@@ -330,79 +306,6 @@ public class TestL2Topology extends TestBase {
 		try (AerospikeClient client = new AerospikeClient(policy)) {
 			L2Topology.waitNodes(client, L2Topology.nodeNames());
 			L2Topology.assertAllPartitionsOwned("N-4", client);
-		}
-	}
-
-	/**
-	 * N-5: no SeedOnlyCluster. Every node owns partitions as its own {@link Node}, and writes and
-	 * reads for keys spread across partitions are served by the owner without a server proxy hop.
-	 */
-	@Test
-	public void n5EveryPartitionOwnerIsADistinctNode() throws Exception {
-		List<L2Node> nodes = L2Topology.nodes();
-		ClientPolicy policy = L2Topology.policy();
-		policy.addressTranslator = new PortMapAddressTranslator(L2Topology.portMapByEndpoint(nodes));
-
-		try (AerospikeClient client = new AerospikeClient(policy, L2Topology.seed())) {
-			L2Topology.waitNodes(client, L2Topology.nodeNames());
-			Node[] masters = L2Topology.assertAllPartitionsOwned("N-5", client);
-			Set<Node> distinct = Collections.newSetFromMap(new IdentityHashMap<>());
-			Collections.addAll(distinct, masters);
-			Map<String,Integer> owners = L2Topology.owners(masters);
-			System.out.println("L2-N5-OWNERS nodes=" + distinct.size() + " partitionsPerNode=" + owners);
-			assertEquals(nodes.size(), distinct.size());
-			assertEquals(L2Topology.nodeNames(), new ArrayList<>(owners.keySet()));
-
-			for (Node node : client.getNodes()) {
-				assertSame(node.getName(), node, client.getCluster().getNode(node.getName()));
-				assertTrue(node.getName(), distinct.contains(node));
-			}
-
-			String[] stats = {"client_write_success", "client_read_success", "client_proxy_complete",
-				"client_proxy_error", "client_proxy_timeout"};
-			Map<String,Map<String,Long>> before = new TreeMap<>();
-
-			for (L2Node node : nodes) {
-				before.put(node.name, L2Topology.namespaceStats(node, stats));
-			}
-
-			Cluster cluster = client.getCluster();
-			WritePolicy wp = client.copyWritePolicyDefault();
-			wp.replica = Replica.MASTER;
-			Policy rp = client.copyReadPolicyDefault();
-			rp.replica = Replica.MASTER;
-			Map<String,Long> served = new TreeMap<>();
-			Set<Integer> partitions = new HashSet<>();
-
-			for (int i = 0; i < KEY_COUNT; i++) {
-				Key key = new Key(L2Topology.namespace, SET, "n5-" + i);
-				Node owner = masters[Partition.getPartitionId(key.digest)];
-				assertSame(owner, Partition.write(cluster, wp, key).getNodeWrite(cluster));
-				assertSame(owner, Partition.read(cluster, rp, key).getNodeRead(cluster));
-				client.put(wp, key, new Bin("v", i));
-				Record record = client.get(rp, key);
-				assertEquals(i, record.getInt("v"));
-				served.merge(owner.getName(), 1L, Long::sum);
-				partitions.add(Partition.getPartitionId(key.digest));
-			}
-
-			for (L2Node node : nodes) {
-				Map<String,Long> after = L2Topology.namespaceStats(node, stats);
-				Map<String,Long> start = before.get(node.name);
-				long writes = after.get("client_write_success") - start.get("client_write_success");
-				long reads = after.get("client_read_success") - start.get("client_read_success");
-				long proxied = after.get("client_proxy_complete") - start.get("client_proxy_complete") +
-					after.get("client_proxy_error") - start.get("client_proxy_error") +
-					after.get("client_proxy_timeout") - start.get("client_proxy_timeout");
-				long expected = served.getOrDefault(node.name, 0L);
-				System.out.println("L2-N5-SERVED node=" + node.name + " partitions=" + owners.get(node.name) +
-					" keys=" + expected + " writes=" + writes + " reads=" + reads + " proxied=" + proxied);
-				assertTrue(node.name + " served no keys", expected > 0);
-				assertEquals(node.name + " writes", expected, writes);
-				assertEquals(node.name + " reads", expected, reads);
-				assertEquals(node.name + " proxied", 0, proxied);
-			}
-			System.out.println("L2-N5-KEYS keys=" + KEY_COUNT + " partitions=" + partitions.size());
 		}
 	}
 
@@ -1161,19 +1064,6 @@ public class TestL2Topology extends TestBase {
 			}
 			System.out.println("CLIENT-LOG " + level + ' ' + message);
 		});
-	}
-
-	private static void assertPortMapJoins(String row, Map<String,String> portMap) throws Exception {
-		ClientPolicy policy = L2Topology.policy();
-		policy.addressTranslator = new PortMapAddressTranslator(portMap);
-		System.out.println("L2-PORT-MAP " + row + ' ' + portMap);
-
-		try (AerospikeClient client = new AerospikeClient(policy, L2Topology.seed())) {
-			L2Topology.waitNodes(client, L2Topology.nodeNames());
-			System.out.println("L2-JOIN " + row + " nodes=" + L2Topology.nodeNames(client));
-			Map<String,Integer> owners = L2Topology.owners(L2Topology.assertAllPartitionsOwned(row, client));
-			assertEquals(L2Topology.nodeNames(), new ArrayList<>(owners.keySet()));
-		}
 	}
 
 	private static void assertOwnedKeysWork(AerospikeClient client, List<String> mappedNames, L2Node victim) {

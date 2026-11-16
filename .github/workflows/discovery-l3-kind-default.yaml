@@ -21,13 +21,13 @@ on:
 jobs:
   l3-kind:
     name: L3 kind (default)
-    uses: aerospike/aerospike-client-conformance/.github/workflows/l3-kind.yaml@57c0a2ae457f77a56bdae2675688f66218e8fa89 # main
+    uses: aerospike/aerospike-client-conformance/.github/workflows/l3-kind.yaml@b5987402f613c841d2259d7e6799551baa02ff98 # main
     with:
       client-repository: ${{ github.repository }}
       commit: ${{ github.event.pull_request.head.sha || github.sha }}
       manifest: test/discovery/l5-aws.manifest
       profile: default
       ako-version: 4.7.0
-      conformance-ref: 57c0a2ae457f77a56bdae2675688f66218e8fa89
+      conformance-ref: b5987402f613c841d2259d7e6799551baa02ff98
     secrets:
       FEATURES_CONF: ${{ secrets.FEATURES_CONF }}

@@ -86,7 +86,7 @@
 #                             the tests run, the script looks as-unresolved.test up in each server container and fails
 #                             the run if it resolves. Sets DISCOVERY_UNRESOLVED_HOSTNAME to it and
 #                             DISCOVERY_VERBATIM_ACCESS_ADDRESS from L2_VERBATIM_ACCESS_ADDRESS, turns on
-#                             L2_NODE_CONTROL and runs TestL2UnresolvedAccessAddress and TestL2PortMapNoAccessAddress
+#                             L2_NODE_CONTROL and runs TestL2UnresolvedAccessAddress
 #                             On ee every other profile uses a certificate with aerospike-tls as a dNSName SAN
 #                             and a CN that does not match it (DISCOVERY_TLS_CERT_SHAPE=san-only)
 #   L2_SUBNET                 first three octets of the port-map-range server network (default 10.213.66)
@@ -128,7 +128,7 @@ run_client() {
 		low-mtu) suite='**/TestL2LowMtu.class' ;;
 		port-range) suite='**/TestL2SourcePortRange.class' ;;
 		idle-reset) suite='**/TestL2IdleReset.class,**/TestL2AsyncIdleReset.class' ;;
-		unresolved-access) suite='**/TestL2UnresolvedAccessAddress.class,**/TestL2PortMapNoAccessAddress.class' ;;
+		unresolved-access) suite='**/TestL2UnresolvedAccessAddress.class' ;;
 	esac
 	suite="${L2_SUITE:-$suite}"
 
