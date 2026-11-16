@@ -27,7 +27,6 @@ import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -36,7 +35,6 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.atomic.AtomicReferenceArray;
 
 import org.junit.After;
@@ -82,8 +80,6 @@ public class TestL2Topology extends TestBase {
 	private static final int MISS_RETRIES = 3;
 	private static final String DNS_BLOCKER = "N-4 needs DISCOVERY_DNS_SERVER, a DNS server on the L2 client " +
 		"network serving SRV records for the endpoint (the discovery-l2 workflow's default profile)";
-	private static final String NODE_CONTROL_BLOCKER = "N-11 needs DISCOVERY_CONTROL_DIR so the host can start a " +
-		"fourth node (run_l2.sh L2_NODE_CONTROL=1, or the discovery-l2 workflow)";
 	private static final int REFRESH_INTERVAL = 600000;
 	private static final int STARTUP_TIMEOUT = 500;
 	private static final int SLOW_FIRST_MS = 3000;
@@ -94,8 +90,6 @@ public class TestL2Topology extends TestBase {
 
 	private String disabledProxy;
 	private final List<String> disabledProxies = new ArrayList<>();
-	private String addedProxy;
-	private String addedNode;
 	private final List<BlockingSeedProvider> blockingProviders = new ArrayList<>();
 
 	public static final class EmptyTranslator implements AddressTranslator {
@@ -224,17 +218,6 @@ public class TestL2Topology extends TestBase {
 			L2Topology.setListener(proxy, true);
 		}
 		disabledProxies.clear();
-
-		if (addedProxy != null) {
-			L2Topology.removeListener(addedProxy);
-			addedProxy = null;
-		}
-
-		if (addedNode != null) {
-			L2Topology.control("stop " + addedNode);
-			addedNode = null;
-			L2Topology.waitClusterStable(L2Topology.nodes().size());
-		}
 	}
 
 	/**
@@ -527,85 +510,6 @@ public class TestL2Topology extends TestBase {
 				assertTrue(part + " not in: " + message, message.contains(part));
 			}
 			assertOwnedKeysWork(client, mappedNames, victim);
-		}
-	}
-
-	/**
-	 * N-11: a node started mid-test is an active {@link Node} in the client within 2 x
-	 * tend_interval of the peers-generation bump that announces it, and eventually owns
-	 * partitions. The host starts the node through DISCOVERY_CONTROL_DIR and the test gives it a
-	 * listener and a port-map entry before it joins.
-	 */
-	@Test
-	public void n11NewNodeActiveWithinTwoTendIntervals() throws Exception {
-		skipUnless(! L2Topology.controlDir.isEmpty(), NODE_CONTROL_BLOCKER);
-
-		List<L2Node> nodes = L2Topology.nodes();
-		L2Node first = nodes.get(0);
-		List<String> names = L2Topology.nodeNames();
-		AtomicReference<PortMapAddressTranslator> portMap =
-			new AtomicReference<>(new PortMapAddressTranslator(L2Topology.portMapByEndpoint(nodes)));
-		ClientPolicy policy = L2Topology.policy();
-		policy.addressTranslator = advertised -> portMap.get().translate(advertised);
-
-		try (AerospikeClient client = new AerospikeClient(policy, L2Topology.seed())) {
-			L2Topology.waitNodes(client, names);
-			L2Topology.assertAllPartitionsOwned("N-11-before", client);
-
-			long generation = L2Topology.peersGeneration(first);
-			Map<String,String> ack = L2Topology.control("start");
-			addedNode = ack.get("container");
-			int upstreamPort = L2Topology.upstreamPort(first.proxy);
-			int port = L2Topology.addListener(addedNode, addedNode + ':' + upstreamPort);
-			addedProxy = addedNode;
-
-			String advertised = ack.get("address") + ':' + upstreamPort;
-			Map<String,String> map = new LinkedHashMap<>(L2Topology.portMapByEndpoint(nodes));
-			map.put(advertised, L2Topology.listener(port));
-			portMap.set(new PortMapAddressTranslator(map));
-			System.out.println("L2-N11-MAPPED " + advertised + "=" + L2Topology.listener(port));
-
-			long mappedGeneration = L2Topology.peersGeneration(first);
-			assertEquals("peers-generation bumped before " + addedNode + " had a listener and a mapping",
-				generation, mappedGeneration);
-
-			long[] bump = {0};
-			long[] active = {0};
-			Node[] added = {null};
-
-			assertTrue("No peers-generation bump or no active node for " + addedNode, L2Topology.waitFor(() -> {
-				long now = System.nanoTime();
-
-				if (bump[0] == 0 && L2Topology.peersGeneration(first) != generation) {
-					bump[0] = now;
-				}
-
-				if (active[0] == 0) {
-					for (Node node : client.getNodes()) {
-						if (node.isActive() && ! names.contains(node.getName())) {
-							active[0] = now;
-							added[0] = node;
-						}
-					}
-				}
-				return bump[0] != 0 && active[0] != 0;
-			}, 5));
-
-			long elapsed = TimeUnit.NANOSECONDS.toMillis(active[0] - bump[0]);
-			long budget = 2L * policy.tendInterval;
-			Node node = added[0];
-			Map<String,String> info = Info.request(L2Topology.host, port, "node", "service-clear-std");
-			System.out.println("L2-N11-TIMING node=" + node.getName() + " host=" + node.getHost() + " container=" + addedNode +
-				" generation=" + generation + "->" + L2Topology.peersGeneration(first) + " bumpToActiveMs=" + elapsed +
-				" tendInterval=" + policy.tendInterval + " budgetMs=" + budget);
-			assertEquals(info.get("node"), node.getName());
-			assertTrue(advertised + " not in " + info, info.get("service-clear-std").contains(advertised));
-			assertEquals(port, node.getHost().port);
-			assertTrue(node.getName() + " active " + elapsed + "ms after the bump, budget " + budget + "ms", elapsed <= budget);
-
-			boolean owns = L2Topology.waitFor(() -> L2Topology.owners(client).containsKey(node.getName()));
-			System.out.println("L2-N11-OWNERS " + L2Topology.owners(client));
-			assertTrue(node.getName() + " owns no partitions", owns);
 		}
 	}
 

@@ -26,7 +26,7 @@
 #                             of downloading it
 #   L2_DISABLE_LISTENERS      set to 1 to disable every Toxiproxy listener before the suite starts and
 #                             skip the TCP check, to prove N-1's guard. Every L2 test then fails
-#   L2_NODE_CONTROL           set to 1 to let N-11 start a node. The script sets DISCOVERY_CONTROL_DIR
+#   L2_NODE_CONTROL           set to 1 to let tests start and stop nodes. The script sets DISCOVERY_CONTROL_DIR
 #                             to a directory under the work directory, which the client container
 #                             shares, and serves each <id>.request written there with <id>.ack: "start"
 #                             starts one more node on the server network with the same config and mesh
