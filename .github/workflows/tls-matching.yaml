@@ -25,7 +25,7 @@ jobs:
     with:
       environment: tls-matching
       conformance-ref: 57c0a2ae457f77a56bdae2675688f66218e8fa89
-      server-image: aerospike.jfrog.io/${{ inputs.server-container-repo }}:${{ inputs.server-tag }}
+      server-image: aerospike/aerospike-server-enterprise:${{ inputs.server-tag }}
       command: |
         set -uo pipefail
         export JAVA_HOME="$JAVA_HOME_21_X64"
