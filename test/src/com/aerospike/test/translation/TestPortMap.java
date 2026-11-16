@@ -50,7 +50,7 @@ public class TestPortMap {
 
 	@BeforeClass
 	public static void init() throws Exception {
-		startContainerB();
+		startNodeB().get();
 		assertUnreachable(addressA);
 		assertUnreachable(addressB);
 

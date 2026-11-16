@@ -22,8 +22,8 @@ import org.junit.runners.Suite;
 import com.aerospike.test.translation.TestPassThroughTranslation;
 
 /**
- * Pass-through address translation. Requires the two node cluster started by
- * test/translation/run_pass_through.sh, which also supplies the cluster system properties.
+ * Pass-through address translation. Requires the aerospike-client-conformance pass-through
+ * environment, with its values file loaded into the environment.
  */
 @RunWith(Suite.class)
 @Suite.SuiteClasses({

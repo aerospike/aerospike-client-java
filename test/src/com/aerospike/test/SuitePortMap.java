@@ -23,8 +23,8 @@ import com.aerospike.test.translation.TestPortMap;
 import com.aerospike.test.translation.TestPortMapNodeJoin;
 
 /**
- * port-map address translator. Requires the cluster started by test/translation/run_port_map.sh,
- * which also supplies the cluster system properties. {@link TestPortMapNodeJoin} starts node B, so
+ * port-map address translator. Requires the aerospike-client-conformance port-map environment, with
+ * its values file loaded into the environment. {@link TestPortMapNodeJoin} starts node B, so
  * it runs first.
  */
 @RunWith(Suite.class)

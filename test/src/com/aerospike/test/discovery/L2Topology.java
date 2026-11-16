@@ -328,8 +328,8 @@ final class L2Topology {
 	/**
 	 * Wait until every partition of the namespace has an active master in the client's partition
 	 * map and return the master of each partition. Same check as
-	 * {@code PortMapCluster.assertAllPartitionsOwned}, which reads run_port_map.sh's system
-	 * properties on load.
+	 * {@code PortMapCluster.assertAllPartitionsOwned}, which reads the port-map environment's values
+	 * on load.
 	 */
 	static Node[] assertAllPartitionsOwned(String row, AerospikeClient client) throws InterruptedException {
 		Node[] masters = new Node[Node.PARTITIONS];

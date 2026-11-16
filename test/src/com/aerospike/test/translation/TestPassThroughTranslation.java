@@ -42,17 +42,18 @@ import com.aerospike.client.discovery.PassThroughAddressTranslator;
 import com.aerospike.client.discovery.TranslationMissMode;
 import com.aerospike.client.policy.ClientPolicy;
 import com.aerospike.client.policy.WritePolicy;
+import com.aerospike.test.util.TestEnv;
 
 /**
  * {@link PassThroughAddressTranslator} against a two node cluster started by
- * test/translation/run_pass_through.sh. Each node advertises 127.0.0.1 and its own published host
+ * the aerospike-client-conformance pass-through environment. Each node advertises 127.0.0.1 and its own published host
  * port in its alternate access address: one host name, a port per node. Every case seeds node A
- * only. The cluster arrives as system properties:
+ * only. The cluster arrives as the environment variables of its values file:
  * <ul>
- * <li>translation.host: host both nodes are published on</li>
- * <li>translation.nodeA, translation.portA: seed node name and port</li>
- * <li>translation.nodeB, translation.portB: peer node name and port</li>
- * <li>translation.namespace: namespace, replication factor 1</li>
+ * <li>ENV_HOST: host both nodes are published on</li>
+ * <li>NODE_A_NAME, NODE_A_PORT: seed node name and port</li>
+ * <li>NODE_B_NAME, NODE_B_PORT: peer node name and port</li>
+ * <li>ENV_NAMESPACE: namespace, replication factor 1</li>
  * </ul>
  */
 public class TestPassThroughTranslation {
@@ -70,12 +71,12 @@ public class TestPassThroughTranslation {
 
 	@BeforeClass
 	public static void init() {
-		host = required("translation.host");
-		nodeA = required("translation.nodeA");
-		portA = Integer.parseInt(required("translation.portA"));
-		nodeB = required("translation.nodeB");
-		portB = Integer.parseInt(required("translation.portB"));
-		namespace = required("translation.namespace");
+		host = TestEnv.get("ENV_HOST");
+		nodeA = TestEnv.get("NODE_A_NAME");
+		portA = TestEnv.getInt("NODE_A_PORT");
+		nodeB = TestEnv.get("NODE_B_NAME");
+		portB = TestEnv.getInt("NODE_B_PORT");
+		namespace = TestEnv.get("ENV_NAMESPACE");
 
 		Log.setLevel(Log.Level.WARN);
 		Log.setCallback((level, message) -> {
@@ -199,14 +200,5 @@ public class TestPassThroughTranslation {
 		System.out.println("PASS-THROUGH-KEYS " + name + " onA=" + onA + " onB=" + onB);
 		assertTrue(onA > 0);
 		assertTrue(onB > 0);
-	}
-
-	private static String required(String name) {
-		String value = System.getProperty(name);
-
-		if (value == null || value.isEmpty()) {
-			throw new IllegalStateException("System property " + name + " is not set. Run test/translation/run_pass_through.sh");
-		}
-		return value;
 	}
 }
