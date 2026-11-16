@@ -32,7 +32,7 @@ jobs:
     uses: aerospike/aerospike-client-conformance/.github/workflows/l2-proxy.yaml@57c0a2ae457f77a56bdae2675688f66218e8fa89 # main
     with:
       client-repository: ${{ github.repository }}
-      commit: ${{ github.sha }}
+      commit: ${{ github.event.pull_request.head.sha || github.sha }}
       manifest: test/discovery/l5-aws.manifest
       profile: all
       edition: ce
