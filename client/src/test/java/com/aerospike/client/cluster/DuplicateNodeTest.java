@@ -140,9 +140,8 @@ public class DuplicateNodeTest {
 	@Test
 	public void nodeNotInMapIsRemovedWithoutMove() throws Exception {
 		String hostname = hostname("stale", first, second);
-		int port = freePort();
-		server(first, port, X);
-		StubNodeServer dead = server(second, port, X);
+		StubNodeServer dead = pair(X, X)[1];
+		int port = dead.port();
 
 		client = new AerospikeClient(policy(), new Host(hostname, port));
 		Cluster cluster = client.getCluster();
@@ -166,9 +165,8 @@ public class DuplicateNodeTest {
 	@Test
 	public void sameNameRemovalsBothApplied() throws Exception {
 		String hostname = hostname("twice", first, second);
-		int port = freePort();
-		StubNodeServer dead = server(first, port, X);
-		server(second, port, X);
+		StubNodeServer dead = pair(X, X)[0];
+		int port = dead.port();
 
 		client = new AerospikeClient(policy(), new Host(hostname, port));
 		Cluster cluster = client.getCluster();
@@ -212,9 +210,10 @@ public class DuplicateNodeTest {
 		StubNodeServer x = server(local, 0, X);
 		StubNodeServer x2 = server(first, 0, X);
 		int portX = x.port();
-		int portY = freePort();
-		StubNodeServer y1 = server(first, portY, Y);
-		StubNodeServer y2 = server(second, portY, Y);
+		StubNodeServer[] pair = pair(Y, Y);
+		StubNodeServer y1 = pair[0];
+		StubNodeServer y2 = pair[1];
+		int portY = y1.port();
 
 		// X owns every partition, so it is kept while the failing Y does not list it.
 		y1.setOwnsPartitions(false);
@@ -311,20 +310,19 @@ public class DuplicateNodeTest {
 	}
 
 	/**
-	 * Free port on both loopback addresses.
+	 * Servers with the given names on one port of the first and the second address. A port taken on
+	 * the second address is replaced by another.
 	 */
-	private int freePort() throws IOException {
+	private StubNodeServer[] pair(String firstName, String secondName) throws IOException {
 		for (int i = 0; i < 100; i++) {
-			int port;
+			StubNodeServer one = server(first, 0, firstName);
 
-			try (ServerSocket socket = new ServerSocket(0, 1, second)) {
-				port = socket.getLocalPort();
-			}
-
-			try (ServerSocket socket = new ServerSocket(port, 1, first)) {
-				return port;
+			try {
+				return new StubNodeServer[] {one, server(second, one.port(), secondName)};
 			}
 			catch (BindException be) {
+				servers.remove(one);
+				one.close();
 			}
 		}
 		throw new IOException("No port free on both " + first + " and " + second);
