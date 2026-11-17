@@ -81,7 +81,7 @@ public class TestL2Topology extends TestBase {
 	private static final int KEY_COUNT = 300;
 	private static final int MISS_RETRIES = 3;
 	private static final String DNS_BLOCKER = "N-4 needs DISCOVERY_DNS_SERVER, a DNS server on the L2 client " +
-		"network serving SRV records for the endpoint (the discovery-l2 workflow's default profile)";
+		"network serving SRV records for the endpoint (the l2-proxy harness's L2_RUN)";
 	private static final int REFRESH_INTERVAL = 600000;
 	private static final int STARTUP_TIMEOUT = 500;
 	private static final int SLOW_FIRST_MS = 3000;

@@ -37,7 +37,7 @@ import com.aerospike.test.util.Args;
 
 /**
  * Runs the discovery tests. {@link TestL2Topology} runs against the L2 topology built by the
- * l2-proxy harness of aerospike-client-conformance or .github/workflows/discovery-l2.yaml, as does
+ * l2-proxy harness of aerospike-client-conformance, as does
  * {@link TestL2FaultInjection}. {@link TestL2ReachableNode}, {@link TestL2PassThrough},
  * {@link TestL2PortMapRange}, {@link TestL2CnOnlyCertificate}, {@link TestL2LowMtu},
  * {@link TestL2SourcePortRange}, {@link TestL2IdleReset} and {@link TestL2AsyncIdleReset} need the
