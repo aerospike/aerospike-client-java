@@ -200,7 +200,7 @@ public class ThreadModeTest {
 	public void policyDefaultsAndCopy() {
 		ClientPolicy policy = new ClientPolicy();
 		assertEquals(DiscoveryExecutionMode.THREAD, policy.discoveryExecutionMode);
-		assertEquals(2000, policy.discoveryRefreshTimeout);
+		assertEquals(10000, policy.discoveryRefreshTimeout);
 
 		policy.setDiscoveryExecutionMode(DiscoveryExecutionMode.TEND);
 		policy.setDiscoveryRefreshTimeout(700);
@@ -279,6 +279,38 @@ public class ThreadModeTest {
 		}
 		finally {
 			client.close();
+		}
+	}
+
+	@Test
+	public void urgentRequestDuringRefreshIsDropped() throws Exception {
+		CountDownLatch running = new CountDownLatch(1);
+		Provider provider = new Provider(true, (call, p) -> {
+			if (call == 2) {
+				running.countDown();
+				return p.block(B);
+			}
+			return Arrays.asList(A);
+		});
+		SeedRefresher r = refresher(provider, new Host[0], 1000, 1000);
+
+		try {
+			start(r);
+			assertTrue(running.await(10, TimeUnit.SECONDS));
+			r.requestRefresh();
+			provider.release.countDown();
+			await(() -> provider.returned.get() >= 2);
+			Thread.sleep(300);
+			assertEquals(2, provider.calls.get());
+
+			long begin = System.nanoTime();
+			r.requestRefresh();
+			await(() -> provider.calls.get() == 3);
+			long elapsed = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - begin);
+			assertTrue(elapsed + "ms", elapsed < 300);
+		}
+		finally {
+			r.close();
 		}
 	}
 

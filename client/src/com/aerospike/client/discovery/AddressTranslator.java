@@ -31,7 +31,8 @@ public interface AddressTranslator {
 	/**
 	 * Return the host the client should connect to for the advertised endpoint, or
 	 * {@link Optional#empty()} when the translator has no mapping for it (a miss). A present
-	 * value is a hit, even when it equals the advertised host and port. The client applies
+	 * value is a hit, even when it equals the advertised host and port, unless its port is outside
+	 * 1 to 65535, which is a miss. The client applies
 	 * {@link com.aerospike.client.policy.ClientPolicy#translationOnMiss} to a miss. Never return
 	 * null.
 	 * <p>
@@ -58,5 +59,18 @@ public interface AddressTranslator {
 	 * @param viewChange	counter value: 1 for the first change, then 2, 3, ...
 	 */
 	default void onClusterViewChanged(int viewChange) {
+	}
+
+	/**
+	 * Release resources held by the translator. The default does nothing.
+	 * <p>
+	 * Called once after {@link com.aerospike.client.AerospikeClient#close()}, when the cluster tend
+	 * has stopped and no other call to the translator is in progress: on the cluster tend thread as
+	 * it exits, or on the thread that closes the client when no tend thread runs. Also called once
+	 * when client construction fails. {@code AerospikeClient.close()} does not wait for it. An
+	 * exception is logged at warning level and not thrown. A translator instance shared by several
+	 * clients is closed by each of them.
+	 */
+	default void close() {
 	}
 }

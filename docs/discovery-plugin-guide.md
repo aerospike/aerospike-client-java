@@ -8,8 +8,21 @@ A provider returns the seed hosts the client tries when it initializes the clust
 re-seeds because no node is active. A translator rewrites each address a server advertises into
 the address the client connects to.
 
-The Java client runs discovery on the cluster tend thread. It starts no thread for discovery, and
-a provider or translator must not start one either.
+A provider that needs periodic refresh runs in one of two execution modes,
+`ClientPolicy.discoveryExecutionMode` (YAML `discovery.execution_mode`):
+
+| Mode | Where refreshes run | Bound on a refresh |
+| --- | --- | --- |
+| `THREAD` (`thread`, default) | The client starts one daemon thread per client, named `discovery`, that makes every refresh, the first one included, and publishes the seed list. The tend thread only reads the published list and never calls the provider. | `ClientPolicy.discoveryRefreshTimeout` (`discovery.refresh_timeout_ms`, default 10000 ms), measured, not enforced. |
+| `TEND` (`tend`) | No thread is started. The first refresh runs on the thread that constructs the client, later ones on the cluster tend thread. | `ClientPolicy.discoveryTendRefreshDeadline` (`discovery.tend_refresh_deadline_ms`, default 100 ms), measured, not enforced. The provider must return true from `supportsDeadline()`. |
+
+A provider that does not need periodic refresh is called once, on the thread that constructs the
+client, and no thread is started in either mode. A provider or translator must not start a thread
+of its own.
+
+`aws-tags` runs in `THREAD` mode only: a cold EC2 call takes several hundred milliseconds, more than
+a tend can give. `dns` runs in either mode; `static` is called once. A custom provider whose I/O does
+not fit a tend deadline must run in `THREAD` mode.
 
 ## Thread context
 
@@ -17,11 +30,12 @@ a provider or translator must not start one either.
 
 | Method | Thread | When | What it may do |
 | --- | --- | --- | --- |
-| `refreshSeedCandidates(ctx)` | The application thread that constructs the client | Once, at construction, with `ctx.tendIteration` 0, before the cluster is seeded | Return the seed hosts. No deadline is measured here, but the constructor waits for the call, so bound any I/O. |
-| `refreshSeedCandidates(ctx)` | The tend thread | Every `discoveryRefreshInterval / tendInterval` tend iterations (integer division), when `needsPeriodicRefresh()` returned true, until the provider is disabled | Return the seed hosts within `discoveryTendRefreshDeadline`: in-memory work, or I/O bounded by that deadline. |
+| `refreshSeedCandidates(ctx)` | `THREAD` mode with periodic refresh: the `discovery` thread | At construction, with `ctx.tendIteration` 0, before the cluster is seeded; the constructor waits for it at most `discoveryRefreshTimeout`. Then every `discoveryRefreshInterval`, and on an urgent refresh when no node is active | Return the seed hosts within `discoveryRefreshTimeout`. The call may block, for example on a cloud API. |
+| `refreshSeedCandidates(ctx)` | Otherwise: the application thread that constructs the client | Once, at construction, with `ctx.tendIteration` 0, before the cluster is seeded | Return the seed hosts. No deadline is measured here, but the constructor waits for the call, so bound any I/O. |
+| `refreshSeedCandidates(ctx)` | `TEND` mode with periodic refresh: the tend thread | Every `discoveryRefreshInterval / tendInterval` tend iterations (integer division), until the provider is disabled | Return the seed hosts within `discoveryTendRefreshDeadline`: in-memory work, or I/O bounded by that deadline. |
 | `needsPeriodicRefresh()` | The application thread that constructs the client | Once | Return a constant. |
-| `supportsDeadline()` | The application thread that constructs the client | At most once, only when `needsPeriodicRefresh()` returned true | Return a constant. |
-| `close()` | The tend thread as it exits; the thread that calls `AerospikeClient.close()` when no tend thread runs (`forceSingleNode`) | Once per client, after `AerospikeClient.close()` and after the last refresh has returned. `AerospikeClient.close()` does not wait for it | Release resources. An exception is logged at warning level and not thrown. A provider shared by several clients is closed by each of them. |
+| `supportsDeadline()` | The application thread that constructs the client | At most once, only when `needsPeriodicRefresh()` returned true. Optional: the default returns false | Return a constant. |
+| `close()` | The `discovery` thread as it exits, when one runs; otherwise the tend thread as it exits, or the thread that calls `AerospikeClient.close()` when no tend thread runs (`forceSingleNode`) | Once per client, after `AerospikeClient.close()` and after the last refresh has returned. When a `discovery` thread runs, `AerospikeClient.close()` waits at most `discoveryRefreshTimeout` for it to exit; otherwise it does not wait for `close()` | Release resources. An exception is logged at warning level and not thrown. A provider shared by several clients is closed by each of them. |
 
 `AddressTranslator`:
 
@@ -29,6 +43,7 @@ a provider or translator must not start one either.
 | --- | --- | --- | --- |
 | `translate(advertised)` | The application thread that constructs the client, while it seeds the cluster; the tend thread afterwards | For each advertised address the client reads: when it validates a seed, and when it reads a node's peers list after the list changed | In-memory lookup only. No I/O of any kind, including DNS resolution. |
 | `onClusterViewChanged(viewChange)` | The tend thread | When a peers refresh adds or removes a node or changes the address a node advertises; never for the view established at construction. Called only when the translator overrides it | In-memory only, for example dropping cached state. An exception is logged at warning level and does not stop the tend. |
+| `close()` | The tend thread as it exits; the thread that calls `AerospikeClient.close()` when no tend thread runs (`forceSingleNode`); the thread that constructs the client when construction fails | Once per client, after the tend has stopped and every other call to the translator has returned. Optional: the default does nothing. `AerospikeClient.close()` does not wait for it | Release resources. An exception is logged at warning level and not thrown, and the rest of the shutdown continues. A translator shared by several clients is closed by each of them. |
 
 A registered factory (see [Registered names](yaml-config-discovery.md#registered-names)) is called
 once, on the application thread that constructs the client. Build lookup tables there, so that
@@ -38,21 +53,52 @@ once, on the application thread that constructs the client. Build lookup tables 
 `configuredSeeds` (the hosts passed to the client constructor, unmodifiable) and `tendIteration`
 (0 at construction, then the tend count; informational only).
 
-### Periodic refresh and the tend deadline
+### Periodic refresh in thread mode
 
-A provider whose seeds can change returns true from `needsPeriodicRefresh()`. Such a provider must
-also return true from `supportsDeadline()` and bound all of its I/O to
-`ClientPolicy.discoveryTendRefreshDeadline` (default 100 ms), because every refresh after
-construction runs on the tend thread. Client construction fails when:
+A provider whose seeds can change returns true from `needsPeriodicRefresh()`. In `THREAD` mode,
+the default, the `discovery` thread refreshes it every `discoveryRefreshInterval`. Client
+construction fails when:
 
 | Case | Error |
 | --- | --- |
-| `needsPeriodicRefresh()` is true and `supportsDeadline()` is false | `A seed candidate provider that needs periodic refresh must support a deadline` |
+| `discoveryRefreshInterval` is less than `tendInterval` | `Discovery refresh interval ... must be greater or equal to the tend interval ...` |
+| `discoveryRefreshTimeout` is 0 or less | `Invalid discovery refresh timeout: ...` |
+| The `dns` or `aws-tags` provider timeout exceeds `discoveryRefreshTimeout` | `DNS seed provider timeout 12000 must be less or equal to the discovery refresh timeout 10000` |
+
+The refresh timeout is measured, not enforced: the client never interrupts a call. A call that
+returns later than `discoveryRefreshTimeout` logs the warning
+`Seed candidate refresh took 10400ms, exceeding refresh timeout 10000ms. Overruns: 1` and its
+result is still applied when the call succeeds. There is no limit on the number of overruns. A
+call that throws is logged as `Seed candidate refresh failed: <message>` and the previous seed
+list is kept.
+
+Client construction waits for the first refresh at most `discoveryRefreshTimeout`. When it has not
+returned by then, the client continues with the seeds the merge policy leaves, or fails with
+`SEED_DISCOVERY_FAILED` (-27) when none are left; a first refresh that returns later is applied for
+later re-seeds.
+
+When a tend finds no active node, it re-seeds from the seed list it already has and asks the
+`discovery` thread for an urgent refresh, without waiting for it. The request wakes the thread when
+it is waiting for the next interval. It is honored at most once per `discoveryRefreshInterval`, and
+does nothing when a refresh is already running. A refresh that the request starts is used by later
+re-seeds, never by the tend that asked for it.
+
+### Periodic refresh in tend mode
+
+In `TEND` mode, a provider that needs periodic refresh must also return true from
+`supportsDeadline()` and bound all of its I/O to `ClientPolicy.discoveryTendRefreshDeadline`
+(default 100 ms), because every refresh after construction runs on the tend thread. Client
+construction fails when:
+
+| Case | Error |
+| --- | --- |
+| `needsPeriodicRefresh()` is true and `supportsDeadline()` is false | `A seed candidate provider that needs periodic refresh must support a deadline in discovery execution mode tend` |
 | `discoveryRefreshInterval` is less than `tendInterval` | `Discovery refresh interval ... must be greater or equal to the tend interval ...` |
 | `discoveryTendRefreshDeadline` is 0 or less, or greater than `tendInterval / 2` | `Invalid discovery tend refresh deadline: ...` |
 
 These checks apply only to a provider that needs periodic refresh. A provider that returns false
-from `needsPeriodicRefresh()` is called once, at construction, and never on the tend thread.
+from `needsPeriodicRefresh()` is called once, at construction, and never on the tend thread. In
+`TEND` mode no urgent refresh is made when no node is active.
 
 The deadline is measured, not preempted: the client times the call after it returns and never
 interrupts it, so an overrunning call blocks the tend for its full duration.
@@ -74,12 +120,18 @@ Returned hosts are used as seeds, so they must carry the TLS name when TLS is en
 name is defaulted as for the seeds passed to the constructor: the cluster name when
 `ClientPolicy.clusterName` is set, otherwise the host name.
 
+A returned host with a port outside 1 to 65535 is dropped from the result and logged at warning
+level, for example
+`Seed candidate provider <name> returned host 10.0.0.1 with port 0 outside 1-65535. Host dropped`.
+The rest of the result is used. This applies to the built-in providers too.
+
 ## Built-in providers
 
 | Provider | Periodic refresh | Deadline |
 | --- | --- | --- |
 | `static` (`StaticSeedCandidateProvider`) | No. `needsPeriodicRefresh()` returns false and the provider does no I/O; it is called once, at construction. | None applies. |
-| `dns` (`DnsSeedCandidateProvider`) | Yes. `needsPeriodicRefresh()` and `supportsDeadline()` return true, and all I/O of one refresh is bounded by its `timeout` (`dns.timeout_ms`, default 80 ms). | `timeout` must not exceed `discoveryTendRefreshDeadline`. This is checked at client construction, which fails otherwise: `DNS seed provider timeout 150 must be less or equal to the discovery tend refresh deadline 100`. |
+| `dns` (`DnsSeedCandidateProvider`) | Yes, in either mode. `needsPeriodicRefresh()` and `supportsDeadline()` return true, and all I/O of one refresh is bounded by its `timeout` (`dns.timeout_ms`, default 80 ms). | `timeout` must not exceed `discoveryRefreshTimeout` in `THREAD` mode or `discoveryTendRefreshDeadline` in `TEND` mode. This is checked at client construction, which fails otherwise: `DNS seed provider timeout 150 must be less or equal to the discovery tend refresh deadline 100`. |
+| `aws-tags` (`AwsEc2TagSeedCandidateProvider`) | Yes, in `THREAD` mode only. `needsPeriodicRefresh()` returns true and `supportsDeadline()` returns false, so client construction fails in `TEND` mode. All I/O of one refresh is bounded by its `timeout` (`aws.timeout_ms`, default 2000 ms), and of the first by `initTimeout` (`aws.init_timeout_ms`, default 10000 ms). | `timeout` must not exceed `discoveryRefreshTimeout`. This is checked at client construction, which fails otherwise: `AWS EC2 seed provider timeout 12000 must be less or equal to the discovery refresh timeout 10000`. |
 
 When no provider is configured, the client uses `StaticSeedCandidateProvider` over the hosts
 passed to its constructor.
@@ -95,6 +147,8 @@ passed to its constructor.
   (`TRANSLATION_MISS`, -25) and, for a peer, logs a warning and retries it on the next tend. Do not
   implement either behaviour in the translator.
 - Never return null. The client treats null as an error: `Address translator <name> returned null for <endpoint>`.
+- Return a port from 1 to 65535. A returned host with a port outside that range is a miss, and
+  `translation.on_miss` applies.
 
 `translate()` and `onClusterViewChanged()` run on the tend thread (`translate()` also on the
 constructing thread while the cluster is seeded) and must work in memory only, with no I/O of
@@ -160,15 +214,17 @@ occurrence. The policy orders seed attempts only; it does not change node identi
 | Policy | At initialization | On a periodic refresh | On re-seed with zero active nodes | Use when |
 | --- | --- | --- | --- | --- |
 | `MERGE` (`merge`, default) | Static seeds, then discovered seeds. | The list becomes the static seeds, then the discovered seeds. An empty result leaves only the static seeds. | Tries the static seeds, then the discovered seeds of the last refresh that was applied, or of initialization before the first one. | Moving an existing deployment to discovery: the static seeds stay a known-good endpoint while discovery catches up. |
-| `REPLACE` (`replace`) | Static seeds, then discovered seeds, as `MERGE`. | The discovered seeds replace the list, and the static seeds are no longer tried. An empty result keeps the previous list. | Tries the discovered seeds of the last refresh that returned hosts; before the first one, the list from initialization. | A new cloud deployment where the static seeds only bootstrap the client, for example a seed name that is retired once discovery works. |
+| `REPLACE` (`replace`) | Static seeds, then discovered seeds, as `MERGE`. An empty result leaves only the static seeds. | The discovered seeds replace the list, and the static seeds are no longer tried. An empty result empties the list. | Tries the discovered seeds of the last refresh that was applied, none when it returned none; before the first one, the list from initialization. | A new cloud deployment where the static seeds only bootstrap the client, for example a seed name that is retired once discovery works. |
 | `DISCOVERY_ONLY` (`discovery_only`) | Discovered seeds only; the static seeds when discovery returns none. | The list becomes the discovered seeds; the static seeds when the result is empty. | Tries the seeds of the last refresh that was applied: discovered seeds, or the static seeds when that refresh returned none. | The static seeds are an emergency fallback only, for example a fixed address of a standby site that should be tried only when discovery comes back empty. |
 
 For every policy:
 
 - The seed list is rebuilt only when the provider is called. A re-seed does not call the provider:
   it tries the current seed list in order.
-- A refresh that throws or overruns the deadline keeps the previous list. A refresh whose merged
-  list is empty keeps the previous list.
+- A refresh that throws keeps the previous list, as does a refresh that overruns the tend
+  deadline in `TEND` mode. A refresh that returns an empty list is applied like any other result,
+  so the list can become empty: under `REPLACE`, or under `MERGE` and `DISCOVERY_ONLY` when no
+  static seeds were passed to the constructor.
 - A provider that throws at initialization counts as an empty result. When the merged list is
   then empty, construction fails with `SEED_DISCOVERY_FAILED` (-27).
 - After construction, the client appends the addresses of the nodes it found to the seed list.
@@ -176,6 +232,32 @@ For every policy:
 - When the provider is disabled after three consecutive overruns, the list from initialization is
   restored and kept for the life of the client.
 - Without a configured provider, every policy yields the static seeds.
+
+## DNS lookups
+
+The client resolves seed, peer and node hostnames with the platform resolver
+(`InetAddress.getAllByName`), so `/etc/hosts` and the `resolv.conf` search list apply. The client
+does not bound a lookup: it starts no thread for one and has no timeout of its own, so a slow
+resolver holds up the tend, or the constructor while it seeds, for as long as the platform waits.
+
+Bound lookups in the resolver configuration:
+
+- On a host, set `options timeout:` (seconds per attempt) and `attempts:` in `/etc/resolv.conf`,
+  for example `options timeout:1 attempts:2`.
+- On Kubernetes, set the same options in the pod's `dnsConfig.options`:
+
+```
+dnsConfig:
+  options:
+    - name: timeout
+      value: "1"
+    - name: attempts
+      value: "2"
+```
+
+The JVM caches successful lookups for `networkaddress.cache.ttl` seconds (a security property), so
+a cached hostname is not looked up again until the entry expires, and a change of address is seen
+only after that.
 
 ## Deployment limits
 
@@ -202,8 +284,8 @@ receives the keys of the YAML block other than `provider` as its options map, se
 
 The provider returns a host list that the application updates through `setHosts()`, for example
 from a service registry callback it already runs. `refreshSeedCandidates()` only reads a field, so
-the provider returns true from both `needsPeriodicRefresh()` and `supportsDeadline()`, does no I/O
-on the tend thread and starts no thread:
+the provider returns true from both `needsPeriodicRefresh()` and `supportsDeadline()`, runs in
+either execution mode, does no I/O and starts no thread:
 
 ```java
 static final class HostListSeedProvider implements SeedCandidateProvider {

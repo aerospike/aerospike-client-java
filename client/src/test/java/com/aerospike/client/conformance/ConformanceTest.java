@@ -99,7 +99,6 @@ public class ConformanceTest {
 	private static final String BLOCKED = "blocked";
 	private static final Set<String> RESULTS = new HashSet<>(Arrays.asList(PASS, FAIL, UNSUPPORTED, BLOCKED));
 
-	private static final String FIXTURE_SET_VERSION = "1.1.0";
 	private static final List<String> FIXTURE_ROOTS = Arrays.asList("discovery", "tls");
 	private static final String DECLARED = "/conformance/java-declared.yaml";
 	private static final Path REPORT = Paths.get("target", "conformance-report.json");
@@ -119,7 +118,6 @@ public class ConformanceTest {
 
 	private static final List<Map<String,Object>> reportRows = Collections.synchronizedList(new ArrayList<>());
 	private static Path dir;
-	private static String fixtureSetVersion;
 	private static Process fixtureServer;
 	private static int fixtureDnsPort;
 	private static int fixtureHttpPort;
@@ -129,7 +127,7 @@ public class ConformanceTest {
 		String dirProperty = System.getProperty("conformance.dir");
 
 		if (dirProperty == null || dirProperty.isEmpty()) {
-			throw new IllegalStateException("Set -Dconformance.dir to an aerospike-client-conformance checkout or release");
+			throw new IllegalStateException("Set -Dconformance.dir to an aerospike-client-conformance checkout");
 		}
 		dir = Paths.get(dirProperty).toAbsolutePath().normalize();
 
@@ -137,15 +135,8 @@ public class ConformanceTest {
 			throw new IllegalStateException("Conformance directory not found: " + dir);
 		}
 
-		if (! Files.isRegularFile(dir.resolve("VERSION"))) {
-			throw new IllegalStateException("Not a conformance fixture set, VERSION not found: " + dir);
-		}
-
-		fixtureSetVersion = new String(Files.readAllBytes(dir.resolve("VERSION")), StandardCharsets.UTF_8).trim();
-
-		if (! FIXTURE_SET_VERSION.equals(fixtureSetVersion)) {
-			throw new IllegalStateException("Conformance fixture set " + fixtureSetVersion + " found, " +
-				FIXTURE_SET_VERSION + " expected: check out that release or update the declarations");
+		if (! Files.isRegularFile(dir.resolve("schema/fixture.schema.json"))) {
+			throw new IllegalStateException("Not an aerospike-client-conformance checkout, schema/fixture.schema.json not found: " + dir);
 		}
 
 		List<Path> files = new ArrayList<>();
@@ -242,7 +233,6 @@ public class ConformanceTest {
 		Map<String,Object> report = new LinkedHashMap<>();
 		report.put("runtime", "java");
 		report.put("clientVersion", clientVersion());
-		report.put("fixtureSetVersion", fixtureSetVersion);
 		report.put("counts", counts);
 		report.put("rows", sorted);
 

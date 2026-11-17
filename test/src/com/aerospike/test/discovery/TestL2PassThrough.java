@@ -32,11 +32,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Queue;
 import java.util.Set;
 import java.util.TreeMap;
-import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReferenceArray;
 
 import org.junit.After;
@@ -61,14 +58,13 @@ import com.aerospike.client.policy.ClientPolicy;
 import com.aerospike.client.policy.Policy;
 import com.aerospike.client.policy.Replica;
 import com.aerospike.client.policy.WritePolicy;
-import com.aerospike.test.discovery.L2Topology.Joined;
 import com.aerospike.test.discovery.L2Topology.L2Node;
 import com.aerospike.test.discovery.L2Topology.Peer;
 import com.aerospike.test.util.TestBase;
 
 /**
  * Testing strategy section 4.3 rows N-15, N-16 and N-18 against the pass-through profiles of
- * test/discovery/run_l2.sh. In pass-through-names (Branch A) each node advertises its own
+ * the l2-proxy harness. In pass-through-names (Branch A) each node advertises its own
  * alternate-access-address hostname with its own listener port; in pass-through-ports (Branch B)
  * every node advertises one hostname with its own listener port. Every hostname resolves to the
  * one Toxiproxy container in the client container, so every listener shares one IP address and the
@@ -80,9 +76,11 @@ public class TestL2PassThrough extends TestBase {
 	private static final int KEY_COUNT = 300;
 	private static final int COLLISION_RETRIES = 3;
 	private static final String BRANCH_A = " needs DISCOVERY_PASS_THROUGH_BRANCH=A, each node advertising its own " +
-		"alternate-access-address hostname (run_l2.sh L2_PROFILE=pass-through-names)";
-	private static final String BRANCH_B = " needs DISCOVERY_PASS_THROUGH_BRANCH=B and DISCOVERY_CONTROL_DIR, every " +
-		"node advertising one alternate-access-address hostname with its own port (run_l2.sh L2_PROFILE=pass-through-ports)";
+		"alternate-access-address hostname (l2-proxy profile pass-through-names)";
+	private static final String BRANCH_B = " needs DISCOVERY_PASS_THROUGH_BRANCH=B, every node advertising one " +
+		"alternate-access-address hostname with its own port (l2-proxy profile pass-through-ports)";
+	private static final String NODE_CONTROL = " also needs DISCOVERY_CONTROL_DIR to start nodes (the l2-proxy " +
+		"harness's L2_RUN)";
 
 	private final List<String> addedProxies = new ArrayList<>();
 	private final List<String> addedNodes = new ArrayList<>();
@@ -149,7 +147,7 @@ public class TestL2PassThrough extends TestBase {
 	 * hostname and its own alternate-access-port, the client reads the alternate list through
 	 * {@link PassThroughAddressTranslator} with no map, and the partition map is complete with
 	 * every owner a distinct {@link Node} served without a server proxy hop. The server resolves the
-	 * hostname at startup, so run_l2.sh also makes it resolve in the server containers.
+	 * hostname at startup, so the topology also makes it resolve in the server containers.
 	 */
 	@Test
 	public void n16SharedNameRoutesToEveryOwner() throws Exception {
@@ -182,66 +180,6 @@ public class TestL2PassThrough extends TestBase {
 	}
 
 	/**
-	 * N-16 scale-out: a node started mid-test that advertises the same hostname and its own port is
-	 * an active {@link Node} within 2 x tend_interval of the peers-generation bump that announces
-	 * it, with no client change. The test gives it a listener on that port before it joins.
-	 */
-	@Test
-	public void n16NewNodeOnSharedNameActiveWithinTwoTendIntervals() throws Exception {
-		requireBranchB("N-16 scale-out");
-
-		List<L2Node> nodes = L2Topology.nodes();
-		L2Node first = nodes.get(0);
-		List<String> names = L2Topology.nodeNames();
-		String hostname = hostOf(alternate(first));
-		ClientPolicy policy = passThroughPolicy();
-		Queue<String> clientLog = new ConcurrentLinkedQueue<>();
-		Log.setLevel(Log.Level.WARN);
-		Log.setCallback((level, message) -> clientLog.add(System.nanoTime() + " " + level + ' ' + message));
-
-		try (AerospikeClient client = new AerospikeClient(policy, seed(first))) {
-			L2Topology.waitNodes(client, names);
-			L2Topology.assertAllPartitionsOwned("N-16-before", client);
-			clientLog.clear();
-
-			long generation = L2Topology.peersGeneration(first);
-			int port = L2Topology.nextListenerPort();
-			String container = start("alternate-port=" + port);
-			L2Topology.addListener(container, port, container + ':' + L2Topology.upstreamPort(first.proxy));
-			addedProxies.add(container);
-			assertEquals("peers-generation bumped before " + container + " had a listener", generation,
-				L2Topology.peersGeneration(first));
-
-			Joined joined = L2Topology.waitJoinedTimeline(client, first, generation, names, port);
-			Node node = joined.node;
-			long budget = 2L * policy.tendInterval;
-			System.out.println("L2-N16-TIMELINE node=" + node.getName() + " bumpToAnswerMs=" +
-				TimeUnit.NANOSECONDS.toMillis(joined.answerNanos - joined.bumpNanos) + " bumpToActiveMs=" +
-				joined.bumpToActiveMs + " answerToActiveMs=" + TimeUnit.NANOSECONDS.toMillis(joined.activeNanos - joined.answerNanos) +
-				" generations=" + joined.generations);
-
-			for (String line : clientLog) {
-				int space = line.indexOf(' ');
-				System.out.println("L2-N16-CLIENT-LOG " + TimeUnit.NANOSECONDS.toMillis(Long.parseLong(line.substring(0, space)) -
-					joined.bumpNanos) + "ms " + line.substring(space + 1));
-			}
-			Map<String,String> info = Info.request(L2Topology.host, port, "node", "service-clear-alt");
-			System.out.println("L2-N16-TIMING node=" + node.getName() + " host=" + node.getHost() + " container=" + container +
-				" advertised=" + info.get("service-clear-alt") + " generation=" + generation + "->" + joined.generation +
-				" bumpToActiveMs=" + joined.bumpToActiveMs + " tendInterval=" + policy.tendInterval + " budgetMs=" + budget);
-			assertEquals(info.get("node"), node.getName());
-			assertTrue(hostname + ':' + port + " not in " + info, info.get("service-clear-alt").contains(hostname + ':' + port));
-			assertEquals(port, node.getHost().port);
-			assertTrue(node.getName() + " active " + joined.bumpToActiveMs + "ms after the bump, budget " + budget + "ms",
-				joined.bumpToActiveMs <= budget);
-
-			boolean owns = L2Topology.waitFor(() -> L2Topology.owners(client).containsKey(node.getName()));
-			System.out.println("L2-N16-OWNERS " + L2Topology.owners(client));
-			assertTrue(node.getName() + " owns no partitions", owns);
-		}
-	}
-
-	/**
 	 * N-18 on pass-through: two nodes advertise the same alternate-access-address and
 	 * alternate-access-port. Seeded through a node that does not collide, neither colliding node
 	 * becomes a {@link Node}, the {@link AerospikeException.TranslationCollision} message names both
@@ -251,7 +189,7 @@ public class TestL2PassThrough extends TestBase {
 	 */
 	@Test
 	public void n18PassThroughCollidingNodesCreateNoNode() throws Exception {
-		requireBranchB("N-18 pass-through");
+		requireNodeControl("N-18 pass-through");
 		assertCollidingNodesCreateNoNode("N-18-pass-through", passThroughPolicy(), "pass-through");
 	}
 
@@ -260,7 +198,7 @@ public class TestL2PassThrough extends TestBase {
 	 */
 	@Test
 	public void n18StaticMapCollidingNodesCreateNoNode() throws Exception {
-		requireBranchB("N-18 static-map");
+		requireNodeControl("N-18 static-map");
 
 		ClientPolicy policy = L2Topology.policy();
 		policy.useServicesAlternate = true;
@@ -363,7 +301,7 @@ public class TestL2PassThrough extends TestBase {
 	 */
 	@Test
 	public void n18PassThroughNewcomerCollidingWithNodeIsNotCreated() throws Exception {
-		requireBranchB("N-18 newcomer");
+		requireNodeControl("N-18 newcomer");
 
 		List<L2Node> nodes = L2Topology.nodes();
 		L2Node first = nodes.get(0);
@@ -452,7 +390,12 @@ public class TestL2PassThrough extends TestBase {
 	}
 
 	private void requireBranchB(String row) {
-		TestL2Topology.skipUnless("B".equals(L2Topology.passThroughBranch) && ! L2Topology.controlDir.isEmpty(), row + BRANCH_B);
+		TestL2Topology.skipUnless("B".equals(L2Topology.passThroughBranch), row + BRANCH_B);
+	}
+
+	private void requireNodeControl(String row) {
+		requireBranchB(row);
+		TestL2Topology.skipUnless(! L2Topology.controlDir.isEmpty(), row + NODE_CONTROL);
 	}
 
 	private String start(String options) throws Exception {

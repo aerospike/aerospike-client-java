@@ -18,15 +18,24 @@ package com.aerospike.test.discovery;
 
 import java.io.BufferedReader;
 import java.io.FileDescriptor;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.PrintStream;
 import java.io.UnsupportedEncodingException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
-import java.net.Socket;
+import java.net.UnknownHostException;
+import java.nio.channels.SelectionKey;
+import java.nio.channels.Selector;
+import java.nio.channels.SocketChannel;
 import java.nio.charset.StandardCharsets;
+import java.security.GeneralSecurityException;
+import java.security.KeyStore;
+import java.security.cert.Certificate;
+import java.security.cert.CertificateFactory;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -45,6 +54,10 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.LongFunction;
+
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.TrustManagerFactory;
 
 import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.AerospikeException;
@@ -63,29 +76,32 @@ import com.aerospike.client.discovery.TranslationMissMode;
 import com.aerospike.client.policy.ClientPolicy;
 import com.aerospike.client.policy.InfoPolicy;
 import com.aerospike.client.policy.Policy;
+import com.aerospike.client.policy.TlsPolicy;
 import com.aerospike.client.policy.WritePolicy;
 
 /**
  * Driver for the l5-aws harness in aerospike-client-conformance (l5-aws/DRIVER.md there, contract
- * version 1): builds a client from the flags, runs a retrying load, and writes what the client sees
+ * version 5): builds a client from the flags, runs a retrying load, and writes what the client sees
  * to stdout as JSON lines while it answers the commands it reads from stdin.
  */
 public final class L5Driver {
-	static final int CONTRACT = 1;
+	static final int CONTRACT = 5;
 	static final long POLL_MS = 10;
 	static final long HEARTBEAT_MS = 100;
 	static final long REACH_INTERVAL_MS = 500;
 	static final int REACH_TIMEOUT_MS = 1000;
 	static final long PROBE_INTERVAL_MS = 10;
 	static final int PROBE_CONNECT_MS = 50;
+	static final int SERVING_ROUNDS = 3;
 	static final long WATCH_BOUND_MS = 60000;
 	static final long QUIT_MS = 30000;
 	static final int KEY_SEARCH_LIMIT = 1000000;
+	static final String[] NODE_EVENTS = {"Add node", "Remove node", "Replace node", "Move node"};
 
 	private static final long START = System.nanoTime();
 	private static final String USAGE = "usage: L5Driver --seed HOST:PORT --shape pass-through|port-map " +
 		"[--port-map NODE=HOST:PORT,...] [--on-miss strict|pass-through] [--user USER] --tend-interval MS " +
-		"--timeout MS --namespace NS --set SET [--workers N] [--keys N]";
+		"--timeout MS --namespace NS --set SET [--workers N] [--keys N] [--tls-name NAME [--tls-ca-file PATH]]";
 
 	public static void main(String[] args) {
 		Options options;
@@ -101,9 +117,12 @@ public final class L5Driver {
 		}
 
 		Output out = new Output();
-		Log.setLevel(Log.Level.WARN);
-		Log.setCallback((level, message) ->
-			out.write(new Json("log", now()).put("level", level.toString()).put("message", message).toString()));
+		Log.setLevel(Log.Level.INFO);
+		Log.setCallback((level, message) -> {
+			if (forward(level, message)) {
+				out.write(t -> new Json("log", t).put("level", level.toString()).put("message", message).toString());
+			}
+		});
 
 		AerospikeClient client;
 
@@ -125,6 +144,35 @@ public final class L5Driver {
 
 	static String message(Throwable e) {
 		return e.getMessage() != null ? e.getMessage() : e.toString();
+	}
+
+	/**
+	 * Forward WARN and above, and the INFO lines that add, remove, replace or move a node.
+	 */
+	static boolean forward(Log.Level level, String message) {
+		if (level.compareTo(Log.Level.WARN) <= 0) {
+			return true;
+		}
+
+		if (level != Log.Level.INFO) {
+			return false;
+		}
+
+		for (String event : NODE_EVENTS) {
+			if (message.startsWith(event)) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	static String ready(long t, long epochMs, String clientVersion, String shape) {
+		return new Json("ready", t).put("contract", CONTRACT).put("epochMs", epochMs).put("client", "java")
+			.put("clientVersion", clientVersion).put("shape", shape).toString();
+	}
+
+	static String failure(long t, long startedAt, String message) {
+		return new Json("failure", t).put("startedAt", startedAt).put("message", message).toString();
 	}
 
 	private final Options options;
@@ -166,8 +214,7 @@ public final class L5Driver {
 	}
 
 	private void ready() {
-		out.open(new Json("ready", now()).put("contract", CONTRACT).put("epochMs", System.currentTimeMillis())
-			.put("client", "java").put("clientVersion", client.getVersion()).put("shape", options.shape).toString());
+		out.open(t -> ready(t, System.currentTimeMillis(), client.getVersion(), options.shape));
 		routingPoll.scheduleAtFixedRate(routing::poll, 0, POLL_MS, TimeUnit.MILLISECONDS);
 	}
 
@@ -187,15 +234,43 @@ public final class L5Driver {
 			}
 			return true;
 
+		case "large":
+			Large large = words.length == 4 ? Large.of(words[1], words[2], words[3]) : null;
+
+			if (large == null) {
+				error("malformed command: " + line);
+			}
+			else {
+				large.run(options.namespace, options.set, new Large.Store() {
+					@Override
+					public void put(Key key, String value) {
+						client.put(options.writePolicy(), key, new Bin("v", value));
+					}
+
+					@Override
+					public Object get(Key key) {
+						Record record = client.get(options.readPolicy(), key);
+						return record == null ? null : record.getValue("v");
+					}
+				});
+
+				synchronized (out) {
+					out.write(large.reply(now()));
+				}
+			}
+			return true;
+
 		case "reset":
 			if (words.length != 1) {
 				error("malformed command: " + line);
 			}
 			else {
-				long t = now();
-				load.reset();
-				routing.reset(t);
-				out.write(new Json("reset", t).toString());
+				synchronized (out) {
+					long t = now();
+					load.reset();
+					routing.reset(t);
+					out.write(new Json("reset", t).toString());
+				}
 			}
 			return true;
 
@@ -231,7 +306,7 @@ public final class L5Driver {
 	}
 
 	private void error(String message) {
-		out.write(new Json("error", now()).put("message", message).toString());
+		out.write(t -> new Json("error", t).put("message", message).toString());
 	}
 
 	/**
@@ -316,9 +391,11 @@ public final class L5Driver {
 				firstFailure = firstFailure != null ? firstFailure : "partition " + partition + " get: " + message(e);
 			}
 		}
-		out.write(new Json("served", now()).put("step", step).put("partitions", Node.PARTITIONS).put("written", written)
-			.put("read", read).put("mismatched", mismatched).put("failures", failures).put("firstFailure", firstFailure)
-			.put("elapsedMs", TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start)).toString());
+		synchronized (out) {
+			out.write(new Json("served", now()).put("step", step).put("partitions", Node.PARTITIONS).put("written", written)
+				.put("read", read).put("mismatched", mismatched).put("failures", failures).put("firstFailure", firstFailure)
+				.put("elapsedMs", TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start)).toString());
+		}
 	}
 
 	private void checkReachable() {
@@ -446,33 +523,35 @@ public final class L5Driver {
 
 		void poll() {
 			try {
-				long t = now();
-				Node[] nodes = client.getNodes();
-				Arrays.sort(nodes, Comparator.comparing(Node::getName));
-				Map<String,Node> byName = nodesByName(nodes);
-				Node[] masters = new Node[Node.PARTITIONS];
-				int unowned = unowned(byName, masters);
-				long longest = longestUnowned(t, unowned);
-				StringBuilder signature = new StringBuilder().append(unowned);
+				synchronized (out) {
+					long t = now();
+					Node[] nodes = client.getNodes();
+					Arrays.sort(nodes, Comparator.comparing(Node::getName));
+					Map<String,Node> byName = nodesByName(nodes);
+					Node[] masters = new Node[Node.PARTITIONS];
+					int unowned = unowned(byName, masters);
+					long longest = longestUnowned(t, unowned);
+					StringBuilder signature = new StringBuilder().append(unowned);
 
-				for (Node node : nodes) {
-					Host h = node.getHost();
-					signature.append('|').append(node.getName()).append(',').append(h.name).append(',').append(h.port)
-						.append(',').append(node.isActive());
-				}
-				String current = signature.toString();
+					for (Node node : nodes) {
+						Host h = node.getHost();
+						signature.append('|').append(node.getName()).append(',').append(h.name).append(',').append(h.port)
+							.append(',').append(node.isActive());
+					}
+					String current = signature.toString();
 
-				if (last == null) {
-					nextHeartbeat = t;
-				}
-				else if (! current.equals(last)) {
-					snapshot("change", t, nodes, masters, unowned, longest);
-				}
-				last = current;
+					if (last == null) {
+						nextHeartbeat = t;
+					}
+					else if (! current.equals(last)) {
+						snapshot("change", t, nodes, masters, unowned, longest);
+					}
+					last = current;
 
-				if (t >= nextHeartbeat) {
-					snapshot("heartbeat", t, nodes, masters, unowned, longest);
-					nextHeartbeat = Math.max(nextHeartbeat + HEARTBEAT_MS, t + 1);
+					if (t >= nextHeartbeat) {
+						snapshot("heartbeat", t, nodes, masters, unowned, longest);
+						nextHeartbeat = Math.max(nextHeartbeat + HEARTBEAT_MS, t + 1);
+					}
 				}
 			}
 			catch (RuntimeException e) {
@@ -529,25 +608,25 @@ public final class L5Driver {
 	}
 
 	/**
-	 * Probes {@code HOST:PORT} every {@link #PROBE_INTERVAL_MS} until it accepts a connection, then
-	 * checks every {@link #PROBE_INTERVAL_MS} whether the node is usable, and replies.
+	 * Probes every address of {@code HOST:PORT} every {@link #PROBE_INTERVAL_MS} until all accept a
+	 * connection in {@link #SERVING_ROUNDS} consecutive rounds, then checks every
+	 * {@link #PROBE_INTERVAL_MS} whether the node is usable, and replies.
 	 */
 	private final class Watch {
 		private final String address;
-		private final Host host;
 		private final String node;
+		private final Probe probe;
 		private final ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor(daemon("l5-watch"));
-		private Long servingAt;
-		private Long lastClosedAt;
+		private volatile boolean done;
 
 		Watch(String address, Host host, String node) {
 			this.address = address;
-			this.host = host;
 			this.node = node;
+			this.probe = new Probe(host.name, host.port, InetAddress::getAllByName);
 		}
 
 		void start() {
-			executor.scheduleAtFixedRate(this::tick, 0, PROBE_INTERVAL_MS, TimeUnit.MILLISECONDS);
+			executor.execute(this::tick);
 		}
 
 		void stop(long deadline) throws InterruptedException {
@@ -556,38 +635,32 @@ public final class L5Driver {
 		}
 
 		private void tick() {
+			long begin = System.nanoTime();
+
 			try {
-				if (servingAt == null) {
+				if (probe.servingAt == null) {
+					probe.round(now());
+				}
+
+				if (probe.servingAt != null) {
 					long t = now();
 
-					if (! connects()) {
-						lastClosedAt = t;
-						return;
+					if (usable()) {
+						reply(t);
 					}
-					servingAt = t;
-				}
-				long t = now();
-
-				if (usable()) {
-					reply(t);
-				}
-				else if (t - servingAt >= WATCH_BOUND_MS) {
-					reply(null);
+					else if (t - probe.servingAt >= WATCH_BOUND_MS) {
+						reply(null);
+					}
 				}
 			}
 			catch (RuntimeException e) {
 				error("watch " + address + ' ' + node + ": " + message(e));
 				finish();
 			}
-		}
 
-		private boolean connects() {
-			try (Socket socket = new Socket()) {
-				socket.connect(new InetSocketAddress(host.name, host.port), PROBE_CONNECT_MS);
-				return true;
-			}
-			catch (IOException e) {
-				return false;
+			if (! done) {
+				long delay = TimeUnit.MILLISECONDS.toNanos(PROBE_INTERVAL_MS) - (System.nanoTime() - begin);
+				executor.schedule(this::tick, Math.max(0, delay), TimeUnit.NANOSECONDS);
 			}
 		}
 
@@ -598,15 +671,256 @@ public final class L5Driver {
 		}
 
 		private void reply(Long usableAt) {
-			out.write(new Json("watch", now()).put("address", address).put("node", node).put("servingAt", servingAt)
-				.put("lastClosedAt", lastClosedAt).put("usableAt", usableAt)
-				.put("usableMs", usableAt == null ? null : usableAt - servingAt).put("ownershipChecked", true).toString());
+			out.write(t -> new Json("watch", t).put("address", address).put("node", node).put("servingAt", probe.servingAt)
+				.put("lastClosedAt", probe.lastClosedAt).raw("addresses", probe.addresses()).put("usableAt", usableAt)
+				.put("usableMs", usableAt == null ? null : usableAt - probe.servingAt).put("ownershipChecked", true).toString());
 			finish();
 		}
 
 		private void finish() {
+			done = true;
 			executor.shutdown();
 			watch.compareAndSet(this, null);
+		}
+	}
+
+	/**
+	 * The watch probe. Each round resolves the host and opens a connection to every address it
+	 * resolves to, all at once, each within {@link #PROBE_CONNECT_MS}, and closes them.
+	 */
+	static final class Probe {
+		interface Resolver {
+			InetAddress[] resolve(String host) throws UnknownHostException;
+		}
+
+		private final String host;
+		private final int port;
+		private final Resolver resolver;
+		private final Map<InetAddress,Long> firstConnectedAt = new LinkedHashMap<>();
+		private int servingRounds;
+		private long servingStart;
+		volatile Long servingAt;
+		volatile Long lastClosedAt;
+
+		Probe(String host, int port, Resolver resolver) {
+			this.host = host;
+			this.port = port;
+			this.resolver = resolver;
+		}
+
+		/**
+		 * Run the round that starts at {@code t}.
+		 */
+		void round(long t) {
+			if (connectAll(t)) {
+				if (servingRounds++ == 0) {
+					servingStart = t;
+				}
+
+				if (servingRounds == SERVING_ROUNDS) {
+					servingAt = servingStart;
+				}
+			}
+			else {
+				servingRounds = 0;
+				lastClosedAt = t;
+			}
+		}
+
+		synchronized String addresses() {
+			StringBuilder sb = new StringBuilder("[");
+
+			for (Map.Entry<InetAddress,Long> entry : firstConnectedAt.entrySet()) {
+				if (sb.length() > 1) {
+					sb.append(',');
+				}
+				sb.append(new Json().put("address", entry.getKey().getHostAddress()).put("firstConnectedAt", entry.getValue()));
+			}
+			return sb.append(']').toString();
+		}
+
+		private boolean connectAll(long t) {
+			InetAddress[] addresses;
+
+			try {
+				addresses = resolver.resolve(host);
+			}
+			catch (UnknownHostException e) {
+				return false;
+			}
+
+			synchronized (this) {
+				for (InetAddress address : addresses) {
+					firstConnectedAt.putIfAbsent(address, null);
+				}
+			}
+
+			int connected = 0;
+
+			try (Selector selector = Selector.open()) {
+				int pending = 0;
+
+				for (InetAddress address : addresses) {
+					SocketChannel channel = SocketChannel.open();
+
+					try {
+						channel.configureBlocking(false);
+
+						if (channel.connect(new InetSocketAddress(address, port))) {
+							connected(address, t);
+							connected++;
+							channel.close();
+						}
+						else {
+							channel.register(selector, SelectionKey.OP_CONNECT, address);
+							pending++;
+						}
+					}
+					catch (IOException e) {
+						channel.close();
+					}
+				}
+
+				long deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(PROBE_CONNECT_MS);
+				long remaining;
+
+				while (pending > 0 && (remaining = deadline - System.nanoTime()) > 0) {
+					selector.select(TimeUnit.NANOSECONDS.toMillis(remaining + 999999));
+
+					for (SelectionKey key : selector.selectedKeys()) {
+						SocketChannel channel = (SocketChannel)key.channel();
+
+						try {
+							if (! channel.finishConnect()) {
+								continue;
+							}
+							connected((InetAddress)key.attachment(), t);
+							connected++;
+						}
+						catch (IOException e) {
+						}
+						channel.close();
+						pending--;
+					}
+					selector.selectedKeys().clear();
+				}
+
+				for (SelectionKey key : selector.keys()) {
+					key.channel().close();
+				}
+			}
+			catch (IOException e) {
+				return false;
+			}
+			return addresses.length > 0 && connected == addresses.length;
+		}
+
+		private synchronized void connected(InetAddress address, long t) {
+			if (firstConnectedAt.get(address) == null) {
+				firstConnectedAt.put(address, t);
+			}
+		}
+	}
+
+	/**
+	 * The {@code large} command: writes and reads {@code KEYS} keys, {@code STEP-0} on, each with
+	 * bin {@code v} a string of exactly {@code BYTES} characters that starts with the key's name,
+	 * one attempt each.
+	 */
+	static final class Large {
+		interface Store {
+			void put(Key key, String value);
+			Object get(Key key);
+		}
+
+		private final String step;
+		private final int bytes;
+		private final int keys;
+		private int written;
+		private int read;
+		private int mismatched;
+		private int failures;
+		private String firstFailure;
+		private long maxNanos;
+		private long elapsedNanos;
+
+		private Large(String step, int bytes, int keys) {
+			this.step = step;
+			this.bytes = bytes;
+			this.keys = keys;
+		}
+
+		/**
+		 * Parse the command's arguments, or return null when they are malformed or a key's name
+		 * is longer than {@code BYTES}.
+		 */
+		static Large of(String step, String bytes, String keys) {
+			try {
+				int b = Integer.parseInt(bytes);
+				int k = Integer.parseInt(keys);
+				return b > 0 && k > 0 && (step + '-' + (k - 1)).length() <= b ? new Large(step, b, k) : null;
+			}
+			catch (NumberFormatException e) {
+				return null;
+			}
+		}
+
+		static String value(String name, int bytes) {
+			StringBuilder sb = new StringBuilder(bytes).append(name);
+
+			while (sb.length() < bytes) {
+				sb.append('x');
+			}
+			return sb.toString();
+		}
+
+		void run(String namespace, String set, Store store) {
+			long start = System.nanoTime();
+
+			for (int i = 0; i < keys; i++) {
+				String name = step + '-' + i;
+				Key key = new Key(namespace, set, name);
+				String value = value(name, bytes);
+				long begin = System.nanoTime();
+
+				try {
+					store.put(key, value);
+					written++;
+				}
+				catch (RuntimeException e) {
+					failures++;
+					firstFailure = firstFailure != null ? firstFailure : name + " put: " + message(e);
+					continue;
+				}
+				finally {
+					maxNanos = Math.max(maxNanos, System.nanoTime() - begin);
+				}
+				begin = System.nanoTime();
+
+				try {
+					if (value.equals(store.get(key))) {
+						read++;
+					}
+					else {
+						mismatched++;
+					}
+				}
+				catch (RuntimeException e) {
+					failures++;
+					firstFailure = firstFailure != null ? firstFailure : name + " get: " + message(e);
+				}
+				finally {
+					maxNanos = Math.max(maxNanos, System.nanoTime() - begin);
+				}
+			}
+			elapsedNanos = System.nanoTime() - start;
+		}
+
+		String reply(long t) {
+			return new Json("large", t).put("step", step).put("bytes", bytes).put("keys", keys).put("written", written)
+				.put("read", read).put("mismatched", mismatched).put("failures", failures).put("firstFailure", firstFailure)
+				.put("maxMs", TimeUnit.NANOSECONDS.toMillis(maxNanos))
+				.put("elapsedMs", TimeUnit.NANOSECONDS.toMillis(elapsedNanos)).toString();
 		}
 	}
 
@@ -648,6 +962,8 @@ public final class L5Driver {
 				long first = System.nanoTime();
 
 				while (true) {
+					long startedAt = now();
+
 					try {
 						if (i % 2 == 0) {
 							client.put(wp, key, new Bin("v", i));
@@ -658,8 +974,10 @@ public final class L5Driver {
 						break;
 					}
 					catch (RuntimeException e) {
+						String message = message(e);
 						failed.incrementAndGet();
-						lastError.set(message(e));
+						lastError.set(message);
+						out.writeIfOpen(t -> failure(t, startedAt, message));
 					}
 
 					if (stop) {
@@ -739,6 +1057,9 @@ public final class L5Driver {
 		String set;
 		int workers = 4;
 		int keys = 1000;
+		String tlsName;
+		String tlsCaFile;
+		TlsPolicy tlsPolicy;
 
 		Options(String[] args, String password) {
 			Map<String,String> flags = new LinkedHashMap<>();
@@ -823,6 +1144,14 @@ public final class L5Driver {
 					keys = positive(flag.getKey(), value);
 					break;
 
+				case "--tls-name":
+					tlsName = value;
+					break;
+
+				case "--tls-ca-file":
+					tlsCaFile = value;
+					break;
+
 				default:
 					throw new IllegalArgumentException("unknown flag: " + flag.getKey());
 				}
@@ -846,6 +1175,48 @@ public final class L5Driver {
 			}
 			else if (portMap != null) {
 				throw new IllegalArgumentException("--port-map only with --shape port-map");
+			}
+
+			if (tlsName != null) {
+				seed = new Host(seed.name, tlsName, seed.port);
+				tlsPolicy = tlsPolicy(tlsCaFile);
+			}
+			else if (tlsCaFile != null) {
+				throw new IllegalArgumentException("--tls-ca-file only with --tls-name");
+			}
+		}
+
+		/**
+		 * A TLS policy that trusts the CAs in the PEM file, or the JDK's default trust store when
+		 * there is no file.
+		 */
+		private static TlsPolicy tlsPolicy(String caFile) {
+			TlsPolicy policy = new TlsPolicy();
+
+			if (caFile == null) {
+				return policy;
+			}
+
+			try (InputStream in = new FileInputStream(caFile)) {
+				KeyStore store = KeyStore.getInstance(KeyStore.getDefaultType());
+				store.load(null, null);
+				int count = 0;
+
+				for (Certificate cert : CertificateFactory.getInstance("X.509").generateCertificates(in)) {
+					store.setCertificateEntry("ca-" + count++, cert);
+				}
+
+				if (count == 0) {
+					throw new IllegalArgumentException("--tls-ca-file has no certificate: " + caFile);
+				}
+				TrustManagerFactory factory = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
+				factory.init(store);
+				policy.context = SSLContext.getInstance("TLS");
+				policy.context.init(null, factory.getTrustManagers(), null);
+				return policy;
+			}
+			catch (IOException | GeneralSecurityException e) {
+				throw new IllegalArgumentException("--tls-ca-file " + caFile + ": " + message(e));
 			}
 		}
 
@@ -875,7 +1246,7 @@ public final class L5Driver {
 				int eq = entry.indexOf('=');
 
 				if (eq <= 0 || hostPort(entry.substring(eq + 1)) == null) {
-					throw new IllegalArgumentException("--port-map entry must be NODE=HOST:PORT: " + entry);
+					throw new IllegalArgumentException("--port-map entry must be NODE=HOST:PORT or HOST:PORT=HOST:PORT: " + entry);
 				}
 
 				if (map.put(entry.substring(0, eq), entry.substring(eq + 1)) != null) {
@@ -892,6 +1263,7 @@ public final class L5Driver {
 			policy.user = user;
 			policy.password = password;
 			policy.translationOnMiss = onMiss;
+			policy.tlsPolicy = tlsPolicy;
 
 			if (shape.equals("pass-through")) {
 				policy.useServicesAlternate = true;
@@ -924,15 +1296,25 @@ public final class L5Driver {
 	}
 
 	/**
-	 * Stdout, one JSON object per line, each flushed. Lines written before {@code ready} are held
-	 * and follow it. Anything else printing to {@code System.out} goes to stderr.
+	 * Stdout, one JSON object per line, each flushed, {@code ready} first and {@code t} never going
+	 * back. Methods taking a {@code t -> line} function stamp {@code t} under this object's lock; a
+	 * caller that takes {@code t} itself holds the lock from {@link L5Driver#now()} to the write. Lines
+	 * written before {@code ready} go to stderr. Anything else printing to {@code System.out} goes to
+	 * stderr.
 	 */
 	static final class Output {
-		private final PrintStream stdout = utf8(new FileOutputStream(FileDescriptor.out));
-		private List<String> held = new ArrayList<>();
+		private final PrintStream stdout;
+		private final PrintStream stderr;
+		private boolean open;
 
 		Output() {
+			this(utf8(new FileOutputStream(FileDescriptor.out)), System.err);
 			System.setOut(System.err);
+		}
+
+		Output(PrintStream stdout, PrintStream stderr) {
+			this.stdout = stdout;
+			this.stderr = stderr;
 		}
 
 		private static PrintStream utf8(FileOutputStream out) {
@@ -944,12 +1326,25 @@ public final class L5Driver {
 			}
 		}
 
+		synchronized void write(LongFunction<String> line) {
+			write(line.apply(now()));
+		}
+
 		synchronized void write(String line) {
-			if (held != null) {
-				held.add(line);
+			if (open) {
+				print(line);
 			}
 			else {
-				print(line);
+				stderr.println(line);
+			}
+		}
+
+		/**
+		 * Print the line once {@code ready} is out, otherwise drop it.
+		 */
+		synchronized void writeIfOpen(LongFunction<String> line) {
+			if (open) {
+				print(line.apply(now()));
 			}
 		}
 
@@ -957,13 +1352,9 @@ public final class L5Driver {
 			print(line);
 		}
 
-		synchronized void open(String ready) {
-			print(ready);
-
-			for (String line : held) {
-				print(line);
-			}
-			held = null;
+		synchronized void open(LongFunction<String> ready) {
+			print(ready.apply(now()));
+			open = true;
 		}
 
 		private void print(String line) {

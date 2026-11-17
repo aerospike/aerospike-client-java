@@ -44,13 +44,13 @@ import com.aerospike.test.util.TestBase;
 
 /**
  * Testing strategy section 4.3.2 row F-3 against the port-range profile of
- * test/discovery/run_l2.sh, standing in for NLB source NAT port exhaustion (section 4.7). Toxiproxy
+ * the l2-proxy harness, standing in for NLB source NAT port exhaustion (section 4.7). Toxiproxy
  * runs with a narrow local port range, which caps the upstream connections it can open to each
  * node. In its own class and profile so that a failing F-3 does not fail the other rows.
  */
 public class TestL2SourcePortRange extends TestBase {
 	private static final String BLOCKER = "F-3 needs DISCOVERY_PROXY_PORT_RANGE, Toxiproxy with a narrow " +
-		"net.ipv4.ip_local_port_range (run_l2.sh L2_PROFILE=port-range)";
+		"net.ipv4.ip_local_port_range (l2-proxy profile port-range)";
 	private static final String SET = "l2ports";
 	private static final int KEY_COUNT = 1000;
 	private static final int RECOVERY_KEY_COUNT = 100;

@@ -22,8 +22,8 @@ import org.junit.runners.Suite;
 import com.aerospike.test.translation.TestTranslationCollision;
 
 /**
- * Translated address collisions. Requires the two node clusters started by
- * test/translation/run_collision.sh, which also supplies the cluster system properties.
+ * Translated address collisions. Requires the aerospike-client-conformance collision environment,
+ * with its values file loaded into the environment.
  */
 @RunWith(Suite.class)
 @Suite.SuiteClasses({

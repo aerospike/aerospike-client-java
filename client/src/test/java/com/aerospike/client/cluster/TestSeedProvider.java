@@ -27,6 +27,7 @@ import com.aerospike.client.discovery.SeedCandidateProvider;
 
 final class TestSeedProvider implements SeedCandidateProvider {
 	final AtomicInteger calls = new AtomicInteger();
+	final AtomicInteger closes = new AtomicInteger();
 	private final boolean periodic;
 	private final boolean deadline;
 	volatile IntFunction<List<Host>> result;
@@ -69,6 +70,11 @@ final class TestSeedProvider implements SeedCandidateProvider {
 	@Override
 	public boolean supportsDeadline() {
 		return deadline;
+	}
+
+	@Override
+	public void close() {
+		closes.incrementAndGet();
 	}
 
 	@SuppressWarnings("unchecked")

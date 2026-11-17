@@ -17,21 +17,17 @@
 package com.aerospike.test.translation;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.net.InetSocketAddress;
 import java.net.Socket;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.Future;
+import java.util.concurrent.FutureTask;
 import java.util.concurrent.atomic.AtomicReferenceArray;
 
 import com.aerospike.client.AerospikeClient;
@@ -39,34 +35,36 @@ import com.aerospike.client.Host;
 import com.aerospike.client.cluster.Node;
 import com.aerospike.client.cluster.Partitions;
 import com.aerospike.client.policy.ClientPolicy;
+import com.aerospike.test.util.TestEnv;
 
 /**
- * Two node cluster started by test/translation/run_port_map.sh. Both nodes advertise only their
- * container address on port 3000, which the host cannot reach, and each is published on its own
- * host port. Node B's container is created but not started. The cluster arrives as system
- * properties:
+ * Two node cluster of the aerospike-client-conformance port-map environment. Both nodes advertise
+ * only their container address on port 3000, which the host cannot reach, and each is published on
+ * its own host port. Node B's container is created but not started. The cluster arrives as the
+ * environment variables of its values file:
  * <ul>
- * <li>portmap.host: host both nodes are published on</li>
- * <li>portmap.nodeA, portmap.addressA, portmap.portA: node A name, advertised address, published port</li>
- * <li>portmap.nodeB, portmap.addressB, portmap.portB: node B name, advertised address, published port</li>
- * <li>portmap.containerB: node B's container, started with the docker CLI</li>
- * <li>portmap.namespace: namespace, replication factor 1</li>
+ * <li>ENV_HOST: host both nodes are published on</li>
+ * <li>NODE_A_NAME, NODE_A_ADVERTISED_HOST:NODE_A_ADVERTISED_PORT, NODE_A_PORT: node A name, advertised
+ * address, published port</li>
+ * <li>NODE_B_NAME, NODE_B_ADVERTISED_HOST:NODE_B_ADVERTISED_PORT, NODE_B_PORT: node B name, advertised
+ * address, published port</li>
+ * <li>ENV_NAMESPACE: namespace, replication factor 1</li>
  * </ul>
+ * Node B is started with the start-node-b verb.
  */
 final class PortMapCluster {
 	static final int TEND_INTERVAL = 1000;
 	static final int JOIN_WAIT_MS = 30000;
 	static final int START_WAIT_MS = 120000;
 
-	static final String host = required("portmap.host");
-	static final String nodeA = required("portmap.nodeA");
-	static final String addressA = required("portmap.addressA");
-	static final int portA = Integer.parseInt(required("portmap.portA"));
-	static final String nodeB = required("portmap.nodeB");
-	static final String addressB = required("portmap.addressB");
-	static final int portB = Integer.parseInt(required("portmap.portB"));
-	static final String containerB = required("portmap.containerB");
-	static final String namespace = required("portmap.namespace");
+	static final String host = TestEnv.get("ENV_HOST");
+	static final String nodeA = TestEnv.get("NODE_A_NAME");
+	static final String addressA = TestEnv.get("NODE_A_ADVERTISED_HOST") + ':' + TestEnv.get("NODE_A_ADVERTISED_PORT");
+	static final int portA = TestEnv.getInt("NODE_A_PORT");
+	static final String nodeB = TestEnv.get("NODE_B_NAME");
+	static final String addressB = TestEnv.get("NODE_B_ADVERTISED_HOST") + ':' + TestEnv.get("NODE_B_ADVERTISED_PORT");
+	static final int portB = TestEnv.getInt("NODE_B_PORT");
+	static final String namespace = TestEnv.get("ENV_NAMESPACE");
 
 	static ClientPolicy policy() {
 		ClientPolicy policy = new ClientPolicy();
@@ -102,6 +100,15 @@ final class PortMapCluster {
 	 * return the number of partitions each node owns.
 	 */
 	static Map<String,Integer> assertAllPartitionsOwned(String name, AerospikeClient client) throws InterruptedException {
+		return assertAllPartitionsOwned(name, client, 1);
+	}
+
+	/**
+	 * Wait until every partition of the namespace has a master in the client's partition map and at
+	 * least ownerCount nodes own partitions, and return the number of partitions each node owns.
+	 */
+	static Map<String,Integer> assertAllPartitionsOwned(String name, AerospikeClient client, int ownerCount)
+		throws InterruptedException {
 		long deadline = System.currentTimeMillis() + JOIN_WAIT_MS;
 		Map<String,Integer> owners;
 		int unowned;
@@ -129,7 +136,7 @@ final class PortMapCluster {
 				}
 			}
 
-			if (unowned == 0) {
+			if (unowned == 0 && owners.size() >= ownerCount) {
 				break;
 			}
 			Thread.sleep(100);
@@ -155,44 +162,17 @@ final class PortMapCluster {
 		}
 	}
 
-	static boolean containerRunning() throws Exception {
-		return docker("inspect", "-f", "{{.State.Running}}", containerB).trim().equals("true");
+	static boolean nodeBRunning() throws Exception {
+		return TestEnv.control("node-b-state").equals("running");
 	}
 
-	static void startContainerB() throws Exception {
-		docker("start", containerB);
-	}
-
-	private static String docker(String... args) throws Exception {
-		List<String> command = new ArrayList<>();
-		command.add("docker");
-		command.addAll(Arrays.asList(args));
-
-		Process process = new ProcessBuilder(command).redirectErrorStream(true).start();
-		String output = new String(readAll(process.getInputStream()), StandardCharsets.UTF_8);
-
-		assertTrue(String.join(" ", command) + " timed out", process.waitFor(START_WAIT_MS, TimeUnit.MILLISECONDS));
-		assertEquals(String.join(" ", command) + ": " + output, 0, process.exitValue());
-		return output;
-	}
-
-	private static byte[] readAll(InputStream in) throws IOException {
-		ByteArrayOutputStream out = new ByteArrayOutputStream();
-		byte[] buf = new byte[4096];
-		int n;
-
-		while ((n = in.read(buf)) != -1) {
-			out.write(buf, 0, n);
-		}
-		return out.toByteArray();
-	}
-
-	private static String required(String name) {
-		String value = System.getProperty(name);
-
-		if (value == null || value.isEmpty()) {
-			throw new IllegalStateException("System property " + name + " is not set. Run test/translation/run_port_map.sh");
-		}
-		return value;
+	/**
+	 * Start node B in the background. The start-node-b verb returns once the two node cluster is
+	 * stable, so a caller can watch node B join while it runs.
+	 */
+	static Future<String> startNodeB() {
+		FutureTask<String> task = new FutureTask<>(() -> TestEnv.control("start-node-b"));
+		new Thread(task, "start-node-b").start();
+		return task;
 	}
 }

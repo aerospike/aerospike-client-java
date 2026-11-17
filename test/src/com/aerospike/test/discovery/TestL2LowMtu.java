@@ -52,14 +52,14 @@ import com.aerospike.test.discovery.L2Topology.L2Node;
 import com.aerospike.test.util.TestBase;
 
 /**
- * Testing strategy section 4.3.2 row F-2 against the low-mtu profile of test/discovery/run_l2.sh,
+ * Testing strategy section 4.3.2 row F-2 against the low-mtu profile of the l2-proxy harness,
  * standing in for PrivateLink's MTU of 8500 with no path MTU discovery (section 4.7). The client
  * network is created with a small MTU and the client writes and reads records well above it. In
  * its own class and profile so that a failing F-2 does not fail the other rows.
  */
 public class TestL2LowMtu extends TestBase {
 	private static final String BLOCKER = "F-2 needs DISCOVERY_CLIENT_NETWORK_MTU, a client network created with " +
-		"a small MTU (run_l2.sh L2_PROFILE=low-mtu)";
+		"a small MTU (l2-proxy profile low-mtu)";
 	private static final String SET = "l2mtu";
 	private static final int[] RECORD_SIZES = {64 * 1024, 1024 * 1024};
 	private static final int SOCKET_TIMEOUT = 5000;

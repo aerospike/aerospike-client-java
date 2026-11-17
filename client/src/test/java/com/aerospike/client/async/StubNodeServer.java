@@ -18,6 +18,7 @@ package com.aerospike.client.async;
 
 import java.io.DataInputStream;
 import java.io.IOException;
+import java.io.InterruptedIOException;
 import java.io.OutputStream;
 import java.net.InetAddress;
 import java.net.ServerSocket;
@@ -26,6 +27,8 @@ import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Base64;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -47,13 +50,16 @@ public final class StubNodeServer implements AutoCloseable {
 	private static final int MSG = 3;
 
 	private final ServerSocket server;
-	private final List<Socket> sockets = new CopyOnWriteArrayList<>();
+	private final Thread acceptThread;
+	private final Map<Socket,Thread> sockets = new ConcurrentHashMap<>();
 	private final List<Socket> dataSockets = new CopyOnWriteArrayList<>();
 	private final AtomicInteger dataConnections = new AtomicInteger();
 	private final AtomicInteger dataRequests = new AtomicInteger();
-	private final String replicas;
-	private final String nodeName;
+	private final List<Long> accepts = new CopyOnWriteArrayList<>();
+	private volatile String replicas;
+	private volatile String nodeName;
 	private volatile String peers = "1,3000,[]";
+	private volatile int peersGeneration = 1;
 	private volatile Close closeOnRequest;
 	private volatile boolean resetOnHeader;
 
@@ -67,14 +73,12 @@ public final class StubNodeServer implements AutoCloseable {
 	public StubNodeServer(InetAddress address, int port, String nodeName) throws IOException {
 		this.nodeName = nodeName;
 
-		byte[] bitmap = new byte[4096 / 8];
-		Arrays.fill(bitmap, (byte)0xFF);
-		this.replicas = NAMESPACE + ":0,1," + Base64.getEncoder().encodeToString(bitmap) + ';';
+		setOwnsPartitions(true);
 		this.server = new ServerSocket(port, 64, address);
 
-		Thread thread = new Thread(this::accept, "stub-node-accept");
-		thread.setDaemon(true);
-		thread.start();
+		acceptThread = new Thread(this::accept, "stub-node-accept");
+		acceptThread.setDaemon(true);
+		acceptThread.start();
 	}
 
 	public int port() {
@@ -86,6 +90,46 @@ public final class StubNodeServer implements AutoCloseable {
 	 */
 	public void setPeers(String peers) {
 		this.peers = peers;
+	}
+
+	/**
+	 * Set the node name reply.
+	 */
+	public void setNodeName(String nodeName) {
+		this.nodeName = nodeName;
+	}
+
+	/**
+	 * Own every partition of the namespace, or none.
+	 */
+	public void setOwnsPartitions(boolean owns) {
+		byte[] bitmap = new byte[4096 / 8];
+
+		if (owns) {
+			Arrays.fill(bitmap, (byte)0xFF);
+		}
+		this.replicas = NAMESPACE + ":0,1," + Base64.getEncoder().encodeToString(bitmap) + ';';
+	}
+
+	/**
+	 * Set the peers-generation reply.
+	 */
+	public void setPeersGeneration(int peersGeneration) {
+		this.peersGeneration = peersGeneration;
+	}
+
+	/**
+	 * Number of connections accepted.
+	 */
+	public int connections() {
+		return accepts.size();
+	}
+
+	/**
+	 * System.nanoTime() of the first connection accepted, or 0 if none was.
+	 */
+	public long firstAccept() {
+		return accepts.isEmpty() ? 0 : accepts.get(0);
 	}
 
 	/**
@@ -108,6 +152,20 @@ public final class StubNodeServer implements AutoCloseable {
 	public void closeDataConnections(Close close) throws IOException {
 		for (Socket socket : dataSockets) {
 			close(socket, close);
+		}
+	}
+
+	/**
+	 * Close every open connection now, info and data, and keep accepting new ones. Returns once the
+	 * threads serving them have ended, so the sockets are closed when it returns.
+	 */
+	public void closeConnections() throws IOException {
+		for (Map.Entry<Socket,Thread> entry : sockets.entrySet()) {
+			Socket socket = entry.getKey();
+			sockets.remove(socket);
+			dataSockets.remove(socket);
+			socket.close();
+			join(entry.getValue());
 		}
 	}
 
@@ -137,9 +195,10 @@ public final class StubNodeServer implements AutoCloseable {
 				return;
 			}
 
-			sockets.add(socket);
+			accepts.add(System.nanoTime());
 			Thread thread = new Thread(() -> serve(socket), "stub-node-conn");
 			thread.setDaemon(true);
+			sockets.put(socket, thread);
 			thread.start();
 		}
 	}
@@ -215,8 +274,9 @@ public final class StubNodeServer implements AutoCloseable {
 		case "node":
 			return nodeName;
 		case "partition-generation":
-		case "peers-generation":
 			return "1";
+		case "peers-generation":
+			return Integer.toString(peersGeneration);
 		case "build":
 			return "8.1.0.0";
 		case "replicas":
@@ -237,12 +297,24 @@ public final class StubNodeServer implements AutoCloseable {
 		socket.close();
 	}
 
+	private static void join(Thread thread) throws IOException {
+		try {
+			thread.join();
+		}
+		catch (InterruptedException ie) {
+			Thread.currentThread().interrupt();
+			throw new InterruptedIOException();
+		}
+	}
+
+	/**
+	 * Stop listening and close every open connection. Returns once the accept thread and the threads
+	 * serving connections have ended, so no connection is accepted or served after it returns.
+	 */
 	@Override
 	public void close() throws IOException {
 		server.close();
-
-		for (Socket socket : sockets) {
-			socket.close();
-		}
+		join(acceptThread);
+		closeConnections();
 	}
 }

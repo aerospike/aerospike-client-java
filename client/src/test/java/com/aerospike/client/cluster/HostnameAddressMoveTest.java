@@ -16,9 +16,14 @@
  */
 package com.aerospike.client.cluster;
 
+import static com.aerospike.client.cluster.TendDriver.stopTendThread;
+import static com.aerospike.client.cluster.TendDriver.tend;
+import static com.aerospike.client.cluster.TendDriver.timedTend;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
 import java.io.IOException;
@@ -27,7 +32,10 @@ import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReferenceArray;
 import java.util.function.BooleanSupplier;
@@ -45,9 +53,14 @@ import com.aerospike.client.async.StubNodeServer;
 import com.aerospike.client.discovery.GuardedResolverProvider;
 import com.aerospike.client.policy.ClientPolicy;
 
+/**
+ * A node on a hostname with several addresses moves to another address of the hostname once it has
+ * failed three tends in a row, trying one address per tend.
+ */
 public class HostnameAddressMoveTest {
 	private static final int TEND_INTERVAL = 250;
 	private static final long MOVE_BOUND = 20L * TEND_INTERVAL;
+	private static final long MARGIN = 150;
 	private static final String A = "BB9A000000000001";
 	private static final String B = "BB9B000000000001";
 
@@ -55,8 +68,11 @@ public class HostnameAddressMoveTest {
 	private static InetAddress second;
 
 	private final List<StubNodeServer> servers = new ArrayList<>();
+	private final List<AutoCloseable> closeables = new ArrayList<>();
 	private final List<String> hostnames = new ArrayList<>();
 	private final List<String> moves = new ArrayList<>();
+	private final List<String> replaces = new ArrayList<>();
+	private final List<String> warnings = new ArrayList<>();
 	private AerospikeClient client;
 	private Sampler sampler;
 
@@ -64,17 +80,35 @@ public class HostnameAddressMoveTest {
 		DIFFERENT_NAME, IP_LITERAL, SINGLE_ADDRESS, NO_FAILURES
 	}
 
+	private interface Bind {
+		void bind(int port) throws IOException;
+	}
+
 	@Before
 	public void setUp() throws Exception {
 		first = InetAddress.getByName("127.0.0.1");
 		second = InetAddress.getByName("127.0.0.2");
-		Assume.assumeTrue("Address 127.0.0.2 cannot be bound locally", canBind(second));
+
+		if (! canBind(second)) {
+			second = InetAddress.getByName("::1");
+		}
+		Assume.assumeTrue("Neither 127.0.0.2 nor ::1 can be bound locally", canBind(second));
 
 		Log.setLevel(Log.Level.INFO);
 		Log.setCallback((level, message) -> {
 			if (level == Log.Level.INFO && message.startsWith("Move node ")) {
 				synchronized (moves) {
 					moves.add(message);
+				}
+			}
+			else if (level == Log.Level.INFO && message.startsWith("Replace node")) {
+				synchronized (replaces) {
+					replaces.add(message);
+				}
+			}
+			else if (level == Log.Level.WARN) {
+				synchronized (warnings) {
+					warnings.add(message);
 				}
 			}
 		});
@@ -94,6 +128,10 @@ public class HostnameAddressMoveTest {
 			server.close();
 		}
 
+		for (AutoCloseable closeable : closeables) {
+			closeable.close();
+		}
+
 		for (String hostname : hostnames) {
 			GuardedResolverProvider.unregister(hostname);
 		}
@@ -103,9 +141,8 @@ public class HostnameAddressMoveTest {
 	@Test
 	public void failingNodeMovesToOtherAddress() throws Exception {
 		String hostname = hostname("move", first, second);
-		int port = freePort();
-		StubNodeServer live = server(first, port, A);
-		server(second, port, A);
+		StubNodeServer live = pair(A, A)[0];
+		int port = live.port();
 
 		client = new AerospikeClient(policy(), new Host(hostname, port));
 		Cluster cluster = client.getCluster();
@@ -124,8 +161,8 @@ public class HostnameAddressMoveTest {
 		assertEquals(1, cluster.getNodes().length);
 		assertFalse(node.isActive());
 		assertEquals(0, sampler.stop());
-		assertEquals(Arrays.asList("Move node " + A + ' ' + hostname + " from 127.0.0.1 " + port + " to 127.0.0.2 " + port),
-			moves());
+		assertEquals(Arrays.asList("Move node " + A + ' ' + hostname + " from 127.0.0.1 " + port + " to " +
+			node(cluster, A).getHost()), moves());
 	}
 
 	@Test
@@ -136,9 +173,15 @@ public class HostnameAddressMoveTest {
 		List<StubNodeServer> dead = new ArrayList<>();
 
 		for (int i = 0; i < names.length; i++) {
-			ports[i] = freePort();
-			dead.add(server(first, ports[i], names[i]));
-			server(second, ports[i], names[i]);
+			StubNodeServer[] pair = pair(names[i], names[i]);
+			ports[i] = pair[0].port();
+			dead.add(pair[0]);
+
+			// Only the node closed last owns partitions, so a tend between the closes keeps every node.
+			if (i < names.length - 1) {
+				pair[0].setOwnsPartitions(false);
+				pair[1].setOwnsPartitions(false);
+			}
 		}
 
 		for (int i = 0; i < names.length; i++) {
@@ -183,6 +226,7 @@ public class HostnameAddressMoveTest {
 
 		assertTrue("move took " + elapsed + "ms", elapsed < MOVE_BOUND);
 		await(() -> cluster.getNodes().length == names.length);
+		await(() -> ownsPartitions(cluster, names[names.length - 1], second));
 		assertNotNull(client.get(null, new Key(StubNodeServer.NAMESPACE, "set", 1)));
 		assertEquals(0, sampler.stop());
 		assertEquals(names.length, moves().size());
@@ -215,19 +259,25 @@ public class HostnameAddressMoveTest {
 	private void otherNodeStays(Other other) throws Exception {
 		String hostA = hostname("a", first, second);
 		String hostB = (other == Other.SINGLE_ADDRESS) ? hostname("b", first) : hostname("b", first, second);
-		int portA = freePort();
-		int portB = freePort();
 		String peerB = (other == Other.IP_LITERAL) ? "127.0.0.1" : hostB;
 
-		StubNodeServer a1 = server(first, portA, A);
-		StubNodeServer a2 = server(second, portA, A);
-		StubNodeServer b1 = server(first, portB, B);
-		server(second, portB, other == Other.DIFFERENT_NAME ? "BB9C000000000001" : B);
+		StubNodeServer[] pairA = pair(A, A);
+		StubNodeServer a1 = pairA[0];
+		StubNodeServer a2 = pairA[1];
+		StubNodeServer b1 = pair(B, other == Other.DIFFERENT_NAME ? "BB9C000000000001" : B)[0];
+		int portA = a1.port();
+		int portB = b1.port();
 
 		String peersA = "1,3000,[[" + B + ",,[" + peerB + ':' + portB + "]]]";
 		a1.setPeers(peersA);
 		a2.setPeers(other == Other.NO_FAILURES ? peersA : "1,3000,[]");
 		b1.setPeers("1,3000,[[" + A + ",,[" + hostA + ':' + portA + "]]]");
+
+		if (other == Other.NO_FAILURES) {
+			// B owns every partition, so it is kept while the failing A does not list it.
+			a1.setOwnsPartitions(false);
+			a2.setOwnsPartitions(false);
+		}
 
 		client = new AerospikeClient(policy(), new Host(hostA, portA));
 		Cluster cluster = client.getCluster();
@@ -266,6 +316,295 @@ public class HostnameAddressMoveTest {
 		assertTrue(moves().get(0).startsWith("Move node " + A + ' '));
 	}
 
+	@Test
+	public void noMoveBeforeThirdFailedTend() throws Exception {
+		String hostname = hostname("third", first, second);
+		StubNodeServer dead = pair(A, A)[0];
+		int port = dead.port();
+
+		Cluster cluster = drivenCluster(policy(), hostname, port);
+		Node node = node(cluster, A);
+		int lookups = GuardedResolverProvider.lookups(hostname);
+
+		dead.close();
+
+		for (int i = 1; i <= 2; i++) {
+			tend(cluster);
+			assertSame("tend " + i, node, node(cluster, A));
+		}
+		assertEquals(lookups, GuardedResolverProvider.lookups(hostname));
+		assertEquals(Collections.emptyList(), moves());
+
+		tend(cluster);
+		assertTrue(onAddress(cluster, A, second));
+		assertFalse(node.isActive());
+		assertEquals(1, moves().size());
+	}
+
+	@Test
+	public void nodeRecoveringOnSecondTendDoesNotMove() throws Exception {
+		String hostname = hostname("recover", first, second);
+		StubNodeServer flapping = pair(A, A)[0];
+		int port = flapping.port();
+
+		Cluster cluster = drivenCluster(policy(), hostname, port);
+		Node node = node(cluster, A);
+
+		flapping.close();
+		tend(cluster);
+		flapping = server(first, port, A);
+		tend(cluster);
+		assertSame(node, node(cluster, A));
+		flapping.close();
+
+		for (int i = 1; i <= 2; i++) {
+			tend(cluster);
+			assertSame("failed tend " + i + " after recovery", node, node(cluster, A));
+		}
+		assertEquals(Collections.emptyList(), moves());
+
+		tend(cluster);
+		assertTrue(onAddress(cluster, A, second));
+		assertEquals(1, moves().size());
+	}
+
+	@Test
+	public void oneCandidatePerTend() throws Exception {
+		StubNodeServer[] pair = pair(A, A);
+		StubNodeServer dead = pair[0];
+		StubNodeServer live = pair[1];
+		int port = dead.port();
+		InetAddress hung = StaggeredConnectTest.hung(closeables, InetAddress.getByName("127.0.0.3"), "192.0.2.1", port);
+		String hostname = hostname("one", first, hung, second);
+
+		ClientPolicy policy = policy();
+		policy.timeout = 1000;
+		policy.tendInterval = 500;
+		Cluster cluster = drivenCluster(policy, hostname, port);
+		Node node = node(cluster, A);
+		assertTrue(ownsPartitions(cluster, A, first));
+
+		dead.close();
+		tend(cluster);
+		tend(cluster);
+
+		int connections = live.connections();
+		long elapsed = timedTend(cluster);
+
+		assertSame(node, node(cluster, A));
+		assertEquals("live address tried in the tend that tried the hung address", connections, live.connections());
+		assertTrue("tend took " + elapsed + "ms", elapsed >= 250 - 10 && elapsed < 250 + MARGIN);
+
+		tend(cluster);
+
+		Node moved = node(cluster, A);
+		assertTrue(onAddress(cluster, A, second));
+		assertEquals(A, moved.getName());
+		assertFalse(node.isActive());
+		tend(cluster);
+		assertTrue(ownsPartitions(cluster, A, second));
+		assertEquals(Arrays.asList("Move node " + A + ' ' + hostname + " from " + node.getHost() + " to " + moved.getHost()),
+			moves());
+	}
+
+	@Test
+	public void silentCandidateEndsWithinBound() throws Exception {
+		StubNodeServer dead = server(A, port -> closeables.add(new ServerSocket(port, 50, second)));
+		int port = dead.port();
+		String hostname = hostname("silent", first, second);
+
+		ClientPolicy policy = policy();
+		policy.timeout = 1000;
+		policy.tendInterval = 400;
+		Cluster cluster = drivenCluster(policy, hostname, port);
+		Node node = node(cluster, A);
+
+		dead.close();
+		tend(cluster);
+		tend(cluster);
+
+		// The candidate accepts the connect and never answers: min(1000, 400 / 2) = 200ms.
+		long elapsed = timedTend(cluster);
+
+		assertTrue("tend took " + elapsed + "ms", elapsed >= 200 - 10 && elapsed < 200 + MARGIN);
+		assertSame(node, node(cluster, A));
+		assertEquals(Collections.emptyList(), moves());
+	}
+
+	@Test
+	public void candidateWithOtherNameIsSkipped() throws Exception {
+		String hostname = hostname("other", first, second);
+		StubNodeServer[] pair = pair(A, B);
+		StubNodeServer dead = pair[0];
+		StubNodeServer other = pair[1];
+		int port = dead.port();
+
+		Cluster cluster = drivenCluster(policy(), hostname, port);
+		Node node = node(cluster, A);
+
+		dead.close();
+
+		for (int i = 1; i <= 4; i++) {
+			int connections = other.connections();
+			tend(cluster);
+			assertSame("tend " + i, node, node(cluster, A));
+			assertEquals("tend " + i, i >= 3, other.connections() > connections);
+		}
+		assertNull(node(cluster, B));
+		assertEquals(Collections.emptyList(), moves());
+	}
+
+	@Test
+	public void candidateRejectedByCollisionCheckIsSkipped() throws Exception {
+		String hostname = hostname("collide", first, second);
+		StubNodeServer[] pair = pair(A, B);
+		StubNodeServer dead = pair[0];
+		StubNodeServer candidate = pair[1];
+		int port = dead.port();
+
+		Cluster cluster = drivenCluster(policy(), hostname, port);
+		Node node = node(cluster, A);
+
+		// Node B holds the candidate address, which answers as node A.
+		NodeValidator nv = new NodeValidator();
+		nv.validateAlias(cluster, new Host(second.getHostAddress(), port), second, cluster.connectTimeout);
+		Node holder = cluster.createNode(nv);
+		cluster.nodesMap.put(B, holder);
+		candidate.setNodeName(A);
+
+		try {
+			dead.close();
+
+			for (int i = 1; i <= 4; i++) {
+				tend(cluster);
+				assertSame("tend " + i, node, node(cluster, A));
+			}
+		}
+		finally {
+			cluster.nodesMap.remove(B);
+			holder.close();
+		}
+		assertEquals(Collections.emptyList(), moves());
+		assertTrue(warnings().toString(), warnings().stream().anyMatch(w -> w.contains(A) && w.contains(B) &&
+			w.contains(second.getHostAddress())));
+	}
+
+	@Test
+	public void ipLiteralNodeDoesNotMove() throws Exception {
+		StubNodeServer dead = pair(A, A)[0];
+		int port = dead.port();
+
+		Cluster cluster = drivenCluster(policy(), "127.0.0.1", port);
+		Node node = node(cluster, A);
+		int lookups = GuardedResolverProvider.lookups();
+
+		dead.close();
+
+		for (int i = 1; i <= 4; i++) {
+			tend(cluster);
+			assertSame("tend " + i, node, node(cluster, A));
+		}
+		assertEquals(lookups, GuardedResolverProvider.lookups());
+		assertEquals(Collections.emptyList(), moves());
+	}
+
+	@Test
+	public void singleAddressNodeDoesNotMove() throws Exception {
+		String hostname = hostname("single", first);
+		StubNodeServer[] pair = pair(A, A);
+		StubNodeServer dead = pair[0];
+		StubNodeServer other = pair[1];
+		int port = dead.port();
+
+		Cluster cluster = drivenCluster(policy(), hostname, port);
+		Node node = node(cluster, A);
+
+		dead.close();
+
+		for (int i = 1; i <= 4; i++) {
+			tend(cluster);
+			assertSame("tend " + i, node, node(cluster, A));
+		}
+		assertEquals(0, other.connections());
+		assertEquals(Collections.emptyList(), moves());
+	}
+
+	@Test
+	public void peerPathDoesNotMoveSooner() throws Exception {
+		String hostA = hostname("peer-a", first, second);
+		StubNodeServer[] pair = pair(A, A);
+		StubNodeServer a1 = pair[0];
+		StubNodeServer a2 = pair[1];
+		int portA = a1.port();
+		StubNodeServer b = server(first, 0, B);
+
+		String peersA = "1,3000,[[" + B + ",,[127.0.0.1:" + b.port() + "]]]";
+		a1.setPeers(peersA);
+		a2.setPeers(peersA);
+		b.setPeers("1,3000,[[" + A + ",,[" + hostA + ':' + portA + "]]]");
+
+		Cluster cluster = drivenCluster(policy(), hostA, portA);
+		assertEquals(2, cluster.getNodes().length);
+		Node node = node(cluster, A);
+
+		a1.close();
+
+		for (int i = 1; i <= 2; i++) {
+			b.setPeersGeneration(1 + i);
+			int connections = a2.connections();
+			tend(cluster);
+			assertSame("tend " + i, node, node(cluster, A));
+			assertEquals("tend " + i, connections, a2.connections());
+		}
+		assertEquals(Collections.emptyList(), moves());
+
+		b.setPeersGeneration(4);
+		tend(cluster);
+		assertTrue(onAddress(cluster, A, second));
+		assertEquals(1, moves().size());
+		assertEquals(Collections.emptyList(), replaces());
+	}
+
+	@Test
+	public void slowLookupDelaysMoveOnTendThread() throws Exception {
+		String hostname = hostname("slow", first, second);
+		StubNodeServer dead = pair(A, A)[0];
+		int port = dead.port();
+
+		Cluster cluster = drivenCluster(policy(), hostname, port);
+		Node node = node(cluster, A);
+
+		dead.close();
+		tend(cluster);
+		tend(cluster);
+
+		long delay = 2L * TEND_INTERVAL;
+		GuardedResolverProvider.delay(hostname, delay);
+		Set<String> before = threadNames();
+		long elapsed = timedTend(cluster);
+
+		assertTrue("tend took " + elapsed + "ms", elapsed >= delay);
+		assertTrue(onAddress(cluster, A, second));
+		assertFalse(node.isActive());
+
+		Set<String> during = GuardedResolverProvider.delayThreads(hostname);
+		assertNotNull(during);
+		assertEquals(Thread.currentThread().getName(), during.iterator().next());
+		Set<String> started = new HashSet<>(during);
+		started.removeAll(before);
+		assertEquals(Collections.emptySet(), started);
+	}
+
+	/**
+	 * Client whose tend thread is stopped, so the test drives every tend.
+	 */
+	private Cluster drivenCluster(ClientPolicy policy, String host, int port) throws Exception {
+		client = new AerospikeClient(policy, new Host(host, port));
+		Cluster cluster = client.getCluster();
+		stopTendThread(cluster);
+		return cluster;
+	}
+
 	private ClientPolicy policy() {
 		ClientPolicy policy = new ClientPolicy();
 		policy.timeout = 500;
@@ -290,6 +629,27 @@ public class HostnameAddressMoveTest {
 		synchronized (moves) {
 			return new ArrayList<>(moves);
 		}
+	}
+
+	private List<String> replaces() {
+		synchronized (replaces) {
+			return new ArrayList<>(replaces);
+		}
+	}
+
+	private List<String> warnings() {
+		synchronized (warnings) {
+			return new ArrayList<>(warnings);
+		}
+	}
+
+	private static Set<String> threadNames() {
+		Set<String> names = new HashSet<>();
+
+		for (Thread thread : Thread.getAllStackTraces().keySet()) {
+			names.add(thread.getName());
+		}
+		return names;
 	}
 
 	private static Node node(Cluster cluster, String name) {
@@ -326,20 +686,29 @@ public class HostnameAddressMoveTest {
 	}
 
 	/**
-	 * Free port on both loopback addresses.
+	 * Servers with the given names on one port of the first and the second address.
 	 */
-	private static int freePort() throws IOException {
+	private StubNodeServer[] pair(String firstName, String secondName) throws IOException {
+		StubNodeServer[] pair = new StubNodeServer[2];
+		pair[0] = server(firstName, port -> pair[1] = server(second, port, secondName));
+		return pair;
+	}
+
+	/**
+	 * Server with the given name on a free port of the first address, once the bind has bound the
+	 * same port of the second address. A port the bind finds taken is replaced by another.
+	 */
+	private StubNodeServer server(String name, Bind bind) throws IOException {
 		for (int i = 0; i < 100; i++) {
-			int port;
+			StubNodeServer server = server(first, 0, name);
 
-			try (ServerSocket socket = new ServerSocket(0, 1, second)) {
-				port = socket.getLocalPort();
-			}
-
-			try (ServerSocket socket = new ServerSocket(port, 1, first)) {
-				return port;
+			try {
+				bind.bind(server.port());
+				return server;
 			}
 			catch (BindException be) {
+				servers.remove(server);
+				server.close();
 			}
 		}
 		throw new IOException("No port free on both " + first + " and " + second);

@@ -30,6 +30,7 @@ import java.security.KeyStore;
 import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
 import java.util.List;
+import java.util.Locale;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.TimeUnit;
@@ -58,20 +59,23 @@ import com.aerospike.client.listener.RecordListener;
 import com.aerospike.client.listener.WriteListener;
 import com.aerospike.client.policy.ClientPolicy;
 import com.aerospike.client.policy.TlsPolicy;
+import com.aerospike.test.util.TestEnv;
 
 import io.netty.channel.nio.NioEventLoopGroup;
 
 /**
- * Server certificate name matching against a TLS-enabled server whose certificate shape is
- * chosen per run by test/tls/run_tls_matching.sh. The case arrives as system properties:
+ * Server certificate name matching against a TLS-enabled server of the aerospike-client-conformance
+ * tls-matching environment whose certificate shape is chosen per run. TLS_CASE names the case; the
+ * legacy-match deprecation warning is logged once per tlsName per JVM, so each case runs in its own
+ * JVM. The case's server is started with the serve verb, and the case arrives as the environment
+ * variables of the values file, &lt;CASE&gt; being the upper-cased case name:
  * <ul>
- * <li>tls.case: case name</li>
- * <li>tls.name: tlsName used as the reference identifier</li>
- * <li>tls.expect: accept or reject</li>
- * <li>tls.warning: true if the legacy-match deprecation warning must be logged</li>
- * <li>tls.bootstrap: tlsName the certificate accepts, used to reach the netty path on reject</li>
- * <li>tls.revoke: optional hex serial placed in {@link TlsPolicy#revokeCertificates}</li>
- * <li>tls.ca, tls.host, tls.port, tls.namespace: CA file and server address</li>
+ * <li>TLS_&lt;CASE&gt;_NAME: tlsName used as the reference identifier</li>
+ * <li>TLS_&lt;CASE&gt;_EXPECT: accept or reject</li>
+ * <li>TLS_&lt;CASE&gt;_WARNING: true if the legacy-match deprecation warning must be logged</li>
+ * <li>TLS_&lt;CASE&gt;_BOOTSTRAP: tlsName the certificate accepts, used to reach the netty path on reject</li>
+ * <li>TLS_&lt;CASE&gt;_REVOKE: optional hex serial placed in {@link TlsPolicy#revokeCertificates}</li>
+ * <li>TLS_&lt;CASE&gt;_CA, ENV_HOST, TLS_&lt;CASE&gt;_PORT, ENV_NAMESPACE: CA file and server address</li>
  * </ul>
  */
 public class TestTlsMatching {
@@ -96,17 +100,19 @@ public class TestTlsMatching {
 
 	@BeforeClass
 	public static void init() throws Exception {
-		caseName = required("tls.case");
-		tlsName = required("tls.name");
-		expectAccept = required("tls.expect").equals("accept");
-		expectWarning = Boolean.parseBoolean(required("tls.warning"));
-		bootstrapName = System.getProperty("tls.bootstrap", "");
-		String rv = System.getProperty("tls.revoke", "");
+		caseName = TestEnv.get("TLS_CASE");
+		String key = "TLS_" + caseName.toUpperCase(Locale.ROOT);
+		tlsName = TestEnv.get(key + "_NAME");
+		expectAccept = TestEnv.get(key + "_EXPECT").equals("accept");
+		expectWarning = Boolean.parseBoolean(TestEnv.get(key + "_WARNING"));
+		bootstrapName = TestEnv.getOrEmpty(key + "_BOOTSTRAP");
+		String rv = TestEnv.getOrEmpty(key + "_REVOKE");
 		revoke = rv.isEmpty() ? null : new BigInteger(rv, 16);
-		hostName = System.getProperty("tls.host", "127.0.0.1");
-		port = Integer.parseInt(required("tls.port"));
-		namespace = System.getProperty("tls.namespace", "test");
-		sslContext = trustContext(required("tls.ca"));
+		hostName = TestEnv.get("ENV_HOST");
+		port = TestEnv.getInt(key + "_PORT");
+		namespace = TestEnv.get("ENV_NAMESPACE");
+		sslContext = trustContext(TestEnv.get(key + "_CA"));
+		TestEnv.control("serve", caseName);
 
 		Log.setLevel(Log.Level.WARN);
 		Log.setCallback((level, message) -> {
@@ -302,15 +308,6 @@ public class TestTlsMatching {
 		SSLContext ctx = SSLContext.getInstance("TLS");
 		ctx.init(null, tmf.getTrustManagers(), null);
 		return ctx;
-	}
-
-	private static String required(String name) {
-		String value = System.getProperty(name);
-
-		if (value == null || value.isEmpty()) {
-			throw new IllegalStateException("System property " + name + " is required. Run test/tls/run_tls_matching.sh");
-		}
-		return value;
 	}
 
 	private static final class Outcome {

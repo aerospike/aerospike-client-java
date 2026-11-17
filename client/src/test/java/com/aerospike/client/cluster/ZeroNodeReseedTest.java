@@ -113,6 +113,31 @@ public class ZeroNodeReseedTest {
 	}
 
 	@Test
+	public void threadModeReseedUsesSnapshotFromBeforeUrgentRefresh() throws Exception {
+		TestSeedProvider provider = new TestSeedProvider(true, true);
+		provider.result = call -> {
+			event("refresh " + call);
+			return Arrays.asList(new Host("127.0.0.1", 10 + call));
+		};
+		ClientPolicy policy = policy(provider, 60000);
+		policy.discoveryExecutionMode = DiscoveryExecutionMode.THREAD;
+
+		AerospikeClient client = new AerospikeClient(policy, DEAD_SEED);
+
+		try {
+			await(() -> seedAttempts().size() >= 6);
+			assertEquals(2, provider.calls.get());
+		}
+		finally {
+			client.close();
+		}
+
+		assertEquals(Arrays.asList("seed 1", "seed 11", "seed 1", "seed 11", "seed 1", "seed 12"),
+			seedAttempts().subList(0, 6));
+		assertTrue(events().indexOf("refresh 2") < events().indexOf("seed 12"));
+	}
+
+	@Test
 	public void reseedDoesNotWaitForRefreshInterval() throws Exception {
 		TestSeedProvider provider = new TestSeedProvider(true, true, new Host("127.0.0.1", 11));
 
@@ -141,6 +166,12 @@ public class ZeroNodeReseedTest {
 		for (int i = 0; i < attempts.size(); i++) {
 			assertEquals(i % 2 == 0 ? "seed 1" : "seed 11", attempts.get(i));
 		}
+	}
+
+	private List<String> seedAttempts() {
+		List<String> attempts = events();
+		attempts.removeIf(e -> ! e.startsWith("seed "));
+		return attempts;
 	}
 
 	private static List<String> newThreadNames(Set<Thread> before) {

@@ -287,7 +287,7 @@
           <failIfNoTests>true</failIfNoTests>
           <!-- Resolve names through the test GuardedResolverProvider, then the default name service (Java 8 only). -->
           <argLine>-Dsun.net.spi.nameservice.provider.1=dns,guarded -Dsun.net.spi.nameservice.provider.2=default</argLine>
-          <!-- Needs the extracted aerospike-client-conformance 1.0.0 release zip (or a v1.0.0 checkout): -Dtest=ConformanceTest -Dconformance.dir=<path> -->
+          <!-- Needs an aerospike-client-conformance checkout at the commit the workflows pin: -Dtest=ConformanceTest -Dconformance.dir=<path> -->
           <excludes>
             <exclude>**/*$*</exclude>
             <exclude>**/conformance/ConformanceTest.java</exclude>

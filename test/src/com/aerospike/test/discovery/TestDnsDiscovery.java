@@ -23,22 +23,13 @@ import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
-import java.util.regex.Pattern;
 
 import org.junit.After;
 import org.junit.Before;
@@ -61,41 +52,39 @@ import com.aerospike.client.discovery.DnsSeedCandidateProvider;
 import com.aerospike.client.discovery.DnsSeedCandidateProvider.RecordType;
 import com.aerospike.client.discovery.SeedCandidateContext;
 import com.aerospike.client.policy.ClientPolicy;
+import com.aerospike.test.util.TestEnv;
 
 /**
- * {@link DnsSeedCandidateProvider} against the two node cluster and CoreDNS server started by
- * test/discovery/run_dns.sh. The client gets no static seed: every seed comes from DNS. Node A is
+ * {@link DnsSeedCandidateProvider} against the two node cluster and CoreDNS server of the
+ * aerospike-client-conformance dns environment. The client gets no static seed: every seed comes from DNS. Node A is
  * reachable on 127.0.0.1 and node B on another host address, both on the same port, and each
  * advertises that address as its alternate access address. The seed list is read from the provider's debug log line, which
  * lists the hosts each refresh returns. Every case states its execution mode. The environment arrives
- * as system properties:
+ * as the environment variables of its values file:
  * <ul>
- * <li>dns.server: DNS server address, ip:port</li>
- * <li>dns.container: DNS server container, stopped by the outage case</li>
- * <li>dns.namespace: namespace, replication factor 1</li>
- * <li>dns.port: port node A and node B are reachable on</li>
- * <li>dns.nodeA, dns.hostA, dns.nodeB, dns.hostB: node names and reachable addresses</li>
- * <li>dns.hostC, dns.portC: address and port of the standalone node C</li>
- * <li>dns.zoneFile: zone file of the DNS server, rewritten by the changed record case</li>
- * <li>dns.config: YAML config file selecting provider dns</li>
+ * <li>DNS_SERVER: DNS server address, ip:port</li>
+ * <li>ENV_NAMESPACE: namespace, replication factor 1</li>
+ * <li>NODE_A_PORT: port node A and node B are reachable on</li>
+ * <li>NODE_A_NAME, NODE_A_HOST, NODE_B_NAME, NODE_B_HOST: node names and reachable addresses</li>
+ * <li>NODE_C_HOST, NODE_C_PORT: address and port of the standalone node C</li>
+ * <li>CLIENT_CONFIG: YAML config file selecting provider dns</li>
  * </ul>
+ * The outage case stops and starts the DNS server with the stop-dns and start-dns verbs, and the
+ * changed record case points _change._tcp at node C and back with set-change-srv.
  */
 @FixMethodOrder(MethodSorters.NAME_ASCENDING)
 public class TestDnsDiscovery {
 	private static final String CONFIG_SYS_PROP = "AEROSPIKE_CLIENT_CONFIG_SYS_PROP";
 	private static final String SEEDS_NAME = "seeds.dns.test";
 	private static final String CHANGE_NAME = "_change._tcp.dns.test";
-	private static final String SOA = "@ 3600 IN SOA ns.dns.test. admin.dns.test. ";
 	private static final String RESOLVED = "DNS seed names ";
 	private static final int REFRESH_INTERVAL = 1000;
 	private static final int WAIT_MS = 20000;
 	private static final int KEY_COUNT = 100;
 	private static final List<String> messages = new CopyOnWriteArrayList<>();
 	private static final List<String> resolvedThreads = new CopyOnWriteArrayList<>();
-	private static int serial = 1;
 
 	private static String server;
-	private static String container;
 	private static String namespace;
 	private static int port;
 	private static String nodeA;
@@ -104,7 +93,6 @@ public class TestDnsDiscovery {
 	private static String hostB;
 	private static String hostC;
 	private static int portC;
-	private static Path zoneFile;
 	private static String config;
 
 	@BeforeClass
@@ -112,18 +100,16 @@ public class TestDnsDiscovery {
 		if (System.getenv("AEROSPIKE_CLIENT_CONFIG_URL") != null) {
 			throw new IllegalStateException("AEROSPIKE_CLIENT_CONFIG_URL is set and would override the test config");
 		}
-		server = required("dns.server");
-		container = required("dns.container");
-		namespace = required("dns.namespace");
-		port = Integer.parseInt(required("dns.port"));
-		nodeA = required("dns.nodeA");
-		hostA = required("dns.hostA");
-		nodeB = required("dns.nodeB");
-		hostB = required("dns.hostB");
-		hostC = required("dns.hostC");
-		portC = Integer.parseInt(required("dns.portC"));
-		zoneFile = Paths.get(required("dns.zoneFile"));
-		config = required("dns.config");
+		server = TestEnv.get("DNS_SERVER");
+		namespace = TestEnv.get("ENV_NAMESPACE");
+		port = TestEnv.getInt("NODE_A_PORT");
+		nodeA = TestEnv.get("NODE_A_NAME");
+		hostA = TestEnv.get("NODE_A_HOST");
+		nodeB = TestEnv.get("NODE_B_NAME");
+		hostB = TestEnv.get("NODE_B_HOST");
+		hostC = TestEnv.get("NODE_C_HOST");
+		portC = TestEnv.getInt("NODE_C_PORT");
+		config = TestEnv.get("CLIENT_CONFIG");
 
 		Log.setLevel(Log.Level.DEBUG);
 		Log.setCallback((level, message) -> {
@@ -165,7 +151,7 @@ public class TestDnsDiscovery {
 		try (AerospikeClient client = new AerospikeClient(policy)) {
 			assertJoins("outage-before", client);
 			messages.clear();
-			docker("stop", "-t", "1", container);
+			control("stop-dns");
 
 			try {
 				List<String> failures = await(() -> {
@@ -192,7 +178,7 @@ public class TestDnsDiscovery {
 				assertKeysWork("outage", client);
 			}
 			finally {
-				docker("start", container);
+				control("start-dns");
 			}
 		}
 	}
@@ -240,14 +226,12 @@ public class TestDnsDiscovery {
 			.servers(server).build());
 		policy.discoveryExecutionMode = mode;
 		Host nodeC = new Host(hostC, portC);
-		String zone = new String(Files.readAllBytes(zoneFile), StandardCharsets.UTF_8);
 
 		try (AerospikeClient client = new AerospikeClient(policy)) {
 			assertJoins("change-before", client);
 			assertFalse(Arrays.asList(ClusterInternals.seeds(client)).contains(nodeC));
 			int from = resolvedThreads.size();
-			writeZone(zone.replaceAll("(?m)^_change\\._tcp 1 IN SRV 10 10 \\d+ node-[ab]\n", "") +
-				"_change._tcp 1 IN SRV 10 10 " + portC + " node-c\n");
+			control("set-change-srv", "node-c");
 
 			try {
 				String changed = await(() -> messages.stream().filter(m -> m.startsWith(RESOLVED) &&
@@ -262,7 +246,7 @@ public class TestDnsDiscovery {
 				assertKeysWork("change", client);
 			}
 			finally {
-				writeZone(zone);
+				control("set-change-srv", "node-a", "node-b");
 				DnsSeedCandidateProvider check = DnsSeedCandidateProvider.builder().names(CHANGE_NAME)
 					.recordType(RecordType.SRV).servers(server).build();
 				List<Host> restored = Arrays.asList(new Host(hostA, port), new Host(hostB, port));
@@ -270,13 +254,6 @@ public class TestDnsDiscovery {
 					.equals(new HashSet<>(restored))? Boolean.TRUE : null);
 			}
 		}
-	}
-
-	private static void writeZone(String zone) throws Exception {
-		serial++;
-		String text = zone.replaceFirst("(?m)^" + Pattern.quote(SOA) + "\\d+ ", SOA + serial + " ");
-		Files.write(zoneFile, text.getBytes(StandardCharsets.UTF_8));
-		System.out.println("DNS-DISCOVERY-ZONE serial=" + serial);
 	}
 
 	private static ClientPolicy policy(DnsSeedCandidateProvider provider) {
@@ -357,28 +334,9 @@ public class TestDnsDiscovery {
 		return RESOLVED + Arrays.asList(name) + " resolved to " + hosts;
 	}
 
-	private static void docker(String... args) throws Exception {
-		List<String> command = new ArrayList<>();
-		command.add("docker");
-		command.addAll(Arrays.asList(args));
-		Process process = new ProcessBuilder(command).redirectErrorStream(true).start();
-		String output = new String(readAll(process.getInputStream()), StandardCharsets.UTF_8).trim();
-
-		if (! process.waitFor(60, TimeUnit.SECONDS) || process.exitValue() != 0) {
-			fail(command + " failed: " + output);
-		}
-		System.out.println("DNS-DISCOVERY-DOCKER " + command + ": " + output);
-	}
-
-	private static byte[] readAll(InputStream in) throws IOException {
-		ByteArrayOutputStream out = new ByteArrayOutputStream();
-		byte[] buf = new byte[4096];
-		int n;
-
-		while ((n = in.read(buf)) != -1) {
-			out.write(buf, 0, n);
-		}
-		return out.toByteArray();
+	private static void control(String... verb) throws Exception {
+		String output = TestEnv.control(verb);
+		System.out.println("DNS-DISCOVERY-CONTROL " + Arrays.asList(verb) + ": " + output);
 	}
 
 	private static <T> T await(Supplier<T> condition) throws Exception {
@@ -390,15 +348,6 @@ public class TestDnsDiscovery {
 				fail("condition not met within " + WAIT_MS + "ms: " + messages);
 			}
 			Thread.sleep(50);
-		}
-		return value;
-	}
-
-	private static String required(String name) {
-		String value = System.getProperty(name);
-
-		if (value == null || value.isEmpty()) {
-			throw new IllegalStateException("System property " + name + " is not set. Run test/discovery/run_dns.sh");
 		}
 		return value;
 	}

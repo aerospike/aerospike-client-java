@@ -16,8 +16,11 @@
  */
 package com.aerospike.client.cluster;
 
+import java.util.ArrayList;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 
 import com.aerospike.client.AerospikeException;
@@ -52,6 +55,7 @@ final class SeedRefresher {
 	private final int tendRefreshDeadline;
 	private final int refreshTimeout;
 	private final Object lock = new Object();
+	private final AtomicBoolean providerClosed = new AtomicBoolean();
 	private Host[] initSeeds;
 	private volatile int overrunCount;
 	private volatile boolean tripped;
@@ -66,6 +70,7 @@ final class SeedRefresher {
 	private boolean firstDone;
 	private boolean firstAbandoned;
 	private boolean started;
+	private boolean refreshing;
 	private boolean urgent;
 	private boolean stopped;
 
@@ -156,6 +161,7 @@ final class SeedRefresher {
 
 			synchronized (lock) {
 				thread = t;
+				refreshing = true;
 				t.start();
 
 				long deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(refreshTimeout);
@@ -220,7 +226,8 @@ final class SeedRefresher {
 
 	/**
 	 * Ask the discovery thread to refresh now, without waiting for it. Called on the tend thread when
-	 * no nodes are active. Honored at most once per refresh interval; does nothing in tend mode.
+	 * no nodes are active. Honored at most once per refresh interval; does nothing in tend mode or
+	 * while a refresh is running.
 	 */
 	void requestRefresh() {
 		if (! threaded) {
@@ -233,13 +240,16 @@ final class SeedRefresher {
 			return;
 		}
 
-		urgentRequested = true;
-		lastUrgent = now;
-
 		synchronized (lock) {
+			if (refreshing) {
+				return;
+			}
 			urgent = true;
 			lock.notifyAll();
 		}
+
+		urgentRequested = true;
+		lastUrgent = now;
 	}
 
 	Host[] merge(Host[] discovered, boolean init) {
@@ -306,11 +316,7 @@ final class SeedRefresher {
 		overrunCount = 0;
 
 		if (hosts != null) {
-			Host[] seeds = merge(hosts, false);
-
-			if (seeds.length > 0) {
-				publish(seeds);
-			}
+			publishMerged(hosts, false);
 		}
 	}
 
@@ -334,6 +340,7 @@ final class SeedRefresher {
 				firstHosts = hosts;
 				firstError = error;
 				firstDone = true;
+				refreshing = false;
 				lock.notifyAll();
 			}
 			checkOverrun(begin);
@@ -383,11 +390,13 @@ final class SeedRefresher {
 	private boolean awaitRefresh(long next) throws InterruptedException {
 		synchronized (lock) {
 			long remaining;
+			refreshing = false;
 
 			while (! stopped && ! urgent && (remaining = next - System.nanoTime()) > 0) {
 				TimeUnit.NANOSECONDS.timedWait(lock, remaining);
 			}
 			urgent = false;
+			refreshing = ! stopped;
 			return ! stopped;
 		}
 	}
@@ -411,7 +420,19 @@ final class SeedRefresher {
 
 	private Host[] candidates(int tendCount) {
 		SeedCandidateContext ctx = new SeedCandidateContext(clusterName, staticSeeds, tendCount);
-		return provider.refreshSeedCandidates(ctx).toArray(new Host[0]);
+		List<Host> hosts = provider.refreshSeedCandidates(ctx);
+		List<Host> valid = new ArrayList<>(hosts.size());
+
+		for (Host host : hosts) {
+			if (Cluster.isValidPort(host.port)) {
+				valid.add(host);
+			}
+			else if (Log.warnEnabled()) {
+				Log.warn("Seed candidate provider " + providerName(provider) + " returned host " + host.name +
+					" with port " + host.port + " outside 1-65535. Host dropped");
+			}
+		}
+		return valid.toArray(new Host[valid.size()]);
 	}
 
 	private Host[] refresh(int tendCount) {
@@ -487,24 +508,37 @@ final class SeedRefresher {
 	}
 
 	/**
-	 * Stop the discovery thread when client construction fails, without waiting for a refresh in
-	 * flight. Does nothing in tend mode.
+	 * Release the provider when client construction fails. In thread mode, stop the discovery thread
+	 * without waiting for a refresh in flight; a running thread closes the provider as it exits.
 	 */
 	void abort() {
 		if (threaded) {
-			boolean idle;
+			boolean running;
 
 			synchronized (lock) {
-				idle = ! stopped && stop() == null;
+				if (stopped) {
+					return;
+				}
+				running = stop() != null;
 			}
 
-			if (idle) {
-				closeProvider();
+			if (running) {
+				return;
 			}
 		}
+		closeProvider();
 	}
 
 	private void closeProvider() {
+		if (providerClosed.compareAndSet(false, true)) {
+			closeProvider(provider);
+		}
+	}
+
+	/**
+	 * Close a provider that never got a refresher, because client construction failed first.
+	 */
+	static void closeProvider(SeedCandidateProvider provider) {
 		try {
 			provider.close();
 		}

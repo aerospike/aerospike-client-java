@@ -18,6 +18,7 @@ package com.aerospike.client.cluster;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
@@ -29,6 +30,7 @@ import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BooleanSupplier;
 
 import org.junit.After;
@@ -44,6 +46,7 @@ import com.aerospike.client.discovery.DiscoveryExecutionMode;
 import com.aerospike.client.discovery.SeedCandidateContext;
 import com.aerospike.client.discovery.SeedCandidateProvider;
 import com.aerospike.client.discovery.SeedMergePolicy;
+import com.aerospike.client.discovery.StaticSeedCandidateProvider;
 import com.aerospike.client.policy.ClientPolicy;
 
 public class SeedCandidateProviderSpiTest {
@@ -207,6 +210,73 @@ public class SeedCandidateProviderSpiTest {
 			assertEquals(null, provider.contexts.get(0).clusterName);
 			assertEquals(0, provider.contexts.get(0).tendIteration);
 		}
+	}
+
+	@Test
+	public void supportsDeadlineDefaultsToFalse() {
+		SeedCandidateProvider provider = new SeedCandidateProvider() {
+			@Override
+			public List<Host> refreshSeedCandidates(SeedCandidateContext ctx) {
+				return Collections.emptyList();
+			}
+
+			@Override
+			public boolean needsPeriodicRefresh() {
+				return true;
+			}
+		};
+		assertFalse(provider.supportsDeadline());
+
+		AerospikeException ae = assertThrows(AerospikeException.class,
+			() -> new AerospikeClient(policy(provider), DEAD_SEED));
+		assertEquals("A seed candidate provider that needs periodic refresh must support a deadline in " +
+			"discovery execution mode tend", ae.getBaseMessage());
+
+		ClientPolicy policy = policy(provider);
+		policy.discoveryExecutionMode = DiscoveryExecutionMode.THREAD;
+		new AerospikeClient(policy, DEAD_SEED).close();
+	}
+
+	@Test
+	public void hostWithPortOutOfRangeIsDropped() {
+		Host low = new Host("10.0.0.1", 0);
+		Host min = new Host("10.0.0.2", 1);
+		Host high = new Host("10.0.0.3", 65536);
+		Host max = new Host("10.0.0.4", 65535);
+		TestSeedProvider provider = new TestSeedProvider(true, true, low, min, high, max);
+		ClientPolicy policy = policy(provider);
+		policy.discoveryMergePolicy = SeedMergePolicy.REPLACE;
+		AtomicReference<Host[]> snapshot = new AtomicReference<>();
+		SeedRefresher r = new SeedRefresher(provider, policy, new Host[0], snapshot::set);
+
+		Host[] seeds = r.discover();
+		assertArrayEquals(new Host[] {min, max}, seeds);
+		r.start(seeds);
+
+		provider.result = call -> Arrays.asList(high, max, low);
+		r.tend(2, 250);
+		assertArrayEquals(new Host[] {max}, snapshot.get());
+
+		String prefix = "Seed candidate provider " + TestSeedProvider.class.getName() + " returned host ";
+		assertEquals(warnings.toString(), Arrays.asList(
+			prefix + "10.0.0.1 with port 0 outside 1-65535. Host dropped",
+			prefix + "10.0.0.3 with port 65536 outside 1-65535. Host dropped",
+			prefix + "10.0.0.3 with port 65536 outside 1-65535. Host dropped",
+			prefix + "10.0.0.1 with port 0 outside 1-65535. Host dropped"), warnings);
+	}
+
+	@Test
+	public void builtInProviderHostWithPortOutOfRangeIsDropped() {
+		Host valid = new Host("10.0.0.2", 3000);
+		ClientPolicy policy = policy(null);
+		policy.discoveryMergePolicy = SeedMergePolicy.DISCOVERY_ONLY;
+		SeedRefresher r = new SeedRefresher(new StaticSeedCandidateProvider(new Host("10.0.0.1", 65536), valid),
+			policy, new Host[0], hosts -> {});
+
+		assertArrayEquals(new Host[] {valid}, r.discover());
+		assertEquals(warnings.toString(), Arrays.asList(
+			"Seed candidate provider static returned host 10.0.0.1 with port 65536 outside 1-65535. Host dropped"),
+			warnings);
 	}
 
 	@Test

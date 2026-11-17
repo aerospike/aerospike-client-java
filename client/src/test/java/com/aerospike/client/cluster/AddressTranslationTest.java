@@ -126,6 +126,25 @@ public class AddressTranslationTest {
 	}
 
 	@Test
+	public void translatedPortOutOfRangeIsMiss() {
+		for (int port : new int[] {0, 65536}) {
+			AddressTranslator translator = advertised -> Optional.of(new Host("192.168.1.1", port));
+
+			assertEquals(new Host("10.0.0.9", "tls1", 3000),
+				Cluster.translate(translator, TranslationMissMode.PASS_THROUGH, MISSED));
+			assertThrows(AerospikeException.TranslationMiss.class,
+				() -> Cluster.translate(translator, TranslationMissMode.STRICT, MISSED));
+		}
+
+		for (int port : new int[] {1, 65535}) {
+			AddressTranslator translator = advertised -> Optional.of(new Host("192.168.1.1", port));
+
+			assertEquals(new Host("192.168.1.1", "tls1", port),
+				Cluster.translate(translator, TranslationMissMode.STRICT, MISSED));
+		}
+	}
+
+	@Test
 	public void strictMissFailsNamingStaticMap() {
 		AerospikeException.TranslationMiss tm = assertThrows(AerospikeException.TranslationMiss.class,
 			() -> Cluster.translate(STATIC_MAP, TranslationMissMode.STRICT, MISSED));

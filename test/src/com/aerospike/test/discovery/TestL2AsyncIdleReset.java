@@ -60,11 +60,11 @@ import io.netty.channel.nio.NioIoHandler;
 
 /**
  * Async counterpart of {@link TestL2IdleReset} on direct NIO and Netty event loops, against the
- * default {@link L2Topology} in the idle-reset profile of run_l2.sh. Every toxic the case adds is
+ * default {@link L2Topology} in the idle-reset profile of the l2-proxy harness. Every toxic the case adds is
  * removed in {@link #restore()}.
  */
 public class TestL2AsyncIdleReset extends TestBase {
-	private static final String BLOCKER = "Async idle reset needs DISCOVERY_IDLE_RESET (run_l2.sh L2_PROFILE=idle-reset)";
+	private static final String BLOCKER = "Async idle reset needs DISCOVERY_IDLE_RESET (l2-proxy profile idle-reset)";
 	private static final String SET = "l2fa";
 	private static final int EVENT_LOOPS = 2;
 	private static final int WARM_CONCURRENCY = 8;

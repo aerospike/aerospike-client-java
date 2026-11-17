@@ -20,7 +20,9 @@ static:
     discovery:
       provider: static
       merge_policy: merge
+      execution_mode: thread
       refresh_interval_ms: 30000
+      refresh_timeout_ms: 10000
       tend_refresh_deadline_ms: 100
     translation:
       provider: port-map
@@ -50,8 +52,10 @@ static:
 | `dns` | map | see [`static.client.discovery.dns`](#staticclientdiscoverydns) | none | `seedCandidateProvider` (with `provider: dns`) |
 | `aws` | map | see [`static.client.discovery.aws`](#staticclientdiscoveryaws) | none | `seedCandidateProvider` (with `provider: aws-tags`) |
 | `merge_policy` | string | `merge`, `replace`, `discovery_only`, see [Merge policy](discovery-plugin-guide.md#merge-policy) | `merge` | `discoveryMergePolicy` |
+| `execution_mode` | string | `thread`, `tend`, see [Execution mode](#execution-mode) | `thread` | `discoveryExecutionMode` |
 | `refresh_interval_ms` | int | milliseconds | `30000` | `discoveryRefreshInterval` |
-| `tend_refresh_deadline_ms` | int | milliseconds | `100` | `discoveryTendRefreshDeadline` |
+| `refresh_timeout_ms` | int | milliseconds, `thread` mode only | `10000` | `discoveryRefreshTimeout` |
+| `tend_refresh_deadline_ms` | int | milliseconds, `tend` mode only | `100` | `discoveryTendRefreshDeadline` |
 
 Code only for now:
 
@@ -59,17 +63,24 @@ Code only for now:
 | --- | --- |
 | `provider_class` | Not read from YAML (ignored as an unknown key). Register a name with `ClientPolicy.registerSeedCandidateProvider`, or set `ClientPolicy.seedCandidateProvider` in code. |
 
-Not supported in Java:
+`refresh_interval_ms`, `refresh_timeout_ms` and `tend_refresh_deadline_ms` are checked at
+client construction when the provider needs periodic refresh, as when they are set in code. A
+value that fails the check fails client construction, whether it came from the file or from code.
 
-| Key | Status |
-| --- | --- |
-| `execution_mode` | Not supported. The Java client runs discovery on the tend thread only. |
-| `refresh_timeout_ms` | Not supported. The Java client runs discovery on the tend thread only. |
+### Execution mode
 
-`refresh_interval_ms` and `tend_refresh_deadline_ms` are checked against
-`dynamic.client.tend_interval` at client construction when the provider needs periodic
-refresh, as when they are set in code. A value that fails the check fails client
-construction, whether it came from the file or from code.
+`execution_mode` selects where periodic refreshes of a provider that needs them (`dns`,
+`aws-tags`, or a custom provider) run. `static` is called once, at construction, in either mode.
+
+| Value | Behaviour | Checked at client construction |
+| --- | --- | --- |
+| `thread` (default) | The client starts one daemon thread per client, named `discovery`, that makes every refresh, the first one included. The tend thread never calls the provider, so a slow refresh never delays it. A refresh is measured against `refresh_timeout_ms`; one that takes longer logs a warning and its result is still applied. Client construction waits at most `refresh_timeout_ms` for the first refresh, and so does `AerospikeClient.close()` for a refresh in flight. When no node is active, the tend asks for an urgent refresh, at most once per `refresh_interval_ms`. | `refresh_interval_ms` at least `dynamic.client.tend_interval`; `refresh_timeout_ms` above 0; `dns.timeout_ms` and `aws.timeout_ms` at most `refresh_timeout_ms`. |
+| `tend` | No thread is started. The first refresh runs in the client constructor, later ones on the tend thread every `refresh_interval_ms / tend_interval` tends, bounded by `tend_refresh_deadline_ms`. Three consecutive overruns disable the provider. The provider must support a deadline: `aws-tags` does not, so it fails client construction in this mode. | `refresh_interval_ms` at least `dynamic.client.tend_interval`; `tend_refresh_deadline_ms` above 0 and at most half of `dynamic.client.tend_interval`; `dns.timeout_ms` at most `tend_refresh_deadline_ms`. |
+
+`aws-tags` needs `thread` mode. `dns` runs in either; use `tend` mode to avoid the extra thread,
+for example in a process that creates many clients, with a resolver that answers within
+`tend_refresh_deadline_ms`. Details are in the
+[plugin author guide](discovery-plugin-guide.md#thread-context).
 
 ## `static.client.discovery.dns`
 
@@ -84,6 +95,7 @@ static:
     discovery:
       provider: dns
       merge_policy: merge
+      execution_mode: tend
       refresh_interval_ms: 30000
       tend_refresh_deadline_ms: 100
       dns:
@@ -120,16 +132,17 @@ order for the same DNS answers. Queries go over UDP, with a TCP retry of a trunc
 `servers` or to the system resolvers, read once from the configuration of the JDK DNS provider
 (`com.sun.jndi.dns.DnsContextFactory`, module `jdk.naming.dns`); the provider starts no thread.
 
-Deadline: the provider needs periodic refresh and runs on the tend thread, so `timeout_ms`
-must not exceed `tend_refresh_deadline_ms` (`ClientPolicy.discoveryTendRefreshDeadline`).
+Deadline: the provider needs periodic refresh and runs in either execution mode. `timeout_ms`
+must not exceed `refresh_timeout_ms` (`ClientPolicy.discoveryRefreshTimeout`) in `thread` mode,
+or `tend_refresh_deadline_ms` (`ClientPolicy.discoveryTendRefreshDeadline`) in `tend` mode.
 Client construction fails otherwise:
 
 ```
 DNS seed provider timeout 150 must be less or equal to the discovery tend refresh deadline 100
 ```
 
-With the default deadline of 100 ms, only a local resolver (on the client host or its local
-network) answers reliably in time.
+In `tend` mode with the default deadline of 100 ms, only a local resolver (on the client host or
+its local network) answers reliably in time.
 
 Failure:
 
@@ -194,8 +207,9 @@ static:
     discovery:
       provider: aws-tags
       merge_policy: merge
+      execution_mode: thread
       refresh_interval_ms: 30000
-      tend_refresh_deadline_ms: 100
+      refresh_timeout_ms: 10000
       aws:
         region: us-east-1
         filters:
@@ -204,7 +218,7 @@ static:
               - prod-a
         address_field: private_ip
         port: 3000
-        timeout_ms: 80
+        timeout_ms: 2000
 ```
 
 The same provider in code:
@@ -228,7 +242,7 @@ AerospikeClient client = new AerospikeClient(policy, new Host("10.0.1.10", 3000)
 | `address_field` | string | `private_ip`, `public_ip`, `private_dns`, `public_dns` | `private_ip` | `addressField` |
 | `port` | int | port set on every host | `3000` | `port` |
 | `tls_name` | string | TLS name set on every host | none | `tlsName` |
-| `timeout_ms` | int | total milliseconds for one tend refresh, credentials and every page included | `80` | `timeout` |
+| `timeout_ms` | int | total milliseconds for one refresh, credentials and every page included | `2000` | `timeout` |
 | `init_timeout_ms` | int | total milliseconds for the first refresh, which runs in the client constructor and resolves the credentials | `10000` | `initTimeout` |
 | `endpoint` | string | EC2 endpoint URL, `http` or `https`, such as a VPC interface endpoint | `https://ec2.<region>.amazonaws.com` | `endpoint` |
 
@@ -276,8 +290,8 @@ the first source found, in this order, is used:
 
 Not in the chain: SSO, `credential_process`, `role_arn` profiles and cross-account roles.
 Use the hook for them; it may wrap the application's own AWS SDK credentials provider. The
-hook runs on the thread that refreshes the provider, the tend thread included, so it must
-return quickly. Credentials it returns with an expiry are cached until five minutes before
+hook runs on the client's `discovery` thread, within `timeout_ms` (or `init_timeout_ms` for the
+first refresh). Credentials it returns with an expiry are cached until five minutes before
 it; without one they are used for the life of the provider.
 
 The chain resolves once, at the first refresh, within `init_timeout_ms`, and logs
@@ -287,24 +301,24 @@ expiry and reloaded on the refreshing thread when they are within five minutes o
 never on a timer. No access key id, secret, session token, web identity token or signature is
 logged or put in a message.
 
-Deadline: the Java client runs discovery on the tend thread only. The provider needs
-periodic refresh, so `timeout_ms` must not exceed `tend_refresh_deadline_ms`
-(`ClientPolicy.discoveryTendRefreshDeadline`). Client construction fails otherwise:
+Execution mode: a cold EC2 call takes several hundred milliseconds, more than a tend can give,
+so the provider runs in `execution_mode: thread` only, on the client's `discovery` thread. In
+`tend` mode client construction fails with
+`A seed candidate provider that needs periodic refresh must support a deadline in discovery execution mode tend`.
+`timeout_ms` must not exceed `refresh_timeout_ms` (`ClientPolicy.discoveryRefreshTimeout`).
+Client construction fails otherwise:
 
 ```
-AWS EC2 seed provider timeout 150 must be less or equal to the discovery tend refresh deadline 100
+AWS EC2 seed provider timeout 12000 must be less or equal to the discovery refresh timeout 10000
 ```
 
 Every connect and read of a refresh is bounded by the time left of `timeout_ms`, credentials
 included, and the first refresh by `init_timeout_ms`. The endpoint host names are resolved
-by the system resolver, which the provider cannot bound. For an in-region endpoint, keep the
-defaults, `timeout_ms: 80` and `tend_refresh_deadline_ms: 100`. An out-of-region endpoint, or
-a credential reload on tend that is slow (STS, ECS or IMDS), makes refreshes overrun the
-deadline: each overrun is logged as
-`Seed candidate refresh took 101ms, exceeding tend deadline 100ms. Consecutive overruns: 1`,
-and after three consecutive overruns the client disables the provider for the life of the
-client and restores the initial seeds
-(`Seed candidate provider exceeded tend deadline 3 consecutive times. Provider disabled for this client and initial seeds restored`).
+by the system resolver, which the provider cannot bound. Client construction waits for the
+first refresh at most `refresh_timeout_ms`; a first refresh that completes later is applied for
+later re-seeds. A refresh that takes longer than `refresh_timeout_ms` is logged as
+`Seed candidate refresh took 10400ms, exceeding refresh timeout 10000ms. Overruns: 1` and its
+result is still applied.
 
 Failure:
 
@@ -399,9 +413,11 @@ endpoints=[consul-1.example.com:8500]}` and the `nat-table` factory receives
 `static_map` is valid only with `static-map` and `port_map` only with `port-map`, so a block
 naming a registered translator cannot carry them.
 
-The client closes the provider it was constructed with: after `AerospikeClient.close()`,
-`SeedCandidateProvider.close()` is called once on the tend thread as it exits, after the last
-refresh has returned. `AerospikeClient.close()` does not wait for it.
+The client closes the provider and translator it was constructed with. After
+`AerospikeClient.close()`, `SeedCandidateProvider.close()` is called once, after the last refresh
+has returned: on the `discovery` thread as it exits, when one runs, otherwise on the tend thread as
+it exits. `AddressTranslator.close()` is called once on the tend thread as it exits, and also when
+client construction fails. See the [plugin author guide](discovery-plugin-guide.md#thread-context).
 
 ## Invalid settings
 
@@ -410,11 +426,10 @@ handled like any other file the client cannot parse: a warning naming the key or
 is logged, nothing from the file is applied, and the client starts on the config set
 in code.
 
-- an unknown value for `discovery.merge_policy` or `translation.on_miss`;
+- an unknown value for `discovery.merge_policy`, `discovery.execution_mode` or `translation.on_miss`;
 - a `discovery.provider` or `translation.provider` that is neither built-in nor registered
   on the `ClientPolicy` passed to the client constructor;
 - a registered factory that throws or returns null;
-- `discovery.execution_mode` or `discovery.refresh_timeout_ms`;
 - `discovery.provider: aws-tags` without a `discovery.aws` block, or a `discovery.aws` block with
   any other provider or with no provider;
 - a `discovery.aws` block without `region` or `filters`, with an empty `filters`, a filter
@@ -434,7 +449,8 @@ in code.
 - `static_map` with a provider other than `static-map`, `port_map` with one other than
   `port-map`, or `provider: port-map` without `port_map`;
 - `static_map` and `ip_map` both set;
-- a value of the wrong type, such as a string for `refresh_interval_ms`, `dns.port` or `aws.port`;
+- a value of the wrong type, such as a string for `refresh_interval_ms`, `refresh_timeout_ms`,
+  `dns.port` or `aws.port`;
 - a `port_map` entry that the `PortMapAddressTranslator` constructor rejects.
 
 Example warning:

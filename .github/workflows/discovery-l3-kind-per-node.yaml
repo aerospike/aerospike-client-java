@@ -1,0 +1,33 @@
+name: Discovery L3 kind (per-node)
+
+# Runs the per-node profile of l3-kind in aerospike-client-conformance against this
+# commit through the L5 driver. Each l3-kind profile has its own workflow
+# because l3-kind.yaml names its results artifact after the run alone. The
+# job needs the Enterprise feature key (FEATURES_CONF), so it fails on fork
+# pull requests.
+
+permissions:
+  contents: read
+
+on:
+  pull_request:
+  push:
+    branches:
+      - pluggable-discovery
+      - stage
+      - stage-jdk8
+  workflow_dispatch:
+
+jobs:
+  l3-kind:
+    name: L3 kind (per-node)
+    uses: aerospike/aerospike-client-conformance/.github/workflows/l3-kind.yaml@a14ec6e68d7231815e1f60024e9121f4618a8850 # main
+    with:
+      client-repository: ${{ github.repository }}
+      commit: ${{ github.event.pull_request.head.sha || github.sha }}
+      manifest: test/discovery/l5-aws.manifest
+      profile: per-node
+      ako-version: 4.5.0
+      conformance-ref: a14ec6e68d7231815e1f60024e9121f4618a8850
+    secrets:
+      FEATURES_CONF: ${{ secrets.FEATURES_CONF }}

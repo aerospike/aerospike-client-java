@@ -22,8 +22,9 @@ import org.junit.runners.Suite;
 import com.aerospike.test.translation.TestAlternateMissing;
 
 /**
- * Nodes without an alternate access address under useServicesAlternate. Requires the clusters
- * started by test/translation/run_alt_missing.sh, which also supplies the cluster system properties.
+ * Nodes without an alternate access address under useServicesAlternate. Requires the
+ * aerospike-client-conformance alt-missing environment, with its values file loaded into the
+ * environment.
  */
 @RunWith(Suite.class)
 @Suite.SuiteClasses({

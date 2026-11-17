@@ -317,7 +317,7 @@ public class YamlDiscoveryConfigTest {
 	public void executionModeAndRefreshTimeout() throws Exception {
 		ClientPolicy policy = load("all");
 		assertEquals(DiscoveryExecutionMode.THREAD, policy.discoveryExecutionMode);
-		assertEquals(2000, policy.discoveryRefreshTimeout);
+		assertEquals(10000, policy.discoveryRefreshTimeout);
 
 		policy = load("discovery-tend");
 		assertEquals(DiscoveryExecutionMode.TEND, policy.discoveryExecutionMode);
