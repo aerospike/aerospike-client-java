@@ -39,14 +39,14 @@ import com.aerospike.test.util.TestBase;
 
 /**
  * A node that configures an alternate-access-address which does not resolve in its container,
- * against the unresolved-access profile of test/discovery/run_l2.sh. DISCOVERY_VERBATIM_ACCESS_ADDRESS
+ * against the unresolved-access profile of the discovery-l2 workflow. DISCOVERY_VERBATIM_ACCESS_ADDRESS
  * says whether the server under test advertises access-address hostnames verbatim. When it does, the
  * node joins and advertises the hostname as configured; when it does not, the server resolves the
  * hostname at startup, does not start, and names the address in its log.
  */
 public class TestL2UnresolvedAccessAddress extends TestBase {
 	private static final String BLOCKER = "Unresolved access address needs DISCOVERY_UNRESOLVED_HOSTNAME and " +
-		"DISCOVERY_CONTROL_DIR (run_l2.sh L2_PROFILE=unresolved-access)";
+		"DISCOVERY_CONTROL_DIR (the discovery-l2 workflow's unresolved-access profile)";
 	private static final int STATUS_POLL_MS = 500;
 
 	private String addedProxy;

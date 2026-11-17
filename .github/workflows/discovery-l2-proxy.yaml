@@ -1,9 +1,10 @@
 name: Discovery L2 proxy
 
 # Runs every l2-proxy profile of aerospike-client-conformance against this
-# commit through the L5 driver. The l2-proxy rows assert less than the Java L2
-# suites in discovery-integration.yaml, which keep running. Community edition,
-# so it needs no feature key and runs on fork pull requests.
+# commit through the L5 driver, then the Java L2 tests of each profile through
+# test/discovery/l2_run.sh, the manifest's L2_RUN. The Java tests that need a
+# DNS server, start nodes or use TLS stay in discovery-integration.yaml.
+# Community edition, so it needs no feature key and runs on fork pull requests.
 
 permissions:
   contents: read
@@ -29,11 +30,11 @@ on:
 jobs:
   l2-proxy:
     name: L2 proxy
-    uses: aerospike/aerospike-client-conformance/.github/workflows/l2-proxy.yaml@51510577c2e935c2dfb78d695a1ebd1fed1f8ef4 # main
+    uses: aerospike/aerospike-client-conformance/.github/workflows/l2-proxy.yaml@ad21257dd9d1c3224ddf6758006f6ec3361768a4 # CLIENT-5909-l2-run-client-tests
     with:
       client-repository: ${{ github.repository }}
       commit: ${{ github.event.pull_request.head.sha || github.sha }}
       manifest: test/discovery/l5-aws.manifest
       profile: all
       edition: ce
-      conformance-ref: 51510577c2e935c2dfb78d695a1ebd1fed1f8ef4
+      conformance-ref: ad21257dd9d1c3224ddf6758006f6ec3361768a4

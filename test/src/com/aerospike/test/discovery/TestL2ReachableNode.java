@@ -46,7 +46,7 @@ import com.aerospike.test.util.TestBase;
 
 /**
  * Testing strategy section 4.3 row N-10 and the alternate list cases against the reachable profile
- * of test/discovery/run_l2.sh. The node named by DISCOVERY_REACHABLE_NODE advertises a hostname and
+ * of the l2-proxy harness. The node named by DISCOVERY_REACHABLE_NODE advertises a hostname and
  * its own listener port as its access address; the hostname resolves to the proxy in the client
  * and server containers. Every other node advertises its private address in the standard list and
  * the same hostname with its own listener port in the alternate list. Without the profile every
@@ -54,7 +54,7 @@ import com.aerospike.test.util.TestBase;
  */
 public class TestL2ReachableNode extends TestBase {
 	private static final String BLOCKER = " needs DISCOVERY_REACHABLE_NODE, a node advertising an address the " +
-		"client can reach (run_l2.sh L2_PROFILE=reachable, or the discovery-l2 workflow's reachable profile)";
+		"client can reach (l2-proxy profile reachable)";
 	private static final int MISS_RETRIES = 3;
 
 	@After

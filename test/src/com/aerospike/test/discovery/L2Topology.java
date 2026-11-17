@@ -70,7 +70,7 @@ import com.aerospike.client.policy.ClientPolicy;
 import com.aerospike.test.util.Args;
 
 /**
- * L2 topology built by .github/workflows/discovery-l2.yaml or test/discovery/run_l2.sh: a three node
+ * L2 topology built by the l2-proxy harness or .github/workflows/discovery-l2.yaml: a three node
  * cluster on a private network with no published ports, reachable from the client only through one
  * Toxiproxy listener per node behind one endpoint hostname. The client has no route to the node
  * addresses. The topology arrives as environment variables:
@@ -85,7 +85,7 @@ import com.aerospike.test.util.Args;
  * <li>DISCOVERY_CONTROL_DIR: optional directory shared with the host, which starts and removes
  * nodes on request; unset when the host offers no node control</li>
  * <li>DISCOVERY_REACHABLE_NODE: optional container of the node that advertises an address the
- * client can reach; set only by the reachable profile of run_l2.sh</li>
+ * client can reach; set only by the reachable profile</li>
  * <li>DISCOVERY_PASS_THROUGH_BRANCH: optional, A when each node advertises its own
  * alternate-access-address hostname and B when every node advertises one hostname, each with its
  * own listener port; set only by the pass-through-names and pass-through-ports profiles</li>
@@ -103,7 +103,7 @@ import com.aerospike.test.util.Args;
  * discovery-l2 workflow</li>
  * <li>DISCOVERY_UNRESOLVED_HOSTNAME: optional hostname that does not resolve in the server containers,
  * which a node started on request advertises as its alternate-access-address; set only by the
- * unresolved-access profile of run_l2.sh</li>
+ * unresolved-access profile</li>
  * <li>DISCOVERY_VERBATIM_ACCESS_ADDRESS: 1 when the server under test advertises access-address
  * hostnames verbatim without resolving them, 0 when it resolves them at startup; set only by the
  * unresolved-access profile</li>
@@ -863,7 +863,7 @@ final class L2Topology {
 
 		if (value == null || value.isEmpty()) {
 			throw new IllegalStateException("Environment variable " + name +
-				" is not set. Run test/discovery/run_l2.sh or the discovery-l2 workflow");
+				" is not set. Run through the l2-proxy harness's L2_RUN or the discovery-l2 workflow");
 		}
 		return value;
 	}

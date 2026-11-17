@@ -40,6 +40,13 @@ on:
         type: boolean
         required: false
         default: false
+      tests:
+        description: >-
+          Surefire -Dtest filter that narrows the profile's suite, such as
+          TestL2PassThrough#n18StaticMap*. Empty runs the whole suite.
+        type: string
+        required: false
+        default: ""
       fail-on-skip:
         description: Fail when a test of the suite skips, except those in expected-skips
         type: boolean
@@ -161,6 +168,7 @@ jobs:
           DISCOVERY_SUBSET: ${{ inputs.subset }}
           DISCOVERY_DNS_SERVER: ${{ steps.dns.outputs.server-address }}
           L2_SUITE: ${{ steps.suite.outputs.suite }}
+          L2_TESTS: ${{ inputs.tests }}
         run: |
           set -euo pipefail
           run_args=(
@@ -169,6 +177,7 @@ jobs:
             --workdir "${CLIENT_WORKDIR}"
             --env-file "${ENV_FILE}"
             -e L2_SUITE
+            -e L2_TESTS
             -e DISCOVERY_DNS_SERVER
           )
           remainder="${CLIENT_VOLUMES}"
