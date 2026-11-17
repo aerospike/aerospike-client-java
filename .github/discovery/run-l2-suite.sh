@@ -71,7 +71,7 @@ suite="${L2_SUITE:-**/SuiteDiscovery.class}"
 
 filter=()
 if [[ -n "${L2_TESTS:-}" ]]; then
-  [[ "$L2_TESTS" =~ ^[A-Za-z0-9*#+,_]+$ ]] || {
+  [[ "$L2_TESTS" =~ ^[A-Za-z0-9*#_]+$ ]] || {
     echo "Refusing unexpected tests: ${L2_TESTS}" >&2
     exit 1
   }

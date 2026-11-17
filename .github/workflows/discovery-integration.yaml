@@ -92,12 +92,13 @@ jobs:
       fail-fast: false
       matrix:
         # The other community tests run in discovery-l2-proxy.yaml through test/discovery/l2_run.sh. These
-        # need a DNS server or start nodes, which l2-proxy does not offer a client's own tests.
+        # need a DNS server or start nodes, which l2-proxy does not offer a client's own tests. Surefire
+        # 2.18.1's JUnit 4 provider takes one method per filter, so pass-through-ports runs its class.
         include:
           - profile: default
             tests: TestL2Topology#n4DnsProviderSeedsThroughEndpoint
           - profile: pass-through-ports
-            tests: TestL2PassThrough#n18PassThroughCollidingNodesCreateNoNode+n18StaticMapCollidingNodesCreateNoNode+n18PassThroughNewcomerCollidingWithNodeIsNotCreated
+            expected-skips: TestL2PassThrough.n15DistinctNamesRouteToEveryOwner
           - profile: port-map-range
     uses: ./.github/workflows/discovery-l2.yaml
     with:
@@ -106,6 +107,7 @@ jobs:
       server-tag: latest
       profile: ${{ matrix.profile }}
       tests: ${{ matrix.tests }}
+      expected-skips: ${{ matrix.expected-skips }}
     secrets: inherit
 
   # The dev build advertises access addresses verbatim. Move to a release tag once one carries the fix.
