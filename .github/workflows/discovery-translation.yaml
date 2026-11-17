@@ -33,10 +33,10 @@ jobs:
             suite: SuiteTranslationMiss
           - environment: alt-missing
             suite: SuiteAlternateMissing
-    uses: aerospike/aerospike-client-conformance/.github/workflows/test-envs.yaml@a14ec6e68d7231815e1f60024e9121f4618a8850 # main
+    uses: aerospike/aerospike-client-conformance/.github/workflows/test-envs.yaml@a30c0787dede434f15be3622e7007dc57b55209d # main
     with:
       environment: ${{ matrix.environment }}
-      conformance-ref: a14ec6e68d7231815e1f60024e9121f4618a8850
+      conformance-ref: a30c0787dede434f15be3622e7007dc57b55209d
       server-image: aerospike/aerospike-server:${{ inputs.server-tag }}
       command: |
         set -euo pipefail
