@@ -217,7 +217,7 @@ public class SeedCandidateProviderSpiTest {
 		SeedCandidateProvider provider = new SeedCandidateProvider() {
 			@Override
 			public List<Host> refreshSeedCandidates(SeedCandidateContext ctx) {
-				return List.of();
+				return Collections.emptyList();
 			}
 
 			@Override
@@ -253,12 +253,12 @@ public class SeedCandidateProviderSpiTest {
 		assertArrayEquals(new Host[] {min, max}, seeds);
 		r.start(seeds);
 
-		provider.result = call -> List.of(high, max, low);
+		provider.result = call -> Arrays.asList(high, max, low);
 		r.tend(2, 250);
 		assertArrayEquals(new Host[] {max}, snapshot.get());
 
 		String prefix = "Seed candidate provider " + TestSeedProvider.class.getName() + " returned host ";
-		assertEquals(warnings.toString(), List.of(
+		assertEquals(warnings.toString(), Arrays.asList(
 			prefix + "10.0.0.1 with port 0 outside 1-65535. Host dropped",
 			prefix + "10.0.0.3 with port 65536 outside 1-65535. Host dropped",
 			prefix + "10.0.0.3 with port 65536 outside 1-65535. Host dropped",
@@ -274,7 +274,7 @@ public class SeedCandidateProviderSpiTest {
 			policy, new Host[0], hosts -> {});
 
 		assertArrayEquals(new Host[] {valid}, r.discover());
-		assertEquals(warnings.toString(), List.of(
+		assertEquals(warnings.toString(), Arrays.asList(
 			"Seed candidate provider static returned host 10.0.0.1 with port 65536 outside 1-65535. Host dropped"),
 			warnings);
 	}

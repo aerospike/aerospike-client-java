@@ -20,6 +20,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
@@ -44,7 +45,7 @@ public class SeedProviderCloseTest {
 
 	@Test
 	public void tendModeClosesProviderOnceWhenConstructionFails() throws Exception {
-		for (Consumer<ClientPolicy> failure : List.of(CONNS_INVALID, NOT_CONNECTED, SINGLE_NODE)) {
+		for (Consumer<ClientPolicy> failure : Arrays.asList(CONNS_INVALID, NOT_CONNECTED, SINGLE_NODE)) {
 			assertClosedOnce(new TestSeedProvider(true, true, DEAD_SEED), DiscoveryExecutionMode.TEND, failure);
 		}
 	}
@@ -56,14 +57,14 @@ public class SeedProviderCloseTest {
 
 	@Test
 	public void nonPeriodicProviderIsClosedOnceWhenConstructionFails() throws Exception {
-		for (Consumer<ClientPolicy> failure : List.of(CONNS_INVALID, NOT_CONNECTED, SINGLE_NODE)) {
+		for (Consumer<ClientPolicy> failure : Arrays.asList(CONNS_INVALID, NOT_CONNECTED, SINGLE_NODE)) {
 			assertClosedOnce(new TestSeedProvider(false, false, DEAD_SEED), DiscoveryExecutionMode.THREAD, failure);
 		}
 	}
 
 	@Test
 	public void threadModeClosesProviderOnceWhenConstructionFails() throws Exception {
-		for (Consumer<ClientPolicy> failure : List.of(CONNS_INVALID, NOT_CONNECTED, SINGLE_NODE)) {
+		for (Consumer<ClientPolicy> failure : Arrays.asList(CONNS_INVALID, NOT_CONNECTED, SINGLE_NODE)) {
 			assertClosedOnce(new TestSeedProvider(true, false, DEAD_SEED), DiscoveryExecutionMode.THREAD, failure);
 		}
 	}

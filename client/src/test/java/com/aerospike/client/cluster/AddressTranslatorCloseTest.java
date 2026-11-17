@@ -22,6 +22,7 @@ import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 import java.lang.reflect.Field;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -119,7 +120,7 @@ public class AddressTranslatorCloseTest {
 
 	@Test
 	public void closeCalledOnceWhenConstructionFails() {
-		List<Consumer<ClientPolicy>> failures = List.of(
+		List<Consumer<ClientPolicy>> failures = Arrays.asList(
 			policy -> {
 				policy.minConnsPerNode = 2;
 				policy.maxConnsPerNode = 1;

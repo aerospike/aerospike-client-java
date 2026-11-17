@@ -290,7 +290,7 @@ public class ThreadModeTest {
 				running.countDown();
 				return p.block(B);
 			}
-			return List.of(A);
+			return Arrays.asList(A);
 		});
 		SeedRefresher r = refresher(provider, new Host[0], 1000, 1000);
 

@@ -117,7 +117,7 @@ public class ZeroNodeReseedTest {
 		TestSeedProvider provider = new TestSeedProvider(true, true);
 		provider.result = call -> {
 			event("refresh " + call);
-			return List.of(new Host("127.0.0.1", 10 + call));
+			return Arrays.asList(new Host("127.0.0.1", 10 + call));
 		};
 		ClientPolicy policy = policy(provider, 60000);
 		policy.discoveryExecutionMode = DiscoveryExecutionMode.THREAD;
@@ -132,7 +132,7 @@ public class ZeroNodeReseedTest {
 			client.close();
 		}
 
-		assertEquals(List.of("seed 1", "seed 11", "seed 1", "seed 11", "seed 1", "seed 12"),
+		assertEquals(Arrays.asList("seed 1", "seed 11", "seed 1", "seed 11", "seed 1", "seed 12"),
 			seedAttempts().subList(0, 6));
 		assertTrue(events().indexOf("refresh 2") < events().indexOf("seed 12"));
 	}
