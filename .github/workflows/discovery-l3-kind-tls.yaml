@@ -21,13 +21,13 @@ on:
 jobs:
   l3-kind:
     name: L3 kind (tls)
-    uses: aerospike/aerospike-client-conformance/.github/workflows/l3-kind.yaml@57c0a2ae457f77a56bdae2675688f66218e8fa89 # main
+    uses: aerospike/aerospike-client-conformance/.github/workflows/l3-kind.yaml@32d8a6859610c29f16a4c676c383ec2a1ec67a16 # main
     with:
       client-repository: ${{ github.repository }}
       commit: ${{ github.event.pull_request.head.sha || github.sha }}
       manifest: test/discovery/l5-aws.manifest
       profile: tls
       ako-version: 4.5.0
-      conformance-ref: 57c0a2ae457f77a56bdae2675688f66218e8fa89
+      conformance-ref: 32d8a6859610c29f16a4c676c383ec2a1ec67a16
     secrets:
       FEATURES_CONF: ${{ secrets.FEATURES_CONF }}
