@@ -1,0 +1,46 @@
+name: Discovery translation
+
+# Runs each translation suite against its aerospike-client-conformance test environment, which starts
+# Community servers, so the jobs need no feature key and run on fork pull requests too.
+
+on:
+  workflow_call:
+    inputs:
+      server-tag:
+        description: Aerospike Community image tag
+        type: string
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  translation:
+    name: ${{ matrix.environment }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - environment: port-map
+            suite: SuitePortMap
+          - environment: collision
+            suite: SuiteTranslationCollision
+          - environment: yaml
+            suite: SuiteYamlTranslation
+          - environment: pass-through
+            suite: SuitePassThrough
+          - environment: on-miss
+            suite: SuiteTranslationMiss
+          - environment: alt-missing
+            suite: SuiteAlternateMissing
+    uses: aerospike/aerospike-client-conformance/.github/workflows/test-envs.yaml@57c0a2ae457f77a56bdae2675688f66218e8fa89 # main
+    with:
+      environment: ${{ matrix.environment }}
+      conformance-ref: 57c0a2ae457f77a56bdae2675688f66218e8fa89
+      server-image: aerospike/aerospike-server:${{ inputs.server-tag }}
+      command: |
+        set -euo pipefail
+        export JAVA_HOME="$JAVA_HOME_21_X64"
+        mvn -B -pl client -am install -DskipTests
+        mvn -B -pl test test -DskipTests=false -DrunSuite='**/${{ matrix.suite }}.class'
+        bash .github/discovery/check-skips.sh test/target/surefire-reports

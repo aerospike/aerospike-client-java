@@ -15,7 +15,8 @@ name: Discovery integration
 #
 # The aws-tags and dns provider suites (discovery-providers.yaml) run against
 # conformance test environments with a two node Enterprise cluster each, behind
-# the same gate.
+# the same gate. The translation suites (discovery-translation.yaml) run against Community
+# conformance test environments, so they run on every pull request.
 #
 # setup-aerospike-server and setup-discovery-topology are pinned in
 # discovery-l2.yaml to shared-workflows commits that generate the TLS
@@ -181,3 +182,9 @@ jobs:
     with:
       server-tag: 8.2.0.0
     secrets: inherit
+
+  translation:
+    name: Translation
+    uses: ./.github/workflows/discovery-translation.yaml
+    with:
+      server-tag: 8.2.0.1
