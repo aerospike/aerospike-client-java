@@ -70,7 +70,7 @@ import com.aerospike.client.policy.ClientPolicy;
 import com.aerospike.test.util.Args;
 
 /**
- * L2 topology built by the l2-proxy harness or .github/workflows/discovery-l2.yaml: a three node
+ * L2 topology built by the l2-proxy harness of aerospike-client-conformance: a three node
  * cluster on a private network with no published ports, reachable from the client only through one
  * Toxiproxy listener per node behind one endpoint hostname. The client has no route to the node
  * addresses. The topology arrives as environment variables:
@@ -99,8 +99,7 @@ import com.aerospike.test.util.Args;
  * <li>DISCOVERY_PROXY_PORT_RANGE: optional {@code first last} local port range of the Toxiproxy
  * container; set only by the port-range profile</li>
  * <li>DISCOVERY_DNS_SERVER: optional address of a DNS server on the client network serving SRV
- * records for the endpoint, one per clear listener; set only by the default profile of the
- * discovery-l2 workflow</li>
+ * records for the endpoint, one per clear listener</li>
  * <li>DISCOVERY_UNRESOLVED_HOSTNAME: optional hostname that does not resolve in the server containers,
  * which a node started on request advertises as its alternate-access-address; set only by the
  * unresolved-access profile</li>
@@ -863,7 +862,7 @@ final class L2Topology {
 
 		if (value == null || value.isEmpty()) {
 			throw new IllegalStateException("Environment variable " + name +
-				" is not set. Run through the l2-proxy harness's L2_RUN or the discovery-l2 workflow");
+				" is not set. Run through the l2-proxy harness's L2_RUN");
 		}
 		return value;
 	}

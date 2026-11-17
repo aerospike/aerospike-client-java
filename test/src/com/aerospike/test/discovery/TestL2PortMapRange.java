@@ -44,7 +44,7 @@ import com.aerospike.test.util.TestBase;
 
 /**
  * Testing strategy section 4.3 row N-19 against the port-map-range profile of
- * the discovery-l2 workflow. The nodes sit on a fixed subnet and DISCOVERY_PORT_MAP_RANGE names a
+ * the l2-proxy harness. The nodes sit on a fixed subnet and DISCOVERY_PORT_MAP_RANGE names a
  * contiguous range of node addresses, including addresses no node has yet. Toxiproxy has a
  * listener for every address in the range on DISCOVERY_PORT_MAP_PORT_BASE plus the address's last
  * octet, upstream by IP. One port-map built from that rule before the cluster scales out covers
@@ -53,7 +53,7 @@ import com.aerospike.test.util.TestBase;
 public class TestL2PortMapRange extends TestBase {
 	private static final String BLOCKER = " needs DISCOVERY_PORT_MAP_RANGE, DISCOVERY_PORT_MAP_PORT_BASE and " +
 		"DISCOVERY_CONTROL_DIR, nodes on a fixed subnet with a listener per address of a range " +
-		"(the discovery-l2 workflow's port-map-range profile)";
+		"(the l2-proxy harness's port-map-range profile)";
 	private static final int MISS_RETRIES = 3;
 
 	private final List<String> addedNodes = new ArrayList<>();

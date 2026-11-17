@@ -78,8 +78,8 @@ public class TestL2PassThrough extends TestBase {
 		"alternate-access-address hostname (l2-proxy profile pass-through-names)";
 	private static final String BRANCH_B = " needs DISCOVERY_PASS_THROUGH_BRANCH=B, every node advertising one " +
 		"alternate-access-address hostname with its own port (l2-proxy profile pass-through-ports)";
-	private static final String NODE_CONTROL = " also needs DISCOVERY_CONTROL_DIR to start nodes (the discovery-l2 " +
-		"workflow's pass-through-ports profile)";
+	private static final String NODE_CONTROL = " also needs DISCOVERY_CONTROL_DIR to start nodes (the l2-proxy " +
+		"harness's L2_RUN)";
 
 	private final List<String> addedProxies = new ArrayList<>();
 	private final List<String> addedNodes = new ArrayList<>();
