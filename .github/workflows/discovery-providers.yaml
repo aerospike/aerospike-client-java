@@ -18,10 +18,10 @@ permissions:
 jobs:
   aws-tags:
     name: aws-tags
-    uses: aerospike/aerospike-client-conformance/.github/workflows/test-envs.yaml@57c0a2ae457f77a56bdae2675688f66218e8fa89 # main
+    uses: aerospike/aerospike-client-conformance/.github/workflows/test-envs.yaml@51510577c2e935c2dfb78d695a1ebd1fed1f8ef4 # main
     with:
       environment: aws-tags
-      conformance-ref: 57c0a2ae457f77a56bdae2675688f66218e8fa89
+      conformance-ref: 51510577c2e935c2dfb78d695a1ebd1fed1f8ef4
       server-image: aerospike/aerospike-server-enterprise:${{ inputs.server-tag }}
       command: |
         set -euo pipefail
@@ -34,10 +34,10 @@ jobs:
 
   dns:
     name: dns
-    uses: aerospike/aerospike-client-conformance/.github/workflows/test-envs.yaml@57c0a2ae457f77a56bdae2675688f66218e8fa89 # main
+    uses: aerospike/aerospike-client-conformance/.github/workflows/test-envs.yaml@51510577c2e935c2dfb78d695a1ebd1fed1f8ef4 # main
     with:
       environment: dns
-      conformance-ref: 57c0a2ae457f77a56bdae2675688f66218e8fa89
+      conformance-ref: 51510577c2e935c2dfb78d695a1ebd1fed1f8ef4
       server-image: aerospike/aerospike-server-enterprise:${{ inputs.server-tag }}
       command: |
         set -euo pipefail

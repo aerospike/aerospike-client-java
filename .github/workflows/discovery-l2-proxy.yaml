@@ -29,11 +29,11 @@ on:
 jobs:
   l2-proxy:
     name: L2 proxy
-    uses: aerospike/aerospike-client-conformance/.github/workflows/l2-proxy.yaml@32d8a6859610c29f16a4c676c383ec2a1ec67a16 # main
+    uses: aerospike/aerospike-client-conformance/.github/workflows/l2-proxy.yaml@51510577c2e935c2dfb78d695a1ebd1fed1f8ef4 # main
     with:
       client-repository: ${{ github.repository }}
       commit: ${{ github.event.pull_request.head.sha || github.sha }}
       manifest: test/discovery/l5-aws.manifest
       profile: all
       edition: ce
-      conformance-ref: 32d8a6859610c29f16a4c676c383ec2a1ec67a16
+      conformance-ref: 51510577c2e935c2dfb78d695a1ebd1fed1f8ef4
