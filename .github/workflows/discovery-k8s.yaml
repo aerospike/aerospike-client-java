@@ -21,7 +21,8 @@ name: Discovery k8s
 # version it resolved in its install step.
 #
 # A schedule runs from the default branch. That run checks out stage. A push
-# to pluggable-discovery, stage or stage-jdk8 checks out the pushed commit.
+# to pluggable-discovery, pluggable-discovery_jdk8, stage or stage-jdk8 checks
+# out the pushed commit.
 
 permissions:
   contents: read
@@ -33,6 +34,7 @@ on:
   push:
     branches:
       - pluggable-discovery
+      - pluggable-discovery_jdk8
       - stage
       - stage-jdk8
   schedule:

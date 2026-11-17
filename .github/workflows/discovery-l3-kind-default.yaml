@@ -14,6 +14,7 @@ on:
   push:
     branches:
       - pluggable-discovery
+      - pluggable-discovery_jdk8
       - stage
       - stage-jdk8
   workflow_dispatch:
