@@ -138,7 +138,7 @@ public class TestTranslationOnMiss {
 		ClientPolicy policy = policy();
 		policy.addressTranslator = new EmptyTranslator();
 		policy.translationOnMiss = TranslationMissMode.PASS_THROUGH;
-		assertJoins("custom-empty-pass-through", policy);
+		assertJoins("custom-empty-pass-through", policy, EmptyTranslator.class.getName());
 	}
 
 	private static ClientPolicy policy() {
@@ -149,6 +149,10 @@ public class TestTranslationOnMiss {
 	}
 
 	private static void assertJoins(String name, ClientPolicy policy) throws Exception {
+		assertJoins(name, policy, null);
+	}
+
+	private static void assertJoins(String name, ClientPolicy policy, String missTranslator) throws Exception {
 		try (AerospikeClient client = new AerospikeClient(policy, new Host(host, portA))) {
 			long deadline = System.currentTimeMillis() + JOIN_WAIT_MS;
 
@@ -159,7 +163,22 @@ public class TestTranslationOnMiss {
 			List<String> names = nodeNames(client);
 			System.out.println("ON-MISS-RESULT " + name + " nodes=" + names.size() + ' ' + names);
 			assertEquals(List.of(nodeA, nodeB), names);
-			assertEquals(List.of(), missWarnings());
+
+			if (missTranslator == null) {
+				assertEquals(List.of(), missWarnings());
+				return;
+			}
+
+			List<String> misses = missWarnings();
+			assertEquals(misses.toString(), 1, misses.size());
+
+			String message = misses.get(0);
+			System.out.println("ON-MISS-LOG " + name + ' ' + message);
+
+			for (String part : new String[] {nodeB, host + ':' + portB, "alternate", missTranslator,
+				"Connecting to the advertised address", "pass_through"}) {
+				assertTrue(message, message.contains(part));
+			}
 		}
 	}
 
