@@ -17,10 +17,10 @@ permissions:
 jobs:
   tls-matching:
     name: cases
-    uses: aerospike/aerospike-client-conformance/.github/workflows/test-envs.yaml@51510577c2e935c2dfb78d695a1ebd1fed1f8ef4 # main
+    uses: aerospike/aerospike-client-conformance/.github/workflows/test-envs.yaml@a14ec6e68d7231815e1f60024e9121f4618a8850 # main
     with:
       environment: tls-matching
-      conformance-ref: 51510577c2e935c2dfb78d695a1ebd1fed1f8ef4
+      conformance-ref: a14ec6e68d7231815e1f60024e9121f4618a8850
       server-image: aerospike/aerospike-server-enterprise:${{ inputs.server-tag }}
       command: |
         set -uo pipefail
