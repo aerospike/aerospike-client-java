@@ -102,6 +102,11 @@ jobs:
           files: test/target/surefire-reports/*.xml
           check_name: "L3 discovery (k8s)"
 
+      - name: Fail on skipped tests
+        env:
+          EXPECTED_SKIPS: TestK8sPassThrough.perNodeEndpointsAdvertiseEachWorkerHostnameAndRouteEveryPartition,TestK8sPassThrough.networkLoadBalancerPerPodAdvertisesEachServiceNodePortAndRoutesEveryPartition,TestK8sScale.advertisedAddressSurvivesPodReschedule,TestK8sScale.podOnRecreatedNodeAdvertisesClusterAddress
+        run: bash .github/discovery/check-skips.sh test/target/surefire-reports
+
   l3-tls:
     name: L3 discovery (k8s, TLS)
     runs-on: ${{ vars.BUILD_CONTAINER_DISTRO_VERSION }}
@@ -165,6 +170,9 @@ jobs:
           files: test/target/surefire-reports/*.xml
           check_name: "L3 discovery (k8s, TLS)"
 
+      - name: Fail on skipped tests
+        run: bash .github/discovery/check-skips.sh test/target/surefire-reports
+
   l3-nlb:
     name: L3 discovery (k8s, networkLoadBalancer)
     runs-on: ${{ vars.BUILD_CONTAINER_DISTRO_VERSION }}
@@ -223,6 +231,11 @@ jobs:
         with:
           files: test/target/surefire-reports/*.xml
           check_name: "L3 discovery (k8s, networkLoadBalancer)"
+
+      - name: Fail on skipped tests
+        env:
+          EXPECTED_SKIPS: TestK8sPassThrough.perNodeEndpointsAdvertiseEachWorkerHostnameAndRouteEveryPartition,TestK8sPassThrough.networkLoadBalancerPerPodAdvertisesEachServiceNodePortAndRoutesEveryPartition,TestK8sScale.podOnRecreatedNodeAdvertisesClusterAddress
+        run: bash .github/discovery/check-skips.sh test/target/surefire-reports
 
   l3-nlb-per-pod:
     name: L3 discovery (k8s, networkLoadBalancer, one pod per node)
@@ -283,6 +296,11 @@ jobs:
         with:
           files: test/target/surefire-reports/*.xml
           check_name: "L3 discovery (k8s, networkLoadBalancer, one pod per node)"
+
+      - name: Fail on skipped tests
+        env:
+          EXPECTED_SKIPS: TestK8sPassThrough.perNodeEndpointsAdvertiseEachWorkerHostnameAndRouteEveryPartition,TestK8sPassThrough.sharedEndpointAdvertisesEachPodNodePortAndRoutesEveryPartition
+        run: bash .github/discovery/check-skips.sh test/target/surefire-reports
 
   l3-nlb-tls:
     name: L3 discovery (k8s, networkLoadBalancer, TLS)
@@ -354,3 +372,6 @@ jobs:
         with:
           files: test/target/surefire-reports/*.xml
           check_name: "L3 discovery (k8s, networkLoadBalancer, TLS)"
+
+      - name: Fail on skipped tests
+        run: bash .github/discovery/check-skips.sh test/target/surefire-reports

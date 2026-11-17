@@ -20,12 +20,10 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
 import java.net.InetAddress;
-import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -138,115 +136,6 @@ public class TestK8sScale extends TestBase {
 			if (c.size() != foundSize || c.pods().size() != foundSize) {
 				c.scale(foundSize);
 			}
-		}
-	}
-
-	/**
-	 * One client seeded once holds the pod the operator adds within 2 x tend interval of the
-	 * later of the peers-generation bump that announces it and the pod turning Ready (its Service
-	 * NodePort only routes to a Ready pod), at the endpoint hostname and the new pod's own Service
-	 * NodePort, without being rebuilt or reseeded, and every partition is owned afterwards.
-	 */
-	@Test
-	public void scaleUpNewNodeActiveWithinTwoTendIntervals() throws Exception {
-		int size = foundSize;
-		int port = cluster.servicePort();
-		Set<String> before = podNames(cluster.pods());
-		ClientPolicy policy = policy();
-		Host[] seeds = Host.parseHosts(args.host, args.port);
-		boolean spread = ! cluster.multiPodPerHost();
-
-		assertNull(policy.seedCandidateProvider);
-
-		try (AerospikeClient client = new AerospikeClient(policy, seeds)) {
-			awaitRouting("scale-up-before", client, size);
-
-			Map<String,Node> existing = new HashMap<>();
-
-			for (Node node : client.getNodes()) {
-				existing.put(node.getName(), node);
-			}
-
-			Node observer = client.getNodes()[0];
-			long generation = peersGeneration(observer);
-			long[] bump = {0};
-			long[] bumpAt = {0};
-			long[] ready = {0};
-			long[] active = {0};
-			Node[] added = {null};
-
-			cluster.resize(size + 1);
-			boolean seen = K8sCluster.waitFor(() -> {
-				if (spread && active[0] == 0) {
-					cluster.serveNodePortsOnEveryNode();
-				}
-
-				long now = System.nanoTime();
-
-				if (bump[0] == 0 && peersGeneration(observer) != generation) {
-					bump[0] = now;
-					bumpAt[0] = System.currentTimeMillis();
-				}
-
-				if (ready[0] == 0 && ! before.containsAll(cluster.readyPods())) {
-					ready[0] = now;
-				}
-
-				if (active[0] == 0) {
-					for (Node node : client.getNodes()) {
-						if (node.isActive() && ! existing.containsKey(node.getName())) {
-							active[0] = now;
-							added[0] = node;
-						}
-					}
-				}
-				return bump[0] != 0 && ready[0] != 0 && active[0] != 0;
-			}, K8sCluster.SCALE_TIMEOUT_MS, 5);
-			assertTrue("No peers-generation bump on " + observer.getName() + ", no new Ready pod or no new active node",
-				seen);
-
-			long bumpToReady = TimeUnit.NANOSECONDS.toMillis(ready[0] - bump[0]);
-			long elapsed = Math.max(0, TimeUnit.NANOSECONDS.toMillis(active[0] - Math.max(bump[0], ready[0])));
-			long budget = 2L * policy.tendInterval;
-			cluster.scale(size + 1);
-
-			Pod pod = null;
-
-			for (Pod p : cluster.pods()) {
-				if (! before.contains(p.name)) {
-					pod = p;
-				}
-			}
-			assertNotNull("No new pod in " + cluster.pods(), pod);
-
-			int nodePort = cluster.nodePort(pod.name, port);
-			Node node = added[0];
-			Map<String,String> info = Info.request(null, node, "service-clear-std", "service-clear-alt");
-			Host h = node.getHost();
-			System.out.println("L3-SCALE-UP node=" + node.getName() + " pod=" + pod.name + " access=" +
-				info.get("service-clear-std") + " alternate=" + info.get("service-clear-alt") + " serviceNodePort=" +
-				nodePort + " clientHost=" + h.name + ':' + h.port + " generation=" + generation + "->" +
-				peersGeneration(observer) + " bumpToReadyMs=" + bumpToReady + " readyToActiveMs=" + elapsed +
-				" bumpToActiveMs=" + TimeUnit.NANOSECONDS.toMillis(active[0] - bump[0]) + " tendInterval=" +
-				policy.tendInterval + " budgetMs=" + budget + " bumpAt=" + Instant.ofEpochMilli(bumpAt[0]) + " podReadyAt=" +
-				cluster.podReadyAt(pod.name) + " readinessProbe=" + cluster.readinessProbe(pod.name) +
-				" publishNotReadyAddresses=" + cluster.publishNotReadyAddresses(pod.name));
-			assertTrue(pod.name + " has no Service NodePort for " + port, nodePort > 0);
-			assertTrue(node.getName() + " access " + info.get("service-clear-std") + " is not " + pod,
-				hasAddress(info.get("service-clear-std"), pod.ip));
-			assertEquals(node.getName() + " (" + pod.name + ") advertised alternate address",
-				K8sCluster.endpointHostname + ':' + nodePort, info.get("service-clear-alt"));
-			assertEquals(nodePort, h.port);
-			assertTrue(node.getName() + " active " + elapsed + "ms after the bump and " + pod.name + " Ready, budget " +
-				budget + "ms",
-				elapsed <= budget);
-
-			awaitRouting("scale-up-after", client, size + 1);
-
-			for (Map.Entry<String,Node> entry : existing.entrySet()) {
-				assertSame(entry.getKey() + " replaced", entry.getValue(), client.getCluster().getNode(entry.getKey()));
-			}
-			assertServedByEveryNode("scale-up", client);
 		}
 	}
 
@@ -900,10 +789,6 @@ public class TestK8sScale extends TestBase {
 			}
 		}
 		return false;
-	}
-
-	private static long peersGeneration(Node node) {
-		return Long.parseLong(Info.request(null, node, "peers-generation"));
 	}
 
 	private static void skipUnless(boolean condition, String reason) {

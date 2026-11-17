@@ -207,21 +207,6 @@ final class K8sCluster {
 			"jsonpath={.metadata.uid}").trim();
 	}
 
-	String podReadyAt(String pod) {
-		return kubectl("-n", namespace, "get", "pod", pod, "-o",
-			"jsonpath={.status.conditions[?(@.type==\"Ready\")].lastTransitionTime}").trim();
-	}
-
-	String readinessProbe(String pod) {
-		return kubectl("-n", namespace, "get", "pod", pod, "-o",
-			"jsonpath={.spec.containers[?(@.name==\"aerospike-server\")].readinessProbe}").trim();
-	}
-
-	String publishNotReadyAddresses(String service) {
-		return kubectl("-n", namespace, "get", "service", service, "-o",
-			"jsonpath={.spec.publishNotReadyAddresses}").trim();
-	}
-
 	/**
 	 * Return the number of ready endpoints in the Service's EndpointSlices.
 	 */
@@ -396,14 +381,6 @@ final class K8sCluster {
 	static String instance(String node) {
 		String provider = kubectl("get", "node", node, "--ignore-not-found", "-o", "jsonpath={.spec.providerID}").trim();
 		return provider.substring(provider.lastIndexOf('/') + 1);
-	}
-
-	/**
-	 * Set the AerospikeCluster size without waiting for the operator.
-	 */
-	void resize(int size) {
-		kubectl("-n", namespace, "patch", "aerospikecluster", name, "--type", "merge",
-			"-p", "{\"spec\":{\"size\":" + size + "}}");
 	}
 
 	/**
