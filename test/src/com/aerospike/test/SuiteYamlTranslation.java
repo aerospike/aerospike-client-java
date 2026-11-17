@@ -22,8 +22,8 @@ import org.junit.runners.Suite;
 import com.aerospike.test.translation.TestYamlTranslation;
 
 /**
- * Discovery and translation configured from YAML only. Requires the two clusters started by
- * test/translation/run_yaml.sh, which also supplies the cluster system properties.
+ * Discovery and translation configured from YAML only. Requires the aerospike-client-conformance
+ * yaml environment, with its values file loaded into the environment.
  */
 @RunWith(Suite.class)
 @Suite.SuiteClasses({

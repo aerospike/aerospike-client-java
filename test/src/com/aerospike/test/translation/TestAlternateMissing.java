@@ -35,18 +35,19 @@ import com.aerospike.client.Info;
 import com.aerospike.client.Log;
 import com.aerospike.client.cluster.Node;
 import com.aerospike.client.policy.ClientPolicy;
+import com.aerospike.test.util.TestEnv;
 
 /**
  * {@link ClientPolicy#useServicesAlternate} with nodes that have no alternate access address,
- * against two two node clusters started by test/translation/run_alt_missing.sh. In the missing
- * cluster node A advertises 127.0.0.1 and its published host port as its alternate access address
- * and node B has none. In the control cluster nodes C and D both advertise one. The clusters arrive
- * as system properties:
+ * against the two two node clusters of the aerospike-client-conformance alt-missing environment. In
+ * the missing cluster node A advertises 127.0.0.1 and its published host port as its alternate
+ * access address and node B has none. In the control cluster nodes C and D both advertise one. The
+ * clusters arrive as the environment variables of its values file:
  * <ul>
- * <li>alt.host: host every node is published on</li>
- * <li>alt.nodeA, alt.portA: missing cluster node with an alternate address</li>
- * <li>alt.nodeB, alt.portB: missing cluster node without an alternate address</li>
- * <li>alt.nodeC, alt.portC, alt.nodeD: control cluster nodes</li>
+ * <li>ENV_HOST: host every node is published on</li>
+ * <li>MISSING_NODE_A_NAME, MISSING_NODE_A_PORT: missing cluster node with an alternate address</li>
+ * <li>MISSING_NODE_B_NAME, MISSING_NODE_B_PORT: missing cluster node without an alternate address</li>
+ * <li>CONTROL_NODE_A_NAME, CONTROL_NODE_A_PORT, CONTROL_NODE_B_NAME: control cluster nodes</li>
  * </ul>
  */
 public class TestAlternateMissing {
@@ -66,14 +67,14 @@ public class TestAlternateMissing {
 
 	@BeforeClass
 	public static void init() {
-		host = required("alt.host");
-		nodeA = required("alt.nodeA");
-		portA = Integer.parseInt(required("alt.portA"));
-		nodeB = required("alt.nodeB");
-		portB = Integer.parseInt(required("alt.portB"));
-		nodeC = required("alt.nodeC");
-		portC = Integer.parseInt(required("alt.portC"));
-		nodeD = required("alt.nodeD");
+		host = TestEnv.get("ENV_HOST");
+		nodeA = TestEnv.get("MISSING_NODE_A_NAME");
+		portA = TestEnv.getInt("MISSING_NODE_A_PORT");
+		nodeB = TestEnv.get("MISSING_NODE_B_NAME");
+		portB = TestEnv.getInt("MISSING_NODE_B_PORT");
+		nodeC = TestEnv.get("CONTROL_NODE_A_NAME");
+		portC = TestEnv.getInt("CONTROL_NODE_A_PORT");
+		nodeD = TestEnv.get("CONTROL_NODE_B_NAME");
 
 		Log.setLevel(Log.Level.WARN);
 		Log.setCallback((level, message) -> {
@@ -162,14 +163,5 @@ public class TestAlternateMissing {
 			}
 		}
 		return list;
-	}
-
-	private static String required(String name) {
-		String value = System.getProperty(name);
-
-		if (value == null || value.isEmpty()) {
-			throw new IllegalStateException("System property " + name + " is not set. Run test/translation/run_alt_missing.sh");
-		}
-		return value;
 	}
 }

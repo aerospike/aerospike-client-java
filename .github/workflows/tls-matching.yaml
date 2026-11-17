@@ -1,5 +1,8 @@
 name: TLS certificate matching
 
+# Runs SuiteTlsMatching once per case, each case in its own JVM, and TestTlsProxy against the
+# aerospike-client-conformance tls-matching test environment (envs/tls-matching.sh).
+
 on:
   workflow_call:
     inputs:
@@ -13,70 +16,34 @@ on:
         required: true
 
 permissions:
-  id-token: write
   contents: read
 
 jobs:
   tls-matching:
     name: cases
-    runs-on: ${{ vars.BUILD_CONTAINER_DISTRO_VERSION }}
-    timeout-minutes: 60
-    steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
-        with:
-          ref: ${{ github.ref }}
-
-      - name: Get Java version
-        id: java
-        run: |
-          set -euo pipefail
-          version="$(grep '<java.version>' pom.xml | sed -e 's/<[^>]*>//g' | awk '{$1=$1};1' | sed 's/^1\.8$/8/')"
-          echo "java-version=${version}" >> "$GITHUB_OUTPUT"
-
-      - name: Setup Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: ${{ vars.JAVA_PROVIDER }}
-          java-version: ${{ steps.java.outputs.java-version }}
-          cache: maven
-
-      - name: Require JFrog OIDC
-        env:
-          OIDC_PROVIDER: ${{ secrets.JFROG_OIDC_PROVIDER }}
-          OIDC_AUDIENCE: ${{ secrets.JFROG_OIDC_AUDIENCE }}
-        run: |
-          set -euo pipefail
-          if [[ -z "${OIDC_PROVIDER}" || -z "${OIDC_AUDIENCE}" ]]; then
-            echo "::error::JFROG_OIDC_PROVIDER and JFROG_OIDC_AUDIENCE are required to pull the Aerospike image."
-            exit 1
+    uses: aerospike/aerospike-client-conformance/.github/workflows/test-envs.yaml@57c0a2ae457f77a56bdae2675688f66218e8fa89 # main
+    with:
+      environment: tls-matching
+      conformance-ref: 57c0a2ae457f77a56bdae2675688f66218e8fa89
+      server-image: aerospike/aerospike-server-enterprise:${{ inputs.server-tag }}
+      command: |
+        set -uo pipefail
+        export JAVA_HOME="$JAVA_HOME_21_X64"
+        mvn -B -pl client -am install -DskipTests || exit 1
+        failed=()
+        for c in ${TLS_CASES//,/ }; do
+          if ! { TLS_CASE="$c" mvn -B -pl test test -DskipTests=false -DrunSuite='**/SuiteTlsMatching.class' &&
+            bash .github/discovery/check-skips.sh test/target/surefire-reports; }; then
+            failed+=("$c")
           fi
-
-      - name: Set up JFrog CLI
-        id: jf
-        uses: step-security/setup-jfrog-cli@a6b41f8338bea0983ddff6bd4ede7d2dcd81e1fa # v4.8.1
-        env:
-          JF_URL: https://aerospike.jfrog.io
-        with:
-          oidc-provider-name: ${{ secrets.JFROG_OIDC_PROVIDER }}
-          oidc-audience: ${{ secrets.JFROG_OIDC_AUDIENCE }}
-
-      - name: Docker login
-        uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0
-        with:
-          registry: aerospike.jfrog.io
-          username: ${{ steps.jf.outputs.oidc-user }}
-          password: ${{ steps.jf.outputs.oidc-token }}
-
-      - name: Run TLS certificate matching
-        env:
-          AEROSPIKE_IMAGE: aerospike.jfrog.io/${{ inputs.server-container-repo }}:${{ inputs.server-tag }}
-          AEROSPIKE_FEATURES_CONTENT: ${{ secrets.FEATURES_CONF }}
-          TLS_MATCHING_MAVEN_OFFLINE: "0"
-        run: |
-          set -euo pipefail
-          if [[ -z "${AEROSPIKE_FEATURES_CONTENT}" ]]; then
-            echo "::error::FEATURES_CONF is required to run TLS certificate matching."
-            exit 1
-          fi
-          docker pull "${AEROSPIKE_IMAGE}"
-          bash test/tls/run_tls_matching.sh
+        done
+        if ! { mvn -B -pl test test -DskipTests=false -Dtest=TestTlsProxy -DfailIfNoTests=false &&
+          bash .github/discovery/check-skips.sh test/target/surefire-reports; }; then
+          failed+=(TestTlsProxy)
+        fi
+        if [ ${#failed[@]} -gt 0 ]; then
+          echo "::error::failed: ${failed[*]}"
+          exit 1
+        fi
+    secrets:
+      features-conf: ${{ secrets.FEATURES_CONF }}
