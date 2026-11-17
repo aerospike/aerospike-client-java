@@ -87,17 +87,17 @@ public class AwsTagsSeedRefresherTest {
 	@Test
 	public void validateRejectsTimeoutAboveRefreshTimeout() {
 		ClientPolicy policy = new ClientPolicy();
-		SeedRefresher r = new SeedRefresher(provider(2500, stub.url()), policy, snapshot::set);
+		SeedRefresher r = new SeedRefresher(provider(10500, stub.url()), policy, snapshot::set);
 
 		AerospikeException ae = assertThrows(AerospikeException.class, () -> r.validate(1000));
 		System.out.println("AWS-TAGS-VALIDATE " + ae.getBaseMessage());
-		assertEquals("AWS EC2 seed provider timeout 2500 must be less or equal to the discovery refresh timeout 2000",
+		assertEquals("AWS EC2 seed provider timeout 10500 must be less or equal to the discovery refresh timeout 10000",
 			ae.getBaseMessage());
 
-		new SeedRefresher(provider(2000, stub.url()), policy, snapshot::set).validate(1000);
+		new SeedRefresher(provider(10000, stub.url()), policy, snapshot::set).validate(1000);
 
-		policy.discoveryRefreshTimeout = 3000;
-		new SeedRefresher(provider(2500, stub.url()), policy, snapshot::set).validate(1000);
+		policy.discoveryRefreshTimeout = 11000;
+		new SeedRefresher(provider(10500, stub.url()), policy, snapshot::set).validate(1000);
 	}
 
 	@Test
@@ -108,11 +108,11 @@ public class AwsTagsSeedRefresherTest {
 	@Test
 	public void timeoutAboveRefreshTimeoutFailsClientConstruction() {
 		ClientPolicy policy = offline();
-		policy.seedCandidateProvider = provider(2500, stub.url());
+		policy.seedCandidateProvider = provider(10500, stub.url());
 
 		AerospikeException ae = assertThrows(AerospikeException.class,
 			() -> new AerospikeClient(policy, new Host("127.0.0.1", 1)).close());
-		assertEquals("AWS EC2 seed provider timeout 2500 must be less or equal to the discovery refresh timeout 2000",
+		assertEquals("AWS EC2 seed provider timeout 10500 must be less or equal to the discovery refresh timeout 10000",
 			ae.getBaseMessage());
 	}
 

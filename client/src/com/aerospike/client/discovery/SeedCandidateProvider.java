@@ -31,6 +31,7 @@ public interface SeedCandidateProvider {
 	/**
 	 * Return the current seed candidates. Returned hosts are used as seeds, so they must carry the
 	 * TLS name when TLS is enabled; a null TLS name is defaulted the same way as for configured seeds.
+	 * A host with a port outside 1 to 65535 is dropped and logged at warning level.
 	 * <p>
 	 * Called once at client initialization, with {@link SeedCandidateContext#tendIteration} 0, then on
 	 * each periodic refresh. With {@link com.aerospike.client.policy.ClientPolicy#discoveryExecutionMode}
@@ -59,17 +60,20 @@ public interface SeedCandidateProvider {
 	 * does no I/O or bounds all of its I/O so that it can return within a caller-supplied time limit.
 	 * Only providers that return true are eligible to run on the cluster tend thread, in
 	 * {@link DiscoveryExecutionMode#TEND}. Called once on the application thread that constructs
-	 * the client.
+	 * the client. The default returns false.
 	 */
-	boolean supportsDeadline();
+	default boolean supportsDeadline() {
+		return false;
+	}
 
 	/**
 	 * Release resources held by the provider. The default does nothing.
 	 * <p>
 	 * Called once after {@link com.aerospike.client.AerospikeClient#close()}, when the last refresh
 	 * has returned: on the discovery thread as it exits, when one runs; otherwise on the cluster tend
-	 * thread as it exits, or on the thread that closes the client when no tend thread runs.
-	 * {@code AerospikeClient.close()} does not wait for it. An exception is
+	 * thread as it exits, or on the thread that closes the client when no tend thread runs. Also
+	 * called once when client construction fails. {@code AerospikeClient.close()} does not wait for
+	 * it. An exception is
 	 * logged at warning level and not thrown. A provider instance shared by several clients is closed
 	 * by each of them.
 	 */

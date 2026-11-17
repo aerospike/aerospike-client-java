@@ -406,6 +406,9 @@ public class ClientPolicy {
 	 * YAML keys: {@code static.client.translation.provider} ({@code static-map}, {@code port-map},
 	 * {@code pass-through} or a name registered with {@link #registerAddressTranslator}) with
 	 * {@code static.client.translation.static_map} or {@code static.client.translation.port_map}.
+	 * <p>
+	 * {@link AddressTranslator#close()} is called on the translator once after
+	 * {@link com.aerospike.client.AerospikeClient#close()}, or when client construction fails.
 	 */
 	public AddressTranslator addressTranslator;
 
@@ -488,11 +491,11 @@ public class ClientPolicy {
 	 * construction fails. Ignored in {@link DiscoveryExecutionMode#TEND} mode. The default covers a
 	 * cold {@code aws-tags} EC2 call, which takes several hundred milliseconds.
 	 * <p>
-	 * Default: 2000
+	 * Default: 10000
 	 * <p>
 	 * YAML key: {@code static.client.discovery.refresh_timeout_ms}
 	 */
-	public int discoveryRefreshTimeout = 2000;
+	public int discoveryRefreshTimeout = 10000;
 
 	/**
 	 * Deadline in milliseconds for one periodic {@link #seedCandidateProvider} refresh on the
@@ -524,9 +527,8 @@ public class ClientPolicy {
 	 * endpoint while discovery catches up.</li>
 	 * <li>{@link SeedMergePolicy#REPLACE}: as MERGE at initialization; afterwards each successful
 	 * refresh's discovered seeds replace the list and static seeds are no longer tried. An empty
-	 * refresh result keeps the previous list in {@link DiscoveryExecutionMode#TEND} mode and
-	 * empties it in {@link DiscoveryExecutionMode#THREAD} mode. Use for greenfield cloud-native
-	 * deployments where static seeds are legacy.</li>
+	 * refresh result empties the list. Use for greenfield cloud-native deployments where static
+	 * seeds are legacy.</li>
 	 * <li>{@link SeedMergePolicy#DISCOVERY_ONLY}: discovered seeds only; static seeds are used only
 	 * when discovery returns an empty result. Use when the static seeds are an emergency fallback
 	 * only.</li>

@@ -63,7 +63,7 @@ jobs:
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: aerospike/aerospike-client-conformance
-          ref: main
+          ref: 1617575a78ffa09d205ba1792b43e35b67c7debb # main
           path: conformance-fixtures
 
       - name: Setup Java
@@ -100,7 +100,7 @@ jobs:
 
       - name: Collect conformance report
         if: ${{ always() }}
-        uses: aerospike/aerospike-client-conformance/.github/actions/collect-conformance-report@main
+        uses: aerospike/aerospike-client-conformance/.github/actions/collect-conformance-report@1617575a78ffa09d205ba1792b43e35b67c7debb # main
         with:
           reports-directory: client/target
           fixtures-directory: ${{ github.workspace }}/conformance-fixtures
