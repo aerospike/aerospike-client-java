@@ -25,8 +25,8 @@ package com.aerospike.client.discovery;
  * <p>
  * The seed list is rebuilt only when the provider is called: at client initialization and on each
  * periodic refresh. Duplicate hosts (same name and port) are removed, keeping the first occurrence.
- * A failed refresh keeps the previous seed list. Only {@link #REPLACE} in
- * {@link DiscoveryExecutionMode#THREAD} mode can leave the seed list empty, after an empty refresh.
+ * A failed refresh keeps the previous seed list. An empty refresh empties the seed list under
+ * {@link #REPLACE}, and under the other policies when there are no static seeds.
  * <p>
  * Default: {@link #MERGE}
  */
@@ -43,9 +43,8 @@ public enum SeedMergePolicy {
 	/**
 	 * At client initialization, try static seeds first, then discovered seeds (as {@link #MERGE}).
 	 * After initialization, the discovered seeds of each successful refresh replace the seed list
-	 * and static seeds are no longer tried. An empty discovery result after initialization keeps
-	 * the previous seed list in {@link DiscoveryExecutionMode#TEND} mode and empties the seed list
-	 * in {@link DiscoveryExecutionMode#THREAD} mode.
+	 * and static seeds are no longer tried. An empty discovery result after initialization empties
+	 * the seed list.
 	 * <p>
 	 * Use for greenfield cloud-native deployments where the static seeds are legacy.
 	 */
