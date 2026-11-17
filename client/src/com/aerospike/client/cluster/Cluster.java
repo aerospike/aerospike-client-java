@@ -224,6 +224,9 @@ public class Cluster implements Runnable, Closeable {
 	// Has cluster instance been closed.
 	private AtomicBoolean closed;
 
+	// Has the address translator been closed.
+	private final AtomicBoolean translatorClosed = new AtomicBoolean();
+
 	// Tend thread variables.
 	private Thread tendThread;
 	protected volatile boolean tendValid;
@@ -273,135 +276,138 @@ public class Cluster implements Runnable, Closeable {
 			policy.seedCandidateProvider : new StaticSeedCandidateProvider(hosts);
 		this.addressTranslator = (policy.addressTranslator != null)?
 			policy.addressTranslator : new StaticMapAddressTranslator(policy.ipMap);
-		this.notifyViewChange = overridesViewChange(addressTranslator);
-		this.translationOnMiss = (policy.translationOnMiss != null)?
-			policy.translationOnMiss : TranslationMissMode.PASS_THROUGH;
-		// The default translator is the legacy ipMap, which misses unmapped hosts by design.
-		this.translationMisses = (policy.addressTranslator != null)? new ConcurrentHashMap<>() : null;
 
-		this.seedRefresher = new SeedRefresher(seedCandidateProvider, policy, hosts, this::setSeeds);
+		SeedRefresher refresher = null;
 
-		if (tlsPolicy == null && (authMode == AuthMode.EXTERNAL || authMode == AuthMode.PKI)) {
-			throw new AerospikeException("TLS is required for authentication mode: " + authMode);
-		}
+		try {
+			this.notifyViewChange = overridesViewChange(addressTranslator);
+			this.translationOnMiss = (policy.translationOnMiss != null)?
+				policy.translationOnMiss : TranslationMissMode.PASS_THROUGH;
+			// The default translator is the legacy ipMap, which misses unmapped hosts by design.
+			this.translationMisses = (policy.addressTranslator != null)? new ConcurrentHashMap<>() : null;
 
-		if (policy.authMode == AuthMode.PKI) {
-			if (policy.password != null) {
-				throw new AerospikeException("Password authentication is disabled for PKI-only users");
-			}
-			this.authEnabled = true;
-			this.user = null;
-		}
-		else if (policy.user != null && policy.user.length() > 0) {
-			this.authEnabled = true;
-			this.user = Buffer.stringToUtf8(policy.user);
+			this.seedRefresher = refresher = new SeedRefresher(seedCandidateProvider, policy, hosts, this::setSeeds);
 
-			// Only store clear text password if external authentication is used.
-			if (authMode != AuthMode.INTERNAL) {
-				this.password = Buffer.stringToUtf8(policy.password);
+			if (tlsPolicy == null && (authMode == AuthMode.EXTERNAL || authMode == AuthMode.PKI)) {
+				throw new AerospikeException("TLS is required for authentication mode: " + authMode);
 			}
 
-			String pass = policy.password;
+			if (policy.authMode == AuthMode.PKI) {
+				if (policy.password != null) {
+					throw new AerospikeException("Password authentication is disabled for PKI-only users");
+				}
+				this.authEnabled = true;
+				this.user = null;
+			}
+			else if (policy.user != null && policy.user.length() > 0) {
+				this.authEnabled = true;
+				this.user = Buffer.stringToUtf8(policy.user);
 
-			if (pass == null)
-			{
-				pass = "";
+				// Only store clear text password if external authentication is used.
+				if (authMode != AuthMode.INTERNAL) {
+					this.password = Buffer.stringToUtf8(policy.password);
+				}
+
+				String pass = policy.password;
+
+				if (pass == null)
+				{
+					pass = "";
+				}
+
+				pass = AdminCommand.hashPassword(pass);
+				this.passwordHash = Buffer.stringToUtf8(pass);
+			}
+			else {
+				this.authEnabled = false;
+				this.user = null;
 			}
 
-			pass = AdminCommand.hashPassword(pass);
-			this.passwordHash = Buffer.stringToUtf8(pass);
-		}
-		else {
-			this.authEnabled = false;
-			this.user = null;
-		}
+			minConnsPerNode = policy.minConnsPerNode;
+			maxConnsPerNode = policy.maxConnsPerNode;
 
-		minConnsPerNode = policy.minConnsPerNode;
-		maxConnsPerNode = policy.maxConnsPerNode;
+			if (minConnsPerNode > maxConnsPerNode) {
+				throw new AerospikeException("Invalid connection range: " + minConnsPerNode + " - " +  maxConnsPerNode);
+			}
 
-		if (minConnsPerNode > maxConnsPerNode) {
-			throw new AerospikeException("Invalid connection range: " + minConnsPerNode + " - " +  maxConnsPerNode);
-		}
+			asyncMinConnsPerNode = policy.asyncMinConnsPerNode;
+			asyncMaxConnsPerNode = (policy.asyncMaxConnsPerNode >= 0)? policy.asyncMaxConnsPerNode : policy.maxConnsPerNode;
 
-		asyncMinConnsPerNode = policy.asyncMinConnsPerNode;
-		asyncMaxConnsPerNode = (policy.asyncMaxConnsPerNode >= 0)? policy.asyncMaxConnsPerNode : policy.maxConnsPerNode;
+			if (asyncMinConnsPerNode > asyncMaxConnsPerNode) {
+				throw new AerospikeException("Invalid async connection range: " + asyncMinConnsPerNode + " - " +  asyncMaxConnsPerNode);
+			}
 
-		if (asyncMinConnsPerNode > asyncMaxConnsPerNode) {
-			throw new AerospikeException("Invalid async connection range: " + asyncMinConnsPerNode + " - " +  asyncMaxConnsPerNode);
-		}
+			connPoolsPerNode = policy.connPoolsPerNode;
 
-		connPoolsPerNode = policy.connPoolsPerNode;
+			int configIntervalDuration = DEFAULT_CONFIG_INTERVAL_MS;
 
-		int configIntervalDuration = DEFAULT_CONFIG_INTERVAL_MS;
-
-		if (client.getConfigProvider() != null) {
-			config = client.getConfigProvider().fetchConfiguration();
-			if (config != null) {
-				StaticConfiguration sConfig = config.getStaticConfiguration();
-				if (sConfig != null) {
-					StaticClientConfig staCC = sConfig.getStaticClientConfig();
-					if (staCC != null && staCC.configInterval != null) {
-						configIntervalDuration = staCC.configInterval.value;
+			if (client.getConfigProvider() != null) {
+				config = client.getConfigProvider().fetchConfiguration();
+				if (config != null) {
+					StaticConfiguration sConfig = config.getStaticConfiguration();
+					if (sConfig != null) {
+						StaticClientConfig staCC = sConfig.getStaticClientConfig();
+						if (staCC != null && staCC.configInterval != null) {
+							configIntervalDuration = staCC.configInterval.value;
+						}
 					}
 				}
 			}
-		}
-		this.configInterval = configIntervalDuration;
+			this.configInterval = configIntervalDuration;
 
-		applyCommonClientPolicyParameters(policy, true);
+			applyCommonClientPolicyParameters(policy, true);
 
-		closeTimeout = policy.closeTimeout;
-		ipMap = policy.ipMap;
-		keepAlive = policy.keepAlive;
-		threadFactory = Thread.ofVirtual().name("Aerospike-", 0L).factory();
+			closeTimeout = policy.closeTimeout;
+			ipMap = policy.ipMap;
+			keepAlive = policy.keepAlive;
+			threadFactory = Thread.ofVirtual().name("Aerospike-", 0L).factory();
 
-		nodesMap = new HashMap<String,Node>();
-		nodes = new Node[0];
-		partitionMap = new HashMap<String,Partitions>();
-		nodeIndex = new AtomicInteger();
-		replicaIndex = new AtomicInteger();
-		recoverCount = new AtomicInteger();
-		recoverQueue = new ConcurrentLinkedDeque<ConnectionRecover>();
-		closed = new AtomicBoolean();
+			nodesMap = new HashMap<String,Node>();
+			nodes = new Node[0];
+			partitionMap = new HashMap<String,Partitions>();
+			nodeIndex = new AtomicInteger();
+			replicaIndex = new AtomicInteger();
+			recoverCount = new AtomicInteger();
+			recoverQueue = new ConcurrentLinkedDeque<ConnectionRecover>();
+			closed = new AtomicBoolean();
 
-		eventLoops = policy.eventLoops;
+			eventLoops = policy.eventLoops;
 
-		if (eventLoops != null) {
-			EventLoop[] loops = eventLoops.getArray();
+			if (eventLoops != null) {
+				EventLoop[] loops = eventLoops.getArray();
 
-			if (asyncMaxConnsPerNode < loops.length) {
-				throw new AerospikeException("asyncMaxConnsPerNode " + asyncMaxConnsPerNode +
-					" must be >= event loop count " + loops.length);
-			}
-
-			eventState = new EventState[loops.length];
-
-			for (int i = 0; i < loops.length; i++) {
-				eventState[i] = loops[i].createState();
-			}
-
-			if (policy.tlsPolicy != null) {
-				if (eventLoops instanceof NioEventLoops) {
-					throw new AerospikeException("TLS not supported in direct NIO event loops");
+				if (asyncMaxConnsPerNode < loops.length) {
+					throw new AerospikeException("asyncMaxConnsPerNode " + asyncMaxConnsPerNode +
+						" must be >= event loop count " + loops.length);
 				}
 
-				if (policy.tlsPolicy.nettyContext != null) {
-					nettyTlsContext = policy.tlsPolicy.nettyContext;
+				eventState = new EventState[loops.length];
+
+				for (int i = 0; i < loops.length; i++) {
+					eventState[i] = loops[i].createState();
+				}
+
+				if (policy.tlsPolicy != null) {
+					if (eventLoops instanceof NioEventLoops) {
+						throw new AerospikeException("TLS not supported in direct NIO event loops");
+					}
+
+					if (policy.tlsPolicy.nettyContext != null) {
+						nettyTlsContext = policy.tlsPolicy.nettyContext;
+					}
+					else {
+						nettyTlsContext = new NettyTlsContext(policy.tlsPolicy);
+					}
 				}
 				else {
-					nettyTlsContext = new NettyTlsContext(policy.tlsPolicy);
+					nettyTlsContext = null;
 				}
 			}
 			else {
+				eventState = null;
 				nettyTlsContext = null;
 			}
-		}
-		else {
-			eventState = null;
-			nettyTlsContext = null;
-		}
 
-		try {
 			hosts = seedRefresher.discover();
 
 			// Default TLS names when TLS enabled.
@@ -428,7 +434,13 @@ public class Cluster implements Runnable, Closeable {
 			}
 		}
 		catch (Throwable e) {
-			seedRefresher.abort();
+			if (refresher != null) {
+				refresher.abort();
+			}
+			else {
+				SeedRefresher.closeProvider(seedCandidateProvider);
+			}
+			closeTranslator();
 			throw e;
 		}
 	}
@@ -543,7 +555,7 @@ public class Cluster implements Runnable, Closeable {
 				" returned null for " + advertised);
 		}
 
-		if (! result.isPresent()) {
+		if (! result.isPresent() || ! isValidPort(result.get().port)) {
 			if (onMiss == TranslationMissMode.STRICT) {
 				throw new AerospikeException.TranslationMiss(advertised, translatorName(translator));
 			}
@@ -567,6 +579,10 @@ public class Cluster implements Runnable, Closeable {
 			host = new Host(host.name, advertised.tlsName, host.port);
 		}
 		return host;
+	}
+
+	static boolean isValidPort(int port) {
+		return port >= 1 && port <= 65535;
 	}
 
 	final String translatorName() {
@@ -753,6 +769,7 @@ public class Cluster implements Runnable, Closeable {
 			Util.sleep(tendInterval);
 		}
 		seedRefresher.close();
+		closeTranslator();
 	}
 
 	/**
@@ -773,10 +790,13 @@ public class Cluster implements Runnable, Closeable {
 
 		// If active nodes don't exist, seed cluster.
 		if (nodes.length == 0) {
+			// Must copy array reference for copy on write semantics to work.
+			Host[] seedArray = seeds;
+
 			if (! isInit) {
 				seedRefresher.requestRefresh();
 			}
-			seedNode(peers, failIfNotConnected);
+			seedNode(seedArray, peers, failIfNotConnected);
 
 			// Abort cluster init if all peers of the seed are not reachable and failIfNotConnected is true.
 			if (isInit && failIfNotConnected && nodes.length == 1 && peers.getInvalidCount() > 0) {
@@ -919,6 +939,21 @@ public class Cluster implements Runnable, Closeable {
 		}
 	}
 
+	private void closeTranslator() {
+		if (! translatorClosed.compareAndSet(false, true)) {
+			return;
+		}
+
+		try {
+			addressTranslator.close();
+		}
+		catch (Throwable e) {
+			if (Log.warnEnabled()) {
+				Log.warn("Address translator " + translatorName() + " close failed: " + Util.getErrorMessage(e));
+			}
+		}
+	}
+
 	private void clusterViewChanged() {
 		viewChange++;
 
@@ -933,9 +968,7 @@ public class Cluster implements Runnable, Closeable {
 		}
 	}
 
-	private final boolean seedNode(Peers peers, boolean failIfNotConnected) {
-		// Must copy array reference for copy on write semantics to work.
-		Host[] seedArray = seeds;
+	private final boolean seedNode(Host[] seedArray, Peers peers, boolean failIfNotConnected) {
 		Throwable[] exceptions = null;
 		NodeValidator nv = new NodeValidator();
 
@@ -1899,7 +1932,8 @@ public class Cluster implements Runnable, Closeable {
 			return;
 		}
 
-		// The tend thread closes the seed provider on exit, so close it here only if it never ran.
+		// The tend thread closes the seed provider and address translator on exit, so close them here
+		// only if it never ran.
 		// A discovery thread is stopped here, so close waits for its refresh in flight.
 		boolean tendRunning = tendThread != null && tendThread.isAlive();
 
@@ -1909,6 +1943,10 @@ public class Cluster implements Runnable, Closeable {
 
 		if (! tendRunning || seedRefresher.isThreaded()) {
 			seedRefresher.close();
+		}
+
+		if (! tendRunning) {
+			closeTranslator();
 		}
 		validAddresses.clear();
 

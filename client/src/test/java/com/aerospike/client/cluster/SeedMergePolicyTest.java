@@ -149,19 +149,18 @@ public class SeedMergePolicyTest {
 	}
 
 	@Test
-	public void replaceDropsStaticAfterInitAndKeepsPreviousOnEmpty() {
+	public void replaceDropsStaticAfterInitAndPublishesEmpty() {
 		TestSeedProvider provider = new TestSeedProvider(true, true, D2, S1);
 		SeedRefresher r = create(SeedMergePolicy.REPLACE, provider, STATIC);
 		assertArrayEquals(new Host[] {S1, S2, D1}, init(r, new Host[] {D1}));
 
 		r.tend(1, 1000);
-		Host[] replaced = snapshot.get();
-		assertArrayEquals(new Host[] {D2, S1}, replaced);
+		assertArrayEquals(new Host[] {D2, S1}, snapshot.get());
 
 		provider.result = call -> List.of();
 		r.tend(2, 1000);
-		assertSame(replaced, snapshot.get());
-		assertEquals(1, publishCount.get());
+		assertArrayEquals(EMPTY, snapshot.get());
+		assertEquals(2, publishCount.get());
 	}
 
 	@Test
@@ -180,7 +179,7 @@ public class SeedMergePolicyTest {
 	}
 
 	@Test
-	public void failedEmptyOrOverrunRefreshNeverEmptiesSnapshot() {
+	public void failedOrOverrunRefreshKeepsSnapshotAndEmptyRefreshIsMerged() {
 		for (SeedMergePolicy mergePolicy : SeedMergePolicy.values()) {
 			for (Host[] staticSeeds : new Host[][] {STATIC, EMPTY}) {
 				TestSeedProvider provider = new TestSeedProvider(true, true, D1);
@@ -201,15 +200,15 @@ public class SeedMergePolicyTest {
 				assertSame(label, previous, snapshot.get());
 
 				provider.result = call -> List.of();
+				provider.sleepMillis = 40;
 				r.tend(4, 1000);
+				assertSame(label, previous, snapshot.get());
 				assertTrue(label, snapshot.get().length > 0);
 
-				Host[] beforeOverrun = snapshot.get();
-				provider.result = call -> List.of();
-				provider.sleepMillis = 40;
+				provider.sleepMillis = 0;
 				r.tend(5, 1000);
-				assertSame(label, beforeOverrun, snapshot.get());
-				assertTrue(label, snapshot.get().length > 0);
+				assertArrayEquals(label, (mergePolicy == SeedMergePolicy.REPLACE)? EMPTY : staticSeeds,
+					snapshot.get());
 			}
 		}
 	}
