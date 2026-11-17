@@ -63,7 +63,7 @@ import com.aerospike.test.util.TestBase;
 
 /**
  * Testing strategy section 4.3 rows N-15, N-16 and N-18 against the pass-through profiles of
- * test/discovery/run_l2.sh. In pass-through-names (Branch A) each node advertises its own
+ * the l2-proxy harness. In pass-through-names (Branch A) each node advertises its own
  * alternate-access-address hostname with its own listener port; in pass-through-ports (Branch B)
  * every node advertises one hostname with its own listener port. Every hostname resolves to the
  * one Toxiproxy container in the client container, so every listener shares one IP address and the
@@ -75,9 +75,11 @@ public class TestL2PassThrough extends TestBase {
 	private static final int KEY_COUNT = 300;
 	private static final int COLLISION_RETRIES = 3;
 	private static final String BRANCH_A = " needs DISCOVERY_PASS_THROUGH_BRANCH=A, each node advertising its own " +
-		"alternate-access-address hostname (run_l2.sh L2_PROFILE=pass-through-names)";
-	private static final String BRANCH_B = " needs DISCOVERY_PASS_THROUGH_BRANCH=B and DISCOVERY_CONTROL_DIR, every " +
-		"node advertising one alternate-access-address hostname with its own port (run_l2.sh L2_PROFILE=pass-through-ports)";
+		"alternate-access-address hostname (l2-proxy profile pass-through-names)";
+	private static final String BRANCH_B = " needs DISCOVERY_PASS_THROUGH_BRANCH=B, every node advertising one " +
+		"alternate-access-address hostname with its own port (l2-proxy profile pass-through-ports)";
+	private static final String NODE_CONTROL = " also needs DISCOVERY_CONTROL_DIR to start nodes (the discovery-l2 " +
+		"workflow's pass-through-ports profile)";
 
 	private final List<String> addedProxies = new ArrayList<>();
 	private final List<String> addedNodes = new ArrayList<>();
@@ -144,7 +146,7 @@ public class TestL2PassThrough extends TestBase {
 	 * hostname and its own alternate-access-port, the client reads the alternate list through
 	 * {@link PassThroughAddressTranslator} with no map, and the partition map is complete with
 	 * every owner a distinct {@link Node} served without a server proxy hop. The server resolves the
-	 * hostname at startup, so run_l2.sh also makes it resolve in the server containers.
+	 * hostname at startup, so the topology also makes it resolve in the server containers.
 	 */
 	@Test
 	public void n16SharedNameRoutesToEveryOwner() throws Exception {
@@ -186,7 +188,7 @@ public class TestL2PassThrough extends TestBase {
 	 */
 	@Test
 	public void n18PassThroughCollidingNodesCreateNoNode() throws Exception {
-		requireBranchB("N-18 pass-through");
+		requireNodeControl("N-18 pass-through");
 		assertCollidingNodesCreateNoNode("N-18-pass-through", passThroughPolicy(), "pass-through");
 	}
 
@@ -195,7 +197,7 @@ public class TestL2PassThrough extends TestBase {
 	 */
 	@Test
 	public void n18StaticMapCollidingNodesCreateNoNode() throws Exception {
-		requireBranchB("N-18 static-map");
+		requireNodeControl("N-18 static-map");
 
 		ClientPolicy policy = L2Topology.policy();
 		policy.useServicesAlternate = true;
@@ -298,7 +300,7 @@ public class TestL2PassThrough extends TestBase {
 	 */
 	@Test
 	public void n18PassThroughNewcomerCollidingWithNodeIsNotCreated() throws Exception {
-		requireBranchB("N-18 newcomer");
+		requireNodeControl("N-18 newcomer");
 
 		List<L2Node> nodes = L2Topology.nodes();
 		L2Node first = nodes.get(0);
@@ -387,7 +389,12 @@ public class TestL2PassThrough extends TestBase {
 	}
 
 	private void requireBranchB(String row) {
-		TestL2Topology.skipUnless("B".equals(L2Topology.passThroughBranch) && ! L2Topology.controlDir.isEmpty(), row + BRANCH_B);
+		TestL2Topology.skipUnless("B".equals(L2Topology.passThroughBranch), row + BRANCH_B);
+	}
+
+	private void requireNodeControl(String row) {
+		requireBranchB(row);
+		TestL2Topology.skipUnless(! L2Topology.controlDir.isEmpty(), row + NODE_CONTROL);
 	}
 
 	private String start(String options) throws Exception {

@@ -36,13 +36,13 @@ import com.aerospike.test.discovery.L2Topology.L2Node;
 import com.aerospike.test.util.TestBase;
 
 /**
- * Testing strategy section 4.3 row N-17 against the cn-only profile of test/discovery/run_l2.sh,
+ * Testing strategy section 4.3 row N-17 against the cn-only profile of the discovery-l2 workflow,
  * ee only. The topology is N-6's, but the server certificate carries the tls-name only as its
  * subject CN, with no matching dNSName SAN. In its own class and profile so that a failing N-17
  * does not fail the other rows.
  */
 public class TestL2CnOnlyCertificate extends TestBase {
-	private static final String PROFILE = " (run_l2.sh DISCOVERY_SUBSET=ee L2_PROFILE=cn-only)";
+	private static final String PROFILE = " (the discovery-l2 workflow's ee cn-only profile)";
 
 	@After
 	public void restore() {

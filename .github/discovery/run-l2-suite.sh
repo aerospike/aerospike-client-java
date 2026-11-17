@@ -69,7 +69,17 @@ suite="${L2_SUITE:-**/SuiteDiscovery.class}"
   exit 1
 }
 
+filter=()
+if [[ -n "${L2_TESTS:-}" ]]; then
+  [[ "$L2_TESTS" =~ ^[A-Za-z0-9*#_]+$ ]] || {
+    echo "Refusing unexpected tests: ${L2_TESTS}" >&2
+    exit 1
+  }
+  filter=("-Dtest=${L2_TESTS}" -Dsurefire.failIfNoSpecifiedTests=false)
+fi
+
 mvn -B -pl test -DskipTests=false \
   "-DrunSuite=${suite}" \
+  "${filter[@]+"${filter[@]}"}" \
   "-Dargs=${args}" \
   test

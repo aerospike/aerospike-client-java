@@ -48,11 +48,11 @@ import com.aerospike.test.util.TestBase;
 
 /**
  * Testing strategy section 4.3.2 row F-1 against the default {@link L2Topology}, in its own
- * run_l2.sh profile because it fails on Java until pooled sockets are checked on checkout. Every
+ * profile because it fails on Java until pooled sockets are checked on checkout. Every
  * toxic the case adds is removed in {@link #restore()}.
  */
 public class TestL2IdleReset extends TestBase {
-	private static final String BLOCKER = "F-1 needs DISCOVERY_IDLE_RESET (run_l2.sh L2_PROFILE=idle-reset)";
+	private static final String BLOCKER = "F-1 needs DISCOVERY_IDLE_RESET (l2-proxy profile idle-reset)";
 	private static final String SET = "l2f";
 	private static final int WARM_THREADS = 4;
 	private static final int WARM_ITERATIONS = 50;

@@ -36,13 +36,13 @@ import com.aerospike.test.discovery.TestL2Topology;
 import com.aerospike.test.util.Args;
 
 /**
- * Runs the discovery tests. {@link TestL2Topology} runs against the L2 topology built by
- * .github/workflows/discovery-l2.yaml or test/discovery/run_l2.sh, as does
+ * Runs the discovery tests. {@link TestL2Topology} runs against the L2 topology built by the
+ * l2-proxy harness of aerospike-client-conformance or .github/workflows/discovery-l2.yaml, as does
  * {@link TestL2FaultInjection}. {@link TestL2ReachableNode}, {@link TestL2PassThrough},
  * {@link TestL2PortMapRange}, {@link TestL2CnOnlyCertificate}, {@link TestL2LowMtu},
  * {@link TestL2SourcePortRange}, {@link TestL2IdleReset} and {@link TestL2AsyncIdleReset} need the
  * reachable, pass-through-names or pass-through-ports, port-map-range, cn-only, low-mtu, port-range
- * and idle-reset profiles of run_l2.sh and are skipped without them.
+ * and idle-reset profiles and are skipped without them.
  *
  * <p>The suite builds no shared client: the seed is reachable only through the endpoint and its
  * peers only through a translator, so each test class builds its own {@link ClientPolicy}. The

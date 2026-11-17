@@ -91,25 +91,22 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        # The other community tests run in discovery-l2-proxy.yaml through test/discovery/l2_run.sh. These
+        # need a DNS server or start nodes, which l2-proxy does not offer a client's own tests. Surefire
+        # 2.18.1's JUnit 4 provider takes one method per filter, so pass-through-ports runs its class.
         include:
-          # The default profile runs every suite class; the ones written for another profile skip.
           - profile: default
-            expected-skips: TestL2AsyncIdleReset.*,TestL2IdleReset.*,TestL2LowMtu.*,TestL2SourcePortRange.*,TestL2ReachableNode.*,TestL2PortMapRange.*,TestL2PassThrough.*,TestL2CnOnlyCertificate.*,TestL2Topology.n6TlsValidatesAgainstNodeTlsName
-          - profile: reachable
-          - profile: pass-through-names
-            expected-skips: TestL2PassThrough.n16SharedNameRoutesToEveryOwner,TestL2PassThrough.n16SharedNameStrictRoutesToEveryOwner,TestL2PassThrough.n18PassThroughCollidingNodesCreateNoNode,TestL2PassThrough.n18StaticMapCollidingNodesCreateNoNode,TestL2PassThrough.n18CustomTranslatorCollidingNodesCreateNoNode,TestL2PassThrough.n18PortMapCollidingNodesCreateNoNode,TestL2PassThrough.n18PassThroughNewcomerCollidingWithNodeIsNotCreated
+            tests: TestL2Topology#n4DnsProviderSeedsThroughEndpoint
           - profile: pass-through-ports
             expected-skips: TestL2PassThrough.n15DistinctNamesRouteToEveryOwner
           - profile: port-map-range
-          - profile: low-mtu
-          - profile: port-range
-          - profile: idle-reset
     uses: ./.github/workflows/discovery-l2.yaml
     with:
       subset: ce
       server-container-repo: database-docker-virtual/aerospike-server
       server-tag: latest
       profile: ${{ matrix.profile }}
+      tests: ${{ matrix.tests }}
       expected-skips: ${{ matrix.expected-skips }}
     secrets: inherit
 
