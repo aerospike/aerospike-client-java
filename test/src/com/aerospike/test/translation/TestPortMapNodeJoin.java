@@ -84,7 +84,7 @@ public class TestPortMapNodeJoin {
 			assertTrue("Node B joined " + joinMs + "ms after the peers change, limit " + (2 * TEND_INTERVAL) + "ms",
 				joinMs <= 2 * TEND_INTERVAL);
 
-			Map<String,Integer> owners = assertAllPartitionsOwned("n19-after", client);
+			Map<String,Integer> owners = assertAllPartitionsOwned("n19-after", client, 2);
 			assertEquals(owners.toString(), 2, owners.size());
 			start.get();
 		}
