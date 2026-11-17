@@ -3,6 +3,7 @@ name: Discovery providers
 # Runs SuiteAwsTags and SuiteDnsDiscovery, each against its aerospike-client-conformance test
 # environment (envs/aws-tags.sh, envs/dns.sh), which starts a two node Enterprise cluster, so the
 # jobs need FEATURES_CONF.
+# The build runs on JDK 21 for --release 8 and the suites run on Java 8, the runtime this branch targets.
 
 on:
   workflow_call:
@@ -27,7 +28,7 @@ jobs:
         set -euo pipefail
         export JAVA_HOME="$JAVA_HOME_21_X64"
         mvn -B -pl client -am install -DskipTests
-        mvn -B -pl test test -DskipTests=false -DrunSuite='**/SuiteAwsTags.class'
+        mvn -B -pl test test -Djvm="$JAVA_HOME_8_X64/bin/java" -DskipTests=false -DrunSuite='**/SuiteAwsTags.class'
         bash .github/discovery/check-skips.sh test/target/surefire-reports
     secrets:
       features-conf: ${{ secrets.FEATURES_CONF }}
@@ -43,7 +44,7 @@ jobs:
         set -euo pipefail
         export JAVA_HOME="$JAVA_HOME_21_X64"
         mvn -B -pl client -am install -DskipTests
-        mvn -B -pl test test -DskipTests=false -DrunSuite='**/SuiteDnsDiscovery.class'
+        mvn -B -pl test test -Djvm="$JAVA_HOME_8_X64/bin/java" -DskipTests=false -DrunSuite='**/SuiteDnsDiscovery.class'
         bash .github/discovery/check-skips.sh test/target/surefire-reports
     secrets:
       features-conf: ${{ secrets.FEATURES_CONF }}

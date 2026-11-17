@@ -2,6 +2,7 @@ name: Discovery translation
 
 # Runs each translation suite against its aerospike-client-conformance test environment, which starts
 # Community servers, so the jobs need no feature key and run on fork pull requests too.
+# The build runs on JDK 21 for --release 8 and the suites run on Java 8, the runtime this branch targets.
 
 on:
   workflow_call:
@@ -42,5 +43,5 @@ jobs:
         set -euo pipefail
         export JAVA_HOME="$JAVA_HOME_21_X64"
         mvn -B -pl client -am install -DskipTests
-        mvn -B -pl test test -DskipTests=false -DrunSuite='**/${{ matrix.suite }}.class'
+        mvn -B -pl test test -Djvm="$JAVA_HOME_8_X64/bin/java" -DskipTests=false -DrunSuite='**/${{ matrix.suite }}.class'
         bash .github/discovery/check-skips.sh test/target/surefire-reports

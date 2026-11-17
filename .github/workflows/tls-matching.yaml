@@ -2,6 +2,7 @@ name: TLS certificate matching
 
 # Runs SuiteTlsMatching once per case, each case in its own JVM, and TestTlsProxy against the
 # aerospike-client-conformance tls-matching test environment (envs/tls-matching.sh).
+# The build runs on JDK 21 for --release 8 and the suites run on Java 8, the runtime this branch targets.
 
 on:
   workflow_call:
@@ -28,12 +29,12 @@ jobs:
         mvn -B -pl client -am install -DskipTests || exit 1
         failed=()
         for c in ${TLS_CASES//,/ }; do
-          if ! { TLS_CASE="$c" mvn -B -pl test test -DskipTests=false -DrunSuite='**/SuiteTlsMatching.class' &&
+          if ! { TLS_CASE="$c" mvn -B -pl test test -Djvm="$JAVA_HOME_8_X64/bin/java" -DskipTests=false -DrunSuite='**/SuiteTlsMatching.class' &&
             bash .github/discovery/check-skips.sh test/target/surefire-reports; }; then
             failed+=("$c")
           fi
         done
-        if ! { mvn -B -pl test test -DskipTests=false -Dtest=TestTlsProxy -DfailIfNoTests=false &&
+        if ! { mvn -B -pl test test -Djvm="$JAVA_HOME_8_X64/bin/java" -DskipTests=false -Dtest=TestTlsProxy -DfailIfNoTests=false &&
           bash .github/discovery/check-skips.sh test/target/surefire-reports; }; then
           failed+=(TestTlsProxy)
         fi
