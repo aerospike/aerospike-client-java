@@ -49,10 +49,11 @@ import com.aerospike.client.discovery.TranslationMissMode;
 import com.aerospike.client.policy.ClientPolicy;
 import com.aerospike.client.policy.WritePolicy;
 import com.aerospike.test.util.TestMaps;
+import com.aerospike.test.util.TestEnv;
 
 /**
- * Address translation configured only through the YAML config file, against two clusters started
- * by test/translation/run_yaml.sh. Each case constructs the client with a default
+ * Address translation configured only through the YAML config file, against the two clusters of
+ * the aerospike-client-conformance yaml environment. Each case constructs the client with a default
  * {@link ClientPolicy} and seeds node A only.
  * <ul>
  * <li>pass-through: each node advertises 127.0.0.1 and its own published host port in its
@@ -61,13 +62,14 @@ import com.aerospike.test.util.TestMaps;
  * <li>port-map: each node advertises only its container address. The YAML sets
  * translation.provider port-map with a port_map to the published host ports.</li>
  * </ul>
- * The clusters arrive as system properties:
+ * The clusters arrive as the environment variables of its values file, &lt;CASE&gt; being PASS_THROUGH
+ * or PORT_MAP:
  * <ul>
- * <li>yaml.host: host every node is published on</li>
- * <li>yaml.namespace: namespace, replication factor 1</li>
- * <li>yaml.&lt;case&gt;.config: YAML config file</li>
- * <li>yaml.&lt;case&gt;.nodeA, yaml.&lt;case&gt;.portA: seed node name and port</li>
- * <li>yaml.&lt;case&gt;.nodeB, yaml.&lt;case&gt;.portB: peer node name and port</li>
+ * <li>ENV_HOST: host every node is published on</li>
+ * <li>ENV_NAMESPACE: namespace, replication factor 1</li>
+ * <li>&lt;CASE&gt;_CLIENT_CONFIG: YAML config file</li>
+ * <li>&lt;CASE&gt;_NODE_A_NAME, &lt;CASE&gt;_NODE_A_PORT: seed node name and port</li>
+ * <li>&lt;CASE&gt;_NODE_B_NAME, &lt;CASE&gt;_NODE_B_PORT: peer node name and port</li>
  * </ul>
  */
 public class TestYamlTranslation {
@@ -85,8 +87,8 @@ public class TestYamlTranslation {
 		if (System.getenv("AEROSPIKE_CLIENT_CONFIG_URL") != null) {
 			throw new IllegalStateException("AEROSPIKE_CLIENT_CONFIG_URL is set and would override the test config");
 		}
-		host = required("yaml.host");
-		namespace = required("yaml.namespace");
+		host = TestEnv.get("ENV_HOST");
+		namespace = TestEnv.get("ENV_NAMESPACE");
 
 		Log.setLevel(Log.Level.INFO);
 		Log.setCallback((level, message) -> {
@@ -109,7 +111,7 @@ public class TestYamlTranslation {
 
 	@Test
 	public void passThroughFromYaml() throws Exception {
-		assertJoins("passThrough", policy -> {
+		assertJoins("passThrough", "PASS_THROUGH", policy -> {
 			assertTrue(policy.useServicesAlternate);
 			assertSame(PassThroughAddressTranslator.INSTANCE, policy.addressTranslator);
 			assertEquals(TranslationMissMode.PASS_THROUGH, policy.translationOnMiss);
@@ -118,7 +120,7 @@ public class TestYamlTranslation {
 
 	@Test
 	public void portMapFromYaml() throws Exception {
-		assertJoins("portMap", policy -> {
+		assertJoins("portMap", "PORT_MAP", policy -> {
 			assertFalse(policy.useServicesAlternate);
 			assertTrue(policy.addressTranslator instanceof PortMapAddressTranslator);
 			assertEquals(TranslationMissMode.STRICT, policy.translationOnMiss);
@@ -129,12 +131,12 @@ public class TestYamlTranslation {
 		void check(ClientPolicy policy);
 	}
 
-	private static void assertJoins(String name, PolicyCheck check) throws Exception {
-		String config = required("yaml." + name + ".config");
-		String nodeA = required("yaml." + name + ".nodeA");
-		int portA = Integer.parseInt(required("yaml." + name + ".portA"));
-		String nodeB = required("yaml." + name + ".nodeB");
-		int portB = Integer.parseInt(required("yaml." + name + ".portB"));
+	private static void assertJoins(String name, String prefix, PolicyCheck check) throws Exception {
+		String config = TestEnv.get(prefix + "_CLIENT_CONFIG");
+		String nodeA = TestEnv.get(prefix + "_NODE_A_NAME");
+		int portA = TestEnv.getInt(prefix + "_NODE_A_PORT");
+		String nodeB = TestEnv.get(prefix + "_NODE_B_NAME");
+		int portB = TestEnv.getInt(prefix + "_NODE_B_PORT");
 
 		System.setProperty(CONFIG_SYS_PROP, config);
 
@@ -234,14 +236,5 @@ public class TestYamlTranslation {
 		System.out.println("YAML-KEYS " + name + " onA=" + onA + " onB=" + onB);
 		assertTrue(onA > 0);
 		assertTrue(onB > 0);
-	}
-
-	private static String required(String name) {
-		String value = System.getProperty(name);
-
-		if (value == null || value.isEmpty()) {
-			throw new IllegalStateException("System property " + name + " is not set. Run test/translation/run_yaml.sh");
-		}
-		return value;
 	}
 }

@@ -26,7 +26,7 @@
 #                             of downloading it
 #   L2_DISABLE_LISTENERS      set to 1 to disable every Toxiproxy listener before the suite starts and
 #                             skip the TCP check, to prove N-1's guard. Every L2 test then fails
-#   L2_NODE_CONTROL           set to 1 to let N-11 start a node. The script sets DISCOVERY_CONTROL_DIR
+#   L2_NODE_CONTROL           set to 1 to let tests start and stop nodes. The script sets DISCOVERY_CONTROL_DIR
 #                             to a directory under the work directory, which the client container
 #                             shares, and serves each <id>.request written there with <id>.ack: "start"
 #                             starts one more node on the server network with the same config and mesh
@@ -86,7 +86,7 @@
 #                             the tests run, the script looks as-unresolved.test up in each server container and fails
 #                             the run if it resolves. Sets DISCOVERY_UNRESOLVED_HOSTNAME to it and
 #                             DISCOVERY_VERBATIM_ACCESS_ADDRESS from L2_VERBATIM_ACCESS_ADDRESS, turns on
-#                             L2_NODE_CONTROL and runs TestL2UnresolvedAccessAddress and TestL2PortMapNoAccessAddress
+#                             L2_NODE_CONTROL and runs TestL2UnresolvedAccessAddress
 #                             On ee every other profile uses a certificate with aerospike-tls as a dNSName SAN
 #                             and a CN that does not match it (DISCOVERY_TLS_CERT_SHAPE=san-only)
 #   L2_SUBNET                 first three octets of the port-map-range server network (default 10.213.66)
@@ -128,7 +128,7 @@ run_client() {
 		low-mtu) suite='**/TestL2LowMtu.class' ;;
 		port-range) suite='**/TestL2SourcePortRange.class' ;;
 		idle-reset) suite='**/TestL2IdleReset.class,**/TestL2AsyncIdleReset.class' ;;
-		unresolved-access) suite='**/TestL2UnresolvedAccessAddress.class,**/TestL2PortMapNoAccessAddress.class' ;;
+		unresolved-access) suite='**/TestL2UnresolvedAccessAddress.class' ;;
 	esac
 	suite="${L2_SUITE:-$suite}"
 

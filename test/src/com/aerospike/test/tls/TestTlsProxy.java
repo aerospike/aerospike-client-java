@@ -55,20 +55,23 @@ import com.aerospike.client.Record;
 import com.aerospike.client.cluster.Node;
 import com.aerospike.client.policy.ClientPolicy;
 import com.aerospike.client.policy.TlsPolicy;
+import com.aerospike.test.util.TestEnv;
 
 /**
- * Testing-strategy N-6: TLS through a TCP pass-through listener. A two node cluster is reached
- * only through one local forwarder per node. The second node is never seeded: the client learns
+ * TLS through a TCP pass-through listener. A two node cluster is reached only through one local
+ * forwarder per node, in front of the forwarder of the aerospike-client-conformance tls-matching
+ * environment. The second node is never seeded: the client learns
  * it, and its tls-name, from peers-* and reaches it through an address translator that also
  * tries to set the TLS name to the endpoint address. The certificate carries the tls-name only
  * as a dNSName SAN with a non-matching CN, and no iPAddress SAN, so the handshake succeeds only
  * when it validates against the node's tls-name and not the endpoint or the CN.
  * <p>
- * Run by test/tls/run_tls_matching.sh (case n6_proxy), which supplies:
+ * The environment arrives as the environment variables of its values file:
  * <ul>
- * <li>tls.name: tls-name configured on both nodes</li>
- * <li>tls.nodes: node name to published TLS port, e.g. A1=4433,B2=4434. The first is the seed.</li>
- * <li>tls.ca, tls.host, tls.namespace: CA file, published address and namespace</li>
+ * <li>PROXY_TLS_NAME: tls-name configured on both nodes</li>
+ * <li>PROXY_NODE_A_NAME, PROXY_NODE_A_HOST, PROXY_NODE_A_PORT: the seed node and its forwarder</li>
+ * <li>PROXY_NODE_B_NAME, PROXY_NODE_B_HOST, PROXY_NODE_B_PORT: the other node and its forwarder</li>
+ * <li>PROXY_CA, ENV_NAMESPACE: CA file and namespace</li>
  * </ul>
  */
 public class TestTlsProxy {
@@ -77,7 +80,6 @@ public class TestTlsProxy {
 	private static final List<String> warnings = new CopyOnWriteArrayList<>();
 
 	private static String tlsName;
-	private static String hostName;
 	private static String namespace;
 	private static String seedNode;
 	private static final Map<String,Forwarder> forwarders = new HashMap<>();
@@ -85,18 +87,14 @@ public class TestTlsProxy {
 
 	@BeforeClass
 	public static void init() throws Exception {
-		tlsName = required("tls.name");
-		hostName = System.getProperty("tls.host", "127.0.0.1");
-		namespace = System.getProperty("tls.namespace", "test");
-		sslContext = trustContext(required("tls.ca"));
+		tlsName = TestEnv.get("PROXY_TLS_NAME");
+		namespace = TestEnv.get("ENV_NAMESPACE");
+		sslContext = trustContext(TestEnv.get("PROXY_CA"));
+		seedNode = TestEnv.get("PROXY_NODE_A_NAME");
 
-		for (String entry : required("tls.nodes").split(",")) {
-			String[] kv = entry.split("=");
-
-			if (seedNode == null) {
-				seedNode = kv[0];
-			}
-			forwarders.put(kv[0], new Forwarder(hostName, Integer.parseInt(kv[1])));
+		for (String node : new String[] {"PROXY_NODE_A", "PROXY_NODE_B"}) {
+			forwarders.put(TestEnv.get(node + "_NAME"), new Forwarder(TestEnv.get(node + "_HOST"),
+				TestEnv.getInt(node + "_PORT")));
 		}
 
 		Log.setLevel(Log.Level.WARN);
@@ -198,15 +196,6 @@ public class TestTlsProxy {
 		SSLContext ctx = SSLContext.getInstance("TLS");
 		ctx.init(null, tmf.getTrustManagers(), null);
 		return ctx;
-	}
-
-	private static String required(String name) {
-		String value = System.getProperty(name);
-
-		if (value == null || value.isEmpty()) {
-			throw new IllegalStateException("System property " + name + " is required. Run test/tls/run_tls_matching.sh n6_proxy");
-		}
-		return value;
 	}
 
 	/**

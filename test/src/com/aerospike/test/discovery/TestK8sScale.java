@@ -20,12 +20,12 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
-import java.time.Instant;
+import java.net.InetAddress;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -42,6 +42,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.atomic.AtomicReferenceArray;
 
 import org.junit.After;
+import org.junit.Assume;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -67,6 +68,8 @@ import com.aerospike.test.util.TestBase;
  * Scaling the AerospikeCluster under a running pass-through client, and the per-pod Service
  * NodePorts across pod rescheduling and recreation, on the shared endpoint the operator renders:
  * every pod advertises the endpoint hostname with its own Service NodePort as alternate address.
+ * Under networkLoadBalancer the same holds with one pod per node, and the advertised address
+ * survives a rescheduled pod and a recreated Node.
  */
 public class TestK8sScale extends TestBase {
 	private static final String SET = "l3-scale";
@@ -76,8 +79,13 @@ public class TestK8sScale extends TestBase {
 	private static final int LOAD_KEYS = 1000;
 	private static final int QUIET_TEND_INTERVALS = 5;
 	private static final int KEY_SEARCH_LIMIT = 100000;
-	private static final String SHARED_ENDPOINT_PROFILE = " needs multiPodPerHost: true with every node labelled with " +
-		"one endpoint hostname, the cluster setup-kind-ako builds (run_l3.sh default profile, or the discovery-k8s workflow)";
+	private static final long NODE_REGISTER_TIMEOUT_MS = 300000;
+	private static final String NODE_MARK = "l3-discovery-mark";
+	private static final String SHARED_ENDPOINT_PROFILE = " needs every pod advertising one endpoint hostname: " +
+		"configuredIP with multiPodPerHost: true and every node labelled with it, or networkLoadBalancer, the clusters " +
+		"setup-kind-ako builds (run_l3.sh default, nlb or nlb-per-pod profile, or the discovery-k8s workflow)";
+	private static final String NLB_PROFILE = " needs alternateAccess networkLoadBalancer (run_l3.sh nlb or nlb-per-pod " +
+		"profile, or the l3-nlb jobs of the discovery-k8s workflow)";
 
 	private K8sCluster cluster;
 	private int foundSize;
@@ -88,9 +96,16 @@ public class TestK8sScale extends TestBase {
 	public void requireCluster() {
 		assertTrue("Kubernetes scale " + K8sCluster.SKIP, ! K8sCluster.kubeconfig.isEmpty());
 		K8sCluster found = K8sCluster.find();
-		assertTrue("Kubernetes scale" + SHARED_ENDPOINT_PROFILE, found.multiPodPerHost());
+		String alternateAccess = found.alternateAccess();
+		boolean multiPodPerHost = found.multiPodPerHost();
+		assertTrue("Kubernetes scale" + SHARED_ENDPOINT_PROFILE + "; found alternateAccess " + alternateAccess +
+			", multiPodPerHost " + multiPodPerHost,
+			found.networkLoadBalancer() || (K8sCluster.CONFIGURED_IP.equals(alternateAccess) && multiPodPerHost));
 		assertFalse("DISCOVERY_ENDPOINT_HOSTNAME is not set", K8sCluster.endpointHostname.isEmpty());
-		assertEquals("configuredIP", found.get(".spec.aerospikeNetworkPolicy.alternateAccess"));
+
+		if (found.networkLoadBalancer()) {
+			assertEquals("loadBalancerAlternateAccessAddress", K8sCluster.endpointHostname, found.loadBalancerAddress());
+		}
 		cluster = found;
 		foundSize = found.size();
 	}
@@ -122,100 +137,6 @@ public class TestK8sScale extends TestBase {
 			if (c.size() != foundSize || c.pods().size() != foundSize) {
 				c.scale(foundSize);
 			}
-		}
-	}
-
-	/**
-	 * One client seeded once holds the pod the operator adds within 2 x tend interval of the
-	 * peers-generation bump that announces it, at the endpoint hostname and the new pod's own
-	 * Service NodePort, without being rebuilt or reseeded, and every partition is owned afterwards.
-	 */
-	@Test
-	public void scaleUpNewNodeActiveWithinTwoTendIntervals() throws Exception {
-		int size = foundSize;
-		int port = cluster.servicePort();
-		Set<String> before = podNames(cluster.pods());
-		ClientPolicy policy = policy();
-		Host[] seeds = Host.parseHosts(args.host, args.port);
-
-		assertNull(policy.seedCandidateProvider);
-
-		try (AerospikeClient client = new AerospikeClient(policy, seeds)) {
-			awaitRouting("scale-up-before", client, size);
-
-			Map<String,Node> existing = new HashMap<>();
-
-			for (Node node : client.getNodes()) {
-				existing.put(node.getName(), node);
-			}
-
-			Node observer = client.getNodes()[0];
-			long generation = peersGeneration(observer);
-			long[] bump = {0};
-			long[] bumpAt = {0};
-			long[] active = {0};
-			Node[] added = {null};
-
-			cluster.resize(size + 1);
-			boolean seen = K8sCluster.waitFor(() -> {
-				long now = System.nanoTime();
-
-				if (bump[0] == 0 && peersGeneration(observer) != generation) {
-					bump[0] = now;
-					bumpAt[0] = System.currentTimeMillis();
-				}
-
-				if (active[0] == 0) {
-					for (Node node : client.getNodes()) {
-						if (node.isActive() && ! existing.containsKey(node.getName())) {
-							active[0] = now;
-							added[0] = node;
-						}
-					}
-				}
-				return bump[0] != 0 && active[0] != 0;
-			}, K8sCluster.SCALE_TIMEOUT_MS, 5);
-			assertTrue("No peers-generation bump on " + observer.getName() + " or no new active node", seen);
-
-			long elapsed = TimeUnit.NANOSECONDS.toMillis(active[0] - bump[0]);
-			long budget = 2L * policy.tendInterval;
-			cluster.scale(size + 1);
-
-			Pod pod = null;
-
-			for (Pod p : cluster.pods()) {
-				if (! before.contains(p.name)) {
-					pod = p;
-				}
-			}
-			assertNotNull("No new pod in " + cluster.pods(), pod);
-
-			int nodePort = cluster.nodePort(pod.name, port);
-			Node node = added[0];
-			Map<String,String> info = Info.request(null, node, "service-clear-std", "service-clear-alt");
-			Host h = node.getHost();
-			System.out.println("L3-SCALE-UP node=" + node.getName() + " pod=" + pod.name + " access=" +
-				info.get("service-clear-std") + " alternate=" + info.get("service-clear-alt") + " serviceNodePort=" +
-				nodePort + " clientHost=" + h.name + ':' + h.port + " generation=" + generation + "->" +
-				peersGeneration(observer) + " bumpToActiveMs=" + elapsed + " tendInterval=" + policy.tendInterval +
-				" budgetMs=" + budget + " bumpAt=" + Instant.ofEpochMilli(bumpAt[0]) + " podReadyAt=" +
-				cluster.podReadyAt(pod.name) + " readinessProbe=" + cluster.readinessProbe(pod.name) +
-				" publishNotReadyAddresses=" + cluster.publishNotReadyAddresses(pod.name));
-			assertTrue(pod.name + " has no Service NodePort for " + port, nodePort > 0);
-			assertTrue(node.getName() + " access " + info.get("service-clear-std") + " is not " + pod,
-				hasAddress(info.get("service-clear-std"), pod.ip));
-			assertEquals(node.getName() + " (" + pod.name + ") advertised alternate address",
-				K8sCluster.endpointHostname + ':' + nodePort, info.get("service-clear-alt"));
-			assertEquals(nodePort, h.port);
-			assertTrue(node.getName() + " active " + elapsed + "ms after the bump, budget " + budget + "ms",
-				elapsed <= budget);
-
-			awaitRouting("scale-up-after", client, size + 1);
-
-			for (Map.Entry<String,Node> entry : existing.entrySet()) {
-				assertSame(entry.getKey() + " replaced", entry.getValue(), client.getCluster().getNode(entry.getKey()));
-			}
-			assertServedByEveryNode("scale-up", client);
 		}
 	}
 
@@ -392,6 +313,203 @@ public class TestK8sScale extends TestBase {
 		assertNotEquals(last.name + " recreated Service kept NodePort " + lastNodePort, lastNodePort, recreatedNodePort);
 		assertEquals(pinned, cluster.nodePort(service, port));
 		assertPinnedSeed("recreated", service, port, pinned, size);
+	}
+
+	/**
+	 * Under networkLoadBalancer, a pod deleted and recreated by its StatefulSet turns Ready again
+	 * advertising loadBalancerAlternateAccessAddress with the same Service NodePort, and the
+	 * client seeded once routes every partition again without being rebuilt or reseeded.
+	 */
+	@Test
+	public void advertisedAddressSurvivesPodReschedule() throws Exception {
+		skipUnless(cluster.networkLoadBalancer(), "Pod reschedule" + NLB_PROFILE);
+
+		if (foundSize < MIN_PODS) {
+			cluster.scale(MIN_PODS);
+		}
+
+		int size = cluster.size();
+		int port = cluster.servicePort();
+		String address = cluster.loadBalancerAddress();
+		Pod victim = highestOrdinal(cluster.pods());
+		String podUid = cluster.uid("pod", victim.name);
+		int nodePort = cluster.nodePort(victim.name, port);
+		assertTrue(victim.name + " has no Service NodePort for " + port, nodePort > 0);
+		Host[] seeds = Host.parseHosts(args.host, args.port);
+
+		try (AerospikeClient client = new AerospikeClient(policy(), seeds)) {
+			awaitRouting("reschedule-before", client, size);
+			Node before = nodeOf(client, victim);
+			assertNotNull("No node for " + victim, before);
+			assertEquals(victim.name + " advertised alternate address", address + ':' + nodePort,
+				Info.request(null, before, "service-clear-alt"));
+
+			cluster.deletePod(victim.name);
+			Pod pod = awaitReady(victim.name, podUid);
+			Node node = awaitNodeOf(client, pod);
+			awaitRouting("reschedule-after", client, size);
+			String advertised = Info.request(null, node, "service-clear-alt");
+			Host h = node.getHost();
+			System.out.println("L3-RESCHEDULED pod=" + pod.name + " podUid=" + podUid + "->" +
+				cluster.uid("pod", pod.name) + " worker=" + victim.node + "->" + pod.node + " ip=" + victim.ip + "->" +
+				pod.ip + " node=" + before.getName() + "->" + node.getName() + " alternate=" + advertised +
+				" serviceNodePort=" + nodePort + "->" + cluster.nodePort(pod.name, port) + " clientHost=" + h.name + ':' +
+				h.port + " seeds=" + Arrays.asList(seeds));
+			assertEquals(pod.name + " Service NodePort", nodePort, cluster.nodePort(pod.name, port));
+			assertEquals(node.getName() + " (" + pod.name + ") advertised alternate address", address + ':' + nodePort,
+				advertised);
+			assertEquals(node.getName() + " client port", nodePort, h.port);
+			assertServedByEveryNode("reschedule", client);
+		}
+	}
+
+	/**
+	 * Under networkLoadBalancer, a pod on a Kubernetes Node that is deleted and registered again,
+	 * and so carries none of the labels set through the API, turns Ready again advertising
+	 * loadBalancerAlternateAccessAddress with its Service NodePort, and the client seeded once
+	 * routes every partition. kind's kubelet does not register a deleted Node again on its own;
+	 * test/discovery/run_l3.sh restarts it. The pod must run on a node the endpoint hostname does
+	 * not resolve to: deleting the one node of a single-node cluster deletes every pod with its
+	 * work directory, and the operator does not recover the cluster from that.
+	 */
+	@Test
+	public void podOnRecreatedNodeAdvertisesClusterAddress() throws Exception {
+		skipUnless(cluster.networkLoadBalancer(), "Recreated Node" + NLB_PROFILE);
+
+		if (foundSize < MIN_PODS) {
+			cluster.scale(MIN_PODS);
+		}
+
+		int size = cluster.size();
+		int port = cluster.servicePort();
+		String address = cluster.loadBalancerAddress();
+		Pod victim = awayFromEndpoint(cluster.pods());
+		skipUnless(victim != null, "Recreated Node needs a pod on a node " + K8sCluster.endpointHostname +
+			" does not resolve to (run_l3.sh nlb-per-pod profile, or the l3-nlb-per-pod job of the discovery-k8s workflow)");
+		String worker = victim.node;
+		String podUid = cluster.uid("pod", victim.name);
+		String nodeUid = K8sCluster.nodeUid(worker);
+		K8sCluster.labelNode(worker, NODE_MARK, "set-through-api");
+		assertEquals(worker + " " + NODE_MARK, "set-through-api", K8sCluster.nodeLabel(worker, NODE_MARK));
+		Host[] seeds = Host.parseHosts(args.host, args.port);
+
+		List<String> cordoned = new ArrayList<>();
+
+		try (AerospikeClient client = new AerospikeClient(policy(), seeds)) {
+			awaitRouting("node-before", client, size);
+
+			// Otherwise the replacement pod schedules onto another node before this one registers again.
+			for (String other : K8sCluster.nodeNames()) {
+				if (! other.equals(worker)) {
+					K8sCluster.cordon(other, true);
+					cordoned.add(other);
+				}
+			}
+
+			long deleted = System.nanoTime();
+			K8sCluster.deleteNode(worker);
+			// Pod garbage collection races the kubelet restart that registers the Node again.
+			cluster.forceDeletePod(victim.name);
+			String[] uid = {""};
+			boolean registered = K8sCluster.waitFor(() -> {
+				uid[0] = K8sCluster.nodeUid(worker);
+				return ! uid[0].isEmpty() && ! uid[0].equals(nodeUid);
+			}, NODE_REGISTER_TIMEOUT_MS, 1000);
+			long registeredMs = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - deleted);
+			assertTrue(worker + " not registered again within " + NODE_REGISTER_TIMEOUT_MS + "ms", registered);
+
+			Pod pod = awaitReady(victim.name, podUid);
+			assertEquals(pod.name + " node", worker, pod.node);
+			assertTrue("Not every pod Ready within " + K8sCluster.SCALE_TIMEOUT_MS + "ms: " + cluster.pods(),
+				K8sCluster.waitFor(() -> cluster.readyPods().size() == size, K8sCluster.SCALE_TIMEOUT_MS, 2000));
+
+			Node node = awaitNodeOf(client, pod);
+			awaitRouting("node-after", client, size);
+
+			int nodePort = cluster.nodePort(pod.name, port);
+			String advertised = Info.request(null, node, "service-clear-alt");
+			System.out.println("L3-NODE-RECREATED worker=" + worker + " nodeUid=" + nodeUid + "->" + uid[0] +
+				" registeredAfterMs=" + registeredMs + " mark=" + K8sCluster.nodeLabel(worker, NODE_MARK) + " label=" +
+				K8sCluster.nodeLabel(worker) + " pod=" + pod.name + " podUid=" + podUid + "->" +
+				cluster.uid("pod", pod.name) + " podWorker=" + pod.node + " node=" + node.getName() + " alternate=" +
+				advertised + " serviceNodePort=" + nodePort);
+			assertEquals(worker + " " + NODE_MARK + " after it registered again", "",
+				K8sCluster.nodeLabel(worker, NODE_MARK));
+			assertEquals(worker + " " + K8sCluster.ALTERNATE_ACCESS_LABEL, "", K8sCluster.nodeLabel(worker));
+			assertTrue(pod.name + " has no Service NodePort for " + port, nodePort > 0);
+			assertEquals(node.getName() + " (" + pod.name + ") advertised alternate address", address + ':' + nodePort,
+				advertised);
+			assertServedByEveryNode("node-recreated", client);
+		}
+		finally {
+			for (String other : cordoned) {
+				K8sCluster.cordon(other, false);
+			}
+		}
+	}
+
+	/**
+	 * Return the highest-ordinal pod on a worker the endpoint hostname does not resolve to, so
+	 * deleting that node leaves the seed and the other pods running, or null when there is none.
+	 */
+	private static Pod awayFromEndpoint(List<Pod> pods) throws Exception {
+		Set<String> endpoint = new HashSet<>();
+
+		for (InetAddress a : InetAddress.getAllByName(K8sCluster.endpointHostname)) {
+			endpoint.add(a.getHostAddress());
+		}
+
+		List<Pod> away = new ArrayList<>();
+
+		for (Pod pod : pods) {
+			if (! endpoint.contains(K8sCluster.nodeAddress(pod.node)) && ! K8sCluster.controlPlane(pod.node)) {
+				away.add(pod);
+			}
+		}
+		return away.isEmpty() ? null : highestOrdinal(away);
+	}
+
+	/**
+	 * Wait until one of the client's nodes answers from the pod's IP, then return it. A node the
+	 * client held before the pod was replaced can stay active for a few tends while its
+	 * connections fail.
+	 */
+	private static Node awaitNodeOf(AerospikeClient client, Pod pod) throws Exception {
+		Node[] node = {null};
+		boolean found = K8sCluster.waitFor(() -> {
+			for (Node n : client.getNodes()) {
+				try {
+					if (hasAddress(Info.request(null, n, "service-clear-std"), pod.ip)) {
+						node[0] = n;
+						return true;
+					}
+				}
+				catch (AerospikeException e) {
+					// The node the client held before the pod was replaced.
+				}
+			}
+			return false;
+		}, ROUTING_WAIT_MS, 500);
+		assertTrue("No node answers from " + pod + " within " + ROUTING_WAIT_MS + "ms: " + names(client), found);
+		return node[0];
+	}
+
+	/**
+	 * Wait until the pod exists with a UID other than {@code oldUid} and is Ready, then return it.
+	 */
+	private Pod awaitReady(String name, String oldUid) throws Exception {
+		boolean ready = K8sCluster.waitFor(() -> {
+			String uid = cluster.uid("pod", name);
+			return ! uid.isEmpty() && ! uid.equals(oldUid) && cluster.readyPods().contains(name);
+		}, K8sCluster.SCALE_TIMEOUT_MS, 2000);
+		assertTrue(name + " not Ready again within " + K8sCluster.SCALE_TIMEOUT_MS + "ms: " + cluster.pods(), ready);
+
+		for (Pod pod : cluster.pods()) {
+			if (pod.name.equals(name)) {
+				return pod;
+			}
+		}
+		throw new AssertionError(name + " not in " + cluster.pods());
 	}
 
 	/**
@@ -674,8 +792,11 @@ public class TestK8sScale extends TestBase {
 		return false;
 	}
 
-	private static long peersGeneration(Node node) {
-		return Long.parseLong(Info.request(null, node, "peers-generation"));
+	private static void skipUnless(boolean condition, String reason) {
+		if (! condition) {
+			System.out.println("L3-SKIP " + reason);
+		}
+		Assume.assumeTrue(reason, condition);
 	}
 
 	private static void captureLog() {

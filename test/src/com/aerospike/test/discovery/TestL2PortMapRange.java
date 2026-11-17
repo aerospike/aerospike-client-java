@@ -22,7 +22,6 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -34,14 +33,12 @@ import org.junit.Test;
 
 import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.AerospikeException;
-import com.aerospike.client.Info;
 import com.aerospike.client.Log;
 import com.aerospike.client.cluster.Node;
 import com.aerospike.client.discovery.Endpoint;
 import com.aerospike.client.discovery.PortMapAddressTranslator;
 import com.aerospike.client.discovery.TranslationMissMode;
 import com.aerospike.client.policy.ClientPolicy;
-import com.aerospike.test.discovery.L2Topology.Joined;
 import com.aerospike.test.discovery.L2Topology.L2Node;
 import com.aerospike.test.util.TestBase;
 
@@ -72,57 +69,6 @@ public class TestL2PortMapRange extends TestBase {
 		if (! addedNodes.isEmpty()) {
 			addedNodes.clear();
 			L2Topology.waitClusterStable(L2Topology.nodes().size());
-		}
-	}
-
-	/**
-	 * N-19: a port-map pre-filled from a fixed rule (node address to listener port base plus the
-	 * address's last octet) for every address of the range joins the cluster with no warning. A
-	 * node started on a free address of the range is an active {@link Node} within 2 x
-	 * tend_interval of the peers-generation bump that announces it, with no client configuration
-	 * change, and the partition map is then complete with the new node among the owners.
-	 */
-	@Test
-	public void n19PrefilledPortMapJoinsNodeInRange() throws Exception {
-		requireRange();
-
-		List<L2Node> nodes = L2Topology.nodes();
-		L2Node first = nodes.get(0);
-		List<String> names = L2Topology.nodeNames();
-		Map<String,String> portMap = rangePortMap(nodes);
-		ClientPolicy policy = L2Topology.policy();
-		policy.addressTranslator = new PortMapAddressTranslator(portMap);
-		TestL2Topology.captureWarnings();
-
-		try (AerospikeClient client = new AerospikeClient(policy, L2Topology.seed())) {
-			L2Topology.waitNodes(client, names);
-			L2Topology.assertAllPartitionsOwned("N-19-before", client);
-			assertEquals(Collections.emptyList(), TestL2Topology.warnings);
-
-			String address = freeAddress(nodes);
-			long generation = L2Topology.peersGeneration(first);
-			Map<String,String> ack = start(address);
-			assertEquals(address, ack.get("address"));
-
-			Joined joined = L2Topology.waitJoined(client, first, generation, names);
-			Node node = joined.node;
-			long budget = 2L * policy.tendInterval;
-			int port = listenerPort(address);
-			Map<String,String> info = Info.request(L2Topology.host, port, "node", "service-clear-std");
-			System.out.println("L2-N19-TIMING node=" + node.getName() + " host=" + node.getHost() + " container=" +
-				ack.get("container") + " address=" + address + " advertised=" + info.get("service-clear-std") +
-				" mapped=" + portMap.get(address + ':' + servicePort(nodes)) + " generation=" + generation + "->" +
-				joined.generation + " bumpToActiveMs=" + joined.bumpToActiveMs + " tendInterval=" + policy.tendInterval +
-				" budgetMs=" + budget);
-			assertEquals(info.get("node"), node.getName());
-			assertEquals(port, node.getHost().port);
-			assertTrue(node.getName() + " active " + joined.bumpToActiveMs + "ms after the bump, budget " + budget + "ms",
-				joined.bumpToActiveMs <= budget);
-
-			boolean owns = L2Topology.waitFor(() -> L2Topology.owners(client).containsKey(node.getName()));
-			System.out.println("L2-N19-OWNERS " + L2Topology.owners(client));
-			assertTrue(node.getName() + " owns no partitions", owns);
-			assertEquals(names.size() + 1, L2Topology.owners(L2Topology.assertAllPartitionsOwned("N-19-after", client)).size());
 		}
 	}
 
@@ -247,24 +193,6 @@ public class TestL2PortMapRange extends TestBase {
 		System.out.println("L2-N19-PORT-MAP range=" + L2Topology.portMapRange + " portBase=" + L2Topology.portMapPortBase +
 			" entries=" + map.size() + ' ' + map);
 		return map;
-	}
-
-	private static String freeAddress(List<L2Node> nodes) {
-		String[] range = range();
-		String prefix = prefix(range[0]);
-		int port = servicePort(nodes);
-		List<String> used = new ArrayList<>();
-
-		for (L2Node node : nodes) {
-			used.addAll(node.advertised);
-		}
-
-		for (int octet = octet(range[0]); octet <= octet(range[1]); octet++) {
-			if (! used.contains(prefix + octet + ':' + port)) {
-				return prefix + octet;
-			}
-		}
-		throw new IllegalStateException("No free address in " + L2Topology.portMapRange + ": " + used);
 	}
 
 	private static List<String> misses(String nodeName) {

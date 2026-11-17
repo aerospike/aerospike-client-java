@@ -58,17 +58,43 @@ retry. It runs only when `-tls` is set and `-h` includes a tlsName, and is skipp
 
 Certificate matching cases (DNS and IP subject alternative names, wildcards, legacy CN fallback,
 revoked serials) need a different server certificate per case, so they do not run against a
-shared server. `tls/run_tls_matching.sh` generates each certificate, starts a single node
-Aerospike Enterprise container with it, runs `SuiteTlsMatching` and removes the container.
-It requires docker, openssl, an Enterprise image and a feature-key file:
+shared server. They run against the `tls-matching` environment described below: `SuiteTlsMatching`
+runs the case named by `TLS_CASE`, starting its server with the environment's `serve` verb. The
+legacy match warning is logged once per tlsName per JVM, so each case runs in its own JVM.
+`TestTlsProxy` reaches a two node cluster through a TCP pass-through listener per node, and learns
+the second node and its tls-name from peers-*. From the repository root, with the environment up and
+its values loaded:
 
-    AEROSPIKE_IMAGE=aerospike/aerospike-server-enterprise:8.1 \
-    AEROSPIKE_FEATURES_FILE=/path/to/features.conf \
-    tls/run_tls_matching.sh [case ...]
+    for c in ${TLS_CASES//,/ }; do
+        TLS_CASE="$c" mvn -pl test test -DskipTests=false -DrunSuite='**/SuiteTlsMatching.class'
+    done
+    mvn -pl test test -DskipTests=false -Dtest=TestTlsProxy -DfailIfNoTests=false
 
-Case `n6_proxy` (testing-strategy N-6) starts a two node cluster instead and runs `TestTlsProxy`:
-each node is reached through a TCP pass-through listener, and the second node and its tls-name
-are learned from peers-*. It uses `TLS_MATCHING_PORT` and the port after it.
+Discovery provider, address translation and TLS name matching suites:
 
-With no case names every case runs. Case names and the optional environment variables are listed
-at the top of the script. Per case output is written to `target/tls-matching/<case>/mvn.log`.
+These suites run against the test environment of the same name in the `envs/` directory of
+[aerospike-client-conformance](https://github.com/aerospike/aerospike-client-conformance/tree/main/envs),
+which starts the servers, writes a values file and removes everything on `down`. The tests read the
+values from the environment and run the environment's verbs, such as starting a node or stopping
+the DNS server, through `"$ENV_CTL" <verb>`.
+
+| Suite                              | Environment    |
+| ---------------------------------- | -------------- |
+| `SuiteDnsDiscovery`                | `dns`          |
+| `SuiteAwsTags`                     | `aws-tags`     |
+| `SuitePortMap`                     | `port-map`     |
+| `SuiteTranslationCollision`        | `collision`    |
+| `SuiteYamlTranslation`             | `yaml`         |
+| `SuitePassThrough`                 | `pass-through` |
+| `SuiteTranslationMiss`             | `on-miss`      |
+| `SuiteAlternateMissing`            | `alt-missing`  |
+| `SuiteTlsMatching`, `TestTlsProxy` | `tls-matching` |
+
+For example, from the conformance checkout and then this repository's root:
+
+    export AEROSPIKE_IMAGE=aerospike/aerospike-server-enterprise:8.1
+    export FEATURES_CONF_PATH=/path/to/features.conf
+    values="$(envs/dns.sh up)"
+    set -a; . "$values"; set +a
+    mvn -pl test test -DskipTests=false -DrunSuite='**/SuiteDnsDiscovery.class'
+    "$ENV_CTL" down

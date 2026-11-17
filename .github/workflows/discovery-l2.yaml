@@ -44,7 +44,7 @@ on:
         description: Fail when a test of the suite skips, except those in expected-skips
         type: boolean
         required: false
-        default: false
+        default: true
       expected-skips:
         description: Comma-separated class.method names of the tests expected to skip, for fail-on-skip
         type: string
@@ -83,7 +83,7 @@ jobs:
             cn-only) suite='**/TestL2CnOnlyCertificate.class' ;;
             low-mtu) suite='**/TestL2LowMtu.class' ;;
             idle-reset) suite='**/TestL2IdleReset.class,**/TestL2AsyncIdleReset.class' ;;
-            unresolved-access) suite='**/TestL2UnresolvedAccessAddress.class,**/TestL2PortMapNoAccessAddress.class' ;;
+            unresolved-access) suite='**/TestL2UnresolvedAccessAddress.class' ;;
             *)
               echo "::error::Unknown profile ${PROFILE}"
               exit 1

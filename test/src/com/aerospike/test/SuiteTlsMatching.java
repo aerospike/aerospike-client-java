@@ -22,8 +22,9 @@ import org.junit.runners.Suite;
 import com.aerospike.test.tls.TestTlsMatching;
 
 /**
- * Server certificate name matching. Requires a TLS-enabled server started per case by
- * test/tls/run_tls_matching.sh, which also supplies the case system properties.
+ * Server certificate name matching. Requires the aerospike-client-conformance tls-matching
+ * environment, with its values file loaded into the environment, and TLS_CASE naming the case to
+ * run, one case per JVM.
  */
 @RunWith(Suite.class)
 @Suite.SuiteClasses({

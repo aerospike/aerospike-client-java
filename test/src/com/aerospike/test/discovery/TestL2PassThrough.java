@@ -32,11 +32,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Queue;
 import java.util.Set;
 import java.util.TreeMap;
-import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReferenceArray;
 
 import org.junit.After;
@@ -61,7 +58,6 @@ import com.aerospike.client.policy.ClientPolicy;
 import com.aerospike.client.policy.Policy;
 import com.aerospike.client.policy.Replica;
 import com.aerospike.client.policy.WritePolicy;
-import com.aerospike.test.discovery.L2Topology.Joined;
 import com.aerospike.test.discovery.L2Topology.L2Node;
 import com.aerospike.test.discovery.L2Topology.Peer;
 import com.aerospike.test.util.TestBase;
@@ -179,66 +175,6 @@ public class TestL2PassThrough extends TestBase {
 		ClientPolicy policy = passThroughPolicy();
 		policy.translationOnMiss = TranslationMissMode.STRICT;
 		assertRoutesToOwners("N-16-strict", policy, L2Topology.nodes());
-	}
-
-	/**
-	 * N-16 scale-out: a node started mid-test that advertises the same hostname and its own port is
-	 * an active {@link Node} within 2 x tend_interval of the peers-generation bump that announces
-	 * it, with no client change. The test gives it a listener on that port before it joins.
-	 */
-	@Test
-	public void n16NewNodeOnSharedNameActiveWithinTwoTendIntervals() throws Exception {
-		requireBranchB("N-16 scale-out");
-
-		List<L2Node> nodes = L2Topology.nodes();
-		L2Node first = nodes.get(0);
-		List<String> names = L2Topology.nodeNames();
-		String hostname = hostOf(alternate(first));
-		ClientPolicy policy = passThroughPolicy();
-		Queue<String> clientLog = new ConcurrentLinkedQueue<>();
-		Log.setLevel(Log.Level.WARN);
-		Log.setCallback((level, message) -> clientLog.add(System.nanoTime() + " " + level + ' ' + message));
-
-		try (AerospikeClient client = new AerospikeClient(policy, seed(first))) {
-			L2Topology.waitNodes(client, names);
-			L2Topology.assertAllPartitionsOwned("N-16-before", client);
-			clientLog.clear();
-
-			long generation = L2Topology.peersGeneration(first);
-			int port = L2Topology.nextListenerPort();
-			String container = start("alternate-port=" + port);
-			L2Topology.addListener(container, port, container + ':' + L2Topology.upstreamPort(first.proxy));
-			addedProxies.add(container);
-			assertEquals("peers-generation bumped before " + container + " had a listener", generation,
-				L2Topology.peersGeneration(first));
-
-			Joined joined = L2Topology.waitJoinedTimeline(client, first, generation, names, port);
-			Node node = joined.node;
-			long budget = 2L * policy.tendInterval;
-			System.out.println("L2-N16-TIMELINE node=" + node.getName() + " bumpToAnswerMs=" +
-				TimeUnit.NANOSECONDS.toMillis(joined.answerNanos - joined.bumpNanos) + " bumpToActiveMs=" +
-				joined.bumpToActiveMs + " answerToActiveMs=" + TimeUnit.NANOSECONDS.toMillis(joined.activeNanos - joined.answerNanos) +
-				" generations=" + joined.generations);
-
-			for (String line : clientLog) {
-				int space = line.indexOf(' ');
-				System.out.println("L2-N16-CLIENT-LOG " + TimeUnit.NANOSECONDS.toMillis(Long.parseLong(line.substring(0, space)) -
-					joined.bumpNanos) + "ms " + line.substring(space + 1));
-			}
-			Map<String,String> info = Info.request(L2Topology.host, port, "node", "service-clear-alt");
-			System.out.println("L2-N16-TIMING node=" + node.getName() + " host=" + node.getHost() + " container=" + container +
-				" advertised=" + info.get("service-clear-alt") + " generation=" + generation + "->" + joined.generation +
-				" bumpToActiveMs=" + joined.bumpToActiveMs + " tendInterval=" + policy.tendInterval + " budgetMs=" + budget);
-			assertEquals(info.get("node"), node.getName());
-			assertTrue(hostname + ':' + port + " not in " + info, info.get("service-clear-alt").contains(hostname + ':' + port));
-			assertEquals(port, node.getHost().port);
-			assertTrue(node.getName() + " active " + joined.bumpToActiveMs + "ms after the bump, budget " + budget + "ms",
-				joined.bumpToActiveMs <= budget);
-
-			boolean owns = L2Topology.waitFor(() -> L2Topology.owners(client).containsKey(node.getName()));
-			System.out.println("L2-N16-OWNERS " + L2Topology.owners(client));
-			assertTrue(node.getName() + " owns no partitions", owns);
-		}
 	}
 
 	/**

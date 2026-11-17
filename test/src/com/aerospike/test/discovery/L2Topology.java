@@ -327,8 +327,8 @@ final class L2Topology {
 	/**
 	 * Wait until every partition of the namespace has an active master in the client's partition
 	 * map and return the master of each partition. Same check as
-	 * {@code PortMapCluster.assertAllPartitionsOwned}, which reads run_port_map.sh's system
-	 * properties on load.
+	 * {@code PortMapCluster.assertAllPartitionsOwned}, which reads the port-map environment's values
+	 * on load.
 	 */
 	static Node[] assertAllPartitionsOwned(String row, AerospikeClient client) throws InterruptedException {
 		Node[] masters = new Node[Node.PARTITIONS];
@@ -766,135 +766,6 @@ final class L2Topology {
 				.append(v[5]).append("} ");
 		}
 		return sb.toString().trim();
-	}
-
-	/**
-	 * Node that joined the client and the time from the peers-generation bump that announced it to
-	 * the node being active.
-	 */
-	static final class Joined {
-		final Node node;
-		final long bumpToActiveMs;
-		final long generation;
-
-		final long bumpNanos;
-		final long activeNanos;
-		final long answerNanos;
-		final List<String> generations;
-
-		Joined(Node node, long bumpToActiveMs, long generation) {
-			this(node, bumpToActiveMs, generation, 0, 0, 0, Collections.emptyList());
-		}
-
-		Joined(Node node, long bumpToActiveMs, long generation, long bumpNanos, long activeNanos, long answerNanos,
-			List<String> generations) {
-			this.node = node;
-			this.bumpToActiveMs = bumpToActiveMs;
-			this.generation = generation;
-			this.bumpNanos = bumpNanos;
-			this.activeNanos = activeNanos;
-			this.answerNanos = answerNanos;
-			this.generations = generations;
-		}
-	}
-
-	/**
-	 * As {@link #waitJoined(AerospikeClient, L2Node, long, List)}, also recording when the new node
-	 * first answers an info request on {@code port} and every peers-generation the observer reports.
-	 */
-	static Joined waitJoinedTimeline(AerospikeClient client, L2Node observer, long generation, List<String> names, int port)
-		throws InterruptedException {
-		long[] bump = {0};
-		long[] active = {0};
-		long[] answer = {0};
-		long[] last = {generation};
-		Node[] added = {null};
-		List<String> generations = new ArrayList<>();
-		long start = System.nanoTime();
-
-		assertTrue("No peers-generation bump or no active node after generation " + generation, waitFor(() -> {
-			long now = System.nanoTime();
-			long current = peersGeneration(observer);
-
-			if (current != last[0]) {
-				generations.add(TimeUnit.NANOSECONDS.toMillis(now - start) + "ms:" + current);
-				last[0] = current;
-			}
-
-			if (bump[0] == 0 && current != generation) {
-				bump[0] = now;
-			}
-
-			if (answer[0] == 0 && answers(host, port, 50)) {
-				answer[0] = System.nanoTime();
-			}
-
-			if (active[0] == 0) {
-				for (Node node : client.getNodes()) {
-					if (node.isActive() && ! names.contains(node.getName())) {
-						active[0] = now;
-						added[0] = node;
-					}
-				}
-			}
-			return bump[0] != 0 && active[0] != 0 && answer[0] != 0;
-		}, 5));
-		return new Joined(added[0], TimeUnit.NANOSECONDS.toMillis(active[0] - bump[0]), peersGeneration(observer),
-			bump[0], active[0], answer[0], generations);
-	}
-
-	/**
-	 * Return whether {@code host:port} answers an info request for its node name within
-	 * {@code timeoutMs}.
-	 */
-	static boolean answers(String host, int port, int timeoutMs) {
-		try (Socket socket = new Socket()) {
-			socket.connect(new InetSocketAddress(host, port), timeoutMs);
-			socket.setSoTimeout(timeoutMs);
-			byte[] body = "node\n".getBytes(StandardCharsets.UTF_8);
-			long header = (2L << 56) | (1L << 48) | body.length;
-			byte[] request = new byte[8 + body.length];
-
-			for (int i = 0; i < 8; i++) {
-				request[i] = (byte)(header >>> (56 - 8 * i));
-			}
-			System.arraycopy(body, 0, request, 8, body.length);
-			socket.getOutputStream().write(request);
-			return socket.getInputStream().read() >= 0;
-		}
-		catch (IOException e) {
-			return false;
-		}
-	}
-
-	/**
-	 * Wait for the peers-generation of {@code observer} to move from {@code generation} and for an
-	 * active node not in {@code names} to appear in the client, as N-11 measures it.
-	 */
-	static Joined waitJoined(AerospikeClient client, L2Node observer, long generation, List<String> names)
-		throws InterruptedException {
-		long[] bump = {0};
-		long[] active = {0};
-		Node[] added = {null};
-
-		assertTrue("No peers-generation bump or no active node after generation " + generation, waitFor(() -> {
-			long now = System.nanoTime();
-
-			if (bump[0] == 0 && peersGeneration(observer) != generation) {
-				bump[0] = now;
-			}
-
-			if (active[0] == 0) {
-				for (Node node : client.getNodes()) {
-					if (node.isActive() && ! names.contains(node.getName())) {
-						active[0] = now;
-						added[0] = node;
-					}
-				}
-			}
-			return bump[0] != 0 && active[0] != 0;
-		}, 5));
-		return new Joined(added[0], TimeUnit.NANOSECONDS.toMillis(active[0] - bump[0]), peersGeneration(observer));
 	}
 
 	/**

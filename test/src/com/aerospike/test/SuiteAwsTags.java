@@ -22,8 +22,8 @@ import org.junit.runners.Suite;
 import com.aerospike.test.discovery.TestAwsTagsDiscovery;
 
 /**
- * AWS EC2 tag seed discovery against a stub EC2 endpoint. Requires the cluster started by
- * test/discovery/run_aws_tags.sh, which also supplies the system properties and the environment.
+ * AWS EC2 tag seed discovery against a stub EC2 endpoint. Requires the aerospike-client-conformance
+ * aws-tags environment, with its values file loaded into the environment.
  */
 @RunWith(Suite.class)
 @Suite.SuiteClasses({

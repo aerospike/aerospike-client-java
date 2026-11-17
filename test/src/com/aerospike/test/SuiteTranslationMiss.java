@@ -22,8 +22,8 @@ import org.junit.runners.Suite;
 import com.aerospike.test.translation.TestTranslationOnMiss;
 
 /**
- * Address translation miss handling. Requires the two node cluster started by
- * test/translation/run_on_miss.sh, which also supplies the cluster system properties.
+ * Address translation miss handling. Requires the aerospike-client-conformance on-miss environment,
+ * with its values file loaded into the environment.
  */
 @RunWith(Suite.class)
 @Suite.SuiteClasses({

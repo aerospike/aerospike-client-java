@@ -9,12 +9,14 @@ name: Discovery integration
 # requests, on push to the target branches (merge), and on workflow_dispatch.
 # Fork pull requests do not receive FEATURES_CONF.
 #
-# TLS certificate matching (CLIENT-5638) is a separate EE-only job. Its
-# driver starts one Enterprise container per certificate, so it uses the
+# TLS certificate matching is a separate EE-only job. Its conformance test
+# environment starts one Enterprise server per certificate, so it uses the
 # same FEATURES_CONF gate and does not run on fork pull requests.
 #
-# The aws-tags and dns provider suites (discovery-providers.yaml) start a two
-# node Enterprise cluster each, behind the same gate.
+# The aws-tags and dns provider suites (discovery-providers.yaml) run against
+# conformance test environments with a two node Enterprise cluster each, behind
+# the same gate. The translation suites (discovery-translation.yaml) run against Community
+# conformance test environments, so they run on every pull request.
 #
 # setup-aerospike-server and setup-discovery-topology are pinned in
 # discovery-l2.yaml to shared-workflows commits that generate the TLS
@@ -89,21 +91,26 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        profile:
-          - default
-          - reachable
-          - pass-through-names
-          - pass-through-ports
-          - port-map-range
-          - low-mtu
-          - port-range
-          - idle-reset
+        include:
+          # The default profile runs every suite class; the ones written for another profile skip.
+          - profile: default
+            expected-skips: TestL2AsyncIdleReset.*,TestL2IdleReset.*,TestL2LowMtu.*,TestL2SourcePortRange.*,TestL2ReachableNode.*,TestL2PortMapRange.*,TestL2PassThrough.*,TestL2CnOnlyCertificate.*,TestL2Topology.n6TlsValidatesAgainstNodeTlsName
+          - profile: reachable
+          - profile: pass-through-names
+            expected-skips: TestL2PassThrough.n16SharedNameRoutesToEveryOwner,TestL2PassThrough.n16SharedNameStrictRoutesToEveryOwner,TestL2PassThrough.n18PassThroughCollidingNodesCreateNoNode,TestL2PassThrough.n18StaticMapCollidingNodesCreateNoNode,TestL2PassThrough.n18CustomTranslatorCollidingNodesCreateNoNode,TestL2PassThrough.n18PortMapCollidingNodesCreateNoNode,TestL2PassThrough.n18PassThroughNewcomerCollidingWithNodeIsNotCreated
+          - profile: pass-through-ports
+            expected-skips: TestL2PassThrough.n15DistinctNamesRouteToEveryOwner
+          - profile: port-map-range
+          - profile: low-mtu
+          - profile: port-range
+          - profile: idle-reset
     uses: ./.github/workflows/discovery-l2.yaml
     with:
       subset: ce
       server-container-repo: database-docker-virtual/aerospike-server
       server-tag: latest
       profile: ${{ matrix.profile }}
+      expected-skips: ${{ matrix.expected-skips }}
     secrets: inherit
 
   # The dev build advertises access addresses verbatim. Move to a release tag once one carries the fix.
@@ -116,7 +123,6 @@ jobs:
       server-tag: 8.2.1.0-35_20261103T045846Z
       profile: pass-through-ports
       unresolvable-hostnames: true
-      fail-on-skip: true
       # Distinct names per node is the pass-through-names topology.
       expected-skips: TestL2PassThrough.n15DistinctNamesRouteToEveryOwner
     secrets: inherit
@@ -141,7 +147,6 @@ jobs:
       server-tag: ${{ matrix.server-tag }}
       profile: unresolved-access
       verbatim-access-address: ${{ matrix.verbatim }}
-      fail-on-skip: true
     secrets: inherit
 
   l2-ee:
@@ -151,9 +156,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        profile:
-          - default
-          - cn-only
+        include:
+          - profile: default
+            expected-skips: TestL2AsyncIdleReset.*,TestL2IdleReset.*,TestL2LowMtu.*,TestL2SourcePortRange.*,TestL2ReachableNode.*,TestL2PortMapRange.*,TestL2PassThrough.*,TestL2CnOnlyCertificate.*
+          - profile: cn-only
     uses: ./.github/workflows/discovery-l2.yaml
     with:
       subset: ee
@@ -161,6 +167,7 @@ jobs:
       server-tag: 8.2.0.0
       tls-listen-port-base: "43331"
       profile: ${{ matrix.profile }}
+      expected-skips: ${{ matrix.expected-skips }}
     secrets: inherit
 
   tls-matching:
@@ -169,7 +176,6 @@ jobs:
     if: needs.gate.outputs.enterprise == 'true'
     uses: ./.github/workflows/tls-matching.yaml
     with:
-      server-container-repo: database-docker-dev-local/aerospike-server-enterprise
       server-tag: 8.2.0.0
     secrets: inherit
 
@@ -179,6 +185,11 @@ jobs:
     if: needs.gate.outputs.enterprise == 'true'
     uses: ./.github/workflows/discovery-providers.yaml
     with:
-      server-container-repo: database-docker-dev-local/aerospike-server-enterprise
       server-tag: 8.2.0.0
     secrets: inherit
+
+  translation:
+    name: Translation
+    uses: ./.github/workflows/discovery-translation.yaml
+    with:
+      server-tag: 8.2.0.1

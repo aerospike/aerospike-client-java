@@ -33,6 +33,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 
 import javax.naming.directory.Attribute;
@@ -69,6 +70,7 @@ public final class Connection implements Closeable {
 	private final OutputStream out;
 	protected final Pool pool;
 	private volatile long lastUsed;
+	private long deadline;
 	boolean pooled;
 	boolean received;
 
@@ -502,6 +504,10 @@ public final class Connection implements Closeable {
 		int pos = 0;
 
 		while (pos < length) {
+			if (deadline != 0) {
+				applyDeadline();
+			}
+
 			int	count = in.read(buffer, pos, length - pos);
 
 			if (count < 0)
@@ -517,6 +523,10 @@ public final class Connection implements Closeable {
 		int count = 0;
 
 		while (offset < length) {
+			if (deadline != 0) {
+				applyDeadline();
+			}
+
 			try {
 				count = in.read(buffer, offset, length - offset);
 			}
@@ -545,6 +555,28 @@ public final class Connection implements Closeable {
 
 	public void setTimeout(int timeout) throws SocketException {
 		socket.setSoTimeout(timeout);
+	}
+
+	/**
+	 * Fail reads that would end after the given System.nanoTime() deadline. Zero removes the deadline.
+	 */
+	void setDeadline(long deadline) {
+		this.deadline = deadline;
+	}
+
+	private void applyDeadline() throws IOException {
+		long remaining = deadline - System.nanoTime();
+
+		if (remaining <= 0) {
+			throw new SocketTimeoutException("Read deadline passed");
+		}
+
+		int timeout = (int)TimeUnit.NANOSECONDS.toMillis(remaining + 999999);
+		int current = socket.getSoTimeout();
+
+		if (current == 0 || current > timeout) {
+			socket.setSoTimeout(timeout);
+		}
 	}
 
 	public InputStream getInputStream() {
