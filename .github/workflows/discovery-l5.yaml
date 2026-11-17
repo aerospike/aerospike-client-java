@@ -1,0 +1,46 @@
+name: Discovery L5
+
+# CLIENT-5846. Every L5 row of aerospike-client-conformance on AWS through the L5 driver, weekly and
+# on demand. A schedule fires only from the default branch, and runs the commit it fires on.
+#
+# The runner assumes the role in the L5_AWS_ROLE_ARN variable through GitHub OIDC, and run.sh sets
+# the boundary in L5_AWS_PERMISSIONS_BOUNDARY on every role it creates. L5_REGISTRY_AUTH holds the
+# pull credentials for the server image. A run creates billable resources in the shared account.
+
+permissions:
+  contents: read
+  id-token: write
+
+on:
+  schedule:
+    - cron: "0 8 * * 6"
+  workflow_dispatch:
+    inputs:
+      rows:
+        description: Comma-separated rows, in run order
+        required: false
+        default: W-1,W-3,W-2,W-5
+      server-image:
+        description: Aerospike Enterprise server image; empty uses the build with SERVER-1839
+        required: false
+        default: ""
+
+jobs:
+  l5:
+    name: L5 AWS
+    uses: aerospike/aerospike-client-conformance/.github/workflows/l5-aws.yaml@6f1b5e4576867727ac17824694a3d2a7fc160b1e # CLIENT-5846-l5-workflow
+    with:
+      client-repository: ${{ github.repository }}
+      commit: ${{ github.sha }}
+      manifest: test/discovery/l5-aws.manifest
+      rows: ${{ inputs.rows || 'W-1,W-3,W-2,W-5' }}
+      # AKO 4.6.0 has no schema past 8.2.0, so the 8.2.1 build is pinned by digest under an 8.2.0 tag.
+      server-image: ${{ inputs.server-image || 'artifact.aerospike.io/database-docker-dev-local/aerospike-server-enterprise:8.2.0.0-l5@sha256:e8f605a62f061bfd1838a11d12c057d72fe0e6ea2846e735541f6f67c74d7512' }}
+      ako-version: 4.6.0
+      ako-helm-repo: https://aerospike.github.io/aerospike-kubernetes-enterprise
+      role-to-assume: ${{ vars.L5_AWS_ROLE_ARN }}
+      permissions-boundary: ${{ vars.L5_AWS_PERMISSIONS_BOUNDARY }}
+      conformance-ref: 6f1b5e4576867727ac17824694a3d2a7fc160b1e
+    secrets:
+      FEATURES_CONF: ${{ secrets.FEATURES_CONF }}
+      REGISTRY_AUTH: ${{ secrets.L5_REGISTRY_AUTH }}
