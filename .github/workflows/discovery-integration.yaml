@@ -170,7 +170,6 @@ jobs:
     if: needs.gate.outputs.enterprise == 'true'
     uses: ./.github/workflows/tls-matching.yaml
     with:
-      server-container-repo: database-docker-dev-local/aerospike-server-enterprise
       server-tag: 8.2.0.0
     secrets: inherit
 
@@ -180,6 +179,5 @@ jobs:
     if: needs.gate.outputs.enterprise == 'true'
     uses: ./.github/workflows/discovery-providers.yaml
     with:
-      server-container-repo: database-docker-dev-local/aerospike-server-enterprise
       server-tag: 8.2.0.0
     secrets: inherit

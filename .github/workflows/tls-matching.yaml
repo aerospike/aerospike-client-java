@@ -6,10 +6,6 @@ name: TLS certificate matching
 on:
   workflow_call:
     inputs:
-      server-container-repo:
-        description: Aerospike Enterprise image repository path
-        type: string
-        required: true
       server-tag:
         description: Aerospike Enterprise image tag
         type: string
