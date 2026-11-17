@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Fail when a test in the surefire reports skipped, unless EXPECTED_SKIPS names it. EXPECTED_SKIPS
-# is a comma-separated list of <simple class name>.<method>. The result publisher fails only on
-# test failures, so a suite whose environment is missing would otherwise pass with every test skipped.
+# is a comma-separated list of <simple class name>.<method>, or <simple class name>.* for every test
+# of a class. The result publisher fails only on test failures, so a suite whose environment is
+# missing would otherwise pass with every test skipped.
 #
 # Usage: check-skips.sh <surefire reports directory>
 set -euo pipefail
@@ -27,8 +28,9 @@ for path in files:
         total += 1
         if case.find("skipped") is None:
             continue
-        name = f"{case.get('classname', '').rsplit('.', 1)[-1]}.{case.get('name')}"
-        if name in expected:
+        cls = case.get('classname', '').rsplit('.', 1)[-1]
+        name = f"{cls}.{case.get('name')}"
+        if name in expected or f"{cls}.*" in expected:
             print(f"Expected skip: {name}")
         else:
             print(f"::error::{name} skipped")

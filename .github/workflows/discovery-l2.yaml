@@ -44,7 +44,7 @@ on:
         description: Fail when a test of the suite skips, except those in expected-skips
         type: boolean
         required: false
-        default: false
+        default: true
       expected-skips:
         description: Comma-separated class.method names of the tests expected to skip, for fail-on-skip
         type: string
