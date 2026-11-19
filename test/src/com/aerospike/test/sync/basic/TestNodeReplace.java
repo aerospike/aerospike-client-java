@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2024 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -18,16 +18,19 @@ package com.aerospike.test.sync.basic;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assume.assumeFalse;
+import static org.junit.Assume.assumeTrue;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.util.Arrays;
+import java.util.HashSet;
 
 import org.junit.After;
 import org.junit.AfterClass;
@@ -49,6 +52,10 @@ import com.aerospike.test.util.TestBase;
  * but a different IP address. The existing node must also have recent cluster tend failures
  * and not be a localhost IP address for the node replacement to proceed.
  * <p>
+ * CLIENT-3308: peers may be returned as either an IP address or a hostname, and the
+ * same node may be added to the remove list more than once in a single tend iteration
+ * (previously caused ArrayIndexOutOfBoundsException in Cluster.removeNodesCopy()).
+ * <p>
  * Exercises the peer/node matching decision in Node.findPeerNode() against a real cluster node.
  * A dedicated client with a very long tend interval is used so the background tend thread does
  * not reset node state (failures, address) while each test manipulates it.
@@ -66,6 +73,8 @@ public class TestNodeReplace extends TestBase {
 	private static Field nodeFailures;
 	private static Field nodeReferenceCount;
 	private static Field nodeAddress;
+	private static Field nodeHostname;
+	private static Field nodeActive;
 	private static Field peerNodeName;
 	private static Field peerHosts;
 	private static Field peerReplaceNode;
@@ -98,6 +107,8 @@ public class TestNodeReplace extends TestBase {
 		nodeFailures = accessible(Node.class, "failures");
 		nodeReferenceCount = accessible(Node.class, "referenceCount");
 		nodeAddress = accessible(Node.class, "address");
+		nodeHostname = accessible(Node.class, "hostname");
+		nodeActive = accessible(Node.class, "active");
 		peerNodeName = accessible(Peer.class, "nodeName");
 		peerHosts = accessible(Peer.class, "hosts");
 		peerReplaceNode = accessible(Peer.class, "replaceNode");
@@ -119,6 +130,7 @@ public class TestNodeReplace extends TestBase {
 	public void restoreNode() throws Exception {
 		nodeFailures.setInt(node, 0);
 		nodeAddress.set(node, origAddress);
+		nodeHostname.set(node, null);
 		nodeReferenceCount.setInt(node, 0);
 	}
 
@@ -199,6 +211,125 @@ public class TestNodeReplace extends TestBase {
 		assertEquals(0, nodeReferenceCount.getInt(node));
 	}
 
+	@Test
+	public void keepNodeWhenPeerNameResolvesToNodeAddress() throws Exception {
+		setNodeState(1, remoteAddress);
+
+		// Different text than node host name ("192.0.2.1"), but resolves to the same IP address.
+		Peer peer = createPeer(node.getName(), new Host("::ffff:192.0.2.1", remoteAddress.getPort()));
+		Peers peers = new Peers(16);
+
+		assertTrue("Peer should be rejected", findPeerNode(peers, peer));
+		assertNull("Node with same resolved address must not be replaced", getReplaceNode(peer));
+		assertEquals(1, nodeReferenceCount.getInt(node));
+		assertEquals("::ffff:192.0.2.1", nodeHostname.get(node));
+	}
+
+	@Test
+	public void keepNodeWhenPeerIsSeedHostname() throws Exception {
+		// Real-world case: server returns peers as hostnames (e.g. access-address configured
+		// as a DNS name). Requires the seed host to be a non-localhost DNS name.
+		String hostname = args.host.split(",")[0].split(":")[0];
+		assumeFalse("Seed host is an IP address", hostname.matches("[0-9.]+") || hostname.contains(":"));
+		assumeFalse("Seed host is localhost", origAddress.getAddress().isLoopbackAddress());
+		assumeTrue("Seed host does not resolve to node address", resolvesTo(hostname, origAddress));
+
+		setNodeState(1, origAddress);
+
+		Peer peer = createPeer(node.getName(), new Host(hostname, origAddress.getPort()));
+		Peers peers = new Peers(16);
+
+		assertTrue("Peer should be rejected", findPeerNode(peers, peer));
+		assertNull("Node addressed by hostname must not be replaced", getReplaceNode(peer));
+		assertEquals(hostname, nodeHostname.get(node));
+	}
+
+	@Test
+	public void cachedHostnameMatches() throws Exception {
+		setNodeState(1, remoteAddress);
+
+		// First lookup resolves the name and caches it as the node hostname.
+		Host alias = new Host("::ffff:192.0.2.1", remoteAddress.getPort());
+		Peer peer = createPeer(node.getName(), alias);
+		assertTrue(findPeerNode(new Peers(16), peer));
+		assertEquals(alias.name, nodeHostname.get(node));
+
+		// Second lookup matches on cached hostname without DNS resolution.
+		// Change node address so a resolution-based match would fail.
+		nodeAddress.set(node, new InetSocketAddress(InetAddress.getByAddress(new byte[] {(byte)192, 0, 2, 3}), remoteAddress.getPort()));
+		peer = createPeer(node.getName(), alias);
+		assertTrue("Peer should be rejected", findPeerNode(new Peers(16), peer));
+		assertNull(getReplaceNode(peer));
+		assertEquals(2, nodeReferenceCount.getInt(node));
+	}
+
+	@Test
+	public void replaceNodeWhenPeerPortDiffers() throws Exception {
+		setNodeState(1, remoteAddress);
+
+		// Same IP address, different port.
+		int port = remoteAddress.getPort() + 1;
+		Peer peer = createPeer(node.getName(), new Host("192.0.2.1", port));
+		Peers peers = new Peers(16);
+
+		assertFalse("Peer should be added", findPeerNode(peers, peer));
+		assertSame("Existing node should be marked for replacement", node, getReplaceNode(peer));
+		assertEquals(0, nodeReferenceCount.getInt(node));
+	}
+
+	@Test
+	public void invalidPeerHostname() throws Exception {
+		setNodeState(1, remoteAddress);
+
+		// Unresolvable hostname (RFC 2606 .invalid TLD) must not throw.
+		Peer peer = createPeer(node.getName(), new Host("peer.aerospike.invalid", remoteAddress.getPort()));
+		Peers peers = new Peers(16);
+
+		assertFalse("Peer should be added", findPeerNode(peers, peer));
+		assertSame(node, getReplaceNode(peer));
+		assertNull(nodeHostname.get(node));
+	}
+
+	@Test
+	public void removeNodeAddedTwice() throws Exception {
+		// Use a throwaway client because this test really removes a node from the cluster.
+		ClientPolicy policy = new ClientPolicy();
+		args.setClientPolicy(policy);
+		policy.tendInterval = 3600 * 1000;
+
+		AerospikeClient tmpClient = new AerospikeClient(policy, Host.parseHosts(args.host, args.port));
+
+		try {
+			Cluster tmpCluster = tmpClient.getCluster();
+			Node[] before = tmpCluster.getNodes();
+			Node target = before[0];
+			Peers peers = new Peers(16);
+
+			// Replace path in Node.refreshPeers() marks node for removal.
+			peers.removeNodes.add(target);
+
+			// Node is also inactive, so Cluster.findNodesToRemove() marks it again.
+			nodeActive.setBoolean(target, false);
+			invoke(tmpCluster, "findNodesToRemove", new Class<?>[] {Peers.class}, peers);
+
+			// Redundancy check: node is only in remove set once.
+			assertEquals(1, peers.removeNodes.size());
+
+			// Previously threw ArrayIndexOutOfBoundsException/NegativeArraySizeException.
+			invoke(tmpCluster, "removeNodes", new Class<?>[] {HashSet.class}, peers.removeNodes);
+
+			Node[] after = tmpCluster.getNodes();
+			assertEquals(before.length - 1, after.length);
+
+			for (Node n : after) {
+				assertNotEquals(target, n);
+			}
+		}
+		finally {
+			tmpClient.close();
+		}
+	}
+
 	private static void setNodeState(int failures, InetSocketAddress address) throws Exception {
 		nodeFailures.setInt(node, failures);
 		nodeAddress.set(node, address);
@@ -217,6 +348,25 @@ public class TestNodeReplace extends TestBase {
 
 	private static Node getReplaceNode(Peer peer) throws Exception {
 		return (Node)peerReplaceNode.get(peer);
+	}
+
+	private static boolean resolvesTo(String hostname, InetSocketAddress address) {
+		try {
+			for (InetAddress a : InetAddress.getAllByName(hostname)) {
+				if (a.equals(address.getAddress())) {
+					return true;
+				}
+			}
+		}
+		catch (Exception e) {
+		}
+		return false;
+	}
+
+	private static Object invoke(Object obj, String name, Class<?>[] types, Object... params) throws Exception {
+		Method method = obj.getClass().getDeclaredMethod(name, types);
+		method.setAccessible(true);
+		return method.invoke(obj, params);
 	}
 
 	private static Field accessible(Class<?> cls, String name) throws Exception {

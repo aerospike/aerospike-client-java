@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2024 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -26,7 +26,7 @@ import com.aerospike.client.Host;
 public final class Peers {
 	public final ArrayList<Peer> peers;
 	public final HashMap<String,Node> nodes;
-	public final ArrayList<Node> removeList;
+	public final HashSet<Node> removeNodes;
 	private final HashSet<Host> invalidHosts;
 	public int refreshCount;
 	public boolean genChanged;
@@ -34,7 +34,7 @@ public final class Peers {
 	public Peers(int peerCapacity) {
 		peers = new ArrayList<Peer>(peerCapacity);
 		nodes = new HashMap<String,Node>(16);
-		removeList = new ArrayList<Node>();
+		removeNodes = new HashSet<Node>(8);
 		invalidHosts = new HashSet<Host>(8);
 	}
 
