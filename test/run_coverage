@@ -1,0 +1,124 @@
+#!/bin/bash
+
+root=$(cd "$(dirname "$0")/.." && pwd)
+report=$root/test/target/site/jacoco-aggregate
+saved=$root/test/target/coverage-passes
+
+for i in "$@"
+do
+  if [[ $i == -D* ]]
+  then
+    def+=("$i")
+  elif [[ $i == --merge ]]
+  then
+    merge=1
+  elif [[ $merge ]]
+  then
+    files+=("$i")
+  else
+    cfg+=("$i")
+  fi
+done
+
+# Sum one attribute of the surefire report headers saved for a pass.
+total() {
+  cat "$saved/$1"/*/TEST-*.xml 2>/dev/null |
+    sed -n 's/.*<testsuite [^>]* '"$2"'="\([0-9]*\)".*/\1/p' |
+    awk '{ s += $1 } END { print s + 0 }'
+}
+
+rc=0
+
+if [[ $merge ]]
+then
+  if [ ${#files[@]} -eq 0 ]
+  then
+    echo "Usage: $0 [-D...] --merge <execution data file>..."
+    exit 1
+  fi
+
+  rm -f "$root"/client/target/*.exec "$root"/test/target/*.exec
+  mkdir -p "$root/test/target"
+  n=0
+
+  for f in "${files[@]}"
+  do
+    n=$((n + 1))
+    cp "$f" "$root/test/target/merge-$n.exec" || exit 1
+  done
+
+  mvn -f "$root/pom.xml" -Pcoverage test -DskipTests=true "${def[@]}" || rc=1
+else
+  if [ ${#cfg[@]} -eq 0 ]
+  then
+    cfg=("")
+  fi
+
+  goals="clean test"
+  pass=0
+
+  for c in "${cfg[@]}"
+  do
+    pass=$((pass + 1))
+    echo
+    echo "Coverage pass $pass of ${#cfg[@]}"
+    echo
+    rm -rf "$root/client/target/surefire-reports" "$root/test/target/surefire-reports"
+
+    mvn -f "$root/pom.xml" -Pcoverage $goals -Dmaven.test.failure.ignore=true "${def[@]}" -Dargs="$c"
+    status[$pass]=$?
+
+    for m in client test
+    do
+      if [ -d "$root/$m/target/surefire-reports" ]
+      then
+        mkdir -p "$saved/$pass"
+        cp -R "$root/$m/target/surefire-reports" "$saved/$pass/$m"
+      fi
+    done
+
+    goals="test"
+  done
+
+  echo
+  printf "%-6s %10s %10s %10s %10s\n" Pass "Tests run" Failures Errors Skipped
+
+  for ((p = 1; p <= pass; p++))
+  do
+    failures=$(total $p failures)
+    errors=$(total $p errors)
+    note=
+
+    if [ ${status[$p]} -ne 0 ]
+    then
+      note="  build failed"
+    fi
+
+    if [ ${status[$p]} -ne 0 ] || [ $failures -ne 0 ] || [ $errors -ne 0 ]
+    then
+      rc=1
+    fi
+
+    printf "%-6s %10s %10s %10s %10s%s\n" $p $(total $p tests) $failures $errors $(total $p skipped) "$note"
+  done
+fi
+
+if [ ! -f "$report/jacoco.csv" ]
+then
+  echo
+  echo "No coverage report was written: $report"
+  exit 1
+fi
+
+echo
+printf "%-62s %10s %10s %8s\n" "Line coverage" Covered Total Percent
+
+awk -F, 'NR > 1 { c[$2] += $9; t[$2] += $8 + $9 }
+  END { for (p in t) printf "%-62s %10d %10d %7.1f%%\n", p, c[p], t[p], t[p] ? 100 * c[p] / t[p] : 0 }' "$report/jacoco.csv" | sort
+
+awk -F, 'NR > 1 { c += $9; t += $8 + $9 }
+  END { printf "%-62s %10d %10d %7.1f%%\n", "Total", c, t, t ? 100 * c / t : 0 }' "$report/jacoco.csv"
+
+echo
+echo "Report: $report/index.html"
+exit $rc

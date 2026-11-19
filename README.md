@@ -51,6 +51,7 @@ aerospike-client-java/
 ├── test/                  JUnit suite — ~78 test classes
 │   ├── README.md          ./run_tests and its options
 │   ├── run_tests
+│   ├── run_coverage       coverage report merged across server configurations
 │   └── src/com/aerospike/test/{sync/basic,sync/query,async,util}
 ├── benchmarks/            load generator, not an API reference
 └── .claude/skills/        contributor-facing: port-to-jdk21, port-to-jdk8
