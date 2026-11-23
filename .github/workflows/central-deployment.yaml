@@ -1,0 +1,106 @@
+name: Central deployment
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: Publish or drop the deployments
+        type: choice
+        options:
+          - publish
+          - drop
+        required: true
+      deployment-ids:
+        description: Space or comma separated Central deployment ids
+        type: string
+        required: true
+
+jobs:
+  deployment:
+    runs-on: ${{ vars.BUILD_CONTAINER_DISTRO_VERSION }}
+    env:
+      ACTION: ${{ inputs.action }}
+      DEPLOYMENT_IDS: ${{ inputs.deployment-ids }}
+      SONATYPE_DOMAIN_NAME: ${{ vars.SONATYPE_DOMAIN_NAME }}
+    steps:
+      - name: Set token
+        shell: bash
+        run: |
+          TOKEN=$(printf "%s:%s" "${{ secrets.AEROSPIKE_SA_CICD_USERNAME }}" "${{ secrets.AEROSPIKE_SA_CICD_PASSWORD }}" | base64 -w0)
+          echo "::add-mask::${TOKEN}"
+          echo "TOKEN=${TOKEN}" >> "$GITHUB_ENV"
+
+      # Every deployment is checked before any is touched so a publish is all or nothing.
+      - name: Check deployments
+        shell: bash
+        run: |
+          read -ra IDS <<< "${DEPLOYMENT_IDS//,/ }"
+          if [[ ${#IDS[@]} -eq 0 ]]; then
+            echo "No deployment ids given" >&2
+            exit 1
+          fi
+
+          for id in "${IDS[@]}"; do
+            if [[ ! ${id} =~ ^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$ ]]; then
+              echo "Invalid deployment id: ${id}" >&2
+              exit 1
+            fi
+
+            RESPONSE=$(curl --request POST --silent --fail-with-body --header "Authorization: Bearer ${TOKEN}" "${SONATYPE_DOMAIN_NAME}/api/v1/publisher/status?id=${id}")
+            STATE=$(echo "${RESPONSE}" | jq -r '.deploymentState')
+            echo "${id} $(echo "${RESPONSE}" | jq -r '.deploymentName') ${STATE}"
+
+            if [[ ${ACTION} == 'publish' && ${STATE} != 'VALIDATED' ]]; then
+              echo "Only VALIDATED deployments can be published" >&2
+              exit 1
+            elif [[ ${ACTION} == 'drop' && ${STATE} != 'VALIDATED' && ${STATE} != 'FAILED' ]]; then
+              echo "Only VALIDATED or FAILED deployments can be dropped" >&2
+              exit 1
+            fi
+          done
+
+          echo "IDS=${IDS[*]}" >> "$GITHUB_ENV"
+
+      - name: Publish or drop
+        shell: bash
+        run: |
+          read -ra IDS <<< "${IDS}"
+          METHOD=$([[ ${ACTION} == 'publish' ]] && echo POST || echo DELETE)
+
+          for id in "${IDS[@]}"; do
+            echo "${METHOD} ${SONATYPE_DOMAIN_NAME}/api/v1/publisher/deployment/${id}"
+            curl --request "${METHOD}" --silent --show-error --fail-with-body --header "Authorization: Bearer ${TOKEN}" "${SONATYPE_DOMAIN_NAME}/api/v1/publisher/deployment/${id}"
+          done
+
+      # Publishing to Maven Central can take well over the validation backoff window, so poll at a fixed interval for up to an hour.
+      - name: Wait for publish
+        if: inputs.action == 'publish'
+        shell: bash
+        env:
+          PUBLISH_CHECKS: 120
+          PUBLISH_CHECK_INTERVAL: 30
+        run: |
+          read -ra IDS <<< "${IDS}"
+
+          for id in "${IDS[@]}"; do
+            STATE=
+            for ((i = 1; i <= PUBLISH_CHECKS; i++)); do
+              STATE=$(curl --request POST --silent --fail-with-body --header "Authorization: Bearer ${TOKEN}" "${SONATYPE_DOMAIN_NAME}/api/v1/publisher/status?id=${id}" | jq -r '.deploymentState')
+
+              if [[ ${STATE} == 'PUBLISHED' ]]; then
+                echo "${id} published"
+                break
+              elif [[ ${STATE} == 'FAILED' ]]; then
+                echo "${id} failed to publish" >&2
+                exit 1
+              fi
+
+              echo "${id} ${STATE}, next check in ${PUBLISH_CHECK_INTERVAL} seconds"
+              sleep "${PUBLISH_CHECK_INTERVAL}"
+            done
+
+            if [[ ${STATE} != 'PUBLISHED' ]]; then
+              echo "${id} still ${STATE} after ${PUBLISH_CHECKS} checks" >&2
+              exit 1
+            fi
+          done
