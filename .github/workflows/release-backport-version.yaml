@@ -58,7 +58,7 @@ jobs:
       - name: Import GPG key
         id: import-gpg-key
         env:
-          GPG_PRIVATE_KEY: ${{ secrets.GPG_JAVA_CLIENT_PRIVATE_KEY }}
+          GPG_PRIVATE_KEY: ${{ secrets.GPG_SECRET_KEY }}
         shell: bash
         run: |
           set -euo pipefail
@@ -90,7 +90,7 @@ jobs:
         env:
           JAVA_CLIENT: ${{ steps.get-client-working-directory.outputs.client-working-directory }}
           AEROKEY: ${{ steps.import-gpg-key.outputs.gpg_fpr }}
-          GPG_PASSPHRASE: ${{ secrets.GPG_JAVA_CLIENT_PASS }}
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASS }}
         shell: bash
         run: |
             ./build_all ${{ steps.get-release-version.outputs.release-version }}
