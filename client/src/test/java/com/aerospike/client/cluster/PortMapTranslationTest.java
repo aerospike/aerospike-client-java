@@ -148,7 +148,7 @@ public class PortMapTranslationTest {
 		assertEquals(warnings().toString(), 4, warnings().size());
 
 		for (String message : collisions) {
-			assertNames(message, "Address translator port-map ", "BB9B", "BB9C", "to the same address 127.0.0.1:" + b.port());
+			assertNames(message, "Address translator port-map ", "BB9B", "BB9C", "127.0.0.1:" + b.port() + " is used by");
 		}
 	}
 

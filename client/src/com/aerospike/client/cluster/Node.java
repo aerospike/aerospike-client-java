@@ -23,6 +23,7 @@ import java.net.InetSocketAddress;
 import java.net.SocketTimeoutException;
 import java.nio.ByteBuffer;
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -468,9 +469,8 @@ public class Node implements Closeable {
 				}
 
 				boolean nodeValidated = false;
-				Host sharedHost = null;
-				String sharedOwner = null;
-				int sharedCount = 0;
+				List<Host> sharedHosts = new ArrayList<Host>();
+				List<String> sharedOwners = new ArrayList<String>();
 
 				// Find first host that connects.
 				for (Host host : peer.hosts) {
@@ -479,10 +479,8 @@ public class Node implements Closeable {
 					if (owner != null) {
 						logShared(peer, host, owner);
 
-						if (sharedCount++ == 0) {
-							sharedHost = host;
-							sharedOwner = owner;
-						}
+						sharedHosts.add(host);
+						sharedOwners.add(owner);
 						continue;
 					}
 
@@ -502,10 +500,8 @@ public class Node implements Closeable {
 							nv.primaryConn.close();
 							logShared(peer, host, owner);
 
-							if (sharedCount++ == 0) {
-								sharedHost = host;
-								sharedOwner = owner;
-							}
+							sharedHosts.add(host);
+							sharedOwners.add(owner);
 							continue;
 						}
 
@@ -544,8 +540,8 @@ public class Node implements Closeable {
 					}
 				}
 
-				if (sharedCount > 0 && sharedCount == peer.hosts.size() && Log.warnEnabled()) {
-					Log.warn(new AerospikeException.TranslationCollision(peer.nodeName, sharedOwner, sharedHost,
+				if (sharedHosts.size() > 0 && sharedHosts.size() == peer.hosts.size() && Log.warnEnabled()) {
+					Log.warn(new AerospikeException.TranslationCollision(peer.nodeName, sharedHosts, sharedOwners,
 						cluster.translatorName()).getMessage());
 				}
 
