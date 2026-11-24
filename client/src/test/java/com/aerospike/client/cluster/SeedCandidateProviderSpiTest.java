@@ -236,12 +236,10 @@ public class SeedCandidateProviderSpiTest {
 	}
 
 	@Test
-	public void hostWithPortOutOfRangeIsDropped() {
-		Host low = new Host("10.0.0.1", 0);
+	public void invalidPortFailsRefreshAndKeepsLastGood() {
 		Host min = new Host("10.0.0.2", 1);
-		Host high = new Host("10.0.0.3", 65536);
 		Host max = new Host("10.0.0.4", 65535);
-		TestSeedProvider provider = new TestSeedProvider(true, true, low, min, high, max);
+		TestSeedProvider provider = new TestSeedProvider(true, true, min, max);
 		ClientPolicy policy = policy(provider);
 		policy.discoveryMergePolicy = SeedMergePolicy.REPLACE;
 		AtomicReference<Host[]> snapshot = new AtomicReference<>();
@@ -249,32 +247,138 @@ public class SeedCandidateProviderSpiTest {
 
 		Host[] seeds = r.discover();
 		assertArrayEquals(new Host[] {min, max}, seeds);
+		snapshot.set(seeds);
 		r.start(seeds);
 
-		provider.result = call -> List.of(high, max, low);
-		r.tend(2, 250);
-		assertArrayEquals(new Host[] {max}, snapshot.get());
+		String prefix = "Seed candidate provider " + TestSeedProvider.class.getName() +
+			" returned invalid host at index ";
 
-		String prefix = "Seed candidate provider " + TestSeedProvider.class.getName() + " returned host ";
-		assertEquals(warnings.toString(), List.of(
-			prefix + "10.0.0.1 with port 0 outside 1-65535. Host dropped",
-			prefix + "10.0.0.3 with port 65536 outside 1-65535. Host dropped",
-			prefix + "10.0.0.3 with port 65536 outside 1-65535. Host dropped",
-			prefix + "10.0.0.1 with port 0 outside 1-65535. Host dropped"), warnings);
+		provider.result = call -> List.of(max, new Host("10.0.0.3", 65536), min);
+		r.tend(2, 250);
+		assertSame(seeds, snapshot.get());
+
+		provider.result = call -> List.of(min, max, new Host("10.0.0.1", 0));
+		r.tend(4, 250);
+		assertSame(seeds, snapshot.get());
+
+		assertEquals(warnings.toString(), 2, warnings.size());
+		assertTrue(warnings.get(0), warnings.get(0).startsWith("Seed candidate refresh failed: ") &&
+			warnings.get(0).contains(prefix +
+			"1: host 10.0.0.3 65536 has port 65536 outside 1-65535"));
+		assertTrue(warnings.get(1), warnings.get(1).startsWith("Seed candidate refresh failed: ") &&
+			warnings.get(1).contains(prefix +
+			"2: host 10.0.0.1 0 has port 0 outside 1-65535"));
+
+		provider.result = call -> List.of(max);
+		r.tend(6, 250);
+		assertArrayEquals(new Host[] {max}, snapshot.get());
 	}
 
 	@Test
-	public void builtInProviderHostWithPortOutOfRangeIsDropped() {
-		Host valid = new Host("10.0.0.2", 3000);
+	public void emptyHostNameFailsRefreshAndKeepsLastGood() {
+		Host a = new Host("10.0.0.1", 3000);
+		Host b = new Host("10.0.0.2", 3000);
+		TestSeedProvider provider = new TestSeedProvider(true, true, a);
+		AtomicReference<Host[]> snapshot = new AtomicReference<>();
+		SeedRefresher r = new SeedRefresher(provider, policy(provider), new Host[0], snapshot::set);
+
+		Host[] seeds = r.discover();
+		snapshot.set(seeds);
+		r.start(seeds);
+
+		String prefix = "Seed candidate provider " + TestSeedProvider.class.getName() +
+			" returned invalid host at index ";
+
+		provider.result = call -> List.of(b, new Host("", 3000));
+		r.tend(2, 250);
+		assertSame(seeds, snapshot.get());
+
+		provider.result = call -> List.of(new Host(null, 3000), b);
+		r.tend(4, 250);
+		assertSame(seeds, snapshot.get());
+
+		provider.result = call -> {
+			List<Host> list = new ArrayList<>();
+			list.add(b);
+			list.add(null);
+			return list;
+		};
+		r.tend(6, 250);
+		assertSame(seeds, snapshot.get());
+
+		assertEquals(warnings.toString(), 3, warnings.size());
+		assertTrue(warnings.get(0), warnings.get(0).startsWith("Seed candidate refresh failed: ") &&
+			warnings.get(0).contains(prefix + "1: host  3000 has a null or empty name"));
+		assertTrue(warnings.get(1), warnings.get(1).startsWith("Seed candidate refresh failed: ") &&
+			warnings.get(1).contains(prefix + "0: host null 3000 has a null or empty name"));
+		assertTrue(warnings.get(2), warnings.get(2).startsWith("Seed candidate refresh failed: ") &&
+			warnings.get(2).contains(prefix + "1: host is null"));
+	}
+
+	@Test
+	public void configuredSeedReturnedUnchangedIsAccepted() {
+		Host seed = new Host("10.0.1.1", 0);
+		Host a = new Host("10.0.0.1", 3000);
+		TestSeedProvider provider = new TestSeedProvider(true, true, seed, a);
+		ClientPolicy policy = policy(provider);
+		policy.discoveryMergePolicy = SeedMergePolicy.REPLACE;
+		AtomicReference<Host[]> snapshot = new AtomicReference<>();
+		SeedRefresher r = new SeedRefresher(provider, policy, new Host[] {seed}, snapshot::set);
+
+		Host[] seeds = r.discover();
+		assertArrayEquals(new Host[] {seed, a}, seeds);
+		snapshot.set(seeds);
+		r.start(seeds);
+
+		provider.result = call -> List.of(a, seed);
+		r.tend(2, 250);
+		assertArrayEquals(new Host[] {a, seed}, snapshot.get());
+
+		provider.result = call -> List.of(a, new Host("10.0.1.1", "tls", 0));
+		r.tend(4, 250);
+		assertArrayEquals(new Host[] {a, seed}, snapshot.get());
+		assertEquals(warnings.toString(), 0, warnings.size());
+
+		Host[] lastGood = snapshot.get();
+		provider.result = call -> List.of(a, new Host("10.0.1.2", 0));
+		r.tend(6, 250);
+		assertSame(lastGood, snapshot.get());
+		assertEquals(warnings.toString(), 1, warnings.size());
+		assertTrue(warnings.get(0), warnings.get(0).contains("returned invalid host at index 1: host 10.0.1.2 0"));
+	}
+
+	@Test
+	public void invalidHostAtInitKeepsStaticSeeds() {
+		for (SeedMergePolicy mergePolicy : SeedMergePolicy.values()) {
+			TestSeedProvider provider = new TestSeedProvider(false, true, new Host("10.0.0.1", 3000),
+				new Host("10.0.0.2", 70000));
+			ClientPolicy policy = policy(provider);
+			policy.discoveryMergePolicy = mergePolicy;
+			warnings.clear();
+
+			try (AerospikeClient client = new AerospikeClient(policy, DEAD_SEED)) {
+				assertArrayEquals(new Host[] {DEAD_SEED}, client.getCluster().getSeeds());
+				assertEquals(1, provider.calls.get());
+				assertTrue(mergePolicy + " " + warnings, warnings.stream().anyMatch(m ->
+					m.startsWith("Seed candidate provider " + TestSeedProvider.class.getName() + " failed") &&
+					m.contains("returned invalid host at index 1: host 10.0.0.2 70000 has port 70000 outside 1-65535")));
+			}
+		}
+	}
+
+	@Test
+	public void builtInProviderInvalidHostAtInitWithNoSeedFails() {
 		ClientPolicy policy = policy(null);
 		policy.discoveryMergePolicy = SeedMergePolicy.DISCOVERY_ONLY;
-		SeedRefresher r = new SeedRefresher(new StaticSeedCandidateProvider(new Host("10.0.0.1", 65536), valid),
-			policy, new Host[0], hosts -> {});
+		SeedRefresher r = new SeedRefresher(new StaticSeedCandidateProvider(new Host("10.0.0.2", 3000),
+			new Host("10.0.0.1", 65536)), policy, new Host[0], hosts -> {});
 
-		assertArrayEquals(new Host[] {valid}, r.discover());
-		assertEquals(warnings.toString(), List.of(
-			"Seed candidate provider static returned host 10.0.0.1 with port 65536 outside 1-65535. Host dropped"),
-			warnings);
+		AerospikeException ae = assertThrows(AerospikeException.class, r::discover);
+		assertEquals(ResultCode.SEED_DISCOVERY_FAILED, ae.getResultCode());
+		assertTrue(ae.getMessage(), ae.getMessage().contains(
+			"Seed candidate provider static returned invalid host at index 1: host 10.0.0.1 65536 has port 65536 outside 1-65535"));
+		assertTrue(warnings.toString(), warnings.stream().anyMatch(m ->
+			m.startsWith("Seed candidate provider static failed") && m.contains("at index 1")));
 	}
 
 	@Test
