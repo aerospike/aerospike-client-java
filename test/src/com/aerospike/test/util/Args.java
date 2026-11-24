@@ -57,6 +57,7 @@ public class Args {
 	public EventLoopType eventLoopType = EventLoopType.DIRECT_NIO;
 	public int socketTimeout = 30000;
 	public int totalTimeout = 1000;
+	public boolean useServicesAlternate;
 	public boolean enterprise;
 	public boolean hasTtl;
 	public boolean scMode;
@@ -98,6 +99,8 @@ public class Args {
 			options.addOption("P", "password", true, "Password");
 			options.addOption("n", "namespace", true, "Namespace (default: test)");
 			options.addOption("s", "set", true, "Set name. Use 'empty' for empty set (default: demoset)");
+			options.addOption("sa", "servicesAlternate", false,
+					"Use services-alternate instead of services during cluster tending");
 			options.addOption("tls", "tlsEnable", false, "Use TLS/SSL sockets");
 			options.addOption("tp", "tlsProtocols", true,
 					"Allow TLS protocols\n" +
@@ -195,6 +198,7 @@ public class Args {
 
 			user = cl.getOptionValue("U");
 			password = cl.getOptionValue("P");
+			useServicesAlternate = cl.hasOption("sa");
 
 			if (user != null && password == null) {
 				java.io.Console console = System.console();
@@ -230,6 +234,7 @@ public class Args {
 		p.password = password;
 		p.authMode = authMode;
 		p.tlsPolicy = tlsPolicy;
+		p.useServicesAlternate = useServicesAlternate;
 		p.readPolicyDefault.socketTimeout = socketTimeout;
 		p.readPolicyDefault.totalTimeout = totalTimeout;
 		p.writePolicyDefault.socketTimeout = socketTimeout;
