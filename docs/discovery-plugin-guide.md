@@ -120,10 +120,13 @@ Returned hosts are used as seeds, so they must carry the TLS name when TLS is en
 name is defaulted as for the seeds passed to the constructor: the cluster name when
 `ClientPolicy.clusterName` is set, otherwise the host name.
 
-A returned host with a port outside 1 to 65535 is dropped from the result and logged at warning
-level, for example
-`Seed candidate provider <name> returned host 10.0.0.1 with port 0 outside 1-65535. Host dropped`.
-The rest of the result is used. This applies to the built-in providers too.
+A returned host that is null, has a null or empty name or has a port outside 1 to 65535 fails the
+whole refresh, the same way as a refresh that throws: nothing from that call is used, and at
+construction it counts as an empty result. The message names the provider, the zero-based index of
+the host in the returned list and the host, for example
+`Seed candidate provider <name> returned invalid host at index 2: host 10.0.0.1 0 has port 0 outside 1-65535`.
+A host whose name and port are identical to a seed passed to the constructor is accepted without
+these checks. This applies to the built-in providers too.
 
 ## Built-in providers
 
