@@ -21,7 +21,7 @@ on:
 jobs:
   l3-kind:
     name: L3 kind (nlb)
-    uses: aerospike/aerospike-client-conformance/.github/workflows/l3-kind.yaml@a30c0787dede434f15be3622e7007dc57b55209d # main
+    uses: aerospike/aerospike-client-conformance/.github/workflows/l3-kind.yaml@42db5e9c508226cc0ad1496d7dff1cb23dac2bb0 # main
     with:
       client-repository: ${{ github.repository }}
       commit: ${{ github.event.pull_request.head.sha || github.sha }}
@@ -30,6 +30,6 @@ jobs:
       ako-version: 4.8.0-dev1
       ako-helm-repo: https://aerospike.github.io/aerospike-kubernetes-operator
       cluster-chart-version: 4.7.0
-      conformance-ref: a30c0787dede434f15be3622e7007dc57b55209d
+      conformance-ref: 42db5e9c508226cc0ad1496d7dff1cb23dac2bb0
     secrets:
       FEATURES_CONF: ${{ secrets.FEATURES_CONF }}
