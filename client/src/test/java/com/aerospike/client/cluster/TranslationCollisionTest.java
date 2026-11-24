@@ -497,6 +497,78 @@ public class TranslationCollisionTest {
 		assertNames(tc.getMessage(), "BB9B", "BB9C", "127.0.0.1:3000", "static-map");
 	}
 
+	@Test
+	public void messageWithOneSharedAddress() {
+		AerospikeException.TranslationCollision tc = new AerospikeException.TranslationCollision(
+			"BB9A", "BB9B", new Host("h1", 3000), "static-map");
+
+		assertEquals("Error -26,0: Address translator static-map left node BB9A with no address of its own: " +
+			"h1:3000 is used by BB9B. Give each node its own reachable address or mapping", tc.getMessage());
+	}
+
+	@Test
+	public void messageListsTwoSharedAddressesWithDifferentOwners() throws Exception {
+		FakeNode a = server("BB9A", "[[BB9P,,[10.0.0.1:3000,10.0.0.2:3000]],[BB9B,,[10.0.0.1:3000]]," +
+			"[BB9D,,[10.0.0.2:3000]]]");
+		ClientPolicy policy = policy();
+		policy.addressTranslator = PassThroughAddressTranslator.INSTANCE;
+		Node seed = node(policy, a);
+
+		Peers peers = new Peers(16);
+		seed.refreshPeers(peers);
+
+		assertTrue(peers.nodes.isEmpty());
+		assertEquals(3, collisions().size());
+		assertEquals("Error -26,0: Address translator pass-through left node BB9P with no address of its own: " +
+			"10.0.0.1:3000 is used by BB9B, 10.0.0.2:3000 is used by BB9D. " +
+			"Give each node its own reachable address or mapping", collisions().get(0));
+		assertNames(collisions().get(1), "node BB9B", "10.0.0.1:3000 is used by BB9P");
+		assertNames(collisions().get(2), "node BB9D", "10.0.0.2:3000 is used by BB9P");
+	}
+
+	@Test
+	public void messageListsThreeSharedAddressesAndCountsTheRest() throws Exception {
+		StringBuilder reply = new StringBuilder("[[BB9P,,[");
+
+		for (int i = 1; i <= 5; i++) {
+			reply.append((i > 1)? "," : "").append("10.0.0.").append(i).append(":3000");
+		}
+		reply.append("]]");
+
+		for (int i = 1; i <= 5; i++) {
+			reply.append(",[BB9").append(i).append(",,[10.0.0.").append(i).append(":3000]]");
+		}
+		reply.append(']');
+
+		FakeNode a = server("BB9A", reply.toString());
+		ClientPolicy policy = policy();
+		policy.addressTranslator = PassThroughAddressTranslator.INSTANCE;
+		Node seed = node(policy, a);
+
+		Peers peers = new Peers(16);
+		seed.refreshPeers(peers);
+
+		assertTrue(peers.nodes.isEmpty());
+		assertEquals(6, collisions().size());
+		assertEquals("Error -26,0: Address translator pass-through left node BB9P with no address of its own: " +
+			"10.0.0.1:3000 is used by BB91, 10.0.0.2:3000 is used by BB92, 10.0.0.3:3000 is used by BB93 and 2 more. " +
+			"Give each node its own reachable address or mapping", collisions().get(0));
+	}
+
+	@Test
+	public void defaultTranslatorIsNamedStaticMap() throws Exception {
+		FakeNode a = server("BB9A", "[[BB9B,,[10.0.0.2:3000]],[BB9C,,[10.0.0.2:3000]]]");
+		Node seed = node(policy(), a);
+
+		Peers peers = new Peers(16);
+		seed.refreshPeers(peers);
+
+		assertTrue(peers.nodes.isEmpty());
+		assertEquals(2, collisions().size());
+		assertEquals("Error -26,0: Address translator static-map left node BB9B with no address of its own: " +
+			"10.0.0.2:3000 is used by BB9C. Give each node its own reachable address or mapping", collisions().get(0));
+	}
+
 	private static void assertNoSharedName(Cluster cluster, Peers peers) {
 		for (String name : peers.nodes.keySet()) {
 			assertFalse(name, cluster.nodesMap.containsKey(name));

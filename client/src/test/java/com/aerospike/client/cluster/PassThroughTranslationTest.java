@@ -143,7 +143,7 @@ public class PassThroughTranslationTest {
 		assertEquals(2, collisions.size());
 
 		for (String message : collisions) {
-			for (String part : new String[] {"BB9B", "BB9C", "127.0.0.1:" + b.port(), "pass-through", "same address"}) {
+			for (String part : new String[] {"BB9B", "BB9C", "127.0.0.1:" + b.port(), "pass-through", "with no address of its own"}) {
 				assertTrue(message, message.contains(part));
 			}
 		}
