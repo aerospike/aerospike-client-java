@@ -32,7 +32,6 @@ public final class Peers {
 	public final HashSet<Node> removeNodes;
 	final Set<Node> nodesToRemove;
 	private final HashSet<Host> invalidHosts;
-	final HashMap<String,String> collided;
 	public int refreshCount;
 	public boolean genChanged;
 	boolean addressChanged;
@@ -43,7 +42,6 @@ public final class Peers {
 		removeNodes = new HashSet<Node>(8);
 		nodesToRemove = Collections.newSetFromMap(new IdentityHashMap<Node,Boolean>(8));
 		invalidHosts = new HashSet<Host>(8);
-		collided = new HashMap<String,String>(8);
 	}
 
 	/**
