@@ -92,7 +92,7 @@ public class YamlDnsDiscoveryConfigTest {
 		assertEquals(RecordType.A, provider.getRecordType());
 		assertEquals(DnsSeedCandidateProvider.DEFAULT_PORT, provider.getPort());
 		assertNull(provider.getTlsName());
-		assertEquals(DnsSeedCandidateProvider.DEFAULT_TIMEOUT, provider.getTimeout());
+		assertEquals(0, provider.getTimeout());
 	}
 
 	@Test
