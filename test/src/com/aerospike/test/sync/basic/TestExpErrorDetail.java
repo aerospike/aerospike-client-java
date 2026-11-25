@@ -530,14 +530,20 @@ public class TestExpErrorDetail extends TestSync {
 	}
 
 	@Test
-	public void testExpReadInvalidFlagsNoDetails() {
-		// A write-only policy flag on a read op is rejected structurally
-		// before any expression is built: rc 4 with NO error details staged.
+	public void testExpReadInvalidFlags() {
+		org.junit.Assume.assumeTrue("Invalid exp-read flags message requires server version 8.2.1 or later",
+			args.serverVersion.isGreaterOrEqual(8, 2, 1, 0));
+
+		// A write-only policy flag on a read op is rejected with PARAMETER_ERROR.
+		// As of server 8.2.1 the rejection includes a message; there is no
+		// expression trace because no expression ran.
 		AerospikeException ae = expectOperateError(stdKey, 3, ResultCode.PARAMETER_ERROR,
 			ExpOperation.read("result", Exp.build(Exp.add(Exp.intBin(BIN_INT), Exp.val(1))),
 				ExpWriteFlags.CREATE_ONLY));
 
-		assertNoDetails(ae, ResultCode.PARAMETER_ERROR);
+		assertEquals(SubCode.NONE, ae.getSubCode());
+		assertMessageContains(ae, "expression op flags");
+		assertNull("Expected no expression trace", ae.getExpressionTrace());
 	}
 
 	@Test

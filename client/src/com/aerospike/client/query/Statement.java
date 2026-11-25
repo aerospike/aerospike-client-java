@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2025 Aerospike, Inc.
+ * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -314,6 +314,44 @@ public final class Statement {
 	 * The Top-K specification is validated when the query runs; an invalid one, or a cluster where
 	 * any node doesn't support Top-K, fails with {@link AerospikeException.InvalidArgument}
 	 * ({@link ResultCode#PARAMETER_ERROR}) before anything is sent.
+	 * <p>
+	 * <b>Timeouts and server limits.</b> A Top-K query is a long query on the server. A node that
+	 * runs it sends nothing until it has ranked every record it reads, so a Top-K query over a
+	 * large set can run for a long time. A server can end such a query, or refuse it, and the
+	 * client can give up on it:
+	 * <ul>
+	 * <li><b>Run-time limit:</b> a server can stop a long query that has run longer than its
+	 * {@code query-max-run-time-ms} setting (namespace or set). The query fails with
+	 * {@link ResultCode#QUERY_TIMEOUT}. A Top-K query never returns a partial result when it is
+	 * stopped.</li>
+	 * <li><b>Top-K concurrency cap:</b> a server can limit how many Top-K queries run on a node
+	 * at once ({@code order-by-jobs-limit}). A node at its limit refuses a new Top-K query, and
+	 * the query fails with {@link ResultCode#FAIL_FORBIDDEN}. Set
+	 * {@link com.aerospike.client.policy.Policy#errorDetailVerbosity} to get the server's reason
+	 * in the exception message, for example
+	 * {@code order-by queries running on this node at 'order-by-jobs-limit' N - retry later}.</li>
+	 * <li><b>Client timeouts:</b> the client fails the query with
+	 * {@link AerospikeException.Timeout} ({@link ResultCode#TIMEOUT}) when a node's socket is
+	 * idle longer than {@link com.aerospike.client.policy.Policy#socketTimeout}, or when the
+	 * whole query exceeds {@link com.aerospike.client.policy.Policy#totalTimeout}.</li>
+	 * </ul>
+	 * The client does not retry {@link ResultCode#QUERY_TIMEOUT} or
+	 * {@link ResultCode#FAIL_FORBIDDEN}: a retry would only repeat the work that hit the limit, or
+	 * add load to a node that refused the query. The application decides whether to run the query
+	 * again, for example later and with backoff. This timeout and concurrency behavior changed in
+	 * server 8.2.1.
+	 * <p>
+	 * The client also does not retry a Top-K query that fails with {@link ResultCode#TIMEOUT},
+	 * whether from the client's socket or total timeout or from the server: a node has no partial
+	 * result to resume from, so a retry would only run the scan again. Any other long query still
+	 * retries {@link ResultCode#TIMEOUT} within
+	 * {@link com.aerospike.client.policy.Policy#maxRetries}. For Top-K over a large set, raise
+	 * {@code socketTimeout}, or set it to 0; {@code totalTimeout} still bounds the query.
+	 * <p>
+	 * Use a selective {@link #setFilter(Filter)} predicate, or a smaller set, so the query reads
+	 * fewer records. It then finishes sooner, holds a Top-K slot for less time, and is less likely
+	 * to reach a limit. A {@link com.aerospike.client.policy.Policy#filterExp} is applied after a
+	 * record is read, so it shortens the result but not the run.
 	 *
 	 * @param k	maximum number of records to return, in {@code [1, 1000]}
 	 */

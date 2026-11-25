@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2025 Aerospike, Inc.
+ * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -215,6 +215,10 @@ public final class ResultCode {
 
 	/**
 	 * Operation not allowed at this time.
+	 * <p>
+	 * For example, a server refuses a new Top-K query while it is running its limit of Top-K
+	 * queries. The client does not retry such a query. See
+	 * {@link com.aerospike.client.query.Statement#setTopK(int)}.
 	 */
 	public static final int FAIL_FORBIDDEN = 22;
 
@@ -490,6 +494,10 @@ public final class ResultCode {
 
 	/**
 	 * Secondary index query timed out on server.
+	 * <p>
+	 * Also returned when a server stops a long query that has run longer than its run-time
+	 * limit. That use was added in server 8.2.1. The client does not retry such a query. See
+	 * {@link com.aerospike.client.query.Statement#setTopK(int)}.
 	 */
 	public static final int QUERY_TIMEOUT = 212;
 

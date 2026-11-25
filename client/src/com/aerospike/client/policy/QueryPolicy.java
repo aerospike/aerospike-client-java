@@ -33,6 +33,9 @@ public class QueryPolicy extends Policy {
 	 * Expected query duration. The server treats the query in different ways depending on the expected duration.
 	 * This field is ignored for aggregation queries, background queries and server versions &lt; 6.0.
 	 * <p>
+	 * For the timeouts and server limits that apply to long queries and Top-K, see
+	 * {@link com.aerospike.client.query.Statement#setTopK(int)}.
+	 * <p>
 	 * Default: {@link QueryDuration#LONG}
 	 */
 	public QueryDuration expectedDuration;

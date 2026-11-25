@@ -42,7 +42,8 @@ public final class VectorExp {
 	 * @param bin		vector bin read, typically {@link Exp#vectorBin(String)}
 	 */
 	public static Exp distance(VectorDistanceMetric metric, Vector query, Exp bin) {
-		return new Exp.VectorDist(Exp.vectorDistOpcode(metric), query.getWireBytes(), bin);
+		// Wire form is [52, metric, query, bin].
+		return new Exp.VectorDist(metric, query.getWireBytes(), bin);
 	}
 
 	private VectorExp() {
