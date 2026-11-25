@@ -73,8 +73,9 @@ import com.aerospike.client.Log;
  * must not exceed {@link com.aerospike.client.policy.ClientPolicy#discoveryRefreshTimeout} in
  * {@link DiscoveryExecutionMode#THREAD} mode, or
  * {@link com.aerospike.client.policy.ClientPolicy#discoveryTendRefreshDeadline} in
- * {@link DiscoveryExecutionMode#TEND} mode; client construction fails otherwise. With the default
- * tend deadline of 100ms, only a local resolver answers reliably in time.
+ * {@link DiscoveryExecutionMode#TEND} mode; client construction fails otherwise. The default timeout
+ * is {@link #DEFAULT_THREAD_TIMEOUT} in thread mode and {@link #DEFAULT_TEND_TIMEOUT} in tend mode.
+ * With the default tend deadline of 100ms, only a local resolver answers reliably in time.
  * <p>
  * Failure: when some names resolve, their hosts are returned and each failed name is logged at
  * warning level. When every name fails (NXDOMAIN, SERVFAIL, timeout or an empty answer), the refresh
@@ -116,9 +117,14 @@ public final class DnsSeedCandidateProvider implements SeedCandidateProvider {
 	public static final int DEFAULT_PORT = 3000;
 
 	/**
-	 * Default refresh timeout in milliseconds.
+	 * Default refresh timeout in milliseconds in {@link DiscoveryExecutionMode#THREAD} mode.
 	 */
-	public static final int DEFAULT_TIMEOUT = 80;
+	public static final int DEFAULT_THREAD_TIMEOUT = 2000;
+
+	/**
+	 * Default refresh timeout in milliseconds in {@link DiscoveryExecutionMode#TEND} mode.
+	 */
+	public static final int DEFAULT_TEND_TIMEOUT = 80;
 
 	private static final int DNS_PORT = 53;
 	private static final String FACTORY = "com.sun.jndi.dns.DnsContextFactory";
@@ -170,7 +176,7 @@ public final class DnsSeedCandidateProvider implements SeedCandidateProvider {
 			throw new AerospikeException("Invalid DNS seed provider tlsName: empty");
 		}
 
-		if (builder.timeout <= 0) {
+		if (builder.timeout < 0) {
 			throw new AerospikeException("Invalid DNS seed provider timeout: " + builder.timeout);
 		}
 
@@ -207,6 +213,29 @@ public final class DnsSeedCandidateProvider implements SeedCandidateProvider {
 		this.serverCount = providerUrl.split(" ").length;
 	}
 
+	private DnsSeedCandidateProvider(DnsSeedCandidateProvider other, int timeout) {
+		this.names = other.names;
+		this.recordType = other.recordType;
+		this.port = other.port;
+		this.tlsName = other.tlsName;
+		this.timeout = timeout;
+		this.servers = other.servers;
+		this.providerUrl = other.providerUrl;
+		this.serverCount = other.serverCount;
+	}
+
+	/**
+	 * Return this provider when its timeout was set, otherwise a copy with the default timeout of
+	 * mode: {@link #DEFAULT_THREAD_TIMEOUT} or {@link #DEFAULT_TEND_TIMEOUT}. The client calls this
+	 * at construction.
+	 */
+	public DnsSeedCandidateProvider withModeDefault(DiscoveryExecutionMode mode) {
+		if (timeout > 0) {
+			return this;
+		}
+		return new DnsSeedCandidateProvider(this, (mode == DiscoveryExecutionMode.TEND)? DEFAULT_TEND_TIMEOUT : DEFAULT_THREAD_TIMEOUT);
+	}
+
 	/**
 	 * Resolve every name and return the seed hosts.
 	 *
@@ -214,7 +243,8 @@ public final class DnsSeedCandidateProvider implements SeedCandidateProvider {
 	 */
 	@Override
 	public List<Host> refreshSeedCandidates(SeedCandidateContext ctx) {
-		long deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(timeout);
+		int limit = (timeout > 0)? timeout : DEFAULT_THREAD_TIMEOUT;
+		long deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(limit);
 		LinkedHashSet<Host> hosts = new LinkedHashSet<>();
 		Map<String,String> failures = new LinkedHashMap<>();
 
@@ -581,7 +611,8 @@ public final class DnsSeedCandidateProvider implements SeedCandidateProvider {
 	}
 
 	/**
-	 * Return the total timeout in milliseconds for one refresh.
+	 * Return the total timeout in milliseconds for one refresh, or 0 when the default of the
+	 * discovery execution mode applies.
 	 */
 	public int getTimeout() {
 		return timeout;
@@ -623,7 +654,7 @@ public final class DnsSeedCandidateProvider implements SeedCandidateProvider {
 		private RecordType recordType = RecordType.A;
 		private int port = DEFAULT_PORT;
 		private String tlsName;
-		private int timeout = DEFAULT_TIMEOUT;
+		private int timeout;
 		private List<String> servers;
 
 		private Builder() {
@@ -680,12 +711,13 @@ public final class DnsSeedCandidateProvider implements SeedCandidateProvider {
 
 		/**
 		 * Total time in milliseconds for one refresh, across every name, record type, SRV target
-		 * and resolver. Must be greater than zero, and must not exceed
+		 * and resolver. Must not be negative, and must not exceed
 		 * {@link com.aerospike.client.policy.ClientPolicy#discoveryRefreshTimeout} in thread mode or
 		 * {@link com.aerospike.client.policy.ClientPolicy#discoveryTendRefreshDeadline} in tend
 		 * mode; the latter is checked at client construction.
 		 * <p>
-		 * Default: {@link DnsSeedCandidateProvider#DEFAULT_TIMEOUT}
+		 * Default: 0, which selects {@link DnsSeedCandidateProvider#DEFAULT_THREAD_TIMEOUT} in
+		 * thread mode and {@link DnsSeedCandidateProvider#DEFAULT_TEND_TIMEOUT} in tend mode.
 		 */
 		public Builder timeout(int timeout) {
 			this.timeout = timeout;
