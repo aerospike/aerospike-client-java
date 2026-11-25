@@ -528,7 +528,7 @@ public class TestL2PassThrough extends TestBase {
 		List<String> list = new ArrayList<>();
 
 		for (String warning : TestL2Topology.warnings) {
-			if (warning.contains("to the same address") && warning.contains(nodeName)) {
+			if (warning.contains("with no address of its own") && warning.contains(nodeName)) {
 				list.add(warning);
 			}
 		}
