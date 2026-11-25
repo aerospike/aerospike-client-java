@@ -72,7 +72,7 @@ jobs:
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: aerospike/aerospike-client-conformance
-          ref: 42db5e9c508226cc0ad1496d7dff1cb23dac2bb0 # main
+          ref: 38624d33fb1ff76eff331c4a98fda9ffb4f2ed39 # main
           path: conformance-fixtures
 
       - name: Get Java version
@@ -116,7 +116,7 @@ jobs:
 
       - name: Collect conformance report
         if: ${{ always() }}
-        uses: aerospike/aerospike-client-conformance/.github/actions/collect-conformance-report@42db5e9c508226cc0ad1496d7dff1cb23dac2bb0 # main
+        uses: aerospike/aerospike-client-conformance/.github/actions/collect-conformance-report@38624d33fb1ff76eff331c4a98fda9ffb4f2ed39 # main
         with:
           reports-directory: client/target
           fixtures-directory: ${{ github.workspace }}/conformance-fixtures
