@@ -196,6 +196,10 @@ public class ThreadModeTest {
 		return warnings.stream().filter(w -> w.startsWith(prefix)).count();
 	}
 
+	private long contains(String text) {
+		return warnings.stream().filter(w -> w.contains(text)).count();
+	}
+
 	@Test
 	public void policyDefaultsAndCopy() {
 		ClientPolicy policy = new ClientPolicy();
@@ -423,6 +427,82 @@ public class ThreadModeTest {
 			assertSame(lastGood, snapshot.get());
 			assertEquals(0, r.getOverrunCount());
 			assertEquals(warnings.toString(), 1, count(FAILED));
+		}
+		finally {
+			r.close();
+		}
+	}
+
+	@Test
+	public void invalidHostKeepsLastGood() throws Exception {
+		Provider provider = new Provider(true, (call, p) -> {
+			if (call == 1) {
+				return Arrays.asList(A);
+			}
+			if (call == 2) {
+				return Arrays.asList(A, new Host("10.0.0.3", 0), B);
+			}
+			if (call == 3) {
+				return Arrays.asList(B, new Host("", 3000));
+			}
+			return p.block(B);
+		});
+		SeedRefresher r = refresher(provider, new Host[0], 50, 100);
+
+		try {
+			Host[] lastGood = start(r);
+			await(() -> provider.calls.get() == 4);
+
+			assertSame(lastGood, snapshot.get());
+			assertEquals(warnings.toString(), 2, count(FAILED));
+			String prefix = "Seed candidate provider " + Provider.class.getName() +
+				" returned invalid host at index ";
+			assertEquals(warnings.toString(), 1, contains(prefix + "1: host 10.0.0.3 0 has port 0 outside 1-65535"));
+			assertEquals(warnings.toString(), 1, contains(prefix + "1: host  3000 has a null or empty name"));
+		}
+		finally {
+			r.close();
+		}
+	}
+
+	@Test
+	public void invalidHostAtFirstRefresh() throws Exception {
+		Provider provider = new Provider(true, (call, p) ->
+			(call == 1)? Arrays.asList(A, new Host("10.0.0.3", 65536)) : p.block());
+		SeedRefresher r = refresher(provider, new Host[] {S}, 60000, 1000);
+
+		try {
+			assertArrayEquals(new Host[] {S}, start(r));
+			assertEquals(warnings.toString(), 1, count("Seed candidate provider " + Provider.class.getName() + " failed: "));
+			assertEquals(warnings.toString(), 1, contains("Seed candidate provider " + Provider.class.getName() +
+				" returned invalid host at index 1: host 10.0.0.3 65536 has port 65536 outside 1-65535"));
+		}
+		finally {
+			r.close();
+		}
+
+		Provider noSeed = new Provider(true, (call, p) -> (call == 1)? Arrays.asList(new Host("10.0.0.3", 0)) : p.block());
+		ClientPolicy policy = policy(noSeed);
+		policy.discoveryRefreshTimeout = 1000;
+
+		AerospikeException ae = assertThrows(AerospikeException.class, () -> new AerospikeClient(policy));
+		assertEquals(ResultCode.SEED_DISCOVERY_FAILED, ae.getResultCode());
+		assertTrue(ae.getMessage(), ae.getMessage().contains("returned invalid host at index 0"));
+		await(() -> noSeed.closes.get() == 1);
+	}
+
+	@Test
+	public void configuredSeedReturnedUnchangedIsPublished() throws Exception {
+		Host seed = new Host("10.0.1.1", 70000);
+		Provider provider = new Provider(true, (call, p) ->
+			(call == 1)? Arrays.asList(A) : (call == 2)? Arrays.asList(B, seed) : p.block());
+		SeedRefresher r = refresher(provider, new Host[] {seed}, 50, 100);
+
+		try {
+			start(r);
+			await(() -> provider.calls.get() == 3);
+			assertArrayEquals(new Host[] {seed, B}, snapshot.get());
+			assertEquals(warnings.toString(), 0, count(FAILED));
 		}
 		finally {
 			r.close();

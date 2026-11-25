@@ -120,17 +120,20 @@ Returned hosts are used as seeds, so they must carry the TLS name when TLS is en
 name is defaulted as for the seeds passed to the constructor: the cluster name when
 `ClientPolicy.clusterName` is set, otherwise the host name.
 
-A returned host with a port outside 1 to 65535 is dropped from the result and logged at warning
-level, for example
-`Seed candidate provider <name> returned host 10.0.0.1 with port 0 outside 1-65535. Host dropped`.
-The rest of the result is used. This applies to the built-in providers too.
+A returned host that is null, has a null or empty name or has a port outside 1 to 65535 fails the
+whole refresh, the same way as a refresh that throws: nothing from that call is used, and at
+construction it counts as an empty result. The message names the provider, the zero-based index of
+the host in the returned list and the host, for example
+`Seed candidate provider <name> returned invalid host at index 2: host 10.0.0.1 0 has port 0 outside 1-65535`.
+A host whose name and port are identical to a seed passed to the constructor is accepted without
+these checks. This applies to the built-in providers too.
 
 ## Built-in providers
 
 | Provider | Periodic refresh | Deadline |
 | --- | --- | --- |
 | `static` (`StaticSeedCandidateProvider`) | No. `needsPeriodicRefresh()` returns false and the provider does no I/O; it is called once, at construction. | None applies. |
-| `dns` (`DnsSeedCandidateProvider`) | Yes, in either mode. `needsPeriodicRefresh()` and `supportsDeadline()` return true, and all I/O of one refresh is bounded by its `timeout` (`dns.timeout_ms`, default 80 ms). | `timeout` must not exceed `discoveryRefreshTimeout` in `THREAD` mode or `discoveryTendRefreshDeadline` in `TEND` mode. This is checked at client construction, which fails otherwise: `DNS seed provider timeout 150 must be less or equal to the discovery tend refresh deadline 100`. |
+| `dns` (`DnsSeedCandidateProvider`) | Yes, in either mode. `needsPeriodicRefresh()` and `supportsDeadline()` return true, and all I/O of one refresh is bounded by its `timeout` (`dns.timeout_ms`, default 2000 ms in `THREAD` mode and 80 ms in `TEND` mode). | `timeout` must not exceed `discoveryRefreshTimeout` in `THREAD` mode or `discoveryTendRefreshDeadline` in `TEND` mode. This is checked at client construction, which fails otherwise: `DNS seed provider timeout 150 must be less or equal to the discovery tend refresh deadline 100`. |
 | `aws-tags` (`AwsEc2TagSeedCandidateProvider`) | Yes, in `THREAD` mode only. `needsPeriodicRefresh()` returns true and `supportsDeadline()` returns false, so client construction fails in `TEND` mode. All I/O of one refresh is bounded by its `timeout` (`aws.timeout_ms`, default 2000 ms), and of the first by `initTimeout` (`aws.init_timeout_ms`, default 10000 ms). | `timeout` must not exceed `discoveryRefreshTimeout`. This is checked at client construction, which fails otherwise: `AWS EC2 seed provider timeout 12000 must be less or equal to the discovery refresh timeout 10000`. |
 
 When no provider is configured, the client uses `StaticSeedCandidateProvider` over the hosts

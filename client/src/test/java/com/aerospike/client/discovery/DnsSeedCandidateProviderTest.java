@@ -19,6 +19,7 @@ package com.aerospike.client.discovery;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
@@ -101,8 +102,21 @@ public class DnsSeedCandidateProviderTest {
 		assertEquals(Arrays.asList(new Host("10.0.0.1", 3000)), provider.refreshSeedCandidates(CTX));
 		assertEquals(RecordType.A, provider.getRecordType());
 		assertEquals(DnsSeedCandidateProvider.DEFAULT_PORT, provider.getPort());
-		assertEquals(DnsSeedCandidateProvider.DEFAULT_TIMEOUT, provider.getTimeout());
+		assertEquals(0, provider.getTimeout());
 		assertNull(provider.getTlsName());
+	}
+
+	@Test
+	public void timeoutDefaultsByExecutionMode() {
+		DnsSeedCandidateProvider provider = builder("seeds.example.com").build();
+
+		assertEquals(DnsSeedCandidateProvider.DEFAULT_THREAD_TIMEOUT,
+			provider.withModeDefault(DiscoveryExecutionMode.THREAD).getTimeout());
+		assertEquals(DnsSeedCandidateProvider.DEFAULT_TEND_TIMEOUT,
+			provider.withModeDefault(DiscoveryExecutionMode.TEND).getTimeout());
+
+		DnsSeedCandidateProvider configured = builder("seeds.example.com").timeout(150).build();
+		assertSame(configured, configured.withModeDefault(DiscoveryExecutionMode.TEND));
 	}
 
 	@Test
@@ -387,7 +401,7 @@ public class DnsSeedCandidateProviderTest {
 		assertRejected(b -> b.recordType(null), "Invalid DNS seed provider recordType: null");
 		assertRejected(b -> b.port(0), "Invalid DNS seed provider port: 0");
 		assertRejected(b -> b.port(65536), "Invalid DNS seed provider port: 65536");
-		assertRejected(b -> b.timeout(0), "Invalid DNS seed provider timeout: 0");
+		assertRejected(b -> b.timeout(-1), "Invalid DNS seed provider timeout: -1");
 		assertRejected(b -> b.tlsName(""), "Invalid DNS seed provider tlsName: empty");
 		assertRejected(b -> b.servers("dns.example.com"), "Invalid DNS seed provider server: 'dns.example.com': expected an IP address");
 		assertRejected(b -> b.servers("10.0.0.256"), "Invalid DNS seed provider server: '10.0.0.256'");

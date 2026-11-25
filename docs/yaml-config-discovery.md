@@ -114,7 +114,7 @@ static:
 | `record_type` | string | `a` (A and AAAA records), `srv` (SRV records) | `a` | `recordType` |
 | `port` | int | port set on hosts resolved from A and AAAA records; ignored for `srv`, which uses each record's port | `3000` | `port` |
 | `tls_name` | string | TLS name set on every returned host | none | `tlsName` |
-| `timeout_ms` | int | total milliseconds for one refresh, across every name, record type, SRV target and resolver | `80` | `timeout` |
+| `timeout_ms` | int | total milliseconds for one refresh, across every name, record type, SRV target and resolver | `2000` in thread mode, `80` in tend mode | `timeout` |
 | `servers` | list of string | resolver addresses, `ip[:port]` (an IPv6 address with a port in brackets, `"[2001:db8::1]:53"`), tried in order | the system resolvers, read once when the provider is built | `servers` |
 
 Unknown keys inside the block are ignored.

@@ -224,7 +224,7 @@ public class TestTranslationCollision {
 		List<String> collisions = new ArrayList<>();
 
 		for (String warning : warnings) {
-			if (warning.contains("to the same address")) {
+			if (warning.contains("with no address of its own")) {
 				collisions.add(warning);
 			}
 		}

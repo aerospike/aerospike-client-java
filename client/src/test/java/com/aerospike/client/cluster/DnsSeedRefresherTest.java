@@ -131,6 +131,21 @@ public class DnsSeedRefresherTest {
 	}
 
 	@Test
+	public void defaultTimeoutFollowsExecutionMode() {
+		ClientPolicy policy = new ClientPolicy();
+		policy.discoveryExecutionMode = DiscoveryExecutionMode.TEND;
+		new SeedRefresher(provider(0), policy, snapshot::set).validate(1000);
+
+		policy.discoveryExecutionMode = DiscoveryExecutionMode.THREAD;
+		policy.discoveryRefreshTimeout = 1000;
+		SeedRefresher r = new SeedRefresher(provider(0), policy, snapshot::set);
+
+		AerospikeException ae = assertThrows(AerospikeException.class, () -> r.validate(1000));
+		assertEquals("DNS seed provider timeout 2000 must be less or equal to the discovery refresh timeout 1000",
+			ae.getBaseMessage());
+	}
+
+	@Test
 	public void providerNameIsDns() {
 		assertEquals(StaticDiscoveryConfig.DNS, SeedRefresher.providerName(provider(80)));
 	}

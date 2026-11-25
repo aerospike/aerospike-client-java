@@ -61,7 +61,7 @@ jobs:
           echo "layers=${layers}" >> "${GITHUB_OUTPUT}"
 
       - name: Report skipped layers
-        uses: aerospike/aerospike-client-conformance/.github/actions/report-skipped-layers@a30c0787dede434f15be3622e7007dc57b55209d # main
+        uses: aerospike/aerospike-client-conformance/.github/actions/report-skipped-layers@42db5e9c508226cc0ad1496d7dff1cb23dac2bb0 # main
         with:
           layers: ${{ steps.gate.outputs.layers }}
 
@@ -69,27 +69,27 @@ jobs:
   # server, which resolves access addresses at startup.
   l2-proxy:
     name: L2 proxy
-    uses: aerospike/aerospike-client-conformance/.github/workflows/l2-proxy.yaml@a30c0787dede434f15be3622e7007dc57b55209d # main
+    uses: aerospike/aerospike-client-conformance/.github/workflows/l2-proxy.yaml@42db5e9c508226cc0ad1496d7dff1cb23dac2bb0 # main
     with:
       client-repository: ${{ github.repository }}
       commit: ${{ github.event.pull_request.head.sha || github.sha }}
       manifest: test/discovery/l5-aws.manifest
       profile: all
       edition: ce
-      conformance-ref: a30c0787dede434f15be3622e7007dc57b55209d
+      conformance-ref: 42db5e9c508226cc0ad1496d7dff1cb23dac2bb0
 
   l2-proxy-ee:
     name: L2 proxy (ee)
     needs: gate
     if: needs.gate.outputs.enterprise == 'true'
-    uses: aerospike/aerospike-client-conformance/.github/workflows/l2-proxy.yaml@a30c0787dede434f15be3622e7007dc57b55209d # main
+    uses: aerospike/aerospike-client-conformance/.github/workflows/l2-proxy.yaml@42db5e9c508226cc0ad1496d7dff1cb23dac2bb0 # main
     with:
       client-repository: ${{ github.repository }}
       commit: ${{ github.event.pull_request.head.sha || github.sha }}
       manifest: test/discovery/l5-aws.manifest
       profile: default,cn-only
       edition: ee
-      conformance-ref: a30c0787dede434f15be3622e7007dc57b55209d
+      conformance-ref: 42db5e9c508226cc0ad1496d7dff1cb23dac2bb0
     secrets:
       FEATURES_CONF: ${{ secrets.FEATURES_CONF }}
 
@@ -109,7 +109,7 @@ jobs:
           - profile: unresolved-access
             unresolved-hostname: false
             verbatim-access-address: true
-    uses: aerospike/aerospike-client-conformance/.github/workflows/l2-proxy.yaml@a30c0787dede434f15be3622e7007dc57b55209d # main
+    uses: aerospike/aerospike-client-conformance/.github/workflows/l2-proxy.yaml@42db5e9c508226cc0ad1496d7dff1cb23dac2bb0 # main
     with:
       client-repository: ${{ github.repository }}
       commit: ${{ github.event.pull_request.head.sha || github.sha }}
@@ -120,7 +120,7 @@ jobs:
       registry: aerospike.jfrog.io
       unresolved-hostname: ${{ matrix.unresolved-hostname }}
       verbatim-access-address: ${{ matrix.verbatim-access-address }}
-      conformance-ref: a30c0787dede434f15be3622e7007dc57b55209d
+      conformance-ref: 42db5e9c508226cc0ad1496d7dff1cb23dac2bb0
     secrets:
       JFROG_OIDC_PROVIDER: ${{ secrets.JFROG_OIDC_PROVIDER }}
       JFROG_OIDC_AUDIENCE: ${{ secrets.JFROG_OIDC_AUDIENCE }}

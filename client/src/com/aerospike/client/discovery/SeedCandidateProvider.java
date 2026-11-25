@@ -31,7 +31,8 @@ public interface SeedCandidateProvider {
 	/**
 	 * Return the current seed candidates. Returned hosts are used as seeds, so they must carry the
 	 * TLS name when TLS is enabled; a null TLS name is defaulted the same way as for configured seeds.
-	 * A host with a port outside 1 to 65535 is dropped and logged at warning level.
+	 * A null host, a host with a null or empty name or a port outside 1 to 65535 fails the call the same
+	 * way as an exception, unless its name and port are identical to a configured seed.
 	 * <p>
 	 * Called once at client initialization, with {@link SeedCandidateContext#tendIteration} 0, then on
 	 * each periodic refresh. With {@link com.aerospike.client.policy.ClientPolicy#discoveryExecutionMode}

@@ -32,6 +32,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
 import org.junit.After;
 import org.junit.Before;
@@ -144,11 +145,12 @@ public class PortMapTranslationTest {
 		assertEquals(0, b.accepted.get());
 		assertEquals(-1, seed.getPeersGeneration());
 
-		List<String> collisions = warnings();
-		assertEquals(collisions.toString(), 2, collisions.size());
+		List<String> collisions = warnings().stream().filter(m -> m.startsWith("Error -26,")).collect(Collectors.toList());
+		assertEquals(warnings().toString(), 2, collisions.size());
+		assertEquals(warnings().toString(), 4, warnings().size());
 
 		for (String message : collisions) {
-			assertNames(message, "Address translator port-map ", "BB9B", "BB9C", "to the same address 127.0.0.1:" + b.port());
+			assertNames(message, "Address translator port-map ", "BB9B", "BB9C", "127.0.0.1:" + b.port() + " is used by");
 		}
 	}
 

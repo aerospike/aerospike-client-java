@@ -113,6 +113,7 @@ public class ConformanceTest {
 		"aws-error", "DescribeInstances failed",
 		"timeout", "timed out");
 	private static final String COLLISION = "translation-collision";
+	private static final String SKIP_PREFIX = "Skip address ";
 	private static final Map<Integer,String> RESULT_CATEGORIES = TestMaps.of(ResultCode.TRANSLATION_COLLISION, COLLISION);
 	private static final String SEED_NODE = "BB9000000000000";
 
@@ -334,22 +335,23 @@ public class ConformanceTest {
 			return new Outcome(UNSUPPORTED, "translator " + unsupported + " is not implemented");
 		}
 
-		List<Endpoint> input = new ArrayList<>();
+		List<List<Endpoint>> input = new ArrayList<>();
 
 		for (Object item : list(row.data.get("input"))) {
-			input.add(advertised(map(item)));
+			input.add(peerEndpoints(map(item)));
 		}
 
-		if (input.stream().map(e -> e.sourceList).distinct().count() > 1) {
+		if (input.stream().flatMap(List::stream).map(e -> e.sourceList).distinct().count() > 1) {
 			return new Outcome(FAIL, "one peers reply cannot mix standard and alternate peers");
 		}
 
-		policy.useServicesAlternate = input.get(0).sourceList == Endpoint.SourceList.ALTERNATE;
+		policy.useServicesAlternate = input.get(0).get(0).sourceList == Endpoint.SourceList.ALTERNATE;
 		policy.failIfNotConnected = false;
 
 		String reply = input.stream()
-			.map(p -> "[" + p.nodeName + "," + p.tlsName + ",[" + (p.host.contains(":")? "[" + p.host + "]" : p.host) +
-				":" + p.port + "]]")
+			.map(p -> "[" + p.get(0).nodeName + "," + p.get(0).tlsName + "," + p.stream()
+				.map(e -> (e.host.contains(":")? "[" + e.host + "]" : e.host) + ":" + e.port)
+				.collect(Collectors.joining(",", "[", "]")) + "]")
 			.collect(Collectors.joining(",", "1,3000,[", "]"));
 		List<String> logs = new ArrayList<>();
 
@@ -367,11 +369,13 @@ public class ConformanceTest {
 			PeersNode seed = new PeersNode(client.getCluster(), nv);
 			Peers peers = new Peers(input.size());
 
-			for (Endpoint peer : input) {
-				try {
-					peers.fail(ConformanceAdapter.translate(policy, peer));
-				}
-				catch (AerospikeException.TranslationMiss tm) {
+			for (List<Endpoint> peer : input) {
+				for (Endpoint endpoint : peer) {
+					try {
+						peers.fail(ConformanceAdapter.translate(policy, endpoint));
+					}
+					catch (AerospikeException.TranslationMiss tm) {
+					}
 				}
 			}
 
@@ -400,6 +404,10 @@ public class ConformanceTest {
 		List<String> collisions = new ArrayList<>();
 
 		for (String message : logs) {
+			if (message.startsWith(SKIP_PREFIX)) {
+				continue;
+			}
+
 			if (! COLLISION.equals(category(message))) {
 				return new Outcome(FAIL, "unexpected log: " + message);
 			}
@@ -423,10 +431,12 @@ public class ConformanceTest {
 
 		Set<String> nodes = new TreeSet<>();
 
-		for (Endpoint peer : input) {
-			if (collisions.stream().noneMatch(message -> message.contains(peer.nodeName))) {
-				nodes.add(peer.nodeName);
-			}
+		for (List<Endpoint> peer : input) {
+			nodes.add(peer.get(0).nodeName);
+		}
+
+		for (String message : collisions) {
+			nodes.remove(subject(message, input));
 		}
 
 		Set<String> expNodes = new TreeSet<>();
@@ -439,6 +449,24 @@ public class ConformanceTest {
 			return new Outcome(FAIL, "expected nodes " + expNodes + ", got " + nodes);
 		}
 		return new Outcome(PASS, null);
+	}
+
+	/**
+	 * Return the collided peer of a collision message, the peer named first in it.
+	 */
+	private static String subject(String message, List<List<Endpoint>> input) {
+		String subject = null;
+		int first = Integer.MAX_VALUE;
+
+		for (List<Endpoint> peer : input) {
+			int index = message.indexOf(peer.get(0).nodeName);
+
+			if (index >= 0 && index < first) {
+				first = index;
+				subject = peer.get(0).nodeName;
+			}
+		}
+		return subject;
 	}
 
 	private static String category(String message) {
@@ -493,6 +521,24 @@ public class ConformanceTest {
 		default:
 			return provider;
 		}
+	}
+
+	/**
+	 * Return one endpoint per host of a collision peer, given as host and port or as hosts.
+	 */
+	private static List<Endpoint> peerEndpoints(Map<String,Object> input) {
+		if (input.get("hosts") == null) {
+			return Collections.singletonList(advertised(input));
+		}
+
+		List<Endpoint> list = new ArrayList<>();
+
+		for (Object item : list(input.get("hosts"))) {
+			Map<String,Object> host = new LinkedHashMap<>(input);
+			host.putAll(map(item));
+			list.add(advertised(host));
+		}
+		return list;
 	}
 
 	private static Endpoint advertised(Map<String,Object> input) {

@@ -23,6 +23,8 @@ import java.net.InetSocketAddress;
 import java.net.SocketTimeoutException;
 import java.nio.ByteBuffer;
 import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -467,21 +469,25 @@ public class Node implements Closeable {
 					continue;
 				}
 
-				AerospikeException.TranslationCollision collision = findCollision(peers, peer);
-
-				if (collision != null) {
-					if (Log.warnEnabled()) {
-						Log.warn(collision.getMessage());
-					}
-					peersValidated = false;
-					continue;
-				}
-
 				boolean nodeValidated = false;
-				collision = null;
+				List<Host> sharedHosts = new ArrayList<Host>();
+				List<String> sharedOwners = new ArrayList<String>();
+				List<Host> notTried = Collections.emptyList();
+				boolean collided = false;
 
 				// Find first host that connects.
-				for (Host host : peer.hosts) {
+				for (int i = 0; i < peer.hosts.size(); i++) {
+					Host host = peer.hosts.get(i);
+					String owner = findSharedOwner(peers, peer, host);
+
+					if (owner != null) {
+						logShared(peer, host, owner);
+
+						sharedHosts.add(host);
+						sharedOwners.add(owner);
+						continue;
+					}
+
 					// Do not attempt to add a peer if it has already failed in this cluster tend iteration.
 					if (peers.hasFailed(host)) {
 						continue;
@@ -492,11 +498,27 @@ public class Node implements Closeable {
 						NodeValidator nv = new NodeValidator();
 						nv.validateNode(cluster, host);
 
-						collision = findCollision(peers, peer, host, nv);
+						owner = findSocketOwner(peers, peer.nodeName, nv);
 
-						if (collision != null) {
+						if (owner != null) {
+							// Two names on one socket, as behind a load balancer. Stop on this peer.
 							nv.primaryConn.close();
+							sharedHosts.add(host);
+							sharedOwners.add(owner);
+							notTried = peer.hosts.subList(i + 1, peer.hosts.size());
+							collided = true;
 							break;
+						}
+
+						owner = findKnownName(peers, peer.nodeName, nv);
+
+						if (owner != null) {
+							nv.primaryConn.close();
+							logShared(peer, host, owner);
+
+							sharedHosts.add(host);
+							sharedOwners.add(owner);
+							continue;
 						}
 
 						if (! peer.nodeName.equals(nv.name)) {
@@ -534,10 +556,9 @@ public class Node implements Closeable {
 					}
 				}
 
-				if (collision != null) {
-					if (Log.warnEnabled()) {
-						Log.warn(collision.getMessage());
-					}
+				if ((collided || (sharedHosts.size() > 0 && sharedHosts.size() == peer.hosts.size())) && Log.warnEnabled()) {
+					Log.warn(new AerospikeException.TranslationCollision(peer.nodeName, sharedHosts, sharedOwners,
+						notTried, cluster.translatorName()).getMessage());
 				}
 
 				if (! nodeValidated) {
@@ -569,46 +590,90 @@ public class Node implements Closeable {
 		node.advertisedHosts = peer.advertised;
 	}
 
-	private AerospikeException.TranslationCollision findCollision(Peers peers, Peer peer) {
-		for (Host host : peer.hosts) {
-			if (! name.equals(peer.nodeName) && this.host.equals(host)) {
-				return new AerospikeException.TranslationCollision(peer.nodeName, name, host, cluster.translatorName());
-			}
+	/**
+	 * Return the name of another node that also has the peer's host, or null.
+	 */
+	private String findSharedOwner(Peers peers, Peer peer, Host host) {
+		if (! name.equals(peer.nodeName) && sameAddress(this.host, host)) {
+			return name;
+		}
 
-			for (Peer other : peers.peers) {
-				if (! other.nodeName.equals(peer.nodeName) && other.hosts.contains(host)) {
-					return new AerospikeException.TranslationCollision(peer.nodeName, other.nodeName, host, cluster.translatorName());
-				}
+		for (Peer other : peers.peers) {
+			if (! other.nodeName.equals(peer.nodeName) && containsAddress(other.hosts, host)) {
+				return other.nodeName;
 			}
+		}
 
-			Node node = findNodeByHost(cluster.nodesMap, peer.nodeName, host);
+		Node node = findNodeByHost(cluster.nodesMap, peer.nodeName, host);
 
-			if (node == null) {
-				node = findNodeByHost(peers.nodes, peer.nodeName, host);
-			}
+		if (node == null) {
+			node = findNodeByHost(peers.nodes, peer.nodeName, host);
+		}
+		return (node != null)? node.name : null;
+	}
 
-			if (node != null) {
-				return new AerospikeException.TranslationCollision(peer.nodeName, node.name, host, cluster.translatorName());
-			}
+	/**
+	 * Return the name of a healthy node other than the peer that is already on the validated socket,
+	 * or null.
+	 */
+	private String findSocketOwner(Peers peers, String nodeName, NodeValidator nv) {
+		if (! name.equals(nodeName) && address.equals(nv.primaryAddress)) {
+			return name;
+		}
+
+		Node node = findNodeBySocket(cluster.nodesMap, nodeName, nv);
+
+		if (node == null) {
+			node = findNodeBySocket(peers.nodes, nodeName, nv);
+		}
+		return (node != null)? node.name : null;
+	}
+
+	/**
+	 * Return the name of a known node other than the peer that the validated host answers as, or null.
+	 */
+	private String findKnownName(Peers peers, String nodeName, NodeValidator nv) {
+		if (nodeName.equals(nv.name)) {
+			return null;
+		}
+
+		if (name.equals(nv.name) || cluster.nodesMap.containsKey(nv.name) || peers.nodes.containsKey(nv.name) ||
+			findPeer(peers, nv.name)) {
+			return nv.name;
 		}
 		return null;
 	}
 
-	private AerospikeException.TranslationCollision findCollision(Peers peers, Peer peer, Host host, NodeValidator nv) {
-		String other;
+	private void logShared(Peer peer, Host host, String owner) {
+		boolean translated = peer.translated != null && peer.translated.contains(host);
 
-		if (name.equals(nv.name) || address.equals(nv.primaryAddress)) {
-			other = name;
-		}
-		else {
-			other = findCollidingName(cluster, peers, peer.nodeName, nv);
-		}
+		if (translated? Log.warnEnabled() : Log.infoEnabled()) {
+			String message = "Skip address " + host.name + ':' + host.port + " of node " + peer.nodeName +
+				" because node " + owner + " also has it. Address translator " + cluster.translatorName();
 
-		if (other == null) {
-			return null;
+			if (translated) {
+				Log.warn(message);
+			}
+			else {
+				Log.info(message);
+			}
 		}
-		peers.collided.put(nv.name, peer.nodeName);
-		return new AerospikeException.TranslationCollision(peer.nodeName, other, host, cluster.translatorName());
+	}
+
+	/**
+	 * Return true when both hosts have the same port and hostname, ignoring case. Names are not resolved.
+	 */
+	static boolean sameAddress(Host h1, Host h2) {
+		return h1.port == h2.port && h1.name.equalsIgnoreCase(h2.name);
+	}
+
+	private static boolean containsAddress(List<Host> hosts, Host host) {
+		for (Host h : hosts) {
+			if (sameAddress(h, host)) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 	/**
@@ -619,12 +684,6 @@ public class Node implements Closeable {
 
 		if (node == null) {
 			node = findValidatedNode(peers.nodes, nodeName, nv);
-
-			if (node != null) {
-				// Neither peer becomes a node when both validate as the same node in this tend.
-				peers.nodes.remove(node.name);
-				node.close();
-			}
 		}
 
 		if (node != null) {
@@ -634,7 +693,7 @@ public class Node implements Closeable {
 		if (! nodeName.equals(nv.name) && findPeer(peers, nv.name)) {
 			return nv.name;
 		}
-		return peers.collided.get(nv.name);
+		return null;
 	}
 
 	private static Node findValidatedNode(HashMap<String,Node> nodes, String nodeName, NodeValidator nv) {
@@ -645,6 +704,15 @@ public class Node implements Closeable {
 
 			if (node.name.equals(nv.name) ||
 				(node.active && node.failures == 0 && node.address.equals(nv.primaryAddress))) {
+				return node;
+			}
+		}
+		return null;
+	}
+
+	private static Node findNodeBySocket(HashMap<String,Node> nodes, String nodeName, NodeValidator nv) {
+		for (Node node : nodes.values()) {
+			if (! node.name.equals(nodeName) && node.active && node.failures == 0 && node.address.equals(nv.primaryAddress)) {
 				return node;
 			}
 		}
@@ -662,7 +730,7 @@ public class Node implements Closeable {
 
 	private static Node findNodeByHost(HashMap<String,Node> nodes, String nodeName, Host host) {
 		for (Node node : nodes.values()) {
-			if (node.active && node.failures == 0 && ! node.name.equals(nodeName) && node.host.equals(host)) {
+			if (node.active && node.failures == 0 && ! node.name.equals(nodeName) && sameAddress(node.host, host)) {
 				return node;
 			}
 		}
