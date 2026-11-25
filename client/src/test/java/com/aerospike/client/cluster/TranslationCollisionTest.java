@@ -266,7 +266,7 @@ public class TranslationCollisionTest {
 			for (String message : collisions()) {
 				assertNames(message, "BB9N", "BB9L", "localhost:" + live.port(), "pass-through");
 			}
-			assertEquals(3, skips(Log.Level.INFO).size());
+			assertEquals(List.of(), skips(Log.Level.INFO));
 			assertEquals(List.of(), skips(Log.Level.WARN));
 		}
 		finally {
@@ -303,7 +303,7 @@ public class TranslationCollisionTest {
 	}
 
 	@Test
-	public void addressAnsweringAsNewcomerIsSkippedAndNewcomerKept() throws Exception {
+	public void addressOnNewcomerSocketCollidesAndNewcomerKept() throws Exception {
 		FakeNode b = server("BB9B");
 		FakeNode a = server("BB9A", "[[BB9B,,[127.0.0.1:" + b.port() + "]],[BB9N,,[localhost:" + b.port() + "]]]");
 		ClientPolicy policy = policy();
@@ -319,8 +319,7 @@ public class TranslationCollisionTest {
 		assertEquals(-1, seed.getPeersGeneration());
 		assertEquals(1, collisions().size());
 		assertNames(collisions().get(0), "BB9N", "BB9B", "localhost:" + b.port(), "pass-through");
-		assertEquals(1, skips(Log.Level.INFO).size());
-		assertNames(skips(Log.Level.INFO).get(0), "BB9N", "BB9B", "localhost:" + b.port());
+		assertEquals(List.of(), skips(Log.Level.INFO));
 	}
 
 	@Test
@@ -360,10 +359,42 @@ public class TranslationCollisionTest {
 	}
 
 	@Test
-	public void aliasAddressFirstThenOwnAddressPeerJoins() throws Exception {
+	public void liveNodeSocketFirstStopsPeerAndOwnAddressIsNotTried() throws Exception {
 		FakeNode live = server("BB9L");
 		FakeNode p = server("BB9P");
 		FakeNode a = server("BB9A", "[[BB9P,,[localhost:" + live.port() + ",127.0.0.1:" + p.port() + "]]]");
+		ClientPolicy policy = policy();
+		policy.addressTranslator = PassThroughAddressTranslator.INSTANCE;
+		Node seed = node(policy, a);
+		Node liveNode = node(live);
+		Cluster cluster = client.getCluster();
+		cluster.nodesMap.put(liveNode.getName(), liveNode);
+
+		try {
+			Peers peers = new Peers(16);
+			seed.refreshPeers(peers);
+			nodes.addAll(peers.nodes.values());
+
+			assertTrue(peers.nodes.keySet().toString(), peers.nodes.isEmpty());
+			assertSame(liveNode, cluster.nodesMap.get("BB9L"));
+			assertTrue(liveNode.isActive());
+			assertEquals(-1, seed.getPeersGeneration());
+			assertEquals(1, collisions().size());
+			assertNames(collisions().get(0), "left node BB9P", "localhost:" + live.port() + " is used by BB9L",
+				"Not tried: 127.0.0.1:" + p.port(), "pass-through");
+			assertEquals(List.of(), skips(Log.Level.INFO));
+		}
+		finally {
+			cluster.nodesMap.remove(liveNode.getName());
+		}
+	}
+
+	@Test
+	public void aliasOnAnotherSocketFirstThenOwnAddressPeerJoins() throws Exception {
+		FakeNode live = server("BB9L");
+		FakeNode alias = server("BB9L");
+		FakeNode p = server("BB9P");
+		FakeNode a = server("BB9A", "[[BB9P,,[localhost:" + alias.port() + ",127.0.0.1:" + p.port() + "]]]");
 		ClientPolicy policy = policy();
 		policy.addressTranslator = PassThroughAddressTranslator.INSTANCE;
 		Node seed = node(policy, a);
@@ -383,7 +414,7 @@ public class TranslationCollisionTest {
 			assertEquals(5, seed.getPeersGeneration());
 			assertEquals(List.of(), warnings());
 			assertEquals(1, skips(Log.Level.INFO).size());
-			assertNames(skips(Log.Level.INFO).get(0), "BB9P", "BB9L", "localhost:" + live.port());
+			assertNames(skips(Log.Level.INFO).get(0), "BB9P", "BB9L", "localhost:" + alias.port());
 		}
 		finally {
 			cluster.nodesMap.remove(liveNode.getName());
@@ -502,6 +533,17 @@ public class TranslationCollisionTest {
 
 		assertEquals("Error -26,0: Address translator static-map left node BB9A with no address of its own: " +
 			"h1:3000 is used by BB9B. Give each node its own reachable address or mapping", tc.getMessage());
+	}
+
+	@Test
+	public void messageListsAddressesNotTried() {
+		AerospikeException.TranslationCollision tc = new AerospikeException.TranslationCollision(
+			"BB9A", List.of(new Host("h1", 3000)), List.of("BB9B"),
+			List.of(new Host("own.example.com", 3000), new Host("10.0.0.9", 3000)), "static-map");
+
+		assertEquals("Error -26,0: Address translator static-map left node BB9A with no address of its own: " +
+			"h1:3000 is used by BB9B. Not tried: own.example.com:3000, 10.0.0.9:3000. " +
+			"Give each node its own reachable address or mapping", tc.getMessage());
 	}
 
 	@Test
