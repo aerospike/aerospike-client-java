@@ -78,7 +78,6 @@ final class SeedRefresher {
 	}
 
 	SeedRefresher(SeedCandidateProvider provider, ClientPolicy policy, Host[] staticSeeds, Consumer<Host[]> publisher) {
-		this.provider = provider;
 		this.publisher = publisher;
 		this.clusterName = policy.clusterName;
 		this.staticSeeds = staticSeeds.clone();
@@ -86,6 +85,9 @@ final class SeedRefresher {
 			policy.discoveryMergePolicy : SeedMergePolicy.MERGE;
 		this.periodic = provider.needsPeriodicRefresh();
 		this.threaded = periodic && policy.discoveryExecutionMode != DiscoveryExecutionMode.TEND;
+		this.provider = (provider instanceof DnsSeedCandidateProvider)?
+			((DnsSeedCandidateProvider)provider).withModeDefault(threaded? DiscoveryExecutionMode.THREAD : DiscoveryExecutionMode.TEND) :
+			provider;
 		this.refreshInterval = policy.discoveryRefreshInterval;
 		this.tendRefreshDeadline = policy.discoveryTendRefreshDeadline;
 		this.refreshTimeout = policy.discoveryRefreshTimeout;
