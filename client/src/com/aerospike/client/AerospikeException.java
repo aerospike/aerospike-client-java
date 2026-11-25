@@ -451,17 +451,56 @@ public class AerospikeException extends RuntimeException {
 	}
 
 	/**
-	 * Exception thrown when a peer's translated address has the same host and port as another peer
-	 * in the same peers reply or as a live node with a different node name. No node is created for
-	 * the colliding peers and an existing live node is kept. Not retryable.
+	 * Exception thrown when every address of a peer has the same host and port as an address of
+	 * another node. No node is created for the peer and the other nodes are kept. The message lists
+	 * the first three shared addresses in the peer's address order with the node that has each.
+	 * Not retryable.
 	 */
 	public static final class TranslationCollision extends AerospikeException {
 		private static final long serialVersionUID = 1L;
+		private static final int MAX_LISTED = 3;
 
+		/**
+		 * Collision of a node's address with one other node.
+		 */
 		public TranslationCollision(String nodeName, String otherNodeName, Host host, String translator) {
-			super(ResultCode.TRANSLATION_COLLISION, "Address translator " + translator + " translated nodes " + nodeName +
-				" and " + otherNodeName + " to the same address " + host.name + ':' + host.port +
-				". Give each node its own reachable address or mapping");
+			this(nodeName, List.of(host), List.of(otherNodeName), translator);
+		}
+
+		/**
+		 * Collision of every address of a node. {@code otherNodeNames.get(i)} is the node that
+		 * also has {@code hosts.get(i)}.
+		 *
+		 * @param nodeName			node left with no address of its own
+		 * @param hosts				shared addresses in the node's address order
+		 * @param otherNodeNames	node that also has each shared address
+		 * @param translator		address translator name
+		 */
+		public TranslationCollision(String nodeName, List<Host> hosts, List<String> otherNodeNames, String translator) {
+			super(ResultCode.TRANSLATION_COLLISION, collisionMessage(nodeName, hosts, otherNodeNames, translator));
+		}
+
+		private static String collisionMessage(String nodeName, List<Host> hosts, List<String> otherNodeNames,
+			String translator) {
+			StringBuilder sb = new StringBuilder(200);
+			sb.append("Address translator ").append(translator).append(" left node ").append(nodeName)
+				.append(" with no address of its own: ");
+
+			int max = Math.min(hosts.size(), MAX_LISTED);
+
+			for (int i = 0; i < max; i++) {
+				if (i > 0) {
+					sb.append(", ");
+				}
+				Host host = hosts.get(i);
+				sb.append(host.name).append(':').append(host.port).append(" is used by ").append(otherNodeNames.get(i));
+			}
+
+			if (hosts.size() > max) {
+				sb.append(" and ").append(hosts.size() - max).append(" more");
+			}
+			sb.append(". Give each node its own reachable address or mapping");
+			return sb.toString();
 		}
 	}
 

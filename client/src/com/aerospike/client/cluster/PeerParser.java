@@ -17,7 +17,9 @@
 package com.aerospike.client.cluster;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Host;
@@ -33,6 +35,7 @@ public final class PeerParser {
 	private String nodeName;
 	private String tlsName;
 	private List<Host> advertised;
+	private Set<Host> translated;
 	private final int portDefault;
 	public final int generation;
 
@@ -144,6 +147,7 @@ public final class PeerParser {
 		parser.offset++;
 		peer.alternateMissing = cluster.useServicesAlternate && parser.buffer[parser.offset + 1] == ']';
 		peer.advertised = advertised = cluster.notifyViewChange? new ArrayList<Host>() : null;
+		peer.translated = translated = new HashSet<Host>(4);
 		peer.hosts = parseHosts();
 		parser.expect(']');
 		return peer;
@@ -210,6 +214,11 @@ public final class PeerParser {
 		if (advertised != null) {
 			advertised.add(new Host(host, tlsName, port));
 		}
-		return cluster.translateAddress(nodeName, tlsName, host, port);
+		Host h = cluster.translateAddress(nodeName, tlsName, host, port);
+
+		if (h.port != port || ! h.name.equals(host)) {
+			translated.add(h);
+		}
+		return h;
 	}
 }

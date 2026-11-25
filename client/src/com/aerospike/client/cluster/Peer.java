@@ -17,6 +17,7 @@
 package com.aerospike.client.cluster;
 
 import java.util.List;
+import java.util.Set;
 
 import com.aerospike.client.Host;
 
@@ -25,6 +26,7 @@ public final class Peer {
 	String tlsName;
 	List<Host> hosts;
 	List<Host> advertised;
+	Set<Host> translated;
 	Node replaceNode;
 	boolean alternateMissing;
 }
