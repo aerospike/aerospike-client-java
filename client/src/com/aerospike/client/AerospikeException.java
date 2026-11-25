@@ -477,11 +477,25 @@ public class AerospikeException extends RuntimeException {
 		 * @param translator		address translator name
 		 */
 		public TranslationCollision(String nodeName, List<Host> hosts, List<String> otherNodeNames, String translator) {
-			super(ResultCode.TRANSLATION_COLLISION, collisionMessage(nodeName, hosts, otherNodeNames, translator));
+			this(nodeName, hosts, otherNodeNames, List.of(), translator);
+		}
+
+		/**
+		 * Collision of a node that stopped on an address another node already answers at.
+		 *
+		 * @param nodeName			node left with no address of its own
+		 * @param hosts				shared addresses in the node's address order
+		 * @param otherNodeNames	node that also has each shared address
+		 * @param notTried			addresses of the node not tried after the collision
+		 * @param translator		address translator name
+		 */
+		public TranslationCollision(String nodeName, List<Host> hosts, List<String> otherNodeNames, List<Host> notTried,
+			String translator) {
+			super(ResultCode.TRANSLATION_COLLISION, collisionMessage(nodeName, hosts, otherNodeNames, notTried, translator));
 		}
 
 		private static String collisionMessage(String nodeName, List<Host> hosts, List<String> otherNodeNames,
-			String translator) {
+			List<Host> notTried, String translator) {
 			StringBuilder sb = new StringBuilder(200);
 			sb.append("Address translator ").append(translator).append(" left node ").append(nodeName)
 				.append(" with no address of its own: ");
@@ -498,6 +512,18 @@ public class AerospikeException extends RuntimeException {
 
 			if (hosts.size() > max) {
 				sb.append(" and ").append(hosts.size() - max).append(" more");
+			}
+
+			if (! notTried.isEmpty()) {
+				sb.append(". Not tried: ");
+
+				for (int i = 0; i < notTried.size(); i++) {
+					if (i > 0) {
+						sb.append(", ");
+					}
+					Host host = notTried.get(i);
+					sb.append(host.name).append(':').append(host.port);
+				}
 			}
 			sb.append(". Give each node its own reachable address or mapping");
 			return sb.toString();
