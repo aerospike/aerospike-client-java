@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -53,6 +53,9 @@ public final class PartitionTracker {
 	public int iteration = 1;
 	private long deadline;
 	private double sleepMultiplier;
+	// False for Top-K: a node sends nothing until it has ranked every record, so a
+	// timeout means the scan ran too long and a retry would only run it again.
+	private boolean retryOnTimeout = true;
 
 	public PartitionTracker(ScanPolicy policy, Node[] nodes) {
 		this((Policy)policy, nodes.length);
@@ -67,11 +70,13 @@ public final class PartitionTracker {
 	public PartitionTracker(QueryPolicy policy, Statement stmt, Node[] nodes) {
 		this((Policy)policy, nodes.length);
 		setMaxRecords(policy, stmt);
+		retryOnTimeout = ! stmt.hasTopK();
 	}
 
 	public PartitionTracker(QueryPolicy policy, Statement stmt, int nodeCapacity) {
 		this((Policy)policy, nodeCapacity);
 		setMaxRecords(policy, stmt);
+		retryOnTimeout = ! stmt.hasTopK();
 	}
 
 	private PartitionTracker(Policy policy, int nodeCapacity) {
@@ -97,6 +102,7 @@ public final class PartitionTracker {
 	public PartitionTracker(QueryPolicy policy, Statement stmt, Node nodeFilter) {
 		this((Policy)policy, nodeFilter);
 		setMaxRecords(policy, stmt);
+		retryOnTimeout = ! stmt.hasTopK();
 	}
 
 	private PartitionTracker(Policy policy, Node nodeFilter) {
@@ -121,11 +127,13 @@ public final class PartitionTracker {
 	public PartitionTracker(QueryPolicy policy, Statement stmt, Node[] nodes, PartitionFilter filter) {
 		this((Policy)policy, nodes, validateTopKFilter(stmt, filter),
 			(stmt.maxRecords > 0) ? stmt.maxRecords : policy.maxRecords);
+		retryOnTimeout = ! stmt.hasTopK();
 	}
 
 	public PartitionTracker(QueryPolicy policy, Statement stmt, int nodeCapacity, PartitionFilter filter) {
 		this((Policy)policy, nodeCapacity, validateTopKFilter(stmt, filter), (stmt.maxRecords > 0) ?
 			stmt.maxRecords : policy.maxRecords);
+		retryOnTimeout = ! stmt.hasTopK();
 	}
 
 	/**
@@ -560,6 +568,12 @@ public final class PartitionTracker {
 	public boolean shouldRetry(NodePartitions nodePartitions, AerospikeException ae) {
 		ae.setIteration(iteration);
 
+		// A Top-K query that times out is not retried: its nodes send nothing until
+		// they have finished scanning, so a retry would only run the scan again.
+		if (ae.getResultCode() == ResultCode.TIMEOUT && ! retryOnTimeout) {
+			return false;
+		}
+
 		switch (ae.getResultCode()) {
 		case ResultCode.SERVER_NOT_AVAILABLE:
 		case ResultCode.TIMEOUT:
@@ -570,6 +584,9 @@ public final class PartitionTracker {
 			nodePartitions.partsUnavailable = nodePartitions.partsFull.size() + nodePartitions.partsPartial.size();
 			return true;
 
+		// QUERY_TIMEOUT and FAIL_FORBIDDEN are not retried: a retry would repeat the
+		// work that hit the server's run-time limit, or add load to a node that refused
+		// the query. See Statement#setTopK(int).
 		default:
 			return false;
 		}

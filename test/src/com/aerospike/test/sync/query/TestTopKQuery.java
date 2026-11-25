@@ -354,12 +354,15 @@ public class TestTopKQuery extends TestSync {
 
 		QueryPolicy policy = new QueryPolicy();
 		policy.totalTimeout = 300;
-		policy.maxRetries = 0;
+		// A Top-K timeout is not retried; maxRetries would otherwise restart each
+		// node's full scan.
+		policy.maxRetries = 5;
 
 		// Throttled so each node's scan outlasts the timeout; a node sends nothing until it finishes.
 		Statement statement = topK(BIN, BinDataType.INTEGER, Order.DESC, 10);
 		statement.setRecordsPerSecond(10);
 
+		long startNs = System.nanoTime();
 		RecordSet recordSet = client.query(policy, statement);
 		int rows = 0;
 		AerospikeException error = null;
@@ -376,9 +379,15 @@ public class TestTopKQuery extends TestSync {
 			recordSet.close();
 		}
 
+		long elapsedMs = (System.nanoTime() - startNs) / 1_000_000L;
+
 		assertNotNull("Expected the total timeout to surface", error);
 		assertEquals(ResultCode.TIMEOUT, error.getResultCode());
 		assertEquals(0, rows);
+		// One attempt ends near totalTimeout; a retry would wait another totalTimeout.
+		assertEquals(1, error.getIteration());
+		assertTrue("Top-K timeout should not be retried; elapsed=" + elapsedMs + "ms",
+			elapsedMs < policy.totalTimeout + policy.totalTimeout / 2);
 	}
 
 	@Test

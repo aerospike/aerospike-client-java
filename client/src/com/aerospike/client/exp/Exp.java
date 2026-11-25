@@ -1453,9 +1453,9 @@ public abstract class Exp {
 	private static final int INT_RSCAN = 41;
 	private static final int MIN = 50;
 	private static final int MAX = 51;
-	private static final int VECTOR_EUCLIDEAN_SQUARED = 52;
-	private static final int VECTOR_DOT_PRODUCT = 53;
-	private static final int VECTOR_COSINE_SIM = 54;
+	// Single vector-distance op; metric is packed as the next array element (0/1/2).
+	// Ops 53 and 54 are unassigned.
+	private static final int VECTOR_DISTANCE = 52;
 	private static final int DIGEST_MODULO = 64;
 	private static final int DEVICE_SIZE = 65;
 	private static final int LAST_UPDATE = 66;
@@ -1563,15 +1563,16 @@ public abstract class Exp {
 	}
 
 	/**
-	 * Internal vector distance expression.
+	 * Internal vector distance expression. Wire form is {@code [52, metric, queryBlob, bin]},
+	 * matching the C client ({@code as_exp_vector_dist}).
 	 */
 	static final class VectorDist extends Exp {
-		private final int opcode;
+		private final VectorDistanceMetric metric;
 		private final byte[] query;
 		private final Exp bin;
 
-		VectorDist(int opcode, byte[] query, Exp bin) {
-			this.opcode = opcode;
+		VectorDist(VectorDistanceMetric metric, byte[] query, Exp bin) {
+			this.metric = metric;
 			this.query = query;
 			this.bin = bin;
 		}
@@ -1579,23 +1580,13 @@ public abstract class Exp {
 		@Override
 		public void pack(Packer packer) {
 			packer.markVector();
-			packer.packArrayBegin(3);
-			packer.packInt(opcode);
-			bin.pack(packer);
+			packer.packArrayBegin(4);
+			packer.packInt(VECTOR_DISTANCE);
+			packer.packInt(metric.getCode());
+			// Query literal as BLOB (not VECTOR particle type). The server strips the
+			// particle-type byte before validating the vector header and payload.
 			packer.packParticleBytes(query);
-		}
-	}
-
-	static int vectorDistOpcode(VectorDistanceMetric metric) {
-		switch (metric) {
-			case EUCLIDEAN_SQUARED:
-				return VECTOR_EUCLIDEAN_SQUARED;
-			case DOT_PRODUCT:
-				return VECTOR_DOT_PRODUCT;
-			case COSINE_SIMILARITY:
-				return VECTOR_COSINE_SIM;
-			default:
-				throw new IllegalArgumentException("Unsupported vector distance metric: " + metric);
+			bin.pack(packer);
 		}
 	}
 
