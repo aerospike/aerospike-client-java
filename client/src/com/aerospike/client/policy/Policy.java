@@ -124,7 +124,8 @@ public class Policy {
 	 * transaction-max-ms (default 1000ms) for all commands except queries. For short
 	 * queries {@link QueryDuration#SHORT}, the server converts zero timeouts to a
 	 * hard-coded 1000ms. For long queries, there is no timeout conversion on the
-	 * server.
+	 * server. See {@link com.aerospike.client.query.Statement#setTopK(int)} for how
+	 * totalTimeout and socketTimeout apply to long queries and Top-K.
 	 * <p>
 	 * Default for scan/query: 0
 	 * <p>
