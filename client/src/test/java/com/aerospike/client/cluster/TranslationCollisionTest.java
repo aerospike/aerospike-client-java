@@ -64,7 +64,14 @@ public class TranslationCollisionTest {
 	private AerospikeClient client;
 	private Thread testThread;
 
-	private record LogEntry(Log.Level level, String message) {
+	private static final class LogEntry {
+		final Log.Level level;
+		final String message;
+
+		LogEntry(Log.Level level, String message) {
+			this.level = level;
+			this.message = message;
+		}
 	}
 
 	static final class OneAddressTranslator implements AddressTranslator {
@@ -131,7 +138,7 @@ public class TranslationCollisionTest {
 			assertNames(message, "BB9B", "BB9C", "127.0.0.1:" + b.port(), "static-map", "Give each node its own reachable address or mapping");
 		}
 		assertEquals(2, skips(Log.Level.WARN).size());
-		assertEquals(List.of(), skips(Log.Level.INFO));
+		assertEquals(Collections.emptyList(), skips(Log.Level.INFO));
 	}
 
 	@Test
@@ -268,8 +275,8 @@ public class TranslationCollisionTest {
 			for (String message : collisions()) {
 				assertNames(message, "BB9N", "BB9L", "localhost:" + live.port(), "pass-through");
 			}
-			assertEquals(List.of(), skips(Log.Level.INFO));
-			assertEquals(List.of(), skips(Log.Level.WARN));
+			assertEquals(Collections.emptyList(), skips(Log.Level.INFO));
+			assertEquals(Collections.emptyList(), skips(Log.Level.WARN));
 		}
 		finally {
 			cluster.nodesMap.remove(liveNode.getName());
@@ -316,12 +323,12 @@ public class TranslationCollisionTest {
 		seed.refreshPeers(peers);
 		nodes.addAll(peers.nodes.values());
 
-		assertEquals(List.of("BB9B"), new ArrayList<>(peers.nodes.keySet()));
+		assertEquals(Arrays.asList("BB9B"), new ArrayList<>(peers.nodes.keySet()));
 		assertTrue(peers.nodes.get("BB9B").isActive());
 		assertEquals(-1, seed.getPeersGeneration());
 		assertEquals(1, collisions().size());
 		assertNames(collisions().get(0), "BB9N", "BB9B", "localhost:" + b.port(), "pass-through");
-		assertEquals(List.of(), skips(Log.Level.INFO));
+		assertEquals(Collections.emptyList(), skips(Log.Level.INFO));
 	}
 
 	@Test
@@ -336,7 +343,7 @@ public class TranslationCollisionTest {
 		seed.refreshPeers(peers);
 		nodes.addAll(peers.nodes.values());
 
-		assertEquals(List.of("BB9B"), new ArrayList<>(peers.nodes.keySet()));
+		assertEquals(Arrays.asList("BB9B"), new ArrayList<>(peers.nodes.keySet()));
 		assertEquals(-1, seed.getPeersGeneration());
 		assertEquals(1, collisions().size());
 		assertNames(collisions().get(0), "BB9N", "BB9B", "localhost:" + b.port(), "pass-through");
@@ -384,7 +391,7 @@ public class TranslationCollisionTest {
 			assertEquals(1, collisions().size());
 			assertNames(collisions().get(0), "left node BB9P", "localhost:" + live.port() + " is used by BB9L",
 				"Not tried: 127.0.0.1:" + p.port(), "pass-through");
-			assertEquals(List.of(), skips(Log.Level.INFO));
+			assertEquals(Collections.emptyList(), skips(Log.Level.INFO));
 		}
 		finally {
 			cluster.nodesMap.remove(liveNode.getName());
@@ -409,12 +416,12 @@ public class TranslationCollisionTest {
 			seed.refreshPeers(peers);
 			nodes.addAll(peers.nodes.values());
 
-			assertEquals(List.of("BB9P"), new ArrayList<>(peers.nodes.keySet()));
+			assertEquals(Arrays.asList("BB9P"), new ArrayList<>(peers.nodes.keySet()));
 			assertEquals(new Host("127.0.0.1", p.port()), peers.nodes.get("BB9P").getHost());
 			assertSame(liveNode, cluster.nodesMap.get("BB9L"));
 			assertTrue(liveNode.isActive());
 			assertEquals(5, seed.getPeersGeneration());
-			assertEquals(List.of(), warnings());
+			assertEquals(Collections.emptyList(), warnings());
 			assertEquals(1, skips(Log.Level.INFO).size());
 			assertNames(skips(Log.Level.INFO).get(0), "BB9P", "BB9L", "localhost:" + alias.port());
 		}
@@ -456,7 +463,7 @@ public class TranslationCollisionTest {
 		FakeNode b = server("BB9B");
 		FakeNode a = server("BB9A", "[[BB9B,,[10.0.0.2:" + b.port() + "]],[BB9C,,[127.0.0.1:" + b.port() + "]]]");
 		ClientPolicy policy = policy();
-		policy.ipMap = Map.of("10.0.0.2", "127.0.0.1");
+		policy.ipMap = TestMaps.of("10.0.0.2", "127.0.0.1");
 		Node seed = node(policy, a);
 
 		Peers peers = new Peers(16);
@@ -487,7 +494,7 @@ public class TranslationCollisionTest {
 		seed.refreshPeers(peers);
 		nodes.addAll(peers.nodes.values());
 
-		assertEquals(List.of("BB9B"), new ArrayList<>(peers.nodes.keySet()));
+		assertEquals(Arrays.asList("BB9B"), new ArrayList<>(peers.nodes.keySet()));
 		assertEquals(new Host("127.0.0.1", b.port()), peers.nodes.get("BB9B").getHost());
 		assertEquals(1, b.accepted.get());
 		assertEquals(1, collisions().size());
@@ -540,8 +547,8 @@ public class TranslationCollisionTest {
 	@Test
 	public void messageListsAddressesNotTried() {
 		AerospikeException.TranslationCollision tc = new AerospikeException.TranslationCollision(
-			"BB9A", List.of(new Host("h1", 3000)), List.of("BB9B"),
-			List.of(new Host("own.example.com", 3000), new Host("10.0.0.9", 3000)), "static-map");
+			"BB9A", Arrays.asList(new Host("h1", 3000)), Arrays.asList("BB9B"),
+			Arrays.asList(new Host("own.example.com", 3000), new Host("10.0.0.9", 3000)), "static-map");
 
 		assertEquals("Error -26,0: Address translator static-map left node BB9A with no address of its own: " +
 			"h1:3000 is used by BB9B. Not tried: own.example.com:3000, 10.0.0.9:3000. " +
@@ -672,8 +679,8 @@ public class TranslationCollisionTest {
 
 		synchronized (logs) {
 			for (LogEntry entry : logs) {
-				if (level == null || entry.level() == level) {
-					list.add(entry.message());
+				if (level == null || entry.level == level) {
+					list.add(entry.message);
 				}
 			}
 		}

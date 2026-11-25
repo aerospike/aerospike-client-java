@@ -528,7 +528,7 @@ public class ConformanceTest {
 	 */
 	private static List<Endpoint> peerEndpoints(Map<String,Object> input) {
 		if (input.get("hosts") == null) {
-			return List.of(advertised(input));
+			return Collections.singletonList(advertised(input));
 		}
 
 		List<Endpoint> list = new ArrayList<>();

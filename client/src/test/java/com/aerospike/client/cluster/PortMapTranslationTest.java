@@ -32,6 +32,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
 import org.junit.After;
 import org.junit.Before;
@@ -144,7 +145,7 @@ public class PortMapTranslationTest {
 		assertEquals(0, b.accepted.get());
 		assertEquals(-1, seed.getPeersGeneration());
 
-		List<String> collisions = warnings().stream().filter(m -> m.startsWith("Error -26,")).toList();
+		List<String> collisions = warnings().stream().filter(m -> m.startsWith("Error -26,")).collect(Collectors.toList());
 		assertEquals(warnings().toString(), 2, collisions.size());
 		assertEquals(warnings().toString(), 4, warnings().size());
 

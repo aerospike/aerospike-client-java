@@ -217,8 +217,7 @@ public final class DnsSeedCandidateProvider implements SeedCandidateProvider {
 		this.tlsName = other.tlsName;
 		this.timeout = timeout;
 		this.servers = other.servers;
-		this.providerUrl = other.providerUrl;
-		this.serverCount = other.serverCount;
+		this.resolver = other.resolver;
 	}
 
 	/**

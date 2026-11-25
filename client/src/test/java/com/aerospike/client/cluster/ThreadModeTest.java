@@ -437,13 +437,13 @@ public class ThreadModeTest {
 	public void invalidHostKeepsLastGood() throws Exception {
 		Provider provider = new Provider(true, (call, p) -> {
 			if (call == 1) {
-				return List.of(A);
+				return Arrays.asList(A);
 			}
 			if (call == 2) {
-				return List.of(A, new Host("10.0.0.3", 0), B);
+				return Arrays.asList(A, new Host("10.0.0.3", 0), B);
 			}
 			if (call == 3) {
-				return List.of(B, new Host("", 3000));
+				return Arrays.asList(B, new Host("", 3000));
 			}
 			return p.block(B);
 		});
@@ -468,7 +468,7 @@ public class ThreadModeTest {
 	@Test
 	public void invalidHostAtFirstRefresh() throws Exception {
 		Provider provider = new Provider(true, (call, p) ->
-			(call == 1)? List.of(A, new Host("10.0.0.3", 65536)) : p.block());
+			(call == 1)? Arrays.asList(A, new Host("10.0.0.3", 65536)) : p.block());
 		SeedRefresher r = refresher(provider, new Host[] {S}, 60000, 1000);
 
 		try {
@@ -481,7 +481,7 @@ public class ThreadModeTest {
 			r.close();
 		}
 
-		Provider noSeed = new Provider(true, (call, p) -> (call == 1)? List.of(new Host("10.0.0.3", 0)) : p.block());
+		Provider noSeed = new Provider(true, (call, p) -> (call == 1)? Arrays.asList(new Host("10.0.0.3", 0)) : p.block());
 		ClientPolicy policy = policy(noSeed);
 		policy.discoveryRefreshTimeout = 1000;
 
@@ -495,7 +495,7 @@ public class ThreadModeTest {
 	public void configuredSeedReturnedUnchangedIsPublished() throws Exception {
 		Host seed = new Host("10.0.1.1", 70000);
 		Provider provider = new Provider(true, (call, p) ->
-			(call == 1)? List.of(A) : (call == 2)? List.of(B, seed) : p.block());
+			(call == 1)? Arrays.asList(A) : (call == 2)? Arrays.asList(B, seed) : p.block());
 		SeedRefresher r = refresher(provider, new Host[] {seed}, 50, 100);
 
 		try {

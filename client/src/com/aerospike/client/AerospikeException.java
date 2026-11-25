@@ -21,6 +21,7 @@ import com.aerospike.client.cluster.Partition;
 import com.aerospike.client.discovery.Endpoint;
 import com.aerospike.client.policy.Policy;
 
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -464,7 +465,7 @@ public class AerospikeException extends RuntimeException {
 		 * Collision of a node's address with one other node.
 		 */
 		public TranslationCollision(String nodeName, String otherNodeName, Host host, String translator) {
-			this(nodeName, List.of(host), List.of(otherNodeName), translator);
+			this(nodeName, Collections.singletonList(host), Collections.singletonList(otherNodeName), translator);
 		}
 
 		/**
@@ -477,7 +478,7 @@ public class AerospikeException extends RuntimeException {
 		 * @param translator		address translator name
 		 */
 		public TranslationCollision(String nodeName, List<Host> hosts, List<String> otherNodeNames, String translator) {
-			this(nodeName, hosts, otherNodeNames, List.of(), translator);
+			this(nodeName, hosts, otherNodeNames, Collections.<Host>emptyList(), translator);
 		}
 
 		/**
