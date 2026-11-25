@@ -24,6 +24,7 @@ import java.net.SocketTimeoutException;
 import java.nio.ByteBuffer;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -471,9 +472,12 @@ public class Node implements Closeable {
 				boolean nodeValidated = false;
 				List<Host> sharedHosts = new ArrayList<Host>();
 				List<String> sharedOwners = new ArrayList<String>();
+				List<Host> notTried = Collections.emptyList();
+				boolean collided = false;
 
 				// Find first host that connects.
-				for (Host host : peer.hosts) {
+				for (int i = 0; i < peer.hosts.size(); i++) {
+					Host host = peer.hosts.get(i);
 					String owner = findSharedOwner(peers, peer, host);
 
 					if (owner != null) {
@@ -494,7 +498,19 @@ public class Node implements Closeable {
 						NodeValidator nv = new NodeValidator();
 						nv.validateNode(cluster, host);
 
-						owner = findValidatedOwner(peers, peer.nodeName, nv);
+						owner = findSocketOwner(peers, peer.nodeName, nv);
+
+						if (owner != null) {
+							// Two names on one socket, as behind a load balancer. Stop on this peer.
+							nv.primaryConn.close();
+							sharedHosts.add(host);
+							sharedOwners.add(owner);
+							notTried = peer.hosts.subList(i + 1, peer.hosts.size());
+							collided = true;
+							break;
+						}
+
+						owner = findKnownName(peers, peer.nodeName, nv);
 
 						if (owner != null) {
 							nv.primaryConn.close();
@@ -540,9 +556,9 @@ public class Node implements Closeable {
 					}
 				}
 
-				if (sharedHosts.size() > 0 && sharedHosts.size() == peer.hosts.size() && Log.warnEnabled()) {
+				if ((collided || (sharedHosts.size() > 0 && sharedHosts.size() == peer.hosts.size())) && Log.warnEnabled()) {
 					Log.warn(new AerospikeException.TranslationCollision(peer.nodeName, sharedHosts, sharedOwners,
-						cluster.translatorName()).getMessage());
+						notTried, cluster.translatorName()).getMessage());
 				}
 
 				if (! nodeValidated) {
@@ -597,13 +613,35 @@ public class Node implements Closeable {
 	}
 
 	/**
-	 * Return the name of a known node that the validated host answers as or is the socket of, or null.
+	 * Return the name of a healthy node other than the peer that is already on the validated socket,
+	 * or null.
 	 */
-	private String findValidatedOwner(Peers peers, String nodeName, NodeValidator nv) {
-		if (name.equals(nv.name) || address.equals(nv.primaryAddress)) {
+	private String findSocketOwner(Peers peers, String nodeName, NodeValidator nv) {
+		if (! name.equals(nodeName) && address.equals(nv.primaryAddress)) {
 			return name;
 		}
-		return findCollidingName(cluster, peers, nodeName, nv);
+
+		Node node = findNodeBySocket(cluster.nodesMap, nodeName, nv);
+
+		if (node == null) {
+			node = findNodeBySocket(peers.nodes, nodeName, nv);
+		}
+		return (node != null)? node.name : null;
+	}
+
+	/**
+	 * Return the name of a known node other than the peer that the validated host answers as, or null.
+	 */
+	private String findKnownName(Peers peers, String nodeName, NodeValidator nv) {
+		if (nodeName.equals(nv.name)) {
+			return null;
+		}
+
+		if (name.equals(nv.name) || cluster.nodesMap.containsKey(nv.name) || peers.nodes.containsKey(nv.name) ||
+			findPeer(peers, nv.name)) {
+			return nv.name;
+		}
+		return null;
 	}
 
 	private void logShared(Peer peer, Host host, String owner) {
@@ -666,6 +704,15 @@ public class Node implements Closeable {
 
 			if (node.name.equals(nv.name) ||
 				(node.active && node.failures == 0 && node.address.equals(nv.primaryAddress))) {
+				return node;
+			}
+		}
+		return null;
+	}
+
+	private static Node findNodeBySocket(HashMap<String,Node> nodes, String nodeName, NodeValidator nv) {
+		for (Node node : nodes.values()) {
+			if (! node.name.equals(nodeName) && node.active && node.failures == 0 && node.address.equals(nv.primaryAddress)) {
 				return node;
 			}
 		}
