@@ -16,7 +16,6 @@
  */
 package com.aerospike.client.cluster;
 
-import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -421,18 +420,38 @@ final class SeedRefresher {
 	private Host[] candidates(int tendCount) {
 		SeedCandidateContext ctx = new SeedCandidateContext(clusterName, staticSeeds, tendCount);
 		List<Host> hosts = provider.refreshSeedCandidates(ctx);
-		List<Host> valid = new ArrayList<>(hosts.size());
+		Host[] list = hosts.toArray(new Host[hosts.size()]);
 
-		for (Host host : hosts) {
-			if (Cluster.isValidPort(host.port)) {
-				valid.add(host);
-			}
-			else if (Log.warnEnabled()) {
-				Log.warn("Seed candidate provider " + providerName(provider) + " returned host " + host.name +
-					" with port " + host.port + " outside 1-65535. Host dropped");
+		for (int i = 0; i < list.length; i++) {
+			String reason = invalidReason(list[i]);
+
+			if (reason != null) {
+				throw new AerospikeException("Seed candidate provider " + providerName(provider) +
+					" returned invalid host at index " + i + ": " + reason);
 			}
 		}
-		return valid.toArray(new Host[valid.size()]);
+		return list;
+	}
+
+	private String invalidReason(Host host) {
+		if (host == null) {
+			return "host is null";
+		}
+
+		for (Host seed : staticSeeds) {
+			if (seed.equals(host)) {
+				return null;
+			}
+		}
+
+		if (host.name == null || host.name.isEmpty()) {
+			return "host " + host + " has a null or empty name";
+		}
+
+		if (! Cluster.isValidPort(host.port)) {
+			return "host " + host + " has port " + host.port + " outside 1-65535";
+		}
+		return null;
 	}
 
 	private Host[] refresh(int tendCount) {
