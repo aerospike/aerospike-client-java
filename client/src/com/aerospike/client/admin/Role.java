@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2024 Aerospike, Inc.
+ * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -46,6 +46,16 @@ public final class Role {
 	 * Manage indicies.
 	 */
 	public static final String SIndexAdmin = "sindex-admin";
+
+	/**
+	 * Manage backup.
+	 */
+	public static final String BackupAdmin = "backup-admin";
+
+	/**
+	 * Manage restore.
+	 */
+	public static final String RestoreAdmin = "restore-admin";
 
 	/**
 	 * Allow read commands.

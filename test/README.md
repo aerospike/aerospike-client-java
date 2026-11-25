@@ -15,6 +15,8 @@ Usage:
     -n,--namespace <arg>  Namespace (default: test)
     -p,--port <arg>       Server port (default: 3000)
     -s,--set <arg>        Set name. Use 'empty' for empty set (default: test)
+    -sa,--servicesAlternate
+                          Use services-alternate during cluster tending
     -tls,--tlsEnable      Use TLS/SSL sockets
     -tlsCiphers,--tlsCipherSuite <arg>
                           Allow TLS cipher suites
@@ -36,6 +38,7 @@ Examples:
     ./run_tests 
     ./run_tests -h host1
     ./run_tests -h host2 -p 3000 -n myns -s myset
+    ./run_tests -h host1 -p 3100 -sa -U admin -P admin
 
 Run a specific test:
 

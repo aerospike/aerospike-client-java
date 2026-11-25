@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -52,6 +52,21 @@ public enum PrivilegeCode {
 	 * Requires server version 6.0+
 	 */
 	SINDEX_ADMIN(4, Role.SIndexAdmin),
+
+	/**
+	 * User can perform backup administration actions.
+	 * Examples include starting and aborting a backup. Global scope only.
+	 * Requires server version 8.2.1+. This privilege is only returned by query roles and
+	 * query users when the server is started with "--preview backup-restore".
+	 */
+	BACKUP_ADMIN(5, Role.BackupAdmin),
+
+	/**
+	 * User can perform restore administration actions.
+	 * Examples include starting and aborting a restore. Global scope only.
+	 * See {@link #BACKUP_ADMIN} for server version and preview requirements.
+	 */
+	RESTORE_ADMIN(6, Role.RestoreAdmin),
 
 	/**
 	 * User can read data.
@@ -134,6 +149,12 @@ public enum PrivilegeCode {
 
 		case 4:
 			return SINDEX_ADMIN;
+
+		case 5:
+			return BACKUP_ADMIN;
+
+		case 6:
+			return RESTORE_ADMIN;
 
 		case 10:
 			return READ;
