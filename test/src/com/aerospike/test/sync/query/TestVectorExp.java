@@ -19,6 +19,7 @@ package com.aerospike.test.sync.query;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -31,10 +32,12 @@ import org.junit.Assume;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Bin;
 import com.aerospike.client.Key;
 import com.aerospike.client.Operation;
 import com.aerospike.client.Record;
+import com.aerospike.client.ResultCode;
 import com.aerospike.client.Value;
 import com.aerospike.client.exp.Exp;
 import com.aerospike.client.exp.ExpOperation;
@@ -224,6 +227,17 @@ public class TestVectorExp extends TestSync {
 
 		try {
 			int k = size + uncomparable.length;
+
+			// Without eval-no-fail, Top-K abandons when a distance can't be ranked.
+			try {
+				distances(ExpReadFlags.DEFAULT, k);
+				fail("Expected OP_NOT_APPLICABLE for Top-K with uncomparable records");
+			}
+			catch (AerospikeException ae) {
+				assertEquals(ResultCode.OP_NOT_APPLICABLE, ae.getResultCode());
+			}
+
+			// With eval-no-fail, unknown distances become nils and sort last.
 			List<Object> ranked = distances(ExpReadFlags.EVAL_NO_FAIL, k);
 			assertEquals(k, ranked.size());
 
@@ -236,9 +250,6 @@ public class TestVectorExp extends TestSync {
 			}
 			assertNull(ranked.get(size));
 			assertNull(ranked.get(size + 1));
-
-			// Without eval-no-fail, a distance that can't be computed leaves the record out.
-			assertEquals(size, distances(ExpReadFlags.DEFAULT, k).size());
 		}
 		finally {
 			for (Key key : uncomparable) {
