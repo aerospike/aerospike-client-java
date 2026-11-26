@@ -101,6 +101,7 @@ public class Node implements Closeable {
 	protected int failures;
 	private int failedTends;
 	private InetAddress moveAddress;
+	private int moveTries;
 	private final int features;
 	protected boolean partitionChanged;
 	protected boolean rebalanceChanged;
@@ -283,6 +284,7 @@ public class Node implements Closeable {
 			failures = 0;
 			failedTends = 0;
 			moveAddress = null;
+			moveTries = 0;
 		}
 		catch (Throwable e) {
 			peers.genChanged = true;
@@ -827,6 +829,7 @@ public class Node implements Closeable {
 			return;
 		}
 		moveAddress = ia;
+		moveTries++;
 
 		int timeout = cluster.tendInterval / 2;
 
@@ -869,6 +872,33 @@ public class Node implements Closeable {
 				Log.debug("Address " + ia + ' ' + host.port + " failed: " + Util.getErrorMessage(e));
 			}
 		}
+	}
+
+	/**
+	 * Return true if the node's hostname has an address the node has not yet tried to move to.
+	 */
+	final boolean hasMoveCandidate() {
+		if (! active || hostname == null) {
+			return false;
+		}
+
+		InetAddress[] addresses;
+
+		try {
+			addresses = InetAddress.getAllByName(hostname);
+		}
+		catch (Throwable e) {
+			return false;
+		}
+
+		int count = 0;
+
+		for (InetAddress ia : addresses) {
+			if (! ia.equals(address.getAddress())) {
+				count++;
+			}
+		}
+		return moveTries < count;
 	}
 
 	/**

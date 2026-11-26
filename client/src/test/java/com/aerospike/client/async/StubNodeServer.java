@@ -24,7 +24,6 @@ import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
 import java.util.Base64;
 import java.util.List;
 import java.util.Map;
@@ -103,10 +102,17 @@ public final class StubNodeServer implements AutoCloseable {
 	 * Own every partition of the namespace, or none.
 	 */
 	public void setOwnsPartitions(boolean owns) {
+		setOwnsPartitions(0, owns ? 4096 : 0);
+	}
+
+	/**
+	 * Own the partitions from begin up to but not including end.
+	 */
+	public void setOwnsPartitions(int begin, int end) {
 		byte[] bitmap = new byte[4096 / 8];
 
-		if (owns) {
-			Arrays.fill(bitmap, (byte)0xFF);
+		for (int i = begin; i < end; i++) {
+			bitmap[i >> 3] |= (byte)(0x80 >> (i & 7));
 		}
 		this.replicas = NAMESPACE + ":0,1," + Base64.getEncoder().encodeToString(bitmap) + ';';
 	}
