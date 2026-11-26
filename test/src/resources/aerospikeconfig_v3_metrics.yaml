@@ -1,0 +1,22 @@
+version: 1.2.0
+dynamic:
+  metrics:
+    enabled: true
+    export_interval: 45s
+    exporter: custom
+    report_dir: metrics
+    report_size_limit: 2MiB
+    labels:
+      environment: test
+    extended:
+      operational:
+        enabled: true
+        # Verifies configuration parsing only; latency collection currently uses milliseconds.
+        latency_unit: microseconds
+        latency_columns: 8
+        latency_shift: 2
+        sampler:
+          range: 10
+          threshold: 3
+      usage:
+        enabled: true
