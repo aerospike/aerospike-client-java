@@ -324,6 +324,13 @@ public abstract class SyncCommand extends Command {
 		deadline += elapsed;
 	}
 
+	/**
+	 * Return the absolute command deadline in {@link System#nanoTime()} units, or zero if disabled.
+	 */
+	public long getDeadline() {
+		return deadline;
+	}
+
 	@Override
 	protected void sizeBuffer() {
 		dataBuffer = new byte[dataOffset];

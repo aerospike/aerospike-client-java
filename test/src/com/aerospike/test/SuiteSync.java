@@ -22,6 +22,7 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Suite;
 
 import com.aerospike.client.TxnTest;
+import com.aerospike.client.cluster.ConnectionReadDeadlineTest;
 import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.Host;
 import com.aerospike.client.IAerospikeClient;
@@ -88,6 +89,7 @@ import com.aerospike.client.AerospikeClientIndexTypeTest;
 
 @RunWith(Suite.class)
 @Suite.SuiteClasses({
+	ConnectionReadDeadlineTest.class,
 	TestAdd.class,
 	TestAppend.class,
 	TestBatch.class,

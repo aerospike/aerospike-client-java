@@ -51,6 +51,7 @@ public final class Connection implements Closeable {
 	private final OutputStream out;
 	protected final Pool pool;
 	private volatile long lastUsed;
+	private volatile long readDeadline;
 
 	public Connection(InetSocketAddress address, int timeoutMillis) throws AerospikeException.Connection {
 		this(address, timeoutMillis, null, null);
@@ -265,20 +266,45 @@ public final class Connection implements Closeable {
 	public void readFully(byte[] buffer, int length, byte state) throws IOException {
 		int offset = 0;
 		int count = 0;
+		long deadline = readDeadline;
+		int socketTimeout = deadline != 0 ? socket.getSoTimeout() : 0;
 
-		while (offset < length) {
-			try {
-				count = in.read(buffer, offset, length - offset);
-			}
-			catch (SocketTimeoutException ste) {
-				throw new ReadTimeout(buffer, offset, length, state);
-			}
+		try {
+			while (offset < length) {
+				if (deadline != 0) {
+					long remainingNanos = deadline - System.nanoTime();
 
-			if (count < 0) {
-				throw new EOFException();
+					if (remainingNanos <= 0) {
+						throw new ReadTimeout(buffer, offset, length, state);
+					}
+
+					int remainingMillis = (int)Math.min(Integer.MAX_VALUE,
+						Math.max(1, (remainingNanos + 999_999) / 1_000_000));
+					setTimeout(socketTimeout > 0 ? Math.min(socketTimeout, remainingMillis) : remainingMillis);
+				}
+
+				try {
+					count = in.read(buffer, offset, length - offset);
+				}
+				catch (SocketTimeoutException ste) {
+					throw new ReadTimeout(buffer, offset, length, state);
+				}
+
+				if (count < 0) {
+					throw new EOFException();
+				}
+				offset += count;
 			}
-			offset += count;
 		}
+		finally {
+			if (deadline != 0) {
+				setTimeout(socketTimeout);
+			}
+		}
+	}
+
+	void setReadDeadline(long deadline) {
+		readDeadline = deadline;
 	}
 
 	public int read(byte[] buffer, int pos, int length) throws IOException {
@@ -313,6 +339,7 @@ public final class Connection implements Closeable {
 	 */
 	public void close() {
 		lastUsed = 0;
+		readDeadline = 0;
 
 		try {
 			in.close();
