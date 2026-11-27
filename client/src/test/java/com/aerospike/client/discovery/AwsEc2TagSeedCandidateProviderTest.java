@@ -211,7 +211,7 @@ public class AwsEc2TagSeedCandidateProviderTest {
 		stub.ec2Default(new Reply(403, StubAwsServer.error("UnauthorizedOperation",
 			"You are not authorized to perform this operation.", "ea966190-f9aa-478e-9ede-example")));
 
-		AerospikeException ae = assertThrows(AerospikeException.class,
+		AerospikeException ae = assertThrows(SeedCandidateException.class,
 			() -> builder().build().refreshSeedCandidates(TEND));
 		String authorization = stub.requests().get(0).headers.get("authorization");
 		String signature = authorization.substring(authorization.lastIndexOf('=') + 1);
@@ -249,17 +249,17 @@ public class AwsEc2TagSeedCandidateProviderTest {
 	}
 
 	@Test
-	public void unansweredStubReturnsWithinTimeoutAndInitTimeout() throws Exception {
+	public void unansweredStubReturnsWithinTimeoutOnEveryRefresh() throws Exception {
 		try (ServerSocket silent = StubAwsServer.silent()) {
 			AwsEc2TagSeedCandidateProvider provider = builder().endpoint("http://127.0.0.1:" + silent.getLocalPort())
-				.timeout(80).initTimeout(600).build();
+				.timeout(80).build();
 
-			long elapsedInit = elapsed(() -> provider.refreshSeedCandidates(INIT), "timed out after 600ms");
+			long elapsedInit = elapsed(() -> provider.refreshSeedCandidates(INIT), "timed out after 80ms");
 			long elapsedTend = elapsed(() -> provider.refreshSeedCandidates(TEND), "timed out after 80ms");
-			System.out.println("AWS-TAGS-UNANSWERED initTimeout=600ms elapsed=" + elapsedInit + "ms timeout=80ms elapsed=" +
+			System.out.println("AWS-TAGS-UNANSWERED timeout=80ms init elapsed=" + elapsedInit + "ms tend elapsed=" +
 				elapsedTend + "ms margin=" + MARGIN + "ms");
 
-			assertTrue(elapsedInit + "ms", elapsedInit >= 600 && elapsedInit <= 600 + MARGIN);
+			assertTrue(elapsedInit + "ms", elapsedInit >= 80 && elapsedInit <= 80 + MARGIN);
 			assertTrue(elapsedTend + "ms", elapsedTend >= 80 && elapsedTend <= 80 + MARGIN);
 		}
 	}
@@ -366,7 +366,6 @@ public class AwsEc2TagSeedCandidateProviderTest {
 		cases.put("Invalid AWS EC2 seed provider port: 65536", () -> builder().port(65536));
 		cases.put("Invalid AWS EC2 seed provider tlsName: empty", () -> builder().tlsName(""));
 		cases.put("Invalid AWS EC2 seed provider timeout: 0", () -> builder().timeout(0));
-		cases.put("Invalid AWS EC2 seed provider initTimeout: -1", () -> builder().initTimeout(-1));
 		cases.put("Invalid AWS EC2 seed provider endpoint: 'ftp://ec2.example.com': expected http or https URL with a " +
 			"host and no query", () -> builder().endpoint("ftp://ec2.example.com"));
 		cases.put("Invalid AWS EC2 seed provider endpoint: 'http://ec2 example'", () -> builder().endpoint("http://ec2 example"));
@@ -394,14 +393,23 @@ public class AwsEc2TagSeedCandidateProviderTest {
 		assertEquals(AddressField.PRIVATE_IP, provider.getAddressField());
 		assertEquals(3000, provider.getPort());
 		assertNull(provider.getTlsName());
-		assertEquals(2000, provider.getTimeout());
-		assertEquals(10000, provider.getInitTimeout());
+		assertEquals(5000, provider.getTimeout());
+		assertEquals(5000, provider.getInitTimeout());
 		assertNull(provider.getEndpoint());
 		assertTrue(provider.needsPeriodicRefresh());
 		assertFalse(provider.supportsDeadline());
 		assertEquals("aws-tags eu-west-1 {tag:aerospike-cluster=[prod-a]}", provider.toString());
 		assertThrows(UnsupportedOperationException.class, () -> provider.getFilters().put("x", null));
 		assertFalse(new AwsEc2TagSeedCandidateProvider.Credentials(KEY, SECRET, TOKEN).toString().contains(SECRET));
+	}
+
+	@Test
+	@SuppressWarnings("deprecation")
+	public void initTimeoutIsIgnored() {
+		AwsEc2TagSeedCandidateProvider provider = builder().timeout(300).initTimeout(-1).build();
+
+		assertEquals(300, provider.getTimeout());
+		assertEquals(300, provider.getInitTimeout());
 	}
 
 	static void assertNoSecret(String text, String signature) {

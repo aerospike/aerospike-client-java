@@ -196,7 +196,7 @@ public class StaticDiscoveryConfig {
         value = map.get("record_type");
 
         if (value != null) {
-            String name = YamlValues.enumValue(path + ".record_type", value, RECORD_TYPES);
+            String name = YamlValues.enumValueIgnoreCase(path + ".record_type", value, RECORD_TYPES);
             builder.recordType(DnsSeedCandidateProvider.RecordType.valueOf(name.toUpperCase(Locale.ROOT)));
         }
 
@@ -287,12 +287,6 @@ public class StaticDiscoveryConfig {
 
         if (value != null) {
             builder.timeout(YamlValues.intValue(path + ".timeout_ms", value, 1, Integer.MAX_VALUE));
-        }
-
-        value = map.get("init_timeout_ms");
-
-        if (value != null) {
-            builder.initTimeout(YamlValues.intValue(path + ".init_timeout_ms", value, 1, Integer.MAX_VALUE));
         }
 
         value = map.get("endpoint");

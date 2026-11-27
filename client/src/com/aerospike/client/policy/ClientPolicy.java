@@ -426,7 +426,9 @@ public class ClientPolicy {
 	 * endpoint and do not create a node for it. The miss fails with
 	 * {@link com.aerospike.client.AerospikeException.TranslationMiss}, which names the node, the
 	 * advertised endpoint and the translator. A missed peer is logged at warning level and
-	 * retried on the next cluster tend.</li>
+	 * retried on the next cluster tend. A seed whose own advertised addresses all miss is not used:
+	 * the miss is logged at warning level and the next seed is tried. When no seed is left and
+	 * {@link #failIfNotConnected} is true, client construction fails with that exception.</li>
 	 * </ul>
 	 * A null value is treated as {@link TranslationMissMode#PASS_THROUGH}.
 	 * <p>
@@ -501,10 +503,10 @@ public class ClientPolicy {
 	 * Deadline in milliseconds for one periodic {@link #seedCandidateProvider} refresh on the
 	 * tend thread in {@link DiscoveryExecutionMode#TEND} mode. The deadline is measured, not
 	 * enforced: an overrunning call is never interrupted and blocks tend for its full duration. On
-	 * overrun, a warning is logged, the call's result is discarded and the last good seed list is kept.
-	 * After three consecutive overruns, the provider is no longer called from tend for the life
-	 * of the client instance and the seed list reverts to the one established at client
-	 * initialization. A new client instance starts with no overruns.
+	 * overrun, a warning is logged and the overrun is counted; the call's result is still published
+	 * when the call succeeds. The last good seed list is kept only when the call throws. After three
+	 * consecutive overruns, the provider is no longer called from tend for the life of the client
+	 * instance and the last published seed list is kept. A new client instance starts with no overruns.
 	 * <p>
 	 * When the provider needs periodic refresh in tend mode, this value must be greater than zero
 	 * and less or equal to {@link #tendInterval} / 2; otherwise client construction fails. Ignored

@@ -416,7 +416,7 @@ public class Cluster implements Runnable, Closeable {
 			}
 
 			this.seeds = hosts;
-			seedRefresher.start(hosts);
+			seedRefresher.start();
 
 			if (policy.forceSingleNode) {
 				// Communicate with the first seed node only.
@@ -826,16 +826,14 @@ public class Cluster implements Runnable, Closeable {
 				findNodesToRemove(peers);
 			}
 
-			// Add peer nodes to cluster before removing the nodes they replace.
+			// Remove nodes and add peer nodes in a batch.
 			boolean added = peers.nodes.size() > 0;
 
-			if (added) {
-				addNodes(peers.nodes);
-			}
-
-			// Remove nodes in a batch.
 			if (peers.nodesToRemove.size() > 0) {
 				removeNodes(peers);
+			}
+			else if (added) {
+				addNodes(peers.nodes);
 			}
 
 			if (added) {
@@ -999,12 +997,13 @@ public class Cluster implements Runnable, Closeable {
 					}
 					exceptions[i] = e;
 				}
-				else if (e instanceof AerospikeException.AlternateAddressMissing) {
-					if (Log.errorEnabled()) {
-						Log.error("Seed " + seed + " failed: " + e.getMessage());
+
+				if (isSeedRejected(e)) {
+					if (Log.warnEnabled()) {
+						Log.warn("Seed " + seed + " failed: " + e.getMessage());
 					}
 				}
-				else {
+				else if (! failIfNotConnected) {
 					if (Log.warnEnabled()) {
 						Log.warn("Seed " + seed + " failed: " + Util.getErrorMessage(e));
 					}
@@ -1024,8 +1023,8 @@ public class Cluster implements Runnable, Closeable {
 		if (failIfNotConnected) {
 			if (exceptions != null) {
 				for (Throwable ex : exceptions) {
-					if (ex instanceof AerospikeException.AlternateAddressMissing) {
-						throw (AerospikeException.AlternateAddressMissing)ex;
+					if (isSeedRejected(ex)) {
+						throw (AerospikeException)ex;
 					}
 				}
 			}
@@ -1048,6 +1047,14 @@ public class Cluster implements Runnable, Closeable {
 			throw new AerospikeException.Connection(sb.toString());
 		}
 		return false;
+	}
+
+	/**
+	 * Return true if the seed answered but cannot be used: its advertised address has no translation
+	 * under strict on_miss, or it has no alternate address.
+	 */
+	private static boolean isSeedRejected(Throwable e) {
+		return e instanceof AerospikeException.TranslationMiss || e instanceof AerospikeException.AlternateAddressMissing;
 	}
 
 	private void addSeedAndPeers(Node seed, Peers peers) {
@@ -1084,13 +1091,11 @@ public class Cluster implements Runnable, Closeable {
 
 			boolean added = peers.nodes.size() > 0;
 
-			if (added) {
-				// Add new peer nodes to cluster before removing the nodes they replace.
-				addNodes(peers.nodes);
-			}
-
 			if (peers.nodesToRemove.size() > 0) {
 				removeNodes(peers);
+			}
+			else if (added) {
+				addNodes(peers.nodes);
 			}
 
 			if (! added) {
@@ -1217,6 +1222,10 @@ public class Cluster implements Runnable, Closeable {
 		nodesMap.put(node.getName(), node);
 	}
 
+	/**
+	 * Remove nodes and add the peer nodes that replace them in the same copy, so the nodes array never
+	 * holds a node and its replacement.
+	 */
 	private final void removeNodes(Peers peers) {
 		Set<Node> nodesToRemove = peers.nodesToRemove;
 
@@ -1246,20 +1255,21 @@ public class Cluster implements Runnable, Closeable {
 		}
 
 		// Remove all nodes at once to avoid copying entire array multiple times.
-		removeNodesCopy(nodesToRemove);
+		removeNodesCopy(nodesToRemove, peers.nodes);
 		peers.removeNodes.clear();
 		nodesToRemove.clear();
 	}
 
 	/**
-	 * Remove nodes using copy on write semantics.
+	 * Remove nodes and add nodes using copy on write semantics.
 	 */
-	private final void removeNodesCopy(Set<Node> nodesToRemove) {
+	private final void removeNodesCopy(Set<Node> nodesToRemove, HashMap<String,Node> nodesToAdd) {
 		// Create temporary nodes array.
 		// Since nodes are only marked for deletion using node references in the nodes array,
 		// and the tend thread is the only thread modifying nodes, we are guaranteed that nodes
 		// in nodesToRemove exist.  Therefore, we know the final array size.
-		Node[] nodeArray = new Node[nodes.length - nodesToRemove.size()];
+		int expected = nodes.length - nodesToRemove.size();
+		Node[] nodeArray = new Node[expected + nodesToAdd.size()];
 		int count = 0;
 
 		// Add nodes that are not in remove list.
@@ -1275,10 +1285,17 @@ public class Cluster implements Runnable, Closeable {
 		}
 
 		// Do sanity check to make sure assumptions are correct.
+		if (count < expected && Log.warnEnabled()) {
+			Log.warn("Node remove mismatch. Expected " + expected + " Received " + count);
+		}
+
+		// Add new nodes.
+		for (Node node : nodesToAdd.values()) {
+			nodeArray[count++] = node;
+			addNode(node);
+		}
+
 		if (count < nodeArray.length) {
-			if (Log.warnEnabled()) {
-				Log.warn("Node remove mismatch. Expected " + nodeArray.length + " Received " + count);
-			}
 			// Resize array.
 			Node[] nodeArray2 = new Node[count];
 			System.arraycopy(nodeArray, 0, nodeArray2, 0, count);

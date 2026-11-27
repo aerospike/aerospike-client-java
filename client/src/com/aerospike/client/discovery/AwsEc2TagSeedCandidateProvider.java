@@ -91,9 +91,8 @@ import com.aerospike.client.configuration.serializers.staticconfig.StaticDiscove
  * in {@link DiscoveryExecutionMode#TEND}. {@link Builder#timeout} must not exceed
  * {@link com.aerospike.client.policy.ClientPolicy#discoveryRefreshTimeout}; client construction fails
  * otherwise. Every connect and read of one refresh, credentials included, is bounded by the time left
- * of {@link Builder#timeout}, and the first refresh, which also resolves the credential chain, by
- * {@link Builder#initTimeout}. Client construction waits for the first refresh at most
- * {@code discoveryRefreshTimeout}. Endpoint host names are resolved by the system resolver, which the
+ * of {@link Builder#timeout}, at client construction and on every later refresh. Client construction
+ * waits for the first refresh at most {@code discoveryRefreshTimeout}. Endpoint host names are resolved by the system resolver, which the
  * provider cannot bound. The provider starts no thread and uses no HTTP proxy.
  * <p>
  * The provider sees only the instances of the credentials' own account, so it serves self-managed
@@ -245,11 +244,15 @@ public final class AwsEc2TagSeedCandidateProvider implements SeedCandidateProvid
 	/**
 	 * Default refresh timeout in milliseconds.
 	 */
-	public static final int DEFAULT_TIMEOUT = 2000;
+	public static final int DEFAULT_TIMEOUT = 5000;
 
 	/**
-	 * Default first refresh timeout in milliseconds.
+	 * Former default first refresh timeout in milliseconds. Not used: every refresh, the first
+	 * included, is bounded by {@link Builder#timeout}.
+	 *
+	 * @deprecated	the first refresh uses {@link #DEFAULT_TIMEOUT}
 	 */
+	@Deprecated
 	public static final int DEFAULT_INIT_TIMEOUT = 10000;
 
 	static final String API_VERSION = "2016-11-15";
@@ -264,7 +267,6 @@ public final class AwsEc2TagSeedCandidateProvider implements SeedCandidateProvid
 	private final int port;
 	private final String tlsName;
 	private final int timeout;
-	private final int initTimeout;
 	private final String endpoint;
 	private final URI uri;
 	private final String hostHeader;
@@ -331,10 +333,6 @@ public final class AwsEc2TagSeedCandidateProvider implements SeedCandidateProvid
 			throw new AerospikeException("Invalid AWS EC2 seed provider timeout: " + builder.timeout);
 		}
 
-		if (builder.initTimeout <= 0) {
-			throw new AerospikeException("Invalid AWS EC2 seed provider initTimeout: " + builder.initTimeout);
-		}
-
 		if (builder.credentials != null && builder.credentialsHook != null) {
 			throw new AerospikeException("Invalid AWS EC2 seed provider credentials: credentials and credentialsHook " +
 				"cannot both be set");
@@ -362,7 +360,6 @@ public final class AwsEc2TagSeedCandidateProvider implements SeedCandidateProvid
 		this.port = builder.port;
 		this.tlsName = builder.tlsName;
 		this.timeout = builder.timeout;
-		this.initTimeout = builder.initTimeout;
 		this.endpoint = builder.endpoint;
 		this.hostHeader = AwsHttp.host(uri);
 		this.path = (uri.getRawPath() == null || uri.getRawPath().isEmpty())? "/" : uri.getRawPath();
@@ -401,16 +398,15 @@ public final class AwsEc2TagSeedCandidateProvider implements SeedCandidateProvid
 	}
 
 	/**
-	 * List the running instances matching the filters and return one host per instance. The first
-	 * call, at client initialization, is bounded by {@link #getInitTimeout()}; later calls by
-	 * {@link #getTimeout()}.
+	 * List the running instances matching the filters and return one host per instance. Every call,
+	 * the first at client initialization included, is bounded by {@link #getTimeout()}.
 	 *
-	 * @throws AerospikeException	on any API, credential or timeout failure
+	 * @throws AerospikeException	on a timeout
+	 * @throws SeedCandidateException	on any API or credential failure
 	 */
 	@Override
 	public List<Host> refreshSeedCandidates(SeedCandidateContext ctx) {
-		int budget = (ctx.tendIteration == 0)? initTimeout : timeout;
-		long deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(budget);
+		long deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(timeout);
 		Credentials credentials = chain.get(deadline);
 		TreeSet<String> addresses = new TreeSet<>();
 		String nextToken = null;
@@ -419,7 +415,7 @@ public final class AwsEc2TagSeedCandidateProvider implements SeedCandidateProvid
 		int pages = 0;
 
 		do {
-			Element root = describe(credentials, nextToken, deadline, budget);
+			Element root = describe(credentials, nextToken, deadline);
 			pages++;
 
 			for (Element reservation : AwsXml.children(AwsXml.child(root, "reservationSet"), "item")) {
@@ -454,7 +450,7 @@ public final class AwsEc2TagSeedCandidateProvider implements SeedCandidateProvid
 		return hosts;
 	}
 
-	private Element describe(Credentials credentials, String nextToken, long deadline, int budget) {
+	private Element describe(Credentials credentials, String nextToken, long deadline) {
 		String body = (nextToken == null)? query : query + "&NextToken=" + AwsSigV4.encode(nextToken);
 		byte[] payload = body.getBytes(StandardCharsets.UTF_8);
 		String amzDate = AwsSigV4.amzDate(env.currentTimeMillis());
@@ -479,10 +475,10 @@ public final class AwsEc2TagSeedCandidateProvider implements SeedCandidateProvid
 		}
 		catch (SocketTimeoutException e) {
 			throw new AerospikeException("AWS EC2 seed provider: DescribeInstances timed out after " +
-				budget + "ms");
+				timeout + "ms");
 		}
 		catch (IOException e) {
-			throw new AerospikeException("AWS EC2 seed provider: DescribeInstances failed: " +
+			throw new SeedCandidateException("AWS EC2 seed provider: DescribeInstances failed: " +
 				AwsXml.redact(e.toString(), credentials.getSecretAccessKey(), credentials.getSessionToken(), signature));
 		}
 
@@ -495,7 +491,7 @@ public final class AwsEc2TagSeedCandidateProvider implements SeedCandidateProvid
 			return xml.parse(response.body);
 		}
 		catch (Exception e) {
-			throw new AerospikeException("AWS EC2 seed provider: invalid DescribeInstances response: " + e.getMessage());
+			throw new SeedCandidateException("AWS EC2 seed provider: invalid DescribeInstances response: " + e.getMessage());
 		}
 	}
 
@@ -547,10 +543,13 @@ public final class AwsEc2TagSeedCandidateProvider implements SeedCandidateProvid
 	}
 
 	/**
-	 * Return the total timeout in milliseconds for the first refresh, credentials included.
+	 * Return the total timeout in milliseconds for the first refresh, which is {@link #getTimeout()}.
+	 *
+	 * @deprecated	use {@link #getTimeout()}
 	 */
+	@Deprecated
 	public int getInitTimeout() {
-		return initTimeout;
+		return timeout;
 	}
 
 	/**
@@ -571,7 +570,7 @@ public final class AwsEc2TagSeedCandidateProvider implements SeedCandidateProvid
 	/**
 	 * Return false. A cold EC2 call does not fit a tend refresh deadline, so the provider is not
 	 * eligible for {@link DiscoveryExecutionMode#TEND}. All I/O of one refresh is still bounded by
-	 * {@link #getTimeout()}, or {@link #getInitTimeout()} for the first.
+	 * {@link #getTimeout()}.
 	 */
 	@Override
 	public boolean supportsDeadline() {
@@ -593,7 +592,6 @@ public final class AwsEc2TagSeedCandidateProvider implements SeedCandidateProvid
 		private int port = DEFAULT_PORT;
 		private String tlsName;
 		private int timeout = DEFAULT_TIMEOUT;
-		private int initTimeout = DEFAULT_INIT_TIMEOUT;
 		private String endpoint;
 		private Credentials credentials;
 		private CredentialsHook credentialsHook;
@@ -681,8 +679,8 @@ public final class AwsEc2TagSeedCandidateProvider implements SeedCandidateProvid
 		}
 
 		/**
-		 * Total time in milliseconds for one refresh, credentials and every page included. Must be
-		 * greater than zero, and must not exceed
+		 * Total time in milliseconds for one refresh, credentials and every page included, at client
+		 * construction and on every later refresh. Must be greater than zero, and must not exceed
 		 * {@link com.aerospike.client.policy.ClientPolicy#discoveryRefreshTimeout}; the latter is
 		 * checked at client construction.
 		 * <p>
@@ -694,15 +692,12 @@ public final class AwsEc2TagSeedCandidateProvider implements SeedCandidateProvid
 		}
 
 		/**
-		 * Total time in milliseconds for the first refresh, which resolves the credential chain. Must
-		 * be greater than zero. Client construction waits for the first refresh at most
-		 * {@link com.aerospike.client.policy.ClientPolicy#discoveryRefreshTimeout}; a first refresh
-		 * that completes later still supplies the seeds for later re-seeds.
-		 * <p>
-		 * Default: {@link AwsEc2TagSeedCandidateProvider#DEFAULT_INIT_TIMEOUT}
+		 * Ignored. The first refresh is bounded by {@link #timeout(int)}, as every later refresh.
+		 *
+		 * @deprecated	use {@link #timeout(int)}
 		 */
+		@Deprecated
 		public Builder initTimeout(int initTimeout) {
-			this.initTimeout = initTimeout;
 			return this;
 		}
 

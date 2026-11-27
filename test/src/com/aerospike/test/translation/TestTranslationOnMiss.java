@@ -17,6 +17,7 @@
 package com.aerospike.test.translation;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -81,6 +82,14 @@ public class TestTranslationOnMiss {
 		}
 	}
 
+	public static final class SeedOnlyTranslator implements AddressTranslator {
+		@Override
+		public Optional<Host> translate(Endpoint advertised) {
+			return nodeA.equals(advertised.nodeName)? Optional.of(new Host(advertised.host, advertised.port)) :
+				Optional.empty();
+		}
+	}
+
 	@BeforeClass
 	public static void init() {
 		host = TestEnv.get("ENV_HOST");
@@ -110,11 +119,19 @@ public class TestTranslationOnMiss {
 	}
 
 	@Test
-	public void emptyIpMapStrictDropsPeer() throws Exception {
+	public void emptyIpMapStrictRejectsSeed() throws Exception {
 		ClientPolicy policy = policy();
 		policy.ipMap = new HashMap<>();
 		policy.translationOnMiss = TranslationMissMode.STRICT;
-		assertMisses("ipmap-empty-strict", policy, "static-map");
+
+		AerospikeException.TranslationMiss e = assertThrows(AerospikeException.TranslationMiss.class,
+			() -> new AerospikeClient(policy, new Host(host, portA)).close());
+
+		System.out.println("ON-MISS-SEED ipmap-empty-strict " + e.getMessage());
+
+		for (String part : new String[] {nodeA, "alternate", "static-map"}) {
+			assertTrue(e.getMessage(), e.getMessage().contains(part));
+		}
 	}
 
 	@Test
@@ -126,11 +143,11 @@ public class TestTranslationOnMiss {
 	}
 
 	@Test
-	public void customEmptyStrictDropsPeer() throws Exception {
+	public void customSeedOnlyStrictDropsPeer() throws Exception {
 		ClientPolicy policy = policy();
-		policy.addressTranslator = new EmptyTranslator();
+		policy.addressTranslator = new SeedOnlyTranslator();
 		policy.translationOnMiss = TranslationMissMode.STRICT;
-		assertMisses("custom-empty-strict", policy, EmptyTranslator.class.getName());
+		assertMisses("custom-seed-only-strict", policy, SeedOnlyTranslator.class.getName());
 	}
 
 	@Test

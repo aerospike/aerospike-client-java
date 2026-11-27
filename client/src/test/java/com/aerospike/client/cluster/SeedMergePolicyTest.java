@@ -78,7 +78,7 @@ public class SeedMergePolicyTest {
 	private Host[] init(SeedRefresher refresher, Host[] discovered) {
 		Host[] seeds = refresher.merge(discovered, true);
 		snapshot.set(seeds);
-		refresher.start(seeds);
+		refresher.start();
 		return seeds;
 	}
 
@@ -179,7 +179,7 @@ public class SeedMergePolicyTest {
 	}
 
 	@Test
-	public void failedOrOverrunRefreshKeepsSnapshotAndEmptyRefreshIsMerged() {
+	public void failedRefreshKeepsSnapshotAndLateOrEmptyRefreshIsMerged() {
 		for (SeedMergePolicy mergePolicy : SeedMergePolicy.values()) {
 			for (Host[] staticSeeds : new Host[][] {STATIC, EMPTY}) {
 				TestSeedProvider provider = new TestSeedProvider(true, true, D1);
@@ -202,11 +202,17 @@ public class SeedMergePolicyTest {
 				provider.result = call -> List.of();
 				provider.sleepMillis = 40;
 				r.tend(4, 1000);
-				assertSame(label, previous, snapshot.get());
-				assertTrue(label, snapshot.get().length > 0);
+				assertEquals(label, 1, r.getOverrunCount());
+				assertArrayEquals(label, (mergePolicy == SeedMergePolicy.REPLACE)? EMPTY : staticSeeds,
+					snapshot.get());
 
 				provider.sleepMillis = 0;
+				provider.result = call -> List.of(D1);
 				r.tend(5, 1000);
+				assertTrue(label, snapshot.get().length > 0);
+
+				provider.result = call -> List.of();
+				r.tend(6, 1000);
 				assertArrayEquals(label, (mergePolicy == SeedMergePolicy.REPLACE)? EMPTY : staticSeeds,
 					snapshot.get());
 			}
@@ -214,20 +220,25 @@ public class SeedMergePolicyTest {
 	}
 
 	@Test
-	public void tripRestoresMergedInitSnapshot() {
+	public void tripKeepsLastPublishedSnapshot() {
 		for (SeedMergePolicy mergePolicy : SeedMergePolicy.values()) {
 			TestSeedProvider provider = new TestSeedProvider(true, true, D2);
 			SeedRefresher r = create(mergePolicy, provider, STATIC);
-			Host[] initSeeds = init(r, new Host[] {D1});
+			init(r, new Host[] {D1});
 
 			r.tend(1, 1000);
 			provider.sleepMillis = 40;
+			provider.result = call -> List.of(D1);
 
 			for (int i = 1; i <= SeedRefresher.MAX_OVERRUNS; i++) {
 				r.tend(1 + i, 1000);
 			}
 			assertTrue(r.isTripped());
-			assertSame(mergePolicy.toString(), initSeeds, snapshot.get());
+			Host[] published = snapshot.get();
+			assertArrayEquals(mergePolicy.toString(), r.merge(new Host[] {D1}, false), published);
+
+			r.tend(10, 1000);
+			assertSame(mergePolicy.toString(), published, snapshot.get());
 		}
 		assertArrayEquals(new Host[] {D1}, snapshot.get());
 	}
@@ -290,7 +301,7 @@ public class SeedMergePolicyTest {
 	}
 
 	@Test
-	public void clusterTripRestoresMergedInitSnapshot() throws Exception {
+	public void clusterTripKeepsLastPublishedSnapshot() throws Exception {
 		Host deadSeed = new Host("127.0.0.1", 1);
 		Host initDiscovered = new Host("127.0.0.1", 2);
 		Host refreshed = new Host("127.0.0.1", 3);
@@ -313,7 +324,7 @@ public class SeedMergePolicyTest {
 
 			provider.sleepMillis = 100;
 			await(() -> cluster.seedRefresher.isTripped());
-			assertArrayEquals(new Host[] {deadSeed, initDiscovered}, cluster.getSeeds());
+			assertArrayEquals(new Host[] {deadSeed, refreshed}, cluster.getSeeds());
 		}
 		finally {
 			client.close();

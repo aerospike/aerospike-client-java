@@ -633,7 +633,6 @@ public class ConformanceTest {
 		AwsEc2TagSeedCandidateProvider.Builder builder = AwsEc2TagSeedCandidateProvider.builder()
 			.region((String)aws.get("region"))
 			.timeout(timeout)
-			.initTimeout(intOr(aws.get("init_timeout_ms"), Math.max(timeout, PROVIDER_TIMEOUT)))
 			.endpoint("http://127.0.0.1:" + fixtureHttpPort)
 			.credentials(ACCESS_KEY, SECRET_KEY, SESSION_TOKEN);
 

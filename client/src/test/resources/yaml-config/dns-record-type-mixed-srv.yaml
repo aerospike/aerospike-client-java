@@ -1,0 +1,11 @@
+version: 1.2.0
+static:
+  client:
+    discovery:
+      provider: dns
+      dns:
+        record_type: Srv
+        names:
+          - seeds.example.com
+        servers:
+          - 127.0.0.1

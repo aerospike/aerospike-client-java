@@ -111,7 +111,7 @@ static:
 | Key | Type | Values | Default | `DnsSeedCandidateProvider.Builder` method |
 | --- | --- | --- | --- | --- |
 | `names` | list of string | one or more DNS names, no duplicates (compared case-insensitively, trailing dot optional) | required | `names` |
-| `record_type` | string | `a` (A and AAAA records), `srv` (SRV records) | `a` | `recordType` |
+| `record_type` | string | `a` (A and AAAA records), `srv` (SRV records), in upper, lower or mixed case (`A`, `SRV`) | `a` | `recordType` |
 | `port` | int | port set on hosts resolved from A and AAAA records; ignored for `srv`, which uses each record's port | `3000` | `port` |
 | `tls_name` | string | TLS name set on every returned host | none | `tlsName` |
 | `timeout_ms` | int | total milliseconds for one refresh, across every name, record type, SRV target and resolver | `2000` in thread mode, `80` in tend mode | `timeout` |
@@ -241,8 +241,7 @@ AerospikeClient client = new AerospikeClient(policy, new Host("10.0.1.10", 3000)
 | `address_field` | string | `private_ip`, `public_ip`, `private_dns`, `public_dns` | `private_ip` | `addressField` |
 | `port` | int | port set on every host | `3000` | `port` |
 | `tls_name` | string | TLS name set on every host | none | `tlsName` |
-| `timeout_ms` | int | total milliseconds for one refresh, credentials and every page included | `2000` | `timeout` |
-| `init_timeout_ms` | int | total milliseconds for the first refresh, which runs in the client constructor and resolves the credentials | `10000` | `initTimeout` |
+| `timeout_ms` | int | total milliseconds for one refresh, credentials and every page included, at client construction and on every later refresh; must not exceed `refresh_timeout_ms` | `5000` | `timeout` |
 | `endpoint` | string | EC2 endpoint URL, `http` or `https`, such as a VPC interface endpoint | `https://ec2.<region>.amazonaws.com` | `endpoint` |
 
 Unknown keys inside the block are ignored. Static access keys (`credentials`) and the
@@ -289,11 +288,10 @@ the first source found, in this order, is used:
 
 Not in the chain: SSO, `credential_process`, `role_arn` profiles and cross-account roles.
 Use the hook for them; it may wrap the application's own AWS SDK credentials provider. The
-hook runs on the client's `discovery` thread, within `timeout_ms` (or `init_timeout_ms` for the
-first refresh). Credentials it returns with an expiry are cached until five minutes before
+hook runs on the client's `discovery` thread, within `timeout_ms`. Credentials it returns with an expiry are cached until five minutes before
 it; without one they are used for the life of the provider.
 
-The chain resolves once, at the first refresh, within `init_timeout_ms`, and logs
+The chain resolves once, at the first refresh, within `timeout_ms`, and logs
 `AWS EC2 seed provider credentials from <source>` at info level. Later
 refreshes reuse the source that answered. Temporary credentials are cached with their
 expiry and reloaded on the refreshing thread when they are within five minutes of expiry,
@@ -311,8 +309,8 @@ Client construction fails otherwise:
 AWS EC2 seed provider timeout 12000 must be less or equal to the discovery refresh timeout 10000
 ```
 
-Every connect and read of a refresh is bounded by the time left of `timeout_ms`, credentials
-included, and the first refresh by `init_timeout_ms`. The endpoint host names are resolved
+Every connect and read of a refresh, the first at client construction included, is bounded by
+the time left of `timeout_ms`, credentials included. The endpoint host names are resolved
 by the system resolver, which the provider cannot bound. Client construction waits for the
 first refresh at most `refresh_timeout_ms`; a first refresh that completes later is applied for
 later re-seeds. A refresh that takes longer than `refresh_timeout_ms` is logged as
@@ -323,11 +321,11 @@ Failure:
 
 | Case | Behaviour |
 | --- | --- |
-| An EC2 or STS error | The refresh fails with the HTTP status, AWS error code, message and request id, for example `AWS EC2 seed provider: DescribeInstances failed: HTTP 403 UnauthorizedOperation: You are not authorized to perform this operation. (request id ea966190-f9aa-478e-9ede-example)`. |
-| No credentials | The refresh fails with `AWS EC2 seed provider: no AWS credentials found in config, environment, shared credentials file, web identity or ECS, and IMDS token timed out` (or the IMDS failure). |
+| An EC2 or STS error | The refresh fails with `SeedCandidateException`, with the HTTP status, AWS error code, message and request id, for example `AWS EC2 seed provider: DescribeInstances failed: HTTP 403 UnauthorizedOperation: You are not authorized to perform this operation. (request id ea966190-f9aa-478e-9ede-example)`. |
+| No credentials | The refresh fails with `SeedCandidateException`: `AWS EC2 seed provider: no AWS credentials found in config, environment, shared credentials file, web identity or ECS, and IMDS token timed out` (or the IMDS failure). |
 | Timeout | The refresh fails with `AWS EC2 seed provider: DescribeInstances timed out after 80ms`. |
 | Any failure | On a periodic refresh the warning `Seed candidate refresh failed: ...` is logged and the previous seed list is kept. At client construction the warning `Seed candidate provider aws-tags failed: ...` is logged and the client continues with the seed hosts passed to the constructor; with none, construction fails with `SEED_DISCOVERY_FAILED` (-27). |
-| No instance matches | Not a failure: the refresh returns no host, and `merge_policy` decides the seed list. |
+| No instance matches | Not a failure: the refresh returns no host, and `merge_policy` decides the seed list. At client construction, when `merge_policy` leaves no seed host, construction fails with `SEED_DISCOVERY_FAILED` (-27): `Seed candidate provider aws-tags returned no hosts and no seed host is left. Merge policy: merge, configured seeds: 0`. |
 
 ## `static.client.translation`
 
@@ -352,7 +350,7 @@ Failure:
 | Value | Behaviour |
 | --- | --- |
 | `pass_through` (default) | Connect to the advertised endpoint unchanged. |
-| `strict` | Do not connect to the advertised endpoint; the miss fails with `AerospikeException.TranslationMiss`, result code `TRANSLATION_MISS` (-25). |
+| `strict` | Do not connect to the advertised endpoint; the miss fails with `AerospikeException.TranslationMiss`, result code `TRANSLATION_MISS` (-25). A missed peer is logged as a warning and retried on the next tend. A seed whose own advertised addresses all miss is not used: the miss is logged as a warning and the next seed is tried. Client construction fails with `TRANSLATION_MISS` only when no seed is left. |
 
 `provider` absent: `addressTranslator` is left as it is unless `static_map` is set,
 which implies `static-map`. `static_map` is valid only with `static-map` and
@@ -433,7 +431,7 @@ in code.
   any other provider or with no provider;
 - a `discovery.aws` block without `region` or `filters`, with an empty `filters`, a filter
   without `name` or with an empty `values`, an unknown `address_field`, or with `port` outside
-  1 to 65535 or `timeout_ms` or `init_timeout_ms` below 1;
+  1 to 65535 or `timeout_ms` below 1;
 - a `discovery.aws` value that the `AwsEc2TagSeedCandidateProvider` builder rejects, such as a
   `region` that is not a region name, an `endpoint` that is not an `http` or `https` URL, or a
   filter named `instance-state-name`. This is checked when the provider is built at client
