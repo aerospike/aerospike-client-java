@@ -63,6 +63,7 @@ public class HostnameAddressMoveTest {
 	private static final long MARGIN = 150;
 	private static final String A = "BB9A000000000001";
 	private static final String B = "BB9B000000000001";
+	private static final String C = "BB9C000000000001";
 
 	private static InetAddress first;
 	private static InetAddress second;
@@ -73,6 +74,7 @@ public class HostnameAddressMoveTest {
 	private final List<String> moves = new ArrayList<>();
 	private final List<String> replaces = new ArrayList<>();
 	private final List<String> warnings = new ArrayList<>();
+	private StubNodeServer[][] zone;
 	private AerospikeClient client;
 	private Sampler sampler;
 
@@ -230,6 +232,157 @@ public class HostnameAddressMoveTest {
 		assertNotNull(client.get(null, new Key(StubNodeServer.NAMESPACE, "set", 1)));
 		assertEquals(0, sampler.stop());
 		assertEquals(names.length, moves().size());
+	}
+
+	@Test
+	public void nodesUnlistedByLiveNodeMoveBeforeRemoval() throws Exception {
+		String[] names = {A, B, C};
+		Cluster cluster = cutZone(names);
+
+		for (int i = 1; i <= 3; i++) {
+			tend(cluster);
+
+			for (String name : names) {
+				assertTrue("tend " + i + ' ' + name, onAddress(cluster, name, first));
+			}
+		}
+		assertEquals(List.of(), moves());
+
+		tend(cluster);
+		assertTrue(onAddress(cluster, A, second));
+		assertTrue(onAddress(cluster, B, second));
+		assertTrue(onAddress(cluster, C, first));
+
+		for (int i = 1; i <= 3; i++) {
+			tend(cluster);
+			assertEquals("tend " + i + " after move", names.length, cluster.getNodes().length);
+		}
+
+		for (int i = 0; i < names.length; i++) {
+			assertTrue(names[i], ownsRange(cluster, names[i], i == 2 ? first : second, i));
+		}
+		assertEquals(2, moves().size());
+	}
+
+	@Test
+	public void unlistedNodeRemovedOnceCandidatesExhausted() throws Exception {
+		String[] names = {A, B, C};
+		Cluster cluster = cutZone(names);
+
+		zone[0][1].close();
+		zone[1][1].close();
+
+		for (int i = 1; i <= 3; i++) {
+			tend(cluster);
+			assertTrue("tend " + i, onAddress(cluster, A, first));
+			assertTrue("tend " + i, onAddress(cluster, B, first));
+		}
+
+		tend(cluster);
+		assertNull(node(cluster, A));
+		assertNull(node(cluster, B));
+		assertTrue(onAddress(cluster, C, first));
+		assertEquals(List.of(), moves());
+	}
+
+	/**
+	 * Nodes on one port each of the first address of a hostname that also resolves to an address
+	 * where nothing listens and to the second address. The first address then stops answering for
+	 * every node but the last, which also stops listing the others as peers.
+	 */
+	private Cluster cutZone(String[] names) throws Exception {
+		InetAddress dead = unbound();
+		String hostname = hostname("cut", first, dead, second);
+		int[] ports = new int[names.length];
+		StubNodeServer[][] pairs = new StubNodeServer[names.length][];
+		zone = pairs;
+
+		for (int i = 0; i < names.length; i++) {
+			pairs[i] = pair(names[i], names[i]);
+			ports[i] = pairs[i][0].port();
+
+			for (StubNodeServer server : pairs[i]) {
+				server.setOwnsPartitions(range(i), range(i + 1));
+			}
+		}
+
+		for (int i = 0; i < names.length; i++) {
+			StringBuilder sb = new StringBuilder("1,3000,[");
+
+			for (int j = 0; j < names.length; j++) {
+				if (j != i) {
+					if (sb.charAt(sb.length() - 1) == ']') {
+						sb.append(',');
+					}
+					sb.append('[').append(names[j]).append(",,[").append(hostname).append(':').append(ports[j]).append("]]");
+				}
+			}
+			sb.append(']');
+
+			for (StubNodeServer server : pairs[i]) {
+				server.setPeers(sb.toString());
+			}
+		}
+
+		Cluster cluster = drivenCluster(policy(), hostname, ports[0]);
+		tend(cluster);
+		assertEquals(names.length, cluster.getNodes().length);
+
+		for (int i = 0; i < names.length; i++) {
+			assertTrue(names[i], ownsRange(cluster, names[i], first, i));
+		}
+
+		int last = names.length - 1;
+
+		for (int i = 0; i < last; i++) {
+			pairs[i][0].close();
+		}
+		pairs[last][0].setPeers("1,3000,[]");
+		pairs[last][0].setPeersGeneration(2);
+		return cluster;
+	}
+
+	private static int range(int i) {
+		return Math.min(4096, i * 1366);
+	}
+
+	private static boolean ownsRange(Cluster cluster, String name, InetAddress address, int i) {
+		Partitions partitions = cluster.partitionMap.get(StubNodeServer.NAMESPACE);
+
+		if (partitions == null) {
+			return false;
+		}
+
+		AtomicReferenceArray<Node> master = partitions.replicas[0];
+
+		for (int p = range(i); p < range(i + 1); p++) {
+			Node node = master.get(p);
+
+			if (node == null || ! node.isActive() || ! node.getName().equals(name) ||
+				! node.getAddress().getAddress().equals(address)) {
+				return false;
+			}
+		}
+		return true;
+	}
+
+	/**
+	 * Local address other than the first and the second on which nothing listens.
+	 */
+	private static InetAddress unbound() {
+		for (String candidate : new String[] {"127.0.0.3", "::1", "fe80::1%lo0", "fe80::1%lo"}) {
+			try {
+				InetAddress address = InetAddress.getByName(candidate);
+
+				if (! address.equals(first) && ! address.equals(second) && canBind(address)) {
+					return address;
+				}
+			}
+			catch (IOException ioe) {
+			}
+		}
+		Assume.assumeTrue("No third local address can be bound", false);
+		return null;
 	}
 
 	@Test

@@ -1146,8 +1146,8 @@ public class Cluster implements Runnable, Closeable {
 						peers.removeNode(node);
 					}
 				}
-				else {
-					// Node not responding. Remove it.
+				else if (! node.hasMoveCandidate()) {
+					// Node not responding and cannot move to another address of its hostname. Remove it.
 					peers.removeNode(node);
 				}
 			}
