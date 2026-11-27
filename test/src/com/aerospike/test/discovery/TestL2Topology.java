@@ -100,6 +100,23 @@ public class TestL2Topology extends TestBase {
 	}
 
 	/**
+	 * Translator that maps one node to its advertised address and misses every other node.
+	 */
+	public static final class NodeOnlyTranslator implements AddressTranslator {
+		private final String nodeName;
+
+		public NodeOnlyTranslator(String nodeName) {
+			this.nodeName = nodeName;
+		}
+
+		@Override
+		public Optional<Host> translate(Endpoint advertised) {
+			return nodeName.equals(advertised.nodeName)? Optional.of(new Host(advertised.host, advertised.port)) :
+				Optional.empty();
+		}
+	}
+
+	/**
 	 * Seed provider that returns fixed seeds and records the time of every call.
 	 */
 	static final class CountingSeedProvider implements SeedCandidateProvider {
@@ -851,28 +868,45 @@ public class TestL2Topology extends TestBase {
 	}
 
 	/**
-	 * on_miss strict with an empty static-map (ipMap): every peer misses, the UX-2 error names the
-	 * peer, its advertised endpoint, the standard list and the translator, and is repeated every
-	 * tend. Only the seed is a {@link Node} and serves the keys it holds.
+	 * on_miss strict with an empty static-map (ipMap): the seed's own advertised address misses, so
+	 * the seed is not used and, with no seed left, initialization fails with TRANSLATION_MISS naming
+	 * the seed node, the standard list and the translator.
 	 */
 	@Test
-	public void strictEmptyIpMapDropsPeers() throws Exception {
+	public void strictEmptyIpMapRejectsSeed() throws Exception {
 		ClientPolicy policy = L2Topology.policy();
 		policy.ipMap = new HashMap<>();
 		policy.translationOnMiss = TranslationMissMode.STRICT;
-		assertStrictMissDropsPeers("ipmap-empty-strict", policy, "static-map");
+		assertStrictMissRejectsSeed("ipmap-empty-strict", policy, L2Topology.seed(), L2Topology.nodes().get(0).name, "standard",
+			"static-map");
 	}
 
 	/**
-	 * on_miss strict with a custom translator that maps nothing: as with the empty ipMap, named by
-	 * the translator class.
+	 * on_miss strict with a custom translator that maps only the seed: every peer misses, the miss
+	 * error names the peer, its advertised endpoint, the standard list and the translator class, and
+	 * is repeated every tend. Only the seed is a {@link Node} and serves the keys it holds.
 	 */
 	@Test
-	public void strictEmptyCustomTranslatorDropsPeers() throws Exception {
+	public void strictSeedOnlyTranslatorDropsPeers() throws Exception {
 		ClientPolicy policy = L2Topology.policy();
-		policy.addressTranslator = new EmptyTranslator();
+		policy.addressTranslator = new NodeOnlyTranslator(L2Topology.nodes().get(0).name);
 		policy.translationOnMiss = TranslationMissMode.STRICT;
-		assertStrictMissDropsPeers("custom-empty-strict", policy, EmptyTranslator.class.getName());
+		assertStrictMissDropsPeers("custom-seed-only-strict", policy, NodeOnlyTranslator.class.getName());
+	}
+
+	static void assertStrictMissRejectsSeed(String row, ClientPolicy policy, Host seed, String seedName, String sourceList,
+		String translator) {
+		captureWarnings();
+
+		AerospikeException.TranslationMiss e = assertThrows(AerospikeException.TranslationMiss.class,
+			() -> new AerospikeClient(policy, seed).close());
+
+		System.out.println("L2-SEED-MISS " + row + ' ' + e.getMessage());
+		assertEquals(ResultCode.TRANSLATION_MISS, e.getResultCode());
+
+		for (String part : new String[] {seedName, sourceList, translator}) {
+			assertTrue(part + " not in: " + e.getMessage(), e.getMessage().contains(part));
+		}
 	}
 
 	private static void assertStrictMissDropsPeers(String row, ClientPolicy policy, String translator) throws Exception {

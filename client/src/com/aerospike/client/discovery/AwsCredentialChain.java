@@ -89,7 +89,8 @@ final class AwsCredentialChain {
 	 * Return credentials, loading them when none are cached or the cached ones are within
 	 * {@link #REFRESH_MARGIN} of expiry. {@code deadline} is a {@link System#nanoTime()} value.
 	 *
-	 * @throws AerospikeException	if no credentials are found, a source fails or the deadline passes
+	 * @throws SeedCandidateException	if no credentials are found or a source fails
+	 * @throws AerospikeException	if the deadline passes
 	 */
 	Credentials get(long deadline) {
 		long now = env.currentTimeMillis();
@@ -147,7 +148,7 @@ final class AwsCredentialChain {
 			found = Source.IMDS;
 		}
 		else {
-			throw new AerospikeException("AWS EC2 seed provider: no AWS credentials found in config, environment, " +
+			throw new SeedCandidateException("AWS EC2 seed provider: no AWS credentials found in config, environment, " +
 				"shared credentials file, web identity or ECS, and IMDS is disabled");
 		}
 
@@ -158,7 +159,7 @@ final class AwsCredentialChain {
 		}
 		catch (AerospikeException ae) {
 			if (found == Source.IMDS) {
-				throw new AerospikeException("AWS EC2 seed provider: no AWS credentials found in config, " +
+				throw new SeedCandidateException("AWS EC2 seed provider: no AWS credentials found in config, " +
 					"environment, shared credentials file, web identity or ECS, and " +
 					ae.getBaseMessage().replace("AWS EC2 seed provider: ", ""), ae);
 			}
@@ -205,11 +206,11 @@ final class AwsCredentialChain {
 			credentials = hook.get();
 		}
 		catch (Throwable e) {
-			throw new AerospikeException("AWS EC2 seed provider: credentials hook failed: " + e.getClass().getName(), e);
+			throw new SeedCandidateException("AWS EC2 seed provider: credentials hook failed: " + e.getClass().getName(), e);
 		}
 
 		if (credentials == null) {
-			throw new AerospikeException("AWS EC2 seed provider: credentials hook returned null");
+			throw new SeedCandidateException("AWS EC2 seed provider: credentials hook returned null");
 		}
 		return credentials;
 	}
@@ -254,7 +255,7 @@ final class AwsCredentialChain {
 			lines = Files.readAllLines(path, StandardCharsets.UTF_8);
 		}
 		catch (IOException e) {
-			throw new AerospikeException("AWS EC2 seed provider: failed to read " + path + ": " + e, e);
+			throw new SeedCandidateException("AWS EC2 seed provider: failed to read " + path + ": " + e, e);
 		}
 
 		Map<String,String> keys = new HashMap<>();
@@ -296,7 +297,7 @@ final class AwsCredentialChain {
 				StandardCharsets.UTF_8).trim();
 		}
 		catch (IOException e) {
-			throw new AerospikeException("AWS EC2 seed provider: failed to read AWS_WEB_IDENTITY_TOKEN_FILE: " + e, e);
+			throw new SeedCandidateException("AWS EC2 seed provider: failed to read AWS_WEB_IDENTITY_TOKEN_FILE: " + e, e);
 		}
 
 		String session = env.getenv("AWS_ROLE_SESSION_NAME");
@@ -324,11 +325,11 @@ final class AwsCredentialChain {
 			credentials = (Element)xml.parse(response.body).getElementsByTagName("Credentials").item(0);
 		}
 		catch (Exception e) {
-			throw new AerospikeException("AWS EC2 seed provider: invalid STS AssumeRoleWithWebIdentity response");
+			throw new SeedCandidateException("AWS EC2 seed provider: invalid STS AssumeRoleWithWebIdentity response");
 		}
 
 		if (credentials == null) {
-			throw new AerospikeException("AWS EC2 seed provider: STS AssumeRoleWithWebIdentity response has no credentials");
+			throw new SeedCandidateException("AWS EC2 seed provider: STS AssumeRoleWithWebIdentity response has no credentials");
 		}
 		return temporary("STS AssumeRoleWithWebIdentity", AwsXml.text(credentials, "AccessKeyId"),
 			AwsXml.text(credentials, "SecretAccessKey"), AwsXml.text(credentials, "SessionToken"),
@@ -347,7 +348,7 @@ final class AwsCredentialChain {
 				authorization = new String(Files.readAllBytes(Paths.get(file)), StandardCharsets.UTF_8).trim();
 			}
 			catch (IOException e) {
-				throw new AerospikeException("AWS EC2 seed provider: failed to read AWS_CONTAINER_AUTHORIZATION_TOKEN_FILE: " +
+				throw new SeedCandidateException("AWS EC2 seed provider: failed to read AWS_CONTAINER_AUTHORIZATION_TOKEN_FILE: " +
 					e, e);
 			}
 		}
@@ -364,7 +365,7 @@ final class AwsCredentialChain {
 		AwsHttp.Response response = send("ECS credentials", "GET", uri, headers, null, deadline, authorization);
 
 		if (response.status != 200) {
-			throw new AerospikeException("AWS EC2 seed provider: ECS credentials failed: HTTP " + response.status);
+			throw new SeedCandidateException("AWS EC2 seed provider: ECS credentials failed: HTTP " + response.status);
 		}
 
 		Map<String,String> json = json(response, "ECS credentials");
@@ -380,7 +381,7 @@ final class AwsCredentialChain {
 		AwsHttp.Response response = send("IMDS token", "PUT", base + "/latest/api/token", headers, new byte[0], deadline);
 
 		if (response.status != 200) {
-			throw new AerospikeException("AWS EC2 seed provider: IMDS token failed: HTTP " + response.status);
+			throw new SeedCandidateException("AWS EC2 seed provider: IMDS token failed: HTTP " + response.status);
 		}
 
 		String token = response.text().trim();
@@ -391,7 +392,7 @@ final class AwsCredentialChain {
 			response = send("IMDS role", "GET", base + IMDS_CREDENTIALS, headers, null, deadline, token);
 
 			if (response.status != 200) {
-				throw new AerospikeException("AWS EC2 seed provider: IMDS role failed: HTTP " + response.status +
+				throw new SeedCandidateException("AWS EC2 seed provider: IMDS role failed: HTTP " + response.status +
 					" (no instance profile attached?)");
 			}
 
@@ -400,7 +401,7 @@ final class AwsCredentialChain {
 			role = (i >= 0)? role.substring(0, i).trim() : role;
 
 			if (role.isEmpty()) {
-				throw new AerospikeException("AWS EC2 seed provider: IMDS returned no instance profile role");
+				throw new SeedCandidateException("AWS EC2 seed provider: IMDS returned no instance profile role");
 			}
 			imdsRole = role;
 		}
@@ -408,14 +409,14 @@ final class AwsCredentialChain {
 		response = send("IMDS credentials", "GET", base + IMDS_CREDENTIALS + imdsRole, headers, null, deadline, token);
 
 		if (response.status != 200) {
-			throw new AerospikeException("AWS EC2 seed provider: IMDS credentials failed: HTTP " + response.status);
+			throw new SeedCandidateException("AWS EC2 seed provider: IMDS credentials failed: HTTP " + response.status);
 		}
 
 		Map<String,String> json = json(response, "IMDS credentials");
 		String code = json.get("Code");
 
 		if (code != null && ! code.equals("Success")) {
-			throw new AerospikeException("AWS EC2 seed provider: IMDS credentials failed: " + code);
+			throw new SeedCandidateException("AWS EC2 seed provider: IMDS credentials failed: " + code);
 		}
 		return temporary("IMDS credentials", json.get("AccessKeyId"), json.get("SecretAccessKey"), json.get("Token"),
 			json.get("Expiration"));
@@ -430,14 +431,14 @@ final class AwsCredentialChain {
 			throw new AerospikeException("AWS EC2 seed provider: " + action + " timed out");
 		}
 		catch (IOException | IllegalArgumentException e) {
-			throw new AerospikeException("AWS EC2 seed provider: " + action + " failed: " +
+			throw new SeedCandidateException("AWS EC2 seed provider: " + action + " failed: " +
 				AwsXml.redact(e.toString(), secrets));
 		}
 	}
 
 	private static Credentials temporary(String action, String key, String secret, String token, String expiration) {
 		if (key == null || key.isEmpty() || secret == null || secret.isEmpty() || expiration == null) {
-			throw new AerospikeException("AWS EC2 seed provider: " + action + " response has no credentials");
+			throw new SeedCandidateException("AWS EC2 seed provider: " + action + " response has no credentials");
 		}
 
 		long expires;
@@ -446,7 +447,7 @@ final class AwsCredentialChain {
 			expires = Instant.parse(expiration).toEpochMilli();
 		}
 		catch (RuntimeException e) {
-			throw new AerospikeException("AWS EC2 seed provider: " + action + " returned an invalid expiration: " +
+			throw new SeedCandidateException("AWS EC2 seed provider: " + action + " returned an invalid expiration: " +
 				expiration);
 		}
 		return new Credentials(key, secret, empty(token), expires);
@@ -457,7 +458,7 @@ final class AwsCredentialChain {
 			return Json.object(response.text());
 		}
 		catch (RuntimeException e) {
-			throw new AerospikeException("AWS EC2 seed provider: invalid " + action + " response");
+			throw new SeedCandidateException("AWS EC2 seed provider: invalid " + action + " response");
 		}
 	}
 

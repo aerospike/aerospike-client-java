@@ -42,6 +42,7 @@ import com.aerospike.client.discovery.TranslationMissMode;
 import com.aerospike.client.policy.ClientPolicy;
 import com.aerospike.test.discovery.L2Topology.L2Node;
 import com.aerospike.test.discovery.TestL2Topology.EmptyTranslator;
+import com.aerospike.test.discovery.TestL2Topology.NodeOnlyTranslator;
 import com.aerospike.test.util.TestBase;
 
 /**
@@ -151,31 +152,34 @@ public class TestL2ReachableNode extends TestBase {
 	}
 
 	/**
-	 * useServicesAlternate, on_miss strict and an empty ipMap: the peer with an alternate address
-	 * misses on the alternate list on every tend and only the seed is a {@link Node}.
+	 * useServicesAlternate, on_miss strict and an empty ipMap: the seed's own alternate address
+	 * misses, so the seed is not used and initialization fails with TRANSLATION_MISS.
 	 */
 	@Test
-	public void alternateEmptyIpMapStrictDropsPeer() throws Exception {
+	public void alternateEmptyIpMapStrictRejectsSeed() throws Exception {
 		requireAlternates();
 
+		L2Node seed = withAlternate(L2Topology.nodes()).get(0);
 		ClientPolicy policy = alternatePolicy();
 		policy.ipMap = new HashMap<>();
 		policy.translationOnMiss = TranslationMissMode.STRICT;
-		assertAlternateMisses("alternate-ipmap-empty-strict", policy, "static-map");
+		TestL2Topology.assertStrictMissRejectsSeed("alternate-ipmap-empty-strict", policy,
+			new Host(L2Topology.host, seed.port), seed.name, "alternate", "static-map");
 	}
 
 	/**
-	 * useServicesAlternate, on_miss strict and a custom translator that maps nothing: as with the
-	 * empty ipMap, named by the translator class.
+	 * useServicesAlternate, on_miss strict and a custom translator that maps only the seed: the peer
+	 * with an alternate address misses on the alternate list on every tend and only the seed is a
+	 * {@link Node}.
 	 */
 	@Test
-	public void alternateEmptyCustomStrictDropsPeer() throws Exception {
+	public void alternateSeedOnlyCustomStrictDropsPeer() throws Exception {
 		requireAlternates();
 
 		ClientPolicy policy = alternatePolicy();
-		policy.addressTranslator = new EmptyTranslator();
+		policy.addressTranslator = new NodeOnlyTranslator(withAlternate(L2Topology.nodes()).get(0).name);
 		policy.translationOnMiss = TranslationMissMode.STRICT;
-		assertAlternateMisses("alternate-custom-empty-strict", policy, EmptyTranslator.class.getName());
+		assertAlternateMisses("alternate-custom-seed-only-strict", policy, NodeOnlyTranslator.class.getName());
 	}
 
 	/**
@@ -347,9 +351,9 @@ public class TestL2ReachableNode extends TestBase {
 	private static List<String> alternateMissing(L2Node node) {
 		List<String> list = new ArrayList<>();
 
-		for (String error : TestL2Topology.errors) {
-			if (error.contains("Node " + node.name) && error.contains("useServicesAlternate")) {
-				list.add(error);
+		for (String warning : TestL2Topology.warnings) {
+			if (warning.contains("Node " + node.name) && warning.contains("useServicesAlternate")) {
+				list.add(warning);
 			}
 		}
 		return list;

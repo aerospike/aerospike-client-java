@@ -52,8 +52,9 @@ import com.aerospike.client.discovery.GuardedResolverProvider;
 import com.aerospike.client.policy.ClientPolicy;
 
 /**
- * A node on a hostname with several addresses moves to another address of the hostname once it has
- * failed three tends in a row, trying one address per tend.
+ * A node on a hostname moves to another address of the hostname once it has failed three tends in a
+ * row, trying one address per tend. A hostname that now resolves to a single other address supplies
+ * that address.
  */
 public class HostnameAddressMoveTest {
 	private static final int TEND_INTERVAL = 250;
@@ -678,6 +679,68 @@ public class HostnameAddressMoveTest {
 		}
 		assertEquals(0, other.connections());
 		assertEquals(List.of(), moves());
+	}
+
+	@Test
+	public void singleAddressHostnameMovesToNewAddress() throws Exception {
+		String hostname = hostname("renumbered", first);
+		StubNodeServer[] pair = pair(A, A);
+		StubNodeServer dead = pair[0];
+		StubNodeServer moved = pair[1];
+		int port = dead.port();
+
+		Cluster cluster = drivenCluster(policy(), hostname, port);
+		Node node = node(cluster, A);
+		assertEquals(first, node.getAddress().getAddress());
+
+		dead.close();
+		GuardedResolverProvider.register(hostname, second);
+
+		for (int i = 1; i <= 6 && node(cluster, A) == node; i++) {
+			tend(cluster);
+		}
+
+		Node replacement = node(cluster, A);
+		assertNotNull(replacement);
+		assertEquals(second, replacement.getAddress().getAddress());
+		assertFalse(node.isActive());
+		assertEquals(1, cluster.getNodes().length);
+		assertTrue(moved.connections() > 0);
+		assertEquals(List.of("Move node " + A + ' ' + hostname + " from 127.0.0.1 " + port + " to " +
+			replacement.getHost()), moves());
+	}
+
+	@Test
+	public void replacedNodeAndReplacementNeverShareNodes() throws Exception {
+		String hostname = hostname("one-name", first, second);
+		StubNodeServer dead = pair(A, A)[0];
+		int port = dead.port();
+
+		Cluster cluster = drivenCluster(policy(), hostname, port);
+		Node node = node(cluster, A);
+		List<String> duplicates = new ArrayList<>();
+
+		Log.setCallback((level, message) -> {
+			if (message.startsWith("Add node ") || message.startsWith("Remove node ") || message.startsWith("Move node ")) {
+				Set<String> names = new HashSet<>();
+
+				for (Node n : cluster.getNodes()) {
+					if (! names.add(n.getName())) {
+						duplicates.add(message + ": " + List.of(cluster.getNodes()));
+					}
+				}
+			}
+		});
+
+		dead.close();
+
+		for (int i = 1; i <= 6 && node(cluster, A) == node; i++) {
+			tend(cluster);
+		}
+
+		assertEquals(second, node(cluster, A).getAddress().getAddress());
+		assertEquals(1, cluster.getNodes().length);
+		assertEquals(List.of(), duplicates);
 	}
 
 	@Test

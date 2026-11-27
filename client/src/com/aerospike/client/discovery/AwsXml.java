@@ -130,7 +130,7 @@ final class AwsXml {
 	 * Return an exception for an AWS Query API error response, with the HTTP status, the AWS error
 	 * code and message and the request id when present. Each secret is removed from the message.
 	 */
-	AerospikeException error(String action, AwsHttp.Response response, String... secrets) {
+	SeedCandidateException error(String action, AwsHttp.Response response, String... secrets) {
 		String code = null;
 		String message = null;
 		String requestId = null;
@@ -166,7 +166,7 @@ final class AwsXml {
 		if (requestId != null) {
 			sb.append(" (request id ").append(requestId).append(')');
 		}
-		return new AerospikeException(redact(sb.toString(), secrets));
+		return new SeedCandidateException(redact(sb.toString(), secrets));
 	}
 
 	/**

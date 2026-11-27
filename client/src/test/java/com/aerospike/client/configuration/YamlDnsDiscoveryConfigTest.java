@@ -95,6 +95,19 @@ public class YamlDnsDiscoveryConfigTest {
 	}
 
 	@Test
+	public void recordTypeAcceptsUpperAndMixedCase() throws Exception {
+		String[][] cases = {{"dns-record-type-upper-a", "A"}, {"dns-record-type-upper-srv", "SRV"},
+			{"dns-record-type-mixed-srv", "SRV"}};
+
+		for (String[] c : cases) {
+			ClientPolicy policy = new ClientPolicy(new ClientPolicy(), YamlConfigProvider.getConfigProvider(path(c[0])));
+			DnsSeedCandidateProvider provider = (DnsSeedCandidateProvider)policy.seedCandidateProvider;
+
+			assertEquals(c[0], RecordType.valueOf(c[1]), provider.getRecordType());
+		}
+	}
+
+	@Test
 	public void invalidDnsBlock() throws Exception {
 		String block = "static.client.discovery.dns";
 
