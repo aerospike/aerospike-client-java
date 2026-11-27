@@ -52,7 +52,7 @@ import com.aerospike.client.policy.ClientPolicy;
 import com.aerospike.client.util.Version;
 
 public class AlternateAddressMissingTest {
-	private final List<String> errors = new ArrayList<>();
+	private final List<String> warnings = new ArrayList<>();
 	private final List<FakeNode> servers = new ArrayList<>();
 	private final List<Node> nodes = new ArrayList<>();
 	private AerospikeClient client;
@@ -63,9 +63,10 @@ public class AlternateAddressMissingTest {
 		testThread = Thread.currentThread();
 		Log.setLevel(Log.Level.WARN);
 		Log.setCallback((level, message) -> {
-			if (level == Log.Level.ERROR && Thread.currentThread() == testThread) {
-				synchronized (errors) {
-					errors.add(message);
+			if (level == Log.Level.WARN && message.contains("useServicesAlternate") &&
+				Thread.currentThread() == testThread) {
+				synchronized (warnings) {
+					warnings.add(message);
 				}
 			}
 		});
@@ -163,19 +164,34 @@ public class AlternateAddressMissingTest {
 		AerospikeException.AlternateAddressMissing e = assertThrows(AerospikeException.AlternateAddressMissing.class,
 			() -> new AerospikeClient(policy, new Host("127.0.0.1", a.port())));
 
-		assertEquals(ResultCode.CLIENT_ERROR, e.getResultCode());
+		assertEquals(ResultCode.ALTERNATE_ADDRESS_MISSING, e.getResultCode());
 		assertFalse(e.getInDoubt());
 		assertNames(e.getMessage(), "BB9A", "useServicesAlternate", "alternate-access-address", "set useServicesAlternate to false");
+		assertEquals(1, warnings().size());
 	}
 
 	@Test
-	public void seedWithoutAlternateLogsError() throws Exception {
+	public void seedWithoutAlternateLogsWarning() throws Exception {
 		FakeNode a = server("BB9A");
 		client = new AerospikeClient(policy(true), new Host("127.0.0.1", a.port()));
 
 		assertEquals(0, client.getNodes().length);
-		assertEquals(1, errors().size());
-		assertNames(errors().get(0), "BB9A", "useServicesAlternate", "alternate-access-address");
+		assertEquals(1, warnings().size());
+		assertNames(warnings().get(0), "BB9A", "useServicesAlternate", "alternate-access-address");
+	}
+
+	@Test
+	public void seedWithoutAlternateIsSkippedWhenAnotherSeedWorks() throws Exception {
+		FakeNode a = server("BB9A");
+		FakeNode b = server("BB9B");
+		b.serviceAlt = "127.0.0.1:" + b.port();
+
+		client = new AerospikeClient(policy(true), new Host("127.0.0.1", a.port()), new Host("127.0.0.1", b.port()));
+
+		assertEquals(1, client.getNodes().length);
+		assertEquals("BB9B", client.getNodes()[0].getName());
+		assertEquals(1, warnings().size());
+		assertNames(warnings().get(0), "Seed 127.0.0.1 " + a.port(), "BB9A", "useServicesAlternate");
 	}
 
 	@Test
@@ -192,10 +208,10 @@ public class AlternateAddressMissingTest {
 
 			assertTrue(peers.nodes.isEmpty());
 			assertEquals(-1, seed.getPeersGeneration());
-			assertEquals(tend, errors().size());
+			assertEquals(tend, warnings().size());
 		}
 		assertEquals(0, b.accepted());
-		assertNames(errors().get(0), "BB9B", "useServicesAlternate", "alternate-access-address");
+		assertNames(warnings().get(0), "BB9B", "useServicesAlternate", "alternate-access-address");
 		assertEquals(Arrays.asList(Arrays.asList("peers-clear-std", "peers-clear-alt"), Arrays.asList("peers-clear-std", "peers-clear-alt")),
 			a.requests());
 	}
@@ -217,8 +233,8 @@ public class AlternateAddressMissingTest {
 		assertEquals(Arrays.asList("BB9C"), new ArrayList<>(peers.nodes.keySet()));
 		assertEquals(-1, seed.getPeersGeneration());
 		assertEquals(0, b.accepted());
-		assertEquals(1, errors().size());
-		assertNames(errors().get(0), "BB9B", "useServicesAlternate");
+		assertEquals(1, warnings().size());
+		assertNames(warnings().get(0), "BB9B", "useServicesAlternate");
 	}
 
 	@Test
@@ -234,8 +250,8 @@ public class AlternateAddressMissingTest {
 
 		assertTrue(peers.nodes.isEmpty());
 		assertEquals(-1, seed.getPeersGeneration());
-		assertEquals(1, errors().size());
-		assertNames(errors().get(0), "127.0.0.1 " + b.port(), "BB9B", "useServicesAlternate");
+		assertEquals(1, warnings().size());
+		assertNames(warnings().get(0), "127.0.0.1 " + b.port(), "BB9B", "useServicesAlternate");
 	}
 
 	@Test
@@ -252,14 +268,15 @@ public class AlternateAddressMissingTest {
 		assertEquals(Arrays.asList("BB9B"), new ArrayList<>(peers.nodes.keySet()));
 		assertEquals(5, seed.getPeersGeneration());
 		assertEquals(Arrays.asList(Arrays.asList("peers-clear-std")), a.requests());
-		assertEquals(Collections.emptyList(), errors());
+		assertEquals(Collections.emptyList(), warnings());
 	}
 
 	@Test
-	public void exceptionIsClientError() {
+	public void exceptionIsAlternateAddressMissing() {
 		AerospikeException.AlternateAddressMissing e = new AerospikeException.AlternateAddressMissing("BB9B", null);
 
-		assertEquals(ResultCode.CLIENT_ERROR, e.getResultCode());
+		assertEquals(ResultCode.ALTERNATE_ADDRESS_MISSING, e.getResultCode());
+		assertEquals(-28, e.getResultCode());
 		assertFalse(e.getInDoubt());
 		assertNames(e.getMessage(), "BB9B", "useServicesAlternate", "alternate-access-address");
 	}
@@ -316,8 +333,8 @@ public class AlternateAddressMissingTest {
 	private Node node(ClientPolicy policy, FakeNode server) throws Exception {
 		client = client(policy);
 
-		synchronized (errors) {
-			errors.clear();
+		synchronized (warnings) {
+			warnings.clear();
 		}
 
 		InetSocketAddress address = new InetSocketAddress(InetAddress.getLoopbackAddress(), server.port());
@@ -333,13 +350,13 @@ public class AlternateAddressMissingTest {
 		return node;
 	}
 
-	private List<String> errors() {
-		synchronized (errors) {
-			return new ArrayList<>(errors);
+	private List<String> warnings() {
+		synchronized (warnings) {
+			return new ArrayList<>(warnings);
 		}
 	}
 
-	private static final class FakeNode implements AutoCloseable {
+	static final class FakeNode implements AutoCloseable {
 		final String name;
 		volatile String peersStd = "5,3000,[]";
 		volatile String peersAlt = "5,3000,[]";

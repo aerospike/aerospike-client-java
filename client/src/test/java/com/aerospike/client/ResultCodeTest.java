@@ -41,8 +41,10 @@ public class ResultCodeTest {
 		assertEquals(-25, ResultCode.TRANSLATION_MISS);
 		assertEquals(-26, ResultCode.TRANSLATION_COLLISION);
 		assertEquals(-27, ResultCode.SEED_DISCOVERY_FAILED);
+		assertEquals(-28, ResultCode.ALTERNATE_ADDRESS_MISSING);
 		assertEquals("Address translation miss", ResultCode.getResultString(ResultCode.TRANSLATION_MISS));
 		assertEquals("Address translation collision", ResultCode.getResultString(ResultCode.TRANSLATION_COLLISION));
 		assertEquals("Seed discovery failed", ResultCode.getResultString(ResultCode.SEED_DISCOVERY_FAILED));
+		assertEquals("Alternate address missing", ResultCode.getResultString(ResultCode.ALTERNATE_ADDRESS_MISSING));
 	}
 }

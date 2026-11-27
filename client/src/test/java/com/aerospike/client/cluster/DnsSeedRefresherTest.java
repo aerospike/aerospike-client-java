@@ -90,7 +90,7 @@ public class DnsSeedRefresherTest {
 		policy.discoveryRefreshInterval = 1000;
 		SeedRefresher r = new SeedRefresher(provider(80), policy, snapshot::set);
 		r.validate(1000);
-		r.start(INIT);
+		r.start();
 
 		r.tend(1, 1000);
 		Host[] lastGood = snapshot.get();

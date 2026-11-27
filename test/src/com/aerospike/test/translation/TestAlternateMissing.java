@@ -80,7 +80,7 @@ public class TestAlternateMissing {
 
 		Log.setLevel(Log.Level.WARN);
 		Log.setCallback((level, message) -> {
-			if (level == Log.Level.ERROR) {
+			if (level == Log.Level.WARN && message.contains("useServicesAlternate")) {
 				errors.add(message);
 			}
 			System.out.println("CLIENT-LOG " + level + ' ' + message);

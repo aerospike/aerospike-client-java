@@ -63,9 +63,11 @@ public class DiscoveryResultCodeTest {
 	}
 
 	@Test
-	public void alternateAddressMissingIsClientError() {
+	public void alternateAddressMissingIsAlternateAddressMissing() {
 		AerospikeException.AlternateAddressMissing e = new AerospikeException.AlternateAddressMissing("BB9A", null);
 
-		assertEquals(ResultCode.CLIENT_ERROR, e.getResultCode());
+		assertEquals(ResultCode.ALTERNATE_ADDRESS_MISSING, e.getResultCode());
+		assertEquals(-28, e.getResultCode());
+		assertFalse(e.getInDoubt());
 	}
 }

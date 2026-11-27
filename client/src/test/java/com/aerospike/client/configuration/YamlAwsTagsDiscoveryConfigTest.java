@@ -74,8 +74,7 @@ public class YamlAwsTagsDiscoveryConfigTest {
 		AwsEc2TagSeedCandidateProvider provider = (AwsEc2TagSeedCandidateProvider)policy.seedCandidateProvider;
 		System.out.println("YAML-AWS-ALL region=" + provider.getRegion() + " filters=" + provider.getFilters() +
 			" addressField=" + provider.getAddressField() + " port=" + provider.getPort() + " tlsName=" +
-			provider.getTlsName() + " timeout=" + provider.getTimeout() + " initTimeout=" + provider.getInitTimeout() +
-			" endpoint=" + provider.getEndpoint());
+			provider.getTlsName() + " timeout=" + provider.getTimeout() + " endpoint=" + provider.getEndpoint());
 
 		Map<String,List<String>> filters = new LinkedHashMap<>();
 		filters.put("tag:aerospike-cluster", Arrays.asList("prod-a", "prod-b"));
@@ -86,7 +85,6 @@ public class YamlAwsTagsDiscoveryConfigTest {
 		assertEquals(3100, provider.getPort());
 		assertEquals("tls-seed", provider.getTlsName());
 		assertEquals(60, provider.getTimeout());
-		assertEquals(5000, provider.getInitTimeout());
 		assertEquals("https://vpce-0123.ec2.eu-west-1.vpce.amazonaws.com", provider.getEndpoint());
 		assertEquals(SeedMergePolicy.MERGE, policy.discoveryMergePolicy);
 		assertEquals(99, policy.maxConnsPerNode);
@@ -103,8 +101,18 @@ public class YamlAwsTagsDiscoveryConfigTest {
 		assertEquals(AwsEc2TagSeedCandidateProvider.DEFAULT_PORT, provider.getPort());
 		assertNull(provider.getTlsName());
 		assertEquals(AwsEc2TagSeedCandidateProvider.DEFAULT_TIMEOUT, provider.getTimeout());
-		assertEquals(AwsEc2TagSeedCandidateProvider.DEFAULT_INIT_TIMEOUT, provider.getInitTimeout());
+		assertEquals(5000, provider.getTimeout());
 		assertNull(provider.getEndpoint());
+	}
+
+	@Test
+	public void initTimeoutKeyIsIgnored() throws Exception {
+		ClientPolicy policy = new ClientPolicy(new ClientPolicy(),
+			YamlConfigProvider.getConfigProvider(path("aws-init-timeout-ignored")));
+		AwsEc2TagSeedCandidateProvider provider = (AwsEc2TagSeedCandidateProvider)policy.seedCandidateProvider;
+
+		assertEquals(AwsEc2TagSeedCandidateProvider.DEFAULT_TIMEOUT, provider.getTimeout());
+		assertEquals(99, policy.maxConnsPerNode);
 	}
 
 	@Test
@@ -135,7 +143,6 @@ public class YamlAwsTagsDiscoveryConfigTest {
 		assertInvalid("invalid-aws-timeout-type", "Invalid " + block + ".timeout_ms value '1.5': expected an integer");
 		assertInvalid("invalid-aws-timeout-range",
 			"Invalid " + block + ".timeout_ms value '0': expected an integer from 1 to " + Integer.MAX_VALUE);
-		assertInvalid("invalid-aws-init-timeout-type", "Invalid " + block + ".init_timeout_ms value 'ten': expected an integer");
 		assertInvalid("invalid-aws-tls-name-type", "Invalid " + block + ".tls_name value '5': expected a string");
 		assertInvalid("invalid-aws-endpoint-type", "Invalid " + block + ".endpoint value '443': expected a string");
 	}

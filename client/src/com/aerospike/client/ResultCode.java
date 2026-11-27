@@ -22,6 +22,12 @@ package com.aerospike.client;
  */
 public final class ResultCode {
 	/**
+	 * {@link com.aerospike.client.policy.ClientPolicy#useServicesAlternate} is true and a node has no
+	 * alternate access address.
+	 */
+	public static final int ALTERNATE_ADDRESS_MISSING = -28;
+
+	/**
 	 * Seed candidate provider failed at client initialization and no seed host is left to try.
 	 */
 	public static final int SEED_DISCOVERY_FAILED = -27;
@@ -539,6 +545,9 @@ public final class ResultCode {
 	 */
 	public static String getResultString(int resultCode) {
 		switch (resultCode) {
+		case ALTERNATE_ADDRESS_MISSING:
+			return "Alternate address missing";
+
 		case SEED_DISCOVERY_FAILED:
 			return "Seed discovery failed";
 

@@ -200,7 +200,7 @@ public class DiscoveryRefreshTest {
 			provider.sleepMillis = 100;
 			await(() -> cluster.seedRefresher.isTripped());
 			assertEquals(SeedRefresher.MAX_OVERRUNS, cluster.seedRefresher.getOverrunCount());
-			assertArrayEquals(new Host[] {DEAD_SEED}, cluster.getSeeds());
+			assertArrayEquals(new Host[] {DEAD_SEED, REFRESHED}, cluster.getSeeds());
 
 			int calls = provider.calls.get();
 			int tends = cluster.getInvalidNodeCount();
@@ -304,7 +304,7 @@ public class DiscoveryRefreshTest {
 			readers[r].start();
 		}
 
-		refresher.start(cluster.getSeeds());
+		refresher.start();
 		Thread writer = new Thread(() -> {
 			for (int tendCount = 1; running.get() && provider.calls.get() < 20000; tendCount++) {
 				refresher.tend(tendCount, 1000);

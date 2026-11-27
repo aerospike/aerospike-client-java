@@ -88,7 +88,7 @@ public final class ConformanceAdapter {
 		SeedCandidateContext ctx = new SeedCandidateContext(policy.clusterName, staticSeeds, 0);
 		Host[] seeds = refresher.merge(provider.refreshSeedCandidates(ctx).toArray(new Host[0]), true);
 		snapshot.set(seeds);
-		refresher.start(seeds);
+		refresher.start();
 		snapshots.add(snapshot.get());
 
 		for (int tendCount = 1; iter.hasNext(); tendCount++) {
@@ -145,7 +145,7 @@ public final class ConformanceAdapter {
 		SeedCandidateContext ctx = new SeedCandidateContext(policy.clusterName, staticSeeds, 0);
 		Host[] seeds = refresher.merge(recording.refreshSeedCandidates(ctx).toArray(new Host[0]), true);
 		snapshot.set(seeds);
-		refresher.start(seeds);
+		refresher.start();
 		steps.add(last.get().seeds(snapshot.get()));
 
 		for (int i = 1; i < refreshes; i++) {
