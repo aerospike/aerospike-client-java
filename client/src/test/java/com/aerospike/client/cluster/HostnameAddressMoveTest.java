@@ -246,7 +246,7 @@ public class HostnameAddressMoveTest {
 				assertTrue("tend " + i + ' ' + name, onAddress(cluster, name, first));
 			}
 		}
-		assertEquals(List.of(), moves());
+		assertEquals(Collections.emptyList(), moves());
 
 		tend(cluster);
 		assertTrue(onAddress(cluster, A, second));
@@ -282,7 +282,7 @@ public class HostnameAddressMoveTest {
 		assertNull(node(cluster, A));
 		assertNull(node(cluster, B));
 		assertTrue(onAddress(cluster, C, first));
-		assertEquals(List.of(), moves());
+		assertEquals(Collections.emptyList(), moves());
 	}
 
 	/**
