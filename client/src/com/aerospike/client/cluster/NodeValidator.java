@@ -24,6 +24,7 @@ import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -35,13 +36,14 @@ import com.aerospike.client.Log;
 import com.aerospike.client.admin.AdminCommand;
 import com.aerospike.client.admin.AdminCommand.LoginCommand;
 import com.aerospike.client.command.Buffer;
+import com.aerospike.client.discovery.TranslationMissMode;
 import com.aerospike.client.policy.ClientPolicy;
 import com.aerospike.client.util.Crypto;
 import com.aerospike.client.util.Util;
 import com.aerospike.client.util.Version;
 
 public final class NodeValidator {
-	private static final int STAGGER_DELAY = 100;
+	private static final int STAGGER_DELAY = 250;
 	private static final int CONNECTED = 0;
 	private static final int PENDING = 1;
 	private static final int FAILED = 2;
@@ -73,9 +75,17 @@ public final class NodeValidator {
 		features = 0;
 
 		InetAddress[] addresses = getAddresses(host);
+		List<InetAddress> remaining = new ArrayList<InetAddress>(Arrays.asList(addresses));
+		int timeout = connectTimeout(cluster);
 		Throwable exception = null;
 
-		for (InetAddress address : addresses) {
+		while (! remaining.isEmpty()) {
+			InetAddress address = (addresses.length > 1)? connectFirst(host, remaining, timeout, 0) : remaining.remove(0);
+
+			if (address == null) {
+				break;
+			}
+
 			try {
 				validateAddress(cluster, address, host.tlsName, host.port, true, 0);
 				setHostname(host, address);
@@ -104,9 +114,10 @@ public final class NodeValidator {
 			return null;
 		}
 
-		// Exception can't be null here because getAddresses() will throw exception
-		// if aliases length is zero.
-		throw exception;
+		if (exception != null) {
+			throw exception;
+		}
+		throw noConnection(host, addresses.length, timeout);
 	}
 
 	private boolean validatePeers(Peers peers, Node node) {
@@ -182,10 +193,9 @@ public final class NodeValidator {
 
 	/**
 	 * Validate the first address of a host with several addresses whose connect completes. Connects
-	 * are started one at a time, the last validated address first, then in DNS order, the next one
-	 * when the stagger delay passes or an earlier connect fails. All connects end by
-	 * min(connectTimeout, tendInterval). When the address fails validation, the remaining addresses
-	 * are tried the same way until that bound.
+	 * are started one at a time, the last validated address first, then in DNS order. When the address
+	 * fails validation, the remaining addresses are tried the same way. All connects end by the tend
+	 * interval, so one host cannot hold the tend for longer than that.
 	 */
 	private void validateAny(Cluster cluster, Host host, InetAddress[] addresses) throws Throwable {
 		InetAddress preferred = cluster.validAddresses.get(host.name + ':' + host.port);
@@ -206,13 +216,12 @@ public final class NodeValidator {
 			}
 		}
 
-		int bound = (cluster.connectTimeout > 0) ? Math.min(cluster.connectTimeout, cluster.tendInterval) : cluster.tendInterval;
-		long delay = TimeUnit.MILLISECONDS.toNanos(Math.min(STAGGER_DELAY, bound / addresses.length));
-		long deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(bound);
+		int timeout = connectTimeout(cluster);
+		long deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(cluster.tendInterval);
 		Throwable exception = null;
 
 		while (true) {
-			InetAddress address = connectFirst(host, remaining, delay, deadline);
+			InetAddress address = connectFirst(host, remaining, timeout, deadline);
 
 			if (address == null) {
 				break;
@@ -239,19 +248,32 @@ public final class NodeValidator {
 			throw exception;
 		}
 		throw new AerospikeException.Connection("No connection to " + host + " completed for " + addresses.length +
-			" addresses within " + bound + "ms");
+			" addresses with connect timeout " + timeout + "ms within tend interval " + cluster.tendInterval + "ms");
+	}
+
+	private static int connectTimeout(Cluster cluster) {
+		return (cluster.connectTimeout > 0) ? cluster.connectTimeout : cluster.tendInterval;
+	}
+
+	private static AerospikeException.Connection noConnection(Host host, int count, int timeout) {
+		return new AerospikeException.Connection("No connection to " + host + " completed for " + count +
+			" addresses with connect timeout " + timeout + "ms");
 	}
 
 	/**
-	 * Return the first address whose connect completes, or null when none completes by the deadline.
-	 * The returned address and the addresses whose connect failed are removed from the list.
+	 * Return the first address whose connect completes, or null when every connect fails or times out.
+	 * Connects are started one at a time in list order, the next one when the stagger delay passes or
+	 * at once when an earlier connect fails. Each connect has the full timeout, cut short by the deadline
+	 * when one is given (0 means none). The returned address and the addresses whose connect failed are
+	 * removed from the list.
 	 */
-	private static InetAddress connectFirst(Host host, List<InetAddress> addresses, long delay, long deadline)
+	private static InetAddress connectFirst(Host host, List<InetAddress> addresses, int timeout, long deadline)
 		throws IOException {
 
+		long delay = TimeUnit.MILLISECONDS.toNanos(STAGGER_DELAY);
+		long limit = TimeUnit.MILLISECONDS.toNanos(timeout);
 		InetAddress connected = null;
 		int next = 0;
-		int pending = 0;
 
 		try (Selector selector = Selector.open()) {
 			try {
@@ -259,14 +281,41 @@ public final class NodeValidator {
 
 				while (connected == null) {
 					long now = System.nanoTime();
+					long expire = 0;
+					boolean pending = false;
 
-					if (now - deadline >= 0) {
-						break;
+					for (SelectionKey key : selector.keys()) {
+						if (! key.isValid()) {
+							continue;
+						}
+
+						Attempt attempt = (Attempt)key.attachment();
+
+						if (now - attempt.expire >= 0) {
+							if (Log.debugEnabled()) {
+								Log.debug("Address " + attempt.address + ' ' + host.port + " failed: connect timed out");
+							}
+							key.channel().close();
+							addresses.remove(attempt.address);
+							next--;
+							start = now;
+						}
+						else if (! pending || attempt.expire - expire < 0) {
+							expire = attempt.expire;
+							pending = true;
+						}
 					}
 
-					if (next < addresses.size() && now - start >= 0) {
+					boolean open = deadline == 0 || now - deadline < 0;
+
+					if (open && next < addresses.size() && now - start >= 0) {
 						InetAddress address = addresses.get(next);
-						int state = startConnect(selector, address, host.port);
+						long end = now + limit;
+
+						if (deadline != 0 && end - deadline > 0) {
+							end = deadline;
+						}
+						int state = startConnect(selector, address, host.port, end);
 
 						if (state == CONNECTED) {
 							connected = address;
@@ -274,7 +323,6 @@ public final class NodeValidator {
 						}
 
 						if (state == PENDING) {
-							pending++;
 							next++;
 							start = now + delay;
 						}
@@ -284,16 +332,18 @@ public final class NodeValidator {
 						continue;
 					}
 
-					if (pending == 0) {
+					boolean more = open && next < addresses.size() && (deadline == 0 || start - deadline < 0);
+
+					if (! pending && ! more) {
 						break;
 					}
 
-					long wait = ((next < addresses.size() && start - deadline < 0) ? start : deadline) - now;
-					selector.select(TimeUnit.NANOSECONDS.toMillis(wait + 999999));
+					long wake = (more && (! pending || start - expire < 0)) ? start : expire;
+					selector.select(Math.max(1, TimeUnit.NANOSECONDS.toMillis(wake - now + 999999)));
 
 					for (SelectionKey key : selector.selectedKeys()) {
 						SocketChannel channel = (SocketChannel)key.channel();
-						InetAddress address = (InetAddress)key.attachment();
+						InetAddress address = ((Attempt)key.attachment()).address;
 
 						try {
 							if (! channel.finishConnect()) {
@@ -313,7 +363,6 @@ public final class NodeValidator {
 							start = System.nanoTime();
 						}
 						channel.close();
-						pending--;
 					}
 					selector.selectedKeys().clear();
 				}
@@ -333,7 +382,7 @@ public final class NodeValidator {
 		return connected;
 	}
 
-	private static int startConnect(Selector selector, InetAddress address, int port) throws IOException {
+	private static int startConnect(Selector selector, InetAddress address, int port, long expire) throws IOException {
 		SocketChannel channel = SocketChannel.open();
 
 		try {
@@ -343,7 +392,7 @@ public final class NodeValidator {
 				channel.close();
 				return CONNECTED;
 			}
-			channel.register(selector, SelectionKey.OP_CONNECT, address);
+			channel.register(selector, SelectionKey.OP_CONNECT, new Attempt(address, expire));
 			return PENDING;
 		}
 		catch (IOException e) {
@@ -421,6 +470,7 @@ public final class NodeValidator {
 		int timeout) throws Exception {
 
 		long deadline = (timeout > 0) ? System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(timeout) : 0;
+		boolean strictSeed = detectLoadBalancer && cluster.translationOnMiss == TranslationMissMode.STRICT;
 		InetSocketAddress socketAddress = new InetSocketAddress(address, port);
 		Connection conn = (cluster.tlsPolicy != null) ?
 			new Connection(cluster.tlsPolicy, tlsName, socketAddress, (timeout > 0) ? timeout : cluster.connectTimeout) :
@@ -444,8 +494,9 @@ public final class NodeValidator {
 					conn = sc.clearConn;
 
 					// Disable load balancer detection since non-TLS address has already
-					// been retrieved via service info command.
+					// been retrieved and translated via service info command.
 					detectLoadBalancer = false;
+					strictSeed = false;
 				}
 			}
 
@@ -466,9 +517,10 @@ public final class NodeValidator {
 				detectLoadBalancer = false;
 			}
 
-			if (detectLoadBalancer || cluster.useServicesAlternate) {
+			if (detectLoadBalancer || cluster.useServicesAlternate || strictSeed) {
 				// Seed may be load balancer with changing address. Determine real address.
 				// The alternate address list must also contain the node itself.
+				// A strict seed must also have a translation for its own address.
 				addressCommand = (cluster.tlsPolicy != null)?
 					cluster.useServicesAlternate ? "service-tls-alt" : "service-tls-std" :
 					cluster.useServicesAlternate ? "service-clear-alt" : "service-clear-std";
@@ -504,6 +556,13 @@ public final class NodeValidator {
 
 			if (detectLoadBalancer) {
 				setAddress(cluster, map, addressCommand, tlsName);
+			}
+			else if (strictSeed) {
+				String result = map.get(addressCommand);
+
+				if (result != null && result.length() > 0) {
+					translateHosts(cluster, this.name, tlsName, Host.parseServiceHosts(result));
+				}
 			}
 
 			if (deadline != 0) {
@@ -604,18 +663,10 @@ public final class NodeValidator {
 			return;
 		}
 
-		List<Host> hosts = Host.parseServiceHosts(result);
-		Host h;
+		List<Host> hosts = translateHosts(cluster, this.name, tlsName, Host.parseServiceHosts(result));
 
 		// Search real hosts for seed.
-		for (Host host : hosts) {
-			try {
-				h = cluster.translateAddress(this.name, tlsName, host.name, host.port);
-			}
-			catch (AerospikeException.TranslationMiss tm) {
-				continue;
-			}
-
+		for (Host h : hosts) {
 			if (h.equals(this.primaryHost)) {
 				// Found seed which is not a load balancer.
 				return;
@@ -624,10 +675,8 @@ public final class NodeValidator {
 
 		// Seed not found, so seed is probably a load balancer.
 		// Find first valid real host.
-		for (Host host : hosts) {
+		for (Host h : hosts) {
 			try {
-				h = cluster.translateAddress(this.name, tlsName, host.name, host.port);
-
 				InetAddress[] addresses = InetAddress.getAllByName(h.name);
 
 				for (InetAddress address : addresses) {
@@ -673,6 +722,31 @@ public final class NodeValidator {
 		}
 	}
 
+	/**
+	 * Translate the addresses a node advertises. A strict miss skips the address. When every address
+	 * misses, the first miss is thrown.
+	 */
+	private static List<Host> translateHosts(Cluster cluster, String nodeName, String tlsName, List<Host> hosts) {
+		List<Host> translated = new ArrayList<Host>(hosts.size());
+		AerospikeException.TranslationMiss miss = null;
+
+		for (Host host : hosts) {
+			try {
+				translated.add(cluster.translateAddress(nodeName, tlsName, host.name, host.port));
+			}
+			catch (AerospikeException.TranslationMiss tm) {
+				if (miss == null) {
+					miss = tm;
+				}
+			}
+		}
+
+		if (miss != null && translated.isEmpty()) {
+			throw miss;
+		}
+		return translated;
+	}
+
 	private static int timeout(Cluster cluster, long deadline) {
 		if (deadline == 0) {
 			return cluster.connectTimeout;
@@ -684,6 +758,16 @@ public final class NodeValidator {
 			throw new AerospikeException.Connection("Validation did not complete in time");
 		}
 		return (int)remaining;
+	}
+
+	private static final class Attempt {
+		private final InetAddress address;
+		private final long expire;
+
+		private Attempt(InetAddress address, long expire) {
+			this.address = address;
+			this.expire = expire;
+		}
 	}
 
 	private static final class SwitchClear {
@@ -701,11 +785,14 @@ public final class NodeValidator {
 			String nodeName = map.get("node");
 			List<Host> hosts = Host.parseServiceHosts(result);
 			Host clearHost;
+			AerospikeException.TranslationMiss miss = null;
+			int translated = 0;
 
 			// Find first valid non-TLS host.
 			for (Host host : hosts) {
 				try {
 					clearHost = cluster.translateAddress(nodeName, tlsName, host.name, host.port);
+					translated++;
 
 					InetAddress[] addresses = InetAddress.getAllByName(clearHost.name);
 
@@ -734,9 +821,18 @@ public final class NodeValidator {
 						}
 					}
 				}
+				catch (AerospikeException.TranslationMiss tm) {
+					if (miss == null) {
+						miss = tm;
+					}
+				}
 				catch (Throwable e) {
 					// Try next host.
 				}
+			}
+
+			if (miss != null && translated == 0) {
+				throw miss;
 			}
 			throw new AerospikeException("Invalid non-TLS address: " + result);
 		}

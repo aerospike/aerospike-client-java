@@ -167,7 +167,7 @@ public class TestAwsTagsDiscovery {
 
 	@Test
 	public void case1BothNodesJoinThroughProvider() throws Exception {
-		try (AerospikeClient client = new AerospikeClient(policy(provider(80)))) {
+		try (AerospikeClient client = new AerospikeClient(policy(provider(AwsEc2TagSeedCandidateProvider.DEFAULT_TIMEOUT)))) {
 			String seeds = assertJoins("join", client);
 			assertEquals(seedList(hostA, hostB), seeds);
 
@@ -194,7 +194,7 @@ public class TestAwsTagsDiscovery {
 
 	@Test
 	public void case4UnauthorizedOperationKeepsClientRunning() throws Exception {
-		try (AerospikeClient client = new AerospikeClient(policy(provider(80)))) {
+		try (AerospikeClient client = new AerospikeClient(policy(provider(AwsEc2TagSeedCandidateProvider.DEFAULT_TIMEOUT)))) {
 			assertJoins("unauthorized-before", client);
 			messages.clear();
 			int sent = requests().size();

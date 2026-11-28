@@ -188,7 +188,7 @@ public class ThreadModeTest {
 	private Host[] start(SeedRefresher r) {
 		Host[] seeds = r.discover();
 		snapshot.set(seeds);
-		r.start(seeds);
+		r.start();
 		return seeds;
 	}
 

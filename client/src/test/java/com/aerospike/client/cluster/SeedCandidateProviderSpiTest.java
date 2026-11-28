@@ -44,6 +44,7 @@ import com.aerospike.client.Log;
 import com.aerospike.client.ResultCode;
 import com.aerospike.client.discovery.DiscoveryExecutionMode;
 import com.aerospike.client.discovery.SeedCandidateContext;
+import com.aerospike.client.discovery.SeedCandidateException;
 import com.aerospike.client.discovery.SeedCandidateProvider;
 import com.aerospike.client.discovery.SeedMergePolicy;
 import com.aerospike.client.discovery.StaticSeedCandidateProvider;
@@ -163,11 +164,76 @@ public class SeedCandidateProviderSpiTest {
 	}
 
 	@Test
-	public void emptyResultWithNoSeedIsNotDiscoveryFailure() {
+	public void seedCandidateExceptionIsHandledAsProviderFailure() throws Exception {
+		Provider provider = new Provider(false);
+		SeedCandidateException error = new SeedCandidateException("credentials rejected");
+		provider.refreshError = error;
+
+		AerospikeException ae = assertThrows(AerospikeException.class, () -> new AerospikeClient(policy(provider)));
+
+		assertEquals(ResultCode.SEED_DISCOVERY_FAILED, ae.getResultCode());
+		assertTrue(ae.getMessage(), ae.getMessage().contains("credentials rejected"));
+		assertSame(error, ae.getCause());
+
+		TestSeedProvider periodic = new TestSeedProvider(true, true, OTHER_SEED);
+		ClientPolicy policy = policy(periodic);
+		policy.discoveryExecutionMode = DiscoveryExecutionMode.TEND;
+		AtomicReference<Host[]> snapshot = new AtomicReference<>();
+		SeedRefresher r = new SeedRefresher(periodic, policy, new Host[] {DEAD_SEED}, snapshot::set);
+		snapshot.set(r.discover());
+		r.start();
+		Host[] seeds = snapshot.get();
+
+		periodic.error = new SeedCandidateException("API down");
+		r.tend(policy.discoveryRefreshInterval / policy.tendInterval, policy.tendInterval);
+		assertSame(seeds, snapshot.get());
+		assertTrue(warnings.toString(), warnings.stream().anyMatch(m -> m.contains("API down")));
+	}
+
+	@Test
+	public void emptyResultWithNoSeedIsDiscoveryFailure() {
 		Provider provider = new Provider(false);
 
-		try (AerospikeClient client = new AerospikeClient(policy(provider))) {
-			assertEquals(0, client.getCluster().getSeeds().length);
+		AerospikeException ae = assertThrows(AerospikeException.class,
+			() -> new AerospikeClient(policy(provider)));
+
+		System.out.println("SEED-DISCOVERY-EMPTY " + ae.getMessage());
+		assertEquals(ResultCode.SEED_DISCOVERY_FAILED, ae.getResultCode());
+
+		for (String part : new String[] {Provider.class.getName(), "returned no hosts", "Merge policy: merge",
+			"configured seeds: 0"}) {
+			assertTrue(ae.getMessage(), ae.getMessage().contains(part));
+		}
+		assertEquals(1, provider.closes.get());
+	}
+
+	@Test
+	public void emptyResultWithSeedLeftByMergePolicyIsNotDiscoveryFailure() {
+		for (SeedMergePolicy mergePolicy : SeedMergePolicy.values()) {
+			Provider provider = new Provider(false);
+			ClientPolicy policy = policy(provider);
+			policy.discoveryMergePolicy = mergePolicy;
+
+			try (AerospikeClient client = new AerospikeClient(policy, DEAD_SEED)) {
+				assertArrayEquals(mergePolicy.toString(), new Host[] {DEAD_SEED}, client.getCluster().getSeeds());
+			}
+		}
+	}
+
+	@Test
+	public void providerFailureMessageNamesMergePolicyAndSeedCount() {
+		Provider provider = new Provider(false);
+		provider.refreshError = new IllegalStateException("cloud API down");
+		ClientPolicy policy = policy(provider);
+		policy.discoveryMergePolicy = SeedMergePolicy.DISCOVERY_ONLY;
+
+		AerospikeException ae = assertThrows(AerospikeException.class, () -> new AerospikeClient(policy));
+
+		assertEquals(ResultCode.SEED_DISCOVERY_FAILED, ae.getResultCode());
+
+		for (String part : new String[] {Provider.class.getName(), "cloud API down", "Merge policy: discovery_only",
+			"configured seeds: 0"}) {
+			assertTrue(ae.getMessage(), ae.getMessage().contains(part));
 		}
 	}
 
@@ -250,7 +316,7 @@ public class SeedCandidateProviderSpiTest {
 		Host[] seeds = r.discover();
 		assertArrayEquals(new Host[] {min, max}, seeds);
 		snapshot.set(seeds);
-		r.start(seeds);
+		r.start();
 
 		String prefix = "Seed candidate provider " + TestSeedProvider.class.getName() +
 			" returned invalid host at index ";
@@ -286,7 +352,7 @@ public class SeedCandidateProviderSpiTest {
 
 		Host[] seeds = r.discover();
 		snapshot.set(seeds);
-		r.start(seeds);
+		r.start();
 
 		String prefix = "Seed candidate provider " + TestSeedProvider.class.getName() +
 			" returned invalid host at index ";
@@ -330,7 +396,7 @@ public class SeedCandidateProviderSpiTest {
 		Host[] seeds = r.discover();
 		assertArrayEquals(new Host[] {seed, a}, seeds);
 		snapshot.set(seeds);
-		r.start(seeds);
+		r.start();
 
 		provider.result = call -> Arrays.asList(a, seed);
 		r.tend(2, 250);

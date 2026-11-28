@@ -44,12 +44,13 @@ import com.aerospike.client.discovery.GuardedResolverProvider;
 import com.aerospike.client.policy.ClientPolicy;
 
 /**
- * Peer validation of a host name that resolves to several addresses starts a connect to one address
- * at a time, 100 ms apart, and validates the first that completes.
+ * Seed and peer validation of a host name that resolves to several addresses starts a connect to one
+ * address at a time, 250 ms apart or at once when the previous connect fails, and validates the first
+ * that completes. Each connect has the full connect timeout.
  */
 public class StaggeredConnectTest {
 	private static final String NODE = "BB9D000000000001";
-	private static final long STAGGER = 100;
+	private static final long STAGGER = 250;
 	private static final long MARGIN = 250;
 
 	private InetAddress first;
@@ -103,7 +104,7 @@ public class StaggeredConnectTest {
 
 	@Test
 	public void hungAddressDelaysNextByStagger() throws Throwable {
-		Cluster cluster = cluster(3000, 250);
+		Cluster cluster = cluster(3000, 1000);
 		int port = freePort();
 		InetAddress hung = hung(second, "192.0.2.1", port);
 		StubNodeServer live = server(first, port, NODE);
@@ -115,14 +116,14 @@ public class StaggeredConnectTest {
 		long started = TimeUnit.NANOSECONDS.toMillis(live.firstAccept() - begin);
 
 		assertTrue("second address started at " + started + "ms", started >= STAGGER && started < STAGGER + MARGIN);
-		assertTrue("validateNode took " + elapsed + "ms", elapsed < 250 + MARGIN);
+		assertTrue("validateNode took " + elapsed + "ms", elapsed < STAGGER + MARGIN);
 		assertEquals(NODE, nv.name);
 		assertEquals(first, nv.primaryAddress.getAddress());
 	}
 
 	@Test
-	public void everyAddressStartsWithinBound() throws Throwable {
-		Cluster cluster = cluster(200, 1000);
+	public void delayIsNotDividedBetweenAddresses() throws Throwable {
+		Cluster cluster = cluster(3000, 1000);
 		int port = freePort();
 		InetAddress hung1 = hung(second, "192.0.2.1", port);
 		InetAddress hung2 = hung(InetAddress.getByName("127.0.0.3"), "192.0.2.2", port);
@@ -134,9 +135,28 @@ public class StaggeredConnectTest {
 		validate(nv, cluster, new Host(hostname, port));
 		long started = TimeUnit.NANOSECONDS.toMillis(live.firstAccept() - begin);
 
-		// The delay is 200 / 3 ms, so the third address starts after two delays and before the bound.
-		assertTrue("third address started at " + started + "ms", started >= 2 * (200 / 3) && started < 200);
+		assertTrue("third address started at " + started + "ms", started >= 2 * STAGGER && started < 2 * STAGGER + MARGIN);
 		assertEquals(first, nv.primaryAddress.getAddress());
+	}
+
+	@Test
+	public void seedWithSeveralAddressesConnectsStaggered() throws Throwable {
+		Cluster cluster = cluster(3000, 1000);
+		int port = freePort();
+		InetAddress hung = hung(second, "192.0.2.1", port);
+		StubNodeServer live = server(first, port, NODE);
+		String hostname = hostname("seed", hung, first);
+
+		long begin = System.nanoTime();
+		Node node = new NodeValidator().seedNode(cluster, new Host(hostname, port), null);
+		long elapsed = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - begin);
+		long started = TimeUnit.NANOSECONDS.toMillis(live.firstAccept() - begin);
+		node.close();
+
+		assertTrue("second address started at " + started + "ms", started >= STAGGER && started < STAGGER + MARGIN);
+		assertTrue("seedNode took " + elapsed + "ms", elapsed < STAGGER + MARGIN);
+		assertEquals(NODE, node.getName());
+		assertEquals(first, node.getAddress().getAddress());
 	}
 
 	@Test
@@ -156,8 +176,8 @@ public class StaggeredConnectTest {
 	}
 
 	@Test
-	public void everyAddressHungFailsWithinBound() throws Throwable {
-		Cluster cluster = cluster(3000, 250);
+	public void everyAddressHungFailsWhenLastConnectTimesOut() throws Throwable {
+		Cluster cluster = cluster(300, 2000);
 		int port = freePort();
 		String hostname = hostname("dead", hung(first, "192.0.2.1", port), hung(second, "192.0.2.2", port));
 
@@ -169,10 +189,11 @@ public class StaggeredConnectTest {
 		}
 		catch (AerospikeException.Connection e) {
 			long elapsed = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - begin);
-			assertTrue("validateNode took " + elapsed + "ms", elapsed < 250 + MARGIN);
+			// The second connect starts after the stagger delay and has the full timeout.
+			assertTrue("validateNode took " + elapsed + "ms", elapsed >= STAGGER + 300 - 50 && elapsed < STAGGER + 300 + MARGIN);
 			assertTrue(e.getMessage(), e.getMessage().contains(hostname + ' ' + port));
 			assertTrue(e.getMessage(), e.getMessage().contains("2 addresses"));
-			assertTrue(e.getMessage(), e.getMessage().contains("250ms"));
+			assertTrue(e.getMessage(), e.getMessage().contains("300ms"));
 		}
 	}
 
@@ -248,8 +269,8 @@ public class StaggeredConnectTest {
 	}
 
 	@Test
-	public void timeoutBelowTendIntervalBoundsWait() throws Throwable {
-		Cluster cluster = cluster(400, 1000);
+	public void connectTimeoutIsNotSplitBetweenAddresses() throws Throwable {
+		Cluster cluster = cluster(400, 2000);
 		int port = freePort();
 		String hostname = hostname("timeout", hung(first, "192.0.2.1", port), hung(second, "192.0.2.2", port));
 
@@ -261,8 +282,27 @@ public class StaggeredConnectTest {
 		}
 		catch (AerospikeException.Connection e) {
 			long elapsed = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - begin);
-			assertTrue("validateNode took " + elapsed + "ms", elapsed >= 400 - 50 && elapsed < 400 + MARGIN);
+			assertTrue("validateNode took " + elapsed + "ms", elapsed >= STAGGER + 400 - 50 && elapsed < STAGGER + 400 + MARGIN);
 			assertTrue(e.getMessage(), e.getMessage().contains("400ms"));
+		}
+	}
+
+	@Test
+	public void connectsEndByTheTendInterval() throws Throwable {
+		Cluster cluster = cluster(1000, 400);
+		int port = freePort();
+		String hostname = hostname("bound", hung(first, "192.0.2.1", port), hung(second, "192.0.2.2", port));
+
+		long begin = System.nanoTime();
+
+		try {
+			new NodeValidator().validateNode(cluster, new Host(hostname, port));
+			fail("validateNode succeeded");
+		}
+		catch (AerospikeException.Connection e) {
+			long elapsed = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - begin);
+			assertTrue("validateNode took " + elapsed + "ms", elapsed >= 400 - 50 && elapsed < 400 + MARGIN);
+			assertTrue(e.getMessage(), e.getMessage().contains("tend interval 400ms"));
 		}
 	}
 

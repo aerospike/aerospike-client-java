@@ -18,6 +18,7 @@ package com.aerospike.client.cluster;
 
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
@@ -55,7 +56,6 @@ final class SeedRefresher {
 	private final int refreshTimeout;
 	private final Object lock = new Object();
 	private final AtomicBoolean providerClosed = new AtomicBoolean();
-	private Host[] initSeeds;
 	private volatile int overrunCount;
 	private volatile boolean tripped;
 	private volatile int lastTendCount;
@@ -149,7 +149,7 @@ final class SeedRefresher {
 	 * timeout. A first refresh that completes later is published when {@link #start} has been called.
 	 *
 	 * @throws AerospikeException	with {@link ResultCode#SEED_DISCOVERY_FAILED} when the first refresh
-	 * fails or does not complete in time and no seed host is left
+	 * fails, does not complete in time or returns no hosts and no seed host is left
 	 */
 	Host[] discover() {
 		Host[] discovered = null;
@@ -207,16 +207,18 @@ final class SeedRefresher {
 
 		Host[] hosts = merge((discovered != null)? discovered : new Host[0], true);
 
-		if (error != null && hosts.length == 0) {
+		if (hosts.length == 0 && (error != null || ! (provider instanceof StaticSeedCandidateProvider))) {
+			String reason = (error != null)? "failed and no seed host is left: " + error :
+				"returned no hosts and no seed host is left";
+
 			throw new AerospikeException(ResultCode.SEED_DISCOVERY_FAILED, "Seed candidate provider " +
-				providerName(provider) + " failed and no seed host is left: " + error, error);
+				providerName(provider) + ' ' + reason + ". Merge policy: " + mergePolicy.name().toLowerCase(Locale.ROOT) +
+				", configured seeds: " + staticSeeds.length, error);
 		}
 		return hosts;
 	}
 
-	void start(Host[] initSeeds) {
-		this.initSeeds = initSeeds;
-
+	void start() {
 		if (threaded) {
 			synchronized (lock) {
 				started = true;
@@ -294,30 +296,29 @@ final class SeedRefresher {
 		Host[] hosts = refresh(tendCount);
 		long elapsed = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - begin);
 
-		if (elapsed > tendRefreshDeadline) {
-			int count = ++overrunCount;
+		if (hosts != null) {
+			publishMerged(hosts, false);
+		}
 
-			if (Log.warnEnabled()) {
-				Log.warn("Seed candidate refresh took " + elapsed + "ms, exceeding tend deadline " +
-					tendRefreshDeadline + "ms. Consecutive overruns: " + count);
-			}
-
-			if (count >= MAX_OVERRUNS) {
-				tripped = true;
-				publish(initSeeds);
-
-				if (Log.errorEnabled()) {
-					Log.error("Seed candidate provider exceeded tend deadline " + count +
-						" consecutive times. Provider disabled for this client and initial seeds restored");
-				}
-			}
+		if (elapsed <= tendRefreshDeadline) {
+			overrunCount = 0;
 			return;
 		}
 
-		overrunCount = 0;
+		int count = ++overrunCount;
 
-		if (hosts != null) {
-			publishMerged(hosts, false);
+		if (Log.warnEnabled()) {
+			Log.warn("Seed candidate refresh took " + elapsed + "ms, exceeding tend deadline " +
+				tendRefreshDeadline + "ms. Consecutive overruns: " + count);
+		}
+
+		if (count >= MAX_OVERRUNS) {
+			tripped = true;
+
+			if (Log.errorEnabled()) {
+				Log.error("Seed candidate provider exceeded tend deadline " + count +
+					" consecutive times. Provider disabled for this client and the last published seeds kept");
+			}
 		}
 	}
 

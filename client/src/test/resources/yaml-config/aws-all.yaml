@@ -20,6 +20,5 @@ static:
         port: 3100
         tls_name: tls-seed
         timeout_ms: 60
-        init_timeout_ms: 5000
         endpoint: https://vpce-0123.ec2.eu-west-1.vpce.amazonaws.com
         access_key_id: ignored-unknown-key

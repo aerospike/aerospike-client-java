@@ -101,6 +101,20 @@ public class AwsTagsSeedRefresherTest {
 	}
 
 	@Test
+	public void defaultTimeoutAboveRefreshTimeoutFailsClientConstruction() {
+		ClientPolicy policy = offline();
+		policy.discoveryRefreshTimeout = AwsEc2TagSeedCandidateProvider.DEFAULT_TIMEOUT - 1;
+		policy.seedCandidateProvider = AwsEc2TagSeedCandidateProvider.builder().region("us-east-1")
+			.tagFilter("aerospike-cluster", "prod-a").credentials("AKIDEXAMPLE", "secret", null)
+			.endpoint(stub.url()).build();
+
+		AerospikeException ae = assertThrows(AerospikeException.class,
+			() -> new AerospikeClient(policy, new Host("127.0.0.1", 1)).close());
+		assertEquals("AWS EC2 seed provider timeout 5000 must be less or equal to the discovery refresh timeout 4999",
+			ae.getBaseMessage());
+	}
+
+	@Test
 	public void providerNameIsAwsTags() {
 		assertEquals(StaticDiscoveryConfig.AWS_TAGS, SeedRefresher.providerName(provider(80, stub.url())));
 	}
@@ -143,7 +157,7 @@ public class AwsTagsSeedRefresherTest {
 
 		try {
 			assertArrayEquals(new Host[] {new Host("10.0.0.2", 3000)}, r.discover());
-			r.start(INIT);
+			r.start();
 
 			stub.ec2Default(new Reply(200, StubAwsServer.describe(null,
 				StubAwsServer.instance("i-1", "10.0.0.2", null, null, null),
@@ -193,7 +207,7 @@ public class AwsTagsSeedRefresherTest {
 			policy.discoveryRefreshTimeout = 200;
 			AwsEc2TagSeedCandidateProvider provider = AwsEc2TagSeedCandidateProvider.builder().region("us-east-1")
 				.tagFilter("aerospike-cluster", "prod-a").credentials("AKIDEXAMPLE", "secret", null)
-				.endpoint("http://127.0.0.1:" + silent.getLocalPort()).timeout(50).initTimeout(50).build();
+				.endpoint("http://127.0.0.1:" + silent.getLocalPort()).timeout(50).build();
 			SeedRefresher r = new SeedRefresher(provider, policy, INIT, snapshot::set);
 			r.validate(100);
 
@@ -206,7 +220,7 @@ public class AwsTagsSeedRefresherTest {
 				assertArrayEquals(INIT, seeds);
 
 				snapshot.set(seeds);
-				r.start(seeds);
+				r.start();
 				ThreadModeTest.await(() -> warnings.stream().filter(w ->
 					w.startsWith("Seed candidate refresh failed: ") && w.contains("timed out after 50ms")).count() >= 2);
 				assertSame(seeds, snapshot.get());

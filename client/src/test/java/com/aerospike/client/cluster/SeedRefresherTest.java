@@ -41,6 +41,7 @@ public class SeedRefresherTest {
 	private static final Host[] INIT = new Host[] {new Host("10.0.0.1", 3000)};
 	private static final Host A = new Host("10.0.0.2", 3000);
 	private static final Host B = new Host("10.0.0.3", 3000);
+	private static final Host C = new Host("10.0.0.4", 3000);
 
 	private final List<String> warnings = new ArrayList<>();
 	private final List<String> errors = new ArrayList<>();
@@ -74,7 +75,7 @@ public class SeedRefresherTest {
 		policy.discoveryRefreshInterval = refreshInterval;
 		policy.discoveryTendRefreshDeadline = 20;
 		SeedRefresher refresher = new SeedRefresher(provider, policy, snapshot::set);
-		refresher.start(INIT);
+		refresher.start();
 		return refresher;
 	}
 
@@ -123,13 +124,12 @@ public class SeedRefresherTest {
 	}
 
 	@Test
-	public void overrunBlocksTendAndKeepsLastGood() {
+	public void overrunBlocksTendAndPublishesResult() {
 		TestSeedProvider provider = new TestSeedProvider(true, true, A);
 		SeedRefresher r = create(provider, 1000);
 
 		r.tend(1, 1000);
-		Host[] lastGood = snapshot.get();
-		assertArrayEquals(new Host[] {A}, lastGood);
+		assertArrayEquals(new Host[] {A}, snapshot.get());
 
 		provider.sleepMillis = 100;
 		provider.result = call -> Arrays.asList(B);
@@ -139,18 +139,39 @@ public class SeedRefresherTest {
 		long elapsed = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - begin);
 
 		assertTrue("tend returned after " + elapsed + "ms", elapsed >= 100);
-		assertSame(lastGood, snapshot.get());
+		assertArrayEquals(new Host[] {B}, snapshot.get());
 		assertEquals(1, r.getOverrunCount());
 		assertFalse(r.isTripped());
 		assertEquals(1, warnings.size());
 
+		provider.result = call -> Arrays.asList(C);
 		r.tend(3, 1000);
 		assertEquals(2, r.getOverrunCount());
+		assertArrayEquals(new Host[] {C}, snapshot.get());
 
 		provider.sleepMillis = 0;
+		provider.result = call -> Arrays.asList(A);
 		r.tend(4, 1000);
 		assertEquals(0, r.getOverrunCount());
-		assertArrayEquals(new Host[] {B}, snapshot.get());
+		assertArrayEquals(new Host[] {A}, snapshot.get());
+	}
+
+	@Test
+	public void overrunThatFailsKeepsSnapshot() {
+		TestSeedProvider provider = new TestSeedProvider(true, true, A);
+		SeedRefresher r = create(provider, 1000);
+
+		r.tend(1, 1000);
+		Host[] lastGood = snapshot.get();
+		assertArrayEquals(new Host[] {A}, lastGood);
+
+		provider.sleepMillis = 100;
+		provider.error = new RuntimeException("slow failure");
+		r.tend(2, 1000);
+
+		assertSame(lastGood, snapshot.get());
+		assertEquals(1, r.getOverrunCount());
+		assertFalse(r.isTripped());
 	}
 
 	@Test
@@ -162,6 +183,7 @@ public class SeedRefresherTest {
 		assertArrayEquals(new Host[] {A}, snapshot.get());
 
 		provider.sleepMillis = 40;
+		provider.result = call -> Arrays.asList(B);
 
 		for (int i = 1; i <= SeedRefresher.MAX_OVERRUNS; i++) {
 			r.tend(1 + i, 1000);
@@ -169,27 +191,29 @@ public class SeedRefresherTest {
 		}
 
 		assertTrue(r.isTripped());
-		assertSame(INIT, snapshot.get());
+		Host[] published = snapshot.get();
+		assertArrayEquals(new Host[] {B}, published);
 		assertEquals(1, errors.size());
 
 		provider.sleepMillis = 0;
+		provider.result = call -> Arrays.asList(C);
 		int calls = provider.calls.get();
 
 		for (int tendCount = 10; tendCount < 100; tendCount++) {
 			r.tend(tendCount, 1000);
 		}
 		assertEquals(calls, provider.calls.get());
-		assertSame(INIT, snapshot.get());
+		assertSame(published, snapshot.get());
 
 		ClientPolicy freshPolicy = new ClientPolicy();
 		freshPolicy.discoveryExecutionMode = DiscoveryExecutionMode.TEND;
 		SeedRefresher fresh = new SeedRefresher(provider, freshPolicy, snapshot::set);
-		fresh.start(INIT);
+		fresh.start();
 		assertFalse(fresh.isTripped());
 		assertEquals(0, fresh.getOverrunCount());
 		fresh.tend(30, 1000);
 		assertEquals(calls + 1, provider.calls.get());
-		assertArrayEquals(new Host[] {A}, snapshot.get());
+		assertArrayEquals(new Host[] {C}, snapshot.get());
 	}
 
 	@Test

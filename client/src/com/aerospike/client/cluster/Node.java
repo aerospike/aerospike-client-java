@@ -464,8 +464,8 @@ public class Node implements Closeable {
 				}
 
 				if (peer.alternateMissing) {
-					if (Log.errorEnabled()) {
-						Log.error(new AerospikeException.AlternateAddressMissing(peer.nodeName, null).getMessage());
+					if (Log.warnEnabled()) {
+						Log.warn(new AerospikeException.AlternateAddressMissing(peer.nodeName, null).getMessage());
 					}
 					peersValidated = false;
 					continue;
@@ -547,13 +547,9 @@ public class Node implements Closeable {
 					catch (Throwable e) {
 						peers.fail(host);
 
-						if (e instanceof AerospikeException.AlternateAddressMissing) {
-							if (Log.errorEnabled()) {
-								Log.error("Add node " + host + " failed: " + e.getMessage());
-							}
-						}
-						else if (Log.warnEnabled()) {
-							Log.warn("Add node " + host + " failed: " + Util.getErrorMessage(e));
+						if (Log.warnEnabled()) {
+							Log.warn("Add node " + host + " failed: " + ((e instanceof AerospikeException.AlternateAddressMissing)?
+								e.getMessage() : Util.getErrorMessage(e)));
 						}
 					}
 				}
@@ -756,7 +752,7 @@ public class Node implements Closeable {
 			for (Host h : peer.hosts) {
 				if (h.port == node.host.port) {
 					// Check for IP address (node.host.name is an IP address) or hostname if it exists.
-					// A node on a hostname with several addresses is moved by refreshAddress only.
+					// A node on a hostname is moved to another address of the hostname by refreshAddress only.
 					if (h.name.equals(node.host.name) || h.name.equals(node.hostname)) {
 						// Main node host is also the same as one of the peer hosts.
 						// Peer should not be added.
@@ -902,13 +898,10 @@ public class Node implements Closeable {
 	}
 
 	/**
-	 * Return the address after the one tried last, skipping the node's address.
+	 * Return the address after the one tried last, skipping the node's address. A hostname that
+	 * resolves to one address other than the node's address returns that address.
 	 */
 	private InetAddress nextAddress(InetAddress[] addresses) {
-		if (addresses.length <= 1) {
-			return null;
-		}
-
 		int start = 0;
 
 		if (moveAddress != null) {

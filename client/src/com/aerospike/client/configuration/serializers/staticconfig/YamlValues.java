@@ -21,6 +21,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 import com.aerospike.client.AerospikeException;
@@ -116,6 +117,17 @@ final class YamlValues {
             throw invalid(path, value, "valid values: " + String.join(", ", values));
         }
         return (String)value;
+    }
+
+    static String enumValueIgnoreCase(String path, Object value, List<String> values) {
+        if (value instanceof String) {
+            String lower = ((String)value).toLowerCase(Locale.ROOT);
+
+            if (values.contains(lower)) {
+                return lower;
+            }
+        }
+        return enumValue(path, value, values);
     }
 
     private static AerospikeException invalid(String path, Object value, String reason) {

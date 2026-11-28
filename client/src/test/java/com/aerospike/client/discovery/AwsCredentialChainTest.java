@@ -263,7 +263,7 @@ public class AwsCredentialChainTest {
 	@Test
 	public void noSourceFound() {
 		env.set("AWS_EC2_METADATA_DISABLED", "true");
-		AerospikeException ae = assertThrows(AerospikeException.class, () -> builder().build().refreshSeedCandidates(INIT));
+		AerospikeException ae = assertThrows(SeedCandidateException.class, () -> builder().build().refreshSeedCandidates(INIT));
 		System.out.println("AWS-TAGS-NO-CREDENTIALS " + ae.getMessage());
 		assertTrue(ae.getMessage(), ae.getMessage().contains("no AWS credentials found"));
 		assertEquals(0, stub.requests().size());
@@ -353,13 +353,13 @@ public class AwsCredentialChainTest {
 	@Test
 	public void hookFailure() {
 		AwsEc2TagSeedCandidateProvider provider = builder().credentialsHook(() -> null).build();
-		AerospikeException ae = assertThrows(AerospikeException.class, () -> provider.refreshSeedCandidates(INIT));
+		AerospikeException ae = assertThrows(SeedCandidateException.class, () -> provider.refreshSeedCandidates(INIT));
 		assertTrue(ae.getMessage(), ae.getMessage().contains("credentials hook returned null"));
 
 		AwsEc2TagSeedCandidateProvider throwing = builder().credentialsHook(() -> {
 			throw new IllegalStateException(SECRET);
 		}).build();
-		ae = assertThrows(AerospikeException.class, () -> throwing.refreshSeedCandidates(INIT));
+		ae = assertThrows(SeedCandidateException.class, () -> throwing.refreshSeedCandidates(INIT));
 		assertTrue(ae.getMessage(), ae.getMessage().contains("credentials hook failed: java.lang.IllegalStateException"));
 		assertNoSecret(ae.getMessage(), "");
 	}

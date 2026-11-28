@@ -106,15 +106,25 @@ interrupts it, so an overrunning call blocks the tend for its full duration.
 | Case | Behaviour |
 | --- | --- |
 | The call returns within the deadline | Its result is merged into the seed list, see [Merge policy](#merge-policy). The overrun count is reset to 0. |
-| The call takes longer than the deadline (an overrun) | The result is discarded, even when the call succeeded, and the previous seed list is kept. The warning `Seed candidate refresh took 140ms, exceeding tend deadline 100ms. Consecutive overruns: 1` is logged. |
-| Three consecutive overruns | The provider is disabled for that client instance: it is not called from the tend again. The seed list is restored to the one established at construction, and `Seed candidate provider exceeded tend deadline 3 consecutive times. Provider disabled for this client and initial seeds restored` is logged at error level. A new client instance starts with no overruns. |
+| The call takes longer than the deadline (an overrun) | A call that returns successfully is still merged into the seed list. The warning `Seed candidate refresh took 140ms, exceeding tend deadline 100ms. Consecutive overruns: 1` is logged and the overrun is counted. |
+| Three consecutive overruns | The provider is disabled for that client instance: it is not called from the tend again. The seed list stays the last one published, and `Seed candidate provider exceeded tend deadline 3 consecutive times. Provider disabled for this client and the last published seeds kept` is logged at error level. A new client instance starts with no overruns. |
 
 A refresh that throws:
 
 | When | Behaviour |
 | --- | --- |
-| At construction | The warning `Seed candidate provider <name> failed: <message>` is logged, the call counts as an empty result and the client continues with the seeds the merge policy leaves. When none are left, construction fails with `SEED_DISCOVERY_FAILED` (-27). `<name>` is `static`, `dns` or the provider's class name. |
+| At construction | The warning `Seed candidate provider <name> failed: <message>` is logged, the call counts as an empty result and the client continues with the seeds the merge policy leaves. When none are left, construction fails with `SEED_DISCOVERY_FAILED` (-27). `<name>` is `static`, `dns`, `aws-tags` or the provider's class name. |
 | On the tend | The warning `Seed candidate refresh failed: <message>` is logged and the previous seed list is kept. A call that throws after the deadline also counts as an overrun; one that throws within it resets the count. |
+
+A provider that fails irrecoverably, for example on a credential or API failure, may throw
+`com.aerospike.client.discovery.SeedCandidateException`, an unchecked `AerospikeException`. The
+client handles it as any other exception from the provider. The `aws-tags` provider throws it for
+credential and EC2 API failures.
+
+A first refresh that returns no hosts at construction, when the merge policy leaves no seed host,
+also fails construction with `SEED_DISCOVERY_FAILED` (-27). The message names the provider, the
+provider's message or `returned no hosts`, the merge policy and the number of configured seeds, for
+example `Seed candidate provider aws-tags returned no hosts and no seed host is left. Merge policy: merge, configured seeds: 0`.
 
 Returned hosts are used as seeds, so they must carry the TLS name when TLS is enabled. A null TLS
 name is defaulted as for the seeds passed to the constructor: the cluster name when
@@ -134,7 +144,7 @@ these checks. This applies to the built-in providers too.
 | --- | --- | --- |
 | `static` (`StaticSeedCandidateProvider`) | No. `needsPeriodicRefresh()` returns false and the provider does no I/O; it is called once, at construction. | None applies. |
 | `dns` (`DnsSeedCandidateProvider`) | Yes, in either mode. `needsPeriodicRefresh()` and `supportsDeadline()` return true, and all I/O of one refresh is bounded by its `timeout` (`dns.timeout_ms`, default 2000 ms in `THREAD` mode and 80 ms in `TEND` mode). | `timeout` must not exceed `discoveryRefreshTimeout` in `THREAD` mode or `discoveryTendRefreshDeadline` in `TEND` mode. This is checked at client construction, which fails otherwise: `DNS seed provider timeout 150 must be less or equal to the discovery tend refresh deadline 100`. |
-| `aws-tags` (`AwsEc2TagSeedCandidateProvider`) | Yes, in `THREAD` mode only. `needsPeriodicRefresh()` returns true and `supportsDeadline()` returns false, so client construction fails in `TEND` mode. All I/O of one refresh is bounded by its `timeout` (`aws.timeout_ms`, default 2000 ms), and of the first by `initTimeout` (`aws.init_timeout_ms`, default 10000 ms). | `timeout` must not exceed `discoveryRefreshTimeout`. This is checked at client construction, which fails otherwise: `AWS EC2 seed provider timeout 12000 must be less or equal to the discovery refresh timeout 10000`. |
+| `aws-tags` (`AwsEc2TagSeedCandidateProvider`) | Yes, in `THREAD` mode only. `needsPeriodicRefresh()` returns true and `supportsDeadline()` returns false, so client construction fails in `TEND` mode. All I/O of one refresh, the first at construction included, is bounded by its `timeout` (`aws.timeout_ms`, default 5000 ms). | `timeout` must not exceed `discoveryRefreshTimeout`. This is checked at client construction, which fails otherwise: `AWS EC2 seed provider timeout 12000 must be less or equal to the discovery refresh timeout 10000`. |
 
 When no provider is configured, the client uses `StaticSeedCandidateProvider` over the hosts
 passed to its constructor.
@@ -147,8 +157,11 @@ passed to its constructor.
 - Return `Optional.empty()` for a miss and let the client apply `translation.on_miss`
   (`ClientPolicy.translationOnMiss`): `pass_through` connects to the advertised endpoint
   unchanged; `strict` does not connect, fails the endpoint with `AerospikeException.TranslationMiss`
-  (`TRANSLATION_MISS`, -25) and, for a peer, logs a warning and retries it on the next tend. Do not
-  implement either behaviour in the translator.
+  (`TRANSLATION_MISS`, -25) and, for a peer, logs a warning and retries it on the next tend. Under
+  `strict` a seed whose own advertised addresses all miss is not used either: the miss is logged as a
+  warning and the next seed is tried. Client construction fails with `TRANSLATION_MISS` only when no
+  seed is left and `ClientPolicy.failIfNotConnected` is true. Do not implement either behaviour in
+  the translator.
 - Never return null. The client treats null as an error: `Address translator <name> returned null for <endpoint>`.
 - Return a port from 1 to 65535. A returned host with a port outside that range is a miss, and
   `translation.on_miss` applies.
@@ -224,16 +237,17 @@ For every policy:
 
 - The seed list is rebuilt only when the provider is called. A re-seed does not call the provider:
   it tries the current seed list in order.
-- A refresh that throws keeps the previous list, as does a refresh that overruns the tend
-  deadline in `TEND` mode. A refresh that returns an empty list is applied like any other result,
+- A refresh that throws keeps the previous list. A refresh that returns after the tend deadline
+  in `TEND` mode is still applied. A refresh that returns an empty list is applied like any other result,
   so the list can become empty: under `REPLACE`, or under `MERGE` and `DISCOVERY_ONLY` when no
   static seeds were passed to the constructor.
 - A provider that throws at initialization counts as an empty result. When the merged list is
-  then empty, construction fails with `SEED_DISCOVERY_FAILED` (-27).
+  then empty, construction fails with `SEED_DISCOVERY_FAILED` (-27), as it does when the first
+  refresh returns no hosts and no seed is left.
 - After construction, the client appends the addresses of the nodes it found to the seed list.
   They are tried on re-seed until a refresh is applied, which replaces the whole list.
-- When the provider is disabled after three consecutive overruns, the list from initialization is
-  restored and kept for the life of the client.
+- When the provider is disabled after three consecutive overruns, the last published list is kept
+  for the life of the client.
 - Without a configured provider, every policy yields the static seeds.
 
 ## DNS lookups
